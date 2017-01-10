@@ -2,4 +2,8 @@ type project
 id Aardvark.Cef
 authors VRVis Research Center
 description
-    Aardvark.Cef
+    Cef wrapper including render2texture capabilities for aardvark.rendering
+files
+	..\..\bin\Release\Aardvark.Cef.dll==> lib\net45
+    ..\..\bin\Release\Aardvark.Cef.pdb ==> lib\net45
+	..\..\bin\Release\Aardvark.Cef.Process.exe ==> lib\net45
