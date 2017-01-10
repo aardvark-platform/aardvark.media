@@ -1,8 +1,12 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.22823.1
+VisualStudioVersion = 14.0.23107.0
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{b2a8bac9-7a66-4994-a9a4-6d3eccdf8156}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RenderToTextureExample", "RenderToTextureExample\RenderToTextureExample.fsproj", "{7B055C74-1C24-4CB0-96E4-02E01914F60A}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -10,10 +14,18 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{b2a8bac9-7a66-4994-a9a4-6d3eccdf8156}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{b2a8bac9-7a66-4994-a9a4-6d3eccdf8156}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{b2a8bac9-7a66-4994-a9a4-6d3eccdf8156}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{b2a8bac9-7a66-4994-a9a4-6d3eccdf8156}.Release|Any CPU.Build.0 = Release|Any CPU
+		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -7,6 +7,7 @@ open Aardvark.Base
 module Cef =
 
     let mutable private initialized = false
+    let mutable private tearedDown = false
 
     let getArgs() =
         let args = Environment.GetCommandLineArgs()
@@ -15,13 +16,10 @@ module Cef =
     let init() =
         if not initialized then
             initialized <- true
-
-          
+            ChromiumUtilities.unpackCef()
 
             let args = getArgs()
             CefRuntime.Load()
-
-
 
             let args = CefMainArgs(args)
             
@@ -40,12 +38,20 @@ module Cef =
             settings.LogSeverity <- CefLogSeverity.Warning
             settings.RemoteDebuggingPort <- 1337
             settings.IgnoreCertificateErrors <- true
-            settings.LocalesDirPath <- "."
+            settings.LocalesDirPath <- "locales"
             settings.WindowlessRenderingEnabled <- true
             
             settings.CommandLineArgsDisabled <- false
 
             CefRuntime.Initialize(args, settings, app, 0n)
 
+            AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> 
+                if not tearedDown then
+                    tearedDown <- true
+                    Console.WriteLine("[Aardvark.Cef] shutting down app domain -> shutting down cef. This is a fallback. consider shutting down chromium yourself coorporatively.")
+                    CefRuntime.Shutdown()
+            )
+
     let shutdown() =
+        tearedDown <- true
         CefRuntime.Shutdown() 
