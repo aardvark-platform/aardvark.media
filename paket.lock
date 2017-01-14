@@ -44,6 +44,11 @@ NUGET
       System.Reactive.Core (>= 3.0 < 3.1)
       System.Reactive.Interfaces (>= 3.0 < 3.1)
       System.Reactive.Linq (>= 3.0 < 3.1)
+    Aardvark.Compiler.DomainTypes (0.0.6)
+      Aardvark.Base (>= 2.3.1)
+      Aardvark.Base.Essentials (>= 2.3.1)
+      Aardvark.Base.FSharp (>= 2.3.1)
+      Aardvark.Base.Incremental (>= 2.3.1)
     Aardvark.Rendering.GL (2.7.2)
       Aardvark.Base.Incremental (>= 2.4.7 < 2.5)
       Aardvark.Base.Rendering (>= 2.7.2)
@@ -62,6 +67,12 @@ NUGET
       Aardvark.Base.Incremental (>= 2.4.7 < 2.5)
       Aardvark.Base.Rendering (>= 2.7.2)
       FShade.Core (>= 2.3.5 < 2.4)
+    Fablish (1.2.7)
+      Aardvark.Base.FSharp (>= 2.4.5 < 2.5)
+      Another.Unofficial.Xilium.CefGlue (0.0.9)
+      Another.Unofficial.Xilium.CefGlue.WindowsForms (0.0.9)
+      FsPickler.Json (>= 3.2 < 3.3)
+      SharpZipLib (>= 0.86 < 0.87)
     FShade.Core (2.3.5)
       Aardvark.Base (>= 2.4 < 2.5)
       Aardvark.Base.FSharp (>= 2.4 < 2.5)
@@ -69,10 +80,12 @@ NUGET
       Aardvark.Base (>= 2.1)
       Aardvark.Base.FSharp (>= 2.1)
       Aardvark.Base.Incremental (>= 2.1)
-  remote: https://api.nuget.org/v3/index.json
+  remote: http://api.nuget.org/v3/index.json
     Another.Unofficial.Xilium.CefGlue (0.0.9)
     Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies (0.0.9)
       SharpZipLib (>= 0.86 < 0.87)
+    Another.Unofficial.Xilium.CefGlue.WindowsForms (0.0.9)
+      Another.Unofficial.Xilium.CefGlue (0.0.9)
     DevILSharp (0.0.13)
     FSharp.Quotations.Evaluator (1.0.7)
     FsPickler (3.2)
@@ -122,11 +135,11 @@ NUGET
       System.Xml.ReaderWriter (>= 4.0.11) - framework: >= netstandard10
       System.Xml.XDocument (>= 4.0.11) - framework: >= netstandard10
     SharpZipLib (0.86)
-    System.Collections (4.3) - framework: uap100, >= netstandard10
+    System.Collections (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
-    System.Collections.Concurrent (4.3) - framework: uap100, netstandard11, >= netstandard13
+    System.Collections.Concurrent (4.3) - framework: netstandard11, >= netstandard13
       System.Collections (>= 4.3) - framework: dnxcore50, >= netstandard13
       System.Diagnostics.Debug (>= 4.3) - framework: dnxcore50, >= netstandard13
       System.Diagnostics.Tracing (>= 4.3) - framework: dnxcore50, >= netstandard13
@@ -146,13 +159,13 @@ NUGET
       System.Runtime (>= 4.1) - framework: >= netstandard10
       System.Runtime.Extensions (>= 4.1) - framework: >= netstandard10
       System.Threading (>= 4.0.11) - framework: >= netstandard10
-    System.ComponentModel (4.3) - framework: uap100, netstandard10, netstandard11, >= netstandard13
+    System.ComponentModel (4.3) - framework: netstandard10, netstandard11, >= netstandard13
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
-    System.Diagnostics.Debug (4.3) - framework: uap100, >= netstandard10
+    System.Diagnostics.Debug (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
-    System.Diagnostics.Tools (4.3) - framework: uap100, netstandard10, netstandard11, >= netstandard13
+    System.Diagnostics.Tools (4.3) - framework: netstandard10, netstandard11, >= netstandard13
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, >= netstandard10
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, >= netstandard10
       System.Runtime (>= 4.3) - framework: dnxcore50, >= netstandard10
@@ -165,7 +178,7 @@ NUGET
       System.ObjectModel (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Reflection (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
-    System.Globalization (4.3) - framework: uap100, >= netstandard10
+    System.Globalization (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
@@ -186,7 +199,7 @@ NUGET
       System.Threading.Tasks (>= 4.3) - framework: >= netstandard13
     System.IO.FileSystem.Primitives (4.3) - framework: >= netstandard13
       System.Runtime (>= 4.3) - framework: >= netstandard13
-    System.Linq (4.3) - framework: uap100, >= netstandard10
+    System.Linq (4.3) - framework: >= netstandard10
       System.Collections (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard16
       System.Diagnostics.Debug (>= 4.3) - framework: dnxcore50, >= netstandard16
       System.Resources.ResourceManager (>= 4.3) - framework: dnxcore50, >= netstandard16
@@ -217,21 +230,21 @@ NUGET
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Threading (>= 4.3) - framework: dnxcore50, >= netstandard13
     System.Reactive.Core (3.0)
-      System.Collections (>= 4.0.11) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Collections.Concurrent (>= 4.0.12) - framework: uap100, netstandard11, >= netstandard13
-      System.ComponentModel (>= 4.0.1) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Diagnostics.Debug (>= 4.0.11) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Diagnostics.Tools (>= 4.0.1) - framework: uap100, netstandard10, netstandard11, >= netstandard13
+      System.Collections (>= 4.0.11) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Collections.Concurrent (>= 4.0.12) - framework: netstandard11, >= netstandard13
+      System.ComponentModel (>= 4.0.1) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Diagnostics.Debug (>= 4.0.11) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Diagnostics.Tools (>= 4.0.1) - framework: netstandard10, netstandard11, >= netstandard13
       System.Dynamic.Runtime (>= 4.0.11) - framework: netstandard10, netstandard11
-      System.Globalization (>= 4.0.11) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Linq (>= 4.1) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Reactive.Interfaces (>= 3.0) - framework: net45, >= net46, uap100, netstandard10, netstandard11, >= netstandard13, portable-net45+win8+wp8+wpa81, portable-net45+win8+wpa81, winv4.5.1, wpav8.1
-      System.Reflection (>= 4.1) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Resources.ResourceManager (>= 4.0.1) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Runtime (>= 4.1) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Runtime.Extensions (>= 4.1) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Threading (>= 4.0.11) - framework: uap100, netstandard10, netstandard11, >= netstandard13
-      System.Threading.Tasks (>= 4.0.11) - framework: uap100, netstandard10, netstandard11, >= netstandard13
+      System.Globalization (>= 4.0.11) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Linq (>= 4.1) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Reactive.Interfaces (>= 3.0)
+      System.Reflection (>= 4.1) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Resources.ResourceManager (>= 4.0.1) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Runtime (>= 4.1) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Runtime.Extensions (>= 4.1) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Threading (>= 4.0.11) - framework: netstandard10, netstandard11, >= netstandard13
+      System.Threading.Tasks (>= 4.0.11) - framework: netstandard10, netstandard11, >= netstandard13
       System.Threading.Thread (>= 4.0)
       System.Threading.ThreadPool (>= 4.0.10)
       System.Threading.Timer (>= 4.0.1)
@@ -256,7 +269,7 @@ NUGET
       System.Runtime.InteropServices.WindowsRuntime (>= 4.0.1) - framework: netstandard10, netstandard11, >= netstandard13
       System.Threading (>= 4.0.11) - framework: netstandard10, netstandard11, >= netstandard13
       System.Threading.Tasks (>= 4.0.11) - framework: netstandard10, netstandard11, >= netstandard13
-    System.Reflection (4.3) - framework: uap100, >= netstandard10
+    System.Reflection (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, netstandard10, netstandard13, >= netstandard15
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, netstandard10, netstandard13, >= netstandard15
       System.IO (>= 4.3) - framework: dnxcore50, netstandard10, netstandard13, >= netstandard15
@@ -289,16 +302,16 @@ NUGET
     System.Reflection.TypeExtensions (4.3) - framework: >= netstandard13
       System.Reflection (>= 4.3) - framework: >= net462, dnxcore50, netstandard13, >= netstandard15
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard13, >= netstandard15
-    System.Resources.ResourceManager (4.3) - framework: uap100, >= netstandard10
+    System.Resources.ResourceManager (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, >= netstandard10
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, >= netstandard10
       System.Globalization (>= 4.3) - framework: dnxcore50, >= netstandard10
       System.Reflection (>= 4.3) - framework: dnxcore50, >= netstandard10
       System.Runtime (>= 4.3) - framework: dnxcore50, >= netstandard10
-    System.Runtime (4.3) - framework: uap100, >= netstandard10
+    System.Runtime (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, netstandard10, netstandard12, netstandard13, >= netstandard15
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, netstandard10, netstandard12, netstandard13, >= netstandard15
-    System.Runtime.Extensions (4.3) - framework: uap100, >= netstandard10
+    System.Runtime.Extensions (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, netstandard10, netstandard13, >= netstandard15
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, netstandard10, netstandard13, >= netstandard15
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, netstandard13, >= netstandard15
@@ -334,10 +347,10 @@ NUGET
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, netstandard13, >= netstandard16
       System.Runtime.Extensions (>= 4.3) - framework: dnxcore50, >= netstandard16
       System.Threading (>= 4.3) - framework: dnxcore50, >= netstandard16
-    System.Threading (4.3) - framework: uap100, >= netstandard10
+    System.Threading (4.3) - framework: >= netstandard10
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Threading.Tasks (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
-    System.Threading.Tasks (4.3) - framework: uap100, >= netstandard10
+    System.Threading.Tasks (4.3) - framework: >= netstandard10
       Microsoft.NETCore.Platforms (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       Microsoft.NETCore.Targets (>= 1.1) - framework: dnxcore50, netstandard10, >= netstandard13
       System.Runtime (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
@@ -381,7 +394,7 @@ NUGET
 GROUP Build
 CONTENT: NONE
 NUGET
-  remote: https://api.nuget.org/v3/index.json
+  remote: http://api.nuget.org/v3/index.json
     Chessie (0.5.1) - content: none
       FSharp.Core
     FAKE (4.48) - content: none

@@ -1,0 +1,170 @@
+﻿<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+
+
+
+    <link rel="stylesheet" href="https://cdn.rawgit.com/olton/Metro-UI-CSS/master/build/css/metro.min.css" />
+    <link rel="stylesheet" href="https://cdn.rawgit.com/olton/Metro-UI-CSS/master/build/css/metro-responsive.min.css" />
+    <link rel="stylesheet" href="https://cdn.rawgit.com/olton/Metro-UI-CSS/master/build/css/metro-schemes.min.css" />
+    <link rel="stylesheet" href="https://cdn.rawgit.com/olton/Metro-UI-CSS/master/build/css/metro-rtl.min.css" />
+    <link rel="stylesheet" href="https://cdn.rawgit.com/olton/Metro-UI-CSS/master/build/css/metro-icons.min.css" />
+
+
+    <script src="https://cdn.rawgit.com/olton/Metro-UI-CSS/master/build/js/metro.min.js"></script>
+
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css">
+    <script src="https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js"></script>
+    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.13.0/JSXTransformer.js"></script>
+    <script src="https://unpkg.com/react@15/dist/react.js"></script>
+    <script src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
+
+
+
+    <script>
+
+        $(document).ready(function() {
+            console.log("$(document).ready");
+
+            var React = window.React;
+            var ReactDOM = window.ReactDOM;
+
+            var connection = new WebSocket('ws://localhost:8083/ws');
+
+
+            var RendererComp = React.createClass({
+                setCode: function(code) {
+                    this.setState({code : code});
+                },
+                render : function(){
+                    if(this.state==null)
+                    {
+                        return React.createElement('div',null,'initial content');
+                    }
+                    else
+                    {
+                        return eval(this.state.code)
+                    }
+                }
+            });
+
+            var renderer = ReactDOM.render(React.createElement(RendererComp,null), document.getElementById('__root__'));
+
+             connection.onmessage = function (e) {
+                 console.log('message received.');
+
+                var msg = JSON.parse(e.data);
+
+                renderer.setCode(msg.dom);
+                renderer.render();
+
+                console.log('rendered.');
+                var result = "";
+                if (msg.script != "") {
+                    result = eval(msg.script)();
+                    console.log('result was: ' + result);
+                }
+                var msg = { id: 1, data: { eventId: msg.id, eventValue: JSON.stringify(result) } };
+                connection.send(JSON.stringify(msg));
+
+                $('.ui.dropdown').dropdown();
+                $('.ui.accordion').accordion();
+                $('.menu .item').tab();
+                $('.ui.modal')
+                  .modal()
+                 ;
+             };
+
+            function sendRefresh() {
+                var msg = { id : 2, data : { eventId: "nil", eventValue : "nil"}};
+                connection.send(JSON.stringify(msg));
+            }
+
+            window.onresize = function(event) {
+                sendRefresh();
+            };
+
+
+            function send(eventId,event)  {
+                if(event.target.value === undefined)
+                {
+                    var msg = { id : 1, data : { eventId: eventId, eventValue : ""}};
+                    connection.send(JSON.stringify(msg));
+                }
+                else
+                {
+                    var msg = { id : 1, data : { eventId: eventId, eventValue : event.target.value }};
+                    connection.send(JSON.stringify(msg));
+                    return;
+                }
+            }
+
+            connection.onopen = function () {
+              var msg = { id : -1, data : "" }
+              connection.send("This is Aardvark"); // Send the message 'Ping' to the server
+            };
+
+            connection.onclose = function () {
+                console.log('server gone.');
+            };
+
+            console.log("$(document).ready done. all set up.");
+
+
+            //var handleFileSelect = function (s)
+            //{
+            //    return function (evt) {
+            //        evt.stopPropagation();
+            //        evt.preventDefault();
+            //        console.log("jasdF");
+
+            //        var files = evt.dataTransfer.files; // FileList object.
+
+            //        // files is a FileList of File objects. List some properties.
+            //        var output = [];
+            //        for (var i = 0, f; f = files[i]; i++) {
+            //            output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
+            //                        f.size, ' bytes, last modified: ',
+            //                        f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
+            //                        '</li>');
+            //        }
+            //        document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
+            //        var msg = { id: 1, data: { eventId: "9999", eventValue: JSON.stringify(evt.dataTransfer.files) } };
+            //        connection.send(JSON.stringify(msg));
+            //    }
+            //}
+
+            //function handleDragOver(evt) {
+            //    evt.stopPropagation();
+            //    evt.preventDefault();
+            //    evt.dataTransfer.dropEffect = 'move'; // Explicitly show this is a copy.
+            //}
+
+            //// Setup the dnd listeners.
+            //var dropZone = document.getElementById('drop_zone');
+            //dropZone.addEventListener('dragover', handleDragOver);
+            //dropZone.addEventListener('drop', handleFileSelect("abc"));
+
+            function doit()
+            {
+                $('.ui.modal').modal('show');
+            }
+
+        });       
+
+    </script>
+</head>
+
+<body style="background-color: transparent">
+    <div id="__root__">
+    </div> 
+</body>
+
+</html> 
