@@ -50,7 +50,7 @@ module Shader =
                 let color = browserSampler.[pixel]
                 return color
             else
-                return V4d(1.0,0.0,0.0,0.0)
+                return V4d(0.0,0.0,0.0,0.0)
         }
 
     let overlay2 (v : Effects.Vertex) =
@@ -77,15 +77,12 @@ module TestApp =
     let view (m : Model) : DomNode<Action> =
         printfn "[Test] Computing view"
         div [] [
-            
-            div [Style ["background-color", "white"]] [
+            div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
                 text (sprintf "current content: %d" m)
                 br []
                 button [onMouseClick (fun dontCare -> Inc); attribute "id" "urdar"] [text "increment"]
                 button [onMouseClick (fun dontCare -> Dec)] [text "decrement"]
             ]
-
-            div [Style ["width", "100%"; "height", "600px"; "background-color", "transparent"]; attribute "id" "renderControl"] []
         ]
 
     let app =
@@ -101,22 +98,21 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
 
-    InteractionTest.InteractionTest.run() |> ignore
-    System.Environment.Exit 0
+//    InteractionTest.InteractionTest.run() |> ignore
+//    System.Environment.Exit 0
     
     Chromium.init()
 
-    let s,t,c = Fablish.Fablish.serveLocally "8083" TestApp.app
 
     use app = new OpenGlApplication()
     let win = app.CreateSimpleRenderWindow()
-
+    win.Visible <- false
     win.Text <- "Aardvark rocks media \\o/"
 
+    let s,t,c = Fablish.Fablish.serveLocally "8083" TestApp.app
+
     let client = Browser(win.FramebufferSignature,win.Time,app.Runtime, true, win.Sizes)
-    let res = client.LoadUrl "http://localhost:8083/mainPage"
-    
-    printfn "%A" res
+    let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
 
     let mutable lastSize = 256 * V2i.II
     let renderControlViewport =
@@ -133,6 +129,8 @@ let main argv =
                     return Box2i(V2i.OO,lastSize)
         }
 
+    let renderRect = renderControlViewport |> Mod.map (fun s -> Box2i.FromMinAndSize(V2i(s.Min.X,win.Size.Y - s.Max.Y),s.Size))
+
     let fullscreenBrowser =
         Sg.fullScreenQuad
             |> Sg.diffuseTexture client.Texture 
@@ -146,12 +144,13 @@ let main argv =
         CameraView.lookAt (V3d(6.0, 6.0, 6.0)) V3d.Zero V3d.OOI
             //|> DefaultCameraController.control win.Mouse win.Keyboard win.Time
             |> Mod.constant 
-            |> Mod.map CameraView.viewTrafo
 
-    let projection = 
+
+    let frustum = 
         renderControlViewport
             |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
-            |> Mod.map Frustum.projTrafo
+    
+    let camera = Mod.map2 Camera.create cameraView frustum
 
     let scene =
         Sg.box' C4b.White Box3d.Unit
@@ -159,13 +158,18 @@ let main argv =
                 DefaultSurfaces.trafo          |> toEffect           
                 DefaultSurfaces.constantColor C4f.Blue |> toEffect  
                 ]
-            |> Sg.viewTrafo cameraView
-            |> Sg.projTrafo projection
+            |> Sg.viewTrafo (Mod.map CameraView.viewTrafo cameraView)
+            |> Sg.projTrafo (Mod.map Frustum.projTrafo frustum)
+
+
+    let three3dApp = InteractionTest.TranslateController.app camera
+    let three3dscene = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse renderRect camera three3dApp
+
 
     let sceneTask = 
         RenderTask.ofList [
             app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Green)
-            app.Runtime.CompileRender(win.FramebufferSignature, scene)
+            app.Runtime.CompileRender(win.FramebufferSignature, three3dscene)
         ]
     let sceneSize = renderControlViewport |> Mod.map (fun box -> box.Size )
     let renderContent = RenderTask.renderToColor sceneSize sceneTask
@@ -180,6 +184,7 @@ let main argv =
 
 
     let composite = Sg.ofSeq [renderOverlay; fullscreenBrowser] |> Sg.depthTest (Mod.constant DepthTestMode.None)
+    
     client.SetFocus true
     client.Mouse.Use(win.Mouse) |> ignore
     client.Keyboard.Use(win.Keyboard) |> ignore
@@ -191,7 +196,7 @@ let main argv =
 
     
     win.RenderTask <- task
-
+    
     win.Run()
 
     Chromium.shutdown()

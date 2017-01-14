@@ -14,7 +14,7 @@ open Aardvark.Application.WinForms
 open Aardvark.Rendering.NanoVg
 open Aardvark.Rendering.GL   
 
-module TranslateController2 =
+module TranslateController =
 
     open AnotherSceneGraph
     open Elmish3DADaptive
@@ -26,10 +26,10 @@ module TranslateController2 =
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module Axis =
         let dir = function | X -> V3d.XAxis | Y -> V3d.YAxis | Z -> V3d.ZAxis
-        let moveAxis = function
-            | X -> Plane3d.YPlane
-            | Y -> Plane3d.ZPlane
-            | Z -> Plane3d.XPlane
+        let moveAxis (trafo : Trafo3d) = function
+            | X -> Plane3d(trafo.Forward.TransformDir V3d.OOI, trafo.Forward.TransformPos V3d.OOO)
+            | Y -> Plane3d(trafo.Forward.TransformDir V3d.OOI, trafo.Forward.TransformPos V3d.OOO)
+            | Z -> Plane3d(trafo.Forward.TransformDir V3d.OIO, trafo.Forward.TransformPos V3d.OOO)
 
     type Action = 
 
@@ -63,12 +63,12 @@ module TranslateController2 =
             match a, m.activeTranslation with
                 | NoHit, _             ->  { m with hovered = None; }
                 | Hover (v,_), _       ->  { m with hovered = Some v}
-                | Translate (dir,s), _ -> { m with activeTranslation = Some (Axis.moveAxis dir, s) }
+                | Translate (dir,s), _ -> { m with activeTranslation = Some (Axis.moveAxis m.trafo dir, m.trafo.Backward.TransformPos s) }
                 | EndTranslation, _    -> { m with activeTranslation = None;  }
                 | MoveRay r, Some (t,start) -> 
                     let mutable ha = RayHit3d.MaxRange
                     if r.HitsPlane(t,0.0,Double.MaxValue,&ha) then
-                        let v = ha.Point.XOO //(ha.Point - start).XOO
+                        let v = (ha.Point - start).XOO
                         { m with trafo = Trafo3d.Translation (ha.Point - start) }
                     else m
                 | MoveRay r, None -> m
@@ -108,8 +108,10 @@ module TranslateController2 =
                 ]
         ]
 
-    let viewScene s =   
-        camera s.mcamera (viewModel s.mscene)
+    let viewScene cam s =   
+        viewModel s.mscene 
+            |> camera cam
+            |> effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
 
     let ofPickMsg (model : Scene) (NoPick(kind,ray)) =
         match kind with   
@@ -119,10 +121,10 @@ module TranslateController2 =
             | MouseEvent.Move ->  [MoveRay ray]
             | MouseEvent.Up _   -> [EndTranslation]
 
-    let app = {
+    let app (camera : IMod<Camera>) = {
         initial = initial
         update = update
-        view = viewScene 
+        view = viewScene camera
         ofPickMsg = ofPickMsg
     }
 
@@ -144,7 +146,9 @@ module InteractionTest =
 
         let camera = Mod.map2 Camera.create cameraView frustum
 
-        let adaptiveResult = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse camera TranslateController2.app
+        let bounds = win.Sizes |> Mod.map (fun s -> Box2i.FromMinAndSize(V2i.OO,s))
+
+        let adaptiveResult = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse bounds camera (TranslateController.app camera)
 
         let sg = 
             //Elmish3D.createApp win camera TranslateController.app

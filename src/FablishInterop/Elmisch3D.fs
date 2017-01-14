@@ -257,9 +257,13 @@ module Elmish3DADaptive =
         let inline a  (immut : ^immut) (mut : ^mut) (scope : ReuseCache) = (^mut : (member Apply : ^immut * ReuseCache -> unit) (mut,immut,scope))
         { unpersist = u; apply = a }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
 
         let model = Mod.init app.initial
+
+        let transformPixel (p : PixelPosition) =
+            let p = PixelPosition(p.Position, Mod.force viewport)
+            p
 
         let reuseCache = ReuseCache()
         let mmodel = unpersist.unpersist model.Value reuseCache
@@ -289,7 +293,7 @@ module Elmish3DADaptive =
         let mutable down = false
 
         mouse.Move.Values.Subscribe(fun (oldP,newP) -> 
-            let ray = newP |> Camera.pickRay (camera |> Mod.force) 
+            let ray = newP |> transformPixel |> Camera.pickRay (camera |> Mod.force) 
             let mutable model = updatePickMsg (NoPick(MouseEvent.Move,ray)) model.Value // wrong
             match pick ray with
                 | (d,f)::_ -> 
@@ -303,7 +307,7 @@ module Elmish3DADaptive =
 
         mouse.Down.Values.Subscribe(fun p ->  
             down <- true
-            let ray = mouse.Position |> Mod.force |> Camera.pickRay (camera |> Mod.force)
+            let ray = mouse.Position |> Mod.force |> transformPixel |> Camera.pickRay (camera |> Mod.force)
             let mutable model = model.Value
             match pick ray with
                 | ((d,f)::_) -> 
@@ -319,14 +323,14 @@ module Elmish3DADaptive =
  
         mouse.Up.Values.Subscribe(fun p ->     
             down <- false
-            let ray = mouse.Position |> Mod.force |> Camera.pickRay (camera |> Mod.force)
+            let ray = mouse.Position |> Mod.force |> transformPixel |> Camera.pickRay (camera |> Mod.force)
             let model = updatePickMsg (NoPick(MouseEvent.Up p, ray)) model.Value
             updateModel model 
         ) |> ignore
 
-        Sg.adapter view
+        view :> ISg
 
-    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (camera : IMod<Camera>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
-        createAppAdaptive keyboard mouse camera ( unpersist ()) app
+    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
+        createAppAdaptive keyboard mouse viewport camera ( unpersist ()) app
 
 
