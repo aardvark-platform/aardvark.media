@@ -64,34 +64,42 @@ module TestApp =
 
     open Fablish
 
-    type Model = int
+    type Model = { cnt : int; info : string }
 
-    type Action = Inc | Dec
+    type Action = Inc | Dec | Reset | SetInfo of string
 
     let update (m : Model) (a : Action) =
         printfn "[Test] computing udpate"
         match a with
-            | Inc -> m + 1
-            | Dec -> m - 1
+            | Inc -> { m with cnt = m.cnt + 1 }
+            | Dec -> { m with cnt = m.cnt - 1 }
+            | Reset -> { m with cnt = 0 }
+            | SetInfo info -> { m with info = info}
 
     let view (m : Model) : DomNode<Action> =
         printfn "[Test] Computing view"
         div [] [
             div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
-                text (sprintf "current content: %d" m)
+                text (sprintf "current content: %d" m.cnt)
                 br []
-                button [onMouseClick (fun dontCare -> Inc); attribute "id" "urdar"] [text "increment"]
+                button [onMouseClick (fun dontCare -> Inc); attribute "class" "ui button"] [text "increment"]
                 button [onMouseClick (fun dontCare -> Dec)] [text "decrement"]
+                button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
+                br []
+                text (sprintf "ray: %s" m.info)
             ]
         ]
 
     let app =
         {
-            initial = 0
+            initial = { info = "not known"; cnt = 0 }
             update = update 
             view = view
             onRendered = OnRendered.ignore
         }
+
+type AppMsg = RenderMsg of InteractionTest.TranslateController.Action
+            | Ui of TestApp.Action
 
 [<EntryPoint>]
 let main argv = 
@@ -105,14 +113,11 @@ let main argv =
 
 
     use app = new OpenGlApplication()
-    let win = app.CreateSimpleRenderWindow()
+    use win = app.CreateSimpleRenderWindow()
     win.Visible <- false
     win.Text <- "Aardvark rocks media \\o/"
 
-    let s,t,c = Fablish.Fablish.serveLocally "8083" TestApp.app
-
     let client = Browser(win.FramebufferSignature,win.Time,app.Runtime, true, win.Sizes)
-    let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
 
     let mutable lastSize = 256 * V2i.II
     let renderControlViewport =
@@ -130,6 +135,36 @@ let main argv =
         }
 
     let renderRect = renderControlViewport |> Mod.map (fun s -> Box2i.FromMinAndSize(V2i(s.Min.X,win.Size.Y - s.Max.Y),s.Size))
+    let cameraView = 
+        CameraView.lookAt (V3d(6.0, 6.0, 6.0)) V3d.Zero V3d.OOI
+            //|> DefaultCameraController.control win.Mouse win.Keyboard win.Time
+            |> Mod.constant 
+
+    let frustum = 
+        renderControlViewport
+            |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
+
+    let mutable result = Unchecked.defaultof<Fablish.Fablish2.FablishResult<_,_>>
+
+    let three3dToUi msg send =
+        match msg with
+            | InteractionTest.TranslateController.Action.Hover(x,p) -> 
+                result.runningApp.EmitMessage (TestApp.Action.SetInfo (sprintf "hover: %A" (x,p)))
+            | _ -> ()
+        send msg
+    
+    let camera = Mod.map2 Camera.create cameraView frustum
+    let three3dApp = InteractionTest.TranslateController.app camera
+    let running = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse renderRect camera three3dToUi three3dApp
+
+    let uiTo3d msg send =
+        match msg with
+            | TestApp.Action.Reset -> running.send InteractionTest.TranslateController.Action.ResetTrafo
+            | _ -> ()
+        send msg
+
+    result <- Fablish.Fablish2.serveLocally "8083" (Some uiTo3d) TestApp.app
+    let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
 
     let fullscreenBrowser =
         Sg.fullScreenQuad
@@ -140,17 +175,6 @@ let main argv =
             |> Sg.blendMode (Mod.constant BlendMode.Blend)
             |> Sg.pass (RenderPass.after "gui" RenderPassOrder.Arbitrary RenderPass.main)
     
-    let cameraView = 
-        CameraView.lookAt (V3d(6.0, 6.0, 6.0)) V3d.Zero V3d.OOI
-            //|> DefaultCameraController.control win.Mouse win.Keyboard win.Time
-            |> Mod.constant 
-
-
-    let frustum = 
-        renderControlViewport
-            |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
-    
-    let camera = Mod.map2 Camera.create cameraView frustum
 
     let scene =
         Sg.box' C4b.White Box3d.Unit
@@ -162,14 +186,11 @@ let main argv =
             |> Sg.projTrafo (Mod.map Frustum.projTrafo frustum)
 
 
-    let three3dApp = InteractionTest.TranslateController.app camera
-    let three3dscene = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse renderRect camera three3dApp
-
 
     let sceneTask = 
         RenderTask.ofList [
             app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Green)
-            app.Runtime.CompileRender(win.FramebufferSignature, three3dscene)
+            app.Runtime.CompileRender(win.FramebufferSignature, running.sg)
         ]
     let sceneSize = renderControlViewport |> Mod.map (fun box -> box.Size )
     let renderContent = RenderTask.renderToColor sceneSize sceneTask
@@ -199,5 +220,6 @@ let main argv =
     
     win.Run()
 
+    result.shutdown.Cancel()
     Chromium.shutdown()
     0

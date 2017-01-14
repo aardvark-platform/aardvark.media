@@ -42,6 +42,8 @@ module TranslateController =
         | Translate       of Axis * V3d
         | EndTranslation 
 
+        | ResetTrafo
+
     let hasEnded a =
         match a with
             | EndTranslation -> true
@@ -72,6 +74,7 @@ module TranslateController =
                         { m with trafo = Trafo3d.Translation (ha.Point - start) }
                     else m
                 | MoveRay r, None -> m
+                | ResetTrafo, _ -> { m with trafo = Trafo3d.Identity }
         { m with scene = scene }
 
     let viewModel (m : MModel) =
@@ -148,13 +151,13 @@ module InteractionTest =
 
         let bounds = win.Sizes |> Mod.map (fun s -> Box2i.FromMinAndSize(V2i.OO,s))
 
-        let adaptiveResult = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse bounds camera (TranslateController.app camera)
+        let adaptiveResult = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse bounds camera (fun msg send -> send msg) (TranslateController.app camera)
 
         let sg = 
             //Elmish3D.createApp win camera TranslateController.app
             //Elmish3D.createApp win camera SimpleDrawingApp.app
             //Elmish3D.createApp win camera PlaceTransformObjects.app
-            adaptiveResult
+            adaptiveResult.sg
             //view :> ISg
 
         let fullScene =

@@ -257,7 +257,13 @@ module Elmish3DADaptive =
         let inline a  (immut : ^immut) (mut : ^mut) (scope : ReuseCache) = (^mut : (member Apply : ^immut * ReuseCache -> unit) (mut,immut,scope))
         { unpersist = u; apply = a }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+    type Running<'model,'msg> =
+        {
+            send : 'msg -> unit
+            sg : ISg
+        }
+
+    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Fablish.Fablish2.Callback<'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
 
         let model = Mod.init app.initial
 
@@ -273,6 +279,12 @@ module Elmish3DADaptive =
                 model.Value <- m
                 unpersist.apply m mmodel reuseCache
             )
+
+        let send msg =
+            let m' = app.update model.Value msg
+            updateModel m'
+
+
         let view = app.view mmodel
         let pickObjects = view.PickObjects()
         let pickReader = pickObjects.GetReader()
@@ -288,7 +300,7 @@ module Elmish3DADaptive =
             picks
 
         let updatePickMsg (m : NoPick) (model : 'model) =
-            app.ofPickMsg model m |> List.fold app.update model
+            app.ofPickMsg model m |> List.fold (fun m msg -> app.update m msg) model
 
         let mutable down = false
 
@@ -299,7 +311,7 @@ module Elmish3DADaptive =
                 | (d,f)::_ -> 
                     for msg in f do
                         match msg (Kind.Move (ray.GetPointOnRay d)) with
-                            | Some r -> model <- app.update model r
+                            | Some msg -> onMessage msg send; model <- app.update model msg
                             | _ -> ()
                 | [] -> ()
             updateModel model 
@@ -328,9 +340,9 @@ module Elmish3DADaptive =
             updateModel model 
         ) |> ignore
 
-        view :> ISg
+        { send = send; sg = view :> ISg}
 
-    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
-        createAppAdaptive keyboard mouse viewport camera ( unpersist ()) app
+    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Fablish.Fablish2.Callback<'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
+        createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app
 
 
