@@ -7,3 +7,4 @@ files
 	..\..\bin\Release\Aardvark.Cef.dll==> lib\net45
     ..\..\bin\Release\Aardvark.Cef.pdb ==> lib\net45
 	..\..\bin\Release\Aardvark.Cef.Process.exe ==> lib\net45
+	..\..\bin\Release\Aardvark.Cef.Process.exe.config ==> lib\net45
