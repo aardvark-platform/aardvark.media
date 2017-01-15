@@ -177,7 +177,7 @@ module ComposedApp =
             project newBigModel
         let instance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera doUpdate app
         comp.Register(fun m -> instance.emitModel (project m)) 
-        r
+        instance
 
     let addUi (comp : ComposedApp<'model,'msg>)  (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         comp.AddUi address port app buildModel project buildAction
@@ -237,11 +237,6 @@ let main argv =
             |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
 
 
-    let mutable fablishInstance = Unchecked.defaultof<Fablish.Fablish2.FablishResult<_,_>>
-    let mutable three3dInstance = Unchecked.defaultof<Elmish3DADaptive.Running<_,_>>
-
-    let mutable composed : ComposedApp.Model = { ui = TestApp.initial; scene = InteractionTest.TranslateController.initial }
-
     let updateApp (model : ComposedApp.Model) (msg : ComposedApp.AppMsg) =
         let model =
             match msg with
@@ -255,26 +250,13 @@ let main argv =
             | ComposedApp.AppMsg.SceneMsg msg -> { model with scene = InteractionTest.TranslateController.update model.scene msg }
             | ComposedApp.AppMsg.UiMsg msg -> { model with ui = TestApp.update model.ui msg }
 
-    let project3d (model  : ComposedApp.Model) = model.scene
-
-    let toApp (model : DomainTypes.Generated.TranslateController.Scene) (msg : InteractionTest.TranslateController.Action) =
-        let newModel = updateApp { composed with scene = model } (ComposedApp.SceneMsg msg)
-        fablishInstance.runningApp.EmitModel newModel.ui
-        three3dInstance.emitModel newModel.scene
-        newModel.scene
-
-    let toUi (model : TestApp.Model) (msg : TestApp.Action) =
-        let newModel = updateApp { composed with ui = model } (ComposedApp.UiMsg msg)
-        fablishInstance.runningApp.EmitModel newModel.ui
-        three3dInstance.emitModel newModel.scene
-        newModel.ui
-
+    let composed = ComposedApp.ComposedApp<ComposedApp.Model,ComposedApp.AppMsg>(updateApp, { ui = TestApp.initial; scene = InteractionTest.TranslateController.initial })
 
     let camera = Mod.map2 Camera.create cameraView frustum
     let three3dApp = InteractionTest.TranslateController.app camera
 
-    three3dInstance <- Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse renderRect camera toApp three3dApp
-    fablishInstance <- Fablish.Fablish2.serve Net.IPAddress.Loopback "8083" (Some toUi) TestApp.app
+    let three3dInstance = ComposedApp.add3d composed win.Keyboard win.Mouse renderRect camera three3dApp (fun m app -> { app with scene = m }) (fun app -> app.scene) ComposedApp.AppMsg.SceneMsg
+    let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) ComposedApp.AppMsg.UiMsg
 
     let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
 
