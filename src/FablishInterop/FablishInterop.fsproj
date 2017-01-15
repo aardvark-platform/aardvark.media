@@ -63,7 +63,7 @@
     </None>
     <None Include="App.config" />
     <None Include="paket.references" />
-	<EmbeddedResource Include="logo.png">
+    <EmbeddedResource Include="logo.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>

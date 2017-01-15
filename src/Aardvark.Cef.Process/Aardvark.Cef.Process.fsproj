@@ -6,7 +6,7 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>1dfeb808-39fa-4db3-92b6-77baadc1457d</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <RootNamespace>Aardvark.Cef.Process</RootNamespace>
     <AssemblyName>Aardvark.Cef.Process</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
