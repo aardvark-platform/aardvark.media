@@ -50,6 +50,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="SplashScreen.fs" />
     <Compile Include="Elmisch3D.fs" />
     <Compile Include="Models.fs">
       <DomainTypes>True</DomainTypes>
@@ -62,6 +63,9 @@
     </None>
     <None Include="App.config" />
     <None Include="paket.references" />
+	<EmbeddedResource Include="logo.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef\Aardvark.Cef.fsproj">

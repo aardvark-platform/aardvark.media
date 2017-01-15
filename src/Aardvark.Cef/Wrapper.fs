@@ -838,6 +838,13 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
             MVar.take loadResult
         )
 
+    interface IDisposable with
+        member x.Dispose() = 
+            if isNull browser |> not then browser.Dispose(); browser <- null
+            if isNull host |> not then host.Dispose(); host <- null
+            base.Dispose(true)
+
+
 
 
 

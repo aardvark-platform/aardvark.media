@@ -1,4 +1,7 @@
 ﻿
+open System
+open System.Windows.Forms
+
 open Scratch
 open Aardvark.Base
 open Aardvark.Base.Incremental
@@ -69,7 +72,7 @@ module TestApp =
     type Action = Inc | Dec | Reset | SetInfo of string
 
     let update (m : Model) (a : Action) =
-        printfn "[Test] computing udpate"
+        //printfn "[Test] computing udpate"
         match a with
             | Inc -> { m with cnt = m.cnt + 1 }
             | Dec -> { m with cnt = m.cnt - 1 }
@@ -77,7 +80,7 @@ module TestApp =
             | SetInfo info -> { m with info = info}
 
     let view (m : Model) : DomNode<Action> =
-        printfn "[Test] Computing view"
+        //printfn "[Test] Computing view"
         div [] [
             div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
                 text (sprintf "current content: %d" m.cnt)
@@ -156,21 +159,24 @@ module ComposedApp =
 
 [<EntryPoint>]
 let main argv = 
+    Chromium.init()
+
+    use splashScreen = SplashScreen.spawn()
+    Application.DoEvents()
+
     Ag.initialize()
     Aardvark.Init()
 
-    //InteractionTest.InteractionTest.run() |> ignore
-    //System.Environment.Exit 0
-    
-    Chromium.init()
-
-
     use app = new OpenGlApplication()
     use win = app.CreateSimpleRenderWindow()
-    win.Visible <- false
     win.Text <- "Aardvark rocks media \\o/"
+    win.Load.Add(fun _ -> win.Size <- V2i(0,0))
+    win.FormBorderStyle <- FormBorderStyle.None
+    let mutable started = false
 
-    let client = Browser(win.FramebufferSignature,win.Time,app.Runtime, true, win.Sizes)
+    let desiredSize = V2i(800,600)
+
+    use client = new Browser(win.FramebufferSignature,win.Time,app.Runtime, true, win.Sizes)
 
     let mutable lastSize = 256 * V2i.II
     let renderControlViewport =
@@ -180,6 +186,14 @@ let main argv =
             match vp with
                 | Some vp ->
                     lastSize <- vp.Size
+
+                    if not started then
+                        started <- true
+                        let fixup () = win.BeginInvoke(Action(fun _ -> win.FormBorderStyle <- FormBorderStyle.Sizable; (win :> System.Windows.Forms.Form).Size <- Drawing.Size(desiredSize.X, desiredSize.Y); splashScreen.Close())) |> ignore
+                        if win.IsHandleCreated then
+                            fixup()
+                        else win.HandleCreated.Add(fun _ -> fixup())
+
                     let vp2 = Box2i(V2i(vp.Min.X, size.Y - vp.Max.Y), V2i(vp.Max.X, size.Y - vp.Min.Y))
                     return vp2
 

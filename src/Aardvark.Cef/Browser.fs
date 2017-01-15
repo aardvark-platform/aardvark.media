@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.Cef
 
+open System
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
@@ -8,7 +9,7 @@ open System.Runtime.InteropServices
 open Aardvark.Cef.Internal
 
 type Browser(signature : IFramebufferSignature, time : IMod<System.DateTime>, runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) =
-    let client = Client(runtime, mipMaps, size)
+    let client = new Client(runtime, mipMaps, size)
 
     member x.ExecuteAsync(js : string) = client.ExecuteAsync js
     member x.Execute(js : string) = client.Execute js
@@ -35,7 +36,10 @@ type Browser(signature : IFramebufferSignature, time : IMod<System.DateTime>, ru
     member x.MipMaps = mipMaps
 
     new(ctrl : Aardvark.Application.IRenderControl) =
-        Browser(ctrl.FramebufferSignature, ctrl.Time, ctrl.Runtime, false, ctrl.Sizes)
+        new Browser(ctrl.FramebufferSignature, ctrl.Time, ctrl.Runtime, false, ctrl.Sizes)
+
+    interface IDisposable with
+        member x.Dispose() = (client :> IDisposable).Dispose()
 
 module Chromium =
     let init() = Cef.init()
