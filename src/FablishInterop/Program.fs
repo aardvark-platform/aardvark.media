@@ -93,9 +93,11 @@ module TestApp =
             ]
         ]
 
+    let initial = { info = "not known"; cnt = 0 }
+
     let app =
         {
-            initial = { info = "not known"; cnt = 0 }
+            initial = initial
             update = update 
             view = view
             onRendered = OnRendered.ignore
@@ -126,6 +128,10 @@ module AppCompositionExperiment =
             failwith ""
 
 module ComposedApp =
+    open Fablish
+    open System
+    open System.Net
+    open Fablish.Fablish2
 
     type AppMsg = SceneMsg of InteractionTest.TranslateController.Action 
                 | UiMsg of TestApp.Action
@@ -135,27 +141,46 @@ module ComposedApp =
         scene : DomainTypes.Generated.TranslateController.Scene
     }
 
-    let update model msg =
-        match msg with
-            | SceneMsg msg -> 
-                { model with scene = InteractionTest.TranslateController.update model.scene msg }
-            | UiMsg ui -> 
-                { model with ui = TestApp.update model.ui ui }
+    type ComposedApp<'model,'msg>(f : 'model -> 'msg -> 'model, initial : 'model) =
+        let mutable model = initial
+        let innerApps = System.Collections.Generic.HashSet<'model -> unit>()
 
-    let view (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) : ('model -> AppInstance<AppMsg>) =
+        member x.Update(msg : 'msg) =
+            model <- f model msg
+            model
+        
+        member x.AddUi (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
+            let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
+                let bigModel = buildModel m model
+                let bigMsg = buildAction msg
+                let newBigModel = x.Update bigMsg
+                for a in innerApps do a newBigModel
+                project newBigModel
+            let r = Fablish.Fablish2.serve address port (Some doUpdate) app
+            innerApps.Add(fun m -> r.runningApp.EmitModel (project m)) |> ignore
+            r
 
-        let three3dApp = InteractionTest.TranslateController.app camera
-        let three3dInstance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera (failwith "") three3dApp
+        member x.Register(f : 'model -> unit) = 
+            innerApps.Add(f) |> ignore
 
-        let fablishResult = Fablish.Fablish2.serveLocally "8083" (failwith "") TestApp.app
-        let guiInstance = fablishResult.runningApp
+        member x.Model = model
 
-        fun (model : 'model) ->
-            apps [
-                three3d three3dInstance |> Instance.map SceneMsg
-                gui guiInstance         |> Instance.map UiMsg
-            ]
+        member x.InnerApps = innerApps
 
+
+    let inline add3d (comp : ComposedApp<'model,'msg>) (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : Elmish3DADaptive.App<_,_,_,_>)  (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
+        let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
+            let bigModel = buildModel m comp.Model
+            let bigMsg = buildAction msg
+            let newBigModel = comp.Update bigMsg
+            for a in comp.InnerApps do a newBigModel
+            project newBigModel
+        let instance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera doUpdate app
+        comp.Register(fun m -> instance.emitModel (project m)) 
+        r
+
+    let addUi (comp : ComposedApp<'model,'msg>)  (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
+        comp.AddUi address port app buildModel project buildAction
 
 [<EntryPoint>]
 let main argv = 
@@ -212,26 +237,45 @@ let main argv =
             |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
 
 
-    let mutable result = Unchecked.defaultof<Fablish.Fablish2.FablishResult<_,_>>
+    let mutable fablishInstance = Unchecked.defaultof<Fablish.Fablish2.FablishResult<_,_>>
+    let mutable three3dInstance = Unchecked.defaultof<Elmish3DADaptive.Running<_,_>>
 
-    let three3dToUi msg send =
+    let mutable composed : ComposedApp.Model = { ui = TestApp.initial; scene = InteractionTest.TranslateController.initial }
+
+    let updateApp (model : ComposedApp.Model) (msg : ComposedApp.AppMsg) =
+        let model =
+            match msg with
+                | ComposedApp.AppMsg.SceneMsg (InteractionTest.TranslateController.Action.Hover(x,p)) -> 
+                    { model with ui = TestApp.update model.ui ( TestApp.Action.SetInfo (sprintf "hover: %A" (x,p)) ) }
+                | ComposedApp.UiMsg (TestApp.Action.Reset) -> 
+                    { model with scene = InteractionTest.TranslateController.update model.scene InteractionTest.TranslateController.Action.ResetTrafo} 
+                | _ -> model
+
         match msg with
-            | InteractionTest.TranslateController.Action.Hover(x,p) -> 
-                result.runningApp.EmitMessage (TestApp.Action.SetInfo (sprintf "hover: %A" (x,p)))
-            | _ -> ()
-        send msg
-    
+            | ComposedApp.AppMsg.SceneMsg msg -> { model with scene = InteractionTest.TranslateController.update model.scene msg }
+            | ComposedApp.AppMsg.UiMsg msg -> { model with ui = TestApp.update model.ui msg }
+
+    let project3d (model  : ComposedApp.Model) = model.scene
+
+    let toApp (model : DomainTypes.Generated.TranslateController.Scene) (msg : InteractionTest.TranslateController.Action) =
+        let newModel = updateApp { composed with scene = model } (ComposedApp.SceneMsg msg)
+        fablishInstance.runningApp.EmitModel newModel.ui
+        three3dInstance.emitModel newModel.scene
+        newModel.scene
+
+    let toUi (model : TestApp.Model) (msg : TestApp.Action) =
+        let newModel = updateApp { composed with ui = model } (ComposedApp.UiMsg msg)
+        fablishInstance.runningApp.EmitModel newModel.ui
+        three3dInstance.emitModel newModel.scene
+        newModel.ui
+
+
     let camera = Mod.map2 Camera.create cameraView frustum
     let three3dApp = InteractionTest.TranslateController.app camera
-    let running = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse renderRect camera three3dToUi three3dApp
 
-    let uiTo3d msg send =
-        match msg with
-            | TestApp.Action.Reset -> running.send InteractionTest.TranslateController.Action.ResetTrafo
-            | _ -> ()
-        send msg
+    three3dInstance <- Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse renderRect camera toApp three3dApp
+    fablishInstance <- Fablish.Fablish2.serve Net.IPAddress.Loopback "8083" (Some toUi) TestApp.app
 
-    result <- Fablish.Fablish2.serveLocally "8083" (Some uiTo3d) TestApp.app
     let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
 
     let fullscreenBrowser =
@@ -258,7 +302,7 @@ let main argv =
     let sceneTask = 
         RenderTask.ofList [
             app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Green)
-            app.Runtime.CompileRender(win.FramebufferSignature, running.sg)
+            app.Runtime.CompileRender(win.FramebufferSignature, three3dInstance.sg)
         ]
     let sceneSize = renderControlViewport |> Mod.map (fun box -> box.Size )
     let renderContent = RenderTask.renderToColor sceneSize sceneTask
@@ -288,6 +332,6 @@ let main argv =
     
     win.Run()
 
-    result.shutdown.Cancel()
+    fablishInstance.shutdown.Cancel()
     Chromium.shutdown()
     0
