@@ -9,78 +9,80 @@ open Aardvark.Application
 
 open Scratch.DomainTypes
 
+module SimpleDrawingApp =
 
-//module SimpleDrawingApp =
-//
-//    open ImmutableSceneGraph
-//    open Elmish3D
-//    open SimpleDrawingApp
-//    open Primitives
-//
-//
-//    type Action =
-//        | ClosePolygon
-//        | AddPoint   of V3d
-//        | MoveCursor of V3d
-//
-//    let update (m : Model) (cmd : Action) =
-//        match cmd with
-//            | ClosePolygon -> 
-//                match m.working with
-//                    | None -> m
-//                    | Some p -> 
-//                        { m with 
-//                            working = None 
-//                            finished = p.finishedPoints :: m.finished
-//                        }
-//            | AddPoint p ->
-//                match m.working with
-//                    | None -> { m with working = Some { finishedPoints = [ p ]; cursor = None;  }}
-//                    | Some v -> 
-//                        { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
-//            | MoveCursor p ->
-//                match m.working with
-//                    | None -> { m with working = Some { finishedPoints = []; cursor = Some p }}
-//                    | Some v -> { m with working = Some { v with cursor = Some p }}
-//
-//
-//    let viewPolygon (p : list<V3d>) =
-//        [ for edge in Polygon3d(p |> List.toSeq).EdgeLines do
-//            let v = edge.P1 - edge.P0
-//            yield cylinder edge.P0 v.Normalized v.Length 0.03 |> render Pick.ignore 
-//        ] |> group
-//
-//
-//    let view (m : Model) = 
-//        group [
-//            yield [ Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
-//                        |> render [ 
-//                             on Event.move MoveCursor
-//                             on (Event.down' MouseButtons.Left)  AddPoint 
-//                             on (Event.down' MouseButtons.Right) (constF ClosePolygon)
-//                           ] 
-//                  ] |> colored C4b.Gray
-//            match m.working with
-//                | Some v when v.cursor.IsSome -> 
-//                    yield 
-//                        [ Sphere3d(V3d.OOO,0.1) |> Sphere |> render Pick.ignore ] 
-//                            |> colored C4b.Red
-//                            |> transformed' (Trafo3d.Translation(v.cursor.Value))
-//                    yield viewPolygon (v.cursor.Value :: v.finishedPoints)
-//                | _ -> ()
-//            for p in m.finished do yield viewPolygon p
-//        ]
-//
-//    let initial = { finished = []; working = None; _id = null }
-//
-//    let app =
-//        {
-//            initial = initial
-//            update = update
-//            view = view
-//            ofPickMsg = fun _ _ -> []
-//        }
-//
+    open AnotherSceneGraph
+    open Elmish3DADaptive
+    open SimpleDrawingApp
+    open Primitives
+
+
+    type Action =
+        | ClosePolygon
+        | AddPoint   of V3d
+        | MoveCursor of V3d
+
+    let update (m : Model) (cmd : Action) =
+        match cmd with
+            | ClosePolygon -> 
+                match m.working with
+                    | None -> m
+                    | Some p -> 
+                        { m with 
+                            working = None 
+                            finished = PSet.add p.finishedPoints m.finished
+                        }
+            | AddPoint p ->
+                match m.working with
+                    | None -> { m with working = Some { finishedPoints = [ p ]; cursor = None;  }}
+                    | Some v -> 
+                        { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
+            | MoveCursor p ->
+                match m.working with
+                    | None -> { m with working = Some { finishedPoints = []; cursor = Some p }}
+                    | Some v -> { m with working = Some { v with cursor = Some p }}
+
+
+    let viewPolygon (p : list<V3d>) =
+        [ for edge in Polygon3d(p |> List.toSeq).EdgeLines do
+            let v = edge.P1 - edge.P0
+            yield cylinder edge.P0 v.Normalized v.Length 0.03 |> render Pick.ignore 
+        ] |> group
+
+
+    let view (m : MModel) = 
+        let t =
+           aset {
+                yield [ Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
+                            |> render [ 
+                                 on Event.move MoveCursor
+                                 on (Event.down' MouseButtons.Left)  AddPoint 
+                                 on (Event.down' MouseButtons.Right) (constF ClosePolygon)
+                               ] 
+                      ] |> colored (Mod.constant C4b.Gray)
+                for p in m.mfinished :> aset<_> do yield viewPolygon p
+                let! working = m.mworking
+                match working with
+                    | Some v when v.cursor.IsSome -> 
+                        yield 
+                            [ Sphere3d(V3d.OOO,0.1) |> Sphere |> render Pick.ignore ] 
+                                |> colored (Mod.constant C4b.Red)
+                                |> transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value))
+                        yield viewPolygon (v.cursor.Value :: v.finishedPoints)
+                    | _ -> ()
+            }
+        agroup  t
+
+    let initial = { finished = PSet.empty; working = None; _id = null }
+
+    let app =
+        {
+            initial = initial
+            update = update
+            view = view
+            ofPickMsg = fun _ _ -> []
+        }
+
 //module PlaceTransformObjects =
 //
 //    open ImmutableSceneGraph

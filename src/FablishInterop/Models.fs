@@ -35,7 +35,7 @@ module SimpleDrawingApp =
     
     [<DomainType>]
     type Model = {
-        finished : list<Polygon>
+        finished : pset<Polygon>
         working  : Option<OpenPolygon>
     }
 

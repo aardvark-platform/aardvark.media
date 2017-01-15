@@ -98,16 +98,69 @@ module TestApp =
             onRendered = OnRendered.ignore
         }
 
-type AppMsg = RenderMsg of InteractionTest.TranslateController.Action
-            | Ui of TestApp.Action
+[<AutoOpen>]
+module AppCompositionExperiment = 
+
+    type AppInstance<'msg> = interface end
+
+    type AppInstance<'model,'msg> =
+        | Three3d of Elmish3DADaptive.Running<'model,'msg>
+        | Gui of Fablish.Fablish2.RunningApp<'model,'msg>
+        | Apps of list<AppInstance<'model,'msg>>
+
+    type Three3d<'model,'msg>(r : Elmish3DADaptive.Running<'model,'msg>) =
+        interface AppInstance<'msg>
+
+    type Gui<'model,'msg>(r : Fablish.Fablish2.RunningApp<'model,'msg>) =
+        interface AppInstance<'msg>
+
+    let three3d r = Three3d<_,_>(r) :> AppInstance<'msg>
+    let gui r = Gui<_,_>(r) :> AppInstance<'msg>
+    let apps (xs : list<AppInstance<'a>>) : AppInstance<'a> = failwith ""
+
+    module Instance =
+        let map (f : 'a -> 'b) (a : AppInstance<'a>) : AppInstance<'b>=
+            failwith ""
+
+module ComposedApp =
+
+    type AppMsg = SceneMsg of InteractionTest.TranslateController.Action 
+                | UiMsg of TestApp.Action
+
+    type Model = {  
+        ui    : TestApp.Model
+        scene : DomainTypes.Generated.TranslateController.Scene
+    }
+
+    let update model msg =
+        match msg with
+            | SceneMsg msg -> 
+                { model with scene = InteractionTest.TranslateController.update model.scene msg }
+            | UiMsg ui -> 
+                { model with ui = TestApp.update model.ui ui }
+
+    let view (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) : ('model -> AppInstance<AppMsg>) =
+
+        let three3dApp = InteractionTest.TranslateController.app camera
+        let three3dInstance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera (failwith "") three3dApp
+
+        let fablishResult = Fablish.Fablish2.serveLocally "8083" (failwith "") TestApp.app
+        let guiInstance = fablishResult.runningApp
+
+        fun (model : 'model) ->
+            apps [
+                three3d three3dInstance |> Instance.map SceneMsg
+                gui guiInstance         |> Instance.map UiMsg
+            ]
+
 
 [<EntryPoint>]
 let main argv = 
     Ag.initialize()
     Aardvark.Init()
 
-//    InteractionTest.InteractionTest.run() |> ignore
-//    System.Environment.Exit 0
+    //InteractionTest.InteractionTest.run() |> ignore
+    //System.Environment.Exit 0
     
     Chromium.init()
 
@@ -143,6 +196,7 @@ let main argv =
     let frustum = 
         renderControlViewport
             |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
+
 
     let mutable result = Unchecked.defaultof<Fablish.Fablish2.FablishResult<_,_>>
 

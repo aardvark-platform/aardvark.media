@@ -134,7 +134,7 @@ module AnotherSceneGraph =
         member x.InhColor(c : Colored<'msg>) =
             c.Child?InhColor <- c.Color
 
-        member x.InColor(r : Root<ISg>) =
+        member x.InhColor(r : Root<ISg>) =
             r.Child?InhColor <- Mod.constant C4b.White
 
         member x.RenderObjects(c : Conv<'msg>) : aset<IRenderObject> =
@@ -156,7 +156,8 @@ module AnotherSceneGraph =
                 | Quad p -> 
                     let vertices = p.Points |> Seq.map V3f |> Seq.toArray
                     let index = [| 0; 1; 2; 0; 2; 3 |]
-                    let colors = l?InhColor |> Mod.map  (fun c -> Array.replicate vertices.Length c)
+                    let c : IMod<C4b> = l?InhColor
+                    let colors = c |> Mod.map  (fun c -> Array.replicate vertices.Length c)
                     let normals = Array.replicate vertices.Length (p.Edge03.Cross(p.P2-p.P0)).Normalized
                     let ig = IndexedGeometry(IndexedGeometryMode.TriangleList, index, SymDict.ofList [DefaultSemantic.Positions, vertices :> Array; DefaultSemantic.Normals, normals :> System.Array], SymDict.empty)
                     ig
@@ -219,10 +220,12 @@ module AnotherSceneGraph =
     let transform t xs = Transform<'msg>(t,xs) :> ISg<'msg>
     let translate x y z xs = Transform<'msg>(Trafo3d.Translation(x,y,z) |> Mod.constant, xs) :> ISg<_>
     let translate' x y z c = Transform<'msg>(Trafo3d.Translation(x,y,z) |> Mod.constant, List.singleton c) :> ISg<_>
+    let transform' t x = Transform<'msg>(t,[x]) :> ISg<'msg>
     let colored c xs = Colored<'msg>(c,xs) :> ISg<'msg>
     let colored' c x = Colored<'msg>(c,x |> List.singleton) :> ISg<'msg>
     let pick picks xs = On<'msg>(picks,xs) :> ISg<'msg>
     let group (xs : list<_>) = Group<'msg>(xs) :> ISg<'msg>
+    let agroup (xs : aset<_>) = Group<'msg>(xs) :> ISg<'msg>
     let leaf x = Leaf<'msg>(x) :> ISg<'msg> 
     let render picks p = pick picks [leaf p]
 
