@@ -4,13 +4,13 @@ open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
+type Axis = X | Y | Z
 
 module TranslateController =
 
-    type Axis = X | Y | Z
 
     [<DomainType>]
-    type Model = {
+    type TModel = {
         hovered           : Option<Axis>
         activeTranslation : Option<Plane3d * V3d>
         trafo             : Trafo3d
@@ -20,7 +20,7 @@ module TranslateController =
     type Scene = 
         {
             camera : Camera
-            scene : Model
+            scene : TModel
         }
 
 
@@ -41,11 +41,19 @@ module SimpleDrawingApp =
 
 module PlaceTransformObjects =
 
+    open TranslateController
+
+    [<DomainType>]
+    type Selected = { id : int; tmodel : TModel }
+
+    [<DomainType>]
+    type Object = { id : int; t : Trafo3d }
+
     [<DomainType>]
     type Model = {
-        objects : list<Trafo3d>
+        objects : pset<Object>
         hoveredObj : Option<int>
-        selectedObj : Option<int * TranslateController.Model>
+        selectedObj : Option<Selected>
     }
 
 module Interop =

@@ -120,19 +120,19 @@ let main argv =
     let camera = Mod.map2 Camera.create cameraView frustum
 
     let sg, shutdown =
-        if false then
+        if true then
             let composed = ComposedApp.ofUpdate  { Explicit.ui = TestApp.initial; Explicit.scene = TranslateController.initial } Explicit.update
             let three3dApp = TranslateController.app camera
 
             let three3dInstance = ComposedApp.add3d composed win.Keyboard win.Mouse renderRect camera three3dApp (fun m app -> { app with scene = m }) (fun app -> app.scene) Explicit.AppMsg.SceneMsg
-            let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg
+            let fablishResult = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg
 
-            let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
-            three3dInstance.sg, fablishInstance.shutdown
+            let res = client.LoadUrlAsync fablishResult.localUrl
+            three3dInstance.sg, fablishResult.shutdown
         else 
-            let threeD,fablish = SingleMultiView.createApp win.Keyboard win.Mouse renderRect camera
-            let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
-            threeD.sg,fablish.shutdown
+            let three3dInstance, fablishResult = SingleMultiView.createApp win.Keyboard win.Mouse renderRect camera
+            let res = client.LoadUrlAsync fablishResult.localUrl
+            three3dInstance.sg, fablishResult.shutdown
 
     let fullscreenBrowser =
         Sg.fullScreenQuad

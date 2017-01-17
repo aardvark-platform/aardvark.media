@@ -21,11 +21,13 @@ type ComposedApp<'model,'msg>(initial : 'model, f : 'model -> 'msg -> 'model) =
     member x.AddUi (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         let doUpdate : Callback<'innerModel,'innerMsg> =
             fun (m : 'innerModel) (msg : 'innerMsg) ->
-                let bigModel = buildModel m model
-                let bigMsg = buildAction msg
-                let newBigModel = x.Update bigMsg
-                for a in innerApps do a newBigModel
-                project newBigModel
+                lock x (fun _ -> 
+                    let bigModel = buildModel m model
+                    let bigMsg = buildAction msg
+                    let newBigModel = x.Update bigMsg
+                    for a in innerApps do a newBigModel
+                    project newBigModel
+                )
         let r : Fablish.FablishResult<'innerModel,'innerMsg> = Fablish.Fablish.Serve<'innerModel,'innerMsg>(app, address, port, doUpdate)
         innerApps.Add(fun m -> r.instance.EmitModel (project m) |> ignore) |> ignore
         r
@@ -43,11 +45,13 @@ module ComposedApp =
 
     let inline add3d (comp : ComposedApp<'model,'msg>) (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : Elmish3DADaptive.App<_,_,_,_>)  (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
-            let bigModel = buildModel m comp.Model
-            let bigMsg = buildAction msg
-            let newBigModel = comp.Update bigMsg
-            for a in comp.InnerApps do a newBigModel
-            project newBigModel
+            lock comp (fun _ -> 
+                let bigModel = buildModel m comp.Model
+                let bigMsg = buildAction msg
+                let newBigModel = comp.Update bigMsg
+                for a in comp.InnerApps do a newBigModel
+                project newBigModel
+            )
         let instance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera doUpdate app
         comp.Register(fun m -> instance.emitModel (project m)) 
         instance
