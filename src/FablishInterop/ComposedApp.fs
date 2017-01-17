@@ -121,8 +121,9 @@ module SingleMultiView =
             { m with ui = { m.ui with cnt = 0 }; scene = s }
 
     let view3D (cam : IMod<Camera>) (m : MModel) =
-        // cannot implement doe to mini bug
-        failwith ""
+        m.mscene  |> TranslateController.viewScene cam |> Scene.map Translate
+
+    let ofPickMsg (m : Model) (noPick) = TranslateController.ofPickMsg m.scene noPick |> List.map Translate
 
     open Elmish3DADaptive
 
@@ -135,7 +136,7 @@ module SingleMultiView =
             initial = initial
             update = (update 1)
             view = view3D camera
-            ofPickMsg = failwith ""
+            ofPickMsg = ofPickMsg
         }
 
         let viewApp = 
@@ -150,4 +151,4 @@ module SingleMultiView =
         let three3dInstance : Running<Model,Action> = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
-        composed
+        three3dInstance, fablishInstance

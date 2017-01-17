@@ -117,19 +117,22 @@ let main argv =
             |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
 
 
-    let sg,fablishInstance =
-        if true then
-            let composed = ComposedApp.ofUpdate  { Explicit.ui = TestApp.initial; Explicit.scene = TranslateController.initial } Explicit.update
+    let camera = Mod.map2 Camera.create cameraView frustum
 
-            let camera = Mod.map2 Camera.create cameraView frustum
+    let sg, shutdown =
+        if false then
+            let composed = ComposedApp.ofUpdate  { Explicit.ui = TestApp.initial; Explicit.scene = TranslateController.initial } Explicit.update
             let three3dApp = TranslateController.app camera
 
             let three3dInstance = ComposedApp.add3d composed win.Keyboard win.Mouse renderRect camera three3dApp (fun m app -> { app with scene = m }) (fun app -> app.scene) Explicit.AppMsg.SceneMsg
             let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg
 
             let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
-            three3dInstance.sg, fablishInstance
-        else failwith ""
+            three3dInstance.sg, fablishInstance.shutdown
+        else 
+            let threeD,fablish = SingleMultiView.createApp win.Keyboard win.Mouse renderRect camera
+            let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
+            threeD.sg,fablish.shutdown
 
     let fullscreenBrowser =
         Sg.fullScreenQuad
@@ -185,6 +188,6 @@ let main argv =
     
     win.Run()
 
-    fablishInstance.shutdown()
+    shutdown()
     Chromium.shutdown()
     0

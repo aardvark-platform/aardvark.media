@@ -145,6 +145,9 @@ module AnotherSceneGraph =
         member x.RenderObjects(c : Conv<'msg>) : aset<IRenderObject> =
             ASet.bind (fun s -> s?RenderObjects()) c.SceneGraphChild 
 
+        member x.RenderObjects(m : Map<_,_>) : aset<IRenderObject> =
+            m.Source?RenderObjects()
+
         member x.RenderObjects(l : Leaf<'msg>) =
             match l.Primitive with
                 | Sphere s -> 

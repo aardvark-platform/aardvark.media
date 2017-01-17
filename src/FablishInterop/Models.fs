@@ -64,9 +64,11 @@ module Interop =
 
 
 module SharedModel =
+
+    open TranslateController
     
     [<DomainType>]
     type Ui = { cnt : int; info : string }
 
     [<DomainType>]
-    type Model = { ui : Ui; scene : TranslateController.Scene }
+    type Model = { ui : Ui; scene : Scene }
