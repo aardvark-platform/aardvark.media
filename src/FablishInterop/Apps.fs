@@ -83,6 +83,50 @@ module SimpleDrawingApp =
             ofPickMsg = fun _ _ -> []
         }
 
+module TestApp =
+
+    open Fablish
+    open Fable.Helpers.Virtualdom
+    open Fable.Helpers.Virtualdom.Html
+
+    open SharedModel
+
+    type Model = SharedModel.Ui
+
+    type Action = Inc | Dec | Reset | SetInfo of string
+
+    let update e (m : Model) (a : Action) =
+        match a with
+            | Inc -> { m with cnt = m.cnt + 1 }
+            | Dec -> { m with cnt = m.cnt - 1 }
+            | Reset -> { m with cnt = 0 }
+            | SetInfo info -> { m with info = info}
+
+    let view (m : Model) : DomNode<Action> =
+        div [] [
+            div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
+                text (sprintf "current content: %d" m.cnt)
+                br []
+                button [onMouseClick (fun dontCare -> Inc); attribute "class" "ui button"] [text "increment"]
+                button [onMouseClick (fun dontCare -> Dec)] [text "decrement"]
+                button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
+                br []
+                text (sprintf "ray: %s" m.info)
+            ]
+        ]
+
+    let initial = { info = "not known"; cnt = 0; _id = null }
+
+    let app =
+        {
+            initial = initial
+            update = update 
+            view = view
+            subscriptions = Subscriptions.none
+            onRendered = OnRendered.ignore
+        }
+
+
 //module PlaceTransformObjects =
 //
 //    open ImmutableSceneGraph

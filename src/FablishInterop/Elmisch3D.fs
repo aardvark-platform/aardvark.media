@@ -126,6 +126,11 @@ module AnotherSceneGraph =
 
     let private conv app xs = Conv<_>(app,xs) :> ISg<'msg>
 
+    type Map<'a,'b>(f : 'a -> 'b, source : ISg<'a>) =
+        interface ISg<'b>
+        member x.F = f
+        member x.Source = source
+
     open Aardvark.Base.Ag
     open Aardvark.SceneGraph.Semantics
     [<Semantic>]
@@ -172,7 +177,17 @@ module AnotherSceneGraph =
             trafo : IMod<Trafo3d>
             primitive : Primitive
             actions : list<PickOperation<'msg>>
-        }    
+        }  
+        
+
+    module PickObject =
+        let map ( f : 'a -> 'b) (p : PickObject<'a>) : PickObject<'b> =
+            {
+                trafo = p.trafo
+                actions = List.map (fun o -> fun kind -> Option.map f (o kind)) p.actions
+                primitive = p.primitive
+            }  
+
 
     [<AutoOpen>]
     module SgExt = 
@@ -192,6 +207,10 @@ module AnotherSceneGraph =
 
         member x.PickOperations(o : Conv<'msg>) =
             o.Children?PickOperations <- o.PickOperations
+
+        member x.PickObjects(o : Map<'a,'b>) : aset<PickObject<'b>> =
+            let pi : aset<PickObject<'a>> = o.Source.PickObjects()
+            ASet.map (PickObject.map o.F) pi
 
 
         member x.PickObjects(g : Conv<'msg>) : aset<PickObject<'msg>> =
@@ -228,6 +247,9 @@ module AnotherSceneGraph =
     let agroup (xs : aset<_>) = Group<'msg>(xs) :> ISg<'msg>
     let leaf x = Leaf<'msg>(x) :> ISg<'msg> 
     let render picks p = pick picks [leaf p]
+
+    module Scene =
+        let map f (a : ISg<'a>) : ISg<'b> = Map<_,_>(f,a) :> ISg<'b>
 
     let uniform name value xs = conv (Sg.uniform name value) xs
     let effect effects xs = conv (Sg.effect effects) xs
@@ -267,7 +289,7 @@ module Elmish3DADaptive =
             sg : ISg
         }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Fablish.Fablish2.Callback<'model,'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Fablish.Callback<'model,'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
 
         let model = Mod.init app.initial
 
@@ -350,7 +372,7 @@ module Elmish3DADaptive =
 
         { send = send; sg = view :> ISg; emitModel = receive }
 
-    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Fablish.Fablish2.Callback<'model,'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
+    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Fablish.Callback<'model,'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
         createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app
 
 

@@ -19,7 +19,7 @@ nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.9
 nuget FsPickler       ~> 3.2.0
 nuget FsPickler.Json  ~> 3.2.0
  
-nuget Fablish      ~> 1.3.3
+nuget Fablish      ~> 1.7.0
 
 group Build
 content: none

@@ -60,127 +60,7 @@ module Shader =
         fragment {
             return browserSampler.SampleLevel(v.tc, 0.0) + V4d(1.5,0.5,0.5,1.0)
         }
-open Fable.Helpers.Virtualdom
-open Fable.Helpers.Virtualdom.Html
 
-module TestApp =
-
-    open Fablish
-
-    type Model = { cnt : int; info : string }
-
-    type Action = Inc | Dec | Reset | SetInfo of string
-
-    let update (m : Model) (a : Action) =
-        //printfn "[Test] computing udpate"
-        match a with
-            | Inc -> { m with cnt = m.cnt + 1 }
-            | Dec -> { m with cnt = m.cnt - 1 }
-            | Reset -> { m with cnt = 0 }
-            | SetInfo info -> { m with info = info}
-
-    let view (m : Model) : DomNode<Action> =
-        //printfn "[Test] Computing view"
-        div [] [
-            div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
-                text (sprintf "current content: %d" m.cnt)
-                br []
-                button [onMouseClick (fun dontCare -> Inc); attribute "class" "ui button"] [text "increment"]
-                button [onMouseClick (fun dontCare -> Dec)] [text "decrement"]
-                button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
-                br []
-                text (sprintf "ray: %s" m.info)
-            ]
-        ]
-
-    let initial = { info = "not known"; cnt = 0 }
-
-    let app =
-        {
-            initial = initial
-            update = update 
-            view = view
-            onRendered = OnRendered.ignore
-        }
-
-[<AutoOpen>]
-module AppCompositionExperiment = 
-
-    type AppInstance<'msg> = interface end
-
-    type AppInstance<'model,'msg> =
-        | Three3d of Elmish3DADaptive.Running<'model,'msg>
-        | Gui of Fablish.Fablish2.RunningApp<'model,'msg>
-        | Apps of list<AppInstance<'model,'msg>>
-
-    type Three3d<'model,'msg>(r : Elmish3DADaptive.Running<'model,'msg>) =
-        interface AppInstance<'msg>
-
-    type Gui<'model,'msg>(r : Fablish.Fablish2.RunningApp<'model,'msg>) =
-        interface AppInstance<'msg>
-
-    let three3d r = Three3d<_,_>(r) :> AppInstance<'msg>
-    let gui r = Gui<_,_>(r) :> AppInstance<'msg>
-    let apps (xs : list<AppInstance<'a>>) : AppInstance<'a> = failwith ""
-
-    module Instance =
-        let map (f : 'a -> 'b) (a : AppInstance<'a>) : AppInstance<'b>=
-            failwith ""
-
-module ComposedApp =
-    open Fablish
-    open System
-    open System.Net
-    open Fablish.Fablish2
-
-    type AppMsg = SceneMsg of InteractionTest.TranslateController.Action 
-                | UiMsg of TestApp.Action
-
-    type Model = {  
-        ui    : TestApp.Model
-        scene : DomainTypes.Generated.TranslateController.Scene
-    }
-
-    type ComposedApp<'model,'msg>(f : 'model -> 'msg -> 'model, initial : 'model) =
-        let mutable model = initial
-        let innerApps = System.Collections.Generic.HashSet<'model -> unit>()
-
-        member x.Update(msg : 'msg) =
-            model <- f model msg
-            model
-        
-        member x.AddUi (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
-            let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
-                let bigModel = buildModel m model
-                let bigMsg = buildAction msg
-                let newBigModel = x.Update bigMsg
-                for a in innerApps do a newBigModel
-                project newBigModel
-            let r = Fablish.Fablish2.serve address port (Some doUpdate) app
-            innerApps.Add(fun m -> r.runningApp.EmitModel (project m)) |> ignore
-            r
-
-        member x.Register(f : 'model -> unit) = 
-            innerApps.Add(f) |> ignore
-
-        member x.Model = model
-
-        member x.InnerApps = innerApps
-
-
-    let inline add3d (comp : ComposedApp<'model,'msg>) (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : Elmish3DADaptive.App<_,_,_,_>)  (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
-        let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
-            let bigModel = buildModel m comp.Model
-            let bigMsg = buildAction msg
-            let newBigModel = comp.Update bigMsg
-            for a in comp.InnerApps do a newBigModel
-            project newBigModel
-        let instance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera doUpdate app
-        comp.Register(fun m -> instance.emitModel (project m)) 
-        instance
-
-    let addUi (comp : ComposedApp<'model,'msg>)  (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
-        comp.AddUi address port app buildModel project buildAction
 
 [<EntryPoint>]
 let main argv = 
@@ -237,28 +117,19 @@ let main argv =
             |> Mod.map (fun b -> let s = b.Size in Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
 
 
-    let updateApp (model : ComposedApp.Model) (msg : ComposedApp.AppMsg) =
-        let model =
-            match msg with
-                | ComposedApp.AppMsg.SceneMsg (InteractionTest.TranslateController.Action.Hover(x,p)) -> 
-                    { model with ui = TestApp.update model.ui ( TestApp.Action.SetInfo (sprintf "hover: %A" (x,p)) ) }
-                | ComposedApp.UiMsg (TestApp.Action.Reset) -> 
-                    { model with scene = InteractionTest.TranslateController.update model.scene InteractionTest.TranslateController.Action.ResetTrafo} 
-                | _ -> model
+    let sg,fablishInstance =
+        if true then
+            let composed = ComposedApp.ofUpdate  { Explicit.ui = TestApp.initial; Explicit.scene = TranslateController.initial } Explicit.update
 
-        match msg with
-            | ComposedApp.AppMsg.SceneMsg msg -> { model with scene = InteractionTest.TranslateController.update model.scene msg }
-            | ComposedApp.AppMsg.UiMsg msg -> { model with ui = TestApp.update model.ui msg }
+            let camera = Mod.map2 Camera.create cameraView frustum
+            let three3dApp = TranslateController.app camera
 
-    let composed = ComposedApp.ComposedApp<ComposedApp.Model,ComposedApp.AppMsg>(updateApp, { ui = TestApp.initial; scene = InteractionTest.TranslateController.initial })
+            let three3dInstance = ComposedApp.add3d composed win.Keyboard win.Mouse renderRect camera three3dApp (fun m app -> { app with scene = m }) (fun app -> app.scene) Explicit.AppMsg.SceneMsg
+            let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg
 
-    let camera = Mod.map2 Camera.create cameraView frustum
-    let three3dApp = InteractionTest.TranslateController.app camera
-
-    let three3dInstance = ComposedApp.add3d composed win.Keyboard win.Mouse renderRect camera three3dApp (fun m app -> { app with scene = m }) (fun app -> app.scene) ComposedApp.AppMsg.SceneMsg
-    let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) ComposedApp.AppMsg.UiMsg
-
-    let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
+            let res = client.LoadUrlAsync "http://localhost:8083/mainPage"
+            three3dInstance.sg, fablishInstance
+        else failwith ""
 
     let fullscreenBrowser =
         Sg.fullScreenQuad
@@ -284,7 +155,7 @@ let main argv =
     let sceneTask = 
         RenderTask.ofList [
             app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Green)
-            app.Runtime.CompileRender(win.FramebufferSignature, three3dInstance.sg)
+            app.Runtime.CompileRender(win.FramebufferSignature, sg)
         ]
     let sceneSize = renderControlViewport |> Mod.map (fun box -> box.Size )
     let renderContent = RenderTask.renderToColor sceneSize sceneTask
@@ -314,6 +185,6 @@ let main argv =
     
     win.Run()
 
-    fablishInstance.shutdown.Cancel()
+    fablishInstance.shutdown()
     Chromium.shutdown()
     0

@@ -1,4 +1,4 @@
-﻿namespace InteractionTest 
+﻿namespace Scratch 
 
 open System
 

@@ -57,6 +57,7 @@
     </Compile>
     <Compile Include="Apps.fs" />
     <Compile Include="InteractionTest.fs" />
+    <Compile Include="ComposedApp.fs" />
     <Compile Include="Program.fs" />
     <None Include="static/index.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

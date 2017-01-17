@@ -61,3 +61,12 @@ module Interop =
         currentlyActive : Active
         scene : Scene
     }
+
+
+module SharedModel =
+    
+    [<DomainType>]
+    type Ui = { cnt : int; info : string }
+
+    [<DomainType>]
+    type Model = { ui : Ui; scene : TranslateController.Scene }
