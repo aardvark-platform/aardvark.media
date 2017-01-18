@@ -267,7 +267,21 @@ module PlaceTransformObjects =
     * pset find
     * pset updateAt
     *)
+    
+    module PSet =
+        let findByUpdate f g pset =
+            pset 
+                |> PSet.toList 
+                |> List.map (fun v -> 
+                        if f v then g v else v
+                    )
+                |> PSet.ofList 
 
+        let findBy f pset =
+            pset |> PSet.toList |> List.find f
+
+        let pick f pset =
+            pset |> PSet.toList |> List.pick f 
 
     let initial =
         {
@@ -287,14 +301,14 @@ module PlaceTransformObjects =
     let update (m : Model) (msg : Action) =
         match msg with
             | PlaceObject p -> { m with objects = PSet.add { id = PSet.count m.objects; t = Trafo3d.Translation p; _id = null }  m.objects }
-            | SelectObject i -> { m with selectedObj = Some { _id = null; id = i; tmodel = { TranslateController.initalModel with trafo = failwith "List.item i m.objects" }} }
+            | SelectObject i -> { m with selectedObj = Some { _id = null; id = i; tmodel = { TranslateController.initalModel with trafo = PSet.pick (fun a -> if a.id = i then Some a.t else None) m.objects }} }
             | TransformObject(index,translation) ->
                 match m.selectedObj with
                     | Some old ->
                         let t = TranslateController.updateModel old.tmodel translation
                         { m with 
                             selectedObj = Some { old with tmodel = t }
-                            objects = failwith "List.updateAt i (constF t.trafo) m.objects" }
+                            objects = PSet.findByUpdate (fun a -> a.id = old.id) (fun a -> { a with t = t.trafo }) m.objects }
                     | _ -> m
             | HoverObject i -> { m with hoveredObj = Some i }
             | Unselect -> { m with selectedObj = None }
@@ -342,6 +356,7 @@ module PlaceTransformObjects =
             match selected with
                 | None -> ()
                 | Some s -> 
+                    //let a = s.tmodel
                     yield TranslateController.viewModel (failwith "shouldbeinner") |> Scene.map (fun a -> TransformObject(s.id,a))
         } |> agroup
 
