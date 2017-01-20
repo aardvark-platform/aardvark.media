@@ -53,7 +53,7 @@
     <Compile Include="SplashScreen.fs" />
     <Compile Include="Elmisch3D.fs" />
     <Compile Include="Models.fs">
-      <DomainTypes>True</DomainTypes>
+     <!-- <DomainTypes>True</DomainTypes> -->
     </Compile>
     <Compile Include="Apps.fs" />
     <Compile Include="InteractionTest.fs" />
