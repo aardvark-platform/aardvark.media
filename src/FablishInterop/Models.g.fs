@@ -160,6 +160,28 @@ module Generated =
                     x._original <- arg0
                     x.mid.Value <- arg0.id
                     x.mt.Value <- arg0.t
+
+
+//            type MyOption<'a> = 
+//                | MyNone
+//                | MySome of 'a 
+//
+//            type PMyOption<'a> = { mutable _id : Id; value : MyOption<'a> } with
+//                member x.ToMod(cache) =
+//                    {
+//                        _original = x
+//                        mvalue = Mod.init x
+//                    }
+//
+//            and MMyOption<'a> = { mutable _original : PMyOption<'a>; mvalue : ModRef<PMyOption<'a>> } with
+//                member x.Apply(arg0 : PMyOption<'a>, cache) =
+//                    if not (System.Object.ReferenceEquals(arg0, x._original)) then 
+//                        x._original <- arg0
+//                        match x.mvalue.Value.value,arg0.value with
+//                            | MyNone, MyNone -> ()
+//                            | MyNone, MySome v -> x.mvalue.Value <- { _id = null; value = MySome <| v }
+//                            | MySome _, MySome n -> failwith ""
+                                   
         
         [<DomainType>]
         type Model = 
@@ -177,7 +199,7 @@ module Generated =
                            (fun (m : MObject, a : Object) -> 
                            m.Apply(a, reuseCache)))
                   mhoveredObj = Mod.init (x.hoveredObj)
-                  mselectedObj = Mod.init (x.selectedObj) }
+                  mselectedObj = Mod.init (x.selectedObj |> Option.map (fun o -> o.ToMod(reuseCache))) }
             
             interface IUnique with
                 
@@ -189,13 +211,21 @@ module Generated =
             { mutable _original : Model
               mobjects : MapSet<Object, MObject>
               mhoveredObj : ModRef<Option<int>>
-              mselectedObj : ModRef<Option<Selected>> }
+              mselectedObj : ModRef<Option<MSelected>> }
             member x.Apply(arg0 : Model, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
                     x.mobjects.Update(arg0.objects)
+                    let content = x.mobjects :> aset<_>
+                    for (m,i) in List.zip (content |> ASet.toList) (arg0.objects |> PSet.toList) do
+                        m.Apply(i,reuseCache)
                     x.mhoveredObj.Value <- arg0.hoveredObj
-                    x.mselectedObj.Value <- arg0.selectedObj
+                    match x.mselectedObj.Value, arg0.selectedObj with
+                        | None, None -> ()
+                        | Some v, None -> x.mselectedObj.Value <- None
+                        | Some o, Some n -> o.Apply(n,reuseCache)
+                        | None, Some v -> x.mselectedObj.Value <- Some <| v.ToMod(reuseCache)
+
     
     module Interop = 
         type Active = 

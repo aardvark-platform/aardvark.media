@@ -266,6 +266,7 @@ module PlaceTransformObjects =
     * render neeeds adaptive variant
     * pset find
     * pset updateAt
+    * mod IDs in actions?
     *)
     
     module PSet =
@@ -296,6 +297,7 @@ module PlaceTransformObjects =
         | SelectObject of int
         | HoverObject  of int
         | Unselect
+        | Unhover
         | TransformObject of int * TranslateController.Action
 
     let update (m : Model) (msg : Action) =
@@ -311,11 +313,12 @@ module PlaceTransformObjects =
                             objects = PSet.findByUpdate (fun a -> a.id = old.id) (fun a -> { a with t = t.trafo }) m.objects }
                     | _ -> m
             | HoverObject i -> { m with hoveredObj = Some i }
+            | Unhover -> { m with hoveredObj = None }
             | Unselect -> { m with selectedObj = None }
 
-    let isSelected (m : Option<Selected>) i =
+    let isSelected (m : Option<int>) i =
         match m with
-            | Some m when m.id = i -> true
+            | Some m when m = i -> true
             | _ -> false
 
     let isHovered m i =
@@ -329,14 +332,20 @@ module PlaceTransformObjects =
             for o in m.mobjects :> aset<_> do
                 let! i = o.mid
                 let! selected = m.mselectedObj
-                let color = Mod.map2 (fun s h -> if isSelected s i then C4b.Red elif isHovered h i then C4b.Blue else C4b.Gray) m.mselectedObj m.mhoveredObj
+                let id = 
+                    m.mselectedObj |> Mod.bind (fun a -> 
+                        match a with 
+                            | None -> Mod.constant None
+                            | Some v -> (v.mid :> IMod<_> |> Mod.map Some)
+                    )
+                let color = Mod.map2 (fun s h -> if isSelected s i then C4b.Red elif isHovered h i then C4b.Blue else C4b.Gray) id m.mhoveredObj
                 yield Sphere3d(V3d.OOO,0.1) 
                        |> Sphere 
                        |> render [
-                            yield on Event.move (constF (HoverObject i))
+                            yield on Event.move (fun _ -> printfn "hoveri: %A" i; HoverObject i)
                             yield on (Event.down' MouseButtons.Middle) (constF Unselect)
                             if selected.IsNone then 
-                                yield on Event.down (constF (SelectObject i))
+                                yield on Event.down (fun _ -> SelectObject i)
                            ]
                        |> transform' o.mt
                        |> colored' color
@@ -356,8 +365,7 @@ module PlaceTransformObjects =
             match selected with
                 | None -> ()
                 | Some s -> 
-                    //let a = s.tmodel
-                    yield TranslateController.viewModel (failwith "shouldbeinner") |> Scene.map (fun a -> TransformObject(s.id,a))
+                    yield TranslateController.viewModel s.mtmodel |> Scene.map (fun a -> TransformObject(s.mid.Value,a))
         } |> agroup
 
     let app =
@@ -367,12 +375,16 @@ module PlaceTransformObjects =
             view = view
             ofPickMsg = 
                 fun m (NoPick(me,r)) -> 
-                    match m.selectedObj with
-                        | None -> []
-                        | Some o -> 
-                            let inner = o.tmodel
-                            let i = o.id
-                            match me with
-                                | MouseEvent.Click MouseButtons.Middle -> [Unselect]
-                                | _ -> TranslateController.ofPickMsgModel inner (NoPick(me,r)) |> List.map (fun a -> TransformObject(i,a))
+                    [
+                        yield Unhover
+                        let m = { m with hoveredObj = None }
+                        match m.selectedObj with
+                            | None -> ()
+                            | Some o -> 
+                                let inner = o.tmodel
+                                let i = o.id
+                                match me with
+                                    | MouseEvent.Click MouseButtons.Middle -> yield Unselect
+                                    | _ -> yield! TranslateController.ofPickMsgModel inner (NoPick(me,r)) |> List.map (fun a -> TransformObject(i,a))
+                    ]
         }

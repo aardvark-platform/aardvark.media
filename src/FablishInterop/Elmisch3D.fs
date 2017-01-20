@@ -330,7 +330,8 @@ module Elmish3DADaptive =
                  |> List.collect (fun p -> 
                         Primitives.hitPrimitive p.primitive (Mod.force p.trafo) r p.actions
                     )
-            picks
+            printfn "picks: %A" picks
+            picks |> List.sortBy fst
 
         let updatePickMsg (m : NoPick) (model : 'model) =
             app.ofPickMsg model m |> List.fold onMessage model

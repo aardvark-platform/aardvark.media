@@ -64,6 +64,9 @@ module Shader =
 
 [<EntryPoint>]
 let main argv = 
+    InteractionTest.run()
+    System.Environment.Exit 0
+
     Chromium.init()
 
     use splashScreen = SplashScreen.spawn()
