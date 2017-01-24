@@ -418,6 +418,7 @@ module CameraTest =
         | AddMove    of V2d
         | RemoveMove of V2d
         | Animate of DateTime
+        | TimeStep of float
 
     let view (m : MModel) =
         Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
@@ -436,23 +437,22 @@ module CameraTest =
             | DragStart p -> { m with lookingAround = Some p }
             | DragStop _ -> { m with lookingAround = None }
             | MouseDelta d when m.lookingAround.IsSome -> 
-                let delta = Constant.PiTimesTwo * d
+                let delta = Constant.PiTimesTwo * d * 8.0
                 let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
                 let forward = t.TransformDir m.camera.Forward |> Vec.normalize
                 { m with camera = m.camera.WithForward forward }
             | AddMove d    -> { m with forward = clampDir <| m.forward + d }
             | RemoveMove d -> { m with forward = clampDir <| m.forward - d }
-            | Animate t -> 
+            | TimeStep dt -> 
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
-                let speed = 0.01 
-                printfn "%A, dir: %A " dir m.forward
+                let speed = dt * 0.01
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
             | _ -> m
 
 
     let ofPickMsg _ m = []
 
-    let subscriptions (time : IMod<DateTime>) (m : Model) =
+    let subscriptions (time : IMod<_>) (m : Model) =
         Ext.Many [
             Input.mouse Mouse.down Mouse.left DragStart
             Input.mouse Mouse.up   Mouse.left DragStop
@@ -464,7 +464,8 @@ module CameraTest =
             Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
             Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)
 
-            Sub.time ( TimeSpan.FromMilliseconds 10.0 ) Animate
+            // Sub.time ( TimeSpan.FromMilliseconds 10.0 ) Animate // use for fixed times
+            Sub.ofMod time (fun elapsedMs _ -> Some <| TimeStep elapsedMs)
         ]
 
     let initial = { camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI; frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null; lookingAround = None; forward = V2d.OO; forwardSpeed = 0.0 }
@@ -475,5 +476,5 @@ module CameraTest =
             update = update
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions time
+            subscriptions = subscriptions (Mod.map Animate time)
         }

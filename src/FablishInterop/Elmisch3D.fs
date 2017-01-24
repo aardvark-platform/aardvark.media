@@ -284,6 +284,7 @@ module Elmish3DADaptive =
     open AnotherSceneGraph
     open Fablish
     open System.Collections.Generic
+    open System
 
     module Ext =
 
@@ -297,7 +298,7 @@ module Elmish3DADaptive =
             | Mouse of (Direction -> MouseButtons -> PixelPosition -> Option<'msg>)
             | MouseMove of (PixelPosition * PixelPosition -> 'msg)
             | Key of (Direction -> Keys -> Option<'msg>)
-            | ModSub of IMod<'msg> * ('msg -> Option<'msg>)
+            | ModSub of IMod<'msg> * (float ->'msg -> Option<'msg>)
             
                 
         module Sub =
@@ -317,10 +318,11 @@ module Elmish3DADaptive =
             let filterMoves s = s |> leaves |> List.choose (function | MouseMove m -> Some m | _ -> None)
             let filterKeys s = s |> leaves |> List.choose (function | Key f -> Some f | _ -> None)
             let filterTimes s = s |> leaves |> List.choose (function | TimeSub (t,f) -> Some (t,f) | _ -> None)
-            
+            let filterMods s = s |> leaves |> List.choose (function | ModSub (m,f) -> Some (m,f) | _ -> None)
 
             let time timeSpan f = TimeSub(timeSpan,f)
-            
+            let ofMod m f = ModSub(m,f)
+
 
 
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -452,6 +454,28 @@ module Elmish3DADaptive =
         keyboard.Down.Values.Subscribe(fun k -> keysSub Ext.Direction.Down k) |> ignore
         keyboard.Up.Values.Subscribe(fun k -> keysSub Ext.Direction.Up k) |> ignore
 
+        let mutable modSubscriptions = Dictionary<IMod<'msg>,IDisposable*System.Diagnostics.Stopwatch>()
+        let fixupModRegistrations xs =
+            let newAsSet = Dict.ofList xs
+            let added = xs |> List.filter (fun (m,f) -> modSubscriptions.ContainsKey m |> not)
+            let removed = modSubscriptions |> Seq.filter (fun (KeyValue(m,f)) -> newAsSet.ContainsKey m |> not) |> Seq.toList
+            for (KeyValue(k,(d,sw))) in removed do
+                d.Dispose()
+            removed |> Seq.iter (fun (KeyValue(m,v)) -> modSubscriptions.Remove m |> ignore)
+            for (m,f) in added do
+                let sw = System.Diagnostics.Stopwatch()
+                let d = m |> Mod.unsafeRegisterCallbackNoGcRoot (fun msg -> 
+                    let elapsed = sw.Elapsed.TotalMilliseconds
+                    if false then ()
+                    else
+                        if elapsed <= System.Double.Epsilon then () // recursion hack
+                        else
+                            sw.Restart()
+                            match f elapsed msg with | Some nmsg -> onMessage model.Value nmsg |> ignore | None -> ()
+                )
+                sw.Start()
+                modSubscriptions.Add(m, (d,sw))
+
         let updateSubscriptions (m : 'model) =
             let subs = app.subscriptions m
             moves <- Ext.Sub.filterMoves subs
@@ -459,6 +483,7 @@ module Elmish3DADaptive =
             mouseActions <- Ext.Sub.filterMouseThings subs
             keys <- Ext.Sub.filterKeys subs
             times <- Ext.Sub.filterTimes subs
+            fixupModRegistrations (Ext.Sub.filterMods subs)
             enterTimes times
             ()
 
