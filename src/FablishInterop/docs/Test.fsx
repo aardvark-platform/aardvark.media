@@ -1,6 +1,6 @@
-//#r "../../../bin/Debug/Aardvark.Base.dll"
+#r "../../../bin/Debug/Aardvark.Base.dll"
 
-//open Aardvark.Base
+open Aardvark.Base
 (**
 # First-level heading
 Some more documentation using `Markdown`.
@@ -14,6 +14,6 @@ With some more documentation
 *)
 
 (*** define: final-sample ***)
-let helloWorld() = printfn "Hello world!"
+let helloWorld() = printfn "Hello world! %A" V3d.OOO
 
-//let a = V3d.OOO
+let a = V3d.OOO

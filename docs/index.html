@@ -31,9 +31,9 @@
 <span class="l">2: </span>
 <span class="l">3: </span>
 </pre></td>
-<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="c">//#r &quot;../../../bin/Debug/Aardvark.Base.dll&quot;</span>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="prep">#r</span> <span class="s">&quot;../../../bin/Debug/Aardvark.Base.dll&quot;</span>
 
-<span class="c">//open Aardvark.Base</span>
+<span class="k">open</span> <span class="i">Aardvark</span><span class="o">.</span><span class="i">Base</span>
 </code></pre></td>
 </tr>
 </table>
@@ -43,9 +43,9 @@
 <span class="l">2: </span>
 <span class="l">3: </span>
 </pre></td>
-<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs1', 1)" onmouseover="showTip(event, 'fs1', 1)" class="f">helloWorld</span>() <span class="o">=</span> <span onmouseout="hideTip(event, 'fs2', 2)" onmouseover="showTip(event, 'fs2', 2)" class="f">printfn</span> <span class="s">&quot;Hello world!&quot;</span>
+<td class="snippet"><pre class="fssnip highlighted"><code lang="fsharp"><span class="k">let</span> <span onmouseout="hideTip(event, 'fs1', 1)" onmouseover="showTip(event, 'fs1', 1)" class="f">helloWorld</span>() <span class="o">=</span> <span onmouseout="hideTip(event, 'fs2', 2)" onmouseover="showTip(event, 'fs2', 2)" class="f">printfn</span> <span class="s">&quot;Hello world! </span><span class="pf">%A</span><span class="s">&quot;</span> <span class="i">V3d</span><span class="o">.</span><span class="i">OOO</span>
 
-<span class="c">//let a = V3d.OOO</span>
+<span class="k">let</span> <span onmouseout="hideTip(event, 'fs3', 3)" onmouseover="showTip(event, 'fs3', 3)" class="i">a</span> <span class="o">=</span> <span class="i">V3d</span><span class="o">.</span><span class="i">OOO</span>
 </code></pre></td>
 </tr>
 </table>
@@ -54,6 +54,7 @@
 
                 <div class="tip" id="fs1">val helloWorld : unit -&gt; unit<br /><br />Full name: Test.helloWorld</div>
 <div class="tip" id="fs2">val printfn : format:Printf.TextWriterFormat&lt;&#39;T&gt; -&gt; &#39;T<br /><br />Full name: Microsoft.FSharp.Core.ExtraTopLevelOperators.printfn</div>
+<div class="tip" id="fs3">val a : obj<br /><br />Full name: Test.a</div>
 
             </div>
             <div class="span1"></div>
