@@ -55,9 +55,9 @@ module SimpleDrawingApp =
            aset {
                 yield [ Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
                             |> render [ 
-                                 on Event.move MoveCursor
-                                 on (Event.down' MouseButtons.Left)  AddPoint 
-                                 on (Event.down' MouseButtons.Right) (constF ClosePolygon)
+                                 on Mouse.move MoveCursor
+                                 on (Mouse.down' MouseButtons.Left)  AddPoint 
+                                 on (Mouse.down' MouseButtons.Right) (constF ClosePolygon)
                                ] 
                       ] |> colored (Mod.constant C4b.Gray)
                 for p in m.mfinished :> aset<_> do yield viewPolygon p
@@ -207,21 +207,21 @@ module TranslateController =
             
         transform m.mtrafo [
                 translate 1.0 0.0 0.0 [
-                    [ arrow V3d.IOO |> render [on Event.move (hover X); on Event.down (translate_ X)] ] 
+                    [ arrow V3d.IOO |> render [on Mouse.move (hover X); on Mouse.down (translate_ X)] ] 
                         |> colored (ifHit X C4b.White C4b.DarkRed)
                 ]
                 translate 0.0 1.0 0.0 [
-                    [ arrow V3d.OIO |> render [on Event.move (hover Y); on Event.down (translate_ Y)] ] 
+                    [ arrow V3d.OIO |> render [on Mouse.move (hover Y); on Mouse.down (translate_ Y)] ] 
                         |> colored (ifHit Y C4b.White C4b.DarkBlue)
                 ]
                 translate 0.0 0.0 1.0 [
-                    [ arrow V3d.OOI |> render [on Event.move (hover Z); on Event.down (translate_ Z)] ] 
+                    [ arrow V3d.OOI |> render [on Mouse.move (hover Z); on Mouse.down (translate_ Z)] ] 
                         |> colored (ifHit Z C4b.White C4b.DarkGreen)
                 ]
 
-                [ cylinder V3d.OOO V3d.IOO 1.0 0.05 |> render [ on Event.move (hover X); on Event.down (translate_ X) ] ] |> colored (ifHit X C4b.White C4b.DarkRed)
-                [ cylinder V3d.OOO V3d.OIO 1.0 0.05 |> render [ on Event.move (hover Y); on Event.down (translate_ Y) ] ] |> colored (ifHit Y C4b.White C4b.DarkBlue)
-                [ cylinder V3d.OOO V3d.OOI 1.0 0.05 |> render [ on Event.move (hover Z); on Event.down (translate_ Z) ] ] |> colored (ifHit Z C4b.White C4b.DarkGreen)
+                [ cylinder V3d.OOO V3d.IOO 1.0 0.05 |> render [ on Mouse.move (hover X); on Mouse.down (translate_ X) ] ] |> colored (ifHit X C4b.White C4b.DarkRed)
+                [ cylinder V3d.OOO V3d.OIO 1.0 0.05 |> render [ on Mouse.move (hover Y); on Mouse.down (translate_ Y) ] ] |> colored (ifHit Y C4b.White C4b.DarkBlue)
+                [ cylinder V3d.OOO V3d.OOI 1.0 0.05 |> render [ on Mouse.move (hover Z); on Mouse.down (translate_ Z) ] ] |> colored (ifHit Z C4b.White C4b.DarkGreen)
                 
                 translate 0.0 0.0 0.0 [
                     [ Sphere3d(V3d.OOO,0.1) |> Sphere |> render Pick.ignore ] |> colored (Mod.constant C4b.Gray)
@@ -233,12 +233,12 @@ module TranslateController =
             |> camera cam
             |> effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
 
-    let ofPickMsgModel (model : TModel) (NoPick(kind,ray)) =
-        match kind with   
-            | MouseEvent.Click _ | MouseEvent.Down _  -> [NoHit]
+    let ofPickMsgModel (model : TModel) (pick : GlobalPick) =
+        match pick.mouseEvent with   
+            | MouseEvent.Click _ | MouseEvent.Down _  -> []
             | MouseEvent.Move when Option.isNone model.activeTranslation ->
-                    [NoHit; MoveRay ray]
-            | MouseEvent.Move ->  [MoveRay ray]
+                    [NoHit; MoveRay pick.ray]
+            | MouseEvent.Move ->  [MoveRay pick.ray]
             | MouseEvent.Up _   -> [EndTranslation]
 
     let ofPickMsg (model : Scene) noPick =
@@ -303,7 +303,8 @@ module PlaceTransformObjects =
     let update e (m : Model) (msg : Action) =
         match msg with
             | PlaceObject p -> { m with objects = PSet.add { id = PSet.count m.objects; t = Trafo3d.Translation p; _id = null }  m.objects }
-            | SelectObject i -> { m with selectedObj = Some { _id = null; id = i; tmodel = { TranslateController.initalModel with trafo = PSet.pick (fun a -> if a.id = i then Some a.t else None) m.objects }} }
+            | SelectObject i -> 
+                { m with selectedObj = Some { _id = null; id = i; tmodel = { TranslateController.initalModel with trafo = PSet.pick (fun a -> if a.id = i then Some a.t else None) m.objects }} }
             | TransformObject(index,translation) ->
                 match m.selectedObj with
                     | Some old ->
@@ -314,7 +315,8 @@ module PlaceTransformObjects =
                     | _ -> m
             | HoverObject i -> { m with hoveredObj = Some i }
             | Unhover -> { m with hoveredObj = None }
-            | Unselect -> { m with selectedObj = None }
+            | Unselect -> 
+                { m with selectedObj = None }
 
     let isSelected (m : Option<int>) i =
         match m with
@@ -327,7 +329,6 @@ module PlaceTransformObjects =
             | _ -> false
 
     let viewObjects (m : MModel) : aset<ISg<Action>> =
-
         aset {
             for o in m.mobjects :> aset<_> do
                 let! i = o.mid
@@ -342,10 +343,10 @@ module PlaceTransformObjects =
                 yield Sphere3d(V3d.OOO,0.1) 
                        |> Sphere 
                        |> render [
-                            yield on Event.move (fun _ -> printfn "hoveri: %A" i; HoverObject i)
-                            yield on (Event.down' MouseButtons.Middle) (constF Unselect)
+                            yield on (Mouse.down' MouseButtons.Right) (constF Unselect)
                             if selected.IsNone then 
-                                yield on Event.down (fun _ -> SelectObject i)
+                                yield on Mouse.move (fun _ -> HoverObject i)
+                                yield on (Mouse.down' MouseButtons.Left) (fun _ -> SelectObject i)
                            ]
                        |> transform' o.mt
                        |> colored' color
@@ -358,7 +359,7 @@ module PlaceTransformObjects =
             yield 
                 Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
                  |> render [ 
-                        on (Event.down' MouseButtons.Right) PlaceObject 
+                        on (Mouse.down' MouseButtons.Middle) PlaceObject 
                     ] 
                  |> colored' (Mod.constant C4b.Gray)
             let! selected = m.mselectedObj
@@ -368,23 +369,23 @@ module PlaceTransformObjects =
                     yield TranslateController.viewModel s.mtmodel |> Scene.map (fun a -> TransformObject(s.mid.Value,a))
         } |> agroup
 
+    let ofPickMsgModel (m : Model) (pick : GlobalPick) =
+        [
+            match m.selectedObj with
+                | None -> 
+                    yield Unhover
+                | Some o -> 
+                    match pick.mouseEvent with
+                        | MouseEvent.Click MouseButtons.Right -> 
+                            yield Unselect
+                        | _ ->
+                            yield! TranslateController.ofPickMsgModel o.tmodel pick |> List.map (fun a -> TransformObject(o.id,a))
+        ]
+
     let app =
         {
             initial = initial
             update = update
             view = view
-            ofPickMsg = 
-                fun m (NoPick(me,r)) -> 
-                    [
-                        yield Unhover
-                        let m = { m with hoveredObj = None }
-                        match m.selectedObj with
-                            | None -> ()
-                            | Some o -> 
-                                let inner = o.tmodel
-                                let i = o.id
-                                match me with
-                                    | MouseEvent.Click MouseButtons.Middle -> yield Unselect
-                                    | _ -> yield! TranslateController.ofPickMsgModel inner (NoPick(me,r)) |> List.map (fun a -> TransformObject(i,a))
-                    ]
+            ofPickMsg = ofPickMsgModel 
         }

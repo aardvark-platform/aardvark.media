@@ -9,30 +9,47 @@ open Aardvark.Application
 
 [<AutoOpen>]
 module PickStuff = 
-    type Kind = Move of V3d | Down of MouseButtons * V3d
+
+
+    type MouseEvent = Down of MouseButtons | Move | Click of MouseButtons | Up of MouseButtons
+
+    type PickOccurance = { 
+        mouse : MouseEvent
+        point : V3d 
+     }
+
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module Event =
-        let move = function Move _ -> true | _ -> false
-        let down = function Down _ -> true | _ -> false       
-        let down' p = function Down(p',_) when p = p' -> true | _ -> false 
-        let position = function Move s -> s | Down(_, s) -> s
+    module PickOccurance =
+        let position (p : PickOccurance) = p.point
 
-    type PickOperation<'msg> = Kind -> Option<'msg>
+    module Mouse =
+        let move (p : PickOccurance) = p.mouse = Move
+        let down (p : PickOccurance) = match p.mouse with | Down b -> true | _ -> false  
+        let down' (button : MouseButtons) (p : PickOccurance) = match p.mouse with | Down b when b = button -> true | _ -> false 
+
+    type PickOperation<'msg> = PickOccurance -> Option<'msg>
 
     module Pick =
         let ignore = []
-        let map f (p : PickOperation<'a>) =
-            fun k -> 
-                match p k with
-                    | Some r -> Some (f r)
-                    | None -> None
 
     
-    let on (p : Kind -> bool) (r : V3d -> 'msg) (k : Kind) = if p k then Some (r (Event.position k)) else None
-
-    type MouseEvent = Down of MouseButtons | Move | Click of MouseButtons | Up of MouseButtons
-    type NoPick = NoPick of MouseEvent * Ray3d
+    let on (p : PickOccurance -> bool) (r : V3d -> 'msg) : PickOperation<'msg> = 
+        fun pickOcc -> 
+            if p pickOcc then 
+                Some (r (PickOccurance.position pickOcc)) 
+            else None    
+    
+    type Hits<'msg> = list<float * list<PickOperation<'msg>>>
+    
+    type GlobalPick = { mouseEvent : MouseEvent; ray : Ray3d; hits : bool }
+//    module GlobalPick =
+//        let map (f : 'a -> 'b) (p : GlobalPick<'a>) =
+//            { 
+//                ray = p.ray
+//                mouseEvent = p.mouseEvent
+//                hits =  p.hits |> List.map (fun (d,p) -> (d,p |> List.map (fun pf -> fun p -> pf p |> Option.map f)))
+//            }
 
     module Primitives =
 
@@ -78,8 +95,6 @@ module AnotherSceneGraph =
     open Primitives
 
     type ISg<'msg> = inherit ISg
-
-    let on (p : Kind -> bool) (r : V3d -> 'msg) (k : Kind) = if p k then Some (r (Event.position k)) else None
 
     let cylinder c d h r = Cylinder(c,d,h,r)
 
@@ -271,9 +286,11 @@ module Elmish3DADaptive =
     type App<'model,'mmodel,'msg,'view> =
         {
             initial   : 'model
-            ofPickMsg : 'model     -> NoPick  -> list<'msg>
             update    :  Env<'msg> -> 'model  -> 'msg  -> 'model
             view      : 'mmodel    -> 'view
+
+
+            ofPickMsg : 'model     -> GlobalPick  -> list<'msg>
         }
 
     type Unpersist<'immut,'mut> =
@@ -294,7 +311,7 @@ module Elmish3DADaptive =
             sg : ISg
         }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Option<Fablish.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
 
         let model = Mod.init app.initial
 
@@ -339,7 +356,7 @@ module Elmish3DADaptive =
         let pickObjects = view.PickObjects()
         let pickReader = pickObjects.GetReader()
 
-        let pick (r : Ray3d) : list<float * list<PickOperation<'msg>>> =
+        let pick (r : Ray3d) : Hits<'msg> =
             pickReader.GetDelta() |> ignore
             let picks =
                 pickReader.Content 
@@ -347,52 +364,45 @@ module Elmish3DADaptive =
                  |> List.collect (fun p -> 
                         Primitives.hitPrimitive p.primitive (Mod.force p.trafo) r p.actions
                     )
-            picks |> List.sortBy fst
+            picks |> List.sortBy fst 
 
-        let updatePickMsg (m : NoPick) (model : 'model) =
+        let updatePickMsg (m : GlobalPick) (model : 'model) =
             app.ofPickMsg model m |> List.fold onMessage model
 
-        let mutable down = false
-
-        mouse.Move.Values.Subscribe(fun (oldP,newP) -> 
-            let ray = newP |> transformPixel |> Camera.pickRay (camera |> Mod.force) 
-            let mutable model = updatePickMsg (NoPick(MouseEvent.Move,ray)) model.Value // wrong
-            match pick ray with
-                | (d,f)::_ -> 
-                    for msg in f do
-                        match msg (Kind.Move (ray.GetPointOnRay d)) with
-                            | Some msg -> model <- onMessage model msg
-                            | _ -> ()
-                | [] -> ()
-            updateModel model 
-        ) |> ignore
-
-        mouse.Down.Values.Subscribe(fun p ->  
-            down <- true
+        let handleMouseEvent mouseEvent =
             let ray = mouse.Position |> Mod.force |> transformPixel |> Camera.pickRay (camera |> Mod.force)
-            let mutable model = model.Value
-            match pick ray with
+            let picks = pick ray
+            let mutable model = updatePickMsg { mouseEvent = mouseEvent; ray = ray; hits = List.isEmpty picks |> not }  model.Value
+            match picks with
                 | ((d,f)::_) -> 
                     for msg in f do
-                        match msg (Kind.Down(p, ray.GetPointOnRay d)) with
+                        let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d }
+                        match msg occ with
                             | Some r -> 
                                 model <- onMessage model r
                             | _ -> ()
-                | [] -> 
-                    model <- updatePickMsg (NoPick(MouseEvent.Click p, ray)) model
+                | [] -> ()
             updateModel model 
+
+        mouse.Move.Values.Subscribe(fun (oldP,newP) -> 
+            handleMouseEvent MouseEvent.Move
+        ) |> ignore
+
+        mouse.Down.Values.Subscribe(fun p ->  
+            handleMouseEvent (MouseEvent.Down p)
         ) |> ignore
  
+        mouse.Click.Values.Subscribe(fun p ->  
+            handleMouseEvent (MouseEvent.Click p)
+        ) |> ignore
+
         mouse.Up.Values.Subscribe(fun p ->     
-            down <- false
-            let ray = mouse.Position |> Mod.force |> transformPixel |> Camera.pickRay (camera |> Mod.force)
-            let model = updatePickMsg (NoPick(MouseEvent.Up p, ray)) model.Value
-            updateModel model 
+            handleMouseEvent (MouseEvent.Up p)
         ) |> ignore
 
         { send = send; sg = view :> ISg; emitModel = updateModel }
 
-    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Option<Fablish.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
+    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
         createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app
 
 

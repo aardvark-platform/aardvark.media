@@ -1,2 +1,3 @@
-﻿module ModelGeneration
+﻿namespace Scratch 
 
+type Urdar = int

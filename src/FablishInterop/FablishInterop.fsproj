@@ -52,7 +52,9 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SplashScreen.fs" />
     <Compile Include="Elmisch3D.fs" />
-    <Compile Include="ModelGeneration.fs" />
+    <Compile Include="ModelGeneration.fs" >
+	    <DomainTypes>True</DomainTypes> 
+	</Compile>
     <Compile Include="Models.fs">
       <!-- <DomainTypes>True</DomainTypes> -->
     </Compile>
