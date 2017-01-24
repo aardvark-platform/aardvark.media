@@ -1410,5 +1410,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets')" Label="Paket" />
 </Project>
