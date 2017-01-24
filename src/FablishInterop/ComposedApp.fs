@@ -154,6 +154,7 @@ module SingleMultiView =
             update = update
             view = view3D camera
             ofPickMsg = ofPickMsg
+            subscriptions = Ext.Subscriptions.none
         }
 
         let viewApp : Fablish.App<Model,Action,DomNode<Action>> = 

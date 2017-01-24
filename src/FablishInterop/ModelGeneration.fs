@@ -1,3 +1,17 @@
-﻿namespace Scratch 
+﻿namespace Scratch.DomainTypes2
 
-type Urdar = int
+open System
+open Aardvark.Base
+open Aardvark.Base.Incremental
+
+module CameraTest =
+    
+    open Aardvark.Base
+    open Aardvark.Base.Rendering
+
+    [<DomainType>]
+    type Model = { 
+        camera : CameraView
+        frustum : Frustum 
+        lookingAround : Option<PixelPosition>
+    }

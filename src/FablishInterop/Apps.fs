@@ -8,6 +8,9 @@ open Aardvark.SceneGraph
 open Aardvark.Application
 
 open Scratch.DomainTypes
+open AnotherSceneGraph.Scene
+
+open Elmish3DADaptive.Ext
 
 module SimpleDrawingApp =
 
@@ -81,6 +84,7 @@ module SimpleDrawingApp =
             update = update
             view = view
             ofPickMsg = fun _ _ -> []
+            subscriptions = Subscriptions.none
         }
 
 module TestApp =
@@ -249,6 +253,7 @@ module TranslateController =
         update = update
         view = viewScene camera
         ofPickMsg = ofPickMsg
+        subscriptions = Ext.Subscriptions.none
     }
 
 module PlaceTransformObjects =
@@ -388,4 +393,62 @@ module PlaceTransformObjects =
             update = update
             view = view
             ofPickMsg = ofPickMsgModel 
+            subscriptions = Subscriptions.none
+        }
+
+
+module CameraTest =
+
+    open Aardvark.Base
+    open Aardvark.Base.Rendering
+
+    open AnotherSceneGraph
+    open Elmish3DADaptive
+    open Scratch.DomainTypes2
+    open CameraTest
+    open Primitives
+
+
+    type Action = 
+        | MouseDelta of V2d
+        | DragStart of PixelPosition
+        | DragStop of PixelPosition
+
+    let view (m : MModel) =
+        Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
+            |> render []
+            |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
+            |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+
+
+    let update e (m : Model) msg = 
+        match msg with
+            | DragStart p -> { m with lookingAround = Some p }
+            | DragStop _ -> { m with lookingAround = None }
+            | MouseDelta d when m.lookingAround.IsSome -> 
+                let delta = Constant.PiTimesTwo * d
+                let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
+                let forward = t.TransformDir m.camera.Forward |> Vec.normalize
+                { m with camera = m.camera.WithForward forward }
+            | _ -> m
+
+
+    let ofPickMsg _ m = []
+
+    let subscriptions (m : Model) =
+        Ext.Many [
+            Ext.MouseMove (fun (oldP,newP) -> newP.NormalizedPosition - oldP.NormalizedPosition |> MouseDelta)
+            Ext.Mouse (fun d m p -> if d = Direction.Down && m = MouseButtons.Left then Some <| DragStart p else None)
+            Ext.Mouse (fun d m p -> if d = Direction.Up   && m = MouseButtons.Left then Some <| DragStop p else None)
+        ]
+
+    let initial = { camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI; frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null; lookingAround = None }
+
+    let app : App<Model,MModel,Action,ISg<Action>> =
+        {
+            initial = initial
+            update = update
+            view = view
+            ofPickMsg = ofPickMsg 
+            subscriptions = subscriptions
         }

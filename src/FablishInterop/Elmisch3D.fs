@@ -254,26 +254,28 @@ module AnotherSceneGraph =
                     }
 
 
-    let transform t xs = Transform<'msg>(t,xs) :> ISg<'msg>
-    let translate x y z xs = Transform<'msg>(Trafo3d.Translation(x,y,z) |> Mod.constant, xs) :> ISg<_>
-    let translate' x y z c = Transform<'msg>(Trafo3d.Translation(x,y,z) |> Mod.constant, List.singleton c) :> ISg<_>
-    let transform' t x = Transform<'msg>(t,[x]) :> ISg<'msg>
-    let colored c xs = Colored<'msg>(c,xs) :> ISg<'msg>
-    let colored' c x = Colored<'msg>(c,x |> List.singleton) :> ISg<'msg>
-    let pick picks xs = On<'msg>(picks,xs) :> ISg<'msg>
-    let group (xs : list<_>) = Group<'msg>(xs) :> ISg<'msg>
-    let agroup (xs : aset<_>) = Group<'msg>(xs) :> ISg<'msg>
-    let leaf x = Leaf<'msg>(x) :> ISg<'msg> 
-    let render picks p = pick picks [leaf p]
 
     module Scene =
-        let map f (a : ISg<'a>) : ISg<'b> = Map<_,_>(f,a) :> ISg<'b>
 
-    let uniform name value xs = conv (Sg.uniform name value) xs
-    let effect effects xs = conv (Sg.effect effects) xs
-    let viewTrafo viewTrafo xs = conv (Sg.viewTrafo viewTrafo) xs
-    let projTrafo projTrafo xs = conv (Sg.projTrafo projTrafo) xs
-    let camera camera xs = conv (Sg.camera camera) xs
+        let transform t xs = Transform<'msg>(t,xs) :> ISg<'msg>
+        let translate x y z xs = Transform<'msg>(Trafo3d.Translation(x,y,z) |> Mod.constant, xs) :> ISg<_>
+        let translate' x y z c = Transform<'msg>(Trafo3d.Translation(x,y,z) |> Mod.constant, List.singleton c) :> ISg<_>
+        let transform' t x = Transform<'msg>(t,[x]) :> ISg<'msg>
+        let colored c xs = Colored<'msg>(c,xs) :> ISg<'msg>
+        let colored' c x = Colored<'msg>(c,x |> List.singleton) :> ISg<'msg>
+        let pick picks xs = On<'msg>(picks,xs) :> ISg<'msg>
+        let group (xs : list<_>) = Group<'msg>(xs) :> ISg<'msg>
+        let agroup (xs : aset<_>) = Group<'msg>(xs) :> ISg<'msg>
+        let leaf x = Leaf<'msg>(x) :> ISg<'msg> 
+        let render picks p = pick picks [leaf p]
+        let map f (a : ISg<'a>) : ISg<'b> = Map<_,_>(f,a) :> ISg<'b>
+        let uniform name value xs = conv (Sg.uniform name value) xs
+        let effect effects xs = conv (Sg.effect effects) xs
+        let viewTrafo viewTrafo xs = conv (Sg.viewTrafo viewTrafo) xs
+        let projTrafo projTrafo xs = conv (Sg.projTrafo projTrafo) xs
+        let camera camera xs = conv (Sg.camera camera) xs
+        let camera' camera xs = conv (Sg.camera camera) (group xs)
+
     
 
 
@@ -282,6 +284,35 @@ module Elmish3DADaptive =
     open AnotherSceneGraph
     open Fablish
 
+    module Ext =
+
+        type Direction = Up | Down
+
+        type Sub<'msg> = 
+            | NoSub
+            | TimeSub of TimeSpan * (DateTime -> 'msg) 
+            | Many of list<Sub<'msg>>
+            | MouseClick of (MouseButtons -> PixelPosition -> Option<'msg>)
+            | Mouse of (Direction -> MouseButtons -> PixelPosition -> Option<'msg>)
+            | MouseMove of (PixelPosition * PixelPosition -> 'msg)
+                
+        module Sub =
+            let leaves s =
+                match s with
+                    | NoSub -> []
+                    | TimeSub _ -> [s]
+                    | Many xs -> xs
+                    | MouseClick _ -> [s]
+                    | Mouse _ -> [s]
+                    | MouseMove _ -> [s]
+            let mouseClicks s = s |> leaves |> List.choose (function | MouseClick f -> Some f | _ -> None)
+            let mouseThings s = s |> leaves |> List.choose (function | Mouse f -> Some f | _ -> None)
+            let moves s = s |> leaves |> List.choose (function | MouseMove m -> Some m | _ -> None)
+
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Subscriptions =
+            let none = fun _ -> NoSub
+
 
     type App<'model,'mmodel,'msg,'view> =
         {
@@ -289,6 +320,7 @@ module Elmish3DADaptive =
             update    :  Env<'msg> -> 'model  -> 'msg  -> 'model
             view      : 'mmodel    -> 'view
 
+            subscriptions : 'model -> Ext.Sub<'msg>
 
             ofPickMsg : 'model     -> GlobalPick  -> list<'msg>
         }
@@ -311,7 +343,7 @@ module Elmish3DADaptive =
             sg : ISg
         }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessageO : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
 
         let model = Mod.init app.initial
 
@@ -322,17 +354,47 @@ module Elmish3DADaptive =
         let reuseCache = ReuseCache()
         let mmodel = unpersist.unpersist model.Value reuseCache
 
+        let mutable onMessage = Unchecked.defaultof<_>
+
+        let mutable moves = []
+        let mutable mouseActions = []
+        let mutable clicks = []
+
+        let moveSub (oldP,newP) =
+            moves |> List.map (fun f -> f (oldP,newP)) |> List.fold onMessage model.Value |> ignore
+
+        let mouseActionsSub dir p =
+            mouseActions |> List.choose (fun f -> f dir p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
+
+        let mouseClicks p =
+            clicks |> List.choose (fun f -> f p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
+
+        mouse.Move.Values.Subscribe(moveSub) |> ignore
+        mouse.Click.Values.Subscribe(mouseClicks) |> ignore
+        mouse.Down.Values.Subscribe(fun p -> mouseActionsSub Ext.Direction.Down p) |> ignore
+        mouse.Up.Values.Subscribe(fun p -> mouseActionsSub Ext.Direction.Up p) |> ignore
+
+        let updateSubscriptions (m : 'model) =
+            let subs = app.subscriptions m
+            moves <- Ext.Sub.moves subs
+            clicks <- Ext.Sub.mouseClicks subs
+            mouseActions <- Ext.Sub.mouseThings subs
+            ()
+
         let updateModel (m : 'model) =
             transact (fun () -> 
                 model.Value <- m
+                updateSubscriptions m |> ignore
                 unpersist.apply m mmodel reuseCache
             )
+
 
 
         let mutable env = Unchecked.defaultof<_>
 
         let send msg =
             let m' = app.update env model.Value msg
+            updateSubscriptions m'
             updateModel m'
             m'
 
@@ -347,8 +409,8 @@ module Elmish3DADaptive =
 
         env <- { run = emitEnv }
 
-        let onMessage =
-            match onMessage with 
+        onMessage <-
+            match onMessageO with 
                 | None -> (fun model msg -> let m' = app.update env model msg in updateModel m'; m')
                 | Some v -> v
 
