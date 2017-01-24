@@ -52,6 +52,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SplashScreen.fs" />
     <Compile Include="Elmisch3D.fs" />
+    <Compile Include="ModelGeneration.fs" />
     <Compile Include="Models.fs">
       <!-- <DomainTypes>True</DomainTypes> -->
     </Compile>
@@ -99,6 +100,8 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <!-- <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets')" Label="Paket" /> -->
+  <!-- <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets')" Label="Paket" /> -->
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And ($(TargetFrameworkVersion) == 'v4.5' Or $(TargetFrameworkVersion) == 'v4.5.1' Or $(TargetFrameworkVersion) == 'v4.5.2' Or $(TargetFrameworkVersion) == 'v4.5.3' Or $(TargetFrameworkVersion) == 'v4.6' Or $(TargetFrameworkVersion) == 'v4.6.1' Or $(TargetFrameworkVersion) == 'v4.6.2' Or $(TargetFrameworkVersion) == 'v4.6.3')">
       <ItemGroup>
@@ -1403,5 +1406,5 @@
       </ItemGroup>
     </When>
   </Choose>
-  <!-- <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets')" Label="Paket" /> -->
+  <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes\build\Aardvark.Compiler.DomainTypes.targets')" Label="Paket" />
 </Project>

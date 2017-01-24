@@ -180,7 +180,7 @@ module Generated =
 //                        match x.mvalue.Value.value,arg0.value with
 //                            | MyNone, MyNone -> ()
 //                            | MyNone, MySome v -> x.mvalue.Value <- { _id = null; value = MySome <| v }
-//                            | MySome _, MySome n -> failwith ""
+//                            | MySome _, MySome n -> failwith "apply etc"
                                    
         
         [<DomainType>]

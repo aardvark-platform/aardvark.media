@@ -22,7 +22,7 @@ module SimpleDrawingApp =
         | AddPoint   of V3d
         | MoveCursor of V3d
 
-    let update (m : Model) (cmd : Action) =
+    let update e (m : Model) (cmd : Action) =
         match cmd with
             | ClosePolygon -> 
                 match m.working with
@@ -190,7 +190,7 @@ module TranslateController =
             | MoveRay r, None -> m
             | ResetTrafo, _ -> { m with trafo = Trafo3d.Identity }
 
-    let update  (m : Scene) (a : Action) =
+    let update e (m : Scene) (a : Action) =
         let scene = updateModel m.scene a
         { m with scene = scene }
 
@@ -300,7 +300,7 @@ module PlaceTransformObjects =
         | Unhover
         | TransformObject of int * TranslateController.Action
 
-    let update (m : Model) (msg : Action) =
+    let update e (m : Model) (msg : Action) =
         match msg with
             | PlaceObject p -> { m with objects = PSet.add { id = PSet.count m.objects; t = Trafo3d.Translation p; _id = null }  m.objects }
             | SelectObject i -> { m with selectedObj = Some { _id = null; id = i; tmodel = { TranslateController.initalModel with trafo = PSet.pick (fun a -> if a.id = i then Some a.t else None) m.objects }} }

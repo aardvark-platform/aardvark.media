@@ -10,13 +10,26 @@ open Fablish
 open Fable.Helpers.Virtualdom
 open Fable.Helpers.Virtualdom.Html
 
-type ComposedApp<'model,'msg>(initial : 'model, f : 'model -> 'msg -> 'model) =
+type ComposedApp<'model,'msg>(initial : 'model, f : Env<'msg> -> 'model -> 'msg -> 'model) as this =
     let mutable model = initial
     let innerApps = System.Collections.Generic.HashSet<'model -> unit>()
 
+    let emitEnv cmd = 
+        match cmd with
+            | NoCmd -> ()
+            | Cmd cmd -> 
+                async {
+                    let! msg = cmd
+                    this.Update msg |> ignore
+                } |> Async.Start
+
+    let env = { run = emitEnv }
+
     member x.Update(msg : 'msg) =
-        model <- f model msg
-        model
+        lock x (fun _ -> 
+            model <- f env model msg
+            model
+        )
         
     member x.AddUi (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         let doUpdate : Callback<'innerModel,'innerMsg> =
@@ -52,7 +65,7 @@ module ComposedApp =
                 for a in comp.InnerApps do a newBigModel
                 project newBigModel
             )
-        let instance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera doUpdate app
+        let instance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera (Some doUpdate) app
         comp.Register(fun m -> instance.emitModel (project m)) 
         instance
 
@@ -72,18 +85,18 @@ module Explicit =
         scene : TranslateController.Scene
     }
 
-    let update (model : Model) (msg : AppMsg) =
+    let update e (model : Model) (msg : AppMsg) =
         let model =
             match msg with
                 | AppMsg.SceneMsg (TranslateController.Action.Hover(x,p)) -> 
-                    { model with ui = TestApp.update 1 model.ui ( TestApp.Action.SetInfo (sprintf "hover: %A" (x,p)) ) }
+                    { model with ui = TestApp.update (Env.map UiMsg e) model.ui ( TestApp.Action.SetInfo (sprintf "hover: %A" (x,p)) ) }
                 | UiMsg (TestApp.Action.Reset) -> 
-                    { model with scene = TranslateController.update model.scene TranslateController.Action.ResetTrafo } 
+                    { model with scene = TranslateController.update (Env.map SceneMsg e) model.scene TranslateController.Action.ResetTrafo } 
                 | _ -> model
 
         match msg with
-            | AppMsg.SceneMsg msg -> { model with scene = TranslateController.update model.scene msg }
-            | AppMsg.UiMsg msg -> { model with ui = TestApp.update "a"  model.ui msg }
+            | AppMsg.SceneMsg msg -> { model with scene = TranslateController.update (Env.map SceneMsg e) model.scene msg }
+            | AppMsg.UiMsg msg -> { model with ui = TestApp.update (Env.map UiMsg e) model.ui msg }
 
 
 module SingleMultiView =
@@ -111,15 +124,15 @@ module SingleMultiView =
             ]
         ]
 
-    let update e (m : Model) (a : Action) =
+    let update (e : Env<Action>) (m : Model) (a : Action) =
         let m =
             match a with
             | Translate (TranslateController.Action.Hover(x,p)) -> 
                 { m with ui = { m.ui with info = sprintf "pos: %A" p }}
             | _ -> m
         match a with
-         | Translate t -> { m with scene = TranslateController.update m.scene t }
-         | UiOnly a -> { m with ui = TestApp.update e m.ui a }
+         | Translate t -> { m with scene = TranslateController.update (e |> Env.map Translate) m.scene t }
+         | UiOnly a -> { m with ui = TestApp.update (Env.map UiOnly e) m.ui a }
          | Reset -> 
             let s = { m.scene with scene = { m.scene.scene with trafo = Trafo3d.Identity }}
             { m with ui = { m.ui with cnt = 0 }; scene = s }
@@ -134,16 +147,16 @@ module SingleMultiView =
     let createApp keyboard mouse viewport camera =
 
         let initial = { ui = TestApp.initial; scene = TranslateController.initial; _id = null } 
-        let composed = ComposedApp.ofUpdate initial (update 1)
+        let composed = ComposedApp.ofUpdate initial update 
 
-        let three3dApp = {
+        let three3dApp : App<Model,MModel,Action,ISg<Action>> = {
             initial = initial
-            update = (update 1)
+            update = update
             view = view3D camera
             ofPickMsg = ofPickMsg
         }
 
-        let viewApp = 
+        let viewApp : Fablish.App<Model,Action,DomNode<Action>> = 
             {
                 initial = initial 
                 update = update

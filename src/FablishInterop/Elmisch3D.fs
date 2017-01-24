@@ -265,13 +265,15 @@ module AnotherSceneGraph =
 module Elmish3DADaptive =
 
     open AnotherSceneGraph
+    open Fablish
+
 
     type App<'model,'mmodel,'msg,'view> =
         {
             initial   : 'model
-            ofPickMsg : 'model  -> NoPick  -> list<'msg>
-            update    : 'model  -> 'msg -> 'model
-            view      : 'mmodel -> 'view
+            ofPickMsg : 'model     -> NoPick  -> list<'msg>
+            update    :  Env<'msg> -> 'model  -> 'msg  -> 'model
+            view      : 'mmodel    -> 'view
         }
 
     type Unpersist<'immut,'mut> =
@@ -292,7 +294,7 @@ module Elmish3DADaptive =
             sg : ISg
         }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Fablish.Callback<'model,'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessage : Option<Fablish.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
 
         let model = Mod.init app.initial
 
@@ -309,14 +311,29 @@ module Elmish3DADaptive =
                 unpersist.apply m mmodel reuseCache
             )
 
+
+        let mutable env = Unchecked.defaultof<_>
+
         let send msg =
-            let m' = app.update model.Value msg
+            let m' = app.update env model.Value msg
             updateModel m'
             m'
 
-        let receive model =
-            updateModel model
+        let emitEnv cmd = 
+            match cmd with
+                | NoCmd -> ()
+                | Cmd cmd -> 
+                    async {
+                        let! msg = cmd
+                        send msg |> ignore
+                    } |> Async.Start
 
+        env <- { run = emitEnv }
+
+        let onMessage =
+            match onMessage with 
+                | None -> (fun model msg -> let m' = app.update env model msg in updateModel m'; m')
+                | Some v -> v
 
         let view = app.view mmodel
         let pickObjects = view.PickObjects()
@@ -330,7 +347,6 @@ module Elmish3DADaptive =
                  |> List.collect (fun p -> 
                         Primitives.hitPrimitive p.primitive (Mod.force p.trafo) r p.actions
                     )
-            printfn "picks: %A" picks
             picks |> List.sortBy fst
 
         let updatePickMsg (m : NoPick) (model : 'model) =
@@ -374,9 +390,9 @@ module Elmish3DADaptive =
             updateModel model 
         ) |> ignore
 
-        { send = send; sg = view :> ISg; emitModel = receive }
+        { send = send; sg = view :> ISg; emitModel = updateModel }
 
-    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Fablish.Callback<'model,'msg>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
+    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Option<Fablish.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
         createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app
 
 
