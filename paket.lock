@@ -400,6 +400,7 @@ NUGET
       FSharp.Core
     FAKE (4.48) - content: none
     FSharp.Core (4.0.0.1) - content: none
+    FSharp.Formatting.CommandTool (2.14.4)
     Microsoft.CSharp (4.3) - content: none, framework: >= netstandard10
       System.Collections (>= 4.3) - framework: dnxcore50, >= netstandard13
       System.Diagnostics.Debug (>= 4.3) - framework: dnxcore50, >= netstandard13
@@ -645,7 +646,7 @@ NUGET
       System.Xml.ReaderWriter (>= 4.3) - framework: dnxcore50, netstandard10, >= netstandard13
 GITHUB
   remote: vrvis/Aardvark.Fake
-    FULLPROJECT (553c5b51079bc60da4502648698d8797056abf36)
+    FULLPROJECT (549a700ba21a13f389666ae483bdd0e27daae2ac)
       Chessie (>= 0.5 < 0.6)
       FAKE (< 5.0)
       Mono.Cecil (<= 0.9.5.4)
