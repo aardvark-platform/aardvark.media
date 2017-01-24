@@ -283,6 +283,7 @@ module Elmish3DADaptive =
 
     open AnotherSceneGraph
     open Fablish
+    open System.Collections.Generic
 
     module Ext =
 
@@ -295,24 +296,62 @@ module Elmish3DADaptive =
             | MouseClick of (MouseButtons -> PixelPosition -> Option<'msg>)
             | Mouse of (Direction -> MouseButtons -> PixelPosition -> Option<'msg>)
             | MouseMove of (PixelPosition * PixelPosition -> 'msg)
+            | Key of (Direction -> Keys -> Option<'msg>)
+            
                 
         module Sub =
-            let leaves s =
+            let rec leaves s =
                 match s with
                     | NoSub -> []
                     | TimeSub _ -> [s]
-                    | Many xs -> xs
+                    | Many xs -> xs |> List.collect leaves
                     | MouseClick _ -> [s]
                     | Mouse _ -> [s]
                     | MouseMove _ -> [s]
-            let mouseClicks s = s |> leaves |> List.choose (function | MouseClick f -> Some f | _ -> None)
-            let mouseThings s = s |> leaves |> List.choose (function | Mouse f -> Some f | _ -> None)
-            let moves s = s |> leaves |> List.choose (function | MouseMove m -> Some m | _ -> None)
+                    | Key f -> [s]
+            let filterMouseClicks s = s |> leaves |> List.choose (function | MouseClick f -> Some f | _ -> None)
+            let filterMouseThings s = s |> leaves |> List.choose (function | Mouse f -> Some f | _ -> None)
+            let filterMoves s = s |> leaves |> List.choose (function | MouseMove m -> Some m | _ -> None)
+            let filterKeys s = s |> leaves |> List.choose (function | Key f -> Some f | _ -> None)
+            let filterTimes s = s |> leaves |> List.choose (function | TimeSub (t,f) -> Some (t,f) | _ -> None)
+
+            let time timeSpan f = TimeSub(timeSpan,f)
+            
+
 
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Subscriptions =
             let none = fun _ -> NoSub
 
+
+
+    module Input =
+        
+        let mouse (dir : Ext.Direction -> bool) (button : MouseButtons -> bool) (f : PixelPosition -> 'msg) = 
+            Ext.Mouse (fun d b p -> if dir d && button b then Some (f p) else None)
+
+        let click (button : MouseButtons -> bool) (f : PixelPosition -> 'msg) =
+            Ext.MouseClick (fun b p -> if button b then Some (f p) else None)
+
+        let move (f : PixelPosition * PixelPosition -> 'msg) = Ext.Sub.MouseMove f
+
+        let moveDelta (f : V2d -> 'msg) = Ext.Sub.MouseMove (fun (oldP,newP) -> f (newP.NormalizedPosition - oldP.NormalizedPosition))
+
+        let key (dir : Ext.Direction) (k : Keys) f = Ext.Sub.Key(fun occDir occ -> if k = occ && dir = occDir then Some (f occDir occ) else None)
+
+        let toggleKey (k : Keys) (onDown : Keys -> 'msg) (onUp : Keys -> 'msg) =
+            Ext.Sub.Many [
+                key Ext.Direction.Down k (fun _ k -> onDown k)
+                key Ext.Direction.Up k (fun _ k -> onUp k)
+            ]
+
+        module Mouse =
+    
+            let button ref p = if p = ref then true else false
+            let left = button MouseButtons.Left
+            let right = button MouseButtons.Right
+            let up f = if f = Ext.Direction.Up then true else false
+            let down f = if f = Ext.Direction.Down then true else false
 
     type App<'model,'mmodel,'msg,'view> =
         {
@@ -359,6 +398,8 @@ module Elmish3DADaptive =
         let mutable moves = []
         let mutable mouseActions = []
         let mutable clicks = []
+        let mutable keys = []
+        let mutable times = []
 
         let moveSub (oldP,newP) =
             moves |> List.map (fun f -> f (oldP,newP)) |> List.fold onMessage model.Value |> ignore
@@ -369,16 +410,52 @@ module Elmish3DADaptive =
         let mouseClicks p =
             clicks |> List.choose (fun f -> f p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
 
+        let keysSub dir k =
+            keys |> List.choose (fun f -> f dir k) |> List.fold onMessage model.Value |> ignore
+
+        let currentTimer = new Dictionary<TimeSpan,ref<list<DateTime -> 'msg> * list<IDisposable>> * System.Timers.Timer>()
+        let enterTimes xs =
+            let newSubs = xs |> List.groupBy fst |> List.map (fun (k,xs) -> k,List.map snd xs) |> Dictionary.ofList
+            let toRemove = List<_>()
+            for (KeyValue(k,(r,timer))) in currentTimer do
+                match newSubs.TryGetValue k with
+                    | (true,v) -> 
+                        let oldSubs = snd !r
+                        oldSubs |> List.iter (fun a -> a.Dispose())
+                        r := (v, v |> List.map (fun a -> timer.Elapsed.Subscribe(fun _ -> onMessage model.Value (a DateTime.Now) |> ignore)))
+                    | _ -> 
+                        !r |> snd |> List.iter (fun a -> a.Dispose())
+                        timer.Dispose()
+                        toRemove.Add(k)
+            
+            for (KeyValue(t,actions)) in newSubs do
+                match currentTimer.TryGetValue t with
+                    | (true,v) -> ()
+                    | _ -> 
+                        // new
+                        let timer = new System.Timers.Timer()
+                        timer.Interval <- t.TotalMilliseconds
+                        let disps = actions |> List.map (fun a -> timer.Elapsed.Subscribe(fun _ -> onMessage model.Value (a DateTime.Now) |> ignore))
+                        timer.Start()
+                        currentTimer.Add(t,(ref (actions,disps), timer))
+            
+            for i in toRemove do currentTimer.Remove i |> ignore
+
         mouse.Move.Values.Subscribe(moveSub) |> ignore
         mouse.Click.Values.Subscribe(mouseClicks) |> ignore
         mouse.Down.Values.Subscribe(fun p -> mouseActionsSub Ext.Direction.Down p) |> ignore
         mouse.Up.Values.Subscribe(fun p -> mouseActionsSub Ext.Direction.Up p) |> ignore
+        keyboard.Down.Values.Subscribe(fun k -> keysSub Ext.Direction.Down k) |> ignore
+        keyboard.Up.Values.Subscribe(fun k -> keysSub Ext.Direction.Up k) |> ignore
 
         let updateSubscriptions (m : 'model) =
             let subs = app.subscriptions m
-            moves <- Ext.Sub.moves subs
-            clicks <- Ext.Sub.mouseClicks subs
-            mouseActions <- Ext.Sub.mouseThings subs
+            moves <- Ext.Sub.filterMoves subs
+            clicks <- Ext.Sub.filterMouseClicks subs
+            mouseActions <- Ext.Sub.filterMouseThings subs
+            keys <- Ext.Sub.filterKeys subs
+            times <- Ext.Sub.filterTimes subs
+            enterTimes times
             ()
 
         let updateModel (m : 'model) =

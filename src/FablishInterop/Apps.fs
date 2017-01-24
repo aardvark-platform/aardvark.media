@@ -408,11 +408,16 @@ module CameraTest =
     open CameraTest
     open Primitives
 
+    open Input
+
 
     type Action = 
         | MouseDelta of V2d
         | DragStart of PixelPosition
-        | DragStop of PixelPosition
+        | DragStop  of PixelPosition
+        | AddMove    of V2d
+        | RemoveMove of V2d
+        | Animate of DateTime
 
     let view (m : MModel) =
         Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
@@ -420,6 +425,11 @@ module CameraTest =
             |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
             |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
+    let forward = V2d.OI
+    let backward = -V2d.OI
+    let left = -V2d.IO
+    let right = V2d.IO
+    let clampDir (v : V2d) = V2d(clamp -1.0 1.0 v.X, clamp -1.0 1.0 v.Y)
 
     let update e (m : Model) msg = 
         match msg with
@@ -430,25 +440,40 @@ module CameraTest =
                 let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
                 let forward = t.TransformDir m.camera.Forward |> Vec.normalize
                 { m with camera = m.camera.WithForward forward }
+            | AddMove d    -> { m with forward = clampDir <| m.forward + d }
+            | RemoveMove d -> { m with forward = clampDir <| m.forward - d }
+            | Animate t -> 
+                let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
+                let speed = 0.01 
+                printfn "%A, dir: %A " dir m.forward
+                { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
             | _ -> m
 
 
     let ofPickMsg _ m = []
 
-    let subscriptions (m : Model) =
+    let subscriptions (time : IMod<DateTime>) (m : Model) =
         Ext.Many [
-            Ext.MouseMove (fun (oldP,newP) -> newP.NormalizedPosition - oldP.NormalizedPosition |> MouseDelta)
-            Ext.Mouse (fun d m p -> if d = Direction.Down && m = MouseButtons.Left then Some <| DragStart p else None)
-            Ext.Mouse (fun d m p -> if d = Direction.Up   && m = MouseButtons.Left then Some <| DragStop p else None)
+            Input.mouse Mouse.down Mouse.left DragStart
+            Input.mouse Mouse.up   Mouse.left DragStop
+            
+            Input.moveDelta MouseDelta
+
+            Input.toggleKey Keys.W (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
+            Input.toggleKey Keys.S (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
+            Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
+            Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)
+
+            Sub.time ( TimeSpan.FromMilliseconds 10.0 ) Animate
         ]
 
-    let initial = { camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI; frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null; lookingAround = None }
+    let initial = { camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI; frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null; lookingAround = None; forward = V2d.OO; forwardSpeed = 0.0 }
 
-    let app : App<Model,MModel,Action,ISg<Action>> =
+    let app time : App<Model,MModel,Action,ISg<Action>> =
         {
             initial = initial
             update = update
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions
+            subscriptions = subscriptions time
         }
