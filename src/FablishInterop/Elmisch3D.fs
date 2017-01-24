@@ -297,6 +297,7 @@ module Elmish3DADaptive =
             | Mouse of (Direction -> MouseButtons -> PixelPosition -> Option<'msg>)
             | MouseMove of (PixelPosition * PixelPosition -> 'msg)
             | Key of (Direction -> Keys -> Option<'msg>)
+            | ModSub of IMod<'msg> * ('msg -> Option<'msg>)
             
                 
         module Sub =
@@ -309,11 +310,14 @@ module Elmish3DADaptive =
                     | Mouse _ -> [s]
                     | MouseMove _ -> [s]
                     | Key f -> [s]
+                    | ModSub(m,f) -> [s]
+
             let filterMouseClicks s = s |> leaves |> List.choose (function | MouseClick f -> Some f | _ -> None)
             let filterMouseThings s = s |> leaves |> List.choose (function | Mouse f -> Some f | _ -> None)
             let filterMoves s = s |> leaves |> List.choose (function | MouseMove m -> Some m | _ -> None)
             let filterKeys s = s |> leaves |> List.choose (function | Key f -> Some f | _ -> None)
             let filterTimes s = s |> leaves |> List.choose (function | TimeSub (t,f) -> Some (t,f) | _ -> None)
+            
 
             let time timeSpan f = TimeSub(timeSpan,f)
             
