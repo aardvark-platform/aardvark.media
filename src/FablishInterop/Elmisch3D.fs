@@ -28,17 +28,24 @@ module PickStuff =
         let down (p : PickOccurance) = match p.mouse with | Down b -> true | _ -> false  
         let down' (button : MouseButtons) (p : PickOccurance) = match p.mouse with | Down b when b = button -> true | _ -> false 
 
-    type PickOperation<'msg> = PickOccurance -> Option<'msg>
+    type Transparency = Solid | PickThrough
+    type PickOperation<'msg> = (PickOccurance -> Option<'msg>) * Transparency
 
     module Pick =
         let ignore = []
 
     
     let on (p : PickOccurance -> bool) (r : V3d -> 'msg) : PickOperation<'msg> = 
-        fun pickOcc -> 
+        (fun pickOcc -> 
             if p pickOcc then 
-                Some (r (PickOccurance.position pickOcc)) 
-            else None    
+                Some (r (PickOccurance.position pickOcc))
+            else None), Solid
+
+    let onPickThrough (p : PickOccurance -> bool) (r : V3d -> 'msg) : PickOperation<'msg> = 
+        (fun pickOcc -> 
+            if p pickOcc then 
+                Some (r (PickOccurance.position pickOcc))
+            else None), PickThrough
     
     type Hits<'msg> = list<float * list<PickOperation<'msg>>>
     
@@ -202,7 +209,7 @@ module AnotherSceneGraph =
         let map ( f : 'a -> 'b) (p : PickObject<'a>) : PickObject<'b> =
             {
                 trafo = p.trafo
-                actions = List.map (fun o -> fun kind -> Option.map f (o kind)) p.actions
+                actions = List.map (fun (pick,transparency) -> (fun kind -> Option.map f (pick kind)),transparency) p.actions
                 primitive = p.primitive
             }  
 
@@ -524,7 +531,8 @@ module Elmish3DADaptive =
         let pickObjects = view.PickObjects()
         let pickReader = pickObjects.GetReader()
 
-        let pick (r : Ray3d) : Hits<'msg> =
+
+        let pick (r : Ray3d)  =
             pickReader.GetDelta() |> ignore
             let picks =
                 pickReader.Content 
@@ -532,7 +540,20 @@ module Elmish3DADaptive =
                  |> List.collect (fun p -> 
                         Primitives.hitPrimitive p.primitive (Mod.force p.trafo) r p.actions
                     )
-            picks |> List.sortBy fst 
+
+            let rec depthTest xs =
+                match xs with
+                    | [] -> []
+                    | (d1,(f1,Solid))::(d2,(f2,Solid))::rest when d1 = d2 -> (d1,(f1,Solid)) ::(d2,(f2,Solid)) :: depthTest rest
+                    | (d,(f,Solid))::_ -> [(d,(f,Solid))]
+                    | (d,(f,PickThrough))::xs -> (d,(f,PickThrough)) :: depthTest xs
+
+            picks 
+                |> List.collect (fun (d,picks) -> picks |> List.map (fun p -> d,p)) 
+                |> List.sortBy fst 
+                |> depthTest
+
+
 
         let updatePickMsg (m : GlobalPick) (model : 'model) =
             app.ofPickMsg model m |> List.fold onMessage model
@@ -541,15 +562,11 @@ module Elmish3DADaptive =
             let ray = mouse.Position |> Mod.force |> transformPixel |> Camera.pickRay (camera |> Mod.force)
             let picks = pick ray
             let mutable model = updatePickMsg { mouseEvent = mouseEvent; ray = ray; hits = List.isEmpty picks |> not }  model.Value
-            match picks with
-                | ((d,f)::_) -> 
-                    for msg in f do
-                        let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d }
-                        match msg occ with
-                            | Some r -> 
-                                model <- onMessage model r
-                            | _ -> ()
-                | [] -> ()
+            for (d,(msg,transparency)) in picks do
+                let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d }
+                match msg occ with
+                    | Some r -> model <- onMessage model r
+                    | _ -> ()
             updateModel model 
 
         mouse.Move.Values.Subscribe(fun (oldP,newP) -> 

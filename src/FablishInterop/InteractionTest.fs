@@ -38,6 +38,7 @@ module InteractionTest =
         let bounds = win.Sizes |> Mod.map (fun s -> Box2i.FromMinAndSize(V2i.OO,s))
 
         let theApp = PlaceTransformObjects.app
+        let theApp = SimpleDrawingApp.app
         //let theApp = CameraTest.app win.Time
 
         let adaptiveResult = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse bounds camera None theApp
