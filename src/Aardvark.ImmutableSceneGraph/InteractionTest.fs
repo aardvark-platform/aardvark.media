@@ -14,6 +14,8 @@ open Aardvark.Application.WinForms
 open Aardvark.Rendering.NanoVg
 open Aardvark.Rendering.GL   
 
+open Aardvark.Elmish
+
 
 module InteractionTest =
 
@@ -41,7 +43,7 @@ module InteractionTest =
         let theApp = SimpleDrawingApp.app
         //let theApp = CameraTest.app win.Time
 
-        let adaptiveResult = Elmish3DADaptive.createAppAdaptiveD win.Keyboard win.Mouse bounds camera None theApp
+        let adaptiveResult = Elmish.createAppAdaptiveD win.Keyboard win.Mouse bounds camera None theApp
 
         let sg = 
             //Elmish3D.createApp win camera TranslateController.app

@@ -8,11 +8,11 @@
     <ProjectGuid>89f9d8d0-6e20-4a7d-afab-821c69fdc304</ProjectGuid>
     <OutputType>Exe</OutputType>
     <RootNamespace>FablishInterop</RootNamespace>
-    <AssemblyName>FablishInterop</AssemblyName>
+    <AssemblyName>Aardvark.ImmutableSceneGraph</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>FablishInterop</Name>
+    <Name>Aardvark.ImmutableSceneGraph</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -49,9 +49,9 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
     <Compile Include="SplashScreen.fs" />
-    <Compile Include="Elmisch3D.fs" />
+    <Compile Include="ImmutableSceneGraph.fs" />
+    <Compile Include="Elmish.fs" />
     <Compile Include="ModelGeneration.fs">
       <!-- <DomainTypes>True</DomainTypes> -->
     </Compile>

@@ -8,16 +8,18 @@ open Aardvark.SceneGraph
 open Aardvark.Application
 
 open Scratch.DomainTypes
-open AnotherSceneGraph.Scene
 
-open Elmish3DADaptive.Ext
+open Aardvark.ImmutableSceneGraph
+open Aardvark.Elmish
+open Primitives
 
 module SimpleDrawingApp =
 
-    open AnotherSceneGraph
-    open Elmish3DADaptive
-    open SimpleDrawingApp
+    open Aardvark.ImmutableSceneGraph
+    open Aardvark.Elmish
     open Primitives
+
+    open SimpleDrawingApp
 
 
     type Action =
@@ -49,32 +51,32 @@ module SimpleDrawingApp =
     let viewPolygon (p : list<V3d>) =
         [ for edge in Polygon3d(p |> List.toSeq).EdgeLines do
             let v = edge.P1 - edge.P0
-            yield cylinder edge.P0 v.Normalized v.Length 0.03 |> render Pick.ignore 
-        ] |> group
+            yield Primitives.cylinder edge.P0 v.Normalized v.Length 0.03 |> Scene.render Pick.ignore 
+        ] |> Scene.group
 
 
     let view (m : MModel) = 
         let t =
            aset {
                 yield [ Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
-                            |> render [ 
+                            |>  Scene.render [ 
                                  on Mouse.move MoveCursor
                                  on (Mouse.down' MouseButtons.Left)  AddPoint 
                                  on (Mouse.down' MouseButtons.Right) (constF ClosePolygon)
                                ] 
-                      ] |> colored (Mod.constant C4b.Gray)
+                      ] |>  Scene.colored (Mod.constant C4b.Gray)
                 for p in m.mfinished :> aset<_> do yield viewPolygon p
                 let! working = m.mworking
                 match working with
                     | Some v when v.cursor.IsSome -> 
                         yield 
-                            [ Sphere3d(V3d.OOO,0.1) |> Sphere |> render Pick.ignore ] 
-                                |> colored (Mod.constant C4b.Red)
-                                |> transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value))
+                            [ Sphere3d(V3d.OOO,0.1) |> Sphere |>  Scene.render Pick.ignore ] 
+                                |> Scene.colored (Mod.constant C4b.Red)
+                                |> Scene.transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value))
                         yield viewPolygon (v.cursor.Value :: v.finishedPoints)
                     | _ -> ()
             }
-        agroup  t
+        Scene.agroup  t
 
     let initial = { finished = PSet.empty; working = None; _id = null }
 
@@ -84,7 +86,7 @@ module SimpleDrawingApp =
             update = update
             view = view
             ofPickMsg = fun _ _ -> []
-            subscriptions = Subscriptions.none
+            subscriptions = Aardvark.Elmish.Subscriptions.none
         }
 
 module TestApp =
@@ -133,11 +135,12 @@ module TestApp =
 
 module TranslateController =
 
-    open AnotherSceneGraph
-    open Elmish3DADaptive
+    open Aardvark.ImmutableSceneGraph
+    open Aardvark.ImmutableSceneGraph.Scene
+    open Primitives
+    open Aardvark.Elmish
 
     open Scratch.DomainTypes
-    open Primitives
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module Axis =
@@ -253,17 +256,14 @@ module TranslateController =
         update = update
         view = viewScene camera
         ofPickMsg = ofPickMsg
-        subscriptions = Ext.Subscriptions.none
+        subscriptions = Subscriptions.none
     }
 
 module PlaceTransformObjects =
 
-    open AnotherSceneGraph
-    open Elmish3DADaptive
-    open Primitives
-
     open TranslateController
     open PlaceTransformObjects
+    open Aardvark.ImmutableSceneGraph.Scene
 
     (*
     issues:
@@ -402,8 +402,6 @@ module CameraTest =
     open Aardvark.Base
     open Aardvark.Base.Rendering
 
-    open AnotherSceneGraph
-    open Elmish3DADaptive
     open Scratch.DomainTypes2
     open CameraTest
     open Primitives
@@ -422,7 +420,7 @@ module CameraTest =
 
     let view (m : MModel) =
         Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
-            |> render []
+            |> Scene.render []
             |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
             |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
@@ -453,7 +451,7 @@ module CameraTest =
     let ofPickMsg _ m = []
 
     let subscriptions (time : IMod<_>) (m : Model) =
-        Ext.Many [
+        Many [
             Input.mouse Mouse.down Mouse.left DragStart
             Input.mouse Mouse.up   Mouse.left DragStop
             

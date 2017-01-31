@@ -10,6 +10,9 @@ open Fablish
 open Fable.Helpers.Virtualdom
 open Fable.Helpers.Virtualdom.Html
 
+open Aardvark.ImmutableSceneGraph
+open Aardvark.Elmish
+
 type ComposedApp<'model,'msg>(initial : 'model, f : Env<'msg> -> 'model -> 'msg -> 'model) as this =
     let mutable model = initial
     let innerApps = System.Collections.Generic.HashSet<'model -> unit>()
@@ -56,7 +59,7 @@ module ComposedApp =
     
     let ofUpdate initial update = ComposedApp<_,_>(initial, update)
 
-    let inline add3d (comp : ComposedApp<'model,'msg>) (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : Elmish3DADaptive.App<_,_,_,_>)  (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
+    let inline add3d (comp : ComposedApp<'model,'msg>) (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : App<_,_,_,_>)  (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
             lock comp (fun _ -> 
                 let bigModel = buildModel m comp.Model
@@ -65,7 +68,7 @@ module ComposedApp =
                 for a in comp.InnerApps do a newBigModel
                 project newBigModel
             )
-        let instance = Elmish3DADaptive.createAppAdaptiveD keyboard mouse viewport camera (Some doUpdate) app
+        let instance = Elmish.createAppAdaptiveD keyboard mouse viewport camera (Some doUpdate) app
         comp.Register(fun m -> instance.emitModel (project m)) 
         instance
 
@@ -103,7 +106,8 @@ module SingleMultiView =
 
     open Scratch.DomainTypes
     open SharedModel
-    open AnotherSceneGraph
+    open Aardvark.ImmutableSceneGraph
+    open Aardvark.Elmish
 
     type Action = 
         | Translate of TranslateController.Action
@@ -142,7 +146,6 @@ module SingleMultiView =
 
     let ofPickMsg (m : Model) (noPick) = TranslateController.ofPickMsg m.scene noPick |> List.map Translate
 
-    open Elmish3DADaptive
 
     let createApp keyboard mouse viewport camera =
 
@@ -154,7 +157,7 @@ module SingleMultiView =
             update = update
             view = view3D camera
             ofPickMsg = ofPickMsg
-            subscriptions = Ext.Subscriptions.none
+            subscriptions = Subscriptions.none
         }
 
         let viewApp : Fablish.App<Model,Action,DomNode<Action>> = 
@@ -162,11 +165,11 @@ module SingleMultiView =
                 initial = initial 
                 update = update
                 view = viewUI
-                subscriptions = Subscriptions.none
+                subscriptions = Fablish.CommonTypes.Subscriptions.none
                 onRendered = OnRendered.ignore
             }
 
-        let three3dInstance : Running<Model,Action> = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+        let three3dInstance : Elmish.Running<Model,Action> = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance

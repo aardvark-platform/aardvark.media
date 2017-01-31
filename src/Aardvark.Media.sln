@@ -8,7 +8,7 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RenderToTextureExample", "R
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "FablishInterop", "FablishInterop\FablishInterop.fsproj", "{89F9D8D0-6E20-4A7D-AFAB-821C69FDC304}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.ImmutableSceneGraph", "Aardvark.ImmutableSceneGraph\Aardvark.ImmutableSceneGraph.fsproj", "{89F9D8D0-6E20-4A7D-AFAB-821C69FDC304}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
