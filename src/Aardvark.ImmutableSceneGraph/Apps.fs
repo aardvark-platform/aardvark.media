@@ -396,6 +396,102 @@ module PlaceTransformObjects =
             subscriptions = Subscriptions.none
         }
 
+module OrbitTest = 
+
+    open Aardvark.Base
+    open Aardvark.Base.Rendering
+
+    open Scratch.DomainTypes2
+    open CameraTest
+    open Primitives
+    open Aardvark.ImmutableSceneGraph.Scene
+
+    open Input
+
+    type Action = 
+        | MouseDelta of V2d
+        | DragStart of PixelPosition
+        | DragStop  of PixelPosition     
+        | ChangeCenter of V3d
+
+        | Animate of DateTime
+        | TimeStep of float    
+
+    let mCenter (m:MModel) = 
+        adaptive{
+            let! c = m.mcenter
+            return match c with
+                    | Some s ->  s
+                    | None -> V3d.OOO            
+        } |> Mod.force          
+        
+    let center (c) = 
+        match c with
+            | Some s -> s
+            | None -> V3d.Zero       
+            
+    let view (m : MModel) =        
+        [Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
+            |> Scene.render []
+         Sphere (Sphere3d(V3d.OOO, 0.1)) 
+            |> Scene.render [] 
+            |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (center a)))
+        ]
+        |> Scene.group            
+        |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
+        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+    
+    let update e (m : Model) msg = 
+        match msg with
+            | DragStart p -> { m with lookingAround = Some p }
+            | DragStop _ -> { m with lookingAround = None }
+            | MouseDelta d when m.lookingAround.IsSome ->
+                let delta = Constant.PiTimesTwo * d * 8.0
+                let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
+
+                let newLocation = t.TransformDir m.camera.Location
+                let tempcam = m.camera.WithLocation newLocation
+                let newForward = (m.center |> center) - newLocation |> Vec.normalize
+                { m with camera = tempcam.WithForward newForward }
+            | TimeStep dt -> 
+                let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
+                let speed = dt * 0.01
+                { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
+            | ChangeCenter c -> { m with center = Some c }
+            | _ -> m
+
+    let subscriptions (time : IMod<_>) (m : Model) =
+        Many [
+            Input.mouse Mouse.down Mouse.left DragStart
+            Input.mouse Mouse.up   Mouse.left DragStop
+            
+            Input.moveDelta MouseDelta
+
+            Input.toggleKey Keys.W (fun _ -> ChangeCenter V3d.OOI)  (fun _ -> ChangeCenter V3d.OOI)
+            Input.toggleKey Keys.S (fun _ -> ChangeCenter V3d.OOO)  (fun _ -> ChangeCenter V3d.OOO)
+
+            Sub.ofMod time (fun elapsedMs _ -> Some <| TimeStep elapsedMs)
+        ]
+    
+    let initial = { 
+        camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOI V3d.OOI
+        frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null
+        lookingAround = None
+        forward = V2d.OO
+        forwardSpeed = 0.0
+        center = Some V3d.OOI
+        }
+
+    let ofPickMsg _ m = []
+
+    let app time : App<Model,MModel,Action,ISg<Action>> =
+        {
+            initial = initial
+            update = update
+            view = view
+            ofPickMsg = ofPickMsg 
+            subscriptions = subscriptions (Mod.map Animate time)
+        }
 
 module CameraTest =
 
@@ -407,7 +503,6 @@ module CameraTest =
     open Primitives
 
     open Input
-
 
     type Action = 
         | MouseDelta of V2d
@@ -460,13 +555,20 @@ module CameraTest =
             Input.toggleKey Keys.W (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
             Input.toggleKey Keys.S (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
             Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
-            Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)
+            Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)            
 
             // Sub.time ( TimeSpan.FromMilliseconds 10.0 ) Animate // use for fixed times
             Sub.ofMod time (fun elapsedMs _ -> Some <| TimeStep elapsedMs)
         ]
 
-    let initial = { camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI; frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null; lookingAround = None; forward = V2d.OO; forwardSpeed = 0.0 }
+    let initial = { 
+        camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+        frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null
+        lookingAround = None
+        forward = V2d.OO
+        forwardSpeed = 0.0 
+        center = None
+        }
 
     let app time : App<Model,MModel,Action,ISg<Action>> =
         {

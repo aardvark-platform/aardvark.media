@@ -15,6 +15,7 @@ module CameraTest =
         camera : CameraView
         frustum : Frustum 
         lookingAround : Option<PixelPosition>
+        center : Option<V3d>
 
         forward : V2d
         forwardSpeed : float

@@ -16,6 +16,7 @@ module Generated =
               camera : CameraView
               frustum : Frustum
               lookingAround : Option<PixelPosition>
+              center : Option<V3d>
               forward : V2d
               forwardSpeed : float }
             
@@ -24,6 +25,7 @@ module Generated =
                   mcamera = Mod.init (x.camera)
                   mfrustum = Mod.init (x.frustum)
                   mlookingAround = Mod.init (x.lookingAround)
+                  mcenter = Mod.init (x.center)
                   mforward = Mod.init (x.forward)
                   mforwardSpeed = Mod.init (x.forwardSpeed) }
             
@@ -38,6 +40,7 @@ module Generated =
               mcamera : ModRef<CameraView>
               mfrustum : ModRef<Frustum>
               mlookingAround : ModRef<Option<PixelPosition>>
+              mcenter : ModRef<Option<V3d>>
               mforward : ModRef<V2d>
               mforwardSpeed : ModRef<float> }
             member x.Apply(arg0 : Model, reuseCache : ReuseCache) = 
@@ -46,5 +49,6 @@ module Generated =
                     x.mcamera.Value <- arg0.camera
                     x.mfrustum.Value <- arg0.frustum
                     x.mlookingAround.Value <- arg0.lookingAround
+                    x.mcenter.Value <- arg0.center
                     x.mforward.Value <- arg0.forward
                     x.mforwardSpeed.Value <- arg0.forwardSpeed

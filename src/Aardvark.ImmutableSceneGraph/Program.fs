@@ -64,8 +64,8 @@ module Shader =
 
 [<EntryPoint>]
 let main argv = 
-//    InteractionTest.run()
-//    System.Environment.Exit 0
+    InteractionTest.run()
+    System.Environment.Exit 0
 
     Chromium.init()
 
@@ -160,7 +160,7 @@ let main argv =
 
     let sceneTask = 
         RenderTask.ofList [
-            app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Green)
+            app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Gray)
             app.Runtime.CompileRender(win.FramebufferSignature, sg)
         ]
     let sceneSize = renderControlViewport |> Mod.map (fun box -> box.Size )
