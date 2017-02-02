@@ -18,8 +18,11 @@ open Aardvark.Cef.Internal.CefExtensions
 module IPC = Aardvark.Cef.Internal.IPC
 
 type Content =
+    | Css of string
+    | Javascript of string
     | Html of string
     | Binary of byte[]
+    | Error
 
 type LoadHandler(parent : BrowserControl) =
     inherit CefLoadHandler()
@@ -41,8 +44,14 @@ and ResourceHandler(parent : BrowserControl, content : Content) =
 
     let mime, content = 
         match content with
+            | Error ->
+                "error", [||]
+            | Css content ->
+                "text/css", System.Text.Encoding.UTF8.GetBytes(content)
+            | Javascript content ->
+                "text/javascript", System.Text.Encoding.UTF8.GetBytes(content)
             | Html content ->
-                "text/html", Array.append (System.Text.Encoding.UTF8.GetBytes(content)) [|0uy|]
+                "text/html", System.Text.Encoding.UTF8.GetBytes(content)
             | Binary content ->
                 "application/octet-stream", content
 
@@ -50,8 +59,11 @@ and ResourceHandler(parent : BrowserControl, content : Content) =
     let mutable remaining = content.LongLength
 
     override x.ProcessRequest(request : CefRequest, callback : CefCallback) =
-        callback.Continue()
-        true
+        if mime = "error" then
+            false
+        else
+            callback.Continue()
+            true
 
     override x.GetResponseHeaders(response : CefResponse, response_length : byref<int64>, redirectUrl : byref<string>) =
         response_length <- content.LongLength
@@ -105,11 +117,21 @@ and BrowserClient(parent : BrowserControl) =
 
 and BrowserControl() as this =
     inherit CefWebBrowser()
+    static let queryRx = System.Text.RegularExpressions.Regex @"(\?|\&)(?<name>[^\=]+)\=(?<value>[^\&]*)"
+
+    static let parseQuery (q : string) =
+        let mutable res = Map.empty
+        for m in queryRx.Matches q do
+            let name = m.Groups.["name"].Value
+            let value = m.Groups.["value"].Value
+            res <- Map.add name value res
+        res
+
 
     let mutable bf = Unchecked.defaultof<_>
     let ownBrowser = System.Threading.Tasks.TaskCompletionSource<CefBrowser * CefFrame>()
 
-    let pages = System.Collections.Generic.Dictionary<string, System.Uri -> Content>()
+    let pages = System.Collections.Generic.Dictionary<string, Map<string, string> -> Content>()
 
     let pending = System.Collections.Concurrent.ConcurrentDictionary<IPC.MessageToken, System.Threading.Tasks.TaskCompletionSource<IPC.Reply>>()
     let events = Event<_>()
@@ -123,11 +145,11 @@ and BrowserControl() as this =
         let url = System.Uri(url)
         let path = url.GetLeftPart(System.UriPartial.Path)
         match pages.TryGetValue path with
-            | (true, c) -> pageContent <- c url; true
+            | (true, c) -> pageContent <- c (parseQuery url.Query); true
             | _ -> false
 
     member x.Item
-        with set (url : string) (content : System.Uri -> Content) = 
+        with set (url : string) (content : Map<string, string> -> Content) = 
             let url = System.Uri(url)
             let path = url.GetLeftPart(System.UriPartial.Path)
             pages.[path] <- content
@@ -143,6 +165,12 @@ and BrowserControl() as this =
 
     member x.LoadFaulted(err : string, url : string) =
         printfn "LoadFaulted"
+
+    member x.Start(js : string) =
+        async {
+            let! (browser, frame) = ownBrowser.Task |> Async.AwaitTask
+            browser.Send(CefProcessId.Renderer, IPC.Execute(IPC.MessageToken.Null, js))
+        } |> Async.Start
 
     member x.Run(js : string) =
         async {
@@ -211,56 +239,64 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
     let mutable renderTask = RenderTask.empty
     let time = Mod.custom (fun _ -> DateTime.Now)
 
-    let render (size : V2i) =
-        if size <> currentSize.Value then
-            transact (fun () -> currentSize.Value <- size)
+    let sw = System.Diagnostics.Stopwatch()
+    let mutable counter = 0
+    do sw.Start()
 
-        let fbo = framebuffer.GetValue()
-        clearTask.Run(RenderToken.Empty, fbo)
-        renderTask.Run(RenderToken.Empty, fbo)
+    let renderResult =
+        Mod.custom (fun self ->
+            let fbo = framebuffer.GetValue self
+            clearTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
+            renderTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
 
-        let color = colorTexture.GetValue()
-        let image = colorImage.GetValue()
-        runtime.Download(unbox color, 0, 0, image)
+            let color = colorTexture.GetValue(self)
+            let image = colorImage.GetValue(self)
+            runtime.Download(unbox color, 0, 0, image)
 
-        transact (fun () -> 
-            time.MarkOutdated()
+            if counter >= 100 then
+                let fps = float counter / sw.Elapsed.TotalSeconds
+                printfn "%.3f fps" fps
+                sw.Restart()
+                counter <- 0
+
+            counter <- counter + 1
+            image
         )
 
-        image
+    let cb = 
+        renderResult.AddMarkingCallback(fun () ->
+            parent.Start (sprintf "render('%s');" id)
+        )
 
-    let parseSize (url : System.Uri) =
-        let mutable w = -1
-        let mutable h = -1
-        let query = System.Net.WebUtility.UrlDecode(url.Query)
-        for m in queryRx.Matches query do
-            let name = m.Groups.["name"].Value
-            let value = m.Groups.["value"].Value
+    let binaryData (query : Map<string, string>) =
+        match Map.tryFind "w" query, Map.tryFind "h" query with
+            | Some w, Some h ->
+                match Int32.TryParse w, Int32.TryParse h with
+                    | (true, w), (true, h) ->
+                        let size = V2i(w,h)
+                        if size <> currentSize.Value then
+                            transact (fun () -> currentSize.Value <- size)
 
-            match name with
-                | "w" -> 
-                    match Int32.TryParse value with
-                        | (true, v) -> w <- v
-                        | _ -> ()
-                | "h" ->
-                    match Int32.TryParse value with
-                        | (true, v) -> h <- v
-                        | _ -> ()
-                | _ ->
-                    ()
-        if w <= 0 || h <= 0 then
-            failwith ""
+                        let image = renderResult.GetValue()
 
-        V2i(w,h)
+                        transact (fun () -> 
+                            time.MarkOutdated()
+                        )
 
-    let binaryData (url : System.Uri) =
-        let size = parseSize url
-        let image = render size
-        Binary image.Volume.Data
+                        Binary image.Volume.Data
+                    | _ ->
+                        Error
+            | _ ->
+                Error
+                        
 
     let url = sprintf "http://aardvark.local/render/%s" id
 
     do parent.[url] <- binaryData
+
+    member x.Background
+        with get() = backgroundColor.Value
+        and set v = transact (fun () -> backgroundColor.Value <- v)
 
     member x.Dispose() =
         parent.RemovePage url |> ignore
@@ -340,53 +376,104 @@ let main argv =
                 do! DefaultSurfaces.simpleLighting
             }
 
+    //renderControl.Background <- C4f(0.0f, 0.0f, 0.0f, 0.0f)
     renderControl.RenderTask <- app.Runtime.CompileRender(renderControl.FramebufferSignature, sg)
 
 
     ctrl.StartUrl <- "http://aardvark.local"
 
-    let mainPage (u : System.Uri) =
+    let style (u : Map<string, string>) =
+        Css """
+
+        body {
+            margin: 0px;
+            padding: 0px;
+            border: 0px;
+        }
+
+        div.aardvark {
+            
+        }
+
+        """
+
+    let boot (u : Map<string, string>) =
+        Javascript """
+
+       
+            function render(id) {
+                var $div = $('#'+ id);
+                var w = $div.width();
+                var h = $div.height();
+
+                $canvas = $('#'+ id + ' canvas');
+	            var canvas = $canvas.get(0);
+	            var ctx = canvas.getContext('2d');
+                
+                if(canvas.width != w || canvas.height != h) {
+                    canvas.width = w;
+                    canvas.height = h;
+                }
+
+	            var oReq = new XMLHttpRequest();
+	            oReq.open("GET", "http://aardvark.local/render/" + id + "?w=" + w + "&h=" + h, true);
+	            oReq.responseType = "arraybuffer";
+
+	            oReq.onload = 
+		            function (oEvent) {
+			            var arrayBuffer = oReq.response;
+			            if (arrayBuffer) {
+				            var byteArray = new Uint8Array(arrayBuffer);
+				            var imageData = ctx.createImageData(w, h);
+				            imageData.data.set(byteArray);
+				            ctx.putImageData(imageData, 0, 0);
+			            }
+		            };
+
+	            oReq.send(null);
+            }
+
+            function init(id) {
+                var $div = $('#'+ id);
+                var w = $div.width();
+                var h = $div.height();
+                $div.append($('<canvas/>'));
+
+                render(id);
+            }
+
+
+            $(document).ready(function() {
+	            $('div.aardvark').each(function() {
+                    init($(this).get(0).id);
+	            });
+            });
+        """
+
+    let mainPage (u : Map<string, string>) =
         Html """
             <html>
                 <head>
                     <title>BLA</title>
-                    <script>
-                        function load() {
-                            var canvas = document.getElementById('yeah');
-                            var ctx = canvas.getContext('2d');
-
-                            var w = canvas.width;
-                            var h = canvas.height;
-
-                            var oReq = new XMLHttpRequest();
-                            oReq.open("GET", "http://aardvark.local/render/yeah?w=" + w + "&h=" + h, true);
-                            oReq.responseType = "arraybuffer";
-
-                            oReq.onload = function (oEvent) {
-                                var arrayBuffer = oReq.response;
-                                if (arrayBuffer) {
-                                    var byteArray = new Uint8Array(arrayBuffer);
-                                    var imageData = ctx.getImageData(0, 0, w, h);
-                                    imageData.data.set(byteArray);
-                                    ctx.putImageData(imageData, 0, 0);
-                                }
-                            };
-
-                            oReq.send(null);
-                        }
-                    </script>
+                    <link rel="stylesheet" type="text/css" href="http://aardvark.local/style.css">
+                    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+                    <script src="http://aardvark.local/boot.js"></script>
                 </head>
                 <body>
-                    <h1 id='bla'>Hi There</h1>
-                    <button onclick="load()">BlaBla</button>
-                    <br>
-                    <canvas id='yeah' width='640' height='480'></canvas>
+                    <button onclick="aardvark.processEvent('button', 'onclick')">Click Me</button>
+                    <div class='aardvark' id='yeah' style="height: 100%; width: 100%" />
+
                 </body>
             </html>
         """
 
     ctrl.["http://aardvark.local"] <- mainPage
+    ctrl.["http://aardvark.local/boot.js"] <- boot
+    ctrl.["http://aardvark.local/style.css"] <- style
 
+    ctrl.Events.Add (fun e ->
+        printfn "{ sender = %A; name = %A }" e.sender e.name
+    )
 
     use form = new Form()
     form.Width <- 1024
