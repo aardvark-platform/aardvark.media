@@ -42,5 +42,6 @@ type Browser(signature : IFramebufferSignature, time : IMod<System.DateTime>, ru
         member x.Dispose() = (client :> IDisposable).Dispose()
 
 module Chromium =
+    let init'(windowless : bool) = Cef.init' windowless
     let init() = Cef.init()
     let shutdown() = Cef.shutdown()

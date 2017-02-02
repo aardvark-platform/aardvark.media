@@ -13,7 +13,7 @@ module Cef =
         let args = Environment.GetCommandLineArgs()
         Array.sub args 1 (args.Length - 1)
 
-    let init() =
+    let init'(windowless : bool) =
         if not initialized then
             initialized <- true
             ChromiumUtilities.unpackCef()
@@ -39,7 +39,7 @@ module Cef =
             settings.RemoteDebuggingPort <- 1337
             settings.IgnoreCertificateErrors <- true
             settings.LocalesDirPath <- "locales"
-            settings.WindowlessRenderingEnabled <- true
+            settings.WindowlessRenderingEnabled <- windowless
             
             settings.CommandLineArgsDisabled <- false
 
@@ -51,6 +51,9 @@ module Cef =
                     Console.WriteLine("[Aardvark.Cef] shutting down app domain -> shutting down cef. This is a fallback. consider shutting down chromium yourself coorporatively.")
                     CefRuntime.Shutdown()
             )
+
+    let init() =
+        init' true
 
     let shutdown() =
         tearedDown <- true
