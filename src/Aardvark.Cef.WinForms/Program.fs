@@ -11,18 +11,12 @@ open Microsoft.FSharp.NativeInterop
 
 open Aardvark.Base
 open Aardvark.Cef
+open Aardvark.Cef.WinForms
 open Xilium.CefGlue
 open Xilium.CefGlue.WindowsForms
 
 open Aardvark.Cef.Internal.CefExtensions
 module IPC = Aardvark.Cef.Internal.IPC
-
-type Content =
-    | Css of string
-    | Javascript of string
-    | Html of string
-    | Binary of byte[]
-    | Error
 
 type LoadHandler(parent : BrowserControl) =
     inherit CefLoadHandler()
@@ -214,7 +208,7 @@ open Aardvark.Rendering
 open Aardvark.Rendering.GL
 open Aardvark.Application
 open Aardvark.Application.WinForms
-
+open OpenTK.Graphics.OpenGL
 
 type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) =
 
@@ -230,10 +224,10 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
             ]
         )
 
-    let framebuffer = runtime.CreateFramebuffer(signature, Set.ofList [DefaultSemantic.Colors], currentSize)
+    let framebuffer = runtime.CreateFramebuffer(signature, Set.ofList [], currentSize)
     do framebuffer.Acquire()
 
-    let colorTexture = framebuffer.GetOutputTexture(DefaultSemantic.Colors)
+    //let colorTexture = framebuffer.GetOutputTexture(DefaultSemantic.Colors)
     let colorImage = currentSize |> Mod.map (fun s -> PixImage<byte>(Col.Format.RGBA, s))
     let clearTask = runtime.CompileClear(signature, backgroundColor, Mod.constant 1.0)
     let mutable renderTask = RenderTask.empty
@@ -245,27 +239,51 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
 
     let renderResult =
         Mod.custom (fun self ->
+            use t = runtime.ContextLock
+
             let fbo = framebuffer.GetValue self
             clearTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
             renderTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
 
-            let color = colorTexture.GetValue(self)
             let image = colorImage.GetValue(self)
-            runtime.Download(unbox color, 0, 0, image)
+//            let color = colorTexture.GetValue(self)
+//            runtime.Download(unbox color, 0, 0, image)
 
-            if counter >= 100 then
-                let fps = float counter / sw.Elapsed.TotalSeconds
-                printfn "%.3f fps" fps
-                sw.Restart()
-                counter <- 0
+            let fbo = unbox<Framebuffer> fbo
+            let color = unbox<Renderbuffer> fbo.Attachments.[DefaultSemantic.Colors]
 
-            counter <- counter + 1
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo.Handle)
+
+            let size = color.Size
+            let sizeInBytes = 4 * size.X * size.Y 
+
+            let b = GL.GenBuffer()
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, b)
+            GL.BufferStorage(BufferTarget.PixelPackBuffer, 4n * nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
+
+            let ptr = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly)
+            Marshal.Copy(ptr, image.Volume.Data, 0, int sizeInBytes)
+            GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
+            
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+            GL.DeleteBuffer(b)
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0)
+
             image
         )
+
 
     let cb = 
         renderResult.AddMarkingCallback(fun () ->
             parent.Start (sprintf "render('%s');" id)
+        )
+
+    do  parent.Events.Add (fun e ->
+            if e.sender = id && e.name = "rendered" then
+                transact (fun () -> 
+                    time.MarkOutdated()
+                )
         )
 
     let binaryData (query : Map<string, string>) =
@@ -277,11 +295,16 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
                         if size <> currentSize.Value then
                             transact (fun () -> currentSize.Value <- size)
 
-                        let image = renderResult.GetValue()
 
-                        transact (fun () -> 
-                            time.MarkOutdated()
-                        )
+                        if counter >= 100 then
+                            let fps = float counter / sw.Elapsed.TotalSeconds
+                            printfn "%.3f fps" fps
+                            sw.Restart()
+                            counter <- 0
+
+                        counter <- counter + 1
+
+                        let image = renderResult.GetValue()
 
                         Binary image.Volume.Data
                     | _ ->
@@ -292,13 +315,99 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
 
     let url = sprintf "http://aardvark.local/render/%s" id
 
+    let keyboard = EventKeyboard()
+    let mouse = EventMouse(false)
+    let mutable lastPos = PixelPosition()
+
+    let pos x y =
+        let res = PixelPosition(x,y,currentSize.Value.X, currentSize.Value.Y)
+        lastPos <- res
+        res
+
+    let button b =
+        match b with
+            | 0 -> MouseButtons.Left
+            | 1 -> MouseButtons.Middle
+            | 2 -> MouseButtons.Right
+            | _ -> MouseButtons.None
+
     do parent.[url] <- binaryData
+
+
+    let eventSubscription =
+        parent.Events.Subscribe (fun e ->
+            if e.sender = id then
+                let s = currentSize.Value
+
+                match e.name with
+                    | "keydown" ->
+                        let key = Int32.Parse e.args.[0] |> KeyConverter.keyFromVirtualKey
+                        keyboard.KeyDown(key)
+
+                    | "keyup" ->
+                        let key = Int32.Parse e.args.[0] |> KeyConverter.keyFromVirtualKey
+                        keyboard.KeyUp(key)
+
+                    | "keypress" ->
+                        let c = e.args.[0].[0]
+                        keyboard.KeyPress(c)
+                        
+                    | "click" ->
+                        let x = Int32.Parse e.args.[0]
+                        let y = Int32.Parse e.args.[1]
+                        let b = Int32.Parse e.args.[2] |> button
+                        mouse.Click(pos x y, b)
+
+                    | "dblclick" ->
+                        let x = Int32.Parse e.args.[0]
+                        let y = Int32.Parse e.args.[1]
+                        let b = Int32.Parse e.args.[2] |> button
+                        mouse.DoubleClick(pos x y, b)
+
+                    | "mousedown" ->
+                        let x = Int32.Parse e.args.[0]
+                        let y = Int32.Parse e.args.[1]
+                        let b = Int32.Parse e.args.[2] |> button
+                        mouse.Down(pos x y, b)
+
+                    | "mouseup" ->
+                        let x = Int32.Parse e.args.[0]
+                        let y = Int32.Parse e.args.[1]
+                        let b = Int32.Parse e.args.[2] |> button
+                        mouse.Up(pos x y, b)
+                        
+                    | "mousemove" ->
+                        let x = Int32.Parse e.args.[0]
+                        let y = Int32.Parse e.args.[1]
+                        mouse.Move(pos x y)
+                        
+                    | "mouseenter" ->
+                        let x = Int32.Parse e.args.[0]
+                        let y = Int32.Parse e.args.[1]
+                        mouse.Enter(pos x y)
+                        
+                    | "mouseout" ->
+                        let x = Int32.Parse e.args.[0]
+                        let y = Int32.Parse e.args.[1]
+                        mouse.Leave(pos x y)
+                        
+                    | "mousewheel" ->
+                        let delta = Double.Parse(e.args.[0], System.Globalization.CultureInfo.InvariantCulture)
+                        mouse.Scroll(lastPos, delta)
+                       
+                    | _ ->
+                        ()
+
+
+
+        )
 
     member x.Background
         with get() = backgroundColor.Value
         and set v = transact (fun () -> backgroundColor.Value <- v)
 
     member x.Dispose() =
+        eventSubscription.Dispose()
         parent.RemovePage url |> ignore
         framebuffer.Release()
         clearTask.Dispose()
@@ -320,6 +429,9 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
     member x.Samples = 1
     
     member x.Runtime = runtime
+    
+    member x.Keyboard = keyboard :> IKeyboard
+    member x.Mouse = mouse :> IMouse
 
     interface IRenderTarget with
         member x.FramebufferSignature = x.FramebufferSignature
@@ -332,8 +444,8 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
         member x.Time = x.Time
 
     interface IRenderControl with
-        member x.Keyboard = failwith ""
-        member x.Mouse = failwith ""
+        member x.Keyboard = x.Keyboard
+        member x.Mouse = x.Mouse
 
     interface IDisposable with
         member x.Dispose() = x.Dispose()
@@ -356,16 +468,21 @@ let main argv =
     Aardvark.Init()
     Chromium.init' false
 
-    use ctrl = new BrowserControl()
-
     let app = new OpenGlApplication()
-    let renderControl = new CefRenderControl(app.Runtime, ctrl, "yeah")
+
+    // create a browser and a nested renderControl
+    use ctrl = new BrowserControl()
+    let yeah = new CefRenderControl(app.Runtime, ctrl, "yeah")
+
+    let sw = Stopwatch()
+    sw.Start()
+    // create a rendertask
+    let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
+    let proj = yeah.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
 
 
-    let view = renderControl.Time |> Mod.map (fun t -> CameraView.lookAt (M44d.RotationZ(0.5 * float t.Ticks / float TimeSpan.TicksPerSecond).TransformPos(V3d.III * 6.0)) V3d.Zero V3d.OOI)
-    let proj = renderControl.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
-
-
+    let view =
+        view |> DefaultCameraController.control yeah.Mouse yeah.Keyboard yeah.Time
 
     let sg =
         Sg.box' C4b.Red (Box3d(-V3d.III, V3d.III))
@@ -376,80 +493,16 @@ let main argv =
                 do! DefaultSurfaces.simpleLighting
             }
 
-    //renderControl.Background <- C4f(0.0f, 0.0f, 0.0f, 0.0f)
-    renderControl.RenderTask <- app.Runtime.CompileRender(renderControl.FramebufferSignature, sg)
+    yeah.Background <- C4f(0.0f, 0.0f, 0.0f, 0.0f)
+    yeah.RenderTask <- app.Runtime.CompileRender(yeah.FramebufferSignature, sg)
 
+//    // subscribe to all events
+//    ctrl.Events.Add (fun e ->
+//        if e.name <> "rendered" then
+//            printfn "{ sender = %A; name = %A; args = %A }" e.sender e.name e.args
+//    )
 
-    ctrl.StartUrl <- "http://aardvark.local"
-
-    let style (u : Map<string, string>) =
-        Css """
-
-        body {
-            margin: 0px;
-            padding: 0px;
-            border: 0px;
-        }
-
-        div.aardvark {
-            
-        }
-
-        """
-
-    let boot (u : Map<string, string>) =
-        Javascript """
-
-       
-            function render(id) {
-                var $div = $('#'+ id);
-                var w = $div.width();
-                var h = $div.height();
-
-                $canvas = $('#'+ id + ' canvas');
-	            var canvas = $canvas.get(0);
-	            var ctx = canvas.getContext('2d');
-                
-                if(canvas.width != w || canvas.height != h) {
-                    canvas.width = w;
-                    canvas.height = h;
-                }
-
-	            var oReq = new XMLHttpRequest();
-	            oReq.open("GET", "http://aardvark.local/render/" + id + "?w=" + w + "&h=" + h, true);
-	            oReq.responseType = "arraybuffer";
-
-	            oReq.onload = 
-		            function (oEvent) {
-			            var arrayBuffer = oReq.response;
-			            if (arrayBuffer) {
-				            var byteArray = new Uint8Array(arrayBuffer);
-				            var imageData = ctx.createImageData(w, h);
-				            imageData.data.set(byteArray);
-				            ctx.putImageData(imageData, 0, 0);
-			            }
-		            };
-
-	            oReq.send(null);
-            }
-
-            function init(id) {
-                var $div = $('#'+ id);
-                var w = $div.width();
-                var h = $div.height();
-                $div.append($('<canvas/>'));
-
-                render(id);
-            }
-
-
-            $(document).ready(function() {
-	            $('div.aardvark').each(function() {
-                    init($(this).get(0).id);
-	            });
-            });
-        """
-
+    // define the main page
     let mainPage (u : Map<string, string>) =
         Html """
             <html>
@@ -457,32 +510,33 @@ let main argv =
                     <title>BLA</title>
                     <link rel="stylesheet" type="text/css" href="http://aardvark.local/style.css">
                     <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+                    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js"></script>
                     <script src="http://aardvark.local/boot.js"></script>
                 </head>
                 <body>
                     <button onclick="aardvark.processEvent('button', 'onclick')">Click Me</button>
+                    <input type="text"></input>
                     <div class='aardvark' id='yeah' style="height: 100%; width: 100%" />
-
                 </body>
             </html>
         """
 
+
+    // register all pages
+    ctrl.["http://aardvark.local/style.css"] <- Bootstrap.style
+    ctrl.["http://aardvark.local/boot.js"] <- Bootstrap.boot
     ctrl.["http://aardvark.local"] <- mainPage
-    ctrl.["http://aardvark.local/boot.js"] <- boot
-    ctrl.["http://aardvark.local/style.css"] <- style
+    ctrl.StartUrl <- "http://aardvark.local"
 
-    ctrl.Events.Add (fun e ->
-        printfn "{ sender = %A; name = %A }" e.sender e.name
-    )
-
+    // create a form containing the browser
     use form = new Form()
     form.Width <- 1024
     form.Height <- 768
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
 
+    // run it
     Application.Run form
-
     Chromium.shutdown()
 
-    0 // return an integer exit code
+    0 

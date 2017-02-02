@@ -57,6 +57,7 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
+    <Compile Include="Bootstrap.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
