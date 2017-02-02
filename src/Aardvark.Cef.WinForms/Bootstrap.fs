@@ -15,6 +15,8 @@ module Bootstrap =
         Css """
 
         body {
+            width: 100%;
+            height: 100%;
             margin: 0px;
             padding: 0px;
             border: 0px;
@@ -25,7 +27,7 @@ module Bootstrap =
         }
 
         canvas {
-            transform: scale(1, -1);
+            transform: scale(1,-1);
             cursor: default;
         }
 
@@ -45,6 +47,7 @@ module Bootstrap =
                 if(canvas.hasEventHandlers)
                     return;
 
+                canvas.isRendering = false;
                 canvas.contentEditable = true;
                 canvas.hasEventHandlers = true;
 
@@ -227,8 +230,10 @@ module Bootstrap =
                 var $div = $('#'+ id);
                 var w = $div.width();
                 var h = $div.height();
-
                 var div = $div.get(0);
+
+                if(div.isRendering) return;
+                div.isRendering = true;
 
 	            var oReq = new XMLHttpRequest();
 	            oReq.open("GET", "http://aardvark.local/render/" + id + "?w=" + w + "&h=" + h, true);
@@ -241,12 +246,14 @@ module Bootstrap =
 				            var byteArray = new Uint8Array(arrayBuffer);
                             renderGL(id, w, h, byteArray);
                         }
+                        div.isRendering = false;
                         aardvark.processEvent(id, 'rendered');
                     };
 
                 oReq.onerror =
                     function () {
-                        div.rendering = 0;
+                        div.isRendering = false;
+                        aardvark.processEvent(id, 'rendered');
                     };
 
 	            oReq.send(null);
@@ -260,6 +267,7 @@ module Bootstrap =
                 $canvas = $('#'+ id + ' canvas');
 	            var canvas = $canvas.get(0);
            
+
 	            var oReq = new XMLHttpRequest();
 	            oReq.open("GET", "http://aardvark.local/render/" + id + "?w=" + w + "&h=" + h, true);
 	            oReq.responseType = "arraybuffer";
@@ -268,13 +276,14 @@ module Bootstrap =
 		            function (oEvent) {
 			            var arrayBuffer = oReq.response;
 			            if (arrayBuffer) { 
-				            var byteArray = new Uint8ClampedArray(arrayBuffer);
-                            var imageData = new ImageData(byteArray, w, h);
 
                             if(canvas.width != w || canvas.height != h) {
                                 canvas.width = w;
                                 canvas.height = h;
                             }
+                            
+				            var byteArray = new Uint8ClampedArray(arrayBuffer);
+                            var imageData = new ImageData(byteArray, w, h);
 	                        var ctx = canvas.getContext('2d');
                             ctx.save();
 				            ctx.putImageData(imageData, 0, 0);
@@ -283,7 +292,16 @@ module Bootstrap =
                         aardvark.processEvent(id, 'rendered');
 		            };
 
+                oReq.onerror =
+                    function() {
+                        aardvark.processEvent(id, 'rendered');
+                    };
+
 	            oReq.send(null);
+            }
+
+            function invalidate(id) {
+                render(id);
             }
 
             function init(id) {

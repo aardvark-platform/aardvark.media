@@ -70,7 +70,11 @@ and ResourceHandler(parent : BrowserControl, content : Content) =
     override x.ReadResponse(data_out : Stream, bytes_to_read : int, bytes_read : byref<int>, callback : CefCallback) =
         if remaining > 0L then
             let actual = min (int64 bytes_to_read) remaining
-            data_out.Write(content, int offset, int actual)
+
+            let data_out = unbox<UnmanagedMemoryStream> data_out
+            Marshal.Copy(content, int offset, NativePtr.toNativeInt data_out.PositionPointer, int actual)
+
+            //data_out.Write(content, int offset, int actual)
 
             offset <- offset + actual
             remaining <- remaining - actual
@@ -186,7 +190,7 @@ and BrowserControl() as this =
     member x.OnProcessMessageReceived(source : CefBrowser, proc : CefProcessId, msg : CefProcessMessage) =
         match IPC.tryGet<Aardvark.Cef.Internal.Event> msg with
             | Some evt ->
-                events.Trigger evt
+                System.Threading.Tasks.Task.Factory.StartNew (fun () -> events.Trigger evt) |> ignore
             | None -> 
                 match IPC.tryGet<IPC.Reply> msg with
                     | Some reply ->
@@ -228,7 +232,7 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
     do framebuffer.Acquire()
 
     //let colorTexture = framebuffer.GetOutputTexture(DefaultSemantic.Colors)
-    let colorImage = currentSize |> Mod.map (fun s -> PixImage<byte>(Col.Format.RGBA, s))
+    //let colorImage = currentSize |> Mod.map (fun s -> PixImage<byte>(Col.Format.RGBA, s))
     let clearTask = runtime.CompileClear(signature, backgroundColor, Mod.constant 1.0)
     let mutable renderTask = RenderTask.empty
     let time = Mod.custom (fun _ -> DateTime.Now)
@@ -236,7 +240,8 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
     let sw = System.Diagnostics.Stopwatch()
     let mutable counter = 0
     do sw.Start()
-
+    
+    let outputThing = AdaptiveObject()
     let renderResult =
         Mod.custom (fun self ->
             use t = runtime.ContextLock
@@ -245,45 +250,65 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
             clearTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
             renderTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
 
-            let image = colorImage.GetValue(self)
-//            let color = colorTexture.GetValue(self)
-//            runtime.Download(unbox color, 0, 0, image)
 
             let fbo = unbox<Framebuffer> fbo
             let color = unbox<Renderbuffer> fbo.Attachments.[DefaultSemantic.Colors]
 
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo.Handle)
+
 
             let size = color.Size
             let sizeInBytes = 4 * size.X * size.Y 
 
+            GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo.Handle)
             let b = GL.GenBuffer()
             GL.BindBuffer(BufferTarget.PixelPackBuffer, b)
             GL.BufferStorage(BufferTarget.PixelPackBuffer, 4n * nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+            
             GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
 
             let ptr = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly)
+            let image = PixImage<byte>(Col.Format.RGBA, size)
             Marshal.Copy(ptr, image.Volume.Data, 0, int sizeInBytes)
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
             
             GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
             GL.DeleteBuffer(b)
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0)
-
             image
         )
 
 
+    let queue = new System.Collections.Concurrent.BlockingCollection<Choice<unit, System.Threading.Tasks.TaskCompletionSource<PixImage<byte>>>>()
+
+    let renderer = 
+        async {
+            do! Async.SwitchToNewThread()
+            while true do
+                let e = queue.Take()
+
+                try
+                    match e with
+                        | Choice2Of2 tcs ->
+                            let res = renderResult.GetValue(outputThing)
+                            tcs.SetResult res
+                        | Choice1Of2 () ->
+                            AdaptiveSystemState.popReadLocks []
+                            outputThing.OutOfDate <- false
+                            transact (fun () -> time.MarkOutdated())
+                with e ->
+                    Log.warn "%A" e
+        }
+
+    do Async.Start renderer
+
     let cb = 
-        renderResult.AddMarkingCallback(fun () ->
+        outputThing.AddMarkingCallback(fun () ->
             parent.Start (sprintf "render('%s');" id)
         )
 
     do  parent.Events.Add (fun e ->
             if e.sender = id && e.name = "rendered" then
-                transact (fun () -> 
-                    time.MarkOutdated()
-                )
+                queue.Add(Choice1Of2 ())
         )
 
     let binaryData (query : Map<string, string>) =
@@ -304,8 +329,10 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
 
                         counter <- counter + 1
 
-                        let image = renderResult.GetValue()
+                        let tcs = System.Threading.Tasks.TaskCompletionSource<PixImage<byte>>()
+                        queue.Add(Choice2Of2 tcs)
 
+                        let image = tcs.Task.Result
                         Binary image.Volume.Data
                     | _ ->
                         Error
@@ -474,6 +501,7 @@ let main argv =
     use ctrl = new BrowserControl()
     let yeah = new CefRenderControl(app.Runtime, ctrl, "yeah")
 
+
     let sw = Stopwatch()
     sw.Start()
     // create a rendertask
@@ -495,7 +523,7 @@ let main argv =
 
     yeah.Background <- C4f(0.0f, 0.0f, 0.0f, 0.0f)
     yeah.RenderTask <- app.Runtime.CompileRender(yeah.FramebufferSignature, sg)
-
+    
 //    // subscribe to all events
 //    ctrl.Events.Add (fun e ->
 //        if e.name <> "rendered" then
@@ -534,7 +562,7 @@ let main argv =
     form.Height <- 768
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
-
+    
     // run it
     Application.Run form
     Chromium.shutdown()
