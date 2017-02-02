@@ -27,7 +27,7 @@ module InteractionTest =
         use win = app.CreateSimpleRenderWindow()
 
         let cameraView = 
-            CameraView.lookAt (V3d(6.0, 6.0, 6.0)) V3d.Zero V3d.OOI
+            CameraView.lookAt (V3d(3.0, 3.0, 3.0)) V3d.Zero V3d.OOI
                 |> Mod.constant
                 //|> DefaultCameraController.control win.Mouse win.Keyboard win.Time
 
@@ -37,12 +37,13 @@ module InteractionTest =
 
         let camera = Mod.map2 Camera.create cameraView frustum
 
+
         let bounds = win.Sizes |> Mod.map (fun s -> Box2i.FromMinAndSize(V2i.OO,s))
 
         //let theApp = PlaceTransformObjects.app
         //let theApp = SimpleDrawingApp.app
-        //let theApp = CameraTest.app win.Time
-        let theApp = OrbitTest.app win.Time
+        let theApp = CameraTest.app win.Time
+        //let theApp = OrbitTest.app win.Time
 
         let adaptiveResult = Elmish.createAppAdaptiveD win.Keyboard win.Mouse bounds camera None theApp
 

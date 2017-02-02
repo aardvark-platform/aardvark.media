@@ -15,6 +15,7 @@ module PickStuff =
     type PickOccurance = { 
         mouse : MouseEvent
         point : V3d 
+        ray : Ray3d
      }
 
 
@@ -40,6 +41,10 @@ module PickStuff =
                 Some (r (PickOccurance.position pickOcc))
             else None), Solid
 
+    let anyways (r : Ray3d -> 'msg) : PickOperation<'msg> =
+        (fun pickOcc -> Some <| r pickOcc.ray), PickThrough
+            
+
     let onPickThrough (p : PickOccurance -> bool) (r : V3d -> 'msg) : PickOperation<'msg> = 
         (fun pickOcc -> 
             if p pickOcc then 
@@ -64,6 +69,7 @@ module PickStuff =
             | Cone        of center : V3d * dir : V3d * height : float * radius : float
             | Cylinder    of center : V3d * dir : V3d * height : float * radius : float
             | Quad        of Quad3d 
+            | Everything
 
         let hitPrimitive (p : Primitive) (trafo : Trafo3d) (ray : Ray3d) action =
             let mutable ha = RayHit3d.MaxRange
@@ -72,18 +78,20 @@ module PickStuff =
                     let transformed = trafo.Forward.TransformPos(s.Center)
                     let mutable ha = RayHit3d.MaxRange
                     if ray.HitsSphere(transformed,s.Radius,0.0,Double.PositiveInfinity, &ha) then
-                        [ha.T, action]
+                        [ray, ha.T, action]
                     else []
                 | Cone(center,dir,height,radius) | Cylinder(center,dir,height,radius) -> 
                     let cylinder = Cylinder3d(trafo.Forward.TransformPos center,trafo.Forward.TransformPos (center+dir*height),radius)
                     let mutable ha = RayHit3d.MaxRange
                     if ray.Hits(cylinder,0.0,Double.MaxValue,&ha) then
-                        [ha.T, action]
+                        [ray, ha.T, action]
                     else []
                 | Quad q -> 
                     let transformed = Quad3d(q.Points |> Seq.map trafo.Forward.TransformPos)
-                    if ray.HitsPlane(Plane3d.ZPlane,0.0,Double.MaxValue,&ha) then [ha.T, action]
+                    if ray.HitsQuad(transformed.P0,transformed.P1,transformed.P2,transformed.P3,0.0,Double.MaxValue,&ha) then [ray, ha.T, action]
                     else []
+                | Everything ->
+                    [ray, 0.0, action]
 
         let cylinder c d h r = Cylinder(c,d,h,r)
 
@@ -103,6 +111,7 @@ type ISg<'msg> = inherit ISg
 
 
 type AbstractApplicator<'msg>(child : IMod<ISg<'msg>>) =
+    interface ISg<'msg>
     interface IApplicator with
         member x.Child = child |> Mod.map (fun a -> a :> ISg)
     member x.Child = child
@@ -134,6 +143,16 @@ type On<'msg>(picks : list<PickOperation<'msg>>, children : list<ISg<'msg>>) =
 type Leaf<'msg>(xs : Primitive) =
     interface ISg<'msg>
     member x.Primitive = xs
+
+type ViewTrafo<'msg>(v : IMod<Trafo3d>, c : IMod<ISg<'msg>>) =
+    inherit AbstractApplicator<'msg>(c)
+    member x.ViewTrafo = v
+    member x.Child = c
+
+type ProjTrafo<'msg>(v : IMod<Trafo3d>, c : IMod<ISg<'msg>>) =
+    inherit AbstractApplicator<'msg>(c)
+    member x.ProjTrafo = v
+    member x.Child = c
 
 type Conv<'msg>(applicator : ISg -> ISg, children : ISg<'msg>) =
     let child = Mod.constant (applicator children)
@@ -189,12 +208,16 @@ type LeafSemantics() =
                     |> Sg.ofIndexedGeometry
                     |> Sg.vertexAttribute DefaultSemantic.Colors colors
                     |> Semantic.renderObjects
+            | Everything -> ASet.empty
+
       
       
 
 type PickObject<'msg> =
     {
-        trafo : IMod<Trafo3d>
+        modeltrafo : IMod<Trafo3d>
+        viewtrafo : IMod<Trafo3d>
+        projtrafo : IMod<Trafo3d>
         primitive : Primitive
         actions : list<PickOperation<'msg>>
     }  
@@ -203,7 +226,9 @@ type PickObject<'msg> =
 module PickObject =
     let map ( f : 'a -> 'b) (p : PickObject<'a>) : PickObject<'b> =
         {
-            trafo = p.trafo
+            modeltrafo = p.modeltrafo
+            viewtrafo = p.viewtrafo
+            projtrafo = p.projtrafo
             actions = List.map (fun (pick,transparency) -> (fun kind -> Option.map f (pick kind)),transparency) p.actions
             primitive = p.primitive
         }  
@@ -214,6 +239,18 @@ module SgExt =
     type ISg<'msg> with
         member x.PickObjects() : aset<PickObject<'msg>> = x?PickObjects()
         member x.PickOperations : list<PickOperation<'msg>> = x?PickOperations
+
+module Pick =
+    let pixel (p : PixelPosition) (modelTrafo : Trafo3d) (viewTrafo : Trafo3d) (projTrafo : Trafo3d) =
+        let n = p.NormalizedPosition
+        let ndc = V3d(2.0 * n.X - 1.0, 1.0 - 2.0 * n.Y, 0.0)
+        let dir = projTrafo.Backward.TransformPosProj ndc |> Vec.normalize
+        let modelViewTrafo = (modelTrafo * viewTrafo)
+        let viewDir = viewTrafo.Backward.TransformDir dir
+        let viewLoc = viewTrafo.Backward.TransformPos V3d.OOO
+        Ray3d(viewLoc, Vec.normalize viewDir)
+
+
 
 [<Semantic>]
 type PickingSemantics() =
@@ -232,6 +269,11 @@ type PickingSemantics() =
         let pi : aset<PickObject<'a>> = o.Source.PickObjects()
         ASet.map (PickObject.map o.F) pi
 
+    member x.ViewTrafo(v : ViewTrafo<'msg>) =
+        v.Child?ViewTrafo <- v.ViewTrafo
+
+    member x.ProjTrafo(v : ProjTrafo<'msg>) =
+        v.Child?ProjTrafo <- v.ProjTrafo
 
     member x.PickObjects(g : Conv<'msg>) : aset<PickObject<'msg>> =
         g.Children?PickObjects()
@@ -250,7 +292,9 @@ type PickingSemantics() =
             | [] -> ASet.empty
             | ops -> 
                 ASet.single {
-                    trafo = l.ModelTrafo
+                    modeltrafo = l.ModelTrafo
+                    viewtrafo = l.ViewTrafo
+                    projtrafo = l.ProjTrafo
                     primitive = l.Primitive
                     actions = ops
                 }
@@ -274,8 +318,8 @@ module Scene =
     let map f (a : ISg<'a>) : ISg<'b> = Map<_,_>(f,a) :> ISg<'b>
     let uniform name value xs = conv (Sg.uniform name value) xs
     let effect effects xs = conv (Sg.effect effects) xs
-    let viewTrafo viewTrafo xs = conv (Sg.viewTrafo viewTrafo) xs
-    let projTrafo projTrafo xs = conv (Sg.projTrafo projTrafo) xs
+    let viewTrafo viewTrafo x = ViewTrafo(viewTrafo,Mod.init x) :> ISg<_>
+    let projTrafo projTrafo x =  ProjTrafo(projTrafo,Mod.init x) :> ISg<_>
     let camera camera xs = conv (Sg.camera camera) xs
     let camera' camera xs = conv (Sg.camera camera) (group xs)
 

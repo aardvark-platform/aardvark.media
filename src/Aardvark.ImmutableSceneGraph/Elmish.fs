@@ -101,6 +101,11 @@ type Unpersist<'immut,'mut> =
 
 
 module Elmish =
+    
+    let inline fst' (a,b,c) = a
+    let inline snd' (a,b,c) = b
+    let inline trd' (a,b,c) = c
+
 
     let inline unpersist< ^immut, ^mut when ^immut : (member ToMod : ReuseCache -> ^mut) and ^mut : (member Apply : ^immut * ReuseCache -> unit) > () : Unpersist< ^immut,^ mut> = 
         let inline u  (immut : ^immut) (scope : ReuseCache) = (^immut : (member ToMod : ReuseCache -> ^mut) (immut,scope))
@@ -251,25 +256,26 @@ module Elmish =
         let pickReader = pickObjects.GetReader()
 
 
-        let pick (r : Ray3d)  =
+        let pick (pp : PixelPosition) : list<Ray3d*float*_> =
             pickReader.GetDelta() |> ignore
             let picks =
                 pickReader.Content 
                     |> Seq.toList 
                     |> List.collect (fun p -> 
-                        Primitives.hitPrimitive p.primitive (Mod.force p.trafo) r p.actions
+                        let r = Pick.pixel pp (Mod.force p.modeltrafo) (p.viewtrafo |> Mod.force) (p.projtrafo |> Mod.force)
+                        Primitives.hitPrimitive p.primitive (Mod.force p.modeltrafo) r p.actions
                     )
 
             let rec depthTest xs =
                 match xs with
                     | [] -> []
-                    | (d1,(f1,Solid))::(d2,(f2,Solid))::rest when d1 = d2 -> (d1,(f1,Solid)) ::(d2,(f2,Solid)) :: depthTest rest
-                    | (d,(f,Solid))::_ -> [(d,(f,Solid))]
-                    | (d,(f,PickThrough))::xs -> (d,(f,PickThrough)) :: depthTest xs
+                    | (r1,d1,(f1,Solid))::           (r2,d2,(f2,Solid))::rest when d1 = d2 -> (r1,d1,(f1,Solid)) ::(r2,d2,(f2,Solid)) :: depthTest rest
+                    | (r, d, (f,Solid))::_ ->       [(r, d, (f,Solid))]
+                    | (r, d, (f,PickThrough))::xs -> (r, d, (f,PickThrough)) :: depthTest xs
 
             picks 
-                |> List.collect (fun (d,picks) -> picks |> List.map (fun p -> d,p)) 
-                |> List.sortBy fst 
+                |> List.collect (fun (ray,d,picks) -> picks |> List.map (fun p -> ray,d,p)) 
+                |> List.sortBy snd'
                 |> depthTest
 
 
@@ -278,11 +284,10 @@ module Elmish =
             app.ofPickMsg model m |> List.fold onMessage model
 
         let handleMouseEvent mouseEvent =
-            let ray = mouse.Position |> Mod.force |> transformPixel |> Camera.pickRay (camera |> Mod.force)
-            let picks = pick ray
-            let mutable model = updatePickMsg { mouseEvent = mouseEvent; ray = ray; hits = List.isEmpty picks |> not }  model.Value
-            for (d,(msg,transparency)) in picks do
-                let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d }
+            let picks = pick (mouse.Position |> Mod.force |> transformPixel)
+            let mutable model = model.Value
+            for (ray,d,(msg,transparency)) in picks do
+                let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d; ray = ray }
                 match msg occ with
                     | Some r -> model <- onMessage model r
                     | _ -> ()

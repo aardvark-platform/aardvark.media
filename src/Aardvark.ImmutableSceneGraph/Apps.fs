@@ -233,6 +233,8 @@ module TranslateController =
                 translate 0.0 0.0 0.0 [
                     [ Sphere3d(V3d.OOO,0.1) |> Sphere |> render Pick.ignore ] |> colored (Mod.constant C4b.Gray)
                 ]
+
+                Everything |> render [anyways MoveRay]
         ]
 
     let viewScene cam s =   
@@ -391,6 +393,7 @@ module PlaceTransformObjects =
         {
             initial = initial
             update = update
+
             view = view
             ofPickMsg = ofPickMsgModel 
             subscriptions = Subscriptions.none
@@ -412,7 +415,7 @@ module OrbitTest =
         | MouseDelta of V2d
         | DragStart of PixelPosition
         | DragStop  of PixelPosition     
-        | ChangeCenter of V3d
+        | PickPoint of V3d
 
         | Animate of DateTime
         | TimeStep of float    
@@ -425,17 +428,18 @@ module OrbitTest =
                     | None -> V3d.OOO            
         } |> Mod.force          
         
-    let center (c) = 
+    let unCenter (c) = 
         match c with
             | Some s -> s
             | None -> V3d.Zero       
             
     let view (m : MModel) =        
-        [Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
-            |> Scene.render []
-         Sphere (Sphere3d(V3d.OOO, 0.1)) 
+        [Sphere (Sphere3d(V3d.OOO, 1.0)) 
+            |> Scene.render [ on (Mouse.down' MouseButtons.Middle) PickPoint ]
+         Sphere (Sphere3d(V3d.OOO, 0.05)) 
             |> Scene.render [] 
-            |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (center a)))
+            |> colored' (Mod.constant C4b.Red)
+            |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (unCenter a)))
         ]
         |> Scene.group            
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
@@ -451,13 +455,18 @@ module OrbitTest =
 
                 let newLocation = t.TransformDir m.camera.Location
                 let tempcam = m.camera.WithLocation newLocation
-                let newForward = (m.center |> center) - newLocation |> Vec.normalize
+                let newForward = (m.center |> unCenter) - newLocation |> Vec.normalize
+
                 { m with camera = tempcam.WithForward newForward }
             | TimeStep dt -> 
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
                 let speed = dt * 0.01
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
-            | ChangeCenter c -> { m with center = Some c }
+            | PickPoint c -> 
+                
+//                let newForward = c - m.camera.Location |> Vec.normalize
+//                { m with center = Some c; camera = m.camera.WithForward newForward  }
+                { m with center = Some c;}
             | _ -> m
 
     let subscriptions (time : IMod<_>) (m : Model) =
@@ -467,19 +476,16 @@ module OrbitTest =
             
             Input.moveDelta MouseDelta
 
-            Input.toggleKey Keys.W (fun _ -> ChangeCenter V3d.OOI)  (fun _ -> ChangeCenter V3d.OOI)
-            Input.toggleKey Keys.S (fun _ -> ChangeCenter V3d.OOO)  (fun _ -> ChangeCenter V3d.OOO)
-
             Sub.ofMod time (fun elapsedMs _ -> Some <| TimeStep elapsedMs)
         ]
     
     let initial = { 
-        camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOI V3d.OOI
-        frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null
+        camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+        frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
         lookingAround = None
         forward = V2d.OO
         forwardSpeed = 0.0
-        center = Some V3d.OOI
+        center = None
         }
 
     let ofPickMsg _ m = []
@@ -501,6 +507,7 @@ module CameraTest =
     open Scratch.DomainTypes2
     open CameraTest
     open Primitives
+    open Aardvark.ImmutableSceneGraph.Scene
 
     open Input
 
@@ -511,13 +518,21 @@ module CameraTest =
         | AddMove    of V2d
         | RemoveMove of V2d
         | Animate of DateTime
+        | PickPoint of V3d
         | TimeStep of float
 
+    let point = Mod.init V3d.Zero
+
     let view (m : MModel) =
-        Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
-            |> Scene.render []
-            |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
-            |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+        [Sphere (Sphere3d(V3d.OOO, 1.0))
+            |> Scene.render [ on Mouse.move  PickPoint ];
+         Sphere (Sphere3d(V3d.OOO, 0.05)) 
+            |> Scene.render []             
+            |> colored' (Mod.constant C4b.Red)
+            |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)))]
+        |> Scene.group
+        |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
+        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
     let forward = V2d.OI
     let backward = -V2d.OI
@@ -540,6 +555,9 @@ module CameraTest =
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
                 let speed = dt * 0.01
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
+            | PickPoint p -> 
+                transact ( fun () -> Mod.change point p)
+                m
             | _ -> m
 
 
@@ -563,7 +581,7 @@ module CameraTest =
 
     let initial = { 
         camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
-        frustum = Frustum.perspective 60.0 0.01 10.0 1.0; _id = null
+        frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
         lookingAround = None
         forward = V2d.OO
         forwardSpeed = 0.0 
