@@ -78,13 +78,21 @@ module SimpleDrawingApp =
             }
         Scene.agroup  t
 
+    let viewScene (sizes : IMod<V2i>) (m : MModel) =
+        let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
+        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
+        view m
+            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
+            |> Scene.effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
+
+
     let initial = { finished = PSet.empty; working = None; _id = null }
 
-    let app =
+    let app s =
         {
             initial = initial
             update = update
-            view = view
+            view = viewScene s
             ofPickMsg = fun _ _ -> []
             subscriptions = Aardvark.Elmish.Subscriptions.none
         }
@@ -250,6 +258,7 @@ module TranslateController =
             | MouseEvent.Move when Option.isNone model.activeTranslation -> [NoHit]
             | MouseEvent.Move ->  []
             | MouseEvent.Up _   -> [EndTranslation]
+            | MouseEvent.NoEvent -> []
 
     let ofPickMsg (model : Scene) noPick =
         ofPickMsgModel model.scene noPick
