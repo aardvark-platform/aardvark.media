@@ -115,8 +115,19 @@ and BrowserClient(parent : BrowserControl) =
     override x.GetRequestHandler() =
         requestHandler :> CefRequestHandler
 
-and DevToolsWebClient() =
+and DevToolsLoadHandler(parent : BrowserControl) =
+    inherit CefLoadHandler()
+
+    override x.OnLoadEnd(browser : CefBrowser, frame : CefFrame, status : int) =
+        parent.FindForm().Focus() |> ignore
+
+and DevToolsWebClient(parent : BrowserControl) =
     inherit CefClient()
+
+    let loadHandler = DevToolsLoadHandler(parent)
+
+    override x.GetLoadHandler() =
+        loadHandler :> CefLoadHandler
 
 and BrowserControl() as this =
     inherit CefWebBrowser()
@@ -152,7 +163,8 @@ and BrowserControl() as this =
         wi.Height <- form.Height
         wi.X <- form.DesktopLocation.X + form.Width
         wi.Y <- form.DesktopLocation.Y
-        host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
+        
+        host.ShowDevTools(wi, new DevToolsWebClient(x), new CefBrowserSettings(), new CefPoint(-100, -100));
 
     let closeDevTools (x : BrowserControl) =
         let host = x.Browser.GetHost()
@@ -617,11 +629,9 @@ let main argv =
     yeah.Background <- C4f(0.0f, 0.0f, 0.0f, 0.0f)
     yeah.RenderTask <- app.Runtime.CompileRender(yeah.FramebufferSignature, sg)
     
-//    // subscribe to all events
-//    ctrl.Events.Add (fun e ->
-//        if e.name <> "rendered" then
-//            printfn "{ sender = %A; name = %A; args = %A }" e.sender e.name e.args
-//    )
+    // show developer tools when ready
+    ctrl.ShowDevTools()
+
 
     // define the main page
     let mainPage (u : Map<string, string>) =
@@ -656,34 +666,7 @@ let main argv =
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
     
-    let showDebugTools() =
-        let host = ctrl.Browser.GetHost()
-        let wi = CefWindowInfo.Create();
-        wi.SetAsPopup(IntPtr.Zero, "DevTools");
-        wi.Width <- 500
-        wi.Height <- form.Height
-        wi.X <- form.DesktopLocation.X + form.Width
-        wi.Y <- form.DesktopLocation.Y
-        host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
-
-    //ctrl.ContextMenu.MenuItems.Add("Show Developer Tools", EventHandler(fun s e -> (showDebugTools()))) |> ignore
-    ctrl.ShowDevTools()
-
-//    ctrl.BrowserCreated.Add (fun e ->
-//        //http://localhost:1337/devtools/inspector.html?ws=localhost:1337/devtools/page/8a3a8d12-62dd-4313-bda7-933e65a31a17
-//        let host = ctrl.Browser.GetHost()
-//
-//        
-//
-//        let wi = CefWindowInfo.Create();
-//        //wi.SetAsChild(ctrl.Handle, CefRectangle(0, 0, ctrl.ClientSize.Width, 100))
-//        wi.SetAsPopup(IntPtr.Zero, "DevTools");
-//        wi.Width <- 500
-//        wi.Height <- form.Height
-//        wi.X <- form.DesktopLocation.X + form.Width
-//        wi.Y <- form.DesktopLocation.Y
-//        host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
-//    )
+    
 
     // run it
     Application.Run form
