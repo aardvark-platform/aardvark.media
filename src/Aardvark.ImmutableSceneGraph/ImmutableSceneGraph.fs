@@ -10,10 +10,17 @@ open Aardvark.Application
 [<AutoOpen>]
 module PickStuff = 
 
-    type MouseEvent = Down of MouseButtons | Move | Click of MouseButtons | Up of MouseButtons
+    let altKey = Keys.LeftAlt
+    let ctrlKey = Keys.LeftCtrl
+    let shiftKey = Keys.LeftShift
+
+    type KeyEvent = Down of Keys | Up of Keys | NoEvent
+
+    type MouseEvent = Down of MouseButtons | Move | Click of MouseButtons | Up of MouseButtons | NoEvent
 
     type PickOccurance = { 
         mouse : MouseEvent
+        key : KeyEvent
         point : V3d 
         ray : Ray3d
      }
@@ -26,7 +33,11 @@ module PickStuff =
     module Mouse =
         let move (p : PickOccurance) = p.mouse = Move
         let down (p : PickOccurance) = match p.mouse with | Down b -> true | _ -> false  
-        let down' (button : MouseButtons) (p : PickOccurance) = match p.mouse with | Down b when b = button -> true | _ -> false 
+        let down' (button : MouseButtons) (p : PickOccurance) = match p.mouse with | Down b when b = button -> true | _ -> false
+
+    module Key = 
+        let up (key : Keys) (p : PickOccurance) = match p.key with | KeyEvent.Up k when k = key -> true | _ -> false
+        let down (key : Keys) (p : PickOccurance) = match p.key with | KeyEvent.Down k when k = key -> true | _ -> false
 
     type Transparency = Solid | PickThrough
     type PickOperation<'msg> = (PickOccurance -> Option<'msg>) * Transparency
@@ -53,7 +64,7 @@ module PickStuff =
     
     type Hits<'msg> = list<float * list<PickOperation<'msg>>>
     
-    type GlobalPick = { mouseEvent : MouseEvent; ray : Ray3d; hits : bool }
+    type GlobalPick = { mouseEvent : MouseEvent; keyEvent : KeyEvent; ray : Ray3d; hits : bool }
 //    module GlobalPick =
 //        let map (f : 'a -> 'b) (p : GlobalPick<'a>) =
 //            { 
