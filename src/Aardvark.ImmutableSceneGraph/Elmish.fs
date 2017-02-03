@@ -48,6 +48,16 @@ module Sub =
     let time timeSpan f = TimeSub(timeSpan,f)
     let ofMod m f = ModSub(m,f)
 
+    let rec map (f : 'a -> 'b) s = 
+        match s with
+            | NoSub -> NoSub
+            | TimeSub(ts,msg) -> TimeSub(ts,f << msg) 
+            | Many xs -> xs |> List.map (map f) |> Many
+            | MouseClick msg -> MouseClick (fun b p -> match msg b p with | Some e -> Some (f e) | None -> None)
+            | Mouse msg -> Mouse (fun a b c -> match msg a b c with | Some e -> Some (f e) | None -> None)
+            | MouseMove msg -> MouseMove (f << msg)
+            | Key msg -> Key (fun a b -> Option.map f (msg a b))
+            | ModSub(m,g) -> failwith "cannot implement"
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
