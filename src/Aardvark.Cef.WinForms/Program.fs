@@ -57,6 +57,7 @@ and ResourceHandler(parent : BrowserControl, content : Content) =
             false
         else
             callback.Continue()
+            callback.Dispose()
             true
 
     override x.GetResponseHeaders(response : CefResponse, response_length : byref<int64>, redirectUrl : byref<string>) =
@@ -68,6 +69,7 @@ and ResourceHandler(parent : BrowserControl, content : Content) =
         response.Error <- CefErrorCode.None
 
     override x.ReadResponse(data_out : Stream, bytes_to_read : int, bytes_read : byref<int>, callback : CefCallback) =
+        callback.Dispose()
         if remaining > 0L then
             let actual = min (int64 bytes_to_read) remaining
 
@@ -113,6 +115,9 @@ and BrowserClient(parent : BrowserControl) =
     override x.GetRequestHandler() =
         requestHandler :> CefRequestHandler
 
+and DevToolsWebClient() =
+    inherit CefClient()
+
 and BrowserControl() as this =
     inherit CefWebBrowser()
     static let queryRx = System.Text.RegularExpressions.Regex @"(\?|\&)(?<name>[^\=]+)\=(?<value>[^\&]*)"
@@ -133,6 +138,25 @@ and BrowserControl() as this =
 
     let pending = System.Collections.Concurrent.ConcurrentDictionary<IPC.MessageToken, System.Threading.Tasks.TaskCompletionSource<IPC.Reply>>()
     let events = Event<_>()
+    let client = BrowserClient(this)
+
+    let mutable devTools = false
+    
+
+    let showDevTools (x : BrowserControl) =
+        let form = x.FindForm()
+        let host = x.Browser.GetHost()
+        let wi = CefWindowInfo.Create();
+        wi.SetAsPopup(0n, "Developer Tools");
+        wi.Width <- 500
+        wi.Height <- form.Height
+        wi.X <- form.DesktopLocation.X + form.Width
+        wi.Y <- form.DesktopLocation.Y
+        host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
+
+    let closeDevTools (x : BrowserControl) =
+        let host = x.Browser.GetHost()
+        host.CloseDevTools()
 
     member x.RemovePage(url : string) =
         let url = System.Uri(url)
@@ -187,6 +211,8 @@ and BrowserControl() as this =
     [<CLIEvent>]
     member x.Events = events.Publish
 
+    member x.Client = client
+
     member x.OnProcessMessageReceived(source : CefBrowser, proc : CefProcessId, msg : CefProcessMessage) =
         match IPC.tryGet<Aardvark.Cef.Internal.Event> msg with
             | Some evt ->
@@ -201,8 +227,27 @@ and BrowserControl() as this =
                     | _ ->
                         ()
 
+    member x.ShowDevTools() =
+        if not devTools then
+            devTools <- true
+
+            if ownBrowser.Task.IsCompleted then
+                showDevTools x
+            else
+                x.BrowserCreated.Add (fun _ -> 
+                    if devTools then
+                        showDevTools x
+                )
+            
+    member x.CloseDevTools() =
+        if devTools then
+            devTools <- false
+            
+            if ownBrowser.Task.IsCompleted then
+                closeDevTools x
+
     override x.CreateWebClient() =
-        BrowserClient(this) :> CefWebClient
+        client :> CefWebClient
 
 open System
 open System.IO
@@ -213,6 +258,8 @@ open Aardvark.Rendering.GL
 open Aardvark.Application
 open Aardvark.Application.WinForms
 open OpenTK.Graphics.OpenGL
+
+
 
 type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) =
 
@@ -236,21 +283,28 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
     let clearTask = runtime.CompileClear(signature, backgroundColor, Mod.constant 1.0)
     let mutable renderTask = RenderTask.empty
     let time = Mod.custom (fun _ -> DateTime.Now)
-
-    let sw = System.Diagnostics.Stopwatch()
-    let mutable counter = 0
-    do sw.Start()
     
+    let mutable frameCounter = 0
+    let invalidateTime = Stopwatch()
+    let renderTime = Stopwatch()
+    let downloadTime = Stopwatch()
+    let transferTime = Stopwatch()
+    let presentTime = Stopwatch()
+    let totalTime = Stopwatch()
+
     let outputThing = AdaptiveObject()
     let renderResult =
         Mod.custom (fun self ->
+            renderTime.Start()
             use t = runtime.ContextLock
 
             let fbo = framebuffer.GetValue self
             clearTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
             renderTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
 
+            renderTime.Stop()
 
+            downloadTime.Start()
             let fbo = unbox<Framebuffer> fbo
             let color = unbox<Renderbuffer> fbo.Attachments.[DefaultSemantic.Colors]
 
@@ -274,6 +328,7 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
             GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
             GL.DeleteBuffer(b)
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0)
+            downloadTime.Stop()
             image
         )
 
@@ -303,15 +358,54 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
 
     let cb = 
         outputThing.AddMarkingCallback(fun () ->
+            totalTime.Start()
+            invalidateTime.Start()
             parent.Start (sprintf "render('%s');" id)
         )
 
     do  parent.Events.Add (fun e ->
-            if e.sender = id && e.name = "rendered" then
-                queue.Add(Choice1Of2 ())
+            if e.sender = id then
+                if e.name = "received" then
+                    transferTime.Stop()
+                    presentTime.Start()
+
+                elif e.name = "rendered" then
+                    queue.Add(Choice1Of2 ())
+                    presentTime.Stop()
+                    totalTime.Stop()
+
+                    frameCounter <- frameCounter + 1
+
+                    if frameCounter >= 100 then
+                        let total = invalidateTime.MicroTime + renderTime.MicroTime + downloadTime.MicroTime + transferTime.MicroTime + presentTime.MicroTime
+                        let unaccounted = totalTime.MicroTime - total
+                        let percent (m : MicroTime) =
+                            100.0 * m / totalTime.MicroTime
+
+                        
+
+                        Log.start "timing"
+                        Log.line "invalidate:  %A (%.2f%%)" (invalidateTime.MicroTime / float frameCounter) (percent invalidateTime.MicroTime)
+                        Log.line "render:      %A (%.2f%%)" (renderTime.MicroTime / float frameCounter) (percent renderTime.MicroTime)
+                        Log.line "download:    %A (%.2f%%)" (downloadTime.MicroTime / float frameCounter) (percent downloadTime.MicroTime)
+                        Log.line "transfer:    %A (%.2f%%)" (transferTime.MicroTime / float frameCounter) (percent transferTime.MicroTime)
+                        Log.line "present:     %A (%.2f%%)" (presentTime.MicroTime / float frameCounter) (percent presentTime.MicroTime)
+                        Log.line "unaccounted: %A (%.2f%%)" (unaccounted / float frameCounter) (percent unaccounted)
+                        Log.line "total:       %A (%.2ffps)" (totalTime.MicroTime / float frameCounter) (float frameCounter / totalTime.Elapsed.TotalSeconds)
+                        Log.stop()
+
+                        invalidateTime.Reset()
+                        renderTime.Reset()
+                        downloadTime.Reset()
+                        transferTime.Reset()
+                        presentTime.Reset()
+                        totalTime.Reset()
+                        frameCounter <- 0
+
         )
 
     let binaryData (query : Map<string, string>) =
+        invalidateTime.Stop()
         match Map.tryFind "w" query, Map.tryFind "h" query with
             | Some w, Some h ->
                 match Int32.TryParse w, Int32.TryParse h with
@@ -320,19 +414,11 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
                         if size <> currentSize.Value then
                             transact (fun () -> currentSize.Value <- size)
 
-
-                        if counter >= 100 then
-                            let fps = float counter / sw.Elapsed.TotalSeconds
-                            printfn "%.3f fps" fps
-                            sw.Restart()
-                            counter <- 0
-
-                        counter <- counter + 1
-
                         let tcs = System.Threading.Tasks.TaskCompletionSource<PixImage<byte>>()
                         queue.Add(Choice2Of2 tcs)
 
                         let image = tcs.Task.Result
+                        transferTime.Start()
                         Binary image.Volume.Data
                     | _ ->
                         Error
@@ -460,6 +546,7 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
     member x.Keyboard = keyboard :> IKeyboard
     member x.Mouse = mouse :> IMouse
 
+
     interface IRenderTarget with
         member x.FramebufferSignature = x.FramebufferSignature
         member x.RenderTask 
@@ -487,8 +574,6 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
-
-
 [<EntryPoint>]
 let main argv = 
     Ag.initialize()
@@ -501,6 +586,14 @@ let main argv =
     use ctrl = new BrowserControl()
     let yeah = new CefRenderControl(app.Runtime, ctrl, "yeah")
 
+
+    let settings =
+        CefBrowserSettings(
+            FileAccessFromFileUrls = CefState.Enabled
+        )
+
+    ctrl.BrowserSettings <- CefBrowserSettings(FileAccessFromFileUrls = CefState.Enabled)
+    ctrl.BrowserSettings.FileAccessFromFileUrls <- CefState.Enabled
 
     let sw = Stopwatch()
     sw.Start()
@@ -542,7 +635,7 @@ let main argv =
                     <script src="http://aardvark.local/boot.js"></script>
                 </head>
                 <body>
-                    <button onclick="aardvark.processEvent('button', 'onclick')">Click Me</button>
+                    <button onclick="testFS()">Click Me</button>
                     <input type="text"></input>
                     <div class='aardvark' id='yeah' style="height: 100%; width: 100%" />
                 </body>
@@ -563,6 +656,35 @@ let main argv =
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
     
+    let showDebugTools() =
+        let host = ctrl.Browser.GetHost()
+        let wi = CefWindowInfo.Create();
+        wi.SetAsPopup(IntPtr.Zero, "DevTools");
+        wi.Width <- 500
+        wi.Height <- form.Height
+        wi.X <- form.DesktopLocation.X + form.Width
+        wi.Y <- form.DesktopLocation.Y
+        host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
+
+    //ctrl.ContextMenu.MenuItems.Add("Show Developer Tools", EventHandler(fun s e -> (showDebugTools()))) |> ignore
+    ctrl.ShowDevTools()
+
+//    ctrl.BrowserCreated.Add (fun e ->
+//        //http://localhost:1337/devtools/inspector.html?ws=localhost:1337/devtools/page/8a3a8d12-62dd-4313-bda7-933e65a31a17
+//        let host = ctrl.Browser.GetHost()
+//
+//        
+//
+//        let wi = CefWindowInfo.Create();
+//        //wi.SetAsChild(ctrl.Handle, CefRectangle(0, 0, ctrl.ClientSize.Width, 100))
+//        wi.SetAsPopup(IntPtr.Zero, "DevTools");
+//        wi.Width <- 500
+//        wi.Height <- form.Height
+//        wi.X <- form.DesktopLocation.X + form.Width
+//        wi.Y <- form.DesktopLocation.Y
+//        host.ShowDevTools(wi, new DevToolsWebClient(), new CefBrowserSettings(), new CefPoint(0, 0));
+//    )
+
     // run it
     Application.Run form
     Chromium.shutdown()
