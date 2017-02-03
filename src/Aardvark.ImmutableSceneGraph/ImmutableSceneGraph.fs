@@ -341,5 +341,6 @@ module Scene =
            |> projTrafo (camera |> Mod.map Camera.projTrafo)
            |> conv (Sg.camera camera) 
     let camera' c xs = camera c (group xs)
+    let ofSg (s : ISg) = conv (fun _ -> s) (group [])
 
     
