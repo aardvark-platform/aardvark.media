@@ -519,17 +519,19 @@ module CameraTest =
         | RemoveMove of V2d
         | Animate of DateTime
         | PickPoint of V3d
+        | NoPick of V3d
         | TimeStep of float
 
     let point = Mod.init V3d.Zero
 
     let view (m : MModel) =
         [Sphere (Sphere3d(V3d.OOO, 1.0))
-            |> Scene.render [ on Mouse.move  PickPoint ];
+            |> Scene.render [ on Mouse.move PickPoint ];
          Sphere (Sphere3d(V3d.OOO, 0.05)) 
             |> Scene.render []             
             |> colored' (Mod.constant C4b.Red)
-            |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)))]
+            |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)));]
+      //   Everything |> Scene.render [ on Mouse.move NoPick]]
         |> Scene.group
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
         |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
@@ -557,6 +559,9 @@ module CameraTest =
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
             | PickPoint p -> 
                 transact ( fun () -> Mod.change point p)
+                m
+            | NoPick _-> 
+                transact ( fun () -> Mod.change point V3d.NaN)
                 m
             | _ -> m
 
