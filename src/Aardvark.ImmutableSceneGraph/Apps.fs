@@ -459,15 +459,29 @@ module OrbitTest =
         match msg with
             | DragStart p -> { m with lookingAround = Some p }
             | DragStop _ -> { m with lookingAround = None }
-            | MouseDelta d when m.lookingAround.IsSome ->
+            | MouseDelta d when m.lookingAround.IsSome && m.center.IsSome ->
                 let delta = Constant.PiTimesTwo * d * 8.0
                 let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
 
-                let newLocation = t.TransformDir m.camera.Location
+                let newLocation = t.TransformDir (m.camera.Location)
                 let tempcam = m.camera.WithLocation newLocation
-                let newForward = (m.center |> center') - newLocation |> Vec.normalize
+                let newForward = m.center.Value - newLocation |> Vec.normalize
 
                 { m with camera = tempcam.WithForward newForward }
+
+//                let delta = Constant.PiTimesTwo * d * 8.0
+//                let delta = new V2d (delta.X, -delta.Y)
+//
+//                let axis = m.camera.Right * delta.X - m.camera.Sky * delta.Y;
+//
+//                let rot = M44d.Rotation (axis, -delta.Length)
+//                let a = rot.TransformDir (m.camera.Location - m.center.Value)
+//
+//                let newLocation = m.center.Value + a;
+//                let tempcam = m.camera.WithLocation newLocation
+//                let newForward = m.center.Value - newLocation |> Vec.normalize
+//                //let tempcam = tempcam.WithForward newForward               
+//                { m with camera = tempcam.WithForward newForward }
             | TimeStep dt -> 
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
                 let speed = dt * 0.01
@@ -479,14 +493,14 @@ module OrbitTest =
 //                { m with center = Some c;}
             | _ -> m
 
-    let subscriptions (time : IMod<_>) (m : Model) =
+    let subscriptions (m : Model) =
         Many [
             Input.mouse Mouse.down Mouse.left DragStart
             Input.mouse Mouse.up   Mouse.left DragStop
             
-            Input.moveDelta MouseDelta
-
-            Sub.ofMod time (fun elapsedMs _ -> Some <| TimeStep elapsedMs)
+            Input.moveDelta MouseDelta    
+            
+            Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)       
         ]
     
     let initial = { 
@@ -495,7 +509,7 @@ module OrbitTest =
         lookingAround = None
         forward = V2d.OO
         forwardSpeed = 0.0
-        center = None
+        center = Some V3d.Zero
         navigationMode = NavigationMode.FreeFly
         }
 
@@ -507,7 +521,7 @@ module OrbitTest =
             update = update
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions (Mod.map Animate time)
+            subscriptions = subscriptions
         }
 
 module CameraTest =
@@ -578,7 +592,7 @@ module CameraTest =
 
     let ofPickMsg _ m = []
 
-    let subscriptions (time : IMod<_>) (m : Model) =
+    let subscriptions (m : Model) =
         Many [
             Input.mouse Mouse.down Mouse.left DragStart
             Input.mouse Mouse.up   Mouse.left DragStop
@@ -589,9 +603,8 @@ module CameraTest =
             Input.toggleKey Keys.S (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
             Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
             Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)            
-
-            // Sub.time ( TimeSpan.FromMilliseconds 10.0 ) Animate // use for fixed times
-            Sub.ofMod time (fun elapsedMs _ -> Some <| TimeStep elapsedMs)
+            
+            Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)      
         ]
 
     let initial = { 
@@ -610,7 +623,7 @@ module CameraTest =
             update = update
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions (Mod.map Animate time)
+            subscriptions = subscriptions
         }
 
 module ComposedTest = 
@@ -632,15 +645,7 @@ module ComposedTest =
 
     // scene as parameter, isg 
     let view (m : MModel) =
-        [Sphere (Sphere3d(V3d.OOO, 1.0))
-            |> Scene.render [];
-         Sphere (Sphere3d(V3d.OOO, 0.05)) 
-            |> Scene.render []             
-            |> colored' (Mod.constant C4b.Red)
-            |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)));]      
-        |> Scene.group
-        |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
-        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+        OrbitTest.view m |> Scene.map OrbitAction
 
     let update e (m : Model) msg = 
         match msg with
@@ -654,9 +659,13 @@ module ComposedTest =
 
     let ofPickMsg _ m = []
 
-    let subscriptions (time : IMod<_>) (m : Model) =
+    let subscriptions (m : Model) =
         Many [      
-            Input.toggleKey Keys.N (fun _ -> SwitchMode)     (fun _ -> SwitchMode)                                    
+            match m.navigationMode with
+                | FreeFly -> yield CameraTest.subscriptions m |> Sub.map FreeFlyAction 
+                | Orbital -> yield OrbitTest.subscriptions m |> Sub.map OrbitAction
+
+            yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
         ]
 
     let initial = { 
@@ -675,5 +684,5 @@ module ComposedTest =
             update = update
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions (Mod.map Animate time)
+            subscriptions = subscriptions
         }
