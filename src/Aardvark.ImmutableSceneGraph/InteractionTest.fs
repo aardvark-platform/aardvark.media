@@ -42,8 +42,9 @@ module InteractionTest =
 
         //let theApp = PlaceTransformObjects.app
         //let theApp = SimpleDrawingApp.app
-        let theApp = CameraTest.app win.Time
+        //let theApp = CameraTest.app win.Time
         //let theApp = OrbitTest.app win.Time
+        let theApp = TranslateController.app win.Sizes
 
         let adaptiveResult = Elmish.createAppAdaptiveD win.Keyboard win.Mouse bounds camera None theApp
 
@@ -56,13 +57,6 @@ module InteractionTest =
 
         let fullScene =
               sg 
-                |> Sg.effect [
-                    DefaultSurfaces.trafo |> toEffect       
-                    DefaultSurfaces.vertexColor |> toEffect
-                    DefaultSurfaces.simpleLighting |> toEffect 
-                   ] 
-                |> Sg.viewTrafo (Mod.map CameraView.viewTrafo cameraView)
-                |> Sg.projTrafo (Mod.map Frustum.projTrafo frustum)
 
         win.RenderTask <- app.Runtime.CompileRender(win.FramebufferSignature, fullScene)
 

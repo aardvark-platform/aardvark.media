@@ -285,7 +285,7 @@ module Elmish =
 
         let handleMouseEvent mouseEvent =
             let picks = pick (mouse.Position |> Mod.force |> transformPixel)
-            let mutable model = model.Value
+            let mutable model = updatePickMsg { mouseEvent = mouseEvent; hits = List.isEmpty picks |> not} model.Value
             for (ray,d,(msg,transparency)) in picks do
                 let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d; ray = ray }
                 match msg occ with

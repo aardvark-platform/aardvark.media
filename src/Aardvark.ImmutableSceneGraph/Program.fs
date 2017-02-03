@@ -125,7 +125,7 @@ let main argv =
     let sg, shutdown =
         if true then
             let composed = ComposedApp.ofUpdate  { Explicit.ui = TestApp.initial; Explicit.scene = TranslateController.initial } Explicit.update
-            let three3dApp = TranslateController.app camera
+            let three3dApp = TranslateController.app (renderControlViewport |> Mod.map (fun (b : Box2i) -> b.Size))
 
             let three3dInstance = ComposedApp.add3d composed win.Keyboard win.Mouse renderRect camera three3dApp (fun m app -> { app with scene = m }) (fun app -> app.scene) Explicit.AppMsg.SceneMsg
             let fablishResult = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg

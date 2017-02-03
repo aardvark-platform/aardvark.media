@@ -18,6 +18,8 @@ module PickStuff =
         ray : Ray3d
      }
 
+     type NoPick = { mouse : MouseEvent; ray : Ray3d }
+
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module PickOccurance =
@@ -43,6 +45,9 @@ module PickStuff =
 
     let anyways (r : Ray3d -> 'msg) : PickOperation<'msg> =
         (fun pickOcc -> Some <| r pickOcc.ray), PickThrough
+
+    let whenever (p : PickOccurance -> bool) (r : Ray3d -> 'msg) : PickOperation<'msg> =
+        (fun pickOcc -> if p pickOcc then Some <| r pickOcc.ray else None), PickThrough
             
 
     let onPickThrough (p : PickOccurance -> bool) (r : V3d -> 'msg) : PickOperation<'msg> = 
@@ -53,7 +58,7 @@ module PickStuff =
     
     type Hits<'msg> = list<float * list<PickOperation<'msg>>>
     
-    type GlobalPick = { mouseEvent : MouseEvent; ray : Ray3d; hits : bool }
+    type GlobalPick = { mouseEvent : MouseEvent; hits : bool }
 //    module GlobalPick =
 //        let map (f : 'a -> 'b) (p : GlobalPick<'a>) =
 //            { 
@@ -320,7 +325,10 @@ module Scene =
     let effect effects xs = conv (Sg.effect effects) xs
     let viewTrafo viewTrafo x = ViewTrafo(viewTrafo,Mod.init x) :> ISg<_>
     let projTrafo projTrafo x =  ProjTrafo(projTrafo,Mod.init x) :> ISg<_>
-    let camera camera xs = conv (Sg.camera camera) xs
-    let camera' camera xs = conv (Sg.camera camera) (group xs)
+    let camera camera xs = 
+        xs |> viewTrafo (camera |> Mod.map Camera.viewTrafo)
+           |> projTrafo (camera |> Mod.map Camera.projTrafo)
+           |> conv (Sg.camera camera) 
+    let camera' c xs = camera c (group xs)
 
     
