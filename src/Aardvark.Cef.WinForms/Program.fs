@@ -73,10 +73,10 @@ and ResourceHandler(parent : BrowserControl, content : Content) =
         if remaining > 0L then
             let actual = min (int64 bytes_to_read) remaining
 
-            let data_out = unbox<UnmanagedMemoryStream> data_out
-            Marshal.Copy(content, int offset, NativePtr.toNativeInt data_out.PositionPointer, int actual)
+//            let data_out = unbox<UnmanagedMemoryStream> data_out
+//            Marshal.Copy(content, int offset, NativePtr.toNativeInt data_out.PositionPointer, int actual)
 
-            //data_out.Write(content, int offset, int actual)
+            data_out.Write(content, int offset, int actual)
 
             offset <- offset + actual
             remaining <- remaining - actual
@@ -115,19 +115,8 @@ and BrowserClient(parent : BrowserControl) =
     override x.GetRequestHandler() =
         requestHandler :> CefRequestHandler
 
-and DevToolsLoadHandler(parent : BrowserControl) =
-    inherit CefLoadHandler()
-
-    override x.OnLoadEnd(browser : CefBrowser, frame : CefFrame, status : int) =
-        parent.FindForm().Focus() |> ignore
-
 and DevToolsWebClient(parent : BrowserControl) =
     inherit CefClient()
-
-    let loadHandler = DevToolsLoadHandler(parent)
-
-    override x.GetLoadHandler() =
-        loadHandler :> CefLoadHandler
 
 and BrowserControl() as this =
     inherit CefWebBrowser()

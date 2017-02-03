@@ -291,8 +291,10 @@ function invalidate(id) {
 }
 
 function testFS() {
-    localStorage.setItem("lastname", "Smith");
-    console.log(localStorage.getItem("lastname"));
+    var b = new ArrayBuffer(32);
+    var a = new Int32Array(b);
+    a.fill(0xDEADBEEF);
+    aardvark.testFunction(b);
 }
 
 $(document).ready(function () {

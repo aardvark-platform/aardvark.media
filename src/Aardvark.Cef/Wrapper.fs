@@ -11,6 +11,11 @@ open System.Runtime.InteropServices
 open Xilium.CefGlue
 open Newtonsoft.Json.Linq
 
+open Microsoft.FSharp.NativeInterop
+
+
+#nowarn "9"
+
 module Pickler = 
     open MBrace.FsPickler
     open MBrace.FsPickler.Json
@@ -190,7 +195,63 @@ module private Interop =
                     exn <- sprintf "unknown function %s" name
                     false
 
+        member x.testFunction(args : CefV8Value[]) =
+            let b = args.[0]
 
+            let field = b.GetType().GetField("_self", BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance)
+
+           
+            let dereferenceObject (ptr : nativeint) =
+                Marshal.ReadIntPtr(ptr) + 8n
+
+           
+            let readPtr (ptr : nativeint) =
+                Marshal.ReadIntPtr(ptr)
+
+            let lines =
+                // _cef_v8value_t*
+                let structPtr = field.GetValue(b) |> unbox<Pointer>
+                let structPtr = System.IntPtr.op_Explicit(Pointer.Unbox structPtr)
+
+                // CefV8Value*
+                let cppPtr = structPtr - nativeint (2 * sizeof<nativeint>)
+
+                // &value.firstfield
+                let valuePtr = dereferenceObject cppPtr
+
+                // scoped_refptr<Handle>*
+                let refPtrPtr = cppPtr + 44n
+
+                // &refptr.firstfield :: Handle*
+                let refPtr = readPtr refPtrPtr
+
+                // Handle*
+                let handlePtr = readPtr refPtr
+
+                // &handle.firstfield
+                let persistentPtr = dereferenceObject handlePtr
+
+                // v8::Value*
+                let valuePtr = readPtr persistentPtr
+
+                let dataPtr = readPtr (valuePtr + 7n)
+
+                let value = Marshal.ReadInt32(dataPtr)
+                printfn "%X" value
+
+
+                let et = field.FieldType.GetElementType()
+                let self = Marshal.PtrToStructure(structPtr, et)
+                let fields = et.GetFields(BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance)
+
+                fields |> Array.map (fun f ->
+                    let res = field.GetValue(self)
+                    sprintf "%A %s = %A" f.FieldType f.Name res
+                )
+                
+            File.writeAllLines @"C:\Users\Schorsch\Desktop\bla.txt" lines
+
+            NoRet
 
         member x.processEvent(args : CefV8Value[]) =
             if args.Length >= 2 then

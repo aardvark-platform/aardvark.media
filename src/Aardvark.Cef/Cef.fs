@@ -32,7 +32,7 @@ module Cef =
 
             let settings = CefSettings()
             settings.BrowserSubprocessPath <- "Aardvark.Cef.Process.exe"
-            settings.SingleProcess <- false
+            settings.SingleProcess <- true
             settings.MultiThreadedMessageLoop <- true
             settings.NoSandbox <- true
             settings.LogSeverity <- CefLogSeverity.Warning
