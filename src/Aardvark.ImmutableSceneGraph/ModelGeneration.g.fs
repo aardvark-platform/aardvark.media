@@ -10,6 +10,8 @@ module Generated =
         open Aardvark.Base
         open Aardvark.Base.Rendering
         
+        type NavigationMode = FreeFly | Orbital
+
         [<DomainType>]
         type Model = 
             { mutable _id : Id
@@ -17,6 +19,7 @@ module Generated =
               frustum : Frustum
               lookingAround : Option<PixelPosition>
               center : Option<V3d>
+              navigationMode : NavigationMode
               forward : V2d
               forwardSpeed : float }
             
@@ -26,6 +29,7 @@ module Generated =
                   mfrustum = Mod.init (x.frustum)
                   mlookingAround = Mod.init (x.lookingAround)
                   mcenter = Mod.init (x.center)
+                  mnavigationMode = Mod.init (x.navigationMode)
                   mforward = Mod.init (x.forward)
                   mforwardSpeed = Mod.init (x.forwardSpeed) }
             
@@ -41,6 +45,7 @@ module Generated =
               mfrustum : ModRef<Frustum>
               mlookingAround : ModRef<Option<PixelPosition>>
               mcenter : ModRef<Option<V3d>>
+              mnavigationMode : ModRef<NavigationMode>
               mforward : ModRef<V2d>
               mforwardSpeed : ModRef<float> }
             member x.Apply(arg0 : Model, reuseCache : ReuseCache) = 
@@ -50,5 +55,6 @@ module Generated =
                     x.mfrustum.Value <- arg0.frustum
                     x.mlookingAround.Value <- arg0.lookingAround
                     x.mcenter.Value <- arg0.center
+                    x.mnavigationMode.Value <- arg0.navigationMode
                     x.mforward.Value <- arg0.forward
                     x.mforwardSpeed.Value <- arg0.forwardSpeed

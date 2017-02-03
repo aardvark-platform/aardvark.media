@@ -438,7 +438,7 @@ module OrbitTest =
                     | None -> V3d.OOO            
         } |> Mod.force          
         
-    let unCenter (c) = 
+    let center' (c) = 
         match c with
             | Some s -> s
             | None -> V3d.Zero       
@@ -449,7 +449,7 @@ module OrbitTest =
          Sphere (Sphere3d(V3d.OOO, 0.05)) 
             |> Scene.render [] 
             |> colored' (Mod.constant C4b.Red)
-            |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (unCenter a)))
+            |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (center' a)))
         ]
         |> Scene.group            
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
@@ -465,7 +465,7 @@ module OrbitTest =
 
                 let newLocation = t.TransformDir m.camera.Location
                 let tempcam = m.camera.WithLocation newLocation
-                let newForward = (m.center |> unCenter) - newLocation |> Vec.normalize
+                let newForward = (m.center |> center') - newLocation |> Vec.normalize
 
                 { m with camera = tempcam.WithForward newForward }
             | TimeStep dt -> 
@@ -474,9 +474,9 @@ module OrbitTest =
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
             | PickPoint c -> 
                 
-//                let newForward = c - m.camera.Location |> Vec.normalize
-//                { m with center = Some c; camera = m.camera.WithForward newForward  }
-                { m with center = Some c;}
+                let newForward = c - m.camera.Location |> Vec.normalize
+                { m with center = Some c; camera = m.camera.WithForward newForward  }
+//                { m with center = Some c;}
             | _ -> m
 
     let subscriptions (time : IMod<_>) (m : Model) =
@@ -496,6 +496,7 @@ module OrbitTest =
         forward = V2d.OO
         forwardSpeed = 0.0
         center = None
+        navigationMode = NavigationMode.FreeFly
         }
 
     let ofPickMsg _ m = []
@@ -540,8 +541,7 @@ module CameraTest =
          Sphere (Sphere3d(V3d.OOO, 0.05)) 
             |> Scene.render []             
             |> colored' (Mod.constant C4b.Red)
-            |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)));]
-      //   Everything |> Scene.render [ on Mouse.move NoPick]]
+            |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)));]      
         |> Scene.group
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
         |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
@@ -601,6 +601,72 @@ module CameraTest =
         forward = V2d.OO
         forwardSpeed = 0.0 
         center = None
+        navigationMode = NavigationMode.FreeFly
+        }
+
+    let app time : App<Model,MModel,Action,ISg<Action>> =
+        {
+            initial = initial
+            update = update
+            view = view
+            ofPickMsg = ofPickMsg 
+            subscriptions = subscriptions (Mod.map Animate time)
+        }
+
+module ComposedTest = 
+    open Aardvark.Base
+    open Aardvark.Base.Rendering
+
+    open Scratch.DomainTypes2
+    open CameraTest
+    open Primitives
+    open Aardvark.ImmutableSceneGraph.Scene
+
+    open Input
+
+    type Action = 
+        | FreeFlyAction of CameraTest.Action
+        | OrbitAction of OrbitTest.Action
+        | SwitchMode
+        //scene action
+
+    // scene as parameter, isg 
+    let view (m : MModel) =
+        [Sphere (Sphere3d(V3d.OOO, 1.0))
+            |> Scene.render [];
+         Sphere (Sphere3d(V3d.OOO, 0.05)) 
+            |> Scene.render []             
+            |> colored' (Mod.constant C4b.Red)
+            |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)));]      
+        |> Scene.group
+        |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
+        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+
+    let update e (m : Model) msg = 
+        match msg with
+            | FreeFlyAction a -> CameraTest.update e m a
+            | OrbitAction a -> OrbitTest.update e m a
+            | SwitchMode -> 
+                match m.navigationMode with
+                    | FreeFly -> { m with navigationMode = Orbital }
+                    | Orbital -> { m with navigationMode = FreeFly }
+                                    
+
+    let ofPickMsg _ m = []
+
+    let subscriptions (time : IMod<_>) (m : Model) =
+        Many [      
+            Input.toggleKey Keys.N (fun _ -> SwitchMode)     (fun _ -> SwitchMode)                                    
+        ]
+
+    let initial = { 
+        camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+        frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
+        lookingAround = None
+        forward = V2d.OO
+        forwardSpeed = 0.0 
+        center = None
+        navigationMode = NavigationMode.FreeFly
         }
 
     let app time : App<Model,MModel,Action,ISg<Action>> =

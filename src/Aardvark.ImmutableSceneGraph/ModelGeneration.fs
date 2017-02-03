@@ -8,7 +8,8 @@ module CameraTest =
     
     open Aardvark.Base
     open Aardvark.Base.Rendering
-
+    
+    type NavigationMode = FreeFly | Orbital
 
     [<DomainType>]
     type Model = { 
@@ -16,6 +17,7 @@ module CameraTest =
         frustum : Frustum 
         lookingAround : Option<PixelPosition>
         center : Option<V3d>
+        navigationMode : NavigationMode
 
         forward : V2d
         forwardSpeed : float
