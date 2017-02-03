@@ -78,13 +78,21 @@ module SimpleDrawingApp =
             }
         Scene.agroup  t
 
+    let viewScene (sizes : IMod<V2i>) (m : MModel) =
+        let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
+        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
+        view m
+            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
+            |> Scene.effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
+
+
     let initial = { finished = PSet.empty; working = None; _id = null }
 
-    let app =
+    let app s =
         {
             initial = initial
             update = update
-            view = view
+            view = viewScene s
             ofPickMsg = fun _ _ -> []
             subscriptions = Aardvark.Elmish.Subscriptions.none
         }
@@ -234,29 +242,31 @@ module TranslateController =
                     [ Sphere3d(V3d.OOO,0.1) |> Sphere |> render Pick.ignore ] |> colored (Mod.constant C4b.Gray)
                 ]
 
-                Everything |> render [anyways MoveRay]
+                Everything |> render [whenever Mouse.move MoveRay]
         ]
 
-    let viewScene cam s =   
+    let viewScene (sizes : IMod<V2i>) s =   
+        let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
+        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
         viewModel s.mscene 
-            |> camera cam
+            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
             |> effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
 
     let ofPickMsgModel (model : TModel) (pick : GlobalPick) =
         match pick.mouseEvent with   
             | MouseEvent.Click _ | MouseEvent.Down _  -> []
-            | MouseEvent.Move when Option.isNone model.activeTranslation ->
-                    [NoHit; MoveRay pick.ray]
-            | MouseEvent.Move ->  [MoveRay pick.ray]
+            | MouseEvent.Move when Option.isNone model.activeTranslation -> [NoHit]
+            | MouseEvent.Move ->  []
             | MouseEvent.Up _   -> [EndTranslation]
+            | MouseEvent.NoEvent -> []
 
     let ofPickMsg (model : Scene) noPick =
         ofPickMsgModel model.scene noPick
 
-    let app (camera : IMod<Camera>) = {
+    let app (sizes : IMod<V2i>) = {
         initial = initial
         update = update
-        view = viewScene camera
+        view = viewScene sizes
         ofPickMsg = ofPickMsg
         subscriptions = Subscriptions.none
     }

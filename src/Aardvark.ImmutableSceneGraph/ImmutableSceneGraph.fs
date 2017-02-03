@@ -10,13 +10,22 @@ open Aardvark.Application
 [<AutoOpen>]
 module PickStuff = 
 
-    type MouseEvent = Down of MouseButtons | Move | Click of MouseButtons | Up of MouseButtons
+    let altKey = Keys.LeftAlt
+    let ctrlKey = Keys.LeftCtrl
+    let shiftKey = Keys.LeftShift
+
+    type KeyEvent = Down of Keys | Up of Keys | NoEvent
+
+    type MouseEvent = Down of MouseButtons | Move | Click of MouseButtons | Up of MouseButtons | NoEvent
 
     type PickOccurance = { 
         mouse : MouseEvent
+        key : KeyEvent
         point : V3d 
         ray : Ray3d
      }
+
+     type NoPick = { mouse : MouseEvent; ray : Ray3d }
 
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -26,7 +35,11 @@ module PickStuff =
     module Mouse =
         let move (p : PickOccurance) = p.mouse = Move
         let down (p : PickOccurance) = match p.mouse with | Down b -> true | _ -> false  
-        let down' (button : MouseButtons) (p : PickOccurance) = match p.mouse with | Down b when b = button -> true | _ -> false 
+        let down' (button : MouseButtons) (p : PickOccurance) = match p.mouse with | Down b when b = button -> true | _ -> false
+
+    module Key = 
+        let up (key : Keys) (p : PickOccurance) = match p.key with | KeyEvent.Up k when k = key -> true | _ -> false
+        let down (key : Keys) (p : PickOccurance) = match p.key with | KeyEvent.Down k when k = key -> true | _ -> false
 
     type Transparency = Solid | PickThrough
     type PickOperation<'msg> = (PickOccurance -> Option<'msg>) * Transparency
@@ -43,6 +56,9 @@ module PickStuff =
 
     let anyways (r : Ray3d -> 'msg) : PickOperation<'msg> =
         (fun pickOcc -> Some <| r pickOcc.ray), PickThrough
+
+    let whenever (p : PickOccurance -> bool) (r : Ray3d -> 'msg) : PickOperation<'msg> =
+        (fun pickOcc -> if p pickOcc then Some <| r pickOcc.ray else None), PickThrough
             
 
     let onPickThrough (p : PickOccurance -> bool) (r : V3d -> 'msg) : PickOperation<'msg> = 
@@ -53,7 +69,7 @@ module PickStuff =
     
     type Hits<'msg> = list<float * list<PickOperation<'msg>>>
     
-    type GlobalPick = { mouseEvent : MouseEvent; ray : Ray3d; hits : bool }
+    type GlobalPick = { mouseEvent : MouseEvent; hits : bool; keyEvent : KeyEvent }
 //    module GlobalPick =
 //        let map (f : 'a -> 'b) (p : GlobalPick<'a>) =
 //            { 
@@ -320,7 +336,11 @@ module Scene =
     let effect effects xs = conv (Sg.effect effects) xs
     let viewTrafo viewTrafo x = ViewTrafo(viewTrafo,Mod.init x) :> ISg<_>
     let projTrafo projTrafo x =  ProjTrafo(projTrafo,Mod.init x) :> ISg<_>
-    let camera camera xs = conv (Sg.camera camera) xs
-    let camera' camera xs = conv (Sg.camera camera) (group xs)
+    let camera camera xs = 
+        xs |> viewTrafo (camera |> Mod.map Camera.viewTrafo)
+           |> projTrafo (camera |> Mod.map Camera.projTrafo)
+           |> conv (Sg.camera camera) 
+    let camera' c xs = camera c (group xs)
+    let ofSg (s : ISg) = conv (fun _ -> s) (group [])
 
     

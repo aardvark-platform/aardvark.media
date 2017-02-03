@@ -48,6 +48,16 @@ module Sub =
     let time timeSpan f = TimeSub(timeSpan,f)
     let ofMod m f = ModSub(m,f)
 
+    let rec map (f : 'a -> 'b) s = 
+        match s with
+            | NoSub -> NoSub
+            | TimeSub(ts,msg) -> TimeSub(ts,f << msg) 
+            | Many xs -> xs |> List.map (map f) |> Many
+            | MouseClick msg -> MouseClick (fun b p -> match msg b p with | Some e -> Some (f e) | None -> None)
+            | Mouse msg -> Mouse (fun a b c -> match msg a b c with | Some e -> Some (f e) | None -> None)
+            | MouseMove msg -> MouseMove (f << msg)
+            | Key msg -> Key (fun a b -> Option.map f (msg a b))
+            | ModSub(m,g) -> failwith "cannot implement"
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -123,6 +133,8 @@ module Elmish =
 
         let model = Mod.init app.initial
 
+        let mutable currentlyActive = false
+
         let transformPixel (p : PixelPosition) =
             let p = PixelPosition(p.Position, Mod.force viewport)
             p
@@ -139,16 +151,20 @@ module Elmish =
         let mutable times = []
 
         let moveSub (oldP,newP) =
-            moves |> List.map (fun f -> f (oldP,newP)) |> List.fold onMessage model.Value |> ignore
+            if currentlyActive then
+                moves |> List.map (fun f -> f (oldP,newP)) |> List.fold onMessage model.Value |> ignore
 
         let mouseActionsSub dir p =
-            mouseActions |> List.choose (fun f -> f dir p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
+            if currentlyActive then
+                mouseActions |> List.choose (fun f -> f dir p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
 
         let mouseClicks p =
-            clicks |> List.choose (fun f -> f p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
+            if currentlyActive then
+                clicks |> List.choose (fun f -> f p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
 
         let keysSub dir k =
-            keys |> List.choose (fun f -> f dir k) |> List.fold onMessage model.Value |> ignore
+            if currentlyActive then
+                keys |> List.choose (fun f -> f dir k) |> List.fold onMessage model.Value |> ignore
 
         let currentTimer = new Dictionary<TimeSpan,ref<list<DateTime -> 'msg> * list<IDisposable>> * System.Timers.Timer>()
         let enterTimes xs =
@@ -208,14 +224,15 @@ module Elmish =
                 modSubscriptions.Add(m, (d,sw))
 
         let updateSubscriptions (m : 'model) =
-            let subs = app.subscriptions m
-            moves <- Sub.filterMoves subs
-            clicks <- Sub.filterMouseClicks subs
-            mouseActions <- Sub.filterMouseThings subs
-            keys <- Sub.filterKeys subs
-            times <- Sub.filterTimes subs
-            fixupModRegistrations (Sub.filterMods subs)
-            enterTimes times
+            if currentlyActive then
+                let subs = app.subscriptions m
+                moves <- Sub.filterMoves subs
+                clicks <- Sub.filterMouseClicks subs
+                mouseActions <- Sub.filterMouseThings subs
+                keys <- Sub.filterKeys subs
+                times <- Sub.filterTimes subs
+                fixupModRegistrations (Sub.filterMods subs)
+                enterTimes times
             ()
 
         let updateModel (m : 'model) =
@@ -283,17 +300,21 @@ module Elmish =
         let updatePickMsg (m : GlobalPick) (model : 'model) =
             app.ofPickMsg model m |> List.fold onMessage model
 
-        let handleMouseEvent mouseEvent =
-            let picks = pick (mouse.Position |> Mod.force |> transformPixel)
-            let mutable model = model.Value
-            for (ray,d,(msg,transparency)) in picks do
-                let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d; ray = ray }
-                match msg occ with
-                    | Some r -> model <- onMessage model r
-                    | _ -> ()
-            updateModel model 
 
-        mouse.Move.Values.Subscribe(fun (oldP,newP) -> 
+        let handleMouseEvent mouseEvent =
+            if currentlyActive then
+                let picks = pick (mouse.Position |> Mod.force |> transformPixel)
+                let mutable model = updatePickMsg { mouseEvent = mouseEvent; hits = List.isEmpty picks |> not; keyEvent = KeyEvent.NoEvent } model.Value
+                for (ray,d,(msg,transparency)) in picks do
+                    let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d; ray = ray; key = KeyEvent.NoEvent }
+                    match msg occ with
+                        | Some r -> model <- onMessage model r
+                        | _ -> ()
+                updateModel model 
+
+        mouse.Move.Values.Subscribe(fun (oldP,newP) ->
+            let bounds = viewport |> Mod.force
+            currentlyActive <- bounds.Contains newP.Position 
             handleMouseEvent MouseEvent.Move
         ) |> ignore
 
@@ -308,6 +329,43 @@ module Elmish =
         mouse.Up.Values.Subscribe(fun p ->     
             handleMouseEvent (MouseEvent.Up p)
         ) |> ignore
+
+
+        let handleKeyEvent (key : KeyEvent) =
+            if currentlyActive then
+                let picks = pick (mouse.Position |> Mod.force |> transformPixel)
+                let mutable model = model.Value
+                for (ray,d,(msg,transparency)) in picks do
+                    let occ : PickOccurance = { mouse = MouseEvent.NoEvent; key = key; point = ray.GetPointOnRay d; ray = ray }
+                    match msg occ with
+                        | Some r -> model <- onMessage model r
+                        | _ -> ()
+                updateModel model 
+
+
+        keyboard.KeyUp(altKey).Values.Subscribe( fun k ->
+            handleKeyEvent (KeyEvent.Up altKey)
+        ) |> ignore
+        keyboard.KeyDown(altKey).Values.Subscribe( fun k ->
+            handleKeyEvent (KeyEvent.Down altKey)
+        ) |> ignore
+
+        keyboard.KeyUp(ctrlKey).Values.Subscribe( fun k ->
+            handleKeyEvent (KeyEvent.Up ctrlKey)
+        ) |> ignore
+        keyboard.KeyDown(ctrlKey).Values.Subscribe( fun k ->
+            handleKeyEvent (KeyEvent.Down ctrlKey)
+        ) |> ignore
+
+        keyboard.KeyUp(shiftKey).Values.Subscribe( fun k ->
+            handleKeyEvent (KeyEvent.Up shiftKey)
+        ) |> ignore
+        keyboard.KeyDown(shiftKey).Values.Subscribe( fun k ->
+            handleKeyEvent (KeyEvent.Down shiftKey)
+        ) |> ignore
+
+
+
 
         { send = send; sg = view :> ISg; emitModel = updateModel }
 

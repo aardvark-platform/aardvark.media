@@ -141,8 +141,8 @@ module SingleMultiView =
             let s = { m.scene with scene = { m.scene.scene with trafo = Trafo3d.Identity }}
             { m with ui = { m.ui with cnt = 0 }; scene = s }
 
-    let view3D (cam : IMod<Camera>) (m : MModel) =
-        m.mscene  |> TranslateController.viewScene cam |> Scene.map Translate
+    let view3D (sizes : IMod<V2i>) (m : MModel) =
+        m.mscene  |> TranslateController.viewScene sizes |> Scene.map Translate
 
     let ofPickMsg (m : Model) (noPick) = TranslateController.ofPickMsg m.scene noPick |> List.map Translate
 
@@ -155,7 +155,7 @@ module SingleMultiView =
         let three3dApp : App<Model,MModel,Action,ISg<Action>> = {
             initial = initial
             update = update
-            view = view3D camera
+            view = view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
             ofPickMsg = ofPickMsg
             subscriptions = Subscriptions.none
         }
