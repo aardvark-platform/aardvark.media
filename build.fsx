@@ -36,7 +36,7 @@ let projInfo =
 
 
 Target "Docs" (fun () -> 
-    Fake.FSharpFormatting.CreateDocs "src/FablishInterop/docs" "docs" "src/FablishInterop/docs/template.html" projInfo
+    Fake.FSharpFormatting.CreateDocs "src/Aardvark.ImmutableSceneGraph/docs" "docs" "src/Aardvark.ImmutableSceneGraph/docs/template.html" projInfo
     Fake.FileHelper.CopyRecursive "packages/build/FSharp.Formatting.CommandTool/styles" "docs/content" true |> printfn "copied: %A"
 )
 
