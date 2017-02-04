@@ -63,6 +63,43 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <ItemGroup>
+    <Content Include="Static\style.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Static\bootstrap.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Static\template.html">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="boot.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Compile Include="Bootstrap.fs" />
+    <Compile Include="Server.fs" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <Reference Include="System.Windows.Forms" />
+    <ProjectReference Include="..\Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj">
+      <Name>Aardvark.Cef.Process</Name>
+      <Project>{1dfeb808-39fa-4db3-92b6-77baadc1457d}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Aardvark.Cef\Aardvark.Cef.fsproj">
+      <Name>Aardvark.Cef</Name>
+      <Project>{70c08f03-f4a5-414a-abd6-cc07dc42e07c}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -331,6 +368,17 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="StackExchange.NetGain">
+          <HintPath>..\..\packages\StackExchange.NetGain\lib\net45\StackExchange.NetGain.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="System.Collections.Immutable">
           <HintPath>..\..\packages\System.Collections.Immutable\lib\netstandard1.0\System.Collections.Immutable.dll</HintPath>
           <Private>True</Private>
@@ -372,31 +420,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <ItemGroup>
-    <Content Include="boot.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Compile Include="Bootstrap.fs" />
-    <Compile Include="Program.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <Reference Include="System.Windows.Forms" />
-    <ProjectReference Include="..\Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj">
-      <Name>Aardvark.Cef.Process</Name>
-      <Project>{1dfeb808-39fa-4db3-92b6-77baadc1457d}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Aardvark.Cef\Aardvark.Cef.fsproj">
-      <Name>Aardvark.Cef</Name>
-      <Project>{70c08f03-f4a5-414a-abd6-cc07dc42e07c}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
 </Project>

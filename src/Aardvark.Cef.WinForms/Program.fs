@@ -579,74 +579,38 @@ open Aardvark.SceneGraph
 let main argv = 
     Ag.initialize()
     Aardvark.Init()
-    Chromium.init' false
+    
 
     let app = new OpenGlApplication()
+    let server = new AardvarkServer(app.Runtime, 8888);
 
+
+    server.["yeah"] <- fun (yeah : IRenderControl) ->
+        let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
+        let proj = yeah.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
+
+        let view =
+            view |> DefaultCameraController.control yeah.Mouse yeah.Keyboard yeah.Time
+
+        let sg =
+            Sg.box' C4b.Red (Box3d(-V3d.III, V3d.III))
+                |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
+                |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.simpleLighting
+                }
+
+        app.Runtime.CompileRender(yeah.FramebufferSignature, sg)
+
+
+    Console.ReadLine() |> ignore
+    Environment.Exit 0
+
+    Chromium.init' false
     // create a browser and a nested renderControl
-    use ctrl = new BrowserControl()
-    let yeah = new CefRenderControl(app.Runtime, ctrl, "yeah")
-
-
-    let settings =
-        CefBrowserSettings(
-            FileAccessFromFileUrls = CefState.Enabled
-        )
-
-    ctrl.BrowserSettings <- CefBrowserSettings(FileAccessFromFileUrls = CefState.Enabled)
-    ctrl.BrowserSettings.FileAccessFromFileUrls <- CefState.Enabled
-
-    let sw = Stopwatch()
-    sw.Start()
-    // create a rendertask
-    let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
-    let proj = yeah.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
-
-
-    let view =
-        view |> DefaultCameraController.control yeah.Mouse yeah.Keyboard yeah.Time
-
-    let sg =
-        Sg.box' C4b.Red (Box3d(-V3d.III, V3d.III))
-            |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
-            |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
-            |> Sg.shader {
-                do! DefaultSurfaces.trafo
-                do! DefaultSurfaces.simpleLighting
-            }
-
-    yeah.Background <- C4f(0.0f, 0.0f, 0.0f, 0.0f)
-    yeah.RenderTask <- app.Runtime.CompileRender(yeah.FramebufferSignature, sg)
-    
-    // show developer tools when ready
-    ctrl.ShowDevTools()
-
-
-    // define the main page
-    let mainPage (u : Map<string, string>) =
-        Html """
-            <html>
-                <head>
-                    <title>BLA</title>
-                    <link rel="stylesheet" type="text/css" href="http://aardvark.local/style.css">
-                    <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
-                    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js"></script>
-                    <script src="http://aardvark.local/boot.js"></script>
-                </head>
-                <body>
-                    <button onclick="testFS()">Click Me</button>
-                    <input type="text"></input>
-                    <div class='aardvark' id='yeah' style="height: 100%; width: 100%" />
-                </body>
-            </html>
-        """
-
-
-    // register all pages
-    ctrl.["http://aardvark.local/style.css"] <- Bootstrap.style
-    ctrl.["http://aardvark.local/boot.js"] <- Bootstrap.boot
-    ctrl.["http://aardvark.local"] <- mainPage
-    ctrl.StartUrl <- "http://aardvark.local"
+    use ctrl = new CefWebBrowser()
+    ctrl.StartUrl <- "http://localhost:8888/"
 
     // create a form containing the browser
     use form = new Form()
