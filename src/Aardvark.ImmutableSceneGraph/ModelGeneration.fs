@@ -16,6 +16,9 @@ module CameraTest =
         camera : CameraView
         frustum : Frustum 
         lookingAround : Option<PixelPosition>
+        panning : Option<PixelPosition>
+        zooming : Option<PixelPosition>
+        picking : Option<int>
         center : Option<V3d>
         navigationMode : NavigationMode
 

@@ -423,12 +423,17 @@ module OrbitTest =
 
     type Action = 
         | MouseDelta of V2d
-        | DragStart of PixelPosition
-        | DragStop  of PixelPosition     
-        | PickPoint of V3d
-
-        | Animate of DateTime
-        | TimeStep of float    
+        | DragStart  of PixelPosition
+        | DragStop   of PixelPosition
+        | PanStart   of PixelPosition
+        | PanStop    of PixelPosition
+        | ZoomStart  of PixelPosition
+        | ZoomStop   of PixelPosition
+        | PickStart  
+        | PickStop   
+        | PickPoint  of V3d
+        | Animate    of DateTime
+        | TimeStep   of float    
 
     let mCenter (m:MModel) = 
         adaptive{
@@ -445,8 +450,8 @@ module OrbitTest =
             
     let view (m : MModel) =        
         [Sphere (Sphere3d(V3d.OOO, 1.0)) 
-            |> Scene.render [ on (Mouse.down' MouseButtons.Middle) PickPoint ]
-         Sphere (Sphere3d(V3d.OOO, 0.05)) 
+            |> Scene.render [ on (Mouse.down' MouseButtons.Left) PickPoint ]
+         Sphere (Sphere3d(V3d.OOO, 0.02)) 
             |> Scene.render [] 
             |> colored' (Mod.constant C4b.Red)
             |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (center' a)))
@@ -455,48 +460,68 @@ module OrbitTest =
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
         |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
     
+    let orientationFctr = 1.0
+    let panningFctr = 1.0
+    let zoomingFctr = 8.0
+
+    let clampedLocation (p:V3d) (c:V3d) =
+        let dist = (c - p).Length
+        if dist <= 0.1 then c else p
+        
+
     let update e (m : Model) msg = 
-        match msg with
+        match msg with            
             | DragStart p -> { m with lookingAround = Some p }
-            | DragStop _ -> { m with lookingAround = None }
-            | MouseDelta d when m.lookingAround.IsSome && m.center.IsSome ->
-                let delta = Constant.PiTimesTwo * d * 8.0
-                let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
+            | DragStop _  -> { m with lookingAround = None }
+            | PanStart p  -> { m with panning = Some p }
+            | PanStop _   -> { m with panning = None }
+            | ZoomStart p -> { m with zooming = Some p }
+            | ZoomStop _  -> { m with zooming = None }
+            | PickStart   -> { m with picking = Some 0 }
+            | PickStop    -> { m with picking = None }
+            | MouseDelta d -> 
+                match (m.lookingAround, m.panning, m.zooming, m.center) with
+                    | Some _, None, None, Some c when m.picking.IsNone -> //orient
+                        let delta = Constant.PiTimesTwo * d * orientationFctr
+                        let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
 
-                let newLocation = t.TransformDir (m.camera.Location)
-                let tempcam = m.camera.WithLocation newLocation
-                let newForward = m.center.Value - newLocation |> Vec.normalize
+                        let newLocation = t.TransformDir (m.camera.Location)
+                        let tempcam = m.camera.WithLocation newLocation
+                        let newForward = c - newLocation |> Vec.normalize
+                        let tempcam = tempcam.WithForward newForward
+                               
+                        { m with camera = CameraView.lookAt tempcam.Location m.center.Value tempcam.Up}
+                    | None, Some _, None, Some c -> //pan
+                        let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * panningFctr
 
-                { m with camera = tempcam.WithForward newForward }
-
-//                let delta = Constant.PiTimesTwo * d * 8.0
-//                let delta = new V2d (delta.X, -delta.Y)
-//
-//                let axis = m.camera.Right * delta.X - m.camera.Sky * delta.Y;
-//
-//                let rot = M44d.Rotation (axis, -delta.Length)
-//                let a = rot.TransformDir (m.camera.Location - m.center.Value)
-//
-//                let newLocation = m.center.Value + a;
-//                let tempcam = m.camera.WithLocation newLocation
-//                let newForward = m.center.Value - newLocation |> Vec.normalize
-//                //let tempcam = tempcam.WithForward newForward               
-//                { m with camera = tempcam.WithForward newForward }
+                        { m with camera = m.camera.WithLocation (m.camera.Location + step ); center = Some (c + step)}
+                    | None, None, Some _, Some c when m.center.IsSome -> //zoom
+                        let step = (m.camera.Forward * float -d.Y) * zoomingFctr
+                        let newLoc = m.camera.Location + step                     
+                        { m with camera = m.camera.WithLocation newLoc}
+                    | _,_,_,_ -> m
             | TimeStep dt -> 
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
-                let speed = dt * 0.01
+                let speed = dt * 0.01                
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
-            | PickPoint c -> 
-                
+            | PickPoint c when m.picking.IsSome -> 
                 let newForward = c - m.camera.Location |> Vec.normalize
-                { m with center = Some c; camera = m.camera.WithForward newForward  }
-//                { m with center = Some c;}
+                let tempCam = m.camera.WithForward newForward
+                { m with center = Some c; camera = CameraView.lookAt tempCam.Location c tempCam.Up }
             | _ -> m
 
     let subscriptions (m : Model) =
         Many [
             Input.mouse Mouse.down Mouse.left DragStart
             Input.mouse Mouse.up   Mouse.left DragStop
+
+            Input.mouse Mouse.down Mouse.middle PanStart
+            Input.mouse Mouse.up   Mouse.middle PanStop
+
+            Input.mouse Mouse.down Mouse.right ZoomStart
+            Input.mouse Mouse.up   Mouse.right ZoomStop
+
+            Input.toggleKey Keys.LeftCtrl (fun _ -> PickStart)   (fun _ -> PickStop)
             
             Input.moveDelta MouseDelta    
             
@@ -507,6 +532,9 @@ module OrbitTest =
         camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
         frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
         lookingAround = None
+        panning = None
+        zooming = None
+        picking = None
         forward = V2d.OO
         forwardSpeed = 0.0
         center = Some V3d.Zero
@@ -538,20 +566,24 @@ module CameraTest =
 
     type Action = 
         | MouseDelta of V2d
-        | DragStart of PixelPosition
-        | DragStop  of PixelPosition
+        | DragStart  of PixelPosition
+        | DragStop   of PixelPosition
+        | PanStart   of PixelPosition
+        | PanStop    of PixelPosition
+        | ZoomStart  of PixelPosition
+        | ZoomStop   of PixelPosition
         | AddMove    of V2d
         | RemoveMove of V2d
-        | Animate of DateTime
-        | PickPoint of V3d
-        | NoPick of V3d
-        | TimeStep of float
+        | Animate    of DateTime
+        | PickPoint  of V3d
+        | NoPick     of V3d
+        | TimeStep   of float
 
     let point = Mod.init V3d.Zero
 
     let view (m : MModel) =
         [Sphere (Sphere3d(V3d.OOO, 1.0))
-            |> Scene.render [ on Mouse.move PickPoint ];
+            |> Scene.render []
          Sphere (Sphere3d(V3d.OOO, 0.05)) 
             |> Scene.render []             
             |> colored' (Mod.constant C4b.Red)
@@ -565,16 +597,32 @@ module CameraTest =
     let left = -V2d.IO
     let right = V2d.IO
     let clampDir (v : V2d) = V2d(clamp -1.0 1.0 v.X, clamp -1.0 1.0 v.Y)
+    let orientationFctr = 1.0
+    let panningFctr = 1.0
+    let zoomingFctr = 1.0
 
     let update e (m : Model) msg = 
         match msg with
             | DragStart p -> { m with lookingAround = Some p }
-            | DragStop _ -> { m with lookingAround = None }
-            | MouseDelta d when m.lookingAround.IsSome -> 
-                let delta = Constant.PiTimesTwo * d * 8.0
-                let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
-                let forward = t.TransformDir m.camera.Forward |> Vec.normalize
-                { m with camera = m.camera.WithForward forward }
+            | DragStop _  -> { m with lookingAround = None }
+            | PanStart p  -> { m with panning = Some p }
+            | PanStop _   -> { m with panning = None }
+            | ZoomStart p -> { m with zooming = Some p }
+            | ZoomStop _  -> { m with zooming = None }
+            | MouseDelta d -> 
+                match (m.lookingAround, m.panning, m.zooming) with
+                    | Some _, None, None -> //orient
+                        let delta = Constant.PiTimesTwo * d * orientationFctr
+                        let t = M44d.Rotation (m.camera.Right, -delta.Y) * M44d.Rotation (m.camera.Sky, -delta.X)
+                        let forward = t.TransformDir m.camera.Forward |> Vec.normalize
+                        { m with camera = m.camera.WithForward forward }
+                    | None, Some _, None -> //pan
+                        let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * panningFctr
+                        { m with camera = m.camera.WithLocation (m.camera.Location + step )}
+                    | None, None, Some _ -> //zoom
+                        let step = (m.camera.Forward * float -d.Y) * zoomingFctr                        
+                        { m with camera = m.camera.WithLocation (m.camera.Location + step)}
+                    | _,_,_ -> m
             | AddMove d    -> { m with forward = clampDir <| m.forward + d }
             | RemoveMove d -> { m with forward = clampDir <| m.forward - d }
             | TimeStep dt -> 
@@ -596,6 +644,12 @@ module CameraTest =
         Many [
             Input.mouse Mouse.down Mouse.left DragStart
             Input.mouse Mouse.up   Mouse.left DragStop
+
+            Input.mouse Mouse.down Mouse.middle PanStart
+            Input.mouse Mouse.up   Mouse.middle PanStop
+
+            Input.mouse Mouse.down Mouse.right ZoomStart
+            Input.mouse Mouse.up   Mouse.right ZoomStop
             
             Input.moveDelta MouseDelta
 
@@ -604,13 +658,16 @@ module CameraTest =
             Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
             Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)            
             
-            Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)      
+            Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
         ]
 
     let initial = { 
         camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
         frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
         lookingAround = None
+        panning = None
+        zooming = None
+        picking = None
         forward = V2d.OO
         forwardSpeed = 0.0 
         center = None
@@ -672,6 +729,9 @@ module ComposedTest =
         camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
         frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
         lookingAround = None
+        panning = None
+        zooming = None
+        picking = None
         forward = V2d.OO
         forwardSpeed = 0.0 
         center = None

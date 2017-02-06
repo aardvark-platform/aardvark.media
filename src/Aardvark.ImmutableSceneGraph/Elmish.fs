@@ -89,6 +89,7 @@ module Input =
         let button ref p = if p = ref then true else false
         let left = button MouseButtons.Left
         let right = button MouseButtons.Right
+        let middle = button MouseButtons.Middle
         let up f = if f = Direction.Up then true else false
         let down f = if f = Direction.Down then true else false
 

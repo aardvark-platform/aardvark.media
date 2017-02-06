@@ -18,6 +18,9 @@ module Generated =
               camera : CameraView
               frustum : Frustum
               lookingAround : Option<PixelPosition>
+              panning : Option<PixelPosition>
+              zooming : Option<PixelPosition>
+              picking : Option<int>
               center : Option<V3d>
               navigationMode : NavigationMode
               forward : V2d
@@ -28,6 +31,9 @@ module Generated =
                   mcamera = Mod.init (x.camera)
                   mfrustum = Mod.init (x.frustum)
                   mlookingAround = Mod.init (x.lookingAround)
+                  mpanning = Mod.init (x.panning)
+                  mzooming = Mod.init (x.zooming)
+                  mpicking = Mod.init (x.picking)
                   mcenter = Mod.init (x.center)
                   mnavigationMode = Mod.init (x.navigationMode)
                   mforward = Mod.init (x.forward)
@@ -44,6 +50,9 @@ module Generated =
               mcamera : ModRef<CameraView>
               mfrustum : ModRef<Frustum>
               mlookingAround : ModRef<Option<PixelPosition>>
+              mpanning : ModRef<Option<PixelPosition>>
+              mzooming : ModRef<Option<PixelPosition>>
+              mpicking : ModRef<Option<int>>
               mcenter : ModRef<Option<V3d>>
               mnavigationMode : ModRef<NavigationMode>
               mforward : ModRef<V2d>
@@ -54,6 +63,8 @@ module Generated =
                     x.mcamera.Value <- arg0.camera
                     x.mfrustum.Value <- arg0.frustum
                     x.mlookingAround.Value <- arg0.lookingAround
+                    x.mpanning.Value <- arg0.panning
+                    x.mzooming.Value <- arg0.zooming
                     x.mcenter.Value <- arg0.center
                     x.mnavigationMode.Value <- arg0.navigationMode
                     x.mforward.Value <- arg0.forward
