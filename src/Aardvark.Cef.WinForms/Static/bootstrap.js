@@ -1,4 +1,5 @@
 var aardvark = {};
+var wsPort = "8888";
 
 // rendering related
 
@@ -93,7 +94,7 @@ function getRenderTarget(id) {
             return $div.height();
         };
 
-    var socket = new WebSocket("ws://localhost:8888/render/" + id + "/" + sessionId);
+    var socket = new WebSocket("ws://localhost:" + wsPort + "/render/" + id + "/" + sessionId);
     socket.binaryType = "arraybuffer"
     var lastHeight = 1;
     var lastWidth = 1;
@@ -181,7 +182,7 @@ function initDocument() {
 
 // event related things (WebSocket)
 
-var eventSocket = new WebSocket("ws://localhost:8888/events")
+var eventSocket = new WebSocket("ws://localhost:" + wsPort + "/events")
 var sessionId = "noid";
 
 aardvark.processEvent = function () {

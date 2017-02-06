@@ -23,6 +23,7 @@ nuget FsPickler.Json  ~> 3.2.0
  
 nuget Fablish               ~> 1.7.9
 nuget StackExchange.NetGain ~> 1.0.0
+nuget Fleck                 ~> 0.14.0.59
 
 group Build
 content: none

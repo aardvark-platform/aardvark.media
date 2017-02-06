@@ -21,6 +21,8 @@ open Aardvark.Rendering.GL
 open Aardvark.Application
 open Aardvark.Application.WinForms
 
+#nowarn "40"
+
 [<AutoOpen>]
 module private Helpers =
     open System.Collections.Specialized
@@ -182,12 +184,129 @@ module ``WebSocket Extensions`` =
             }
       
 
+type IWebSocket =
+    abstract member Ready : unit -> unit
+    abstract member Send : string -> unit
+    abstract member Send : byte[] -> unit
+    abstract member OnMessage : Microsoft.FSharp.Control.IEvent<string>
+    abstract member OnBinary : Microsoft.FSharp.Control.IEvent<byte[]>
+    abstract member OnClose : Microsoft.FSharp.Control.IEvent<unit>
+
+
+
+
+
+type SystemWebSocket(s : WebSocket) =
+
+    let onmessage = Event<string>()
+    let onbinary = Event<byte[]>()
+    let onclose = Event<unit>()
+
+    let rec runner() =
+        async {
+            let! res = s.ReceiveValueAsync()
+            match res with
+                | Some v -> 
+                    match v with
+                        | Value.String str -> onmessage.Trigger str
+                        | Value.Binary bin -> onbinary.Trigger bin
+
+                    do! runner()
+                | None ->
+                    onclose.Trigger()
+        }
+
+    interface IWebSocket with
+        member x.Ready() = Async.Start (runner())
+        member x.Send (str : string) = s.SendAsync str |> Async.RunSynchronously
+        member x.Send (bin : byte[]) = s.Send bin
+        member x.OnMessage = onmessage.Publish
+        member x.OnBinary = onbinary.Publish
+        member x.OnClose = onclose.Publish
+
+
+module Fleck = 
+    open Fleck
+
+    let server = new WebSocketServer("ws://0.0.0.0:8181")
+
+    type FleckWebSocket(s : IWebSocketConnection) =
+        let onmessage = Event<string>()
+        let onbinary = Event<byte[]>()
+        let onclose = Event<unit>()
+
+        let mutable isOpen = false
+        let opened = Event<unit>()
+
+        do s.OnOpen <- fun () ->
+            isOpen <- true
+            opened.Trigger()
+
+        let init() = 
+            if isOpen then 
+                s.OnMessage <- fun str -> onmessage.Trigger(str)
+                s.OnBinary <- fun bin -> onbinary.Trigger(bin)
+                s.OnClose <- fun () -> onclose.Trigger(())
+            else  
+                opened.Publish.Add (fun () -> 
+                    s.OnMessage <- fun str -> onmessage.Trigger(str)
+                    s.OnBinary <- fun bin -> onbinary.Trigger(bin)
+                    s.OnClose <- fun () -> onclose.Trigger(())
+                )
+           
+        interface IWebSocket with
+            member x.Ready() = init()
+
+            member x.Send (str : string) = 
+                if isOpen then s.Send(str).Wait()
+                else opened.Publish.Add (fun () -> s.Send(str).Wait())
+
+            member x.Send (bin : byte[]) = 
+                if isOpen then s.Send(bin).Wait()
+                else opened.Publish.Add (fun () -> s.Send(bin).Wait())
+
+            member x.OnMessage = onmessage.Publish
+            member x.OnBinary = onbinary.Publish
+            member x.OnClose = onclose.Publish
+
+    let run (onsocket : Request * IWebSocket -> unit) =
+        server.EnabledSslProtocols <- Security.Authentication.SslProtocols.None
+        server.ListenerSocket.NoDelay <- true
+        server.SupportedSubProtocols <- ["events"; "render"]
+
+        FleckLog.LogAction <- (Action<_,_,_>(fun level msg ex ->
+            match level with
+                | LogLevel.Error ->
+                    Log.error "%s" msg
+
+                | LogLevel.Warn ->
+                    Log.warn "%s" msg
+
+                | LogLevel.Info ->
+                    Log.line "%s" msg
+
+                | _ ->
+                    ()
+        ))
+
+        server.Start(fun socket ->
+            let request = { path = socket.ConnectionInfo.Path; query = Map.empty }
+            let s = FleckWebSocket(socket)
+            onsocket(request, s)
+        )
+
+
+
+
 [<AbstractClass>]
 type Server(port : int) as this =
     let listener = new HttpListener()
     let port = if port <= 0 then getFreePort() else port
 
     do listener.Prefixes.Add(sprintf "http://localhost:%d/" port)
+
+
+    //do Fleck.run this.OnWebSocket
 
     let run =
         async {
@@ -202,11 +321,10 @@ type Server(port : int) as this =
                     let query = NameValueCollection.toMap request.QueryString
                     let req = { path = path; query = query }
 
-                    printfn "%A" request.RemoteEndPoint
-
                     if request.IsWebSocketRequest then
                         let! socketCtx = context.AcceptWebSocketAsync(null) |> Async.AwaitTask
-                        this.OnWebSocket(req, socketCtx.WebSocket)
+                        Log.warn "secure: %A" socketCtx.IsSecureConnection
+                        this.OnWebSocket(req, SystemWebSocket socketCtx.WebSocket)
                          
                     else   
                         match this.OnGet req with
@@ -240,7 +358,7 @@ type Server(port : int) as this =
     let listenerTask = Async.StartAsTask(run, cancellationToken = cancel.Token)
 
     abstract member OnGet : Request -> Option<Response>
-    abstract member OnWebSocket : Request * WebSocket -> unit
+    abstract member OnWebSocket : Request * IWebSocket -> unit
 
     member x.Port = port
 
@@ -363,12 +481,12 @@ type AardvarkServer(runitme : IRuntime, port : int) =
             | "/style.css"      -> Some { mimeType = "text/css"; content = Value.String style }
             | _                 -> None
 
-    override x.OnWebSocket(request : Request, socket : WebSocket) =
+    override x.OnWebSocket(request : Request, socket : IWebSocket) =
         let comp = request.path.Split([|'/'|], StringSplitOptions.RemoveEmptyEntries) |> Array.toList
         match comp with
             | ["events"] ->
                 let id = Guid.NewGuid()
-                socket.SendAsync (Pickler.json.PickleToString { Message.id = 0; Message.kind = "sessionid"; Message.payload = string id }) |> Async.RunSynchronously
+                socket.Send (Pickler.json.PickleToString { Message.id = 0; Message.kind = "sessionid"; Message.payload = string id })
                 let c = AardvarkClient(runitme, x, id, socket)
                 clients.TryAdd(id, c) |> ignore
 
@@ -384,7 +502,7 @@ type AardvarkServer(runitme : IRuntime, port : int) =
                 ()
         ()
 
-and AardvarkClient internal(runtime : IRuntime, server : AardvarkServer, id : Guid, eventSocket : WebSocket) as this =
+and AardvarkClient internal(runtime : IRuntime, server : AardvarkServer, id : Guid, eventSocket : IWebSocket) as this =
     let events = Event<Event>()
     let eventPump = MessagePump.create (fun e -> events.Trigger e; server.Trigger e)
 
@@ -421,25 +539,31 @@ and AardvarkClient internal(runtime : IRuntime, server : AardvarkServer, id : Gu
             | _ ->
                 ()
 
-    let rec listen() =
-        async {
-            let! value = eventSocket.ReceiveValueAsync()
-            match value with
-                | Some v ->
-                    try processEventValue id v
-                    with e -> Log.warn "bad event value %A" v
+//    let rec listen() =
+//        async {
+//            let! value = eventSocket.ReceiveValueAsync()
+//            match value with
+//                | Some v ->
+//                    try processEventValue id v
+//                    with e -> Log.warn "bad event value %A" v
+//
+//                    do! listen()
+//                | None ->
+//                    closed()
+//        }
+//
+//    do Async.Start (listen())
 
-                    do! listen()
-                | None ->
-                    closed()
-        }
-
-    do Async.Start (listen())
+    do  eventSocket.OnMessage.Add (fun v ->
+            try processEventValue id (Value.String v)
+            with e -> Log.warn "bad event value %A" v
+        )
+        eventSocket.Ready()
 
     let controls = ConcurrentDictionary<string, AardvarkClientRenderControl>()
 
 
-    member internal x.RegisterRender(target : string, socket : WebSocket) =
+    member internal x.RegisterRender(target : string, socket : IWebSocket) =
         Log.warn "rendering %A requested on client %A" target id
 
         let ctrl = new AardvarkClientRenderControl(runtime, x, target)
@@ -449,31 +573,22 @@ and AardvarkClient internal(runtime : IRuntime, server : AardvarkServer, id : Gu
             | None ->
                 ()
 
-        let rec run () =
-            async {
-                let! value = socket.ReceiveValueAsync()
-                match value with
-                    | Some (Value.String value) -> 
-                        let c = value.[0]
-                        let value = value.Substring 1
-                        if c = 'r' then
-                            let size : V2i = Pickler.json.UnPickleOfString value
-                            let result = ctrl.Render size
-                            let data = result.Volume.Data
-                            socket.Send(data)
+        socket.OnMessage.Add (fun value ->
+            let c = value.[0]
+            let value = value.Substring 1
+            if c = 'r' then
+                let size : V2i = Pickler.json.UnPickleOfString value
+                let result = ctrl.Render size
+                let data = result.Volume.Data
+                socket.Send(data)
 
-                        elif c = 'g' then
-                            ctrl.Received()
+            elif c = 'g' then
+                ctrl.Received()
 
-                        elif c = 'd' then
-                            ctrl.Rendered()
-
-                        do! run()
-                    | _ ->
-                        ()
-            }
-
-        Async.Start (run())
+            elif c = 'd' then
+                ctrl.Rendered()
+        )
+        socket.Ready()
 
 
 
@@ -489,16 +604,13 @@ and AardvarkClient internal(runtime : IRuntime, server : AardvarkServer, id : Gu
             let tcs = TaskCompletionSource()
             pending.[mid] <- tcs
             let cmd = { Message.id = mid; Message.kind = "eval"; Message.payload = js } |> Pickler.json.PickleToString
-            do! eventSocket.SendAsync(cmd)
+            eventSocket.Send(cmd)
             return! Async.AwaitTask tcs.Task
         }
 
-    member x.StartAsync (js : string) =
-        let cmd = { Message.id = 0; Message.kind = "eval"; Message.payload = js } |> Pickler.json.PickleToString
-        eventSocket.SendAsync cmd
-
     member x.Start (js : string) =
-        x.StartAsync js |> Async.RunSynchronously
+        let cmd = { Message.id = 0; Message.kind = "eval"; Message.payload = js } |> Pickler.json.PickleToString
+        eventSocket.Send cmd
 
     member x.Eval (js : string) =
         x.EvalAsync js |> Async.RunSynchronously

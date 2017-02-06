@@ -291,6 +291,17 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="Fleck">
+          <HintPath>..\..\packages\Fleck\lib\net40\Fleck.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="FShade.Compiler">
           <HintPath>..\..\packages\FShade.Core\lib\net45\FShade.Compiler.dll</HintPath>
           <Private>True</Private>

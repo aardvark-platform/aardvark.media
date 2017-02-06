@@ -85,6 +85,7 @@ NUGET
     Another.Unofficial.Xilium.CefGlue.WindowsForms (0.0.9)
       Another.Unofficial.Xilium.CefGlue (0.0.9)
     DevILSharp (0.0.13)
+    Fleck (0.14.0.59)
     FSharp.Quotations.Evaluator (1.0.7)
     FsPickler (3.2)
     FsPickler.Json (3.2)
