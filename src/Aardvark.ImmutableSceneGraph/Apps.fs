@@ -483,20 +483,21 @@ module OrbitTest =
                 match (m.lookingAround, m.panning, m.zooming, m.center) with
                     | Some _, None, None, Some c when m.picking.IsNone -> //orient
                         let delta = Constant.PiTimesTwo * d * orientationFctr
-                        let t = M44d.Rotation (m.camera.Right, -d.Y) * M44d.Rotation (m.camera.Sky, -d.X)
+                        let t = M44d.Rotation (m.camera.Right, -delta.Y) * M44d.Rotation (m.camera.Sky, -delta.X)
 
                         let newLocation = t.TransformDir (m.camera.Location)
                         let tempcam = m.camera.WithLocation newLocation
                         let newForward = c - newLocation |> Vec.normalize
                         let tempcam = tempcam.WithForward newForward
                                
-                        { m with camera = CameraView.lookAt tempcam.Location m.center.Value tempcam.Up}
+                      //  { m with camera = CameraView.lookAt tempcam.Location c tempcam.Up}
+                        { m with camera = tempcam}
                     | None, Some _, None, Some c -> //pan
                         let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * panningFctr
 
                         { m with camera = m.camera.WithLocation (m.camera.Location + step ); center = Some (c + step)}
                     | None, None, Some _, Some c when m.center.IsSome -> //zoom
-                        let step = (m.camera.Forward * float -d.Y) * zoomingFctr
+                        let step = (m.camera.Forward * float +d.Y) * zoomingFctr
                         let newLoc = m.camera.Location + step                     
                         { m with camera = m.camera.WithLocation newLoc}
                     | _,_,_,_ -> m
@@ -710,7 +711,11 @@ module ComposedTest =
             | OrbitAction a -> OrbitTest.update e m a
             | SwitchMode -> 
                 match m.navigationMode with
-                    | FreeFly -> { m with navigationMode = Orbital }
+                    | FreeFly -> 
+                        let m' = { m with navigationMode = Orbital }
+                        match m'.center with
+                            | Some c ->  { m' with camera = m'.camera.WithForward (c - m'.camera.Location |> Vec.normalize)}
+                            | None -> m'                        
                     | Orbital -> { m with navigationMode = FreeFly }
                                     
 
