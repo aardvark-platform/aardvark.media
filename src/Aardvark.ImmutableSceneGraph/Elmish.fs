@@ -7,6 +7,7 @@ open Aardvark.Base.Incremental
 open Aardvark.SceneGraph
 open System.Collections.Generic
 open System
+open System.Threading
 
 open Aardvark.ImmutableSceneGraph
 
@@ -22,7 +23,7 @@ type Sub<'msg> =
     | Mouse of (Direction -> MouseButtons -> PixelPosition -> Option<'msg>)
     | MouseMove of (PixelPosition * PixelPosition -> 'msg)
     | Key of (Direction -> Keys -> Option<'msg>)
-    | ModSub of IMod<'msg> * (float ->'msg -> Option<'msg>)
+    | ModSub of IMod<DateTime> * (DateTime -> float -> list<'msg>)
             
                 
 module Sub =
@@ -46,7 +47,7 @@ module Sub =
     let filterMods s = s |> leaves |> List.choose (function | ModSub (m,f) -> Some (m,f) | _ -> None)
 
     let time timeSpan f = TimeSub(timeSpan,f)
-    let ofMod m f = ModSub(m,f)
+    let ofMod (m : IMod<DateTime>) (f : DateTime -> float -> list<'msg>) = ModSub(m,f)
 
     let rec map (f : 'a -> 'b) s = 
         match s with
@@ -125,12 +126,12 @@ module Elmish =
 
     type Running<'model,'msg> =
         {
-            send : 'msg -> 'model
+            send : 'msg -> unit
             emitModel : 'model -> unit
             sg : ISg
         }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessageO : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessageO : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>) : Running<'model,'msg> =
 
         let model = Mod.init app.initial
 
@@ -167,6 +168,7 @@ module Elmish =
             if currentlyActive then
                 keys |> List.choose (fun f -> f dir k) |> List.fold onMessage model.Value |> ignore
 
+        let mutable liveTimers = 0
         let currentTimer = new Dictionary<TimeSpan,ref<list<DateTime -> 'msg> * list<IDisposable>> * System.Timers.Timer>()
         let enterTimes xs =
             let newSubs = xs |> List.groupBy fst |> List.map (fun (k,xs) -> k,List.map snd xs) |> Dictionary.ofList
@@ -180,6 +182,7 @@ module Elmish =
                     | _ -> 
                         !r |> snd |> List.iter (fun a -> a.Dispose())
                         timer.Dispose()
+                        Interlocked.Decrement(&liveTimers) |> ignore
                         toRemove.Add(k)
             
             for (KeyValue(t,actions)) in newSubs do
@@ -188,12 +191,15 @@ module Elmish =
                     | _ -> 
                         // new
                         let timer = new System.Timers.Timer()
+                        Interlocked.Increment(&liveTimers) |> ignore
                         timer.Interval <- t.TotalMilliseconds
-                        let disps = actions |> List.map (fun a -> timer.Elapsed.Subscribe(fun _ -> onMessage model.Value (a DateTime.Now) |> ignore))
+                        let disps = actions |> List.map (fun a -> timer.Elapsed.Subscribe(fun _ -> onMessage model.Value (a DateTime.Now) |> ignore; ))
                         timer.Start()
                         currentTimer.Add(t,(ref (actions,disps), timer))
             
             for i in toRemove do currentTimer.Remove i |> ignore
+
+            printfn "currentTimers: %d / liveTimers: %d" currentTimer.Count liveTimers
 
         mouse.Move.Values.Subscribe(moveSub) |> ignore
         mouse.Click.Values.Subscribe(mouseClicks) |> ignore
@@ -202,56 +208,76 @@ module Elmish =
         keyboard.Down.Values.Subscribe(fun k -> keysSub Direction.Down k) |> ignore
         keyboard.Up.Values.Subscribe(fun k -> keysSub Direction.Up k) |> ignore
 
-        let mutable modSubscriptions = Dictionary<IMod<'msg>,IDisposable*System.Diagnostics.Stopwatch>()
-        let fixupModRegistrations xs =
-            let newAsSet = Dict.ofList xs
-            let added = xs |> List.filter (fun (m,f) -> modSubscriptions.ContainsKey m |> not)
-            let removed = modSubscriptions |> Seq.filter (fun (KeyValue(m,f)) -> newAsSet.ContainsKey m |> not) |> Seq.toList
-            for (KeyValue(k,(d,sw))) in removed do
-                d.Dispose()
-            removed |> Seq.iter (fun (KeyValue(m,v)) -> modSubscriptions.Remove m |> ignore)
-            for (m,f) in added do
-                let sw = System.Diagnostics.Stopwatch()
-                let d = m |> Mod.unsafeRegisterCallbackNoGcRoot (fun msg -> 
-                    let elapsed = sw.Elapsed.TotalMilliseconds
-                    if false then ()
-                    else
-                        if elapsed <= System.Double.Epsilon then () // recursion hack
-                        else
-                            sw.Restart()
-                            match f elapsed msg with | Some nmsg -> onMessage model.Value nmsg |> ignore | None -> ()
-                )
-                sw.Start()
-                modSubscriptions.Add(m, (d,sw))
-
-        let updateSubscriptions (m : 'model) =
-            if currentlyActive then
-                let subs = app.subscriptions m
-                moves <- Sub.filterMoves subs
-                clicks <- Sub.filterMouseClicks subs
-                mouseActions <- Sub.filterMouseThings subs
-                keys <- Sub.filterKeys subs
-                times <- Sub.filterTimes subs
-                fixupModRegistrations (Sub.filterMods subs)
-                enterTimes times
-            ()
-
-        let updateModel (m : 'model) =
-            transact (fun () -> 
-                model.Value <- m
-                updateSubscriptions m |> ignore
-                unpersist.apply m mmodel reuseCache
-            )
-
-
-
+        
         let mutable env = Unchecked.defaultof<_>
 
-        let send msg =
-            let m' = app.update env model.Value msg
-            updateSubscriptions m'
-            updateModel m'
-            m'
+        let messageQueue = System.Collections.Concurrent.ConcurrentQueue<'msg * MVar<'model>>()
+        let messages = new System.Collections.Concurrent.BlockingCollection<_>(messageQueue)
+
+        let modSubscriptions = Dictionary<IMod<DateTime>,ref<list<DateTime -> float -> list<'msg>>> * IDisposable*System.Diagnostics.Stopwatch>()
+        let rec fixupModRegistrations (xs : list<IMod<DateTime> * (DateTime -> float -> list<'msg>)>) =
+            for (reg,d,sw) in modSubscriptions.Values do
+                reg := []
+
+            for (m,r) in xs do
+                match modSubscriptions.TryGetValue m with
+                    | (true,(reg,d,sw)) -> reg := List.append !reg [r]
+                    | _ -> 
+                        let regs = ref [r]
+                        let sw = System.Diagnostics.Stopwatch()
+                        let mutable initial = true
+
+                        let callback t =
+                            if initial then
+                                sw.Start()
+                                initial <- false
+                            else
+                                let elapsed = sw.Elapsed.TotalMilliseconds
+                                sw.Restart()
+
+                                let mutable model = model.Value
+                                for r in !regs do
+                                    r t elapsed |> Seq.iter (ignore << send)
+
+                        let d = m |> Mod.unsafeRegisterCallbackNoGcRoot callback
+                        modSubscriptions.Add(m,(regs,d,sw))
+
+            let empties = modSubscriptions |> Seq.filter (fun (KeyValue(k,(regs,d,sw))) -> List.isEmpty !regs)
+            for (KeyValue(k,(regs,d,sw))) in empties do
+                d.Dispose()
+                if modSubscriptions.Remove k |> not then printf "[elimish] should not occur"
+             
+
+        and updateSubscriptions (m : 'model) =
+            let subs = app.subscriptions m
+            moves <- Sub.filterMoves subs
+            clicks <- Sub.filterMouseClicks subs
+            mouseActions <- Sub.filterMouseThings subs
+            keys <- Sub.filterKeys subs
+            times <- Sub.filterTimes subs
+            fixupModRegistrations (Sub.filterMods subs)
+            enterTimes times
+
+
+        and send (msg : 'msg) : unit =
+            let m =  MVar.empty()
+            messages.Add ((msg,m))
+            
+
+        let runMessageQueue =
+            async {
+                do! Async.SwitchToThreadPool()
+                while true do
+                    let msg,mvar = messages.Take()
+                    let m' = app.update env model.Value msg
+                    updateSubscriptions m'
+                    transact (fun () -> 
+                        model.Value <- m'
+                        unpersist.apply m' mmodel reuseCache
+                    )
+                    MVar.put mvar m'
+            } |> Async.Start
+
 
         let emitEnv cmd = 
             match cmd with
@@ -266,7 +292,7 @@ module Elmish =
 
         onMessage <-
             match onMessageO with 
-                | None -> (fun model msg -> let m' = app.update env model msg in updateModel m'; m')
+                | None -> (fun model msg -> let m = MVar.empty() in messages.Add((msg,m)); model)
                 | Some v -> v
 
         let view = app.view mmodel
@@ -311,13 +337,28 @@ module Elmish =
                     match msg occ with
                         | Some r -> model <- onMessage model r
                         | _ -> ()
-                updateModel model 
+                ()
+
+
+
+        let handleKeyEvent (key : KeyEvent) =
+            if currentlyActive then
+                let picks = pick (mouse.Position |> Mod.force |> transformPixel)
+                let mutable model = model.Value
+                for (ray,d,(msg,transparency)) in picks do
+                    let occ : PickOccurance = { mouse = MouseEvent.NoEvent; key = key; point = ray.GetPointOnRay d; ray = ray }
+                    match msg occ with
+                        | Some r -> model <- onMessage model r
+                        | _ -> ()
+                ()
 
         mouse.Move.Values.Subscribe(fun (oldP,newP) ->
             let bounds = viewport |> Mod.force
             currentlyActive <- bounds.Contains newP.Position 
             handleMouseEvent MouseEvent.Move
         ) |> ignore
+
+        updateSubscriptions model.Value
 
         mouse.Down.Values.Subscribe(fun p ->  
             handleMouseEvent (MouseEvent.Down p)
@@ -330,19 +371,6 @@ module Elmish =
         mouse.Up.Values.Subscribe(fun p ->     
             handleMouseEvent (MouseEvent.Up p)
         ) |> ignore
-
-
-        let handleKeyEvent (key : KeyEvent) =
-            if currentlyActive then
-                let picks = pick (mouse.Position |> Mod.force |> transformPixel)
-                let mutable model = model.Value
-                for (ray,d,(msg,transparency)) in picks do
-                    let occ : PickOccurance = { mouse = MouseEvent.NoEvent; key = key; point = ray.GetPointOnRay d; ray = ray }
-                    match msg occ with
-                        | Some r -> model <- onMessage model r
-                        | _ -> ()
-                updateModel model 
-
 
         keyboard.KeyUp(altKey).Values.Subscribe( fun k ->
             handleKeyEvent (KeyEvent.Up altKey)
@@ -365,10 +393,7 @@ module Elmish =
             handleKeyEvent (KeyEvent.Down shiftKey)
         ) |> ignore
 
-
-
-
-        { send = send; sg = view :> ISg; emitModel = updateModel }
+        { send = send; sg = view :> ISg; emitModel = fun (m : 'model) -> failwith<unit> "" }
 
     let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
         createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app

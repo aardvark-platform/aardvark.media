@@ -45,7 +45,7 @@ module SimpleDrawingApp =
             | MoveCursor p ->
                 match m.working with
                     | None -> { m with working = Some { finishedPoints = []; cursor = Some p }}
-                    | Some v -> { m with working = Some { v with cursor = Some p }}
+                    | Some v -> { m with working = Some { v with cursor = Some p; (*finishedPoints = p :: v.finishedPoints*) }}
 
 
     let viewPolygon (p : list<V3d>) =
@@ -717,7 +717,7 @@ module ComposedTest =
     // scene as parameter, isg 
     let view (m : MModel) : ISg<Action> =
         [
-            Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (leftAndCtrl m) (OrbitAction << OrbitTest.PickPoint) ]
+            Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction << OrbitTest.PickPoint) ]
             OrbitTest.viewCenter m |> Scene.map OrbitAction
         ]
         |> Scene.group            
@@ -725,7 +725,7 @@ module ComposedTest =
         |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
     let update e (m : Model) msg = 
-        printfn "%A" msg
+        printfn "id: %A %A" System.Threading.Thread.CurrentThread.ManagedThreadId msg
         let m = 
             match msg with
                 | OrbitAction (OrbitTest.Action.PickPoint _) -> { m with navigationMode = NavigationMode.Orbital }
