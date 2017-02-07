@@ -140,7 +140,6 @@ module TestApp =
             onRendered = OnRendered.ignore
         }
 
-
 module TranslateController =
 
     open Aardvark.ImmutableSceneGraph
@@ -421,16 +420,8 @@ module OrbitTest =
 
     open Input
 
-    type Action = 
+    type Action =                 
         | MouseDelta of V2d
-        | DragStart  of PixelPosition
-        | DragStop   of PixelPosition
-        | PanStart   of PixelPosition
-        | PanStop    of PixelPosition
-        | ZoomStart  of PixelPosition
-        | ZoomStop   of PixelPosition
-        | PickStart  
-        | PickStop   
         | PickPoint  of V3d
         | Animate    of DateTime
         | TimeStep   of float    
@@ -480,14 +471,6 @@ module OrbitTest =
 
     let update e (m : Model) msg = 
         match msg with            
-            | DragStart p -> { m with lookingAround = Some p }
-            | DragStop _  -> { m with lookingAround = None }
-            | PanStart p  -> { m with panning = Some p }
-            | PanStop _   -> { m with panning = None }
-            | ZoomStart p -> { m with zooming = Some p }
-            | ZoomStop _  -> { m with zooming = None }
-            | PickStart   -> { m with picking = Some 0 }
-            | PickStop    -> { m with picking = None }
             | MouseDelta d -> 
                 match (m.lookingAround, m.panning, m.zooming, m.center) with
                     | Some _, None, None, Some c when m.picking.IsNone -> //orient
@@ -499,8 +482,7 @@ module OrbitTest =
                         let newForward = c - newLocation |> Vec.normalize
                         let tempcam = tempcam.WithForward newForward
                                
-                        { m with camera = CameraView.lookAt tempcam.Location c tempcam.Up}
-                      //  { m with camera = tempcam}
+                        { m with camera = CameraView.lookAt tempcam.Location c tempcam.Up}                      
                     | None, Some _, None, Some c -> //pan
                         let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * panningFctr
 
@@ -521,20 +503,9 @@ module OrbitTest =
             | _ -> m
 
     let subscriptions (m : Model) =
-        Many [
-            Input.mouse Mouse.down Mouse.left DragStart
-            Input.mouse Mouse.up   Mouse.left DragStop
-
-            Input.mouse Mouse.down Mouse.middle PanStart
-            Input.mouse Mouse.up   Mouse.middle PanStop
-
-            Input.mouse Mouse.down Mouse.right ZoomStart
-            Input.mouse Mouse.up   Mouse.right ZoomStop
-
-            Input.toggleKey Keys.LeftCtrl (fun _ -> PickStart)   (fun _ -> PickStop)
-            
-            Input.moveDelta MouseDelta    
-            
+        Many [                            
+                
+            Input.moveDelta MouseDelta                
             Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)       
         ]
     
@@ -566,27 +537,18 @@ module CameraTest =
 
     open Aardvark.Base
     open Aardvark.Base.Rendering
-
     open Scratch.DomainTypes2
     open CameraTest
     open Primitives
     open Aardvark.ImmutableSceneGraph.Scene
-
     open Input
 
     type Action = 
-        | MouseDelta of V2d
-        | DragStart  of PixelPosition
-        | DragStop   of PixelPosition
-        | PanStart   of PixelPosition
-        | PanStop    of PixelPosition
-        | ZoomStart  of PixelPosition
-        | ZoomStop   of PixelPosition
+        | MouseDelta of V2d        
         | AddMove    of V2d
         | RemoveMove of V2d
         | Animate    of DateTime
-        | PickPoint  of V3d
-        | NoPick     of V3d
+        | PickPoint  of V3d        
         | TimeStep   of float
 
     let point = Mod.init V3d.Zero
@@ -612,13 +574,7 @@ module CameraTest =
     let zoomingFctr = 1.0
 
     let update e (m : Model) msg = 
-        match msg with
-            | DragStart p -> { m with lookingAround = Some p }
-            | DragStop _  -> { m with lookingAround = None }
-            | PanStart p  -> { m with panning = Some p }
-            | PanStop _   -> { m with panning = None }
-            | ZoomStart p -> { m with zooming = Some p }
-            | ZoomStop _  -> { m with zooming = None }
+        match msg with            
             | MouseDelta d -> 
                 match (m.lookingAround, m.panning, m.zooming) with
                     | Some _, None, None -> //orient
@@ -639,34 +595,22 @@ module CameraTest =
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
                 let speed = dt * 0.01
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
-            | PickPoint p -> 
-                transact ( fun () -> Mod.change point p)
-                m
-            | NoPick _-> 
-                transact ( fun () -> Mod.change point V3d.NaN)
-                m
-            | _ -> m
-
+//            | PickPoint p -> 
+//                transact ( fun () -> Mod.change point p)
+//                m       
+            | _ -> m          
 
     let ofPickMsg _ m = []
 
     let subscriptions (m : Model) =
         Many [
-            Input.mouse Mouse.down Mouse.left DragStart
-            Input.mouse Mouse.up   Mouse.left DragStop
-
-            Input.mouse Mouse.down Mouse.middle PanStart
-            Input.mouse Mouse.up   Mouse.middle PanStop
-
-            Input.mouse Mouse.down Mouse.right ZoomStart
-            Input.mouse Mouse.up   Mouse.right ZoomStop
             
-            Input.moveDelta MouseDelta
-
             Input.toggleKey Keys.W (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
             Input.toggleKey Keys.S (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
             Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
             Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)                                   
+
+            Input.moveDelta MouseDelta     
 
             Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
         ]
@@ -706,9 +650,16 @@ module ComposedTest =
 
     type Action = 
         | FreeFlyAction of CameraTest.Action
-        | OrbitAction of OrbitTest.Action
-        | SwitchMode
-        //scene action
+        | OrbitAction of OrbitTest.Action        
+        | DragStart  of PixelPosition
+        | DragStop   of PixelPosition
+        | PanStart   of PixelPosition
+        | PanStop    of PixelPosition
+        | ZoomStart  of PixelPosition
+        | ZoomStop   of PixelPosition
+        | PickStart  
+        | PickStop   
+        | SwitchMode        
 
     let leftAndCtrl m (p : PickOccurance) =
         printfn "leftandctrl: %A" ((Mod.force m.mpicking))
@@ -717,23 +668,30 @@ module ComposedTest =
     // scene as parameter, isg 
     let view (m : MModel) : ISg<Action> =
         [
-            Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (leftAndCtrl m) (OrbitAction << OrbitTest.PickPoint) ]
+            Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction << OrbitTest.PickPoint) ]
             OrbitTest.viewCenter m |> Scene.map OrbitAction
         ]
         |> Scene.group            
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
         |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
-    let update e (m : Model) msg = 
-        printfn "%A" msg
+    let update e (m : Model) msg =        
         let m = 
-            match msg with
-                | OrbitAction (OrbitTest.Action.PickPoint _) -> { m with navigationMode = NavigationMode.Orbital }
+            match (msg, m.picking) with
+                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) -> { m with navigationMode = NavigationMode.Orbital }
                 | _ -> m
 
         match msg with
-            | FreeFlyAction a -> CameraTest.update e m a
-            | OrbitAction a -> OrbitTest.update e m a
+            | DragStart p -> { m with lookingAround = Some p }
+            | DragStop _  -> { m with lookingAround = None }
+            | PanStart p  -> { m with panning = Some p }
+            | PanStop _   -> { m with panning = None }
+            | ZoomStart p -> { m with zooming = Some p }
+            | ZoomStop _  -> { m with zooming = None }
+            | PickStart   -> { m with picking = Some 0 }
+            | PickStop    -> { m with picking = None }
+            | FreeFlyAction a -> if m.navigationMode = NavigationMode.FreeFly then CameraTest.update e m a else m
+            | OrbitAction a   -> if m.navigationMode = NavigationMode.Orbital then OrbitTest.update e m a else m
             | SwitchMode -> 
                 match m.navigationMode with
                     | FreeFly -> 
@@ -749,12 +707,21 @@ module ComposedTest =
     let subscriptions (m : Model) =
         Many [      
             match m.navigationMode with
-                | FreeFly -> 
-                    yield CameraTest.subscriptions m |> Sub.map FreeFlyAction 
-                    yield Input.toggleKey Keys.LeftCtrl (fun _ -> OrbitAction OrbitTest.PickStart) (fun _ -> OrbitAction OrbitTest.PickStop)
+                | FreeFly -> yield CameraTest.subscriptions m |> Sub.map FreeFlyAction                     
                 | Orbital -> yield OrbitTest.subscriptions m |> Sub.map OrbitAction
 
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
+            
+            yield Input.toggleKey Keys.LeftCtrl (fun _ -> PickStart) (fun _ -> PickStop)
+
+            yield Input.mouse Mouse.down Mouse.left DragStart
+            yield Input.mouse Mouse.up   Mouse.left DragStop
+
+            yield Input.mouse Mouse.down Mouse.middle PanStart
+            yield Input.mouse Mouse.up   Mouse.middle PanStop
+
+            yield Input.mouse Mouse.down Mouse.right ZoomStart
+            yield Input.mouse Mouse.up   Mouse.right ZoomStop
         ]
 
     let initial = { 
@@ -766,7 +733,7 @@ module ComposedTest =
         picking = None
         forward = V2d.OO
         forwardSpeed = 0.0 
-        center = None
+        center = Some V3d.Zero
         navigationMode = NavigationMode.FreeFly
         }
 
