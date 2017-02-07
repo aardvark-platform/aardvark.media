@@ -459,14 +459,23 @@ module OrbitTest =
         |> Scene.group            
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
         |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+
+    let viewCenter (m : MModel) =
+         Sphere (Sphere3d(V3d.OOO, 0.02)) 
+                |> Scene.render [] 
+                |> colored' (Mod.constant C4b.Red)
+                |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (center' a)))
     
     let orientationFctr = 1.0
     let panningFctr = 1.0
     let zoomingFctr = 8.0
 
-    let clampedLocation (p:V3d) (c:V3d) =
-        let dist = (c - p).Length
-        if dist <= 0.1 then c else p
+    let clampedLocation (p:V3d) (s:V3d) (c:V3d) =
+        let newLoc = p + s;
+        let dist = (c - newLoc).Length
+        let stepDist = (newLoc-p).Length
+        
+        if stepDist < dist then newLoc else p
         
 
     let update e (m : Model) msg = 
@@ -490,15 +499,15 @@ module OrbitTest =
                         let newForward = c - newLocation |> Vec.normalize
                         let tempcam = tempcam.WithForward newForward
                                
-                      //  { m with camera = CameraView.lookAt tempcam.Location c tempcam.Up}
-                        { m with camera = tempcam}
+                        { m with camera = CameraView.lookAt tempcam.Location c tempcam.Up}
+                      //  { m with camera = tempcam}
                     | None, Some _, None, Some c -> //pan
                         let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * panningFctr
 
                         { m with camera = m.camera.WithLocation (m.camera.Location + step ); center = Some (c + step)}
                     | None, None, Some _, Some c when m.center.IsSome -> //zoom
-                        let step = (m.camera.Forward * float +d.Y) * zoomingFctr
-                        let newLoc = m.camera.Location + step                     
+                        let step = (m.camera.Forward * float +d.Y) * -zoomingFctr
+                        let newLoc = clampedLocation m.camera.Location step c
                         { m with camera = m.camera.WithLocation newLoc}
                     | _,_,_,_ -> m
             | TimeStep dt -> 
@@ -657,8 +666,8 @@ module CameraTest =
             Input.toggleKey Keys.W (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
             Input.toggleKey Keys.S (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
             Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
-            Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)            
-            
+            Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)                                   
+
             Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
         ]
 
@@ -701,11 +710,27 @@ module ComposedTest =
         | SwitchMode
         //scene action
 
+    let leftAndCtrl m (p : PickOccurance) =
+        printfn "leftandctrl: %A" ((Mod.force m.mpicking))
+        p.mouse = MouseEvent.Click MouseButtons.Left && (Mod.force m.mpicking |> Option.isSome)
+
     // scene as parameter, isg 
-    let view (m : MModel) =
-        OrbitTest.view m |> Scene.map OrbitAction
+    let view (m : MModel) : ISg<Action> =
+        [
+            Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (leftAndCtrl m) (OrbitAction << OrbitTest.PickPoint) ]
+            OrbitTest.viewCenter m |> Scene.map OrbitAction
+        ]
+        |> Scene.group            
+        |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
+        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
     let update e (m : Model) msg = 
+        printfn "%A" msg
+        let m = 
+            match msg with
+                | OrbitAction (OrbitTest.Action.PickPoint _) -> { m with navigationMode = NavigationMode.Orbital }
+                | _ -> m
+
         match msg with
             | FreeFlyAction a -> CameraTest.update e m a
             | OrbitAction a -> OrbitTest.update e m a
@@ -724,7 +749,9 @@ module ComposedTest =
     let subscriptions (m : Model) =
         Many [      
             match m.navigationMode with
-                | FreeFly -> yield CameraTest.subscriptions m |> Sub.map FreeFlyAction 
+                | FreeFly -> 
+                    yield CameraTest.subscriptions m |> Sub.map FreeFlyAction 
+                    yield Input.toggleKey Keys.LeftCtrl (fun _ -> OrbitAction OrbitTest.PickStart) (fun _ -> OrbitAction OrbitTest.PickStop)
                 | Orbital -> yield OrbitTest.subscriptions m |> Sub.map OrbitAction
 
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
