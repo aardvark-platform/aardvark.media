@@ -69,3 +69,46 @@ module Generated =
                     x.mnavigationMode.Value <- arg0.navigationMode
                     x.mforward.Value <- arg0.forward
                     x.mforwardSpeed.Value <- arg0.forwardSpeed
+
+    module ComposedTest = 
+        open Aardvark.Base
+        open Aardvark.Base.Rendering
+
+        open Scratch.DomainTypes
+
+        type InteractionMode = None | ExplorePick | MeasurePick               
+
+        [<DomainType>]
+        type Model = 
+            { mutable _id : Id
+              ViewerState      : CameraTest.Model
+              Drawing          : SimpleDrawingApp.Model
+              InteractionState : InteractionMode
+              }
+            
+            member x.ToMod(reuseCache : ReuseCache) = 
+                { _original = x
+                  mViewerState = x.ViewerState.ToMod reuseCache
+                  mDrawing = x.Drawing.ToMod reuseCache
+                  mInteractionState = Mod.init (x.InteractionState)
+                  }
+            
+            interface IUnique with
+                
+                member x.Id 
+                    with get () = x._id
+                    and set v = x._id <- v
+        
+        and [<DomainType>] MModel = 
+            { mutable _original : Model
+              mViewerState : CameraTest.MModel
+              mDrawing : SimpleDrawingApp.MModel
+              mInteractionState : ModRef<InteractionMode>
+              }
+            member x.Apply(arg0 : Model, reuseCache : ReuseCache) = 
+                if not (System.Object.ReferenceEquals(arg0, x._original)) then 
+                    x._original <- arg0
+                    x.mViewerState.Apply (arg0.ViewerState, reuseCache)
+                    x.mDrawing.Apply (arg0.Drawing, reuseCache)
+                    x.mInteractionState.Value <- arg0.InteractionState
+                   

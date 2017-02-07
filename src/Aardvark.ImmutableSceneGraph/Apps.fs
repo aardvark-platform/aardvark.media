@@ -666,49 +666,52 @@ module ComposedTest =
         p.mouse = MouseEvent.Click MouseButtons.Left && (Mod.force m.mpicking |> Option.isSome)
 
     // scene as parameter, isg 
-    let view (m : MModel) : ISg<Action> =
+    let view (m : ComposedTest.MModel) : ISg<Action> =
         [
             Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction << OrbitTest.PickPoint) ]
-            OrbitTest.viewCenter m |> Scene.map OrbitAction
+            OrbitTest.viewCenter m.mViewerState |> Scene.map OrbitAction
         ]
         |> Scene.group            
-        |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
-        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+        |> Scene.viewTrafo (m.mViewerState.mcamera |> Mod.map CameraView.viewTrafo)
+        |> Scene.projTrafo (m.mViewerState.mfrustum |> Mod.map Frustum.projTrafo)
 
-    let update e (m : Model) msg =        
-        let m = 
-            match (msg, m.picking) with
-                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) -> { m with navigationMode = NavigationMode.Orbital }
-                | _ -> m
+    let update e (m : ComposedTest.Model) msg =        
+        let v = m.ViewerState
+        let v = 
+            match (msg, v.picking) with
+                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) -> { v with navigationMode = NavigationMode.Orbital }
+                | _ -> v
 
-        match msg with
-            | DragStart p -> { m with lookingAround = Some p }
-            | DragStop _  -> { m with lookingAround = None }
-            | PanStart p  -> { m with panning = Some p }
-            | PanStop _   -> { m with panning = None }
-            | ZoomStart p -> { m with zooming = Some p }
-            | ZoomStop _  -> { m with zooming = None }
-            | PickStart   -> { m with picking = Some 0 }
-            | PickStop    -> { m with picking = None }
-            | FreeFlyAction a -> if m.navigationMode = NavigationMode.FreeFly then CameraTest.update e m a else m
-            | OrbitAction a   -> if m.navigationMode = NavigationMode.Orbital then OrbitTest.update e m a else m
-            | SwitchMode -> 
-                match m.navigationMode with
-                    | FreeFly -> 
-                        let m' = { m with navigationMode = Orbital }
-                        match m'.center with
-                            | Some c ->  { m' with camera = m'.camera.WithForward (c - m'.camera.Location |> Vec.normalize)}
-                            | None -> m'                        
-                    | Orbital -> { m with navigationMode = FreeFly }
-                                    
+        let v = 
+            match msg with
+                | DragStart p -> { v with lookingAround = Some p }
+                | DragStop _  -> { v with lookingAround = None }
+                | PanStart p  -> { v with panning = Some p }
+                | PanStop _   -> { v with panning = None }
+                | ZoomStart p -> { v with zooming = Some p }
+                | ZoomStop _  -> { v with zooming = None }
+                | PickStart   -> { v with picking = Some 0 }
+                | PickStop    -> { v with picking = None }
+                | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly then CameraTest.update e v a else v
+                | OrbitAction a   -> if v.navigationMode = NavigationMode.Orbital then OrbitTest.update e v a else v
+                | SwitchMode -> 
+                    match v.navigationMode with
+                        | FreeFly -> 
+                            let v' = { v with navigationMode = Orbital }
+                            match v'.center with
+                                | Some c ->  { v' with camera = v'.camera.WithForward (c - v'.camera.Location |> Vec.normalize)}
+                                | None -> v'                        
+                        | Orbital -> { v with navigationMode = FreeFly }
+
+        { m with ViewerState = v }
 
     let ofPickMsg _ m = []
 
-    let subscriptions (m : Model) =
+    let subscriptions (m : ComposedTest.Model) =
         Many [      
-            match m.navigationMode with
-                | FreeFly -> yield CameraTest.subscriptions m |> Sub.map FreeFlyAction                     
-                | Orbital -> yield OrbitTest.subscriptions m |> Sub.map OrbitAction
+            match m.ViewerState.navigationMode with
+                | FreeFly -> yield CameraTest.subscriptions m.ViewerState |> Sub.map FreeFlyAction                     
+                | Orbital -> yield OrbitTest.subscriptions m.ViewerState |> Sub.map OrbitAction
 
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
             
@@ -724,20 +727,14 @@ module ComposedTest =
             yield Input.mouse Mouse.up   Mouse.right ZoomStop
         ]
 
-    let initial = { 
-        camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
-        frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
-        lookingAround = None
-        panning = None
-        zooming = None
-        picking = None
-        forward = V2d.OO
-        forwardSpeed = 0.0 
-        center = Some V3d.Zero
-        navigationMode = NavigationMode.FreeFly
+    let initial : ComposedTest.Model = { 
+        _id = null
+        ViewerState = CameraTest.initial
+        Drawing = SimpleDrawingApp.initial
+        InteractionState = ComposedTest.InteractionMode.None       
         }
 
-    let app time : App<Model,MModel,Action,ISg<Action>> =
+    let app time : App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
         {
             initial = initial
             update = update

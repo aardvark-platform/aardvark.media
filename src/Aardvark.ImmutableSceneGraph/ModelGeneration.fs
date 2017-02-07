@@ -25,3 +25,16 @@ module CameraTest =
         forward : V2d
         forwardSpeed : float
     }
+
+module ComposedTest =
+    
+    open Scratch.DomainTypes
+
+    type InteractionMode = None | ExplorePick | MeasurePick
+
+    [<DomainType>]
+    type Model = {
+        ViewerState      : CameraTest.Model
+        Drawing          : SimpleDrawingApp.Model
+        InteractionState : InteractionMode
+    }

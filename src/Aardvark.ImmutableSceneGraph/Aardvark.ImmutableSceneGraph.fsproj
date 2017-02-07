@@ -52,14 +52,14 @@
     <Compile Include="SplashScreen.fs" />
     <Compile Include="ImmutableSceneGraph.fs" />
     <Compile Include="Elmish.fs" />
-    <Compile Include="ModelGeneration.fs">
-      <!-- <DomainTypes>True</DomainTypes> -->
-    </Compile>
-    <Compile Include="ModelGeneration.g.fs" />
     <Compile Include="Models.fs">
       <!-- <DomainTypes>True</DomainTypes> -->
     </Compile>
     <Compile Include="Models.g.fs" />
+    <Compile Include="ModelGeneration.fs">
+      <!-- <DomainTypes>True</DomainTypes> -->
+    </Compile>
+    <Compile Include="ModelGeneration.g.fs" />
     <Compile Include="Apps.fs" />
     <Compile Include="InteractionTest.fs" />
     <Compile Include="ComposedApp.fs" />
