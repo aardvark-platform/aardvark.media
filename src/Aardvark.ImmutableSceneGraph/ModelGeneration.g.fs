@@ -76,7 +76,7 @@ module Generated =
 
         open Scratch.DomainTypes
 
-        type InteractionMode = None | ExplorePick | MeasurePick               
+        type InteractionMode = ExplorePick | MeasurePick | Disabled
 
         [<DomainType>]
         type Model = 

@@ -21,15 +21,14 @@ module SimpleDrawingApp =
 
     open SimpleDrawingApp
 
-
     type Action =
         | ClosePolygon
         | AddPoint   of V3d
         | MoveCursor of V3d
 
-    let update e (m : Model) (cmd : Action) =
-        match cmd with
-            | ClosePolygon -> 
+    let update (picking : Option<int>) e (m : Model) (cmd : Action) =
+        match cmd, picking with
+            | ClosePolygon, _ -> 
                 match m.working with
                     | None -> m
                     | Some p -> 
@@ -37,15 +36,16 @@ module SimpleDrawingApp =
                             working = None 
                             finished = PSet.add p.finishedPoints m.finished
                         }
-            | AddPoint p ->
+            | AddPoint p, Some _ ->
                 match m.working with
                     | None -> { m with working = Some { finishedPoints = [ p ]; cursor = None;  }}
                     | Some v -> 
                         { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
-            | MoveCursor p ->
+            | MoveCursor p, Some _ ->
                 match m.working with
                     | None -> { m with working = Some { finishedPoints = []; cursor = Some p }}
                     | Some v -> { m with working = Some { v with cursor = Some p }}
+            | _,_ -> m
 
 
     let viewPolygon (p : list<V3d>) =
@@ -54,17 +54,18 @@ module SimpleDrawingApp =
             yield Primitives.cylinder edge.P0 v.Normalized v.Length 0.03 |> Scene.render Pick.ignore 
         ] |> Scene.group
 
+    let viewPlane = [ Quad (Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |]) 
+                            |>  Scene.render [ 
+                                 on Mouse.move MoveCursor
+                                 on (Mouse.down' MouseButtons.Left)  AddPoint 
+                               //  on (Mouse.down' MouseButtons.Right) (constF ClosePolygon)
+                               ] 
+                      ] |>  Scene.colored (Mod.constant C4b.Gray)
 
     let view (m : MModel) = 
         let t =
            aset {
-                yield [ Quad (Quad3d [| V3d(-1,-1,0); V3d(1,-1,0); V3d(1,1,0); V3d(-1,1,0) |]) 
-                            |>  Scene.render [ 
-                                 on Mouse.move MoveCursor
-                                 on (Mouse.down' MouseButtons.Left)  AddPoint 
-                                 on (Mouse.down' MouseButtons.Right) (constF ClosePolygon)
-                               ] 
-                      ] |>  Scene.colored (Mod.constant C4b.Gray)
+                yield viewPlane
                 for p in m.mfinished :> aset<_> do yield viewPolygon p
                 let! working = m.mworking
                 match working with
@@ -86,15 +87,18 @@ module SimpleDrawingApp =
             |> Scene.effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
 
 
+    let subscriptions (m : Model) =
+        Many [Input.key Down Keys.Enter (fun _ _-> ClosePolygon)]
+
     let initial = { finished = PSet.empty; working = None; _id = null }
 
     let app s =
         {
             initial = initial
-            update = update
+            update = update (Some 0)
             view = viewScene s
             ofPickMsg = fun _ _ -> []
-            subscriptions = Aardvark.Elmish.Subscriptions.none
+            subscriptions = subscriptions
         }
 
 module TestApp =
@@ -469,7 +473,7 @@ module OrbitTest =
         if stepDist < dist then newLoc else p
         
 
-    let update e (m : Model) msg = 
+    let update pickEx e (m : Model) msg = 
         match msg with            
             | MouseDelta d -> 
                 match (m.lookingAround, m.panning, m.zooming, m.center) with
@@ -496,7 +500,7 @@ module OrbitTest =
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
                 let speed = dt * 0.01                
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
-            | PickPoint c when m.picking.IsSome -> 
+            | PickPoint c when m.picking.IsSome && pickEx -> 
                 let newForward = c - m.camera.Location |> Vec.normalize
                 let tempCam = m.camera.WithForward newForward
                 { m with center = Some c; camera = CameraView.lookAt tempCam.Location c tempCam.Up }
@@ -527,7 +531,7 @@ module OrbitTest =
     let app time : App<Model,MModel,Action,ISg<Action>> =
         {
             initial = initial
-            update = update
+            update = update true
             view = view
             ofPickMsg = ofPickMsg 
             subscriptions = subscriptions
@@ -650,16 +654,18 @@ module ComposedTest =
 
     type Action = 
         | FreeFlyAction of CameraTest.Action
-        | OrbitAction of OrbitTest.Action        
-        | DragStart  of PixelPosition
-        | DragStop   of PixelPosition
-        | PanStart   of PixelPosition
-        | PanStop    of PixelPosition
-        | ZoomStart  of PixelPosition
-        | ZoomStop   of PixelPosition
+        | OrbitAction   of OrbitTest.Action        
+        | DrawingAction of SimpleDrawingApp.Action
+        | DragStart     of PixelPosition
+        | DragStop      of PixelPosition
+        | PanStart      of PixelPosition
+        | PanStop       of PixelPosition
+        | ZoomStart     of PixelPosition
+        | ZoomStop      of PixelPosition
         | PickStart  
         | PickStop   
         | SwitchMode        
+        | SwitchInteraction
 
     let leftAndCtrl m (p : PickOccurance) =
         printfn "leftandctrl: %A" ((Mod.force m.mpicking))
@@ -670,6 +676,7 @@ module ComposedTest =
         [
             Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction << OrbitTest.PickPoint) ]
             OrbitTest.viewCenter m.mViewerState |> Scene.map OrbitAction
+            SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
         ]
         |> Scene.group            
         |> Scene.viewTrafo (m.mViewerState.mcamera |> Mod.map CameraView.viewTrafo)
@@ -692,8 +699,13 @@ module ComposedTest =
                 | ZoomStop _  -> { v with zooming = None }
                 | PickStart   -> { v with picking = Some 0 }
                 | PickStop    -> { v with picking = None }
-                | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly then CameraTest.update e v a else v
-                | OrbitAction a   -> if v.navigationMode = NavigationMode.Orbital then OrbitTest.update e v a else v
+                | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly
+                                     then CameraTest.update e v a else v
+                | OrbitAction a   -> 
+                            let explorePick = m.InteractionState = Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.ExplorePick
+                            if v.navigationMode = NavigationMode.Orbital
+                            then OrbitTest.update explorePick e v a else v
+                | DrawingAction _ -> v
                 | SwitchMode -> 
                     match v.navigationMode with
                         | FreeFly -> 
@@ -701,19 +713,47 @@ module ComposedTest =
                             match v'.center with
                                 | Some c ->  { v' with camera = v'.camera.WithForward (c - v'.camera.Location |> Vec.normalize)}
                                 | None -> v'                        
-                        | Orbital -> { v with navigationMode = FreeFly }
+                        | Orbital -> { v with navigationMode = FreeFly } 
+                | _ -> v                
 
-        { m with ViewerState = v }
+        let d = m.Drawing
+        let d = 
+            match msg with                
+                | DrawingAction a -> 
+                    if m.InteractionState = Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.MeasurePick
+                       //v.picking.IsSome
+                    then SimpleDrawingApp.update v.picking e d a else d
+                | _ -> d
+
+        let iState = 
+            match msg with
+                | SwitchInteraction ->
+                    match m.InteractionState with
+                        | ExplorePick -> Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.MeasurePick
+                        | MeasurePick -> Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.ExplorePick
+                        | Disabled -> m.InteractionState
+                        | _ -> m.InteractionState
+                        
+                | _ -> m.InteractionState
+                    
+
+        { m with ViewerState = v; Drawing = d; InteractionState = iState }
 
     let ofPickMsg _ m = []
 
     let subscriptions (m : ComposedTest.Model) =
         Many [      
-            match m.ViewerState.navigationMode with
-                | FreeFly -> yield CameraTest.subscriptions m.ViewerState |> Sub.map FreeFlyAction                     
-                | Orbital -> yield OrbitTest.subscriptions m.ViewerState |> Sub.map OrbitAction
+            match m.InteractionState with
+                | ExplorePick ->
+                     match m.ViewerState.navigationMode with
+                        | FreeFly -> yield CameraTest.subscriptions m.ViewerState |> Sub.map FreeFlyAction                     
+                        | Orbital -> yield OrbitTest.subscriptions m.ViewerState |> Sub.map OrbitAction
+                | MeasurePick -> yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
+                | Disabled -> yield Sub.NoSub
+           
 
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
+            yield Input.key Down Keys.Space (fun _ _ -> (printfn "%A"  m.InteractionState); SwitchInteraction)
             
             yield Input.toggleKey Keys.LeftCtrl (fun _ -> PickStart) (fun _ -> PickStop)
 
@@ -731,7 +771,7 @@ module ComposedTest =
         _id = null
         ViewerState = CameraTest.initial
         Drawing = SimpleDrawingApp.initial
-        InteractionState = ComposedTest.InteractionMode.None       
+        InteractionState = ComposedTest.InteractionMode.ExplorePick       
         }
 
     let app time : App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
