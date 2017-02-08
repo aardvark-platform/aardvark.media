@@ -667,10 +667,6 @@ module ComposedTest =
         | SwitchMode        
         | SwitchInteraction
 
-    let leftAndCtrl m (p : PickOccurance) =
-        printfn "leftandctrl: %A" ((Mod.force m.mpicking))
-        p.mouse = MouseEvent.Click MouseButtons.Left && (Mod.force m.mpicking |> Option.isSome)
-
     // scene as parameter, isg 
     let view (m : ComposedTest.MModel) : ISg<Action> =
         [
@@ -686,7 +682,8 @@ module ComposedTest =
         let v = m.ViewerState
         let v = 
             match (msg, v.picking) with
-                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) -> { v with navigationMode = NavigationMode.Orbital }
+                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) when m.InteractionState = ComposedTest.InteractionMode.ExplorePick ->                                 
+                                { v with navigationMode = NavigationMode.Orbital }
                 | _ -> v
 
         let v = 
@@ -713,14 +710,15 @@ module ComposedTest =
                             match v'.center with
                                 | Some c ->  { v' with camera = v'.camera.WithForward (c - v'.camera.Location |> Vec.normalize)}
                                 | None -> v'                        
-                        | Orbital -> { v with navigationMode = FreeFly } 
+                        | Orbital -> 
+                            { v with navigationMode = FreeFly } 
                 | _ -> v                
 
         let d = m.Drawing
         let d = 
             match msg with                
                 | DrawingAction a -> 
-                    if m.InteractionState = Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.MeasurePick
+                    if m.InteractionState = ComposedTest.InteractionMode.MeasurePick
                        //v.picking.IsSome
                     then SimpleDrawingApp.update v.picking e d a else d
                 | _ -> d
@@ -728,32 +726,32 @@ module ComposedTest =
         let iState = 
             match msg with
                 | SwitchInteraction ->
-                    match m.InteractionState with
-                        | ExplorePick -> Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.MeasurePick
-                        | MeasurePick -> Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.ExplorePick
-                        | Disabled -> m.InteractionState
-                        | _ -> m.InteractionState
-                        
+                    let s = match m.InteractionState with
+                            | ComposedTest.InteractionMode.ExplorePick -> ComposedTest.InteractionMode.MeasurePick
+                            | ComposedTest.InteractionMode.MeasurePick -> ComposedTest.InteractionMode.ExplorePick
+                            | ComposedTest.InteractionMode.Disabled -> m.InteractionState                                                
+                    printfn "%A" s
+                    s
                 | _ -> m.InteractionState
                     
-
+       // printfn "%A %A" iState v.navigationMode
         { m with ViewerState = v; Drawing = d; InteractionState = iState }
 
     let ofPickMsg _ m = []
 
     let subscriptions (m : ComposedTest.Model) =
         Many [      
-            match m.InteractionState with
-                | ExplorePick ->
-                     match m.ViewerState.navigationMode with
-                        | FreeFly -> yield CameraTest.subscriptions m.ViewerState |> Sub.map FreeFlyAction                     
-                        | Orbital -> yield OrbitTest.subscriptions m.ViewerState |> Sub.map OrbitAction
-                | MeasurePick -> yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
-                | Disabled -> yield Sub.NoSub
-           
+            match m.ViewerState.navigationMode with
+                | FreeFly -> yield CameraTest.subscriptions m.ViewerState |> Sub.map FreeFlyAction                     
+                | Orbital -> yield OrbitTest.subscriptions m.ViewerState |> Sub.map OrbitAction
 
+            match m.InteractionState with
+                | ComposedTest.InteractionMode.ExplorePick -> yield Sub.NoSub
+                | ComposedTest.InteractionMode.MeasurePick -> yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
+                | ComposedTest.InteractionMode.Disabled -> yield Sub.NoSub
+           
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
-            yield Input.key Down Keys.Space (fun _ _ -> (printfn "%A"  m.InteractionState); SwitchInteraction)
+            yield Input.key Down Keys.Space (fun _ _ -> SwitchInteraction)
             
             yield Input.toggleKey Keys.LeftCtrl (fun _ -> PickStart) (fun _ -> PickStop)
 
