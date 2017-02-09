@@ -651,6 +651,7 @@ module ComposedTest =
     open CameraTest
     open Primitives
     open Aardvark.ImmutableSceneGraph.Scene
+    open ComposedTest
 
     open Input
 
@@ -684,7 +685,7 @@ module ComposedTest =
         let v = m.ViewerState
         let v = 
             match (msg, v.picking) with
-                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) when m.InteractionState = ComposedTest.InteractionMode.ExplorePick ->                                 
+                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) when m.InteractionState = InteractionMode.ExplorePick ->                                 
                                 { v with navigationMode = NavigationMode.Orbital }
                 | _ -> v
 
@@ -701,7 +702,7 @@ module ComposedTest =
                 | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly
                                      then CameraTest.update e v a else v
                 | OrbitAction a   -> 
-                            let explorePick = m.InteractionState = Scratch.DomainTypes2.Generated.ComposedTest.InteractionMode.ExplorePick
+                            let explorePick = m.InteractionState = InteractionMode.ExplorePick
                             if v.navigationMode = NavigationMode.Orbital
                             then OrbitTest.update explorePick e v a else v
                 | DrawingAction _ -> v
@@ -720,8 +721,7 @@ module ComposedTest =
         let d = 
             match msg with                
                 | DrawingAction a -> 
-                    if m.InteractionState = ComposedTest.InteractionMode.MeasurePick
-                       //v.picking.IsSome
+                    if m.InteractionState = ComposedTest.InteractionMode.MeasurePick                       
                     then SimpleDrawingApp.update v.picking e d a else d
                 | _ -> d
 
@@ -729,13 +729,14 @@ module ComposedTest =
             match msg with
                 | SwitchInteraction ->
                     let s = match m.InteractionState with
-                            | ComposedTest.InteractionMode.ExplorePick -> ComposedTest.InteractionMode.MeasurePick
-                            | ComposedTest.InteractionMode.MeasurePick -> ComposedTest.InteractionMode.ExplorePick
-                            | ComposedTest.InteractionMode.Disabled -> m.InteractionState                                                
+                            | InteractionMode.ExplorePick -> InteractionMode.MeasurePick
+                            | InteractionMode.MeasurePick -> InteractionMode.ExplorePick
+                            | InteractionMode.Disabled -> m.InteractionState                                                
                     printfn "%A" s
                     s
                 | _ -> m.InteractionState
                     
+
        // printfn "%A %A" iState v.navigationMode
         { m with ViewerState = v; Drawing = d; InteractionState = iState }
 
@@ -748,9 +749,9 @@ module ComposedTest =
                 | Orbital -> yield OrbitTest.subscriptions time m.ViewerState |> Sub.map OrbitAction
 
             match m.InteractionState with
-                | ComposedTest.InteractionMode.ExplorePick -> yield Sub.NoSub
-                | ComposedTest.InteractionMode.MeasurePick -> yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
-                | ComposedTest.InteractionMode.Disabled -> yield Sub.NoSub
+                | InteractionMode.ExplorePick -> yield Sub.NoSub
+                | InteractionMode.MeasurePick -> yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
+                | InteractionMode.Disabled -> yield Sub.NoSub
            
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
             yield Input.key Down Keys.Space (fun _ _ -> SwitchInteraction)

@@ -274,8 +274,7 @@ module Generated =
         type Model = 
             { mutable _id : Id
               ui : Ui
-              scene : Scene
-              history : list<Model> }
+              scene : Scene }
             
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
