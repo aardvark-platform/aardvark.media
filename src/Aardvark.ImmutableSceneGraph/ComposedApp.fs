@@ -173,3 +173,81 @@ module SingleMultiView =
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance
+
+
+module NiceCompose =
+
+    type Component<'model,'mmodel,'msg> = 
+        | Fablish of ('model -> DomNode<'msg>)
+        | ThreeD  of ('mmodel -> ISg<'msg>)
+        | Group of Component<'model,'mmodel,'msg> list
+
+    module Component =
+        let map (f : 'a -> 'b) (c : Component<'model,'mmodel,'a>) : Component<'model,'mmodel,'b> =
+            match c with
+                | Fablish view -> Fablish (fun m -> Html.map f (view m))
+                | ThreeD view -> ThreeD (fun m -> Scene.map f (view m))
+
+    type ElmishApp<'model,'mmodel,'msg> = { 
+        initial : 'model
+        view : 'model -> Component<'model,'mmodel,'msg>
+        update : Env<'msg> -> 'model -> 'msg -> 'model
+    }
+
+
+module NiceComposeExample =
+
+    open Scratch.DomainTypes
+    open SharedModel
+    open Aardvark.ImmutableSceneGraph
+    open Aardvark.Elmish
+    open NiceCompose
+
+    type Action = 
+        | Translate of TranslateController.Action
+        | UiOnly    of TestApp.Action
+        | Reset
+
+
+    let viewUI (m : Model) =
+        div [] [
+            div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
+                text (sprintf "current content: %d" m.ui.cnt)
+                br []
+                button [onMouseClick (fun dontCare -> TestApp.Inc); attribute "class" "ui button"] [text "increment"] |> Html.map UiOnly
+                button [onMouseClick (fun dontCare -> TestApp.Inc)] [text "decrement"]  |> Html.map UiOnly
+                button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
+                br []
+                text (sprintf "ray: %s" m.ui.info)
+            ]
+        ]
+
+    let update (e : Env<Action>) (m : Model) (a : Action) =
+        let m =
+            match a with
+            | Translate (TranslateController.Action.Hover(x,p)) -> 
+                { m with ui = { m.ui with info = sprintf "pos: %A" p }}
+            | _ -> m
+        match a with
+         | Translate t -> { m with scene = TranslateController.update (e |> Env.map Translate) m.scene t }
+         | UiOnly a -> { m with ui = TestApp.update (Env.map UiOnly e) m.ui a }
+         | Reset -> 
+            let s = { m.scene with scene = { m.scene.scene with trafo = Trafo3d.Identity }}
+            { m with ui = { m.ui with cnt = 0 }; scene = s }
+
+    let view3D (sizes : IMod<V2i>) (m : MModel) =
+        m.mscene  |> TranslateController.viewScene sizes |> Scene.map Translate
+
+    let ofPickMsg (m : Model) (noPick) = TranslateController.ofPickMsg m.scene noPick |> List.map Translate
+
+    let view sizes (m : Model) : Component<Model,MModel,Action> =
+        Group [
+            Fablish viewUI
+            ThreeD (view3D sizes)
+        ]
+
+    let elmishApp sizes = {
+        initial = { ui = TestApp.initial; scene = TranslateController.initial; _id = null }
+        update = update
+        view = view sizes
+    }
