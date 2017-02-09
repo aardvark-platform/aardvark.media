@@ -506,11 +506,12 @@ module OrbitTest =
                 { m with center = Some c; camera = CameraView.lookAt tempCam.Location c tempCam.Up }
             | _ -> m
 
-    let subscriptions (m : Model) =
+    let subscriptions (time : IMod<DateTime>) (m : Model) =
         Many [                            
                 
             Input.moveDelta MouseDelta                
-            Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)       
+            //Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
+            Sub.ofMod time (fun _ ms -> [TimeStep ms])        
         ]
     
     let initial = { 
@@ -534,7 +535,7 @@ module OrbitTest =
             update = update true
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions
+            subscriptions = subscriptions time
         }
 
 module CameraTest =
@@ -606,7 +607,7 @@ module CameraTest =
 
     let ofPickMsg _ m = []
 
-    let subscriptions (m : Model) =
+    let subscriptions (time : IMod<DateTime>) (m : Model) =
         Many [
             
             Input.toggleKey Keys.W (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
@@ -616,7 +617,8 @@ module CameraTest =
 
             Input.moveDelta MouseDelta     
 
-            Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
+            //Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
+            Sub.ofMod time (fun t ms -> [TimeStep ms])
         ]
 
     let initial = { 
@@ -638,7 +640,7 @@ module CameraTest =
             update = update
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions
+            subscriptions = subscriptions time
         }
 
 module ComposedTest = 
@@ -739,11 +741,11 @@ module ComposedTest =
 
     let ofPickMsg _ m = []
 
-    let subscriptions (m : ComposedTest.Model) =
+    let subscriptions (time : IMod<DateTime>)  (m : ComposedTest.Model) =
         Many [      
             match m.ViewerState.navigationMode with
-                | FreeFly -> yield CameraTest.subscriptions m.ViewerState |> Sub.map FreeFlyAction                     
-                | Orbital -> yield OrbitTest.subscriptions m.ViewerState |> Sub.map OrbitAction
+                | FreeFly -> yield CameraTest.subscriptions time m.ViewerState |> Sub.map FreeFlyAction                     
+                | Orbital -> yield OrbitTest.subscriptions time m.ViewerState |> Sub.map OrbitAction
 
             match m.InteractionState with
                 | ComposedTest.InteractionMode.ExplorePick -> yield Sub.NoSub
@@ -778,5 +780,5 @@ module ComposedTest =
             update = update
             view = view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions
+            subscriptions = subscriptions time
         }

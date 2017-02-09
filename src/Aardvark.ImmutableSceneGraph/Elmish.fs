@@ -22,7 +22,7 @@ type Sub<'msg> =
     | Mouse of (Direction -> MouseButtons -> PixelPosition -> Option<'msg>)
     | MouseMove of (PixelPosition * PixelPosition -> 'msg)
     | Key of (Direction -> Keys -> Option<'msg>)
-    | ModSub of IMod<'msg> * (float ->'msg -> Option<'msg>)
+    | ModSub of IMod<DateTime> * (DateTime -> float -> list<'msg>)
             
                 
 module Sub =
@@ -57,7 +57,7 @@ module Sub =
             | Mouse msg -> Mouse (fun a b c -> match msg a b c with | Some e -> Some (f e) | None -> None)
             | MouseMove msg -> MouseMove (f << msg)
             | Key msg -> Key (fun a b -> Option.map f (msg a b))
-            | ModSub(m,g) -> failwith "cannot implement"
+            | ModSub(m,g) -> ModSub(m,fun t ms -> List.map f (g t ms))
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -143,7 +143,7 @@ module Elmish =
         let reuseCache = ReuseCache()
         let mmodel = unpersist.unpersist model.Value reuseCache
 
-        let mutable onMessage = Unchecked.defaultof<_>
+        let mutable onMessage : 'model -> 'msg -> 'model = Unchecked.defaultof<_>
 
         let mutable moves = []
         let mutable mouseActions = []
@@ -202,27 +202,39 @@ module Elmish =
         keyboard.Down.Values.Subscribe(fun k -> keysSub Direction.Down k) |> ignore
         keyboard.Up.Values.Subscribe(fun k -> keysSub Direction.Up k) |> ignore
 
-        let mutable modSubscriptions = Dictionary<IMod<'msg>,IDisposable*System.Diagnostics.Stopwatch>()
-        let fixupModRegistrations xs =
-            let newAsSet = Dict.ofList xs
-            let added = xs |> List.filter (fun (m,f) -> modSubscriptions.ContainsKey m |> not)
-            let removed = modSubscriptions |> Seq.filter (fun (KeyValue(m,f)) -> newAsSet.ContainsKey m |> not) |> Seq.toList
-            for (KeyValue(k,(d,sw))) in removed do
+        let modSubscriptions = Dictionary<IMod<DateTime>,ref<list<DateTime -> float -> list<'msg>>> * IDisposable*System.Diagnostics.Stopwatch>()
+        let rec fixupModRegistrations (xs : list<IMod<DateTime> * (DateTime -> float -> list<'msg>)>) =
+            for (reg,d,sw) in modSubscriptions.Values do
+                reg := []
+
+            for (m,r) in xs do
+                match modSubscriptions.TryGetValue m with
+                    | (true,(reg,d,sw)) -> reg := List.append !reg [r]
+                    | _ -> 
+                        let regs = ref [r]
+                        let sw = System.Diagnostics.Stopwatch()
+                        let mutable initial = true
+
+                        let callback t =
+                            if initial then
+                                sw.Start()
+                                initial <- false
+                            else
+                                let elapsed = sw.Elapsed.TotalMilliseconds
+                                sw.Restart()
+
+                                let mutable model = model.Value
+                                for r in !regs do
+                                    for msg in r t elapsed do
+                                        model <- onMessage model msg
+
+                        let d = m |> Mod.unsafeRegisterCallbackNoGcRoot callback
+                        modSubscriptions.Add(m,(regs,d,sw))
+
+            let empties = modSubscriptions |> Seq.filter (fun (KeyValue(k,(regs,d,sw))) -> List.isEmpty !regs)
+            for (KeyValue(k,(regs,d,sw))) in empties do
                 d.Dispose()
-            removed |> Seq.iter (fun (KeyValue(m,v)) -> modSubscriptions.Remove m |> ignore)
-            for (m,f) in added do
-                let sw = System.Diagnostics.Stopwatch()
-                let d = m |> Mod.unsafeRegisterCallbackNoGcRoot (fun msg -> 
-                    let elapsed = sw.Elapsed.TotalMilliseconds
-                    if false then ()
-                    else
-                        if elapsed <= System.Double.Epsilon then () // recursion hack
-                        else
-                            sw.Restart()
-                            match f elapsed msg with | Some nmsg -> onMessage model.Value nmsg |> ignore | None -> ()
-                )
-                sw.Start()
-                modSubscriptions.Add(m, (d,sw))
+                if modSubscriptions.Remove k |> not then printf "[elimish] should not occur"
 
         let updateSubscriptions (m : 'model) =
             if currentlyActive then
