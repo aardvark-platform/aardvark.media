@@ -412,7 +412,7 @@ module PlaceTransformObjects =
             subscriptions = Subscriptions.none
         }
 
-module OrbitTest = 
+module OrbitCameraApp = 
 
     open Aardvark.Base
     open Aardvark.Base.Rendering
@@ -430,14 +430,6 @@ module OrbitTest =
         | Animate    of DateTime
         | TimeStep   of float    
 
-    let mCenter (m:MModel) = 
-        adaptive{
-            let! c = m.mcenter
-            return match c with
-                    | Some s ->  s
-                    | None -> V3d.OOO            
-        } |> Mod.force          
-        
     let center' (c) = 
         match c with
             | Some s -> s
@@ -471,13 +463,19 @@ module OrbitTest =
         let stepDist = (newLoc-p).Length
         
         if stepDist < dist then newLoc else p
-        
+
+    let (|Orient|Panning|Zoom|NoOp|) (look, pan, zoom, center) =
+        match look,pan,zoom,center with
+            | Some _, None,   None,   Some c -> Orient  c
+            | None,   Some _, None,   Some c -> Panning c
+            | None,   None,   Some _, Some c -> Zoom    c
+            | _,_,_,_                        -> NoOp
 
     let update pickEx e (m : Model) msg = 
         match msg with            
             | MouseDelta d -> 
                 match (m.lookingAround, m.panning, m.zooming, m.center) with
-                    | Some _, None, None, Some c when m.picking.IsNone -> //orient
+                    | Orient c ->
                         let delta = Constant.PiTimesTwo * d * orientationFctr
                         let t = M44d.Rotation (m.camera.Right, -delta.Y) * M44d.Rotation (m.camera.Sky, -delta.X)
 
@@ -486,16 +484,15 @@ module OrbitTest =
                         let newForward = c - newLocation |> Vec.normalize
                         let tempcam = tempcam.WithForward newForward
                                
-                        { m with camera = CameraView.lookAt tempcam.Location c tempcam.Up}                      
-                    | None, Some _, None, Some c -> //pan
+                        { m with camera = CameraView.lookAt tempcam.Location c tempcam.Up}         
+                    | Panning c ->
                         let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * panningFctr
-
                         { m with camera = m.camera.WithLocation (m.camera.Location + step ); center = Some (c + step)}
-                    | None, None, Some _, Some c when m.center.IsSome -> //zoom
+                    | Zoom c ->
                         let step = (m.camera.Forward * float +d.Y) * -zoomingFctr
                         let newLoc = clampedLocation m.camera.Location step c
                         { m with camera = m.camera.WithLocation newLoc}
-                    | _,_,_,_ -> m
+                    | NoOp -> m 
             | TimeStep dt -> 
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
                 let speed = dt * 0.01                
@@ -538,7 +535,7 @@ module OrbitTest =
             subscriptions = subscriptions time
         }
 
-module CameraTest =
+module FreeFlyCameraApp =
 
     open Aardvark.Base
     open Aardvark.Base.Rendering
@@ -643,7 +640,7 @@ module CameraTest =
             subscriptions = subscriptions time
         }
 
-module ComposedTest = 
+module ComposedTestApp = 
     open Aardvark.Base
     open Aardvark.Base.Rendering
 
@@ -656,8 +653,8 @@ module ComposedTest =
     open Input
 
     type Action = 
-        | FreeFlyAction of CameraTest.Action
-        | OrbitAction   of OrbitTest.Action        
+        | FreeFlyAction of FreeFlyCameraApp.Action
+        | OrbitAction   of OrbitCameraApp.Action        
         | DrawingAction of SimpleDrawingApp.Action
         | DragStart     of PixelPosition
         | DragStop      of PixelPosition
@@ -673,8 +670,8 @@ module ComposedTest =
     // scene as parameter, isg 
     let view (m : ComposedTest.MModel) : ISg<Action> =
         [
-            Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction << OrbitTest.PickPoint) ]
-            OrbitTest.viewCenter m.mViewerState |> Scene.map OrbitAction
+            Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction << OrbitCameraApp.PickPoint) ]
+            OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
             SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
         ]
         |> Scene.group            
@@ -685,7 +682,7 @@ module ComposedTest =
         let v = m.ViewerState
         let v = 
             match (msg, v.picking) with
-                | (OrbitAction (OrbitTest.Action.PickPoint _), Some _) when m.InteractionState = InteractionMode.ExplorePick ->                                 
+                | (OrbitAction (OrbitCameraApp.Action.PickPoint _), Some _) when m.InteractionState = InteractionMode.ExplorePick ->                                 
                                 { v with navigationMode = NavigationMode.Orbital }
                 | _ -> v
 
@@ -700,11 +697,11 @@ module ComposedTest =
                 | PickStart   -> { v with picking = Some 0 }
                 | PickStop    -> { v with picking = None }
                 | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly
-                                     then CameraTest.update e v a else v
+                                     then FreeFlyCameraApp.update e v a else v
                 | OrbitAction a   -> 
                             let explorePick = m.InteractionState = InteractionMode.ExplorePick
                             if v.navigationMode = NavigationMode.Orbital
-                            then OrbitTest.update explorePick e v a else v
+                            then OrbitCameraApp.update explorePick e v a else v
                 | DrawingAction _ -> v
                 | SwitchMode -> 
                     match v.navigationMode with
@@ -745,32 +742,27 @@ module ComposedTest =
     let subscriptions (time : IMod<DateTime>)  (m : ComposedTest.Model) =
         Many [      
             match m.ViewerState.navigationMode with
-                | FreeFly -> yield CameraTest.subscriptions time m.ViewerState |> Sub.map FreeFlyAction                     
-                | Orbital -> yield OrbitTest.subscriptions time m.ViewerState |> Sub.map OrbitAction
+                | FreeFly -> yield FreeFlyCameraApp.subscriptions time m.ViewerState |> Sub.map FreeFlyAction                     
+                | Orbital -> yield OrbitCameraApp.subscriptions time m.ViewerState |> Sub.map OrbitAction
 
             match m.InteractionState with
-                | InteractionMode.ExplorePick -> yield Sub.NoSub
-                | InteractionMode.MeasurePick -> yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
-                | InteractionMode.Disabled -> yield Sub.NoSub
+                | InteractionMode.MeasurePick -> 
+                    yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
+                | InteractionMode.Disabled | InteractionMode.ExplorePick -> ()
            
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
             yield Input.key Down Keys.Space (fun _ _ -> SwitchInteraction)
             
             yield Input.toggleKey Keys.LeftCtrl (fun _ -> PickStart) (fun _ -> PickStop)
 
-            yield Input.mouse Mouse.down Mouse.left DragStart
-            yield Input.mouse Mouse.up   Mouse.left DragStop
-
-            yield Input.mouse Mouse.down Mouse.middle PanStart
-            yield Input.mouse Mouse.up   Mouse.middle PanStop
-
-            yield Input.mouse Mouse.down Mouse.right ZoomStart
-            yield Input.mouse Mouse.up   Mouse.right ZoomStop
+            yield Input.toggleMouse Mouse.left   DragStart  DragStop
+            yield Input.toggleMouse Mouse.middle PanStart   PanStop
+            yield Input.toggleMouse Mouse.right  ZoomStart  ZoomStop
         ]
 
     let initial : ComposedTest.Model = { 
         _id = null
-        ViewerState = CameraTest.initial
+        ViewerState = FreeFlyCameraApp.initial
         Drawing = SimpleDrawingApp.initial
         InteractionState = ComposedTest.InteractionMode.ExplorePick       
         }

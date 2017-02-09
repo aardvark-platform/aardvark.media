@@ -93,6 +93,12 @@ module Input =
         let up f = if f = Direction.Up then true else false
         let down f = if f = Direction.Down then true else false
 
+    let toggleMouse (k : MouseButtons -> bool) (onDown : PixelPosition -> 'msg) (onUp : PixelPosition -> 'msg) =
+        Sub.Many [
+            mouse Mouse.down k onDown
+            mouse Mouse.up k onUp
+        ]
+
 type App<'model,'mmodel,'msg,'view> =
     {
         initial   : 'model
