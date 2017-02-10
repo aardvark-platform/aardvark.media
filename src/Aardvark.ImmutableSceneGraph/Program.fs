@@ -64,8 +64,8 @@ module Shader =
 
 [<EntryPoint>]
 let main argv = 
-//    InteractionTest.run()
-//    System.Environment.Exit 0
+    InteractionTest.run()
+    System.Environment.Exit 0
 
     Chromium.init()
 

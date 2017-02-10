@@ -14,7 +14,7 @@ module CameraTest =
     [<DomainType>]
     type Model = { 
         camera : CameraView
-        frustum : Frustum 
+        //frustum : Frustum 
         lookingAround : Option<PixelPosition>
         panning : Option<PixelPosition>
         zooming : Option<PixelPosition>

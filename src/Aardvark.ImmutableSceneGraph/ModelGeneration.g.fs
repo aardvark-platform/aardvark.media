@@ -16,7 +16,7 @@ module Generated =
         type Model = 
             { mutable _id : Id
               camera : CameraView
-              frustum : Frustum
+              //frustum : Frustum
               lookingAround : Option<PixelPosition>
               panning : Option<PixelPosition>
               zooming : Option<PixelPosition>
@@ -29,7 +29,7 @@ module Generated =
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
                   mcamera = Mod.init (x.camera)
-                  mfrustum = Mod.init (x.frustum)
+                  //mfrustum = Mod.init (x.frustum)
                   mlookingAround = Mod.init (x.lookingAround)
                   mpanning = Mod.init (x.panning)
                   mzooming = Mod.init (x.zooming)
@@ -48,7 +48,7 @@ module Generated =
         and [<DomainType>] MModel = 
             { mutable _original : Model
               mcamera : ModRef<CameraView>
-              mfrustum : ModRef<Frustum>
+              //mfrustum : ModRef<Frustum>
               mlookingAround : ModRef<Option<PixelPosition>>
               mpanning : ModRef<Option<PixelPosition>>
               mzooming : ModRef<Option<PixelPosition>>
@@ -61,7 +61,7 @@ module Generated =
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
                     x.mcamera.Value <- arg0.camera
-                    x.mfrustum.Value <- arg0.frustum
+                    //x.mfrustum.Value <- arg0.frustum
                     x.mlookingAround.Value <- arg0.lookingAround
                     x.mpanning.Value <- arg0.panning
                     x.mzooming.Value <- arg0.zooming

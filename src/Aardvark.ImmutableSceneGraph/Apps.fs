@@ -444,8 +444,8 @@ module OrbitCameraApp =
             |> Scene.transform' (m.mcenter |> Mod.map (fun a -> Trafo3d.Translation (center' a)))
         ]
         |> Scene.group            
-        |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
-        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+        //|> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
+        //|> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
     let viewCenter (m : MModel) =
          Sphere (Sphere3d(V3d.OOO, 0.02)) 
@@ -507,13 +507,14 @@ module OrbitCameraApp =
         Many [                            
                 
             Input.moveDelta MouseDelta                
-            //Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
-            Sub.ofMod time (fun _ ms -> [TimeStep ms])        
+            //Sub.time(TimeSpan.FromMilliseconds 30.0) ( fun a -> TimeStep 30.0)
+            //Sub.ofMod time (fun _ ms -> [TimeStep ms])        
         ]
     
     let initial = { 
         camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
-        frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
+        //frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); 
+        _id = null
         lookingAround = None
         panning = None
         zooming = None
@@ -564,7 +565,7 @@ module FreeFlyCameraApp =
             |> Scene.transform' (point |> Mod.map (fun a -> Trafo3d.Translation (a)));]      
         |> Scene.group
         |> Scene.viewTrafo (m.mcamera |> Mod.map CameraView.viewTrafo)
-        |> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
+        //|> Scene.projTrafo (m.mfrustum |> Mod.map Frustum.projTrafo)
 
     let forward = V2d.OI
     let backward = -V2d.OI
@@ -614,13 +615,16 @@ module FreeFlyCameraApp =
 
             Input.moveDelta MouseDelta     
 
-            //Sub.time(TimeSpan.FromMilliseconds 10.0) ( fun a -> TimeStep 10.0)
-            Sub.ofMod time (fun t ms -> [TimeStep ms])
+            //Input.key Direction.Down Keys.W (fun b a -> TimeStep 20.0)
+
+            //Sub.time(TimeSpan.FromMilliseconds 25.0) ( fun a -> TimeStep 25.0)
+            //Sub.ofMod time (fun t ms -> [TimeStep ms])
         ]
 
     let initial = { 
         camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
-        frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); _id = null
+        ///frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); 
+        _id = null
         lookingAround = None
         panning = None
         zooming = None
@@ -668,14 +672,14 @@ module ComposedTestApp =
         | SwitchInteraction
 
     // scene as parameter, isg 
-    let view (m : ComposedTest.MModel) : ISg<Action> =
+    let view (frustum : IMod<Frustum>) (m : ComposedTest.MModel) : ISg<Action> =
         [
             Sphere (Sphere3d(V3d.OOO, 1.0)) |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction << OrbitCameraApp.PickPoint) ]
             OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
             SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
         ]
         |> Scene.group            
-        |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera m.mViewerState.mfrustum) 
+        |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera frustum) 
 
     let update e (m : ComposedTest.Model) msg =        
         let v = m.ViewerState
@@ -766,11 +770,11 @@ module ComposedTestApp =
         InteractionState = ComposedTest.InteractionMode.ExplorePick       
         }
 
-    let app time : App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
+    let app time frustum : App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
         {
             initial = initial
             update = update
-            view = view
+            view = view frustum
             ofPickMsg = ofPickMsg 
             subscriptions = subscriptions time
         }
