@@ -675,8 +675,7 @@ module ComposedTestApp =
             SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
         ]
         |> Scene.group            
-        |> Scene.viewTrafo (m.mViewerState.mcamera |> Mod.map CameraView.viewTrafo)
-        |> Scene.projTrafo (m.mViewerState.mfrustum |> Mod.map Frustum.projTrafo)
+        |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera m.mViewerState.mfrustum) 
 
     let update e (m : ComposedTest.Model) msg =        
         let v = m.ViewerState
