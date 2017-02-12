@@ -198,11 +198,11 @@ module TranslateController2 =
             | Translate (axis,s), _ ->  { m with activeTranslation = 
                                                     Some (axis,
                                                           Axis.moveAxis (m.trafo * m.editTrafo) axis,
-                                                          m.editTrafo.Backward.TransformPos s) } //
+                                                          m.editTrafo.Backward.TransformPos (s * Axis.dir axis)) } //
             | EndTranslation, _     ->  { m with activeTranslation = None; 
                                                  trafo = m.trafo * m.editTrafo; 
                                                  editTrafo = Trafo3d.Identity  }
-            | MoveRay r, Some (axis,plane, start) -> 
+            | MoveRay r, Some (axis,plane,start) ->
                 let mutable ha = RayHit3d.MaxRange
                 if r.HitsPlane(plane, 0.0, Double.MaxValue, &ha) then
                    let v = (ha.Point - start) * Axis.dir axis                   
@@ -215,20 +215,22 @@ module TranslateController2 =
         let scene = updateModel m.scene a
         { m with scene = scene }
 
+    let cRadius = 0.03
+    let aRadius = cRadius * 2.0
+    let aHeight = aRadius * 3.0
+
     let viewCylinder (a : Axis) (c : C4b) ifHit =
-         [ cylinder V3d.OOO (Axis.dir a) 1.0 0.05 
+         [ cylinder V3d.OOO (Axis.dir a) 1.0 cRadius 
             |> render [ on Mouse.move (hover a); on Mouse.down (translate_ a) ] 
          ] |> colored (ifHit a C4b.White c)
 
     let viewArrow (a : Axis) (c : C4b) ifHit =
-        let arrow dir = Cone(V3d.OOO,dir,0.3,0.1)
+        let arrow dir = Cone(V3d.OOO, dir, aHeight, aRadius)
         [ arrow (Axis.dir a) 
             |> render [on Mouse.move (hover a); on Mouse.down (translate_ a)]
         ]|> colored (ifHit a C4b.White c)
 
     let viewModel (m : MTModel) =
-        let arrow dir = Cone(V3d.OOO,dir,0.3,0.1)
-
         let ifHit (a : Axis) (selection : C4b) (defaultColor : C4b) =
             adaptive {
                 let! hovered = m.mhovered
