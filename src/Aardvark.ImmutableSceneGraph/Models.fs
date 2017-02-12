@@ -12,8 +12,9 @@ module TranslateController =
     [<DomainType>]
     type TModel = {
         hovered           : Option<Axis>
-        activeTranslation : Option<Plane3d * V3d>
+        activeTranslation : Option<Axis*Plane3d * V3d>
         trafo             : Trafo3d
+        editTrafo         : Trafo3d
     }
 
     [<DomainType>]

@@ -60,6 +60,7 @@
       <!-- <DomainTypes>True</DomainTypes> -->
     </Compile>
     <Compile Include="ModelGeneration.g.fs" />
+    <Compile Include="TrafoApps.fs" />
     <Compile Include="Apps.fs" />
     <Compile Include="InteractionTest.fs" />
     <Compile Include="ComposedApp.fs" />

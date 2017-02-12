@@ -16,14 +16,16 @@ module Generated =
         type TModel = 
             { mutable _id : Id
               hovered : Option<Axis>
-              activeTranslation : Option<Plane3d * V3d>
-              trafo : Trafo3d }
+              activeTranslation : Option<Axis * Plane3d * V3d>
+              trafo : Trafo3d
+              editTrafo : Trafo3d }
             
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
                   mhovered = Mod.init (x.hovered)
                   mactiveTranslation = Mod.init (x.activeTranslation)
-                  mtrafo = Mod.init (x.trafo) }
+                  mtrafo = Mod.init (x.trafo)
+                  meditTrafo = Mod.init (x.editTrafo) }
             
             interface IUnique with
                 
@@ -34,14 +36,16 @@ module Generated =
         and [<DomainType>] MTModel = 
             { mutable _original : TModel
               mhovered : ModRef<Option<Axis>>
-              mactiveTranslation : ModRef<Option<Plane3d * V3d>>
-              mtrafo : ModRef<Trafo3d> }
+              mactiveTranslation : ModRef<Option<Axis * Plane3d * V3d>>
+              mtrafo : ModRef<Trafo3d>
+              meditTrafo : ModRef<Trafo3d> }
             member x.Apply(arg0 : TModel, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
                     x.mhovered.Value <- arg0.hovered
                     x.mactiveTranslation.Value <- arg0.activeTranslation
                     x.mtrafo.Value <- arg0.trafo
+                    x.meditTrafo.Value <- arg0.editTrafo
         
         [<DomainType>]
         type Scene = 

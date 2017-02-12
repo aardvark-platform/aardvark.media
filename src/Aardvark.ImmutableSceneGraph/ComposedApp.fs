@@ -187,6 +187,7 @@ module NiceCompose =
             match c with
                 | Fablish view -> Fablish (fun m -> Html.map f (view m))
                 | ThreeD view -> ThreeD (fun m -> Scene.map f (view m))
+                | _ -> failwith "dont know what to do with group"
 
     type ElmishApp<'model,'mmodel,'msg> = { 
         initial : 'model
