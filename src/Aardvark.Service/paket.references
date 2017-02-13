@@ -1,0 +1,16 @@
+Another.Unofficial.Xilium.CefGlue
+Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies
+Another.Unofficial.Xilium.CefGlue.WindowsForms
+
+Aardvark.Base
+Aardvark.Base.Incremental
+Aardvark.Base.FSharp
+Aardvark.Base.Rendering
+Aardvark.Application
+Aardvark.SceneGraph
+Aardvark.Application.WinForms.GL 
+
+FsPickler
+FsPickler.Json
+TurboJpegWrapper
+Suave

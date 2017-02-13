@@ -12,6 +12,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.ImmutableSceneGrap
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.WinForms", "Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj", "{F20C78DD-06CB-44E8-90DB-6DE144863078}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Service", "Aardvark.Service\Aardvark.Service.fsproj", "{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,10 @@ Global
 		{F20C78DD-06CB-44E8-90DB-6DE144863078}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F20C78DD-06CB-44E8-90DB-6DE144863078}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F20C78DD-06CB-44E8-90DB-6DE144863078}.Release|Any CPU.Build.0 = Release|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
