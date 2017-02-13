@@ -200,7 +200,7 @@ module PlaceTransformObjects =
             | TransformObject(index,translation) ->
                 match m.selectedObj with
                     | Some old ->
-                        let t = TranslateController.updateModel old.tmodel translation
+                        let t = TranslateController.updateModel e old.tmodel translation
                         { m with 
                             selectedObj = Some { old with tmodel = t }
                             objects = PSet.findByUpdate (fun a -> a.id = old.id) (fun a -> { a with t = t.trafo }) m.objects }
@@ -529,15 +529,16 @@ module ComposedTestApp =
     open Input
 
     type Action = 
-        | FreeFlyAction of FreeFlyCameraApp.Action
-        | OrbitAction   of OrbitCameraApp.Action        
-        | DrawingAction of SimpleDrawingApp.Action
-        | DragStart     of PixelPosition
-        | DragStop      of PixelPosition
-        | PanStart      of PixelPosition
-        | PanStop       of PixelPosition
-        | ZoomStart     of PixelPosition
-        | ZoomStop      of PixelPosition
+        | TranslateAction of TranslateController.Action
+        | FreeFlyAction   of FreeFlyCameraApp.Action
+        | OrbitAction     of OrbitCameraApp.Action        
+        | DrawingAction   of SimpleDrawingApp.Action
+        | DragStart       of PixelPosition
+        | DragStop        of PixelPosition
+        | PanStart        of PixelPosition
+        | PanStop         of PixelPosition
+        | ZoomStart       of PixelPosition
+        | ZoomStop        of PixelPosition
         | PickStart  
         | PickStop   
         | SwitchMode        
@@ -561,7 +562,7 @@ module ComposedTestApp =
                 | ZoomStop _  -> { v with zooming = None }
                 | PickStart   -> { v with picking = Some 0 }
                 | PickStop    -> { v with picking = None }
-                | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly
+                | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly && m.InteractionState <> InteractionMode.TrafoPick
                                      then FreeFlyCameraApp.update e v a else v
                 | OrbitAction a   -> 
                             let explorePick = m.InteractionState = InteractionMode.ExplorePick
@@ -592,17 +593,28 @@ module ComposedTestApp =
                 | SwitchInteraction ->
                     let s = match m.InteractionState with
                             | InteractionMode.ExplorePick -> InteractionMode.MeasurePick
-                            | InteractionMode.MeasurePick -> InteractionMode.ExplorePick
+                            | InteractionMode.MeasurePick -> InteractionMode.TrafoPick
+                            | InteractionMode.TrafoPick -> InteractionMode.ExplorePick
                             | InteractionMode.Disabled -> m.InteractionState                                                
                     printfn "%A" s
                     s
                 | _ -> m.InteractionState
+
+        let t = m.Translation
+        let t =
+            match msg with
+                | TranslateAction a -> if m.InteractionState = InteractionMode.TrafoPick 
+                                       then TranslateController.updateModel e t a 
+                                       else t
+                | _ -> t
                     
 
        // printfn "%A %A" iState v.navigationMode
-        { m with ViewerState = v; Drawing = d; InteractionState = iState }
+        { m with ViewerState = v; Translation = t; Drawing = d; InteractionState = iState }
 
-    let ofPickMsg _ m = []
+    let ofPickMsgModel (m : Model) (pick : GlobalPick) = [
+        yield! TranslateController.ofPickMsgModel m.Translation pick |> List.map (fun a -> TranslateAction a)
+    ]       
 
     let subscriptions (time : IMod<DateTime>)  (m : ComposedTest.Model) =
         Many [      
@@ -613,6 +625,7 @@ module ComposedTestApp =
             match m.InteractionState with
                 | InteractionMode.MeasurePick -> 
                     yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
+                | InteractionMode.TrafoPick -> ()
                 | InteractionMode.Disabled | InteractionMode.ExplorePick -> ()
            
             yield Input.key Down Keys.N (fun _ _ -> SwitchMode)
@@ -624,6 +637,8 @@ module ComposedTestApp =
             yield Input.toggleMouse Mouse.middle PanStart   PanStop
             yield Input.toggleMouse Mouse.right  ZoomStart  ZoomStop
         ]
+
+    let viewTranslate m = TranslateController.viewModel m.mTranslation |> Scene.map TranslateAction
 
     // scene as parameter, isg 
     let view (frustum : IMod<Frustum>) (m : ComposedTest.MModel) : ISg<Action> =
@@ -637,6 +652,8 @@ module ComposedTestApp =
                  
             OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
             SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
+
+            viewTranslate m
         ]
         |> Scene.group            
         |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera frustum) 
@@ -644,15 +661,16 @@ module ComposedTestApp =
     let initial : ComposedTest.Model = { 
         _id = null
         ViewerState = FreeFlyCameraApp.initial
+        Translation = TranslateController.initalModel
         Drawing = SimpleDrawingApp.initial
-        InteractionState = ComposedTest.InteractionMode.ExplorePick       
+        InteractionState = ComposedTest.InteractionMode.TrafoPick       
         }
 
-    let app time frustum : App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
+    let app time frustum = //: App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
         {
             initial = initial
             update = update
             view = view frustum
-            ofPickMsg = ofPickMsg 
+            ofPickMsg = ofPickMsgModel // TranslateController.ofPickMsg 
             subscriptions = subscriptions time
         }

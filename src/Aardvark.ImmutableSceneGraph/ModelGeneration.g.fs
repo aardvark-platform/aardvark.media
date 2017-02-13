@@ -76,12 +76,13 @@ module Generated =
 
         open Scratch.DomainTypes
 
-        type InteractionMode = ExplorePick | MeasurePick | Disabled
+        type InteractionMode = TrafoPick | ExplorePick | MeasurePick | Disabled
 
         [<DomainType>]
         type Model = 
             { mutable _id : Id
               ViewerState      : CameraTest.Model
+              Translation      : TranslateController.TModel
               Drawing          : SimpleDrawingApp.Model
               InteractionState : InteractionMode
               }
@@ -89,6 +90,7 @@ module Generated =
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
                   mViewerState = x.ViewerState.ToMod reuseCache
+                  mTranslation = x.Translation.ToMod reuseCache
                   mDrawing = x.Drawing.ToMod reuseCache
                   mInteractionState = Mod.init (x.InteractionState)
                   }
@@ -102,6 +104,7 @@ module Generated =
         and [<DomainType>] MModel = 
             { mutable _original : Model
               mViewerState : CameraTest.MModel
+              mTranslation : TranslateController.MTModel
               mDrawing : SimpleDrawingApp.MModel
               mInteractionState : ModRef<InteractionMode>
               }
@@ -109,6 +112,7 @@ module Generated =
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
                     x.mViewerState.Apply (arg0.ViewerState, reuseCache)
+                    x.mTranslation.Apply (arg0.Translation, reuseCache)
                     x.mDrawing.Apply (arg0.Drawing, reuseCache)
                     x.mInteractionState.Value <- arg0.InteractionState
                    
