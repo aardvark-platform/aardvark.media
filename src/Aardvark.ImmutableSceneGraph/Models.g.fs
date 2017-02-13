@@ -74,6 +74,69 @@ module Generated =
                     x.mcamera.Value <- arg0.camera
                     x.mscene.Apply(arg0.scene, reuseCache)
     
+    module RotateController = 
+        [<DomainType>]
+        type RModel = 
+            { mutable _id : Id
+              hovered : Option<Axis>
+              activeRotation : Option<Axis * Plane3d * V3d>
+              trafo : Trafo3d
+              editTrafo : Trafo3d }
+            
+            member x.ToMod(reuseCache : ReuseCache) = 
+                { _original = x
+                  mhovered = Mod.init (x.hovered)
+                  mactiveRotation = Mod.init (x.activeRotation)
+                  mtrafo = Mod.init (x.trafo)
+                  meditTrafo = Mod.init (x.editTrafo) }
+            
+            interface IUnique with
+                
+                member x.Id 
+                    with get () = x._id
+                    and set v = x._id <- v
+        
+        and [<DomainType>] MRModel = 
+            { mutable _original : RModel
+              mhovered : ModRef<Option<Axis>>
+              mactiveRotation : ModRef<Option<Axis * Plane3d * V3d>>
+              mtrafo : ModRef<Trafo3d>
+              meditTrafo : ModRef<Trafo3d> }
+            member x.Apply(arg0 : RModel, reuseCache : ReuseCache) = 
+                if not (System.Object.ReferenceEquals(arg0, x._original)) then 
+                    x._original <- arg0
+                    x.mhovered.Value <- arg0.hovered
+                    x.mactiveRotation.Value <- arg0.activeRotation
+                    x.mtrafo.Value <- arg0.trafo
+                    x.meditTrafo.Value <- arg0.editTrafo
+        
+        [<DomainType>]
+        type Scene = 
+            { mutable _id : Id
+              camera : Camera
+              scene : RModel }
+            
+            member x.ToMod(reuseCache : ReuseCache) = 
+                { _original = x
+                  mcamera = Mod.init (x.camera)
+                  mscene = x.scene.ToMod(reuseCache) }
+            
+            interface IUnique with
+                
+                member x.Id 
+                    with get () = x._id
+                    and set v = x._id <- v
+        
+        and [<DomainType>] MScene = 
+            { mutable _original : Scene
+              mcamera : ModRef<Camera>
+              mscene : MRModel }
+            member x.Apply(arg0 : Scene, reuseCache : ReuseCache) = 
+                if not (System.Object.ReferenceEquals(arg0, x._original)) then 
+                    x._original <- arg0
+                    x.mcamera.Value <- arg0.camera
+                    x.mscene.Apply(arg0.scene, reuseCache)
+
     module SimpleDrawingApp = 
         type Polygon = list<V3d>
         

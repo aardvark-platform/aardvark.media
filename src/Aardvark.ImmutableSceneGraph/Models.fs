@@ -24,6 +24,20 @@ module TranslateController =
             scene : TModel
         }
 
+module RotateController =
+    [<DomainType>]
+    type RModel = {
+        hovered           : Option<Axis>
+        activeRotation    : Option<Axis*Plane3d * V3d>
+        trafo             : Trafo3d
+        editTrafo         : Trafo3d
+    }
+
+    [<DomainType>]
+    type Scene =  {
+        camera : Camera
+        scene : RModel
+    }
 
 module SimpleDrawingApp =
 
