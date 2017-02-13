@@ -76,12 +76,12 @@ function initRenderTargetEvents(canvas, id) {
 }
 
 function getRenderTarget(id) {
-    var $canvas = $('#' + id + ' canvas')
-    var canvas = $canvas.get(0);
-    if (canvas.renderTarget)
-        return canvas.renderTarget;
+    var $img = $('#' + id + ' img')
+    var img = $img.get(0);
+    if (img.renderTarget)
+        return img.renderTarget;
 
-    initRenderTargetEvents(canvas, id);
+    initRenderTargetEvents(img, id);
 
     var $div = $('#' + id)
     var width =
@@ -94,30 +94,38 @@ function getRenderTarget(id) {
             return $div.height();
         };
 
-    var socket = new WebSocket("ws://localhost:" + wsPort + "/render/" + id + "/" + sessionId);
-    socket.binaryType = "arraybuffer"
+    var socket = new WebSocket("ws://" + host + ":" + wsPort + "/render/" + id + "/" + sessionId);
+    socket.binaryType = "blob"
     var lastHeight = 1;
     var lastWidth = 1;
-    var ctx = canvas.getContext('2d');
-    canvas.style.transform = "scale(1,-1)";
+    img.style.transform = "scale(1,-1)";
+    var urlCreator = window.URL || window.webkitURL;
+
     var blit =
         function (data) {
-            var w = lastWidth;
-            var h = lastHeight;
-            if (canvas.width != w || canvas.height != h) {
-                canvas.width = w;
-                canvas.height = h;
-            }
+            //var w = lastWidth;
+            //var h = lastHeight;
+            //if (img.style.width != w || img.style.height != h) {
+            //    img.style.width = w;
+            //    img.style.height = h;
+            //}
 
-            var byteArray = new Uint8ClampedArray(data);
-            var imageData = new ImageData(byteArray, w, h);
-            ctx.putImageData(imageData, 0, 0);
+
+            var imageUrl = urlCreator.createObjectURL(data);
+            img.src = imageUrl;
+
+            console.log("size: " + img.width + "x" + img.height);
+
+
+            //var byteArray = new Uint8ClampedArray(data);
+            //var imageData = new ImageData(byteArray, w, h);
+            //ctx.putImageData(imageData, 0, 0);
         };
 
 
     socket.onmessage =
         function (m) {
-            if (m.data instanceof ArrayBuffer) {
+            if (m.data instanceof Blob) {
                 socket.send("g");
                 blit(m.data);
                 socket.send("d");
@@ -153,7 +161,7 @@ function getRenderTarget(id) {
             render: requestRender
         };
 
-    canvas.renderTarget = renderTarget;
+    img.renderTarget = renderTarget;
     return renderTarget;
 }
 
@@ -167,7 +175,7 @@ function initDocument() {
         $('div.aardvark').each(function () {
             var $div = $(this);
             var id = $div.get(0).id;
-            $div.append($('<canvas/>'));
+            $div.append($('<img/>'));
 
             // render on resize
             $div.resize(function () {
@@ -181,8 +189,8 @@ function initDocument() {
 }
 
 // event related things (WebSocket)
-
-var eventSocket = new WebSocket("ws://localhost:" + wsPort + "/events")
+var host = window.location.hostname;
+var eventSocket = new WebSocket("ws://" + host + ":" + wsPort + "/events")
 var sessionId = "noid";
 
 aardvark.processEvent = function () {

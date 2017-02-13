@@ -86,6 +86,7 @@ NUGET
       Another.Unofficial.Xilium.CefGlue (0.0.9)
     DevILSharp (0.0.13)
     Fleck (0.14.0.59)
+    FSharp.Core (4.0.0.1)
     FSharp.Quotations.Evaluator (1.0.7)
     FsPickler (3.2)
     FsPickler.Json (3.2)
@@ -94,6 +95,8 @@ NUGET
     Newtonsoft.Json (9.0.1)
     SharpZipLib (0.86)
     StackExchange.NetGain (1.0)
+    Suave (2.0.2)
+      FSharp.Core (>= 4.0.0.1)
     System.Collections.Immutable (1.2)
     System.Reactive.Core (3.0)
       System.Reactive.Interfaces (>= 3.0)
@@ -101,6 +104,7 @@ NUGET
     System.Reactive.Linq (3.0)
       System.Reactive.Core (>= 3.0)
       System.Reactive.Interfaces (>= 3.0)
+    TurboJpegWrapper (1.4.2.6)
 
 GROUP Build
 CONTENT: NONE

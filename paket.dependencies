@@ -24,6 +24,8 @@ nuget FsPickler.Json  ~> 3.2.0
 nuget Fablish               ~> 1.7.9
 nuget StackExchange.NetGain ~> 1.0.0
 nuget Fleck                 ~> 0.14.0.59
+nuget TurboJpegWrapper      ~> 1.4.2.6
+nuget Suave                 ~> 2.0.2
 
 group Build
 content: none

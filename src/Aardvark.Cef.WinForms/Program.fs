@@ -584,7 +584,6 @@ let main argv =
     let app = new OpenGlApplication()
     let server = new AardvarkServer(app.Runtime, 8888);
 
-
     server.["yeah"] <- fun (yeah : IRenderControl) ->
         let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
         let proj = yeah.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))

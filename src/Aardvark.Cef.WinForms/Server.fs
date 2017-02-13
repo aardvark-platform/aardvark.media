@@ -302,8 +302,14 @@ module Fleck =
 type Server(port : int) as this =
     let listener = new HttpListener()
     let port = if port <= 0 then getFreePort() else port
+    
+    do 
+        for p in listener.Prefixes do
+            printfn "%A" p
 
-    do listener.Prefixes.Add(sprintf "http://localhost:%d/" port)
+        
+
+        listener.Prefixes.Add(sprintf "http://*:%d/" port)
 
 
     //do Fleck.run this.OnWebSocket
@@ -563,6 +569,8 @@ and AardvarkClient internal(runtime : IRuntime, server : AardvarkServer, id : Gu
     let controls = ConcurrentDictionary<string, AardvarkClientRenderControl>()
 
 
+    let jpeg = new TurboJpegWrapper.TJCompressor()
+
     member internal x.RegisterRender(target : string, socket : IWebSocket) =
         Log.warn "rendering %A requested on client %A" target id
 
@@ -579,8 +587,10 @@ and AardvarkClient internal(runtime : IRuntime, server : AardvarkServer, id : Gu
             if c = 'r' then
                 let size : V2i = Pickler.json.UnPickleOfString value
                 let result = ctrl.Render size
-                let data = result.Volume.Data
-                socket.Send(data)
+//
+//                let final = jpeg.Compress(data, size.X * 3, size.X, size.Y, Drawing.Imaging.PixelFormat.Format24bppRgb, TurboJpegWrapper.TJSubsamplingOptions.TJSAMP_420, 100, TurboJpegWrapper.TJFlags.NONE)
+
+                socket.Send(result)
 
             elif c = 'g' then
                 ctrl.Received()
@@ -650,10 +660,13 @@ and AardvarkClientRenderControl (runtime : IRuntime, parent : AardvarkClient, id
     let clearTask = runtime.CompileClear(signature, backgroundColor, Mod.constant 1.0)
     let mutable renderTask = RenderTask.empty
 
+    let jpeg = new TurboJpegWrapper.TJCompressor()
+
     let renderResult =
         Mod.custom (fun self ->
-
-            use t = runtime.ContextLock
+            let runtime = unbox<Runtime> runtime
+            let ctx = runtime.Context
+            use t = ctx.ResourceLock
 
             let fbo = framebuffer.GetValue self
             clearTask.Run(self, RenderToken.Empty, OutputDescription.ofFramebuffer fbo)
@@ -663,30 +676,38 @@ and AardvarkClientRenderControl (runtime : IRuntime, parent : AardvarkClient, id
             let color = unbox<Renderbuffer> fbo.Attachments.[DefaultSemantic.Colors]
 
 
-
             let size = color.Size
-            let sizeInBytes = 4 * size.X * size.Y 
+            let rowSize = 3 * size.X
+            
+            let align = ctx.PackAlignment
+            let alignedRowSize = (rowSize + (align - 1)) &&& ~~~(align - 1)
+            let sizeInBytes = alignedRowSize * size.Y
 
             GL.BindFramebuffer(FramebufferTarget.Framebuffer, fbo.Handle)
             let b = GL.GenBuffer()
             GL.BindBuffer(BufferTarget.PixelPackBuffer, b)
-            GL.BufferStorage(BufferTarget.PixelPackBuffer, 4n * nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+            GL.BufferStorage(BufferTarget.PixelPackBuffer, 3n * nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
             
-            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
+            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Bgr, PixelType.UnsignedByte, 0n)
 
             let ptr = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly)
-            let image = PixImage<byte>(Col.Format.RGBA, size)
-            Marshal.Copy(ptr, image.Volume.Data, 0, int sizeInBytes)
-            GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
             
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
-            GL.DeleteBuffer(b)
-            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0)
-            image
+            jpeg.Compress(ptr, alignedRowSize, size.X, size.Y, Drawing.Imaging.PixelFormat.Format24bppRgb, TurboJpegWrapper.TJSubsamplingOptions.TJSAMP_420, 100, TurboJpegWrapper.TJFlags.NONE)
+
+            
+            
+//            let image = PixImage<byte>(Col.Format.RGB, size)
+//            Marshal.Copy(ptr, image.Volume.Data, 0, int sizeInBytes)
+//            GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
+//            
+//            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+//            GL.DeleteBuffer(b)
+//            GL.BindFramebuffer(FramebufferTarget.Framebuffer, 0)
+//            image
         )
 
 
-    let queue = new System.Collections.Concurrent.BlockingCollection<Choice<unit, System.Threading.Tasks.TaskCompletionSource<PixImage<byte>>>>()
+    let queue = new System.Collections.Concurrent.BlockingCollection<Choice<unit, System.Threading.Tasks.TaskCompletionSource<byte[]>>>()
 
     let renderer = 
         async {
@@ -833,11 +854,11 @@ and AardvarkClientRenderControl (runtime : IRuntime, parent : AardvarkClient, id
             transferWatch.Reset()
             frameCounter <- 0
 
-    member internal x.Render(size : V2i) : PixImage<byte> =
+    member internal x.Render(size : V2i) : byte[] =
         if size <> currentSize.Value then
             transact (fun () -> currentSize.Value <- size)
 
-        let tcs = System.Threading.Tasks.TaskCompletionSource<PixImage<byte>>()
+        let tcs = System.Threading.Tasks.TaskCompletionSource<byte[]>()
         queue.Add(Choice2Of2 tcs)
 
         let res = tcs.Task.Result
