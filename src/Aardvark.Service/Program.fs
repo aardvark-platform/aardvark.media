@@ -33,7 +33,7 @@ let main args =
                 |> Sg.trafo trafo
                 |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
                 |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
-                |> Sg.diffuseFileTexture' @"C:\Users\Schorsch\Development\WorkDirectory\cliffs_color.jpg" true
+                |> Sg.diffuseFileTexture' @"E:\Development\WorkDirectory\DataSVN\cliffs_color.jpg" true
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.diffuseTexture

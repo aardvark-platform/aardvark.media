@@ -51,8 +51,6 @@ module Pickler =
     let json = FsPickler.CreateJsonSerializer(false, true)
 
 
-
-
 module Server =
     open System.IO
     open System.Diagnostics
@@ -65,15 +63,18 @@ module Server =
         open OpenTK.Graphics
         open OpenTK.Graphics.OpenGL4
         open Aardvark.Rendering.GL
-        open TurboJpegWrapper
+        //open TurboJpegWrapper
         open System.Diagnostics
+        open System.Runtime.CompilerServices
+        open System.Runtime.InteropServices
+        open System.Security
 
-        let jpeg = new ThreadLocal<_>(fun () -> new TJCompressor())
-
-        let downloadFBO (timer : Stopwatch) (size : V2i) (ctx : Context) =
+        let downloadFBO (jpeg : TJCompressor) (downloadTime : Stopwatch) (compressTime : Stopwatch) (size : V2i) (ctx : Context) =
+            
+            downloadTime.Start()
             let pbo = GL.GenBuffer()
 
-            let rowSize = 3 * size.X
+            let rowSize = 4 * size.X
             let align = ctx.PackAlignment
             let alignedRowSize = (rowSize + (align - 1)) &&& ~~~(align - 1)
             let sizeInBytes = alignedRowSize * size.Y
@@ -83,19 +84,28 @@ module Server =
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
                 GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
             
-                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Bgr, PixelType.UnsignedByte, 0n)
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
                 let ptr = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly)
-                timer.Start()
-                jpeg.Value.Compress(ptr, alignedRowSize, size.X, size.Y, Drawing.Imaging.PixelFormat.Format24bppRgb, TurboJpegWrapper.TJSubsamplingOptions.TJSAMP_411, 70, TurboJpegWrapper.TJFlags.NONE)
+                downloadTime.Stop()
+                compressTime.Start()
+
+
+                jpeg.Compress(
+                    ptr, alignedRowSize, size.X, size.Y, 
+                    TJPixelFormat.RGBA, 
+                    TJSubsampling.S420, 
+                    70, 
+                    TJFlags.FastDCT ||| TJFlags.BottomUp
+                )
                     
             finally
-                timer.Stop()
+                compressTime.Stop()
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
                 GL.DeleteBuffer(pbo)
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
 
         type Framebuffer with
-            member x.DownloadJpegColor(timer : Stopwatch) =
+            member x.DownloadJpegColor(jpeg : TJCompressor, downloadTime : Stopwatch, compressTime : Stopwatch) =
                 let ctx = x.Context
                 use __ = ctx.ResourceLock
 
@@ -105,7 +115,7 @@ module Server =
                 if color.Samples > 1 then
                     let resolved = GL.GenRenderbuffer()
                     GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, resolved)
-                    GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgb8, color.Size.X, color.Size.Y)
+                    GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, color.Size.X, color.Size.Y)
                     GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
 
                     let fbo = GL.GenFramebuffer()
@@ -126,14 +136,14 @@ module Server =
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
                     
                     try
-                        ctx |> downloadFBO timer size
+                        ctx |> downloadFBO jpeg downloadTime compressTime size
                     finally
                         GL.DeleteFramebuffer(fbo)
                         GL.DeleteRenderbuffer(resolved)
 
                 else
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-                    ctx |> downloadFBO timer size
+                    ctx |> downloadFBO jpeg downloadTime compressTime size
 
     type RenderControl(runtime : IRuntime, targetId : string, sock : WebSocket, samples : int) =
 
@@ -177,9 +187,13 @@ module Server =
         let downloadTime    = Stopwatch()
         let compressTime    = Stopwatch()
         let presentTime     = Stopwatch()
+        let totalTime       = Stopwatch()
+
+        let jpeg = new TJCompressor()
 
         let result : IMod<byte[]> =
             Mod.custom (fun self ->
+                totalTime.Start()
                 use __ = runtime.ContextLock
                 let renderTask = renderTask.GetValue self
                 let fbo = framebuffer.GetValue self
@@ -190,10 +204,8 @@ module Server =
                 renderTask.Run(self, RenderToken.Empty, output)
                 renderTime.Stop()
 
-                downloadTime.Start()
                 let fbo = unbox<Aardvark.Rendering.GL.Framebuffer> fbo
-                let data = fbo.DownloadJpegColor(compressTime)
-                downloadTime.Stop()
+                let data = fbo.DownloadJpegColor(jpeg, downloadTime, compressTime)
 
                 presentTime.Start()
                 data
@@ -297,10 +309,6 @@ module Server =
             }
 
         let invalidate() =
-            async {
-                do! Async.SwitchToNewThread()
-                result.GetValue() |> ignore
-            } |> Async.Start
             send Invalidate
 
         do Async.Start worker
@@ -334,19 +342,26 @@ module Server =
 
                 | Rendered ->
                     presentTime.Stop()
+                    totalTime.Stop()
 
-                    if frameCount = 100 then
+                    if totalTime.Elapsed.TotalSeconds > 2.0 && frameCount > 0 then
                         Log.start "statistics"
 
+                        let accounted = renderTime.MicroTime + downloadTime.MicroTime + compressTime.MicroTime + presentTime.MicroTime
+                        let unaccounted = totalTime.MicroTime - accounted
+
                         Log.line "render    %A" (renderTime.MicroTime / float frameCount)
-                        Log.line "download  %A" ((downloadTime.MicroTime - compressTime.MicroTime) / float frameCount)
+                        Log.line "download  %A" (downloadTime.MicroTime / float frameCount)
                         Log.line "compress  %A" (compressTime.MicroTime / float frameCount)
                         Log.line "present   %A" (presentTime.MicroTime / float frameCount)
+                        Log.line "unknown   %A" (unaccounted / float frameCount)
+                        Log.line "total     %A (%.2f fps)" (totalTime.MicroTime / float frameCount) (float frameCount / totalTime.Elapsed.TotalSeconds)
 
                         renderTime.Reset()
                         downloadTime.Reset()
                         compressTime.Reset()
                         presentTime.Reset()
+                        totalTime.Reset()
                         frameCount <- 0
 
                         Log.stop()

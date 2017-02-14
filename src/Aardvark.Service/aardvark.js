@@ -99,7 +99,7 @@ function getRenderFunction(id) {
 
     var socket = new WebSocket(webSocketUrl + "/render/" + id);
     socket.binaryType = "blob";
-    img.style.transform = "scale(1,-1)";
+    //img.style.transform = "scale(1,-1)";
     img.style.cursor = "default";
     //img.style.focus.outline = "none";
 
@@ -159,10 +159,13 @@ function render(id) {
 }
 
 $(document).ready(function () {
+
+    $("head").append($("<style type='text/css'>img.rendercontrol:focus { outline: none; }</style>"));
+
     $('div.aardvark').each(function () {
         var $div = $(this);
         var id = $div.get(0).id;
-        $div.append($('<img/>'));
+        $div.append($('<img class="rendercontrol"/>'));
 
 
         getRenderFunction(id);
