@@ -116,7 +116,7 @@ function getRenderFunction(id) {
         function () {
             var w = $div.width();
             var h = $div.height();
-            socket.send(JSON.stringify({ Case: "RequestImage", size: { X: w, Y: h } }));
+            socket.send(JSON.stringify({ Case: "RequestImage", size: { X: Math.round(w), Y: Math.round(h) } }));
         };
 
     socket.onopen =

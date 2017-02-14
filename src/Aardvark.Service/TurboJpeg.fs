@@ -89,7 +89,7 @@ module TurboJpegNative =
     [<DllImport(lib); SuppressUnmanagedCodeSecurity>]
     extern void tjFree(void* handle)
 
-    [<DllImport(lib, CharSet = CharSet.Ansi)>]
+    [<DllImport(lib, CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
     [<MarshalAs(UnmanagedType.LPStr)>]
     extern string tjGetErrorStr()
 

@@ -82,7 +82,7 @@ module Server =
 
             try
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.ClientStorageBit ||| BufferStorageFlags.MapReadBit)
             
                 GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
                 let ptr = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly)
