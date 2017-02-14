@@ -201,6 +201,24 @@ module RotateController =
     let update e (m : Scene) (a : Action) =
         let scene = updateModel e m.scene a
         { m with scene = scene }
+    
+    let PI = System.Math.PI
+    let sin = System.Math.Sin
+    let cos = System.Math.Cos
+    
+
+    let circlePoint (c:V3d) r a =
+        let x = c.X + r * cos a
+        let y = c.Y + r * sin a
+        V3d(x, y, 0.0)
+
+    let circle c r tess =
+        let step = PI / tess 
+        let alpha = 0
+
+
+        0
+        
 
     let viewModel (m : MRModel) =
             [Sphere3d(V3d.OOO,0.1) |> Sphere |> render Pick.ignore ] |> colored (Mod.constant C4b.Gray)
