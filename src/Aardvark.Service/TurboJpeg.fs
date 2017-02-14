@@ -50,6 +50,10 @@ type TJPixelFormat =
 type TJFlags =
     | None          = 0x00000
     | BottomUp      = 0x00002
+    | ForceMMX      = 0x00008
+    | ForceSSE      = 0x00010
+    | ForceSSE2     = 0x00020
+    | ForceSSE3     = 0x00080
     | FastUpSample  = 0x00100
     | NoRealloc     = 0x00400
     | FastDCT       = 0x00800
@@ -88,6 +92,9 @@ module TurboJpegNative =
 
     [<DllImport(lib); SuppressUnmanagedCodeSecurity>]
     extern void tjFree(void* handle)
+    
+    [<DllImport(lib); SuppressUnmanagedCodeSecurity>]
+    extern void* tjAlloc(int bytes)
 
     [<DllImport(lib, CharSet = CharSet.Ansi); SuppressUnmanagedCodeSecurity>]
     [<MarshalAs(UnmanagedType.LPStr)>]
@@ -114,12 +121,14 @@ type TJCompressor() =
                 failwithf "[TJ] %s" err
 
             let data : byte[] = Array.zeroCreate (int bufferSize)
-            Marshal.Copy(buffer, data, 0, data.Length)
+            let gc = GCHandle.Alloc(data, GCHandleType.Pinned)
+            try Marshal.Copy(buffer, gc.AddrOfPinnedObject(), data.Length)
+            finally gc.Free()
             data
 
         finally
             TurboJpegNative.tjFree buffer
-            
+
     member private x.Dispose(disposing : bool) =
         if disposing then GC.SuppressFinalize(x)
         if handle.IsValid then

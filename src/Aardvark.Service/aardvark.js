@@ -103,11 +103,28 @@ function getRenderFunction(id) {
     img.style.cursor = "default";
     //img.style.focus.outline = "none";
 
+    var oldTime = window.performance.now();
+    var frameCounter = 0;
+
     var blit =
         function (data) {
-            img.src = urlCreator.createObjectURL(data);
+            /*img.src = urlCreator.createObjectURL(data);
+
+            if (frameCounter > 30) {
+                var now = window.performance.now();
+                var dt = (now - oldTime) / 1000.0;
+                var fps = frameCounter / dt;
+                $('#framerate').html(fps);
+                oldTime = window.performance.now();
+                frameCounter = 0;
+            }
+            else {
+                frameCounter++;
+            }*/
 
             socket.send(JSON.stringify({ Case: "Rendered" }));
+
+
         };
 
     var socketOpen = false;

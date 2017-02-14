@@ -15,6 +15,9 @@ let main args =
     Ag.initialize()
     Aardvark.Init()
 
+    Aardvark.UI.Bla.test()
+    Environment.Exit 0
+
     use app = new OpenGlApplication()
     let runtime = app.Runtime
 
@@ -33,7 +36,7 @@ let main args =
                 |> Sg.trafo trafo
                 |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
                 |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
-                |> Sg.diffuseFileTexture' @"E:\Development\WorkDirectory\DataSVN\cliffs_color.jpg" true
+                |> Sg.diffuseFileTexture' @"C:\Users\Schorsch\Development\WorkDirectory\cliffs_color.jpg" true
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.diffuseTexture

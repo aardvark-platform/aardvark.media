@@ -68,41 +68,45 @@ module Server =
         open System.Runtime.CompilerServices
         open System.Runtime.InteropServices
         open System.Security
+        open Microsoft.FSharp.NativeInterop
 
         let downloadFBO (jpeg : TJCompressor) (downloadTime : Stopwatch) (compressTime : Stopwatch) (size : V2i) (ctx : Context) =
-            
             downloadTime.Start()
             let pbo = GL.GenBuffer()
 
-            let rowSize = 4 * size.X
+            let rowSize = 3 * size.X
             let align = ctx.PackAlignment
             let alignedRowSize = (rowSize + (align - 1)) &&& ~~~(align - 1)
             let sizeInBytes = alignedRowSize * size.Y
-
-
             try
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.ClientStorageBit ||| BufferStorageFlags.MapReadBit)
-            
-                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
-                let ptr = GL.MapBuffer(BufferTarget.PixelPackBuffer, BufferAccess.ReadOnly)
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgb, PixelType.UnsignedByte, 0n)
+
+                let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
+                for i in 0 .. sizeInBytes - 1 do
+                    let a : byte = NativePtr.read (NativePtr.ofNativeInt (nativeint i + ptr))  
+                    ()
                 downloadTime.Stop()
                 compressTime.Start()
 
-
                 jpeg.Compress(
                     ptr, alignedRowSize, size.X, size.Y, 
-                    TJPixelFormat.RGBA, 
+                    TJPixelFormat.RGB, 
                     TJSubsampling.S420, 
                     70, 
-                    TJFlags.FastDCT ||| TJFlags.BottomUp
+                    TJFlags.BottomUp ||| TJFlags.ForceSSE3
                 )
-                    
+
             finally
                 compressTime.Stop()
+                GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
                 GL.DeleteBuffer(pbo)
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
+
+                    
 
         type Framebuffer with
             member x.DownloadJpegColor(jpeg : TJCompressor, downloadTime : Stopwatch, compressTime : Stopwatch) =
@@ -180,8 +184,7 @@ module Server =
         let time = Mod.custom (fun _ -> DateTime.Now)
 
         let framebuffer = runtime.CreateFramebuffer(signature, Set.empty, currentSize)
-        do framebuffer.Acquire()
-
+      
         let mutable frameCount = 0
         let renderTime      = Stopwatch()
         let downloadTime    = Stopwatch()
@@ -191,10 +194,13 @@ module Server =
 
         let jpeg = new TJCompressor()
 
+        let ctx = Aardvark.Rendering.GL.ContextHandle.create()
+        let glRuntime = unbox<Aardvark.Rendering.GL.Runtime> runtime
+
+
         let result : IMod<byte[]> =
             Mod.custom (fun self ->
-                totalTime.Start()
-                use __ = runtime.ContextLock
+                
                 let renderTask = renderTask.GetValue self
                 let fbo = framebuffer.GetValue self
 
@@ -313,6 +319,34 @@ module Server =
 
         do Async.Start worker
 
+        let renderQueue = new BlockingCollection<V2i>()
+        let renderer =
+            
+            async {
+                do! Async.SwitchToNewThread()
+                do
+                    let mutable acquired = false
+                    use __ = glRuntime.Context.RenderingLock ctx
+                    
+                    while true do
+                        let size = renderQueue.Take()
+                        try
+                            if currentSize.Value <> size then
+                                transact (fun () -> currentSize.Value <- size)
+
+                            if not acquired then
+                                framebuffer.Acquire()
+                                acquired <- true
+
+                            let data = result.GetValue()
+                            sendImage data
+                        with e ->
+                            Log.warn "render faulted %A" e
+                
+            }
+
+        do Async.Start renderer
+
         member x.RenderTask
             with get() = renderTask.Value
             and set t = transact (fun () -> renderTask.Value <- t)
@@ -342,9 +376,10 @@ module Server =
 
                 | Rendered ->
                     presentTime.Stop()
-                    totalTime.Stop()
+                    
 
-                    if totalTime.Elapsed.TotalSeconds > 2.0 && frameCount > 0 then
+                    if frameCount >= 30 then
+                        totalTime.Stop()
                         Log.start "statistics"
 
                         let accounted = renderTime.MicroTime + downloadTime.MicroTime + compressTime.MicroTime + presentTime.MicroTime
@@ -365,6 +400,7 @@ module Server =
                         frameCount <- 0
 
                         Log.stop()
+                        totalTime.Start()
 
 
                     frameCount <- frameCount + 1
@@ -381,14 +417,15 @@ module Server =
                     )
 
                 | RequestImage size ->
-                    try
-                        if currentSize.Value <> size then
-                            transact (fun () -> currentSize.Value <- size)
-
-                        let data = result.GetValue()
-                        sendImage data
-                    with e ->
-                        Log.warn "render faulted %A" e
+                    renderQueue.Add size
+//                    try
+//                        if currentSize.Value <> size then
+//                            transact (fun () -> currentSize.Value <- size)
+//
+//                        let data = result.GetValue()
+//                        sendImage data
+//                    with e ->
+//                        Log.warn "render faulted %A" e
                     
             ()
 
@@ -462,6 +499,8 @@ module Server =
 
         let index = 
             choose [
+                GET >=> path "/main" >=> OK "... adapter.js ..."
+                 GET >=> path "/main"
                 GET >=> path "/" >=> OK template
                 GET >=> path "/aardvark.js" >=> OK aardvark
 
