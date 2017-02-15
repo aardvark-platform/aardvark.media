@@ -92,10 +92,13 @@ function initRenderTargetEvents(eventSocket, canvas, id) {
 
 function getRenderFunction(id) {
     var $div = $('#' + id);
+    var div = $div.get(0);
+    if (div.renderFunction)
+        return div.renderFunction;
+
+    $div.append($('<img class="rendercontrol"/>'));
     var $img = $('#' + id + ' img');
     var img = $img.get(0);
-    if (img.renderFunction)
-        return img.renderFunction;
 
     var socket = new WebSocket(webSocketUrl + "/render/" + id);
     socket.binaryType = "blob";
@@ -108,9 +111,9 @@ function getRenderFunction(id) {
 
     var blit =
         function (data) {
-            /*img.src = urlCreator.createObjectURL(data);
+            img.src = urlCreator.createObjectURL(data);
 
-            if (frameCounter > 30) {
+            /*if (frameCounter > 30) {
                 var now = window.performance.now();
                 var dt = (now - oldTime) / 1000.0;
                 var fps = frameCounter / dt;
@@ -166,7 +169,7 @@ function getRenderFunction(id) {
             }
         };
 
-    img.renderFunction = requestRender;
+    div.renderFunction = requestRender;
     return requestRender;
 }
 
@@ -179,14 +182,17 @@ $(document).ready(function () {
 
     $("head").append($("<style type='text/css'>img.rendercontrol:focus { outline: none; }</style>"));
 
-    $('div.aardvark').each(function () {
-        var $div = $(this);
-        var id = $div.get(0).id;
-        $div.append($('<img class="rendercontrol"/>'));
+    function checkDOMChange() {
+        $('div.aardvark').each(function () {
+            var $div = $(this);
+            var div = $div.get(0);
+            getRenderFunction(div.id);
 
+        });
 
-        getRenderFunction(id);
+        setTimeout(checkDOMChange, 100);
+    }
 
-        
-    });
+    checkDOMChange();
+
 });

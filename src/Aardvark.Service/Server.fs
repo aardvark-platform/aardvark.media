@@ -85,9 +85,6 @@ module Server =
                 GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgb, PixelType.UnsignedByte, 0n)
 
                 let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
-                for i in 0 .. sizeInBytes - 1 do
-                    let a : byte = NativePtr.read (NativePtr.ofNativeInt (nativeint i + ptr))  
-                    ()
                 downloadTime.Stop()
                 compressTime.Start()
 
@@ -330,18 +327,19 @@ module Server =
                     
                     while true do
                         let size = renderQueue.Take()
-                        try
-                            if currentSize.Value <> size then
-                                transact (fun () -> currentSize.Value <- size)
+                        if size.AllGreater 0 then
+                            try
+                                if currentSize.Value <> size then
+                                    transact (fun () -> currentSize.Value <- size)
 
-                            if not acquired then
-                                framebuffer.Acquire()
-                                acquired <- true
+                                if not acquired then
+                                    framebuffer.Acquire()
+                                    acquired <- true
 
-                            let data = result.GetValue()
-                            sendImage data
-                        with e ->
-                            Log.warn "render faulted %A" e
+                                let data = result.GetValue()
+                                sendImage data
+                            with e ->
+                                Log.warn "render faulted %A" e
                 
             }
 
@@ -457,7 +455,7 @@ module Server =
                     return (t, Array.append d rest)
             }
 
-    let start (runtime : IRuntime) (port : int) (content : string -> IRenderControl -> Option<IRenderTask>) =
+    let start (runtime : IRuntime) (port : int) (additional : list<WebPart<HttpContext>>) (content : string -> IRenderControl -> Option<IRenderTask>) =
         let config =
             { defaultConfig with
                 bindings = [ HttpBinding.create HTTP IPAddress.Any (uint16 port) ] 
@@ -499,13 +497,10 @@ module Server =
 
         let index = 
             choose [
-                GET >=> path "/main" >=> OK "... adapter.js ..."
-                 GET >=> path "/main"
-                GET >=> path "/" >=> OK template
-                GET >=> path "/aardvark.js" >=> OK aardvark
-
-                pathScan "/render/%s" (render >> handShake)
-
+                yield GET >=> path "/" >=> OK template
+                yield GET >=> path "/aardvark.js" >=> OK aardvark
+                yield pathScan "/render/%s" (render >> handShake)
+                yield! additional
             ]
 
         startWebServer config index
