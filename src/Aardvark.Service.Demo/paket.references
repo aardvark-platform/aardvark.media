@@ -4,6 +4,7 @@ Aardvark.Base.FSharp
 Aardvark.Base.Rendering
 Aardvark.Application.WinForms.GL
 Aardvark.SceneGraph
+Aardvark.Rendering.Text
 
 FsPickler
 FsPickler.Json

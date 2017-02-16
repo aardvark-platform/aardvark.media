@@ -18,7 +18,7 @@ let main args =
     use app = new OpenGlApplication()
     let runtime = app.Runtime
 
-    Aardvark.UI.Bla.runTest runtime 8888
+    Aardvark.UI.Bla.TestApp.start runtime 8888
 //    Server.start runtime 8888 [] (fun id yeah ->
 //        let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
 //        let proj = yeah.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))

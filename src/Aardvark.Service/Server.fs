@@ -92,7 +92,7 @@ module Server =
                     ptr, alignedRowSize, size.X, size.Y, 
                     TJPixelFormat.RGB, 
                     TJSubsampling.S420, 
-                    70, 
+                    90, 
                     TJFlags.BottomUp ||| TJFlags.ForceSSE3
                 )
 

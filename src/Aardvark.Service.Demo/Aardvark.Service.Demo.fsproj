@@ -222,8 +222,35 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="Aardvark.Rendering.Text">
+          <HintPath>..\..\packages\Aardvark.Rendering.Text\lib\net45\Aardvark.Rendering.Text.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="LibTessDotNet.Double">
+          <HintPath>..\..\packages\Aardvark.Rendering.Text\lib\net45\LibTessDotNet.Double.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="Aardvark.SceneGraph">
           <HintPath>..\..\packages\Aardvark.SceneGraph\lib\net45\Aardvark.SceneGraph.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="CommonMark">
+          <HintPath>..\..\packages\CommonMark.NET\lib\net45\CommonMark.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
