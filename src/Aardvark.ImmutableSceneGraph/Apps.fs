@@ -47,11 +47,14 @@ module SimpleDrawingApp =
                     | Some v -> { m with working = Some { v with cursor = Some p }}
             | _,_ -> m
 
+    let sphereRadius = 0.025
+    let cylinderRadius = 0.0125
 
     let viewPolygon (p : list<V3d>) =
         [ for edge in Polygon3d(p |> List.toSeq).EdgeLines do
             let v = edge.P1 - edge.P0
-            yield Primitives.cylinder edge.P0 v.Normalized v.Length 0.03 |> Scene.render Pick.ignore 
+            yield Primitives.cylinder edge.P0 v.Normalized v.Length cylinderRadius |> Scene.render Pick.ignore 
+            yield Sphere3d(edge.P0, sphereRadius) |> Sphere |> Scene.render Pick.ignore
         ] |> Scene.group
 
     let viewDrawingPolygons (m : MModel) =
@@ -61,11 +64,12 @@ module SimpleDrawingApp =
             let! working = m.mworking
             match working with
                 | Some v when v.cursor.IsSome -> 
+                    yield viewPolygon (v.cursor.Value :: v.finishedPoints)
                     yield 
-                        [ Sphere3d(V3d.OOO,0.1) |> Sphere |>  Scene.render Pick.ignore ] 
+                        [ Sphere3d(V3d.OOO, sphereRadius) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
                             |> Scene.transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value))
-                    yield viewPolygon (v.cursor.Value :: v.finishedPoints)
+                    
                 | _ -> ()
         }
         
@@ -503,7 +507,7 @@ module FreeFlyCameraApp =
         picking = None
         forward = V2d.OO
         forwardSpeed = 0.0 
-        center = None
+        center = Some V3d.Zero
         navigationMode = NavigationMode.FreeFly
         }
 
@@ -562,12 +566,15 @@ module ComposedTestApp =
                 | ZoomStop _  -> { v with zooming = None }
                 | PickStart   -> { v with picking = Some 0 }
                 | PickStop    -> { v with picking = None }
-                | FreeFlyAction a -> if v.navigationMode = NavigationMode.FreeFly && m.InteractionState <> InteractionMode.TrafoPick
-                                     then FreeFlyCameraApp.update e v a else v
+                | FreeFlyAction a -> 
+                            if v.navigationMode = NavigationMode.FreeFly && m.Translation.hovered.IsNone
+                            then FreeFlyCameraApp.update e v a 
+                            else v
                 | OrbitAction a   -> 
                             let explorePick = m.InteractionState = InteractionMode.ExplorePick
-                            if v.navigationMode = NavigationMode.Orbital
-                            then OrbitCameraApp.update explorePick e v a else v
+                            if v.navigationMode = NavigationMode.Orbital && m.Translation.hovered.IsNone
+                            then OrbitCameraApp.update explorePick e v a 
+                            else v
                 | DrawingAction _ -> v
                 | SwitchMode -> 
                     match v.navigationMode with
