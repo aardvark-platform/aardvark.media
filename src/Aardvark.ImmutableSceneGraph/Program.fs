@@ -123,7 +123,7 @@ let main argv =
     let camera = Mod.map2 Camera.create cameraView frustum
 
     let sg, shutdown =
-        if true then
+        if false then
             let composed = ComposedApp.ofUpdate  { Explicit.ui = TestApp.initial; Explicit.scene = TranslateController.initial } Explicit.update
             let three3dApp = TranslateController.app (renderControlViewport |> Mod.map (fun (b : Box2i) -> b.Size))
 

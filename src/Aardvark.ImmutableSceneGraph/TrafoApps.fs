@@ -225,10 +225,7 @@ module RotateController =
       
     let update e (m : Scene) (a : Action) =
         let scene = updateModel e m.scene a      
-        { m with scene = scene }
-        
-
-            
+        { m with scene = scene }            
 
     let circleColor axis =
         match axis with 
@@ -239,13 +236,13 @@ module RotateController =
 
     let viewCircle axis ifhit =
             [
-                let points = (circle V3d.Zero 1.0 64.0 axis)
+                let points = (circle V3d.Zero 1.0 32.0 axis)
 //                for p in points do
 //                    yield Sphere3d(p, 0.02) |> Sphere |> render Pick.ignore 
 
                 for edge in Polygon3d(points).EdgeLines do
                     let v = edge.P1 - edge.P0
-                    yield Primitives.cylinder edge.P0 v.Normalized v.Length 0.01 |> Scene.render [on Mouse.move (hover axis)]
+                    yield Primitives.cylinder edge.P0 v.Normalized v.Length 0.02 |> Scene.render [on Mouse.move (hover axis)]
             ] 
             |> colored (ifhit axis (C4b.White) (circleColor axis))
 
