@@ -54,6 +54,22 @@ module SimpleDrawingApp =
         working  : Option<OpenPolygon>
     }
 
+module DrawingApp =
+
+    type Polygon = list<V3d>
+
+    type OpenPolygon = {
+        cursor         : Option<V3d>
+        finishedPoints : list<V3d>
+    }
+    
+    [<DomainType>]
+    type Drawing = {
+        history  : Option<Drawing>
+        finished : pset<Polygon>
+        working  : Option<OpenPolygon>
+    }
+
 module PlaceTransformObjects =
 
     open TranslateController

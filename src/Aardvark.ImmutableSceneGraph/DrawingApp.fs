@@ -25,8 +25,10 @@ module DrawingApp =
         | ClosePolygon
         | AddPoint   of V3d
         | MoveCursor of V3d
+        | Undo
+        | Redo
 
-    let update (picking : Option<int>) e (m : Model) (cmd : Action) =
+    let update (picking : Option<int>) e (m : DrawingApp.Drawing) (cmd : Action) =
         match cmd, picking with
             | ClosePolygon, _ -> 
                 match m.working with
@@ -35,19 +37,29 @@ module DrawingApp =
                         { m with 
                             working = None 
                             finished = PSet.add p.finishedPoints m.finished
+                            history = Some m
+                            future = None
                         }
             | AddPoint p, Some _ ->
                 match m.working with
                     | None -> { m with working = Some { finishedPoints = [ p ]; cursor = None;  }}
                     | Some v -> 
-                        { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
+                        printfn "no of polys %A" m.finished.AsList.Length
+                        { m with working = Some { v with finishedPoints = p :: v.finishedPoints }; history = Some m; future = None }
+                        
             | MoveCursor p, Some _ ->
                 match m.working with
                     | None -> { m with working = Some { finishedPoints = []; cursor = Some p }}
                     | Some v -> { m with working = Some { v with cursor = Some p }}
+            | Undo, _ -> match m.history with
+                                | None -> m
+                                | Some k -> { k with future = Some m }
+            | Redo, _ -> match m.future with
+                                | None -> m
+                                | Some k -> k
             | _,_ -> m
 
-    let sphereRadius = 0.025
+    let sphereRadius = 0.015
     let cylinderRadius = 0.0125
 
     let viewPolygon (p : list<V3d>) =
@@ -58,7 +70,7 @@ module DrawingApp =
             yield Sphere3d(edge.P0, sphereRadius) |> Sphere |> Scene.render Pick.ignore
         ] |> Scene.group
 
-    let viewDrawingPolygons (m : MModel) =
+    let viewDrawingPolygons (m :  DrawingApp.MDrawing) =
         aset {
             for p in m.mfinished :> aset<_> do yield viewPolygon p
 
@@ -81,11 +93,11 @@ module DrawingApp =
                                ] 
                       ] |>  Scene.colored (Mod.constant C4b.Gray)
 
-    let view (m : MModel) = 
+    let view (m : DrawingApp.MDrawing) = 
         let t = viewDrawingPolygons m
         Scene.agroup  t
 
-    let viewScene (sizes : IMod<V2i>) (m : MModel) =
+    let viewScene (sizes : IMod<V2i>) (m : DrawingApp.MDrawing) =
         let cameraView = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI |> Mod.constant
         let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
         [view m
@@ -100,10 +112,12 @@ module DrawingApp =
             |> Scene.effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
 
 
-    let subscriptions (m : Model) =
-        Many [Input.key Down Keys.Enter (fun _ _-> ClosePolygon)]
+    let subscriptions (m : DrawingApp.Drawing) =
+        Many [Input.key Down Keys.Enter (fun _ _-> ClosePolygon)
+              Input.key Down Keys.Left  (fun _ _-> Undo)
+              Input.key Down Keys.Right (fun _ _-> Redo)]
 
-    let initial = { finished = PSet.empty; working = None; _id = null }
+    let (initial : DrawingApp.Drawing) = { finished = PSet.empty; working = None; _id = null; history = None; future = None }
 
     let app s =
         {

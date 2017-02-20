@@ -170,6 +170,45 @@ module Generated =
                     x._original <- arg0
                     x.mfinished.Update(arg0.finished)
                     x.mworking.Value <- arg0.working
+
+    module DrawingApp = 
+        type Polygon = list<V3d>
+        
+        type OpenPolygon = 
+            { cursor : Option<V3d>
+              finishedPoints : list<V3d> }
+        
+        [<DomainType>]
+        type Drawing = 
+            { mutable _id : Id
+              history  : Option<Drawing>
+              future   : Option<Drawing>
+              finished : pset<Polygon>
+              working  : Option<OpenPolygon> }
+            
+            member x.ToMod(reuseCache : ReuseCache) = 
+                { _original = x
+              //    mhistory = Mod.init (x.history)
+                  mfinished = ResetSet(x.finished)
+                  mworking = Mod.init (x.working) }
+            
+            interface IUnique with
+                
+                member x.Id 
+                    with get () = x._id
+                    and set v = x._id <- v
+        
+        and [<DomainType>] MDrawing = 
+            { mutable _original : Drawing
+     //         mhistory : ModRef<List<Drawing>>
+              mfinished : ResetSet<Polygon>
+              mworking : ModRef<Option<OpenPolygon>> }
+            member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
+                if not (System.Object.ReferenceEquals(arg0, x._original)) then 
+                    x._original <- arg0
+               //     x.mhistory.Value <- arg0.history
+                    x.mfinished.Update(arg0.finished)
+                    x.mworking.Value <- arg0.working
     
     module PlaceTransformObjects = 
         open TranslateController
