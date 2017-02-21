@@ -362,6 +362,6 @@ module Scene =
            |> conv (Sg.camera camera) 
     let camera' c xs = camera c (group xs)
     let ofSg (s : ISg) = conv (fun _ -> s) (group [])
-    let textured (t : IMod<ITexture>) (s : ISg<'msg>) = Texture<'msg>(t,Mod.constant s)
+    let textured (t : IMod<ITexture>) (s : ISg<'msg>) = Texture<'msg>(t,Mod.constant s) :> ISg<'msg>
 
     
