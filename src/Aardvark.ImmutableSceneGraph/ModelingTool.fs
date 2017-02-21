@@ -83,7 +83,7 @@ module Models =
     type State = 
         { mutable _id : Id
           primary : Option<Object>
-          cameraView : CameraView
+          cameraModel : Scratch.DomainTypes2.Generated.CameraTest.Model
           objects : pset<Object>
           mode : Mode
           geometryImport : GeometryImport }
@@ -94,7 +94,7 @@ module Models =
                 match x.primary with
                     | None -> Mod.init None
                     | Some v -> Mod.init (v.ToMod(reuseCache) |> Some)
-              mviewTrafo = Mod.init (x.cameraView)
+              mcameraModel = x.cameraModel.ToMod(reuseCache)
               mobjects = 
                   MapSet
                       ((reuseCache.GetCache()), x.objects, 
@@ -113,7 +113,7 @@ module Models =
     and [<DomainType>] MState = 
         { mutable _original : State
           mprimary : ModRef<Option<MObject>>
-          mviewTrafo : ModRef<CameraView>
+          mcameraModel : Scratch.DomainTypes2.Generated.CameraTest.MModel
           mobjects : MapSet<Object, MObject>
           mmode : MMode 
           mgeometryImport : ModRef<GeometryImport> }
@@ -125,7 +125,7 @@ module Models =
                     | None, Some v -> x.mprimary.Value <- Some (v.ToMod(reuseCache))
                     | None, None -> ()
                     | Some a, Some b -> a.Apply(b,reuseCache)
-                x.mviewTrafo.Value <- arg0.cameraView
+                x.mcameraModel.Apply(arg0.cameraModel,reuseCache)
                 x.mobjects.Update(arg0.objects)
                 x.mmode.Apply(arg0.mode, reuseCache)
                 x.mgeometryImport.Value <- arg0.geometryImport
@@ -143,6 +143,7 @@ module ModelingTool =
     open Fable.Helpers.Virtualdom.Html
 
     open Models
+    open Input
 
     module GeometryImport =
 
@@ -173,7 +174,8 @@ module ModelingTool =
         let importModel m =
             let view =
                 div [] [
-                    text "Path: "
+                    text "Path:    "
+                    
                     text (if m = "" then "<select a path>" else sprintf "%s" (m.Replace("\\","\\\\"))) 
                     br []
                     br []
@@ -194,7 +196,7 @@ module ModelingTool =
     type Action = 
         | Translate of TranslateController.Action
         | Importer  of GeometryImport.Action
-
+        | CameraAction of FreeFlyCameraApp.Action
 
     let viewUI (m : State) =
         div [] [
@@ -214,6 +216,7 @@ module ModelingTool =
                 printfn "import model: %s" s
                 m
             | Importer a -> { m with geometryImport = GeometryImport.update f (Env.map Importer e) m.geometryImport a }
+            | CameraAction a -> { m with cameraModel = FreeFlyCameraApp.update (e |> Env.map CameraAction) m.cameraModel a }
             | _ -> m
 
 
@@ -229,10 +232,13 @@ module ModelingTool =
             ) |> Sg.dynamic |> Scene.ofSg
             
         model
-         |> Scene.camera (Mod.map2 Camera.create m.mviewTrafo frustum)
+         |> Scene.camera (Mod.map2 Camera.create m.mcameraModel.mcamera frustum)
          |> Scene.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.diffuseTexture |> toEffect]
 
-    let initial = { _id = null; primary = None; cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI; objects = PSet.empty; mode = Mode.Selecting; geometryImport = "" }
+    let initial = { _id = null; primary = None; cameraModel = Scratch.FreeFlyCameraApp.initial; objects = PSet.empty; mode = Mode.Selecting; geometryImport = "" }
+
+    let subscriptions (time : IMod<DateTime>) (m : State) =
+        FreeFlyCameraApp.subscriptions time m.cameraModel |> Aardvark.Elmish.Sub.map CameraAction
 
     let fablishApp f =
         {
@@ -247,7 +253,7 @@ module ModelingTool =
     let ofPickMsg (m : State) (noPick) = []
 
 
-    let createApp f keyboard mouse viewport camera =
+    let createApp f time keyboard mouse viewport camera =
 
         let initial = initial
         let composed = ComposedApp.ofUpdate initial (update f)
@@ -257,7 +263,7 @@ module ModelingTool =
             update = update f
             view = view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
             ofPickMsg = ofPickMsg
-            subscriptions = Aardvark.Elmish.Subscriptions.none// Subscriptions.none
+            subscriptions = subscriptions time
         }
 
         let viewApp = 
