@@ -421,20 +421,24 @@ module ComposedTestApp =
 
     // scene as parameter, isg 
     let view (frustum : IMod<Frustum>) (m : ComposedTest.MModel) : ISg<Action> =
-        [
-         // Sphere (Sphere3d(V3d.OOO, 1.0)) 
+        let groundPlane =
             Quad (Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |])
-                |> Scene.render [ on (Mouse.down' MouseButtons.Left) (OrbitAction   << OrbitCameraApp.PickPoint) 
-                                  on  Mouse.move                     (DrawingAction << SimpleDrawingApp.MoveCursor) 
-                                  on (Mouse.down' MouseButtons.Left) (DrawingAction << SimpleDrawingApp.AddPoint)
-                                ]
+             |> Scene.render [   on (Mouse.down' MouseButtons.Left) (OrbitAction   << OrbitCameraApp.PickPoint) 
+                                 on  Mouse.move                     (DrawingAction << SimpleDrawingApp.MoveCursor) 
+                                 on (Mouse.down' MouseButtons.Left) (DrawingAction << SimpleDrawingApp.AddPoint)
+                             ]
                  
-            OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
-            SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
+        aset {
+            yield groundPlane
+            yield OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
+            yield SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
 
-            viewTranslate m
-        ]
-        |> Scene.group            
+            let! state = m.mInteractionState
+            match state with
+                | InteractionMode.TrafoPick -> yield viewTranslate m
+                | _ -> ()
+        }
+        |> Scene.agroup            
         |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera frustum) 
     
     let initial : ComposedTest.Model = { 
