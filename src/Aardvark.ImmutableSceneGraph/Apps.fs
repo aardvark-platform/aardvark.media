@@ -491,6 +491,7 @@ module TextureExample =
                 pi :> ITexture
             )
         let model = Primitive.Sphere Sphere3d.Unit |> Scene.render Pick.ignore
+        let model = Primitive.Quad (Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |]) |> Scene.render Pick.ignore
         model |> Sg.texture DefaultSemantic.DiffuseColorTexture texture |> Scene.ofSg
 
     let viewScene sizes (m : MModel) =

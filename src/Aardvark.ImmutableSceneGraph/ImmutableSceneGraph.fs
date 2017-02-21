@@ -216,10 +216,11 @@ type LeafSemantics() =
             | Quad p -> 
                 let vertices = p.Points |> Seq.map V3f |> Seq.toArray
                 let index = [| 0; 1; 2; 0; 2; 3 |]
+                let texcoords = [| V2f.OO; V2f.OI; V2f.II; V2f.IO |] 
                 let c : IMod<C4b> = l?InhColor
                 let colors = c |> Mod.map  (fun c -> Array.replicate vertices.Length c)
                 let normals = Array.replicate vertices.Length (p.Edge03.Cross(p.P2-p.P0)).Normalized
-                let ig = IndexedGeometry(IndexedGeometryMode.TriangleList, index, SymDict.ofList [DefaultSemantic.Positions, vertices :> Array; DefaultSemantic.Normals, normals :> System.Array], SymDict.empty)
+                let ig = IndexedGeometry(IndexedGeometryMode.TriangleList, index, SymDict.ofList [DefaultSemantic.Positions, vertices :> Array; DefaultSemantic.Normals, normals :> System.Array; DefaultSemantic.DiffuseColorCoordinates, texcoords :> System.Array], SymDict.empty)
                 ig
                     |> Sg.ofIndexedGeometry
                     |> Sg.vertexAttribute DefaultSemantic.Colors colors
