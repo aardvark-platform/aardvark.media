@@ -170,6 +170,10 @@ type ProjTrafo<'msg>(v : IMod<Trafo3d>, c : IMod<ISg<'msg>>) =
     member x.ProjTrafo = v
     member x.Child = c
 
+type Texture<'msg>(diffuseTexture : IMod<ITexture>, c : IMod<ISg<'msg>>) =
+    inherit AbstractApplicator<'msg>(c)
+    member x.Texture = diffuseTexture
+
 type Conv<'msg>(applicator : ISg -> ISg, children : ISg<'msg>) =
     let child = Mod.constant (applicator children)
     interface ISg<'msg>
@@ -200,20 +204,33 @@ type LeafSemantics() =
     member x.RenderObjects(m : Map<_,_>) : aset<IRenderObject> =
         m.Source?RenderObjects()
 
+    member x.DiffuseTexture(r : Root<ISg>) =
+        r.Child?DiffuseTexture <- DefaultTextures.checkerboard
+
+    member x.DiffuseTexture(v : Texture<'msg>) =
+        v.Child?DiffuseTexture <- v.Texture
+
     member x.RenderObjects(l : Leaf<'msg>) =
         match l.Primitive with
-            | Sphere s -> 
+            | Sphere s ->   
+                let t : IMod<ITexture> = l?DiffuseTexture
                 Sg.sphere 5 (l?InhColor) (Mod.constant s.Radius) |> Sg.transform (Trafo3d.Translation s.Center)
+                |> Sg.texture DefaultSemantic.DiffuseColorTexture t
                 |> Semantic.renderObjects
             | Cone(c,d,h,r) -> 
+                let t : IMod<ITexture> = l?DiffuseTexture
                 l?InhColor |> Mod.map (fun (color : C4b) -> IndexedGeometryPrimitives.solidCone c d h r 10 color |> Sg.ofIndexedGeometry) 
                 |> Sg.dynamic
+                |> Sg.texture DefaultSemantic.DiffuseColorTexture t
                 |> Semantic.renderObjects
             | Cylinder(c,d,h,r) ->
+                let t : IMod<ITexture> = l?DiffuseTexture
                 l?InhColor |> Mod.map (fun (color : C4b) -> IndexedGeometryPrimitives.solidCylinder c d h r r 10 color |> Sg.ofIndexedGeometry) 
                 |> Sg.dynamic
+                |> Sg.texture DefaultSemantic.DiffuseColorTexture t
                 |> Semantic.renderObjects
             | Quad p -> 
+                let t : IMod<ITexture> = l?DiffuseTexture
                 let vertices = p.Points |> Seq.map V3f |> Seq.toArray
                 let index = [| 0; 1; 2; 0; 2; 3 |]
                 let texcoords = [| V2f.OO; V2f.OI; V2f.II; V2f.IO |] 
@@ -224,6 +241,7 @@ type LeafSemantics() =
                 ig
                     |> Sg.ofIndexedGeometry
                     |> Sg.vertexAttribute DefaultSemantic.Colors colors
+                    |> Sg.texture DefaultSemantic.DiffuseColorTexture t
                     |> Semantic.renderObjects
             | Everything -> ASet.empty
 
@@ -292,6 +310,7 @@ type PickingSemantics() =
     member x.ProjTrafo(v : ProjTrafo<'msg>) =
         v.Child?ProjTrafo <- v.ProjTrafo
 
+
     member x.PickObjects(g : Conv<'msg>) : aset<PickObject<'msg>> =
         g.Children?PickObjects()
 
@@ -343,5 +362,6 @@ module Scene =
            |> conv (Sg.camera camera) 
     let camera' c xs = camera c (group xs)
     let ofSg (s : ISg) = conv (fun _ -> s) (group [])
+    let textured (t : IMod<ITexture>) (s : ISg<'msg>) = Texture<'msg>(t,Mod.constant s)
 
     

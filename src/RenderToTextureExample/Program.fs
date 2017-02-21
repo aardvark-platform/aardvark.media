@@ -47,7 +47,7 @@ let main argv =
 
     win.Text <- "Aardvark rocks media \\o/"
 
-    let client = Browser(win.FramebufferSignature,win.Time,app.Runtime, true, win.Sizes)
+    use client = new Browser(win.FramebufferSignature,win.Time,app.Runtime, true, win.Sizes)
     let res = client.LoadUrl "http://orf.at/"
     printfn "%A" res
 

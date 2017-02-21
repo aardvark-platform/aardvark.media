@@ -491,8 +491,10 @@ module TextureExample =
                 pi :> ITexture
             )
         let model = Primitive.Sphere Sphere3d.Unit |> Scene.render Pick.ignore
-        let model = Primitive.Quad (Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |]) |> Scene.render Pick.ignore
-        model |> Sg.texture DefaultSemantic.DiffuseColorTexture texture |> Scene.ofSg
+        let model = 
+            Primitive.Quad (Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |]) 
+             |> Scene.render [on Mouse.move (fun p -> printfn "moved : %A" p)]
+        model |> Scene.textured texture
 
     let viewScene sizes (m : MModel) =
         let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
