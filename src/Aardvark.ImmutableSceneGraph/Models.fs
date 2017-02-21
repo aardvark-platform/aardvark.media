@@ -56,11 +56,22 @@ module SimpleDrawingApp =
 
 module DrawingApp =
 
+    type Style = {
+    //    name : string
+        color : C4b
+    //    thickness : float
+    }
+    
     type Polygon = list<V3d>
+
+    type Annotation = {
+        geometry : Polygon
+        style : Style
+    }
 
     type OpenPolygon = {
         cursor         : Option<V3d>
-        finishedPoints : list<V3d>
+        finishedPoints : list<V3d>        
     }
     
     [<DomainType>]
@@ -68,6 +79,8 @@ module DrawingApp =
         history  : Option<Drawing>
         finished : pset<Polygon>
         working  : Option<OpenPolygon>
+        picking : Option<int>
+        style   : Style
     }
 
 module PlaceTransformObjects =

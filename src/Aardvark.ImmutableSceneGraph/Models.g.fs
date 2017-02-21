@@ -173,24 +173,36 @@ module Generated =
 
     module DrawingApp = 
         type Polygon = list<V3d>
+
+        type Style = {
+            color : C4b
+            thickness : float
+        }
         
         type OpenPolygon = 
             { cursor : Option<V3d>
-              finishedPoints : list<V3d> }
+              finishedPoints : list<V3d>
+               }
         
         [<DomainType>]
         type Drawing = 
             { mutable _id : Id
               history  : Option<Drawing>
               future   : Option<Drawing>
+              picking  : Option<int>
+              filename : string
               finished : pset<Polygon>
-              working  : Option<OpenPolygon> }
+              working  : Option<OpenPolygon>
+              style    : Style}
             
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
               //    mhistory = Mod.init (x.history)
+                  mpicking = Mod.init(x.picking)
+                  mfilename = Mod.init(x.filename)
                   mfinished = ResetSet(x.finished)
-                  mworking = Mod.init (x.working) }
+                  mworking = Mod.init (x.working)
+                  mstyle = Mod.init(x.style) }
             
             interface IUnique with
                 
@@ -201,14 +213,19 @@ module Generated =
         and [<DomainType>] MDrawing = 
             { mutable _original : Drawing
      //         mhistory : ModRef<List<Drawing>>
+              mfilename : ModRef<string>
+              mpicking : ModRef<Option<int>>
               mfinished : ResetSet<Polygon>
-              mworking : ModRef<Option<OpenPolygon>> }
+              mworking : ModRef<Option<OpenPolygon>>
+              mstyle : ModRef<Style> }
             member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
                //     x.mhistory.Value <- arg0.history
+                    x.mpicking.Value <- arg0.picking
                     x.mfinished.Update(arg0.finished)
                     x.mworking.Value <- arg0.working
+                    x.mstyle.Value <- arg0.style
     
     module PlaceTransformObjects = 
         open TranslateController
