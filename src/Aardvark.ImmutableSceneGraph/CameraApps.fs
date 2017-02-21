@@ -137,6 +137,36 @@ module OrbitCameraApp =
             subscriptions = subscriptions time
         }
 
+module CameraUtilities =
+
+    open Scratch.DomainTypes2
+    open CameraTest
+    open Input
+    
+    type MouseAction =
+        | DragStart       of PixelPosition
+        | DragStop        of PixelPosition
+        | PanStart        of PixelPosition
+        | PanStop         of PixelPosition
+        | ZoomStart       of PixelPosition
+        | ZoomStop        of PixelPosition
+
+    let mouseSubscriptions (m : Model) =
+        [
+            Input.toggleMouse Mouse.left   DragStart  DragStop
+            Input.toggleMouse Mouse.middle PanStart   PanStop
+            Input.toggleMouse Mouse.right  ZoomStart  ZoomStop
+        ]
+
+    let update (v : Model) (action : MouseAction) =
+        match action with
+            | DragStart p -> { v with lookingAround = Some p }
+            | DragStop _  -> { v with lookingAround = None }
+            | PanStart p  -> { v with panning = Some p }
+            | PanStop _   -> { v with panning = None }
+            | ZoomStart p -> { v with zooming = Some p }
+            | ZoomStop _  -> { v with zooming = None }
+
 module FreeFlyCameraApp = 
 
     open Aardvark.Base
@@ -154,6 +184,7 @@ module FreeFlyCameraApp =
         | Animate    of DateTime
         | PickPoint  of V3d        
         | TimeStep   of float
+        | MouseAction of CameraUtilities.MouseAction
 
     let point = Mod.init V3d.Zero
 
@@ -199,6 +230,7 @@ module FreeFlyCameraApp =
                 let dir = m.forward.X * m.camera.Right + m.forward.Y * m.camera.Forward
                 let speed = dt * 0.01
                 { m with camera = m.camera.WithLocation(m.camera.Location + dir * speed )}
+            | MouseAction a -> CameraUtilities.update m a
             | _ -> m          
 
     let ofPickMsg _ m = []
@@ -210,14 +242,16 @@ module FreeFlyCameraApp =
             Input.toggleKey Keys.S (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
             Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
             Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)                                   
-
+            
             Input.moveDelta MouseDelta     
 
             //Input.key Direction.Down Keys.W (fun b a -> TimeStep 20.0)
 
             //Sub.time(TimeSpan.FromMilliseconds 25.0) ( fun a -> TimeStep 25.0)
             //Sub.ofMod time (fun t ms -> [TimeStep ms])
+            Sub.Many <| CameraUtilities.mouseSubscriptions m |> Sub.map MouseAction
         ]
+
 
     let initial = { 
         camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
@@ -232,6 +266,15 @@ module FreeFlyCameraApp =
         center = Some V3d.Zero
         navigationMode = NavigationMode.FreeFly
         }
+
+    let groundIt (m : Model) =
+        { m with 
+            panning = None
+            zooming = None
+            picking = None
+            forward = V2d.OO
+            lookingAround = None
+            forwardSpeed = 0.0 }
 
     let app time : App<Model,MModel,Action,ISg<Action>> =
         {

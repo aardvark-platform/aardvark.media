@@ -398,7 +398,8 @@ module ComposedTestApp =
         Many [      
             match m.ViewerState.navigationMode with
                 | FreeFly -> yield FreeFlyCameraApp.subscriptions time m.ViewerState |> Sub.map FreeFlyAction                     
-                | Orbital -> yield OrbitCameraApp.subscriptions time m.ViewerState |> Sub.map OrbitAction
+                | Orbital -> ()
+            yield OrbitCameraApp.subscriptions time m.ViewerState |> Sub.map OrbitAction
 
             match m.InteractionState with
                 | InteractionMode.MeasurePick -> 
@@ -421,6 +422,7 @@ module ComposedTestApp =
 
     // scene as parameter, isg 
     let view (frustum : IMod<Frustum>) (m : ComposedTest.MModel) : ISg<Action> =
+
         let groundPlane =
             Quad (Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |])
              |> Scene.render [   on (Mouse.down' MouseButtons.Left) (OrbitAction   << OrbitCameraApp.PickPoint) 
@@ -430,12 +432,14 @@ module ComposedTestApp =
                  
         aset {
             yield groundPlane
-            yield OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
+            //yield OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
+            //yield SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
             yield SimpleDrawingApp.view m.mDrawing |> Scene.map DrawingAction
 
             let! state = m.mInteractionState
             match state with
-                | InteractionMode.TrafoPick -> yield viewTranslate m
+                | InteractionMode.TrafoPick ->   yield viewTranslate m
+                | InteractionMode.ExplorePick -> yield OrbitCameraApp.viewCenter m.mViewerState |> Scene.map OrbitAction
                 | _ -> ()
         }
         |> Scene.agroup            

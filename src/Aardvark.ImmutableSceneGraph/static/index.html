@@ -17,26 +17,33 @@
 
     <script src="https://cdn.rawgit.com/olton/Metro-UI-CSS/master/build/js/metro.min.js"></script>
 
-    
+
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css">
     <script src="https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js"></script>
-    
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/0.13.0/JSXTransformer.js"></script>
     <script src="https://unpkg.com/react@15/dist/react.js"></script>
     <script src="https://unpkg.com/react-dom@15/dist/react-dom.js"></script>
-
-
 
     <script>
 
         $(document).ready(function() {
             console.log("$(document).ready");
 
+            // // http://stackoverflow.com/questions/737022/how-do-i-disable-right-click-on-my-web-page
+            document.addEventListener('contextmenu', event => event.preventDefault());
+            //
+            // // http://stackoverflow.com/questions/2878983/capture-key-press-without-placing-an-input-element-on-the-page
+            // $(document).keypress(function(e){
+            //     console.log(e);
+            // });
+
             var React = window.React;
             var ReactDOM = window.ReactDOM;
 
-            var connection = new WebSocket('ws://localhost:8083/ws');
+            var loc = window.location;
+
+            var connection = new WebSocket("ws://" + loc.host + "/ws");
 
 
             var RendererComp = React.createClass({
@@ -77,9 +84,8 @@
                 $('.ui.dropdown').dropdown();
                 $('.ui.accordion').accordion();
                 $('.menu .item').tab();
-                $('.ui.modal')
-                  .modal()
-                 ;
+                $('.ui.modal').modal();
+
              };
 
             function sendRefresh() {
@@ -106,9 +112,15 @@
                 }
             }
 
+            function sendEval(eventId,value)  {
+                var msg = { id : 1, data : { eventId: eventId, eventValue : JSON.stringify(value)}};
+                connection.send(JSON.stringify(msg));
+
+            }
+
             connection.onopen = function () {
               var msg = { id : -1, data : "" }
-              connection.send("This is Aardvark"); // Send the message 'Ping' to the server
+              connection.send("This is Fablish");
             };
 
             connection.onclose = function () {
@@ -117,47 +129,16 @@
 
             console.log("$(document).ready done. all set up.");
 
-
-            //var handleFileSelect = function (s)
-            //{
-            //    return function (evt) {
-            //        evt.stopPropagation();
-            //        evt.preventDefault();
-            //        console.log("jasdF");
-
-            //        var files = evt.dataTransfer.files; // FileList object.
-
-            //        // files is a FileList of File objects. List some properties.
-            //        var output = [];
-            //        for (var i = 0, f; f = files[i]; i++) {
-            //            output.push('<li><strong>', escape(f.name), '</strong> (', f.type || 'n/a', ') - ',
-            //                        f.size, ' bytes, last modified: ',
-            //                        f.lastModifiedDate ? f.lastModifiedDate.toLocaleDateString() : 'n/a',
-            //                        '</li>');
-            //        }
-            //        document.getElementById('list').innerHTML = '<ul>' + output.join('') + '</ul>';
-            //        var msg = { id: 1, data: { eventId: "9999", eventValue: JSON.stringify(evt.dataTransfer.files) } };
-            //        connection.send(JSON.stringify(msg));
-            //    }
-            //}
-
-            //function handleDragOver(evt) {
-            //    evt.stopPropagation();
-            //    evt.preventDefault();
-            //    evt.dataTransfer.dropEffect = 'move'; // Explicitly show this is a copy.
-            //}
-
-            //// Setup the dnd listeners.
-            //var dropZone = document.getElementById('drop_zone');
-            //dropZone.addEventListener('dragover', handleDragOver);
-            //dropZone.addEventListener('drop', handleFileSelect("abc"));
-
             function doit()
             {
                 $('.ui.modal').modal('show');
             }
 
-        });       
+            function createRect(rect) {
+                return { bottom : rect.bottom.toFixed(), height : rect.height.toFixed(), left : rect.left.toFixed(), right : rect.right.toFixed(), top : rect.top.toFixed(), width : rect.width.toFixed() };
+            }
+
+        });
 
     </script>
 </head>

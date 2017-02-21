@@ -85,6 +85,7 @@ module PickStuff =
             | Cone        of center : V3d * dir : V3d * height : float * radius : float
             | Cylinder    of center : V3d * dir : V3d * height : float * radius : float
             | Quad        of Quad3d 
+            | Box         of bounds : Box3d * solid : bool * visible : bool
             | Everything
 
         let hitPrimitive (p : Primitive) (trafo : Trafo3d) (ray : Ray3d) action =
@@ -106,6 +107,9 @@ module PickStuff =
                     let transformed = Quad3d(q.Points |> Seq.map trafo.Forward.TransformPos)
                     if ray.HitsQuad(transformed.P0,transformed.P1,transformed.P2,transformed.P3,0.0,Double.MaxValue,&ha) then [ray, ha.T, action]
                     else []
+                | Box (b,_,_) -> 
+                    let mutable t = 0.0
+                    if b.Intersects(ray,&t) then [ray, t, action] else []
                 | Everything ->
                     [ray, 0.0, action]
 
@@ -243,6 +247,12 @@ type LeafSemantics() =
                     |> Sg.vertexAttribute DefaultSemantic.Colors colors
                     |> Sg.texture DefaultSemantic.DiffuseColorTexture t
                     |> Semantic.renderObjects
+            | Box(b,solid,visible) ->
+                if visible then
+                    let c : IMod<C4b> = l?InhColor
+                    if solid then Sg.box c (Mod.constant b) |> Semantic.renderObjects
+                    else Sg.wireBox c (Mod.constant b) |> Semantic.renderObjects
+                else ASet.empty
             | Everything -> ASet.empty
 
       
@@ -364,4 +374,5 @@ module Scene =
     let ofSg (s : ISg) = conv (fun _ -> s) (group [])
     let textured (t : IMod<ITexture>) (s : ISg<'msg>) = Texture<'msg>(t,Mod.constant s) :> ISg<'msg>
 
+    let pick' picks x = pick picks [leaf x]
     

@@ -15,6 +15,7 @@ open Aardvark.Rendering.NanoVg
 open Aardvark.Rendering.GL   
 
 open Aardvark.Elmish
+open System.Windows.Forms
 
 
 module InteractionTest =
@@ -48,7 +49,7 @@ module InteractionTest =
      //   let theApp = TranslateController.app win.Sizes
        // let theApp = RotateController.app win.Sizes
         let theApp = DrawingApp.app win.Sizes
-       // let theApp = TextureExample.app win.Sizes
+        //let theApp = OrbitCameraApp.app win.Time
 
         let adaptiveResult = Elmish.createAppAdaptiveD win.Keyboard win.Mouse bounds camera None theApp
 
@@ -72,3 +73,13 @@ module InteractionTest =
         win.RenderTask <- app.Runtime.CompileRender(win.FramebufferSignature, fullScene)
 
         win.Run()
+
+    let fablishTest () =
+        Aardvark.Cef.Chromium.init()
+        use w = new Form()
+        let app = Scratch.ModelingTool.fablishApp w
+        let browser = Fablish.Chromium.runControl "8083" app
+        w.Controls.Add browser
+        w.Width <- 800
+        w.Height <- 600
+        Application.Run(w) 
