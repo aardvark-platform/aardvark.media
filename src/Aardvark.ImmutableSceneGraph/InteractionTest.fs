@@ -43,11 +43,12 @@ module InteractionTest =
 
         //let theApp = PlaceTransformObjects.app
         //let theApp = SimpleDrawingApp.app win.Sizes
-        let theApp = ComposedTestApp.app win.Time frustum
+       // let theApp = CameraTest.app win.Time
+      //  let theApp = OrbitTest.app win.Time
+      //  let theApp = ComposedTestApp.app win.Time frustum
      //   let theApp = TranslateController.app win.Sizes
        // let theApp = RotateController.app win.Sizes
-        //let theApp = DrawingApp.app win.Sizes
-        //let theApp = TextureExample.app win.Sizes
+        let theApp = DrawingApp.app win.Sizes
         //let theApp = OrbitCameraApp.app win.Time
 
         let adaptiveResult = Elmish.createAppAdaptiveD win.Keyboard win.Mouse bounds camera None theApp

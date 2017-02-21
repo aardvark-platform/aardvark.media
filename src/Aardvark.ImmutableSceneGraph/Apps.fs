@@ -512,12 +512,11 @@ module TextureExample =
             |> Scene.effect [toEffect DefaultSurfaces.trafo; 
                              toEffect DefaultSurfaces.vertexColor; 
                              toEffect DefaultSurfaces.diffuseTexture
-                             toEffect DefaultSurfaces.simpleLighting ]
-     
-     
+                             toEffect DefaultSurfaces.simpleLighting]
+         
     let app sizes =
         {
-            initial = { filename = @"C:\Aardwork\YukonHeightField.png" }
+            initial = { filename = @"C:\Users\BOOM\Desktop\P1010819.jpg" }
             update = update
             view = viewScene sizes
             ofPickMsg = fun _ _ -> []
