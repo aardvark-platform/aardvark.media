@@ -1,15 +1,16 @@
 source https://api.nuget.org/v3/index.json
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 
-nuget Aardvark.Base                        ~> 2.4.7
-nuget Aardvark.Base.Incremental            ~> 2.4.7
-nuget Aardvark.Base.FSharp                 ~> 2.4.7
-nuget Aardvark.Base.Essentials             ~> 2.4.7
+nuget Aardvark.Base                        ~> 2.4.10
+nuget Aardvark.Base.Incremental            ~> 2.4.10
+nuget Aardvark.Base.FSharp                 ~> 2.4.10
+nuget Aardvark.Base.Essentials             ~> 2.4.10
 
 nuget Aardvark.Base.Rendering              ~> 2.7.2
 nuget Aardvark.Application.WinForms.GL     ~> 2.7.2
 nuget Aardvark.SceneGraph                  ~> 2.7.2
 nuget Aardvark.Rendering.NanoVg            ~> 2.7.2
+nuget Aardvark.SceneGraph.IO			   ~> 2.7.2
 
 nuget Aardvark.Compiler.DomainTypes
 
@@ -20,6 +21,8 @@ nuget FsPickler       ~> 3.2.0
 nuget FsPickler.Json  ~> 3.2.0
  
 nuget Fablish      ~> 1.7.9
+
+nuget AssimpNet = 3.3.1
 
 group Build
 content: none

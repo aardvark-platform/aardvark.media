@@ -62,12 +62,15 @@ module Shader =
         }
 
 
-[<EntryPoint>]
+[<EntryPoint;STAThread>]
 let main argv = 
-    InteractionTest.run()
-    System.Environment.Exit 0
+//    InteractionTest.run()
+//    //InteractionTest.fablishTest()
+//    System.Environment.Exit 0
 
     Chromium.init()
+
+    Aardvark.SceneGraph.IO.Loader.Assimp.initialize()
 
     use splashScreen = SplashScreen.spawn()
     Application.DoEvents()
@@ -133,7 +136,8 @@ let main argv =
             let res = client.LoadUrlAsync fablishResult.localUrl
             three3dInstance.sg, fablishResult.shutdown
         else 
-            let three3dInstance, fablishResult = SingleMultiView.createApp win.Keyboard win.Mouse renderRect camera
+            //let three3dInstance, fablishResult = SingleMultiView.createApp win.Keyboard win.Mouse renderRect camera
+            let three3dInstance, fablishResult = ModelingTool.createApp win win.Keyboard win.Mouse renderRect camera
             let res = client.LoadUrlAsync fablishResult.localUrl
             three3dInstance.sg, fablishResult.shutdown
 
