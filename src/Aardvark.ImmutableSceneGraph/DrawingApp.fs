@@ -164,7 +164,7 @@ module DrawingApp =
             _id = null
             history = None; future = None
             picking = None 
-            filename = @"C:\Users\BOOM\Desktop\P1010819.jpg"
+            filename = @"C:\Aardwork\wand.jpg"
             style = styles.[0]}
 
     let app s =

@@ -109,7 +109,7 @@ module PickStuff =
                     else []
                 | Box (b,_,_) -> 
                     let mutable t = 0.0
-                    if b.Intersects(ray,&t) then [ray, t, action] else []
+                    if b.Transformed(trafo.Forward).Intersects(ray,&t) then [ray, t, action] else []
                 | Everything ->
                     [ray, 0.0, action]
 

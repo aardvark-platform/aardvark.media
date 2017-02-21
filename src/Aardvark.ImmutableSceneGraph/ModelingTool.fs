@@ -204,7 +204,7 @@ module ModelingTool =
         | Importer  of GeometryImport.Action
         | CameraAction of FreeFlyCameraApp.Action
         | AddObjects of list<Object>
-        | SelectObject of Object 
+        | SelectObject of Aardvark.Base.Incremental.Id 
         | Interact of TranslateController.Action 
         | Unselect
 
@@ -232,7 +232,7 @@ module ModelingTool =
                             scene 
                              |> Sg.AdapterNode 
                              //|> Sg.normalizeTo (Box3d(-V3d.III, V3d.III)) 
-                        return [ { _id = null; name = path; trafo = Trafo3d.Identity; model = { fileName = path; sceneGraph = sg; bounds = scene.bounds }} ] |> AddObjects
+                        return [ { _id = Id.New; name = path; trafo = Trafo3d.Identity; model = { fileName = path; sceneGraph = sg; bounds = scene.bounds }} ] |> AddObjects
                     else return AddObjects []
                 } |> Cmd.Cmd |> e.run
 
@@ -240,16 +240,20 @@ module ModelingTool =
             | Importer a -> { m with geometryImport = GeometryImport.update f (Env.map Importer e) m.geometryImport a }
             | CameraAction a when m.primary.IsNone -> { m with cameraModel = FreeFlyCameraApp.update (e |> Env.map CameraAction) m.cameraModel a }
             | AddObjects [] -> m
-            | AddObjects xs -> { m with objects = List.fold (flip PSet.add) m.objects xs }
+            | AddObjects xs -> 
+                let objs = List.fold (flip PSet.add) m.objects xs
+                printfn "added objets: %A" objs
+                { m with objects = objs }
             | SelectObject o -> 
                 printfn "selected obj"
-                { m with primary = Some o }
+                let obj =  m.objects |> PSet.toList |> List.find (fun a -> a._id = o)
+                { m with primary = obj |> Some; interactionState = { TranslateController.initalModel with editTrafo =  obj.trafo }  }
             | Interact(a) when m.primary.IsSome -> 
                 let interaction = TranslateController.updateModel (Env.map Interact e) m.interactionState a
                 let setTrafo (obj : Object) : Object = { obj with trafo = interaction.trafo * interaction.editTrafo }
                 let objects = m.objects |> PSet.toList |> List.map (fun obj -> if obj._id = m.primary.Value._id then setTrafo obj else obj) |> PSet.ofList
                 { m with interactionState = interaction; objects = objects; primary = Option.map setTrafo m.primary }
-            | Unselect -> { m with primary = None; cameraModel =  FreeFlyCameraApp.groundIt m.cameraModel  }
+            | Unselect -> { m with primary = None; cameraModel =  FreeFlyCameraApp.groundIt m.cameraModel; interactionState = TranslateController.initalModel  }
             | _ -> m
 
     let viewModels (state : MState) =
@@ -258,17 +262,17 @@ module ModelingTool =
                 let! m = o.mmodel
                 yield 
                     Scene.group [
-                        m.sceneGraph |> Scene.ofSg
-                        Scene.pick' [on (Mouse.down' MouseButtons.Left) (fun _ -> SelectObject o._original)] (Primitives.Box(m.bounds, false, false))
+                        Scene.pick' [on (Mouse.down' MouseButtons.Left) (fun _ -> SelectObject o._original._id)] (Primitives.Box(m.bounds, false, false))
                              |> Scene.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect] 
-                    ] |> Scene.transform' o.mtrafo
+                        m.sceneGraph |> Scene.ofSg
+                    ]  |> Scene.transform' o.mtrafo
             let! primary = state.mprimary
             match primary with
                 | None -> ()
                 | Some o -> 
                     let! obj = o.mmodel
                     yield
-                        Scene.pick' [on (Mouse.down' MouseButtons.Left) (fun _ -> SelectObject o._original)] (Primitives.Box(obj.bounds, false, true))
+                        Scene.pick' [] (Primitives.Box(obj.bounds, false, true))
                                  |> Scene.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect] 
                                  |> Scene.transform' o.mtrafo
                     yield TranslateController.viewModel state.minteractionState |> Scene.map  Interact 
