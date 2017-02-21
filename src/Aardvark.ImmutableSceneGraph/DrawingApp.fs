@@ -48,7 +48,7 @@ module DrawingApp =
                     | Some p -> 
                         { m with 
                             working = None 
-                            finished = PSet.add p.finishedPoints m.finished
+                            finished = PSet.add { geometry = p.finishedPoints; style = m.style } m.finished
                             history = Some m
                             future = None
                         }
@@ -87,10 +87,11 @@ module DrawingApp =
 
     let viewDrawingPolygons (m :  DrawingApp.MDrawing) =
         aset {
-            let! style = m.mstyle
+           
             for p in m.mfinished :> aset<_> do                 
-                yield [viewPolygon p style.thickness] |> Scene.colored (Mod.constant style.color)
+                yield [viewPolygon p.geometry p.style.thickness] |> Scene.colored (Mod.constant p.style.color)
 
+            let! style = m.mstyle
             let! working = m.mworking
             match working with
                 | Some v when v.cursor.IsSome -> 

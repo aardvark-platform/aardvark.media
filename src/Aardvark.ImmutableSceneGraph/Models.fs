@@ -77,7 +77,7 @@ module DrawingApp =
     [<DomainType>]
     type Drawing = {
         history  : Option<Drawing>
-        finished : pset<Polygon>
+        finished : pset<Annotation>
         working  : Option<OpenPolygon>
         picking : Option<int>
         style   : Style

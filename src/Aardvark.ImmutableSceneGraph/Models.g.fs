@@ -179,6 +179,11 @@ module Generated =
             thickness : float
         }
         
+        type Annotation = {
+            geometry : Polygon
+            style : Style
+        }
+
         type OpenPolygon = 
             { cursor : Option<V3d>
               finishedPoints : list<V3d>
@@ -191,7 +196,7 @@ module Generated =
               future   : Option<Drawing>
               picking  : Option<int>
               filename : string
-              finished : pset<Polygon>
+              finished : pset<Annotation>
               working  : Option<OpenPolygon>
               style    : Style}
             
@@ -215,7 +220,7 @@ module Generated =
      //         mhistory : ModRef<List<Drawing>>
               mfilename : ModRef<string>
               mpicking : ModRef<Option<int>>
-              mfinished : ResetSet<Polygon>
+              mfinished : ResetSet<Annotation>
               mworking : ModRef<Option<OpenPolygon>>
               mstyle : ModRef<Style> }
             member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
