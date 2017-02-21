@@ -453,3 +453,62 @@ module ComposedTestApp =
             ofPickMsg = ofPickMsgModel // TranslateController.ofPickMsg 
             subscriptions = subscriptions time
         }
+
+
+module TextureExample = 
+    open Aardvark.Base
+    open Aardvark.Base.Rendering
+
+    open Scratch.DomainTypes2
+    open CameraTest
+    open Primitives
+    open Aardvark.ImmutableSceneGraph.Scene
+
+    open Input
+
+    type Model = 
+        { filename : string }
+            with 
+                member x.ToMod(c : ReuseCache) =
+                    {
+                        mfilename = Mod.init x.filename
+                    }
+    and MModel =
+        { mfilename : ModRef<string> }
+            with 
+                member x.Apply(m : Model, c : ReuseCache) =
+                    x.mfilename.Value <- m.filename
+
+    type Action = unit
+
+    let update e (m : Model) (action : Action) =
+        m
+
+    let view (m : MModel) =
+        let texture = 
+            m.mfilename |> Mod.map (fun path -> 
+                let pi = PixTexture2d(PixImageMipMap([|PixImage.Create(path)|]),true)
+                pi :> ITexture
+            )
+        let model = Primitive.Sphere Sphere3d.Unit |> Scene.render Pick.ignore
+        model |> Sg.texture DefaultSemantic.DiffuseColorTexture texture |> Scene.ofSg
+
+    let viewScene sizes (m : MModel) =
+        let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
+        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
+        view m
+            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
+            |> Scene.effect [toEffect DefaultSurfaces.trafo; 
+                             toEffect DefaultSurfaces.vertexColor; 
+                             toEffect DefaultSurfaces.diffuseTexture
+                             toEffect DefaultSurfaces.simpleLighting ]
+     
+     
+    let app sizes =
+        {
+            initial = { filename = @"C:\Aardwork\YukonHeightField.png" }
+            update = update
+            view = viewScene sizes
+            ofPickMsg = fun _ _ -> []
+            subscriptions = Subscriptions.none
+        }
