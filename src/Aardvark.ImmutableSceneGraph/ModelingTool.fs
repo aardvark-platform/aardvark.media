@@ -1,6 +1,9 @@
 ﻿namespace Scratch
 
+
 open System
+open System.Windows.Forms
+
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
@@ -46,6 +49,7 @@ module Models =
 
     type Model = 
         { fileName : string
+          sceneGraph : ISg
           bounds : Box3d }
     
     [<DomainType>]
@@ -86,7 +90,8 @@ module Models =
           cameraModel : Scratch.DomainTypes2.Generated.CameraTest.Model
           objects : pset<Object>
           mode : Mode
-          geometryImport : GeometryImport }
+          geometryImport : GeometryImport
+          interactionState : Scratch.DomainTypes.Generated.TranslateController.TModel }
         
         member x.ToMod(reuseCache : ReuseCache) = 
             { _original = x
@@ -102,6 +107,7 @@ module Models =
                        (fun (m : MObject, a : Object) -> m.Apply(a, reuseCache)))
               mmode = x.mode.ToMod(reuseCache)
               mgeometryImport = Mod.init x.geometryImport
+              minteractionState = x.interactionState.ToMod(reuseCache)
             }
         
         interface IUnique with
@@ -116,7 +122,8 @@ module Models =
           mcameraModel : Scratch.DomainTypes2.Generated.CameraTest.MModel
           mobjects : MapSet<Object, MObject>
           mmode : MMode 
-          mgeometryImport : ModRef<GeometryImport> }
+          mgeometryImport : ModRef<GeometryImport>
+          minteractionState : Scratch.DomainTypes.Generated.TranslateController.MTModel }
         member x.Apply(arg0 : State, reuseCache : ReuseCache) = 
             if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                 x._original <- arg0
@@ -129,11 +136,10 @@ module Models =
                 x.mobjects.Update(arg0.objects)
                 x.mmode.Apply(arg0.mode, reuseCache)
                 x.mgeometryImport.Value <- arg0.geometryImport
+                x.minteractionState.Apply(arg0.interactionState,reuseCache)
 
 
 module ModelingTool =
-
-    open System.Windows.Forms
 
     open Aardvark.ImmutableSceneGraph
     open Aardvark.Elmish
@@ -197,6 +203,10 @@ module ModelingTool =
         | Translate of TranslateController.Action
         | Importer  of GeometryImport.Action
         | CameraAction of FreeFlyCameraApp.Action
+        | AddObjects of list<Object>
+        | SelectObject of Object 
+        | Interact of TranslateController.Action 
+        | Unselect
 
     let viewUI (m : State) =
         div [] [
@@ -209,36 +219,75 @@ module ModelingTool =
             GeometryImport.importModel m.geometryImport |> Html.map Importer 
         ]
 
+
     let update (f : Form) (e : Env<Action>) (m : State) (a : Action) =
         match a with
-            | Importer (GeometryImport.Accept s) -> 
+            | Importer (GeometryImport.Accept path) -> 
                 // add model
-                printfn "import model: %s" s
+                printfn "import model: %s" path
+                async {
+                    if System.IO.File.Exists path then
+                        let scene = Aardvark.SceneGraph.IO.Loader.Assimp.load path
+                        let sg = 
+                            scene 
+                             |> Sg.AdapterNode 
+                             //|> Sg.normalizeTo (Box3d(-V3d.III, V3d.III)) 
+                        return [ { _id = null; name = path; trafo = Trafo3d.Identity; model = { fileName = path; sceneGraph = sg; bounds = scene.bounds }} ] |> AddObjects
+                    else return AddObjects []
+                } |> Cmd.Cmd |> e.run
+
                 m
             | Importer a -> { m with geometryImport = GeometryImport.update f (Env.map Importer e) m.geometryImport a }
-            | CameraAction a -> { m with cameraModel = FreeFlyCameraApp.update (e |> Env.map CameraAction) m.cameraModel a }
+            | CameraAction a when m.primary.IsNone -> { m with cameraModel = FreeFlyCameraApp.update (e |> Env.map CameraAction) m.cameraModel a }
+            | AddObjects [] -> m
+            | AddObjects xs -> { m with objects = List.fold (flip PSet.add) m.objects xs }
+            | SelectObject o -> 
+                printfn "selected obj"
+                { m with primary = Some o }
+            | Interact(a) when m.primary.IsSome -> 
+                let interaction = TranslateController.updateModel (Env.map Interact e) m.interactionState a
+                let setTrafo (obj : Object) : Object = { obj with trafo = interaction.trafo * interaction.editTrafo }
+                let objects = m.objects |> PSet.toList |> List.map (fun obj -> if obj._id = m.primary.Value._id then setTrafo obj else obj) |> PSet.ofList
+                { m with interactionState = interaction; objects = objects; primary = Option.map setTrafo m.primary }
+            | Unselect -> { m with primary = None; cameraModel =  FreeFlyCameraApp.groundIt m.cameraModel  }
             | _ -> m
 
+    let viewModels (state : MState) =
+        aset {
+            for o in state.mobjects do
+                let! m = o.mmodel
+                yield 
+                    Scene.group [
+                        m.sceneGraph |> Scene.ofSg
+                        Scene.pick' [on (Mouse.down' MouseButtons.Left) (fun _ -> SelectObject o._original)] (Primitives.Box(m.bounds, false, false))
+                             |> Scene.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect] 
+                    ] |> Scene.transform' o.mtrafo
+            let! primary = state.mprimary
+            match primary with
+                | None -> ()
+                | Some o -> 
+                    let! obj = o.mmodel
+                    yield
+                        Scene.pick' [on (Mouse.down' MouseButtons.Left) (fun _ -> SelectObject o._original)] (Primitives.Box(obj.bounds, false, true))
+                                 |> Scene.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect] 
+                                 |> Scene.transform' o.mtrafo
+                    yield TranslateController.viewModel state.minteractionState |> Scene.map  Interact 
+                            |> Scene.effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
+        } |> Scene.agroup
 
     let view3D (sizes : IMod<V2i>) (m : MState) =
-        let frustum = sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 10.0 (float s.X / float s.Y))
-        let model = 
-            m.mgeometryImport |> Mod.map (fun path -> 
-                if System.IO.File.Exists path then
-                    Aardvark.SceneGraph.IO.Loader.Assimp.load path |> Sg.AdapterNode |> Sg.normalizeTo (Box3d(-V3d.III, V3d.III))
-                else 
-                    printfn "file does not exist"
-                    Sg.ofSeq []
-            ) |> Sg.dynamic |> Scene.ofSg
-            
-        model
+        let frustum = sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 10.0 (float s.X / float s.Y))            
+        viewModels m
          |> Scene.camera (Mod.map2 Camera.create m.mcameraModel.mcamera frustum)
          |> Scene.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.diffuseTexture |> toEffect]
 
-    let initial = { _id = null; primary = None; cameraModel = Scratch.FreeFlyCameraApp.initial; objects = PSet.empty; mode = Mode.Selecting; geometryImport = "" }
+    let initial = { _id = null; primary = None; cameraModel = Scratch.FreeFlyCameraApp.initial; objects = PSet.empty; mode = Mode.Selecting; geometryImport = ""; interactionState = TranslateController.initalModel }
 
     let subscriptions (time : IMod<DateTime>) (m : State) =
-        FreeFlyCameraApp.subscriptions time m.cameraModel |> Aardvark.Elmish.Sub.map CameraAction
+        Aardvark.Elmish.Sub.Many [
+            if m.primary.IsNone then yield FreeFlyCameraApp.subscriptions time m.cameraModel |> Aardvark.Elmish.Sub.map CameraAction
+            yield Input.key Direction.Up Keys.Escape (fun _ _ -> Unselect) 
+        ]
 
     let fablishApp f =
         {
@@ -250,7 +299,8 @@ module ModelingTool =
         }
 
    
-    let ofPickMsg (m : State) (noPick) = []
+    let ofPickMsg (m : State) (noPick) = 
+        TranslateController.ofPickMsgModel m.interactionState noPick |> List.map Interact
 
 
     let createApp f time keyboard mouse viewport camera =

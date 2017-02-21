@@ -267,6 +267,15 @@ module FreeFlyCameraApp =
         navigationMode = NavigationMode.FreeFly
         }
 
+    let groundIt (m : Model) =
+        { m with 
+            panning = None
+            zooming = None
+            picking = None
+            forward = V2d.OO
+            lookingAround = None
+            forwardSpeed = 0.0 }
+
     let app time : App<Model,MModel,Action,ISg<Action>> =
         {
             initial = initial
