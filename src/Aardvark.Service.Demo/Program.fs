@@ -206,6 +206,33 @@ module SimpleOrder =
 
 [<EntryPoint>]
 let main args =
+
+    let set = cset<int> [1; 2]
+
+    let test = 
+        set |> ASet.collect (fun v ->
+            ASet.ofList [ v; 2 * v ]
+        )
+
+    let print (r : ISetReader<'a>) =
+        let ops = r.GetOperations null
+        Log.line "state: %A" r.State
+        Log.line "ops:   %A" ops
+
+    let r = test.GetReader()
+    print r
+
+    transact (fun () -> set.Remove 2 |> ignore)
+    print r
+
+    transact (fun () -> set.Add 3 |> ignore; set.Remove 1 |> ignore)
+    print r
+
+    transact (fun () -> set.Add 2 |> ignore; set.Add 0 |> ignore)
+    print r
+
+    Environment.Exit 0
+
     let test() =
         let o = SimpleOrder.create()
 

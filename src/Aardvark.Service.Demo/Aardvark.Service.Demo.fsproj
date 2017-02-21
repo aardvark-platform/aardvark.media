@@ -50,13 +50,13 @@
     <Reference Include="System.Numerics" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Ui.fs" />
     <Compile Include="Incremental\Core.fs" />
     <Compile Include="Incremental\History.fs" />
     <Compile Include="Incremental\pmap.fs" />
     <Compile Include="Incremental\deltaset.fs" />
     <Compile Include="Incremental\prefset.fs" />
     <Compile Include="Incremental\aset.fs" />
-    <Compile Include="Ui.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

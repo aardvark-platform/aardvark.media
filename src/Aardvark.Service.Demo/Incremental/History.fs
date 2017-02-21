@@ -153,11 +153,81 @@ type IOpReader<'s, 'ops> =
     inherit IOpReader<'ops>
     abstract member State : 's
 
-[<AbstractClass; Sealed; Extension>]
-type IReaderExtensions private() =
-    [<Extension>]
-    static member GetOperations(this : IOpReader<'ops>) =
-        this.GetOperations null
+[<AbstractClass>]
+type AbstractReader<'ops>(scope : Ag.Scope, t : Monoid<'ops>) =
+    inherit AdaptiveObject()
+
+    abstract member Release : unit -> unit
+    abstract member Compute : unit -> 'ops
+
+    abstract member Apply : 'ops -> 'ops
+    default x.Apply o = o
+
+    member x.GetOperations(caller : IAdaptiveObject) =
+        x.EvaluateIfNeeded caller t.mempty (fun () ->
+            Ag.useScope scope (fun () -> 
+                x.Compute() |> x.Apply
+            )
+        )   
+
+    member x.Dispose() =
+        x.Release()
+        let mutable foo = 0
+        x.Outputs.Consume(&foo) |> ignore
+
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
+
+    interface IOpReader<'ops> with
+        member x.GetOperations c = x.GetOperations c
+
+[<AbstractClass>]
+type AbstractReader<'s, 'ops>(scope : Ag.Scope, t : Traceable<'s, 'ops>) =
+    inherit AbstractReader<'ops>(scope, t.ops)
+
+    let mutable state = t.empty
+
+    override x.Apply o =
+        let (s, o) = t.apply state o
+        state <- s
+        o
+
+    interface IOpReader<'s, 'ops> with
+        member x.State = state
+
+[<AbstractClass>]
+type AbstractDirtyReader<'t, 'ops when 't :> IAdaptiveObject>(scope : Ag.Scope, t : Monoid<'ops>) =
+    inherit DirtyTrackingAdaptiveObject<'t>()
+
+    abstract member Release : unit -> unit
+    abstract member Compute : HashSet<'t> -> 'ops
+
+    abstract member Apply : 'ops -> 'ops
+    default x.Apply o = o
+
+    member x.GetOperations(caller : IAdaptiveObject) =
+        x.EvaluateIfNeeded' caller t.mempty (fun dirty ->
+            Ag.useScope scope (fun () -> 
+                x.Compute dirty |> x.Apply
+            )
+        )   
+
+    member x.Dispose() =
+        x.Release()
+        let mutable foo = 0
+        x.Outputs.Consume(&foo) |> ignore
+
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
+
+    interface IOpReader<'ops> with
+        member x.GetOperations c = x.GetOperations c
+
+//[<AbstractClass; Sealed; Extension>]
+//type IReaderExtensions private() =
+//    [<Extension>]
+//    static member GetOperations(this : IOpReader<'ops>) =
+//        this.GetOperations null
 
 type private HistoryEntry<'s, 'ops> = HeapEntry<uint64, WeakReference<HistoryReader<'s, 'ops>>>
 and private HistoryHeap<'s, 'ops> = Heap<uint64, WeakReference<HistoryReader<'s, 'ops>>>
@@ -235,23 +305,23 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
     
     let perform (ops : 'ops) =
         if t.ops.misEmpty ops then
-            false
+            ops
         else
             let s, ops = t.apply state ops
             state <- s
 
             if relevant.Count = 0 then
-                not (t.ops.misEmpty ops)
+                ops
 
             elif t.ops.misEmpty ops then
-                false
+                ops
 
             else
                 if count > 0 && lastPullVersion < version then
                     let i = (start + count - 1) % buffer.Length
                     buffer.[i] <- t.ops.mappend buffer.[i] ops
-                    Log.line "merged versions"
-                    true
+                    //Log.line "merged versions"
+                    ops
                 else
                     let mutable changed = false
                     grow 1
@@ -260,14 +330,16 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
                     count <- count + 1
                     version <- version + 1UL
                     collapse()
-                    true
+                    ops
 
     new(t : Traceable<'s, 'ops>) = 
         let empty = t.ops.mempty
         History<'s, 'ops>((fun _ -> empty), t)
 
+    member x.Traceable = t
+
     member x.Perform(ops : 'ops) =
-        if lock x (fun () -> perform ops) then
+        if lock x (fun () -> perform ops |> t.ops.misEmpty |> not) then
             x.MarkOutdated()
             true
         else
@@ -288,11 +360,14 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
                 adjust relevant.Min
         )
 
-    member internal x.GetOperationsSince(reader : HistoryReader<'s, 'ops>) : 'ops =
+    member internal x.GetOperationsSince(reader : HistoryReader<'s, 'ops>) : 's * 'ops =
         x.EvaluateAlways reader (fun () ->
-            if x.OutOfDate then
-                let ops = compute x
-                perform ops |> ignore
+            let ops = 
+                if x.OutOfDate then
+                    let ops = compute x
+                    perform ops
+                else
+                    t.ops.mempty
 
             let old = reader.Entry
             lastPullVersion <- version
@@ -300,7 +375,7 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
             if old.Index < 0 then
                 let ops = t.compute reader.State state
                 relevant.ChangeKey(old, version) |> ignore
-                ops
+                state, ops
             else
                 let oldVersion = old.Key
                 let cnt = int (version - oldVersion)
@@ -314,7 +389,7 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
                     operations <- t.ops.mappend operations res 
                     
                 adjust (Some newMin)
-                operations
+                state, operations
         )
 
     member x.GetValue(caller : IAdaptiveObject) =
@@ -363,11 +438,9 @@ and internal HistoryReader<'s, 'ops>(ops : Monoid<'ops>, history : History<'s, '
         x.EvaluateIfNeeded caller ops.mempty (fun () ->
             match entry with
                 | Some e -> 
-                    lock history (fun () ->
-                        let ops = history.GetOperationsSince(x)
-                        state <- history.State
-                        ops
-                    )
+                    let s, ops = history.GetOperationsSince(x)
+                    state <- s
+                    ops
                 | None ->
                     failwith "[Reader] cannot pull disposed reader"
         )
@@ -379,17 +452,46 @@ and internal HistoryReader<'s, 'ops>(ops : Monoid<'ops>, history : History<'s, '
         member x.State = state
         member x.GetOperations c = x.GetOperations c
 
-
 module History =
+
+    module Readers =
+        type EmptyReader<'s, 'ops>(t : Traceable<'s, 'ops>) =
+            inherit ConstantObject()
+
+            interface IOpReader<'ops> with
+                member x.Dispose() = ()
+                member x.GetOperations(caller) = t.ops.mempty
     
-    let ofReader (t : Traceable<'s, 'ops>) (newReader : unit -> IOpReader<'s, 'ops>) =
+            interface IOpReader<'s, 'ops> with
+                member x.State = t.empty
+
+        type ConstantReader<'s, 'ops>(t : Traceable<'s, 'ops>, ops : Lazy<'ops>, finalState : Lazy<'s>) =
+            inherit ConstantObject()
+            
+            let mutable state = t.empty
+            let mutable initial = true
+
+            interface IOpReader<'ops> with
+                member x.Dispose() = ()
+                member x.GetOperations(caller) =
+                    lock x (fun () ->
+                        if initial then
+                            state <- finalState.Value
+                            ops.Value
+                        else
+                            t.ops.mempty
+                    )
+
+            interface IOpReader<'s, 'ops> with
+                member x.State = state
+    
+
+
+    let ofReader (t : Traceable<'s, 'ops>) (newReader : unit -> IOpReader<'ops>) =
         let reader = lazy (newReader())
         
         let compute(self : History<'s, 'ops>) =
             reader.Value.GetOperations(self)
 
         History<'s, 'ops>(compute, t)
-
-
-
 

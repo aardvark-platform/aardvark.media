@@ -104,6 +104,16 @@ type deltaset<'a>(content : pmap<'a, int>) =
             res <- res.Add(r)
         res
 
+    member x.Choose(f : SetDelta<'a> -> Option<SetDelta<'b>>) =
+        let mutable res = deltaset<'b>.Empty
+        for (v,c) in content do
+            match f (SetDelta(v, c)) with
+                | Some r ->
+                    res <- res.Add(r)
+                | None ->
+                    ()
+        res
+
     member x.Collect(f : SetDelta<'a> -> deltaset<'b>) =
         let mutable res = deltaset<'b>.Empty
         for (ov,oc) in content do
@@ -142,6 +152,7 @@ module DeltaSet =
     let inline contains (v : 'a) (s : deltaset<'a>) = s.Contains v
 
     let inline map (f : SetDelta<'a> -> SetDelta<'b>) (s : deltaset<'a>) = s.Map f
+    let inline choose (f : SetDelta<'a> -> Option<SetDelta<'b>>) (s : deltaset<'a>) = s.Choose f
     let inline collect (f : SetDelta<'a> -> deltaset<'b>) (s : deltaset<'a>) = s.Collect f
 
 

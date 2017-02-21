@@ -82,12 +82,12 @@ type prefset<'a>(content : pmap<'a, int>) =
                     other <- o
                     let delta = oc - mc
                     if delta <> 0 then
-                        res <- res.Add(SetDelta(k, delta))
+                        res <- res.Add(SetDelta(k, sign delta))
                 | None ->
-                    res <- res.Add(SetDelta(k, -mc))
+                    res <- res.Add(SetDelta(k, -1))
 
         for (k,oc) in other.AsSeq do
-            res <- res.Add(SetDelta(k, oc))
+            res <- res.Add(SetDelta(k, 1))
 
         res
 
@@ -100,7 +100,7 @@ type prefset<'a>(content : pmap<'a, int>) =
                 let cnt = res.Count
                 res <- res.alter(v, fun o -> max 0 (o + delta.Count))
                 if res.Count <> cnt then
-                    let s = if delta.Count > 0 then 1 else -1
+                    let s = sign delta.Count
                     Some (v, s)
                 else
                     None
@@ -129,6 +129,29 @@ type prefset<'a>(content : pmap<'a, int>) =
         let mutable res = prefset<'b>.Empty
         for (v,c) in content do
             res <- res.Add(c, f v)
+        res
+
+    member x.Choose(f : 'a -> Option<'b>) =
+        let mutable res = prefset<'b>.Empty
+        for (v,c) in content do
+            match f v with
+                | Some v -> 
+                    res <- res.Add(c, v)
+                | None ->
+                    ()
+        res
+        
+    member x.Filter(f : 'a -> bool) =
+        let mutable res = prefset<'a>.Empty
+        for (v,c) in content do
+            if f v then
+                res <- res.Add(c,v)
+        res
+
+    member x.Fold(f : 's -> 'a -> 's, initial : 's) =
+        let mutable res = initial
+        for (v,c) in content do
+            res <- f res v
         res
 
     member x.Collect(f : 'a -> prefset<'b>) =
@@ -168,8 +191,11 @@ module PRefSet =
     let inline count (l : prefset<'a>) = l.Count 
     let inline isEmpty (l : prefset<'a>) = l.Count = 0
     let inline contains (v : 'a) (s : prefset<'a>) = s.Contains v
-
+    
+    let inline fold (f : 's -> 'a -> 's) (initial : 's) (s : prefset<'a>) = s.Fold(f, initial)
     let inline map (f : 'a -> 'b) (s : prefset<'a>) = s.Map f
+    let inline choose (f : 'a -> Option<'b>) (s : prefset<'a>) = s.Choose f
+    let inline filter (f : 'a -> bool) (s : prefset<'a>) = s.Filter f
     let inline collect (f : 'a -> prefset<'b>) (s : prefset<'a>) = s.Collect f
 
     type private TraceImpl<'a>() =
