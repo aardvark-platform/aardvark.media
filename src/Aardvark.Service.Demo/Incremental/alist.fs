@@ -22,22 +22,21 @@ type clist<'a>(initial : seq<'a>) =
                 t, Set v
             )
             |> Map.ofSeq
-            |> deltalist
 
         history.Perform ops |> ignore
 
     member x.Append(v : 'a) =
         let t = Index.after history.State.MaxIndex
-        history.Perform (deltalist(Map.ofList [t, Set v])) |> ignore
+        history.Perform (Map.ofList [t, Set v]) |> ignore
         t
 
     member x.Prepend(v : 'a) =
         let t = Index.before history.State.MinIndex
-        history.Perform (deltalist(Map.ofList [t, Set v])) |> ignore
+        history.Perform (Map.ofList [t, Set v]) |> ignore
         t
 
     member x.Remove(i : Index) =
-        history.Perform (deltalist(Map.ofList [i, Remove])) |> ignore
+        history.Perform (Map.ofList [i, Remove]) |> ignore
 
     member x.RemoveAt(i : int) =
         let (KeyValue(id, _)) = history.State.Content |> Seq.item i
@@ -157,7 +156,7 @@ module AList =
             let times = SortedSetExt<Index * Index * Index>(comparer)
 
             let invokeIndex (outer : Index) (inner : Index) =
-                let (l,s,r) = times.FindNeighbours((outer, inner, inner))
+                let (l,s,r) = times.FindNeighbours((outer, inner, Unchecked.defaultof<_>))
                 let s = if s.HasValue then Some s.Value else None
 
                 match s with
@@ -229,14 +228,10 @@ module AList =
                                 let r = revoke oi
 
                                 let operations = 
-                                    r.State.Content
-                                        |> Map.toSeq
-                                        |> Seq.map (fun (ii, v) ->
-                                            let i = revokeIndex oi ii
-                                            i, Remove
-                                        )
-                                        |> Map.ofSeq
-                                        |> deltalist
+                                    r.State.Content |> Map.mapMonotonic (fun ii v ->
+                                        let i = revokeIndex oi ii
+                                        i, Remove
+                                    )
 
                                 r.Dispose()
                                 dirty.Remove r |> ignore
@@ -249,53 +244,46 @@ module AList =
                                 let rem =
                                     match old with
                                         | Some o ->
-                                            o.State.Content
-                                                |> Map.toSeq
-                                                |> Seq.map (fun (ii, v) ->
+                                            let res = 
+                                                o.State.Content |> Map.mapMonotonic (fun ii v ->
                                                     let i = revokeIndex oi ii
                                                     i, Remove
                                                 )
-                                                |> Map.ofSeq
-                                                |> deltalist
+                                            o.Dispose()
+                                            dirty.Remove o |> ignore
+                                            res
+
                                         | None -> 
                                             DeltaList.empty
 
                                 let add = 
-                                    r.GetOperations(x).Content 
-                                        |> Map.toSeq
-                                        |> Seq.map (fun (ii, op) ->
-                                            match op with
-                                                | Remove -> 
-                                                    let i = revokeIndex oi ii
-                                                    i, Remove
-                                                | Set v ->
-                                                    let i = invokeIndex oi ii
-                                                    i, Set v
-                                        )
-                                        |> Map.ofSeq
-                                        |> deltalist
+                                    r.GetOperations(x) |> Map.mapMonotonic (fun ii op ->
+                                        match op with
+                                            | Remove -> 
+                                                let i = revokeIndex oi ii
+                                                i, Remove
+                                            | Set v ->
+                                                let i = invokeIndex oi ii
+                                                i, Set v
+                                    )
 
-                                deltalist.Combine(rem, add)
+                                DeltaList.combine rem add
 
                     )
 
                 for d in dirty do
                     let deltas = 
-                        d.GetOperations(x).Content
-                            |> Map.toSeq
-                            |> Seq.map (fun (ii, op) ->
-                                match op with
-                                    | Remove -> 
-                                        let i = revokeIndex d.Index ii
-                                        i, Remove
-                                    | Set v ->
-                                        let i = invokeIndex d.Index ii
-                                        i, Set v
-                            )
-                            |> Map.ofSeq
-                            |> deltalist
+                        d.GetOperations(x) |> Map.mapMonotonic (fun ii op ->
+                            match op with
+                                | Remove -> 
+                                    let i = revokeIndex d.Index ii
+                                    i, Remove
+                                | Set v ->
+                                    let i = invokeIndex d.Index ii
+                                    i, Set v
+                        )
 
-                    ops <- deltalist.Combine(ops, deltas)
+                    ops <- DeltaList.combine ops deltas
                     
                 ops
 

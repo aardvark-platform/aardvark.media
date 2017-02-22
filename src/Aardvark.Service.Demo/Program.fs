@@ -4,10 +4,13 @@ open System
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.Base.Incremental.Operators
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.Application.WinForms
+open System.Collections.Generic
+open System.Collections.Concurrent
 
 [<AutoOpen>]
 module GCRef =
@@ -208,12 +211,35 @@ module SimpleOrder =
 [<EntryPoint>]
 let main args =
 
+    let a = MapExt.ofList [1,1;2,2;3,3;4,4;5,5]
+
+    printfn "map:           %A" a
+    printfn "min:           %A" (MapExt.min a)
+    printfn "max:           %A" (MapExt.max a)
+    printfn "item 1:        %A" (MapExt.item 1 a)
+    printfn "rem 1:         %A" (MapExt.alter 1 (fun _ o -> None) a)
+    printfn "add 1 100:     %A" (MapExt.alter 1 (fun _ o -> Some 100) a)
+    printfn "map:           %A" (MapExt.mapMonotonic (fun k v -> k + 1, v) a)
+
+    let b = MapExt.mapMonotonic (fun k v -> 2 * k, 2*v) a
+    
+    printfn "item 4:        %A" (MapExt.item 4 a)
+    printfn "item 0:        %A" (MapExt.item 0 a)
+
+
+    printfn "10: %A" (MapExt.tryFind 2 b)
+
+
+    Environment.Exit 0
+
+
+
     let l = clist [1;2;3]
 
     let inner = clist [1;2]
 
     let test = 
-        l |> AList.collect (fun v -> 
+        l |> AList.collecti (fun i v -> 
             inner :> alist<_>
         )
     let r = test.GetReader()
@@ -225,17 +251,17 @@ let main args =
         Log.line "ops:   %A" ops
         Log.stop()
 
-    print "initial" r
+    print "initial" r // [1;2;1;2;1;2]
 
     let t4 = transact (fun () -> l.Append 4)
-    print "append 4" r
+    print "append 4" r // [1;2;1;2;1;2;1;2]
 
     transact (fun () -> l.Remove t4)
-    print "remove 4" r
+    print "remove 4" r // [1;2;1;2;1;2]
 
 
     transact (fun () -> inner.RemoveAt 0)
-    print "inner.remove 1" r
+    print "inner.remove 1" r // [2;2;2]
 
 
     Environment.Exit 0

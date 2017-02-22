@@ -57,6 +57,7 @@
     <Compile Include="Incremental\deltaset.fs" />
     <Compile Include="Incremental\prefset.fs" />
     <Compile Include="Incremental\aset.fs" />
+    <Compile Include="Incremental\map.fs" />
     <Compile Include="Incremental\deltalist.fs" />
     <Compile Include="Incremental\plist.fs" />
     <Compile Include="Incremental\alist.fs" />

@@ -57,13 +57,13 @@ type plist<'a>(count : int, l : Index, h : Index, content : Map<Index, 'a>) =
                 DeltaList.empty
 
             | 0, _ -> 
-                r.Content |> Map.map (fun i v -> Set v) |> deltalist
+                r.Content |> Map.map (fun i v -> Set v)
 
             | _, 0 ->
-                l.Content |> Map.map (fun i v -> Remove) |> deltalist
+                l.Content |> Map.map (fun i v -> Remove)
 
             | _, _ ->
-                let mutable rem = deltalist(l.Content |> Map.map (fun i v -> ListOperation.Remove))
+                let mutable rem = l.Content |> Map.map (fun i v -> ListOperation.Remove)
 
                 for i, rv in Map.toSeq r.Content do
                     match Map.tryFind i l.Content with

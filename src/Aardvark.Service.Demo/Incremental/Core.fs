@@ -234,3 +234,8 @@ module Index =
     let after (r : Index) = r.After()
     let before (r : Index) = r.Before()
     let between (l : Index) (r : Index) = l.Between r
+
+module Map =
+    let mapMonotonic (mapping : 'k -> 'v -> 'k2 * 'v2) (l : Map<'k, 'v>) =
+        l |> Map.toSeq |> Seq.map (fun (i,v) -> mapping i v) |> Map.ofSeq
+
