@@ -1,4 +1,24 @@
-﻿namespace Aardvark.ImmutableSceneGraph
+﻿namespace Aardvark.Base
+
+type EqualOf<'a>(v : 'a) =
+    member x.Value = v
+    override x.GetHashCode() = 0
+    override x.Equals other =
+        match other with
+                | :? EqualOf<'a> -> true
+                | _ -> false
+    override x.ToString() = sprintf "%A" v
+
+[<AutoOpen>]
+module Operators =
+    let inline (!) (p : ^a) = (^a : (member get_Value : unit -> ^b) (p))
+    let inline (:=) (p : ^a) (v : ^b) = (^a : (member set_Value : ^b -> unit) (p, v))
+
+module EqualOf =
+    let inline toEqual v = EqualOf<_>(v)
+    let inline ofEqual (v : EqualOf<_>) = v.Value
+
+namespace Aardvark.ImmutableSceneGraph
 
 open System
 open Aardvark.Base

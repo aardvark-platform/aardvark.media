@@ -189,11 +189,13 @@ module Generated =
               finishedPoints : list<V3d>
                }
         
+
+
         [<DomainType>]
         type Drawing = 
             { mutable _id : Id
-              history  : Option<Drawing>
-              future   : Option<Drawing>
+              history  : EqualOf<Option<Drawing>>
+              future   : EqualOf<Option<Drawing>>
               picking  : Option<int>
               filename : string
               finished : pset<Annotation>

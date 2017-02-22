@@ -49,24 +49,24 @@ module DrawingApp =
                         { m with 
                             working = None 
                             finished = PSet.add { geometry = p.finishedPoints; style = m.style } m.finished
-                            history = Some m
-                            future = None
+                            history = EqualOf.toEqual (Some m)
+                            future = EqualOf.toEqual None
                         }
             | AddPoint p, Some _ ->
                 match m.working with
                     | None -> { m with working = Some { finishedPoints = [ p ]; cursor = None; }}
                     | Some v ->                         
-                        { m with working = Some { v with finishedPoints = p :: v.finishedPoints }; history = Some m; future = None }
+                        { m with working = Some { v with finishedPoints = p :: v.finishedPoints }; history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None }
                         
             | MoveCursor p, Some _ ->
                 match m.working with
                     | None -> { m with working = Some { finishedPoints = []; cursor = Some p }}
                     | Some v -> { m with working = Some { v with cursor = Some p }}
             | ChangeStyle s, _ -> { m with style = styles.[s]}
-            | Undo, _ -> match m.history with
+            | Undo, _ -> match !m.history with
                                 | None -> m
-                                | Some k -> { k with future = Some m }
-            | Redo, _ -> match m.future with
+                                | Some k -> { k with future = EqualOf.toEqual <| Some m }
+            | Redo, _ -> match !m.future with
                                 | None -> m
                                 | Some k -> k
             | PickStart, _   -> { m with picking = Some 0 }
@@ -162,9 +162,9 @@ module DrawingApp =
             finished = PSet.empty
             working = None
             _id = null
-            history = None; future = None
+            history = EqualOf.toEqual None; future = EqualOf.toEqual None
             picking = None 
-            filename = @"C:\Aardwork\wand.jpg"
+            filename = @"C:\Aardwork\normalBrick.jpg"
             style = styles.[0]}
 
     let app s =
