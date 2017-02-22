@@ -210,21 +210,32 @@ let main args =
 
     let l = clist [1;2;3]
 
-    let test = l |> AList.map (fun v -> v % 2)
+    let inner = clist [1;2]
+
+    let test = 
+        l |> AList.collect (fun v -> 
+            inner :> alist<_>
+        )
     let r = test.GetReader()
 
-    let print (r : IListReader<'a>) =
+    let print (name : string) (r : IListReader<'a>) =
+        Log.start "%s" name
         let ops = r.GetOperations null
-        printfn "state: %A" r.State
-        printfn "ops:   %A" ops
+        Log.line "state: %A" r.State
+        Log.line "ops:   %A" ops
+        Log.stop()
 
-    print r
+    print "initial" r
 
     let t4 = transact (fun () -> l.Append 4)
-    print r
+    print "append 4" r
 
     transact (fun () -> l.Remove t4)
-    print r
+    print "remove 4" r
+
+
+    transact (fun () -> inner.RemoveAt 0)
+    print "inner.remove 1" r
 
 
     Environment.Exit 0

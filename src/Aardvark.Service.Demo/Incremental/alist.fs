@@ -39,6 +39,10 @@ type clist<'a>(initial : seq<'a>) =
     member x.Remove(i : Index) =
         history.Perform (deltalist(Map.ofList [i, Remove])) |> ignore
 
+    member x.RemoveAt(i : int) =
+        let (KeyValue(id, _)) = history.State.Content |> Seq.item i
+        x.Remove id
+
     interface alist<'a> with
         member x.IsConstant = false
         member x.Content = history :> IMod<_>
@@ -48,6 +52,45 @@ module AList =
     
     [<AutoOpen>]
     module private Implementation = 
+        type EmptyReader<'a> private() =
+            inherit ConstantObject()
+
+            static let instance = new EmptyReader<'a>() :> IOpReader<_,_>
+            static member Instance = instance
+
+            interface IOpReader<deltalist<'a>> with
+                member x.Dispose() =
+                    ()
+
+                member x.GetOperations caller =
+                    DeltaList.empty
+
+            interface IOpReader<plist<'a>, deltalist<'a>> with
+                member x.State = PList.empty
+
+        type EmptyList<'a> private() =
+            let content = Mod.constant PList.empty
+
+            static let instance = EmptyList<'a>() :> alist<_>
+
+            static member Instance = instance
+
+            interface alist<'a> with
+                member x.IsConstant = true
+                member x.Content = content
+                member x.GetReader() = EmptyReader.Instance
+
+        type ConstantList<'a>(content : Lazy<plist<'a>>) =
+            let deltas = lazy ( plist.ComputeDeltas(PList.empty, content.Value) )
+            let mcontent = ConstantMod<plist<'a>>(content) :> IMod<_>
+
+            interface alist<'a> with
+                member x.IsConstant = true
+                member x.GetReader() = new History.Readers.ConstantReader<_,_>(PList.trace, deltas, content) :> IListReader<_>
+                member x.Content = mcontent
+        
+            new(content : plist<'a>) = ConstantList<'a>(Lazy.CreateFromValue content)
+
         type AdaptiveList<'a>(newReader : unit -> IOpReader<deltalist<'a>>) =
             let h = History.ofReader PList.trace newReader
             interface alist<'a> with
@@ -59,6 +102,9 @@ module AList =
             let scope = Ag.getContext()
             AdaptiveList<'a>(fun () -> f scope :> IOpReader<_>) :> alist<_>
             
+        let inline constant (l : Lazy<plist<'a>>) =
+            ConstantList<'a>(l) :> alist<_>
+
     [<AutoOpen>]
     module private Readers =
         open System.Collections.Generic
@@ -145,18 +191,17 @@ module AList =
 
             let invoke (i : Index) (v : 'a) =
                 match cache.TryGetValue i with
-                    | (true, (ov,r)) -> 
+                    | (true, (ov,ro)) -> 
                         if Object.Equals(v, ov) then
-                            r
+                            None, ro
                         else
-                            r.Dispose()
                             let r = new IndexedReader<_>(scope, i, (mapping i v).GetReader())
                             cache.[i] <- (v, r)
-                            r
+                            Some ro, r
                     | _ -> 
                         let r = new IndexedReader<_>(scope, i, (mapping i v).GetReader())
                         cache.[i] <- (v, r)
-                        r
+                        None, r
 
             let revoke (i : Index) =
                 match cache.TryGetValue i with
@@ -199,21 +244,38 @@ module AList =
                                 operations
 
                             | Set v ->
-                                let r = invoke oi v
+                                let old, r = invoke oi v
 
-                                r.GetOperations(x).Content 
-                                    |> Map.toSeq
-                                    |> Seq.map (fun (ii, op) ->
-                                        match op with
-                                            | Remove -> 
-                                                let i = revokeIndex oi ii
-                                                i, Remove
-                                            | Set v ->
-                                                let i = invokeIndex oi ii
-                                                i, Set v
-                                    )
-                                    |> Map.ofSeq
-                                    |> deltalist
+                                let rem =
+                                    match old with
+                                        | Some o ->
+                                            o.State.Content
+                                                |> Map.toSeq
+                                                |> Seq.map (fun (ii, v) ->
+                                                    let i = revokeIndex oi ii
+                                                    i, Remove
+                                                )
+                                                |> Map.ofSeq
+                                                |> deltalist
+                                        | None -> 
+                                            DeltaList.empty
+
+                                let add = 
+                                    r.GetOperations(x).Content 
+                                        |> Map.toSeq
+                                        |> Seq.map (fun (ii, op) ->
+                                            match op with
+                                                | Remove -> 
+                                                    let i = revokeIndex oi ii
+                                                    i, Remove
+                                                | Set v ->
+                                                    let i = invokeIndex oi ii
+                                                    i, Set v
+                                        )
+                                        |> Map.ofSeq
+                                        |> deltalist
+
+                                deltalist.Combine(rem, add)
 
                     )
 
@@ -237,6 +299,29 @@ module AList =
                     
                 ops
 
+                
+    /// the empty alist
+    let empty<'a> = EmptyList<'a>.Instance
+    
+    /// creates a new alist containing only the given element
+    let single (v : 'a) =
+        ConstantList(PList.single v) :> alist<_>
+        
+    /// creates a new alist using the given list
+    let ofPList (l : plist<'a>) =
+        ConstantList(l) :> alist<_>
+
+    /// creates a new alist using the given sequence
+    let ofSeq (s : seq<'a>) =
+        s |> PList.ofSeq |> ofPList
+
+    /// creates a new alist using the given sequence
+    let ofList (l : list<'a>) =
+        l |> PList.ofList |> ofPList
+
+    /// creates a new alist using the given sequence
+    let ofArray (l : 'a[]) =
+        l |> PList.ofArray |> ofPList
 
     let mapi (mapping : Index -> 'a -> 'b) (list : alist<'a>) =
         alist <| fun scope -> new MapReader<'a, 'b>(scope, list, mapping)

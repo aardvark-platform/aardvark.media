@@ -187,6 +187,10 @@ module PList =
     let inline toList (list : plist<'a>) = list.AsList
     let inline toArray (list : plist<'a>) = list.AsArray
 
+    let single (v : 'a) =
+        let t = Index.after Index.zero
+        plist(1, t, t, Map.ofList[t, v])
+
     let ofSeq (seq : seq<'a>) =
         let mutable res = empty
         for e in seq do res <- append e res
