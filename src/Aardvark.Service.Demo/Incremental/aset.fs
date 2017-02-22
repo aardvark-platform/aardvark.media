@@ -660,10 +660,7 @@ module ASet =
         else
             aset <| fun scope -> new CollectReader<'a, 'b>(scope, set, mapping)
         
-    let collect' (mapping : 'a -> aset<'b>) (set : seq<'a>) =
-        set |> Seq.map mapping |> unionMany'
-            
-    let collect'' (mapping : 'a -> #seq<'b>) (set : aset<'a>) =
+    let collect' (mapping : 'a -> #seq<'b>) (set : aset<'a>) =
         let mapping = mapping >> PRefSet.ofSeq
         if set.IsConstant then
             constant <| lazy ( set.Content |> Mod.force |> PRefSet.collect mapping )
@@ -746,7 +743,7 @@ module ASet =
 
     let foldGroup (add : 's -> 'a -> 's) (sub : 's -> 'a -> 's) (zero : 's) (s : aset<'a>) =
         foldHalfGroup add (fun a b -> Some (sub a b)) zero s
-
+        
 
     /// Adaptively calculates the sum of all elements in the set
     let inline sum (s : aset<'a>) = foldGroup (+) (-) LanguagePrimitives.GenericZero s

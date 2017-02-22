@@ -204,8 +204,30 @@ module SimpleOrder =
         Order.New()
 
 
+
 [<EntryPoint>]
 let main args =
+
+    let l = clist [1;2;3]
+
+    let test = l |> AList.map (fun v -> v % 2)
+    let r = test.GetReader()
+
+    let print (r : IListReader<'a>) =
+        let ops = r.GetOperations null
+        printfn "state: %A" r.State
+        printfn "ops:   %A" ops
+
+    print r
+
+    let t4 = transact (fun () -> l.Append 4)
+    print r
+
+    transact (fun () -> l.Remove t4)
+    print r
+
+
+    Environment.Exit 0
 
     let set = cset<int> [1; 2]
 
