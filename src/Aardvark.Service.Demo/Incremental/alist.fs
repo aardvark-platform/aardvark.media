@@ -1,6 +1,8 @@
 ﻿namespace Aardvark.Base.Incremental
 
 open System
+open System.Collections
+open System.Collections.Generic
 open Aardvark.Base.Incremental
 open Aardvark.Base
 
@@ -11,6 +13,7 @@ type alist<'a> =
     abstract member Content     : IMod<plist<'a>>
     abstract member GetReader   : unit -> IListReader<'a>
 
+[<StructuredFormatDisplay("{AsString}")>]
 type clist<'a>(initial : seq<'a>) =
     let history = History PList.trace
     do 
@@ -21,31 +24,148 @@ type clist<'a>(initial : seq<'a>) =
                 last <- t
                 t, Set v
             )
-            |> Map.ofSeq
+            |> DeltaList.ofSeq
 
         history.Perform ops |> ignore
 
+    member x.Count = 
+        lock x (fun () -> history.State.Count)
+
+    member x.Clear() =
+        lock x (fun () ->
+            if x.Count > 0 then
+                let deltas = history.State.Content |> MapExt.map (fun k v -> Remove) |> DeltaList.ofMap
+                history.Perform deltas |> ignore
+        )
+
     member x.Append(v : 'a) =
-        let t = Index.after history.State.MaxIndex
-        history.Perform (Map.ofList [t, Set v]) |> ignore
-        t
+        lock x (fun () ->
+            let t = Index.after history.State.MaxIndex
+            history.Perform (DeltaList.ofList [t, Set v]) |> ignore
+            t
+        )
 
     member x.Prepend(v : 'a) =
-        let t = Index.before history.State.MinIndex
-        history.Perform (Map.ofList [t, Set v]) |> ignore
-        t
+        lock x (fun () ->
+            let t = Index.before history.State.MinIndex
+            history.Perform (DeltaList.ofList [t, Set v]) |> ignore
+            t
+        )
 
     member x.Remove(i : Index) =
-        history.Perform (Map.ofList [i, Remove]) |> ignore
+        lock x (fun () ->
+            history.Perform (DeltaList.ofList [i, Remove])
+        )
 
     member x.RemoveAt(i : int) =
-        let (KeyValue(id, _)) = history.State.Content |> Seq.item i
-        x.Remove id
+        lock x (fun () ->
+            let (id,_) = history.State.Content |> MapExt.item i
+            x.Remove id |> ignore
+        )
+
+    member x.IndexOf(v : 'a) =
+        lock x (fun () ->
+            history.State 
+                |> Seq.tryFindIndex (Unchecked.equals v) 
+                |> Option.defaultValue -1
+        )
+
+    member x.Remove(v : 'a) =
+        lock x (fun () ->
+            match x.IndexOf v with
+                | -1 -> false
+                | i -> x.RemoveAt i; true
+        )
+
+    member x.Contains(v : 'a) =
+        lock x (fun () -> history.State) |> Seq.exists (Unchecked.equals v)
+
+    member x.Insert(i : int, value : 'a) =
+        lock x (fun () ->
+            if i < 0 || i > history.State.Content.Count then
+                raise <| IndexOutOfRangeException()
+
+            let l, s, r = MapExt.neighboursAt i history.State.Content
+            let r = 
+                match s with
+                    | Some s -> Some s
+                    | None -> r
+            let index = 
+                match l, r with
+                    | Some (before,_), Some (after,_) -> Index.between before after
+                    | None,            Some (after,_) -> Index.before after
+                    | Some (before,_), None           -> Index.after before
+                    | None,            None           -> Index.after Index.zero
+            history.Perform (DeltaList.ofList [index, Set value]) |> ignore
+            index
+        )
+        
+    member x.CopyTo(arr : 'a[], i : int) = 
+        let state = lock x (fun () -> history.State )
+        state.CopyTo(arr, i)
+
+    member x.Item
+        with get (i : int) = 
+            let state = lock x (fun () -> history.State)
+            state.[i]
+
+        and set (i : int) (v : 'a) =
+            lock x (fun () ->
+                let k = history.State.Content |> MapExt.tryItem i
+                match k with
+                    | Some (id,_) -> history.Perform(DeltaList.ofList [id, Set v]) |> ignore
+                    | None -> ()
+            )
+
+    member x.Item
+        with get (i : Index) =
+            let state = lock x (fun () -> history.State)
+            state.[i]
+
+        and set (i : Index) (v : 'a) =
+            lock x (fun () ->
+                history.Perform(DeltaList.ofList [i, Set v]) |> ignore
+            )
+
+    override x.ToString() =
+        let suffix =
+            if x.Count > 5 then "; ..."
+            else ""
+
+        let content =
+            history.State |> Seq.truncate 5 |> Seq.map (sprintf "%A") |> String.concat "; "
+
+        "clist [" + content + suffix + "]"
+
+    member private x.AsString = x.ToString()
 
     interface alist<'a> with
         member x.IsConstant = false
         member x.Content = history :> IMod<_>
         member x.GetReader() = history.NewReader()
+
+    interface ICollection<'a> with 
+        member x.Add(v) = x.Append v |> ignore
+        member x.Clear() = x.Clear()
+        member x.Remove(v) = x.Remove v
+        member x.Contains(v) = x.Contains v
+        member x.CopyTo(arr,i) = x.CopyTo(arr, i)
+        member x.IsReadOnly = false
+        member x.Count = x.Count
+
+    interface IList<'a> with
+        member x.RemoveAt(i) = x.RemoveAt i
+        member x.IndexOf(item : 'a) = x.IndexOf item
+        member x.Item
+            with get(i : int) = x.[i]
+            and set (i : int) (v : 'a) = x.[i] <- v
+        member x.Insert(i,v) = x.Insert(i,v) |> ignore
+
+    interface IEnumerable with
+        member x.GetEnumerator() = (history.State :> seq<_>).GetEnumerator() :> _
+
+    interface IEnumerable<'a> with
+        member x.GetEnumerator() = (history.State :> seq<_>).GetEnumerator() :> _
 
 module AList =
     
@@ -117,7 +237,7 @@ module AList =
                 r.Dispose()
 
             override x.Compute() =
-                r.GetOperations x |> DeltaList.mapi (fun i op ->
+                r.GetOperations x |> DeltaList.map (fun i op ->
                     match op with
                         | Remove -> Remove
                         | Set v -> Set (mapping i v)
@@ -222,13 +342,13 @@ module AList =
             override x.Compute(dirty) =
                 
                 let mutable ops =
-                    reader.GetOperations x |> DeltaList.collecti (fun oi op ->
+                    reader.GetOperations x |> DeltaList.collect (fun oi op ->
                         match op with
                             | Remove -> 
                                 let r = revoke oi
 
                                 let operations = 
-                                    r.State.Content |> Map.mapMonotonic (fun ii v ->
+                                    r.State.Content |> MapExt.mapMonotonic (fun ii v ->
                                         let i = revokeIndex oi ii
                                         i, Remove
                                     )
@@ -236,7 +356,7 @@ module AList =
                                 r.Dispose()
                                 dirty.Remove r |> ignore
 
-                                operations
+                                DeltaList.ofMap operations
 
                             | Set v ->
                                 let old, r = invoke oi v
@@ -245,19 +365,19 @@ module AList =
                                     match old with
                                         | Some o ->
                                             let res = 
-                                                o.State.Content |> Map.mapMonotonic (fun ii v ->
+                                                o.State.Content |> MapExt.mapMonotonic (fun ii v ->
                                                     let i = revokeIndex oi ii
                                                     i, Remove
                                                 )
                                             o.Dispose()
                                             dirty.Remove o |> ignore
-                                            res
+                                            DeltaList.ofMap res
 
                                         | None -> 
                                             DeltaList.empty
 
                                 let add = 
-                                    r.GetOperations(x) |> Map.mapMonotonic (fun ii op ->
+                                    r.GetOperations(x) |> DeltaList.mapMonotonic (fun ii op ->
                                         match op with
                                             | Remove -> 
                                                 let i = revokeIndex oi ii
@@ -273,7 +393,7 @@ module AList =
 
                 for d in dirty do
                     let deltas = 
-                        d.GetOperations(x) |> Map.mapMonotonic (fun ii op ->
+                        d.GetOperations(x) |> DeltaList.mapMonotonic (fun ii op ->
                             match op with
                                 | Remove -> 
                                     let i = revokeIndex d.Index ii

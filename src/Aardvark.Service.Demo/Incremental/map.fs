@@ -217,6 +217,123 @@ module MapExtImplementation =
        
         let alter (comparer: IComparer<'Value>) k f m = alterAux comparer k (OptimizedClosures.FSharpFunc<_,_,_>.Adapt(f)) m
       
+        let rec join left k v right =
+            let lh = height left
+            let rh = height right
+            if lh > rh + 2 then
+                match left with
+                    | MapNode(k2,v2,l,r,_,_) ->
+                        // the join-result can at most be one level higher than r
+                        // therefore rebalance is sufficient here
+                        rebalance l k2 v2 (join r k v right)
+                    | _ ->
+                        failwith "join"
+            elif rh > lh + 2 then
+                match right with
+                    | MapNode(k2,v2,l,r,_,_) ->
+                        // the join-result can at most be one level higher than l
+                        // therefore rebalance is sufficient here
+                        rebalance (join left k v l) k2 v2 r
+                    | _ ->
+                        failwith "join"
+            else
+                mk left k v right
+
+        let rec split (comparer: IComparer<'Value>) k m =
+            match m with
+                | MapEmpty -> 
+                    MapEmpty, None, MapEmpty
+
+                | MapOne(k2,v2) ->
+                    let c = comparer.Compare(k, k2)
+                    if c > 0 then MapEmpty, None, MapOne(k2,v2)
+                    elif c = 0 then MapEmpty, Some(v2), MapEmpty
+                    else MapOne(k2,v2), None, MapEmpty
+
+                | MapNode(k2,v2,l,r,_,_) ->
+                    let c = comparer.Compare(k, k2)
+                    if c > 0 then
+                        let rl, res, rr = split comparer k r
+                        join l k2 v2 rl, res, rr
+
+                    elif c = 0 then 
+                        l, Some(v2), r
+
+                    else
+                        let ll, res, lr = split comparer k l
+                        ll, res, join lr k2 v2 r
+
+        let rec unionWithOpt (comparer: IComparer<'Value>) (f : OptimizedClosures.FSharpFunc<_,_,_>) l r =
+            match l, r with
+                | MapEmpty, r -> r
+                | l, MapEmpty -> l
+                | MapOne(k,v), r ->
+                    r |> alter comparer k (fun _ o -> 
+                        match o with
+                            | None -> v |> Some
+                            | Some o -> f.Invoke(v, o) |> Some
+                    )
+
+                | l, MapOne(k,v) ->
+                    l |> alter comparer k (fun _ o ->
+                        match o with
+                            | None -> v |> Some
+                            | Some o -> f.Invoke(o, v) |> Some
+                    )
+
+                | MapNode(k,v,ll,lr,_,_),r ->
+                    let rs, self, rg = split comparer k r
+                    
+                    let v = 
+                        match self with
+                            | Some rv -> f.Invoke(v, rv)
+                            | None -> v
+                    join (unionWithOpt comparer f ll rs) k v (unionWithOpt comparer f lr rg)
+                 
+        let unionWith(comparer: IComparer<'Value>) f l r =
+            unionWithOpt comparer (OptimizedClosures.FSharpFunc<_,_,_>.Adapt(f)) l r
+
+
+
+        let rec stupidHeight m =
+            match m with
+                | MapEmpty -> 0
+                | MapOne _ -> 1
+                | MapNode(_,_,l,r,_,_) -> max (stupidHeight l) (stupidHeight r) + 1
+
+        let rec stupidCount m =
+            match m with
+                | MapEmpty -> 0
+                | MapOne _ -> 1
+                | MapNode(_,_,l,r,_,_) ->
+                    1 + stupidCount l + stupidCount r
+
+        let rec validateAux (comparer: IComparer<'Value>) (min : Option<_>) (max : Option<_>) m =
+            match m with
+                | MapNode(k,v,l,r,h,c) ->
+                    let lh = height l
+                    let rh = height r
+
+                    if Option.isSome min && comparer.Compare(k, min.Value) <= 0 then failwith "invalid order"
+                    if Option.isSome max && comparer.Compare(k, max.Value) >= 0 then failwith "invalid order"
+                    if stupidCount m <> c then failwith "invalid count"
+                    if stupidHeight l <> lh then failwith "invalid height"
+                    if stupidHeight r <> rh then failwith "invalid height"
+                    if abs (lh - rh) > 2 then failwith "imbalanced"   
+                    
+                    validateAux comparer min (Some k) l
+                    validateAux comparer (Some k) max r
+
+                | MapOne(k,v) ->
+                    if Option.isSome min && comparer.Compare(k, min.Value) <= 0 then failwith "invalid order"
+                    if Option.isSome max && comparer.Compare(k, max.Value) >= 0 then failwith "invalid order"
+
+                | MapEmpty ->
+                    ()
+
+        let validate (comparer: IComparer<'Value>) m =
+            validateAux comparer None None m
+
 
         let rec mem (comparer: IComparer<'Value>) k m = 
             match m with 
@@ -302,24 +419,102 @@ module MapExtImplementation =
 
         let mapiMonotonic f m = mapiMonotonicAux (OptimizedClosures.FSharpFunc<_,_,_>.Adapt(f)) m
     
+        let rec chooseiOpt (f:OptimizedClosures.FSharpFunc<'k,'a,Option<'b>>) m =
+            match m with
+                | MapEmpty -> empty
+                | MapOne(k,v) ->
+                    match f.Invoke(k,v) with
+                        | Some v -> MapOne(k,v)
+                        | None -> MapEmpty
+
+                | MapNode(k,v,l,r,h,c) ->
+                    let l' = chooseiOpt f l
+                    let r' = chooseiOpt f r
+
+                    match l', r' with
+                        | MapEmpty, r -> r
+                        | l, MapEmpty -> l
+                        | _ ->
+                            match f.Invoke(k,v) with
+                                | Some v -> join l' k v r'
+                                | None ->
+                                    let k,v,r' = spliceOutSuccessor r'
+                                    join l' k v r'
+
+        let choosei f m = chooseiOpt (OptimizedClosures.FSharpFunc<_,_,_>.Adapt(f)) m
+    
         let rec tryMinAux acc m =
             match m with
             | MapEmpty -> acc
-            | MapOne(k,_) -> Some k
-            | MapNode(k,_,l,_,_,_) -> tryMinAux (Some k) l
+            | MapOne(k,v) -> Some (k,v)
+            | MapNode(k,v,l,_,_,_) -> tryMinAux (Some (k,v)) l
 
         let rec tryMin m = tryMinAux None m
-            
     
         let rec tryMaxAux acc m =
             match m with
             | MapEmpty -> acc
-            | MapOne(k,_) -> Some k
-            | MapNode(k,_,_,r,_,_) -> tryMaxAux (Some k) r
+            | MapOne(k,v) -> Some (k,v)
+            | MapNode(k,v,_,r,_,_) -> tryMaxAux (Some (k,v)) r
 
         let rec tryMax m = tryMaxAux None m
-        
+
+        let rec neighboursAux (comparer: IComparer<'Value>) k l r m =
+            match m with
+                | MapEmpty -> l, None, r
+                | MapOne(k2,v2) -> 
+                    let c = comparer.Compare(k, k2)
+                    if c > 0 then Some(k2,v2), None, r
+                    elif c = 0 then l, Some(k2,v2), r
+                    else l, None, Some(k2,v2)
+
+                | MapNode(k2,v2,l2,r2,_,_) ->
+                    let c = comparer.Compare(k, k2)
+                    if c > 0 then 
+                        let l = Some(k2, v2)
+                        neighboursAux comparer k l r r2
+
+                    elif c = 0 then
+                        tryMax l2, Some(k2, v2), tryMin r2
+
+                    else
+                        let r = Some(k2, v2)
+                        neighboursAux comparer k l r l2
+
+        let neighbours (comparer: IComparer<'Value>) k m =
+            neighboursAux comparer k None None m
     
+        let rec neighboursiAux idx l r m =
+            match m with
+                | MapEmpty -> 
+                    l, None, r
+
+                | MapOne(k2,v2) -> 
+                    if idx > 0 then Some(k2,v2), None, r
+                    elif idx = 0 then l, Some(k2,v2), r
+                    else l, None, Some(k2,v2)
+
+                | MapNode(k2,v2,l2,r2,_,cnt) ->
+                    if idx < 0 then
+                        None, None, tryMin m
+                    elif idx >= cnt then
+                        tryMax m, None, None
+                    else
+                        let lc = size l2
+                        if idx < lc then 
+                            let r = Some(k2, v2)
+                            neighboursiAux idx l r l2
+
+                        elif idx = lc then
+                            tryMax l2, Some(k2, v2), tryMin r2
+                        else
+                            let l = Some(k2, v2)
+                            neighboursiAux (idx-lc-1) l r r2
+
+        let neighboursi idx m =
+            neighboursiAux idx None None m
+    
+
         let rec tryAt i m =
             match m with
             | MapEmpty -> 
@@ -341,8 +536,105 @@ module MapExtImplementation =
                     else
                         tryAt (i - ls - 1) r
 
-                                
-            
+        let rec map2 (comparer: IComparer<'Value>) f l r =
+            match l, r with
+                | MapEmpty, r -> mapi (fun i rv -> f i None (Some rv)) r
+                | l, MapEmpty -> mapi (fun i lv -> f i (Some lv) None) l
+                | MapOne(k,v), r ->
+                    let mutable found = false
+                    let res = 
+                        r |> mapi (fun i rv -> 
+                            if i = k then 
+                                found <- true
+                                f i (Some v) (Some rv)
+                            else 
+                                f i None (Some rv)
+                        )
+                    if found then res 
+                    else res |> add comparer k (f k (Some v) None)
+
+                | l, MapOne(k,v) ->
+                    let mutable found = false
+                    let res = 
+                        l |> mapi (fun i lv -> 
+                            if i = k then 
+                                found <- true
+                                f i (Some lv) (Some v)
+                            else 
+                                f i None (Some v)
+                        )
+                    if found then res 
+                    else res |> add comparer k (f k None (Some v))
+
+                | MapNode(k,v,ll,lr,_,_),r ->
+                    let rs, self, rg = split comparer k r
+                    
+                    let v = 
+                        match self with
+                            | Some rv -> f k (Some v) (Some rv)
+                            | None -> f k (Some v) None
+                    join (map2 comparer f ll rs) k v (map2 comparer f lr rg)
+                      
+        let rec choose2 (comparer: IComparer<'Value>) f l r =
+            match l, r with
+                | MapEmpty, r -> choosei (fun i rv -> f i None (Some rv)) r
+                | l, MapEmpty -> choosei (fun i lv -> f i (Some lv) None) l
+                | MapOne(k,v), r ->
+                    let mutable found = false
+                    let res = 
+                        r |> choosei (fun i rv -> 
+                            if i = k then 
+                                found <- true
+                                f i (Some v) (Some rv)
+                            else 
+                                f i None (Some rv)
+                        )
+                    if found then 
+                        res 
+                    else 
+                        match f k (Some v) None with
+                            | Some v -> add comparer k v res
+                            | None -> res
+
+                | l, MapOne(k,v) ->
+                    let mutable found = false
+                    let res = 
+                        l |> choosei (fun i lv -> 
+                            if i = k then 
+                                found <- true
+                                f i (Some lv) (Some v)
+                            else 
+                                f i None (Some v)
+                        )
+                    if found then 
+                        res 
+                    else 
+                        match f k None (Some v) with
+                            | Some v -> add comparer k v res
+                            | None -> res
+
+                | MapNode(k,v,ll,lr,_,_),r ->
+                    let rs, self, rg = split comparer k r
+                    
+                    let v = 
+                        match self with
+                            | Some rv -> f k (Some v) (Some rv)
+                            | None -> f k (Some v) None
+
+                    let l = choose2 comparer f ll rs
+                    let r = choose2 comparer f lr rg
+
+                    match l, r with
+                        | MapEmpty, r -> r
+                        | l, MapEmpty -> l
+                        | l, r ->
+                            match v with
+                                | Some v -> join l k v r
+                                | None ->
+                                    let k,v,r = spliceOutSuccessor r
+                                    join l k v r
+
+                      
         let rec foldBackOpt (f:OptimizedClosures.FSharpFunc<_,_,_,_>) m x = 
             match m with 
             | MapEmpty -> x
@@ -484,6 +776,7 @@ open MapExtImplementation
 [<System.Diagnostics.DebuggerTypeProxy(typedefof<MapDebugView<_,_>>)>]
 [<System.Diagnostics.DebuggerDisplay("Count = {Count}")>]
 [<Sealed>]
+[<StructuredFormatDisplay("{AsString}")>]
 type MapExt<[<EqualityConditionalOn>]'Key,[<EqualityConditionalOn;ComparisonConditionalOn>]'Value when 'Key : comparison >(comparer: IComparer<'Key>, tree: MapTree<'Key,'Value>) =
 
     // We use .NET generics per-instantiation static fields to avoid allocating a new object for each empty
@@ -517,6 +810,8 @@ type MapExt<[<EqualityConditionalOn>]'Key,[<EqualityConditionalOn;ComparisonCond
         with get(k : 'Key) = MapTree.find comparer k tree
 
     member x.TryAt i = MapTree.tryAt i tree
+    member x.Neighbours k = MapTree.neighbours comparer k tree
+    member x.NeighboursAt i = MapTree.neighboursi i tree
 
     member m.TryPick(f) = MapTree.tryPick f tree 
     member m.Exists(f) = MapTree.exists f tree 
@@ -533,6 +828,15 @@ type MapExt<[<EqualityConditionalOn>]'Key,[<EqualityConditionalOn;ComparisonCond
     member m.MapExt f  = new MapExt<'Key,'b>(comparer,MapTree.mapi f tree)
     
     member m.MapMonotonic f  = new MapExt<'Key2,'Value2>(LanguagePrimitives.FastGenericComparer<'Key2>, MapTree.mapiMonotonic f tree)
+   
+    member m.Map2(other:MapExt<'Key,'Value2>, f)  = 
+        new MapExt<'Key,'Result>(comparer, MapTree.map2 comparer f tree other.Tree)
+        
+    member m.Choose2(other:MapExt<'Key,'Value2>, f)  = 
+        new MapExt<'Key,'Result>(comparer, MapTree.choose2 comparer f tree other.Tree)
+
+    member m.Choose(f) =
+        new MapExt<'Key, 'Value2>(comparer, MapTree.choosei f tree)
 
     member m.Alter(k, f) = new MapExt<'Key, 'Value>(comparer, MapTree.alter comparer k f tree)
 
@@ -542,11 +846,23 @@ type MapExt<[<EqualityConditionalOn>]'Key,[<EqualityConditionalOn;ComparisonCond
 
     member m.Count = MapTree.size tree
 
-    member x.TryMinKey = MapTree.tryMin tree
-    member x.TryMaxKey = MapTree.tryMax tree
+    member x.TryMinKey = MapTree.tryMin tree |> Option.map fst
+    member x.TryMaxKey = MapTree.tryMax tree |> Option.map fst
+
+    member x.Split (k) =
+        let l, self, r = MapTree.split comparer k tree
+        MapExt<'Key, 'Value>(comparer, l), self, MapExt<'Key, 'Value>(comparer, r)
+        
+    member x.UnionWith (other : MapExt<_,_>, resolve) =
+        new MapExt<'Key, 'Value>(comparer, MapTree.unionWith comparer resolve tree other.Tree)
+        
+    member x.Validate() =
+        MapTree.validate comparer tree
+
 
     member m.ContainsKey(k) = 
         MapTree.mem comparer k tree
+
 
     member m.Remove(k)  : MapExt<'Key,'Value> = 
         new MapExt<'Key,'Value>(comparer,MapTree.remove comparer k tree)
@@ -628,12 +944,11 @@ type MapExt<[<EqualityConditionalOn>]'Key,[<EqualityConditionalOn;ComparisonCond
                 invalidArg "obj" ("SR.GetString(SR.notComparable)")
 
     override x.ToString() = 
-        match List.ofSeq (Seq.truncate 4 x) with 
-        | [] -> "map []"
-        | [KeyValue h1] -> System.Text.StringBuilder().Append("map [").Append(string h1).Append("]").ToString()
-        | [KeyValue h1;KeyValue h2] -> System.Text.StringBuilder().Append("map [").Append(string h1).Append("; ").Append(string h2).Append("]").ToString()
-        | [KeyValue h1;KeyValue h2;KeyValue h3] -> System.Text.StringBuilder().Append("map [").Append(string h1).Append("; ").Append(string h2).Append("; ").Append(string h3).Append("]").ToString()
-        | KeyValue h1 :: KeyValue h2 :: KeyValue h3 :: _ -> System.Text.StringBuilder().Append("map [").Append(string h1).Append("; ").Append(string h2).Append("; ").Append(string h3).Append("; ... ]").ToString() 
+        let suffix = if x.Count > 4 then "; ..." else ""
+        let content = Seq.truncate 4 x |> Seq.map (fun (KeyValue t) -> sprintf "%A" t) |> String.concat "; "
+        "map [" + content + suffix + "]"
+
+    member private x.AsString = x.ToString()
 
 and 
     [<Sealed>]
@@ -762,3 +1077,27 @@ module MapExt =
     
     [<CompiledName("MapMonotonic")>]
     let mapMonotonic f (m:MapExt<_,_>) = m.MapMonotonic(f)
+
+    [<CompiledName("Split")>]
+    let split k (m:MapExt<_,_>) = m.Split k
+
+    [<CompiledName("Union")>]
+    let union (l:MapExt<_,_>) r = l.UnionWith (r, fun _ r -> r)
+
+    [<CompiledName("UnionWith")>]
+    let unionWith f (l:MapExt<_,_>) r = l.UnionWith (r, f)
+
+    [<CompiledName("Map2")>]
+    let map2 f (l:MapExt<_,_>) r = l.Map2 (r, f)
+
+    [<CompiledName("Choose")>]
+    let choose f (l:MapExt<_,_>) = l.Choose (f)
+    
+    [<CompiledName("Choose2")>]
+    let choose2 f (l:MapExt<_,_>) r = l.Choose2 (r, f)
+    
+    [<CompiledName("Neighbours")>]
+    let neighbours k (m:MapExt<_,_>) = m.Neighbours k
+    
+    [<CompiledName("NeighboursAt")>]
+    let neighboursAt i (m:MapExt<_,_>) = m.NeighboursAt i

@@ -211,26 +211,62 @@ module SimpleOrder =
 [<EntryPoint>]
 let main args =
 
-    let a = MapExt.ofList [1,1;2,2;3,3;4,4;5,5]
-
-    printfn "map:           %A" a
-    printfn "min:           %A" (MapExt.min a)
-    printfn "max:           %A" (MapExt.max a)
-    printfn "item 1:        %A" (MapExt.item 1 a)
-    printfn "rem 1:         %A" (MapExt.alter 1 (fun _ o -> None) a)
-    printfn "add 1 100:     %A" (MapExt.alter 1 (fun _ o -> Some 100) a)
-    printfn "map:           %A" (MapExt.mapMonotonic (fun k v -> k + 1, v) a)
-
-    let b = MapExt.mapMonotonic (fun k v -> 2 * k, 2*v) a
-    
-    printfn "item 4:        %A" (MapExt.item 4 a)
-    printfn "item 0:        %A" (MapExt.item 0 a)
-
-
-    printfn "10: %A" (MapExt.tryFind 2 b)
-
-
-    Environment.Exit 0
+//    let a = MapExt.ofList [1,1;2,2;3,3;4,4;5,5]
+//
+//   
+//
+//
+//    printfn "map:           %A" a
+//    printfn "min:           %A" (MapExt.min a)
+//    printfn "max:           %A" (MapExt.max a)
+//    printfn "item 1:        %A" (MapExt.item 1 a)
+//    printfn "rem 1:         %A" (MapExt.alter 1 (fun _ o -> None) a)
+//    printfn "add 1 100:     %A" (MapExt.alter 1 (fun _ o -> Some 100) a)
+//    printfn "map:           %A" (MapExt.mapMonotonic (fun k v -> k + 1, v) a)
+//
+//    let b = MapExt.mapMonotonic (fun k v -> 2 * k, 2*v) a
+//    
+//    printfn "item 4:        %A" (MapExt.item 4 a)
+//    printfn "item 0:        %A" (MapExt.item 0 a)
+//
+//
+//    printfn "10: %A" (MapExt.tryFind 2 b)
+//
+//    let a = MapExt.ofList [1,1;2,2]
+//    let b = MapExt.ofList (List.init 10 (fun i -> i+4, i+4))
+//    a.Validate()
+//    b.Validate()
+//
+//    let test = MapExt.union a (MapExt.add 3 3 b)
+//    test.Validate()
+//    printfn "%A" test
+//
+//    let l, self, r = MapExt.split 4 test
+//    l.Validate()
+//    r.Validate()
+//    printfn "<4: %A" l
+//    printfn "=4: %A" self
+//    printfn ">4: %A" r
+//
+//    let test = MapExt.union l r
+//    printfn "union: %A" test
+//    test.Validate()
+//
+//
+//    let a = MapExt.ofList [1, "1"; 2, "2"; 5, "5"]
+//    let b = MapExt.ofList [1, "a"; 2, "b"; 3, "c"; 4, "d"]
+//
+//    let merge (key : int) (l : Option<string>) (r : Option<string>) =
+//        match l, r with
+//            | None, None -> "THATS BAD"
+//            | None, Some r -> r
+//            | Some l, None -> l
+//            | Some l, Some r -> l + " " + r
+//
+//    let c = MapExt.map2 merge a b
+//    printfn "%A" (MapExt.toList c) // [|(1, "1;a"); (2, "2;b"); (3, "c"); (4, "d"); (5, "5")|]
+//
+//    Environment.Exit 0
 
 
 
@@ -256,13 +292,24 @@ let main args =
     let t4 = transact (fun () -> l.Append 4)
     print "append 4" r // [1;2;1;2;1;2;1;2]
 
-    transact (fun () -> l.Remove t4)
+    transact (fun () -> l.Remove t4 |> ignore)
     print "remove 4" r // [1;2;1;2;1;2]
 
 
     transact (fun () -> inner.RemoveAt 0)
     print "inner.remove 1" r // [2;2;2]
 
+    transact (fun () -> inner.Insert(0, 10) |> ignore)
+    print "inner.insert(0, 10)" r // [10;2;10;2;10;2]
+
+    transact (fun () -> inner.Insert(1, 5) |> ignore)
+    print "inner.insert(1, 5)" r // [10;5;2;10;5;2;10;5;2]
+    
+
+    transact (fun () -> inner.[0] <- 1) 
+    print "inner.[0] <- 1" r // [1;5;2;1;5;2;1;5;2]
+
+    Log.line "%A" l
 
     Environment.Exit 0
 

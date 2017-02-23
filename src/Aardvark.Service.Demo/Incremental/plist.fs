@@ -6,9 +6,9 @@ open System.Collections
 open System.Collections.Generic
 
 [<StructuredFormatDisplay("{AsString}")>]
-type plist<'a>(count : int, l : Index, h : Index, content : Map<Index, 'a>) =
+type plist<'a>(l : Index, h : Index, content : MapExt<Index, 'a>) =
     
-    static let empty = plist<'a>(0, Index.zero, Index.zero, Map.empty)
+    static let empty = plist<'a>(Index.zero, Index.zero, MapExt.empty)
 
     static let trace =
         {
@@ -25,17 +25,15 @@ type plist<'a>(count : int, l : Index, h : Index, content : Map<Index, 'a>) =
     member internal x.MinIndex = l
     member internal x.MaxIndex = h
 
-    member x.Count = count
+    member x.Count = content.Count
 
     member x.Content = content
 
-    member x.TryGet (i : Index) =
-        Map.tryFind i content
 
     member x.Apply(deltas : deltalist<'a>) : plist<'a> * deltalist<'a> =
         let mutable res = x
         let finalDeltas =
-            deltas |> DeltaList.filteri (fun i op ->
+            deltas |> DeltaList.filter (fun i op ->
                 match op with
                     | Remove -> 
                         res <- res.Remove i
@@ -57,94 +55,137 @@ type plist<'a>(count : int, l : Index, h : Index, content : Map<Index, 'a>) =
                 DeltaList.empty
 
             | 0, _ -> 
-                r.Content |> Map.map (fun i v -> Set v)
+                r.Content |> MapExt.map (fun i v -> Set v) |> DeltaList.ofMap
 
             | _, 0 ->
-                l.Content |> Map.map (fun i v -> Remove)
+                l.Content |> MapExt.map (fun i v -> Remove) |> DeltaList.ofMap
 
             | _, _ ->
-                let mutable rem = l.Content |> Map.map (fun i v -> ListOperation.Remove)
+                let merge (k : Index) (l : Option<'a>) (r : Option<'a>) =
+                    match l, r with
+                        | Some l, Some r when Unchecked.equals l r -> 
+                            None
+                        | _, Some r -> 
+                            Some (Set r)
+                        | _ -> 
+                            Some Remove
+               
+                MapExt.choose2 merge l.Content r.Content |> DeltaList.ofMap
 
-                for i, rv in Map.toSeq r.Content do
-                    match Map.tryFind i l.Content with
-                        | Some lv ->
-                            if Object.Equals(lv, rv) then
-                                rem <- DeltaList.remove i rem
-                            else
-                                rem <- DeltaList.add i (Set rv) rem
-                        | None ->
-                            rem <- DeltaList.add i (Set rv) rem
-                rem
+    member x.TryGet (i : Index) =
+        MapExt.tryFind i content
+
+    member x.Item
+        with get(i : Index) = MapExt.find i content
+        
+    member x.Item
+        with get(i : int) = MapExt.item i content |> snd
 
     member x.Append(v : 'a) =
-        if count = 0 then
+        if content.Count = 0 then
             let t = Index.after Index.zero
-            plist(1, t, t, Map.ofList [t, v])
+            plist(t, t, MapExt.ofList [t, v])
         else
             let t = Index.after h
-            plist(count + 1, l, t, Map.add t v content)
+            plist(l, t, MapExt.add t v content)
         
     member x.Prepend(v : 'a) =
-        if count = 0 then
+        if content.Count = 0 then
             let t = Index.after Index.zero
-            plist(1, t, t, Map.ofList [t, v])
+            plist(t, t, MapExt.ofList [t, v])
         else
             let t = Index.before l
-            plist(count + 1, t, h, Map.add t v content)
+            plist(t, h, MapExt.add t v content)
 
     member x.Set(key : Index, value : 'a) =
-        if count = 0 then
-            plist(1, key, key, Map.ofList [key, value])
+        if content.Count = 0 then
+            plist(key, key, MapExt.ofList [key, value])
 
         elif key < l then
-            plist(count + 1, key, h, Map.add key value content)
+            plist(key, h, MapExt.add key value content)
 
         elif key > h then
-            plist(count + 1, l, key, Map.add key value content)
+            plist(l, key, MapExt.add key value content)
 
-        elif content.ContainsKey key then
-            plist(count + 1, l, h, Map.add key value content)
+        else 
+            plist(l, h, MapExt.add key value content)
 
+    member x.Set(i : int, value : 'a) =
+        match MapExt.tryItem i content with
+            | Some (id,_) -> x.Set(id, value)
+            | None -> x
+
+    member x.InsertAt(i : int, value : 'a) =
+        if i < 0 || i > content.Count then
+            x
         else
-            plist(count, l, h, Map.add key value content)
+            let l, s, r = MapExt.neighboursAt i content
+
+            let r = 
+                match s with
+                    | Some s -> Some s
+                    | None -> r
+
+            let index = 
+                match l, r with
+                    | Some (before,_), Some (after,_) -> Index.between before after
+                    | None,            Some (after,_) -> Index.before after
+                    | Some (before,_), None           -> Index.after before
+                    | None,            None           -> Index.after Index.zero
+            x.Set(index, value)
 
     member x.Remove(key : Index) =
-        if content.ContainsKey key then
-            if count = 1 then empty
-            else plist(count - 1, l, h, Map.remove key content)
-        else
-            x
+        let c = MapExt.remove key content
+        if c.Count = 0 then empty
+        elif l = key then plist(MapExt.min c, h, c)
+        elif h = key then plist(l, MapExt.max c, c)
+        else plist(l, h, c)
 
     member x.RemoveAt(i : int) =
-        if i >= 0 && i < count then
-            let mutable index = 0
-            let newContent = 
-                content |> Map.filter (fun k v -> 
-                    let res = index <> i
-                    index <- index + 1
-                    res
-                )
-            plist(count - 1, l, h, newContent)
-        else
-            x
+        match MapExt.tryItem i content with
+            | Some (id, _) -> x.Remove id
+            | _ -> x
 
     member x.Map(mapping : Index -> 'a -> 'b) =
-        plist(count, l, h, Map.map mapping content)
+        plist(l, h, MapExt.map mapping content)
 
     member x.AsSeq =
-        content |> Map.toSeq |> Seq.map snd
+        content |> MapExt.toSeq |> Seq.map snd
 
     member x.AsList =
-        content |> Map.toList |> List.map snd
+        content |> MapExt.toList |> List.map snd
 
     member x.AsArray =
-        content |> Map.toArray |> Array.map snd
+        content |> MapExt.toArray |> Array.map snd
 
     override x.ToString() =
-        content |> Map.toSeq |> Seq.map (snd >> sprintf "%A") |> String.concat "; " |> sprintf "plist [%s]"
+        content |> MapExt.toSeq |> Seq.map (snd >> sprintf "%A") |> String.concat "; " |> sprintf "plist [%s]"
 
     member private x.AsString = x.ToString()
+    
+    member x.CopyTo(arr : 'a[], i : int) = 
+        let mutable i = i
+        content |> MapExt.iter (fun k v -> arr.[i] <- v; i <- i + 1)
 
+    member x.IndexOf(item : 'a) =
+        x |> Seq.tryFindIndex (Unchecked.equals item) |> Option.defaultValue -1
+
+    interface ICollection<'a> with 
+        member x.Add(v) = raise (NotSupportedException("plist cannot be mutated"))
+        member x.Clear() = raise (NotSupportedException("plist cannot be mutated"))
+        member x.Remove(v) = raise (NotSupportedException("plist cannot be mutated"))
+        member x.Contains(v) = content |> MapExt.exists (fun _ vi -> Unchecked.equals vi v)
+        member x.CopyTo(arr,i) = x.CopyTo(arr, i)
+        member x.IsReadOnly = true
+        member x.Count = x.Count
+
+    interface IList<'a> with
+        member x.RemoveAt(i) = raise (NotSupportedException("plist cannot be mutated"))
+        member x.IndexOf(item : 'a) = x.IndexOf item
+        member x.Item
+            with get(i : int) = x.[i]
+            and set (i : int) (v : 'a) = raise (NotSupportedException("plist cannot be mutated"))
+        member x.Insert(i,v) = raise (NotSupportedException("plist cannot be mutated"))
 
     interface IEnumerable with
         member x.GetEnumerator() = new PListEnumerator<'a>((content :> seq<_>).GetEnumerator()) :> _
@@ -189,7 +230,7 @@ module PList =
 
     let single (v : 'a) =
         let t = Index.after Index.zero
-        plist(1, t, t, Map.ofList[t, v])
+        plist(t, t, MapExt.ofList [t, v])
 
     let ofSeq (seq : seq<'a>) =
         let mutable res = empty
