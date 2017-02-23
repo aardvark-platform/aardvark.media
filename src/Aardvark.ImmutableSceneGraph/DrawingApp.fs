@@ -69,12 +69,12 @@ module DrawingApp =
             | None -> 
                 let k = { m with working = Some { finishedPoints = [ p ]; cursor = None; }}
                 match m.measureType.selected with
-                    | "Point" -> updateClosePolygon k
+                    | "Point" -> k
                     | _       -> k
             | Some v -> 
                 let k = { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
                 match m.measureType.selected with
-                    | "Line"         -> k //if k.working.Value.finishedPoints.Length = 2 then updateClosePolygon k else k
+                    | "Line"         -> if k.working.Value.finishedPoints.Length = 2 then updateClosePolygon k else k
                     | "Polyline"     -> k
                     | "Polygon"      -> k
                     | "DipAndStrike" -> k
@@ -93,8 +93,8 @@ module DrawingApp =
             | ChangeStyle s, _ -> 
                 { m with 
                     style = styles.[s];
-                    styleType = { m.styleType with selected = m.styleType.choices.[s] }} |> stash
-            | Set_Type a, _ -> { m with measureType = Choice.update e m.measureType a} |> stash
+                    styleType = { m.styleType with selected = m.styleType.choices.[s] }}// |> stash
+            | Set_Type a, _ -> { m with measureType = Choice.update e m.measureType a} //|> stash
             | Set_Style a, _ -> 
                 let style = Choice.update e m.styleType a
                 let index = choiceIndex style
@@ -119,8 +119,10 @@ module DrawingApp =
             | _,_ -> m    
 
     let viewPolygon (p : list<V3d>) (r : float) =
-        let lines =  Polygon3d(p |> List.toSeq).EdgeLines         
-        [             
+        let lines =  Polygon3d(p |> List.toSeq).EdgeLines
+        [           
+            yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
+          
             for edge in lines |> Seq.take (Seq.length lines - 1)  do
                 let v = edge.P1 - edge.P0
                 yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.0) |> Scene.render Pick.ignore 
@@ -135,10 +137,12 @@ module DrawingApp =
 
             let! style = m.mstyle
             let! working = m.mworking
+            let! pikcing = m.mpicking
             match working with
                 | Some v when v.cursor.IsSome -> 
+                    let line = if pikcing.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
                     yield 
-                        [viewPolygon (v.cursor.Value :: v.finishedPoints) style.thickness] |> Scene.colored (Mod.constant style.color)
+                        [viewPolygon (line) style.thickness] |> Scene.colored (Mod.constant style.color)
                     yield 
                         [ Sphere3d(V3d.OOO, style.thickness) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
@@ -185,6 +189,18 @@ module DrawingApp =
             |> Scene.group
             |> Scene.camera (Mod.map2 Camera.create cameraView frustum)           
 
+    let viewMeasurements (m : DrawingApp.Drawing) = 
+        div [clazz "ui relaxed divided list"] [
+            for me in m.finished do
+                yield div [clazz "item"] [
+                            i [clazz "large File Outline middle aligned icon"][]
+                            div[clazz "content"] [
+                                a [clazz "header"][Text "Measure"]
+                                div [clazz "description"][Text "Measurement"]
+                            ]
+                        ]
+            ]
+
     let viewUI (m : DrawingApp.Drawing) =
         div [] [
              div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
@@ -192,6 +208,7 @@ module DrawingApp =
                 button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [i [clazz "arrow right icon"] []]
                 Choice.view m.measureType |> Html.map Set_Type
                 Choice.view m.styleType |> Html.map Set_Style
+                viewMeasurements m
             ]            
         ]
 
