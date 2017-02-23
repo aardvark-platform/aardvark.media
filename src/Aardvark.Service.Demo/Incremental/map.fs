@@ -854,7 +854,9 @@ type MapExt<[<EqualityConditionalOn>]'Key,[<EqualityConditionalOn;ComparisonCond
         MapExt<'Key, 'Value>(comparer, l), self, MapExt<'Key, 'Value>(comparer, r)
         
     member x.UnionWith (other : MapExt<_,_>, resolve) =
-        new MapExt<'Key, 'Value>(comparer, MapTree.unionWith comparer resolve tree other.Tree)
+        if x.IsEmpty then other
+        elif other.IsEmpty then x
+        else new MapExt<'Key, 'Value>(comparer, MapTree.unionWith comparer resolve tree other.Tree)
         
     member x.Validate() =
         MapTree.validate comparer tree

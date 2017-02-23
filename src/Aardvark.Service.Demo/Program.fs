@@ -309,7 +309,6 @@ let main args =
     transact (fun () -> inner.[0] <- 1) 
     print "inner.[0] <- 1" r // [1;5;2;1;5;2;1;5;2]
 
-    Log.line "%A" l
 
     Environment.Exit 0
 

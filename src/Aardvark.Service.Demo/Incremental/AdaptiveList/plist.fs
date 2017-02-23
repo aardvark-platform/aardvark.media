@@ -148,7 +148,21 @@ type plist<'a>(l : Index, h : Index, content : MapExt<Index, 'a>) =
 
     member x.Map(mapping : Index -> 'a -> 'b) =
         plist(l, h, MapExt.map mapping content)
+        
+    member x.Choose(mapping : Index -> 'a -> Option<'b>) =
+        let res = MapExt.choose mapping content
+        if res.IsEmpty then 
+            plist<'b>.Empty
+        else
+            plist(MapExt.min res, MapExt.max res, res)
 
+    member x.Filter(predicate : Index -> 'a -> bool) =
+        let res = MapExt.filter predicate content
+        if res.IsEmpty then 
+            plist<'a>.Empty
+        else
+            plist(MapExt.min res, MapExt.max res, res)
+          
     member x.AsSeq =
         content |> MapExt.toSeq |> Seq.map snd
 
@@ -245,6 +259,14 @@ module PList =
 
     let inline mapi (mapping : Index -> 'a -> 'b) (list : plist<'a>) = list.Map mapping
     let inline map (mapping : 'a -> 'b) (list : plist<'a>) = list.Map (fun _ v -> mapping v)
+
+    let inline choosei (mapping : Index -> 'a -> Option<'b>) (list : plist<'a>) = list.Choose mapping
+    let inline choose (mapping : 'a -> Option<'b>) (list : plist<'a>) = list.Choose (fun _ v -> mapping v)
+    
+    let inline filteri (predicate : Index -> 'a -> bool) (list : plist<'a>) = list.Filter predicate
+    let inline filter (predicate : 'a -> bool) (list : plist<'a>) = list.Filter (fun _ v -> predicate v)
+
+
 
 
     let trace<'a> = plist<'a>.Trace

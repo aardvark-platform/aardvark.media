@@ -3,6 +3,7 @@
 open System
 open System.Collections
 open System.Collections.Generic
+open System.Runtime.CompilerServices
 open Aardvark.Base.Incremental
 open Aardvark.Base
 
@@ -228,55 +229,19 @@ module AList =
     module private Readers =
         open System.Collections.Generic
 
-        type MapReader<'a, 'b>(scope : Ag.Scope, input : alist<'a>, mapping : Index -> 'a -> 'b) =
-            inherit AbstractReader<deltalist<'b>>(scope, DeltaList.monoid)
-
-            let r = input.GetReader()
-
-            override x.Release() =
-                r.Dispose()
-
-            override x.Compute() =
-                r.GetOperations x |> DeltaList.map (fun i op ->
-                    match op with
-                        | Remove -> Remove
-                        | Set v -> Set (mapping i v)
-                )
-
-        type IndexedReader<'a>(scope : Ag.Scope, outerIndex : Index, inner : IListReader<'a>) =
-            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
-
-            member x.Index = outerIndex
-
-            override x.Release() =
-                inner.Dispose()
-
-            override x.Compute() =
-                inner.GetOperations x
-                
-            member x.State = inner.State
-            interface IListReader<'a> with
-                member x.State = inner.State
-
-        type CollectReader<'a, 'b>(scope : Ag.Scope, input : alist<'a>, mapping : Index -> 'a -> alist<'b>) =
-            inherit AbstractDirtyReader<IndexedReader<'b>, deltalist<'b>>(scope, DeltaList.monoid)
-
+        type IndexMapping() =
             static let comparer =
                 { new IComparer<Index * Index * Index> with
-                    member x.Compare((lo,li,_), (ro,ri,_)) =
-                        let o = compare lo ro
-                        if o = 0 then
-                            compare li ri
-                        else
-                            o
+                    member x.Compare((lo,li,_),(ro,ri,_)) =
+                        let c = compare lo ro
+                        if c = 0 then compare li ri
+                        else c
                 }
 
-            let cache = Dictionary<Index, 'a * IndexedReader<'b>>()
+            let store = SortedSetExt<Index * Index * Index>(comparer)
 
-            let times = SortedSetExt<Index * Index * Index>(comparer)
-
-            let invokeIndex (outer : Index) (inner : Index) =
-                let (l,s,r) = times.FindNeighbours((outer, inner, Unchecked.defaultof<_>))
+            member x.Invoke(o : Index, i : Index) =
+                let (l,s,r) = store.FindNeighbours((o, i, Unchecked.defaultof<_>))
                 let s = if s.HasValue then Some s.Value else None
 
                 match s with
@@ -294,120 +259,369 @@ module AList =
                                 | None, Some(_,_,r)             -> Index.before r
                                 | Some (_,_,l), Some(_,_,r)     -> Index.between l r
 
-                        times.Add((outer, inner, result)) |> ignore
+                        store.Add((o, i, result)) |> ignore
 
                         result
 
-            let revokeIndex (outer : Index) (inner : Index) =
-                let (l,s,r) = times.FindNeighbours((outer, inner, inner))
+            member x.Revoke(o : Index, i : Index) =
+                let (l,s,r) = store.FindNeighbours((o, i, Unchecked.defaultof<_>))
 
                 if s.HasValue then
-                    times.Remove s.Value |> ignore
+                    store.Remove s.Value |> ignore
                     let (_,_,s) = s.Value
                     s
                 else
                     failwith "[AList] removing unknown index"
 
-            let invoke (i : Index) (v : 'a) =
-                match cache.TryGetValue i with
-                    | (true, (ov,ro)) -> 
-                        if Object.Equals(v, ov) then
-                            None, ro
+            member x.Clear() =
+                store.Clear()
+
+        type IndexCache<'a, 'b>(f : Index -> 'a -> 'b, release : 'b -> unit) =
+            let store = Dictionary<Index, 'a * 'b>()
+
+            member x.Invoke(i : Index, a : 'a) =
+                match store.TryGetValue(i) with
+                    | (true, (oa, res)) ->
+                        if Unchecked.equals oa a then
+                            res
                         else
-                            let r = new IndexedReader<_>(scope, i, (mapping i v).GetReader())
-                            cache.[i] <- (v, r)
-                            Some ro, r
+                            release res
+                            let res = f i a
+                            store.[i] <- (a, res)
+                            res
+                    | _ ->
+                        let res = f i a
+                        store.[i] <- (a, res)
+                        res
+                        
+            member x.Revoke(i : Index) =
+                match store.TryGetValue i with
+                    | (true, (oa,ob)) -> 
+                        release ob
+                        ob
                     | _ -> 
-                        let r = new IndexedReader<_>(scope, i, (mapping i v).GetReader())
-                        cache.[i] <- (v, r)
-                        None, r
+                        failwithf "[AList] cannot revoke unknown index %A" i
 
-            let revoke (i : Index) =
-                match cache.TryGetValue i with
-                    | (true, (_,r)) -> 
-                        cache.Remove i |> ignore
-                        r
-                    | _ -> failwith "[AList] cannot revoke non existing reader"
+            member x.Clear() =
+                store.Values |> Seq.iter (snd >> release)
+                store.Clear()
 
-            let reader = input.GetReader()
+            new(f : Index -> 'a -> 'b) = IndexCache(f, ignore)
+
+        type MapReader<'a, 'b>(scope : Ag.Scope, input : alist<'a>, mapping : Index -> 'a -> 'b) =
+            inherit AbstractReader<deltalist<'b>>(scope, DeltaList.monoid)
+
+            let r = input.GetReader()
 
             override x.Release() =
-                reader.Dispose()
-                for (KeyValue(_,(_,r))) in cache do
-                    r.Dispose()
-                
+                r.Dispose()
+
+            override x.Compute() =
+                r.GetOperations x |> DeltaList.map (fun i op ->
+                    match op with
+                        | Remove -> Remove
+                        | Set v -> Set (mapping i v)
+                )
+
+        type ChooseReader<'a, 'b>(scope : Ag.Scope, input : alist<'a>, mapping : Index -> 'a -> Option<'b>) =
+            inherit AbstractReader<deltalist<'b>>(scope, DeltaList.monoid)
+
+            let r = input.GetReader()
+            let mapping = IndexCache mapping
+
+            override x.Release() =
+                mapping.Clear()
+                r.Dispose()
+
+            override x.Compute() =
+                r.GetOperations x |> DeltaList.choose (fun i op ->
+                    match op with
+                        | Remove -> 
+                            match mapping.Revoke(i) with
+                                | Some _ -> Some Remove
+                                | _ -> None
+                        | Set v -> 
+                            match mapping.Invoke(i, v) with
+                                | Some res -> Some (Set res)
+                                | _ -> None
+                )
+
+        type FilterReader<'a>(scope : Ag.Scope, input : alist<'a>, mapping : Index -> 'a -> bool) =
+            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
+
+            let r = input.GetReader()
+            let mapping = IndexCache mapping
+
+            override x.Release() =
+                mapping.Clear()
+                r.Dispose()
+
+            override x.Compute() =
+                r.GetOperations x |> DeltaList.choose (fun i op ->
+                    match op with
+                        | Remove -> 
+                            match mapping.Revoke(i) with
+                                | true -> Some Remove
+                                | _ -> None
+                        | Set v -> 
+                            match mapping.Invoke(i, v) with
+                                | true -> Some (Set v)
+                                | _ -> None
+                )
+
+
+        type MultiReader<'a>(scope : Ag.Scope, mapping : IndexMapping, list : alist<'a>, release : alist<'a> -> unit) =
+            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
+            
+            let targets = HashSet<Index>()
+
+            let mutable reader = None
+
+            let getReader() =
+                match reader with
+                    | Some r -> r
+                    | None ->
+                        let r = list.GetReader()
+                        reader <- Some r
+                        r
+
+            member x.AddTarget(oi : Index) =
+                if targets.Add oi then
+                    getReader().State.Content
+                        |> MapExt.mapMonotonic (fun ii v -> mapping.Invoke(oi, ii), Set v)
+                        |> DeltaList.ofMap
+                else
+                    DeltaList.empty
+
+            member x.RemoveTarget(dirty : HashSet<MultiReader<'a>>, oi : Index) =
+                if targets.Remove oi then
+                    match reader with
+                        | Some r ->
+                            let result = 
+                                r.State.Content 
+                                    |> MapExt.mapMonotonic (fun ii v -> mapping.Revoke(oi,ii), Remove)
+                                    |> DeltaList.ofMap
+
+                            if targets.Count = 0 then 
+                                dirty.Remove x |> ignore
+                                x.Dispose()
+
+                            result
+
+                        | None ->
+                            failwith "[AList] invalid reader state"
+                else
+                    DeltaList.empty
+
+            override x.Release() =
+                match reader with
+                    | Some r ->
+                        release(list)
+                        r.Dispose()
+                        reader <- None
+                    | None -> ()
+
+            override x.Compute() =
+                match reader with
+                    | Some r -> 
+                        let ops = r.GetOperations x
+
+                        ops |> DeltaList.collect (fun ii op ->
+                            match op with
+                                | Remove -> 
+                                    targets
+                                        |> Seq.map (fun oi -> mapping.Revoke(oi, ii), Remove)
+                                        |> DeltaList.ofSeq
+
+                                | Set v ->
+                                    targets
+                                        |> Seq.map (fun oi -> mapping.Invoke(oi, ii), Set v)
+                                        |> DeltaList.ofSeq
+
+                        )
+
+                    | None ->
+                        DeltaList.empty
+
+        type CollectReader<'a, 'b>(scope : Ag.Scope, input : alist<'a>, f : Index -> 'a -> alist<'b>) =
+            inherit AbstractDirtyReader<MultiReader<'b>, deltalist<'b>>(scope, DeltaList.monoid)
+            
+            let mapping = IndexMapping()
+            let cache = Dictionary<Index, 'a * alist<'b>>()
+            let readers = Dictionary<alist<'b>, MultiReader<'b>>()
+            let input = input.GetReader()
+
+            let removeReader (l : alist<'b>) =
+                readers.Remove l |> ignore
+
+            let getReader (l : alist<'b>) =
+                match readers.TryGetValue l with
+                    | (true, r) -> r
+                    | _ ->
+                        let r = new MultiReader<'b>(scope, mapping, l, removeReader)
+                        readers.Add(l, r) 
+                        r
+
+            member x.Invoke (dirty : HashSet<MultiReader<'b>>, i : Index, v : 'a) =
+                match cache.TryGetValue(i) with
+                    | (true, (oldValue, oldList)) ->
+                        if Unchecked.equals oldValue v then
+                            dirty.Add (getReader(oldList)) |> ignore
+                            DeltaList.empty
+                        else
+                            let newList = f i v
+                            cache.[i] <- (v, newList)
+                            let newReader = getReader(newList)
+
+                            let add = newReader.AddTarget i
+                            let rem = getReader(oldList).RemoveTarget(dirty, i)
+                            dirty.Add newReader |> ignore
+                            DeltaList.combine add rem
+
+                    | _ ->
+                        let newList = f i v
+                        cache.[i] <- (v, newList)
+                        let newReader = getReader(newList)
+                        let add = newReader.AddTarget i
+                        dirty.Add newReader |> ignore
+                        add
+
+            member x.Revoke (dirty : HashSet<MultiReader<'b>>, i : Index) =
+                match cache.TryGetValue i with
+                    | (true, (v,l)) ->
+                        let r = getReader l
+                        cache.Remove i |> ignore
+                        r.RemoveTarget(dirty, i)
+                    | _ ->
+                        failwithf "[AList] cannot remove %A from outer list" i
+
+            override x.Release() =
+                mapping.Clear()
                 cache.Clear()
-                times.Clear()
+                readers.Values |> Seq.iter (fun r -> r.Dispose())
+                readers.Clear()
+                input.Dispose()
 
             override x.Compute(dirty) =
-                
-                let mutable ops =
-                    reader.GetOperations x |> DeltaList.collect (fun oi op ->
+                let mutable result = 
+                    input.GetOperations x |> DeltaList.collect (fun i op ->
                         match op with
-                            | Remove -> 
-                                let r = revoke oi
-
-                                let operations = 
-                                    r.State.Content |> MapExt.mapMonotonic (fun ii v ->
-                                        let i = revokeIndex oi ii
-                                        i, Remove
-                                    )
-
-                                r.Dispose()
-                                dirty.Remove r |> ignore
-
-                                DeltaList.ofMap operations
-
-                            | Set v ->
-                                let old, r = invoke oi v
-
-                                let rem =
-                                    match old with
-                                        | Some o ->
-                                            let res = 
-                                                o.State.Content |> MapExt.mapMonotonic (fun ii v ->
-                                                    let i = revokeIndex oi ii
-                                                    i, Remove
-                                                )
-                                            o.Dispose()
-                                            dirty.Remove o |> ignore
-                                            DeltaList.ofMap res
-
-                                        | None -> 
-                                            DeltaList.empty
-
-                                let add = 
-                                    r.GetOperations(x) |> DeltaList.mapMonotonic (fun ii op ->
-                                        match op with
-                                            | Remove -> 
-                                                let i = revokeIndex oi ii
-                                                i, Remove
-                                            | Set v ->
-                                                let i = invokeIndex oi ii
-                                                i, Set v
-                                    )
-
-                                DeltaList.combine rem add
-
+                            | Remove -> x.Revoke(dirty,i)
+                            | Set v -> x.Invoke(dirty, i, v)
                     )
 
                 for d in dirty do
-                    let deltas = 
-                        d.GetOperations(x) |> DeltaList.mapMonotonic (fun ii op ->
-                            match op with
-                                | Remove -> 
-                                    let i = revokeIndex d.Index ii
-                                    i, Remove
-                                | Set v ->
-                                    let i = invokeIndex d.Index ii
-                                    i, Set v
-                        )
+                    result <- DeltaList.combine result (d.GetOperations x)
 
-                    ops <- DeltaList.combine ops deltas
-                    
-                ops
+                result
 
-                
+        type ConcatReader<'a>(scope : Ag.Scope, input : alist<alist<'a>>) =
+            inherit AbstractDirtyReader<MultiReader<'a>, deltalist<'a>>(scope, DeltaList.monoid)
+            
+            let cache = Dictionary<Index, alist<'a>>()
+            let mapping = IndexMapping()
+            let readers = Dictionary<alist<'a>, MultiReader<'a>>()
+            let input = input.GetReader()
+
+            let removeReader (l : alist<'a>) =
+                readers.Remove l |> ignore
+
+            let getReader (l : alist<'a>) =
+                match readers.TryGetValue l with
+                    | (true, r) -> r
+                    | _ ->
+                        let r = new MultiReader<'a>(scope, mapping, l, removeReader)
+                        readers.Add(l, r) 
+                        r
+
+            member x.Invoke (dirty : HashSet<MultiReader<'a>>, i : Index, newList : alist<'a>) =
+                match cache.TryGetValue(i) with
+                    | (true, oldList) ->
+                        if oldList = newList then
+                            dirty.Add (getReader(oldList)) |> ignore
+                            DeltaList.empty
+                        else
+                            cache.[i] <- newList
+                            let newReader = getReader(newList)
+                            let add = newReader.AddTarget i
+                            let rem = getReader(oldList).RemoveTarget(dirty, i)
+                            dirty.Add newReader |> ignore
+                            DeltaList.combine add rem
+
+                    | _ ->
+                        cache.[i] <- newList
+                        let newReader = getReader(newList)
+                        let add = newReader.AddTarget i
+                        dirty.Add newReader |> ignore
+                        add
+
+            member x.Revoke (dirty : HashSet<MultiReader<'a>>, i : Index) =
+                match cache.TryGetValue i with
+                    | (true, l) ->
+                        let r = getReader l
+                        cache.Remove i |> ignore
+                        r.RemoveTarget(dirty, i)
+                    | _ ->
+                        failwithf "[AList] cannot remove %A from outer list" i
+
+            override x.Release() =
+                mapping.Clear()
+                cache.Clear()
+                readers.Values |> Seq.iter (fun r -> r.Dispose())
+                readers.Clear()
+                input.Dispose()
+
+            override x.Compute(dirty) =
+                let mutable result = 
+                    input.GetOperations x |> DeltaList.collect (fun i op ->
+                        match op with
+                            | Remove -> x.Revoke(dirty,i)
+                            | Set v -> x.Invoke(dirty, i, v)
+                    )
+
+                for d in dirty do
+                    result <- DeltaList.combine result (d.GetOperations x)
+
+                result
+
+        type ConcatListReader<'a>(scope : Ag.Scope, inputs : plist<alist<'a>>) =
+            inherit AbstractDirtyReader<MultiReader<'a>, deltalist<'a>>(scope, DeltaList.monoid)
+            
+            let mapping = IndexMapping()
+            let readers = Dictionary<alist<'a>, MultiReader<'a>>()
+
+            let removeReader (l : alist<'a>) =
+                readers.Remove l |> ignore
+
+            let getReader (l : alist<'a>) =
+                match readers.TryGetValue l with
+                    | (true, r) -> r
+                    | _ ->
+                        let r = new MultiReader<'a>(scope, mapping, l, removeReader)
+                        readers.Add(l, r) 
+                        r            
+
+            do inputs.Content |> MapExt.iter (fun oi l -> getReader(l).AddTarget oi |> ignore)
+            let mutable initial = true
+
+
+
+            override x.Release() =
+                mapping.Clear()
+                readers.Values |> Seq.iter (fun r -> r.Dispose())
+                readers.Clear()
+                readers.Clear()
+
+            override x.Compute(dirty) =
+                if initial then
+                    initial <- false
+                    readers.Values |> Seq.fold (fun d r -> DeltaList.combine d (r.GetOperations x)) DeltaList.empty
+
+                else    
+                    dirty |> Seq.fold (fun d r -> DeltaList.combine d (r.GetOperations x)) DeltaList.empty
+
+
+
     /// the empty alist
     let empty<'a> = EmptyList<'a>.Instance
     
@@ -431,14 +645,48 @@ module AList =
     let ofArray (l : 'a[]) =
         l |> PList.ofArray |> ofPList
 
+    let concat' (lists : plist<alist<'a>>) =
+        // TODO: when all constant -> result constant
+        alist <| fun scope -> new ConcatListReader<'a>(scope, lists)
+
+    let concat (lists : alist<alist<'a>>) =
+        if lists.IsConstant then
+            concat' (Mod.force lists.Content)
+        else
+            alist <| fun scope -> new ConcatReader<'a>(scope, lists)
+
     let mapi (mapping : Index -> 'a -> 'b) (list : alist<'a>) =
-        alist <| fun scope -> new MapReader<'a, 'b>(scope, list, mapping)
+        if list.IsConstant then
+            constant <| lazy (list.Content |> Mod.force |> PList.mapi mapping)
+        else
+            alist <| fun scope -> new MapReader<'a, 'b>(scope, list, mapping)
 
     let map (mapping : 'a -> 'b) (list : alist<'a>) =
         mapi (fun _ v -> mapping v) list
 
+    let choosei (mapping : Index -> 'a -> Option<'b>) (list : alist<'a>) =
+        if list.IsConstant then
+            constant <| lazy (list.Content |> Mod.force |> PList.choosei mapping)
+        else
+            alist <| fun scope -> new ChooseReader<'a, 'b>(scope, list, mapping)
+
+    let choose (mapping : 'a -> Option<'b>) (list : alist<'a>) =
+        choosei (fun _ v -> mapping v) list
+
+    let filteri (predicate : Index -> 'a -> bool) (list : alist<'a>) =
+        if list.IsConstant then
+            constant <| lazy (list.Content |> Mod.force |> PList.filteri predicate)
+        else
+            alist <| fun scope -> new FilterReader<'a>(scope, list, predicate)
+
+    let filter (predicate : 'a -> bool) (list : alist<'a>) =
+        filteri (fun _ v -> predicate v) list
+
     let collecti (mapping : Index -> 'a -> alist<'b>) (list : alist<'a>) =
-        alist <| fun scope -> new CollectReader<'a, 'b>(scope, list, mapping)
+        if list.IsConstant then
+            concat' (list.Content |> Mod.force |> PList.mapi mapping)
+        else
+            alist <| fun scope -> new CollectReader<'a, 'b>(scope, list, mapping)
 
     let collect (mapping : 'a -> alist<'b>) (list : alist<'a>) =
         collecti (fun _ v -> mapping v) list

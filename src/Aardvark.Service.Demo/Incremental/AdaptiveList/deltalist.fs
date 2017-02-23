@@ -31,10 +31,15 @@ type deltalist<'a> internal(content : MapExt<Index, ListOperation<'a>>) =
     member x.ToArray() = content |> MapExt.toArray
 
     static member Combine(l : deltalist<'a>, r : deltalist<'a>) =
-        MapExt.unionWith (fun l r -> r) l.Content r.Content |> deltalist
+        if l.IsEmpty then r
+        elif r.IsEmpty then l
+        else MapExt.unionWith (fun l r -> r) l.Content r.Content |> deltalist
 
     member x.Map(f : Index -> ListOperation<'a> -> ListOperation<'b>) =
         deltalist(MapExt.map f content)
+        
+    member x.Choose(f : Index -> ListOperation<'a> -> Option<ListOperation<'b>>) =
+        deltalist(MapExt.choose f content)
 
     member x.MapMonotonic(f : Index -> ListOperation<'a> -> Index * ListOperation<'b>) =
         deltalist(MapExt.mapMonotonic f content)
@@ -90,6 +95,9 @@ module DeltaList =
 
     let inline map (mapping : Index -> ListOperation<'a> -> ListOperation<'b>) (l : deltalist<'a>) = 
         l.Map mapping
+        
+    let inline choose (mapping : Index -> ListOperation<'a> -> Option<ListOperation<'b>>) (l : deltalist<'a>) = 
+        l.Choose mapping
 
     let inline combine (l : deltalist<'a>) (r : deltalist<'a>) =
         deltalist.Combine(l, r)
