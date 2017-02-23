@@ -3,6 +3,7 @@ namespace Scratch.DomainTypes
 [<AutoOpen>]
 module Generated = 
     open System
+    open Fablish
     open Aardvark.Base
     open Aardvark.Base.Incremental
     
@@ -200,7 +201,9 @@ module Generated =
               filename : string
               finished : pset<Annotation>
               working  : Option<OpenPolygon>
-              style    : Style}
+              style    : Style
+              measureType : Choice.Model
+              styleType   : Choice.Model}
             
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
@@ -209,7 +212,9 @@ module Generated =
                   mfilename = Mod.init(x.filename)
                   mfinished = ResetSet(x.finished)
                   mworking = Mod.init (x.working)
-                  mstyle = Mod.init(x.style) }
+                  mstyle = Mod.init(x.style)
+                  mmeasureType = Mod.init(x.measureType)
+                  mstyleType = Mod.init(x.styleType)  }
             
             interface IUnique with
                 
@@ -224,7 +229,9 @@ module Generated =
               mpicking : ModRef<Option<int>>
               mfinished : ResetSet<Annotation>
               mworking : ModRef<Option<OpenPolygon>>
-              mstyle : ModRef<Style> }
+              mstyle : ModRef<Style>
+              mmeasureType : ModRef<Choice.Model>
+              mstyleType : ModRef<Choice.Model> }
             member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
@@ -233,6 +240,8 @@ module Generated =
                     x.mfinished.Update(arg0.finished)
                     x.mworking.Value <- arg0.working
                     x.mstyle.Value <- arg0.style
+                    x.mmeasureType.Value <- arg0.measureType
+                    x.mstyleType.Value <- arg0.styleType
     
     module PlaceTransformObjects = 
         open TranslateController

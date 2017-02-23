@@ -1,6 +1,7 @@
 ﻿namespace Scratch.DomainTypes
 
 open System
+open Fablish
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
@@ -81,6 +82,7 @@ module DrawingApp =
         working  : Option<OpenPolygon>
         picking : Option<int>
         style   : Style
+        measureType : Choice.Model
     }
 
 module PlaceTransformObjects =

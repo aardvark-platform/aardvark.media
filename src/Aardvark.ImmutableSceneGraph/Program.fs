@@ -64,9 +64,9 @@ module Shader =
 
 [<EntryPoint;STAThread>]
 let main argv = 
-    InteractionTest.run()
+   // InteractionTest.run()
     //InteractionTest.fablishTest()
-    System.Environment.Exit 0
+   // System.Environment.Exit 0
 
     Chromium.init()
 
@@ -137,7 +137,8 @@ let main argv =
             three3dInstance.sg, fablishResult.shutdown
         else 
             //let three3dInstance, fablishResult = SingleMultiView.createApp win.Keyboard win.Mouse renderRect camera
-            let three3dInstance, fablishResult = ModelingTool.createApp win win.Time win.Keyboard win.Mouse renderRect camera
+            //let three3dInstance, fablishResult = ModelingTool.createApp win win.Time win.Keyboard win.Mouse renderRect camera
+            let three3dInstance, fablishResult = DrawingApp.createApp (Some 0) win.Time win.Keyboard win.Mouse renderRect camera
             let res = client.LoadUrlAsync fablishResult.localUrl
             three3dInstance.sg, fablishResult.shutdown
 
