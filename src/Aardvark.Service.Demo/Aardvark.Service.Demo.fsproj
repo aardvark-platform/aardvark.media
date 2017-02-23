@@ -52,15 +52,15 @@
   <ItemGroup>
     <Compile Include="Ui.fs" />
     <Compile Include="Incremental\map.fs" />
-    <Compile Include="Incremental\Core.fs" />
-    <Compile Include="Incremental\History.fs" />
-    <Compile Include="Incremental\pmap.fs" />
-    <Compile Include="Incremental\deltaset.fs" />
-    <Compile Include="Incremental\prefset.fs" />
-    <Compile Include="Incremental\aset.fs" />
-    <Compile Include="Incremental\deltalist.fs" />
-    <Compile Include="Incremental\plist.fs" />
-    <Compile Include="Incremental\alist.fs" />
+    <Compile Include="Incremental\Core\Core.fs" />
+    <Compile Include="Incremental\Core\History.fs" />
+    <Compile Include="Incremental\AdaptiveSet\pmap.fs" />
+    <Compile Include="Incremental\AdaptiveSet\deltaset.fs" />
+    <Compile Include="Incremental\AdaptiveSet\prefset.fs" />
+    <Compile Include="Incremental\AdaptiveSet\aset.fs" />
+    <Compile Include="Incremental\AdaptiveList\deltalist.fs" />
+    <Compile Include="Incremental\AdaptiveList\plist.fs" />
+    <Compile Include="Incremental\AdaptiveList\alist.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
