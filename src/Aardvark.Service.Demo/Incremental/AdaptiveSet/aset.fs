@@ -1,6 +1,8 @@
 ﻿namespace Aardvark.Base.Incremental
 
 open System
+open System.Collections
+open System.Collections.Generic
 open Aardvark.Base.Incremental
 open Aardvark.Base
 
@@ -11,36 +13,130 @@ type aset<'a> =
     abstract member Content     : IMod<prefset<'a>>
     abstract member GetReader   : unit -> ISetReader<'a>
 
+[<StructuredFormatDisplay("{AsString}")>]
 type cset<'a>(initial : seq<'a>) =
     let history = History PRefSet.traceNoRefCount
     do initial |> Seq.map Add |> DeltaSet.ofSeq |> history.Perform |> ignore
 
     member x.Add(v : 'a) =
-        let op = DeltaSet.single (Add v)
-        history.Perform op
+        lock x (fun () ->
+            let op = DeltaSet.single (Add v)
+            history.Perform op
+        )
         
     member x.Remove(v : 'a) =
-        let op = DeltaSet.single (Rem v)
-        history.Perform op
+        lock x (fun () ->
+            let op = DeltaSet.single (Rem v)
+            history.Perform op
+        )
 
     member x.Contains (v : 'a) =
-        PRefSet.contains v history.State
+        history.State |> PRefSet.contains v
 
     member x.Count =
         history.State.Count
 
     member x.UnionWith (other : seq<'a>) =
-        let op = other |> Seq.map Add |> DeltaSet.ofSeq
-        history.Perform op |> ignore
+        lock x (fun () -> 
+            let op = other |> Seq.map Add |> DeltaSet.ofSeq
+            history.Perform op |> ignore
+        )
 
     member x.ExceptWith (other : seq<'a>) =
-        let op = other |> Seq.map Rem |> DeltaSet.ofSeq
-        history.Perform op |> ignore
+        lock x (fun () -> 
+            let op = other |> Seq.map Rem |> DeltaSet.ofSeq
+            history.Perform op |> ignore
+        )
+
+    member x.IntersectWith (other : seq<'a>) =
+        lock x (fun () -> 
+            let other = PRefSet.ofSeq other
+            let op = PRefSet.computeDeltas (PRefSet.difference history.State other) PRefSet.empty
+            history.Perform op |> ignore
+        )
+
+    member x.SymmetricExceptWith (other : seq<'a>) = 
+        let other = PRefSet.ofSeq other
+        lock x (fun () -> 
+            let add = PRefSet.computeDeltas PRefSet.empty (PRefSet.difference other history.State) 
+            let rem = PRefSet.computeDeltas (PRefSet.intersect other history.State) PRefSet.empty
+            let op = DeltaSet.combine add rem
+            history.Perform op |> ignore
+        )
+
+    member x.Clear() =
+        lock x (fun () -> 
+            let op = PRefSet.computeDeltas history.State PRefSet.empty
+            history.Perform op |> ignore
+        )
+
+    member x.CopyTo(arr : 'a[], index : int) =
+        let mutable index = index
+        for e in x do
+            arr.[index] <- e
+            index <- index + 1
+
+    interface ICollection<'a> with 
+        member x.Add(v) = x.Add v |> ignore
+        member x.Clear() = x.Clear()
+        member x.Remove(v) = x.Remove v
+        member x.Contains(v) = x.Contains v
+        member x.CopyTo(arr,i) = x.CopyTo(arr, i)
+        member x.IsReadOnly = false
+        member x.Count = x.Count
+
+    interface ISet<'a> with
+        member x.Add v = x.Add v
+        member x.ExceptWith o = x.ExceptWith o
+        member x.UnionWith o = x.UnionWith o
+        member x.IntersectWith o = x.IntersectWith o
+        member x.SymmetricExceptWith o = x.SymmetricExceptWith o
+        member x.IsSubsetOf o = 
+            let (l, b, r) = prefset.Compare(history.State, PRefSet.ofSeq o)
+            l = 0
+
+        member x.IsProperSubsetOf o = 
+            let (l, b, r) = prefset.Compare(history.State, PRefSet.ofSeq o)
+            l = 0 && r > 0
+            
+        member x.IsSupersetOf o = 
+            let (l, b, r) = prefset.Compare(history.State, PRefSet.ofSeq o)
+            r = 0
+
+        member x.IsProperSupersetOf o = 
+            let (l, b, r) = prefset.Compare(history.State, PRefSet.ofSeq o)
+            r = 0 && l > 0
+
+        member x.Overlaps o = 
+            let (l, b, r) = prefset.Compare(history.State, PRefSet.ofSeq o)
+            b > 0
+
+        member x.SetEquals o = 
+            let (l, b, r) = prefset.Compare(history.State, PRefSet.ofSeq o)
+            l = 0 && r = 0
 
     interface aset<'a> with
         member x.IsConstant = false
         member x.Content = history :> IMod<_>
         member x.GetReader() = history.NewReader()
+
+    interface IEnumerable with
+        member x.GetEnumerator() = (history.State :> seq<_>).GetEnumerator() :> _
+
+    interface IEnumerable<'a> with
+        member x.GetEnumerator() = (history.State :> seq<_>).GetEnumerator() :> _
+
+    override x.ToString() =
+        let suffix =
+            if x.Count > 5 then "; ..."
+            else ""
+
+        let content =
+            history.State |> Seq.truncate 5 |> Seq.map (sprintf "%A") |> String.concat "; "
+
+        "cset [" + content + suffix + "]"
+
+    member private x.AsString = x.ToString()
 
     new() = cset<'a>(Seq.empty)
 
@@ -90,6 +186,7 @@ module ASet =
 
         type AdaptiveSet<'a>(newReader : unit -> IOpReader<deltaset<'a>>) =
             let h = History.ofReader PRefSet.trace newReader
+
             interface aset<'a> with
                 member x.IsConstant = false
                 member x.Content = h :> IMod<_>
@@ -611,7 +708,7 @@ module ASet =
         else
             aset <| fun scope -> new UnionFixedReader<'a>(scope, PRefSet.ofList [l; r])
 
-    let unionMany' (sets : #seq<aset<'a>>) =
+    let unionMany' (sets : seq<aset<'a>>) =
         let sets = PRefSet.ofSeq sets
         if sets |> Seq.forall (fun s -> s.IsConstant) then
             constant <| lazy ( sets |> PRefSet.collect (fun s -> s.Content |> Mod.force) )

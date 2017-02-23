@@ -305,32 +305,28 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
     
     let perform (ops : 'ops) =
         if t.ops.misEmpty ops then
-            ops
+            false
         else
             let s, ops = t.apply state ops
             state <- s
-
-            if relevant.Count = 0 then
-                ops
-
-            elif t.ops.misEmpty ops then
-                ops
+            if t.ops.misEmpty ops then
+                false
 
             else
-                if count > 0 && lastPullVersion < version then
-                    let i = (start + count - 1) % buffer.Length
-                    buffer.[i] <- t.ops.mappend buffer.[i] ops
-                    //Log.line "merged versions"
-                    ops
-                else
-                    let mutable changed = false
-                    grow 1
-                    let i = (start + count) % buffer.Length
-                    buffer.[i] <- ops
-                    count <- count + 1
-                    version <- version + 1UL
-                    collapse()
-                    ops
+                if relevant.Count <> 0 then
+                    if count > 0 && lastPullVersion < version then
+                        let i = (start + count - 1) % buffer.Length
+                        buffer.[i] <- t.ops.mappend buffer.[i] ops
+                        //Log.line "merged versions"
+                    else
+                        let mutable changed = false
+                        grow 1
+                        let i = (start + count) % buffer.Length
+                        buffer.[i] <- ops
+                        count <- count + 1
+                        version <- version + 1UL
+                        collapse()
+                true
 
     new(t : Traceable<'s, 'ops>) = 
         let empty = t.ops.mempty
@@ -339,7 +335,7 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
     member x.Traceable = t
 
     member x.Perform(ops : 'ops) =
-        if lock x (fun () -> perform ops |> t.ops.misEmpty |> not) then
+        if lock x (fun () -> perform ops) then
             x.MarkOutdated()
             true
         else
@@ -362,12 +358,9 @@ and History<'s, 'ops>(compute : History<'s, 'ops> -> 'ops, t : Traceable<'s, 'op
 
     member internal x.GetOperationsSince(reader : HistoryReader<'s, 'ops>) : 's * 'ops =
         x.EvaluateAlways reader (fun () ->
-            let ops = 
-                if x.OutOfDate then
-                    let ops = compute x
-                    perform ops
-                else
-                    t.ops.mempty
+            if x.OutOfDate then
+                let ops = compute x
+                perform ops |> ignore
 
             let old = reader.Entry
             lastPullVersion <- version
@@ -485,8 +478,6 @@ module History =
             interface IOpReader<'s, 'ops> with
                 member x.State = state
     
-
-
     let ofReader (t : Traceable<'s, 'ops>) (newReader : unit -> IOpReader<'ops>) =
         let reader = lazy (newReader())
         

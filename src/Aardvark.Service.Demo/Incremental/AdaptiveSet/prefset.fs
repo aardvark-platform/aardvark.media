@@ -162,6 +162,24 @@ type prefset<'a>(content : pmap<'a, int>) =
                 res <- res.Add(oc * ic, v)
         res
 
+    static member Compare(l : prefset<'a>, r : prefset<'a>) =
+        let mutable lo = 0
+        let mutable ro = 0
+        let mutable both = 0
+        
+        let mutable r = r
+        for lv in l do
+            if r.Contains lv then
+                both <- both + 1
+                r <- r.Remove lv
+            else
+                lo <- lo + 1
+
+        ro <- r.Count
+        lo, both, ro
+
+
+
     interface IEnumerable with
         member x.GetEnumerator() = (x.AsSeq :> IEnumerable).GetEnumerator()
 
