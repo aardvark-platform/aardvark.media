@@ -9,3 +9,5 @@ Aardvark.Rendering.Text
 FsPickler
 FsPickler.Json
 Suave
+FSharp.Compiler.Service
+FSharp.Compiler.Service.ProjectCracker

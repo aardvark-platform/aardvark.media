@@ -40,36 +40,6 @@
     </DocumentationFile>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Include="Ui.fs" />
-    <Compile Include="Incremental\map.fs" />
-    <Compile Include="Incremental\Core\Core.fs" />
-    <Compile Include="Incremental\Core\History.fs" />
-    <Compile Include="Incremental\AdaptiveSet\pmap.fs" />
-    <Compile Include="Incremental\AdaptiveSet\deltaset.fs" />
-    <Compile Include="Incremental\AdaptiveSet\prefset.fs" />
-    <Compile Include="Incremental\AdaptiveSet\aset.fs" />
-    <Compile Include="Incremental\AdaptiveList\deltalist.fs" />
-    <Compile Include="Incremental\AdaptiveList\plist.fs" />
-    <Compile Include="Incremental\AdaptiveList\alist.fs" />
-    <Compile Include="Program.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj">
-      <Name>Aardvark.Service</Name>
-      <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
@@ -86,6 +56,13 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <PropertyGroup>
+        <__paket__FSharp_Compiler_Service_ProjectCracker_targets>net45\FSharp.Compiler.Service.ProjectCracker</__paket__FSharp_Compiler_Service_ProjectCracker_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
@@ -93,6 +70,35 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <ItemGroup>
+    <Compile Include="Ui.fs" />
+    <Compile Include="Incremental\map.fs" />
+    <Compile Include="Incremental\Core\Core.fs" />
+    <Compile Include="Incremental\Core\History.fs" />
+    <Compile Include="Incremental\AdaptiveSet\pmap.fs" />
+    <Compile Include="Incremental\AdaptiveSet\deltaset.fs" />
+    <Compile Include="Incremental\AdaptiveSet\prefset.fs" />
+    <Compile Include="Incremental\AdaptiveSet\aset.fs" />
+    <Compile Include="Incremental\AdaptiveList\deltalist.fs" />
+    <Compile Include="Incremental\AdaptiveList\plist.fs" />
+    <Compile Include="Incremental\AdaptiveList\alist.fs" />
+    <None Include="Incremental\Diff.fsx" />
+    <Compile Include="Program.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj">
+      <Name>Aardvark.Service</Name>
+      <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -297,6 +303,33 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="FSharp.Compiler.Service.MSBuild.v12">
+          <HintPath>..\..\packages\FSharp.Compiler.Service\lib\net45\FSharp.Compiler.Service.MSBuild.v12.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+        <Reference Include="FSharp.Compiler.Service">
+          <HintPath>..\..\packages\FSharp.Compiler.Service\lib\net45\FSharp.Compiler.Service.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="FSharp.Compiler.Service.ProjectCracker">
+          <HintPath>..\..\packages\FSharp.Compiler.Service.ProjectCracker\lib\net45\FSharp.Compiler.Service.ProjectCracker.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="FSharp.Quotations.Evaluator">
           <HintPath>..\..\packages\FSharp.Quotations.Evaluator\lib\net40\FSharp.Quotations.Evaluator.dll</HintPath>
           <Private>True</Private>
@@ -399,4 +432,16 @@
       </ItemGroup>
     </When>
   </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="System.Reflection.Metadata">
+          <HintPath>..\..\packages\System.Reflection.Metadata\lib\netstandard1.1\System.Reflection.Metadata.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Import Project="..\..\packages\FSharp.Compiler.Service.ProjectCracker\build\$(__paket__FSharp_Compiler_Service_ProjectCracker_targets).targets" Condition="Exists('..\..\packages\FSharp.Compiler.Service.ProjectCracker\build\$(__paket__FSharp_Compiler_Service_ProjectCracker_targets).targets')" Label="Paket" />
 </Project>

@@ -1028,6 +1028,9 @@ module MapExt =
 
     [<CompiledName("OfSeq")>]
     let ofSeq l = MapExt<_,_>.Create(l)
+    
+    [<CompiledName("OfSeq")>]
+    let singleton k v = MapExt<_,_>(LanguagePrimitives.FastGenericComparer<_>,MapOne(k,v))
 
     [<CompiledName("OfArray")>]
     let ofArray (array: ('Key * 'Value) array) = 

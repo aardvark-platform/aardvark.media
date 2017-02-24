@@ -140,10 +140,12 @@ type cset<'a>(initial : seq<'a>) =
 
     new() = cset<'a>(Seq.empty)
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
 module ASet =
 
     [<AutoOpen>]
-    module private Implementation = 
+    module Implementation = 
         type EmptyReader<'a> private() =
             inherit ConstantObject()
 
@@ -203,7 +205,7 @@ module ASet =
             ConstantSet<'a>(l) :> aset<_>
 
     [<AutoOpen>]
-    module private Readers =
+    module Readers =
         type MapReader<'a, 'b>(scope : Ag.Scope, input : aset<'a>, f : 'a -> 'b) =
             inherit AbstractReader<deltaset<'b>>(scope, DeltaSet.monoid)
             

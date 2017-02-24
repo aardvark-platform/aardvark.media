@@ -51,30 +51,95 @@ module Index =
 
             static member private Relabel(start : Value) =
                 let all = List<Value>()
+
+                let distance (l : Value) (r : Value) =
+                    if l = r then UInt64.MaxValue
+                    else r.Tag - l.Tag
+
+
+                // distance start start.Next == 1
+
                 let mutable current = start.Next
-                all.Add current
-                
-                let distance (n : Value) =
-                    if n = start then UInt64.MaxValue
-                    else n.Tag - start.Tag
+                all.Add start.Next
+                Monitor.Enter start.Next
 
-                let mutable n = 1UL
-
-                while distance current < 1UL + n * n do
-                    Monitor.Enter current
+                let mutable cnt = 1UL
+                while distance start current < 1UL + cnt * cnt do
                     current <- current.Next
+                    cnt <- cnt + 1UL
                     all.Add current
-                    n <- n + 1UL
+                    Monitor.Enter current
 
-                let step = (distance current) / n
+                let space = distance start current
 
-                let mutable key = start.Tag + step
-                for a in all do
-                    a.Tag <- key
-                    key <- key + step
-                    Monitor.Exit a
+                // the last node does not get relabeled
+                current <- current.Prev
+                all.RemoveAt (all.Count - 1)
+                Monitor.Exit current.Next
+                cnt <- cnt - 1UL
 
+                let step = space / (1UL + cnt)
+                let mutable current = start.Tag + step
+                for n in all do
+                    n.Tag <- current
+                    current <- current + step
+                    Monitor.Exit n
+                    
                 step
+//
+//
+//
+//
+//                let available  = distance start current
+//
+//
+//
+//                
+//                let distance (n : Value) =
+//                    if n = start then UInt64.MaxValue
+//                    else n.Tag - start.Tag
+//
+//                // find a range s.t. distance(range) >= 1 + |range|^2 
+//                let mutable current = start.Next
+//                all.Add current
+//                Monitor.Enter current
+//                let mutable j = 1UL
+//                while distance current < 1UL + j * j do
+//                    all.Add current.Next
+//                    Monitor.Enter current.Next
+//                    current <- current.Next
+//                    j <- j + 1UL
+//
+//                // distribute all times in the range equally spaced
+//                let step = (distance current) / j
+//                current <- start.Next
+//                let mutable currentTime = start.Tag + step
+//                for k in 1UL..(j-1UL) do
+//                    current.Tag <- currentTime
+//                    current <- current.Next
+//                    currentTime <- currentTime + step
+//                    Monitor.Exit current
+//                Monitor.Exit current.Next
+//                // store the distance to the next time
+//                step
+
+//                let mutable n = 1UL
+//
+//                while distance current < 1UL + n * n do
+//                    Monitor.Enter current
+//                    current <- current.Next
+//                    all.Add current
+//                    n <- n + 1UL
+//
+//                let step = (distance current) / n
+//
+//                let mutable key = start.Tag + step
+//                for a in all do
+//                    a.Tag <- key
+//                    key <- key + step
+//                    Monitor.Exit a
+//
+//                step
 
             member x.Key = x.Tag - x.Root.Tag
 

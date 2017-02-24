@@ -278,36 +278,52 @@ let main args =
         l |> AList.collecti (fun i v -> 
             inner :> alist<_>
         )
-    let r = test.GetReader()
 
-    let print (name : string) (r : IListReader<'a>) =
+    let set = test |> AList.toASet
+    
+    let sorted = test |> AList.sortBy id
+
+    let r = test.GetReader()
+    let r2 = set.GetReader()
+    let r3 = sorted.GetReader()
+    let print (name : string)=
         Log.start "%s" name
         let ops = r.GetOperations null
         Log.line "state: %A" r.State
         Log.line "ops:   %A" ops
+
+        let setOps = r2.GetOperations null
+        Log.line "set:   %A" r2.State
+        Log.line "setop: %A" setOps
+        
+        let sortedOps = r3.GetOperations null
+        Log.line "sort:   %A" r3.State
+        Log.line "sortop: %A" sortedOps
+
         Log.stop()
 
-    print "initial" r // [1;2;1;2;1;2]
+
+    print "initial" // [1;2;1;2;1;2]
 
     let t4 = transact (fun () -> l.Append 4)
-    print "append 4" r // [1;2;1;2;1;2;1;2]
+    print "append 4" // [1;2;1;2;1;2;1;2]
 
     transact (fun () -> l.Remove t4 |> ignore)
-    print "remove 4" r // [1;2;1;2;1;2]
+    print "remove 4"// [1;2;1;2;1;2]
 
 
     transact (fun () -> inner.RemoveAt 0)
-    print "inner.remove 1" r // [2;2;2]
+    print "inner.remove 1" // [2;2;2]
 
     transact (fun () -> inner.Insert(0, 10) |> ignore)
-    print "inner.insert(0, 10)" r // [10;2;10;2;10;2]
+    print "inner.insert(0, 10)" // [10;2;10;2;10;2]
 
     transact (fun () -> inner.Insert(1, 5) |> ignore)
-    print "inner.insert(1, 5)" r // [10;5;2;10;5;2;10;5;2]
+    print "inner.insert(1, 5)" // [10;5;2;10;5;2;10;5;2]
     
 
     transact (fun () -> inner.[0] <- 1) 
-    print "inner.[0] <- 1" r // [1;5;2;1;5;2;1;5;2]
+    print "inner.[0] <- 1" // [1;5;2;1;5;2;1;5;2]
 
 
     Environment.Exit 0

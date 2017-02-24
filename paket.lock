@@ -93,6 +93,10 @@ NUGET
     CommonMark.NET (0.12)
     DevILSharp (0.0.13)
     Fleck (0.14.0.59)
+    FSharp.Compiler.Service (9.0.1)
+      System.Collections.Immutable (>= 1.2)
+      System.Reflection.Metadata (>= 1.4.1-beta-24227-04)
+    FSharp.Compiler.Service.ProjectCracker (9.0.1)
     FSharp.Core (4.0.0.1)
     FSharp.Quotations.Evaluator (1.0.7)
     FsPickler (3.2)
@@ -111,6 +115,8 @@ NUGET
     System.Reactive.Linq (3.0)
       System.Reactive.Core (>= 3.0)
       System.Reactive.Interfaces (>= 3.0)
+    System.Reflection.Metadata (1.4.1-beta-24430-01)
+      System.Collections.Immutable (>= 1.2)
     TurboJpegWrapper (1.4.2.6)
 
 GROUP Build

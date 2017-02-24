@@ -81,6 +81,7 @@ module DeltaList =
 
     let ofMap (m : MapExt<Index, ListOperation<'a>>) = deltalist(m)
     
+    let single (i : Index) (op : ListOperation<'a>) = deltalist(MapExt.singleton i op)
     let ofSeq (s : seq<Index * ListOperation<'a>>) = deltalist(MapExt.ofSeq s)
     let ofList (s : list<Index * ListOperation<'a>>) = deltalist(MapExt.ofList s)
     let ofArray (s : array<Index * ListOperation<'a>>) = deltalist(MapExt.ofArray s)

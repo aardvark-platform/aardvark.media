@@ -168,10 +168,21 @@ type clist<'a>(initial : seq<'a>) =
     interface IEnumerable<'a> with
         member x.GetEnumerator() = (history.State :> seq<_>).GetEnumerator() :> _
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+[<RequireQualifiedAccess>]
 module AList =
+
+
+    module Comparer =
+        let ofFunction (cmp : 'a -> 'a -> int) =
+            let cmp = OptimizedClosures.FSharpFunc<_,_,_>.Adapt(cmp)
+            { new IComparer<'a> with
+                member x.Compare(l,r) = cmp.Invoke(l,r)
+            }
+
     
     [<AutoOpen>]
-    module private Implementation = 
+    module Implementation = 
         type EmptyReader<'a> private() =
             inherit ConstantObject()
 
@@ -226,87 +237,135 @@ module AList =
             ConstantList<'a>(l) :> alist<_>
 
     [<AutoOpen>]
-    module private Readers =
+    module Readers =
         open System.Collections.Generic
 
-        type IndexMapping() =
-            static let comparer =
-                { new IComparer<Index * Index * Index> with
-                    member x.Compare((lo,li,_),(ro,ri,_)) =
-                        let c = compare lo ro
-                        if c = 0 then compare li ri
-                        else c
-                }
+        [<AutoOpen>]
+        module Helpers = 
+            type IndexMapping<'k>(comparer : IComparer<'k>) =
+                let comparer =
+                    { new IComparer<'k * Index> with
+                        member x.Compare((l,_),(r,_)) =
+                            comparer.Compare(l,r)
+                    }
 
-            let store = SortedSetExt<Index * Index * Index>(comparer)
+                let store = SortedSetExt<'k * Index>(comparer)
 
-            member x.Invoke(o : Index, i : Index) =
-                let (l,s,r) = store.FindNeighbours((o, i, Unchecked.defaultof<_>))
-                let s = if s.HasValue then Some s.Value else None
+                member x.Invoke(k : 'k) =
+                    let (l,s,r) = store.FindNeighbours((k, Unchecked.defaultof<_>))
+                    let s = if s.HasValue then Some s.Value else None
 
-                match s with
-                    | Some(_,_,i) -> 
-                        i
+                    match s with
+                        | Some(_,i) -> 
+                            i
 
-                    | None ->
-                        let l = if l.HasValue then Some l.Value else None
-                        let r = if r.HasValue then Some r.Value else None
+                        | None ->
+                            let l = if l.HasValue then Some l.Value else None
+                            let r = if r.HasValue then Some r.Value else None
 
-                        let result = 
-                            match l, r with
-                                | None, None                    -> Index.after Index.zero
-                                | Some(_,_,l), None             -> Index.after l
-                                | None, Some(_,_,r)             -> Index.before r
-                                | Some (_,_,l), Some(_,_,r)     -> Index.between l r
+                            let l =
+                                match s with
+                                    | Some s -> Some s
+                                    | None -> l
 
-                        store.Add((o, i, result)) |> ignore
+                            let result = 
+                                match l, r with
+                                    | None, None                -> Index.after Index.zero
+                                    | Some(_,l), None           -> Index.after l
+                                    | None, Some(_,r)           -> Index.before r
+                                    | Some (_,l), Some(_,r)     -> Index.between l r
 
-                        result
+                            store.Add((k, result)) |> ignore
 
-            member x.Revoke(o : Index, i : Index) =
-                let (l,s,r) = store.FindNeighbours((o, i, Unchecked.defaultof<_>))
+                            result
 
-                if s.HasValue then
-                    store.Remove s.Value |> ignore
-                    let (_,_,s) = s.Value
-                    s
-                else
-                    failwith "[AList] removing unknown index"
+                member x.Revoke(k : 'k) =
+                    let (l,s,r) = store.FindNeighbours((k, Unchecked.defaultof<_>))
 
-            member x.Clear() =
-                store.Clear()
+                    if s.HasValue then
+                        store.Remove s.Value |> ignore
+                        let (_,s) = s.Value
+                        s
+                    else
+                        failwith "[AList] removing unknown index"
 
-        type IndexCache<'a, 'b>(f : Index -> 'a -> 'b, release : 'b -> unit) =
-            let store = Dictionary<Index, 'a * 'b>()
+                member x.Clear() =
+                    store.Clear()
 
-            member x.Invoke(i : Index, a : 'a) =
-                match store.TryGetValue(i) with
-                    | (true, (oa, res)) ->
-                        if Unchecked.equals oa a then
-                            res
-                        else
-                            release res
+            type IndexCache<'a, 'b>(f : Index -> 'a -> 'b, release : 'b -> unit) =
+                let store = Dict<Index, 'a * 'b>()
+
+                member x.Invoke(i : Index, a : 'a) =
+                    match store.TryGetValue(i) with
+                        | (true, (oa, res)) ->
+                            if Unchecked.equals oa a then
+                                res
+                            else
+                                release res
+                                let res = f i a
+                                store.[i] <- (a, res)
+                                res
+                        | _ ->
                             let res = f i a
                             store.[i] <- (a, res)
                             res
-                    | _ ->
-                        let res = f i a
-                        store.[i] <- (a, res)
-                        res
-                        
-            member x.Revoke(i : Index) =
-                match store.TryGetValue i with
-                    | (true, (oa,ob)) -> 
-                        release ob
-                        ob
-                    | _ -> 
-                        failwithf "[AList] cannot revoke unknown index %A" i
 
-            member x.Clear() =
-                store.Values |> Seq.iter (snd >> release)
-                store.Clear()
+                member x.InvokeAndGetOld(i : Index, a : 'a) =
+                    match store.TryGetValue(i) with
+                        | (true, (oa, old)) ->
+                            if Unchecked.equals oa a then
+                                None, old
+                            else
+                                let res = f i a
+                                store.[i] <- (a, res)
+                                Some old, res
+                        | _ ->
+                            let res = f i a
+                            store.[i] <- (a, res)
+                            None, res       
+                                        
+                member x.Revoke(i : Index) =
+                    match store.TryRemove i with
+                        | (true, (oa,ob)) -> 
+                            release ob
+                            ob
+                        | _ -> 
+                            failwithf "[AList] cannot revoke unknown index %A" i
 
-            new(f : Index -> 'a -> 'b) = IndexCache(f, ignore)
+                member x.Clear() =
+                    store.Values |> Seq.iter (snd >> release)
+                    store.Clear()
+
+                new(f : Index -> 'a -> 'b) = IndexCache(f, ignore)
+
+            type Unique<'b when 'b : comparison>(value : 'b) =
+                static let mutable currentId = 0
+                static let newId() = System.Threading.Interlocked.Increment(&currentId)
+
+                let id = newId()
+
+                member x.Value = value
+                member private x.Id = id
+
+                override x.ToString() = value.ToString()
+
+                override x.GetHashCode() = HashCode.Combine(Unchecked.hash value, id)
+                override x.Equals o =
+                    match o with
+                        | :? Unique<'b> as o -> Unchecked.equals value o.Value && id = o.Id
+                        | _ -> false
+
+                interface IComparable with
+                    member x.CompareTo o =
+                        match o with
+                            | :? Unique<'b> as o ->
+                                let c = compare value o.Value
+                                if c = 0 then compare id o.Id
+                                else c
+                            | _ ->
+                                failwith "uncomparable"
+
+
 
         type MapReader<'a, 'b>(scope : Ag.Scope, input : alist<'a>, mapping : Index -> 'a -> 'b) =
             inherit AbstractReader<deltalist<'b>>(scope, DeltaList.monoid)
@@ -369,8 +428,7 @@ module AList =
                                 | _ -> None
                 )
 
-
-        type MultiReader<'a>(scope : Ag.Scope, mapping : IndexMapping, list : alist<'a>, release : alist<'a> -> unit) =
+        type MultiReader<'a>(scope : Ag.Scope, mapping : IndexMapping<Index * Index>, list : alist<'a>, release : alist<'a> -> unit) =
             inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
             
             let targets = HashSet<Index>()
@@ -446,7 +504,7 @@ module AList =
         type CollectReader<'a, 'b>(scope : Ag.Scope, input : alist<'a>, f : Index -> 'a -> alist<'b>) =
             inherit AbstractDirtyReader<MultiReader<'b>, deltalist<'b>>(scope, DeltaList.monoid)
             
-            let mapping = IndexMapping()
+            let mapping = IndexMapping<Index * Index>(LanguagePrimitives.FastGenericComparer)
             let cache = Dictionary<Index, 'a * alist<'b>>()
             let readers = Dictionary<alist<'b>, MultiReader<'b>>()
             let input = input.GetReader()
@@ -519,7 +577,7 @@ module AList =
             inherit AbstractDirtyReader<MultiReader<'a>, deltalist<'a>>(scope, DeltaList.monoid)
             
             let cache = Dictionary<Index, alist<'a>>()
-            let mapping = IndexMapping()
+            let mapping = IndexMapping<Index * Index>(LanguagePrimitives.FastGenericComparer)
             let readers = Dictionary<alist<'a>, MultiReader<'a>>()
             let input = input.GetReader()
 
@@ -587,7 +645,7 @@ module AList =
         type ConcatListReader<'a>(scope : Ag.Scope, inputs : plist<alist<'a>>) =
             inherit AbstractDirtyReader<MultiReader<'a>, deltalist<'a>>(scope, DeltaList.monoid)
             
-            let mapping = IndexMapping()
+            let mapping = IndexMapping<Index * Index>(LanguagePrimitives.FastGenericComparer)
             let readers = Dictionary<alist<'a>, MultiReader<'a>>()
 
             let removeReader (l : alist<'a>) =
@@ -620,6 +678,200 @@ module AList =
                 else    
                     dirty |> Seq.fold (fun d r -> DeltaList.combine d (r.GetOperations x)) DeltaList.empty
 
+        type SetSortByReader<'a, 'b when 'b : comparison>(scope : Ag.Scope, input : aset<'a>, mapping : 'a -> 'b) =
+            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
+
+            let reader = input.GetReader()
+            let indices = IndexMapping<Unique<'b>>(LanguagePrimitives.FastGenericComparer<Unique<'b>>)
+            let mapping = Cache (mapping >> Unique)
+
+            override x.Release() =
+                indices.Clear()
+                mapping.Clear(ignore)
+                reader.Dispose()
+
+            override x.Compute() =
+                reader.GetOperations x 
+                    |> DeltaSet.toSeq
+                    |> Seq.map (fun d ->
+                        match d with
+                            | Add(1,v) -> 
+                                let k = mapping.Invoke v
+                                let i = indices.Invoke k
+                                i, Set v
+                            | Rem(1,v) ->
+                                let k = mapping.Revoke v
+                                let i = indices.Revoke k
+                                i, Remove
+                            | _ ->
+                                failwith ""
+                    )
+                    |> DeltaList.ofSeq
+        
+        type SetSortWithReader<'a>(scope : Ag.Scope, input : aset<'a>, comparer : IComparer<'a>) =
+            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
+
+            let reader = input.GetReader()
+            let indices = IndexMapping<'a>(comparer)
+            
+            override x.Release() =
+                indices.Clear()
+                reader.Dispose()
+
+            override x.Compute() =
+                reader.GetOperations x 
+                    |> DeltaSet.toSeq
+                    |> Seq.map (fun d ->
+                        match d with
+                            | Add(1,v) -> 
+                                let i = indices.Invoke v
+                                i, Set v
+                            | Rem(1,v) ->
+                                let i = indices.Revoke v
+                                i, Remove
+                            | _ ->
+                                failwith ""
+                    )
+                    |> DeltaList.ofSeq
+
+        type ToListReader<'a>(scope : Ag.Scope, input : aset<'a>) =
+            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
+
+            let reader = input.GetReader()
+            let mutable last = Index.zero
+            let newIndex (v : 'a) =
+                let i = Index.after last
+                last <- i
+                i
+
+            let newIndex = Cache newIndex
+
+            override x.Release() =
+                newIndex.Clear(ignore)
+                reader.Dispose()
+                last <- Index.zero
+
+            override x.Compute() =
+                reader.GetOperations x
+                    |> DeltaSet.toSeq
+                    |> Seq.map (fun d ->
+                    match d with
+                        | Add(1,v) -> 
+                            let i = newIndex.Invoke v
+                            i, Set v
+                        | Rem(1,v) ->
+                            let i = newIndex.Revoke v
+                            i, Remove
+                        | _ ->
+                            failwith ""
+                    )
+                    |> DeltaList.ofSeq
+
+        type ToSetReader<'a>(scope : Ag.Scope, input : alist<'a>) =
+            inherit AbstractReader<deltaset<'a>>(scope, DeltaSet.monoid)
+            
+            let reader = input.GetReader()
+            override x.Release() =
+                reader.Dispose()
+
+            override x.Compute() =
+                let oldContent = reader.State.Content
+                reader.GetOperations x 
+                    |> DeltaList.toSeq
+                    |> Seq.collect (fun (i,op) ->
+                        match op with
+                            | Set v ->
+                                match MapExt.tryFind i oldContent with
+                                    | Some o ->
+                                        if Unchecked.equals o v then
+                                            Seq.empty
+                                        else
+                                            Seq.ofList [Add v; Rem o]
+                                    | _ -> 
+                                        Seq.singleton (Add v)
+                            | Remove ->
+                                match MapExt.tryFind i oldContent with
+                                    | Some v -> Seq.singleton (Rem v)
+                                    | _ -> failwith ""
+                    )
+                    |> DeltaSet.ofSeq
+
+        type ListSortByReader<'a, 'b when 'b : comparison>(scope : Ag.Scope, input : alist<'a>, mapping : Index -> 'a -> 'b) =
+            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
+
+            let reader = input.GetReader()
+            let indices = IndexMapping<'b * Index>(LanguagePrimitives.FastGenericComparer<_>)
+            let mapping = IndexCache (fun i v -> mapping i v, i)
+
+            override x.Release() =
+                mapping.Clear()
+                reader.Dispose()
+
+            override x.Compute() =
+                let oldContent = reader.State.Content
+                reader.GetOperations x 
+                    |> DeltaList.collect (fun ii op ->
+                        match op with
+                            | Set v ->
+                                let oldB, b = mapping.InvokeAndGetOld(ii,v)
+                                let i = indices.Invoke(b)
+
+                                match oldB with
+                                    | Some oldB ->
+                                        let oi = indices.Revoke oldB
+                                        DeltaList.ofList [oi, Remove; i, Set v]
+                                    | None ->
+                                        DeltaList.single i (Set v)
+
+
+
+                            | Remove ->
+                                let b = mapping.Revoke(ii)
+                                let i = indices.Revoke b
+                                DeltaList.single i Remove
+                    )
+        
+        type ListSortWithReader<'a>(scope : Ag.Scope, input : alist<'a>, comparer : IComparer<'a>) =
+            inherit AbstractReader<deltalist<'a>>(scope, DeltaList.monoid)
+
+            let comparer =
+                { new IComparer<'a * Index> with
+                    member x.Compare((lv,li), (rv, ri)) =
+                        let c = comparer.Compare(lv, rv)
+                        if c = 0 then compare li ri
+                        else c
+                }
+
+            let reader = input.GetReader()
+            let indices = IndexMapping<'a * Index>(comparer)
+  
+            override x.Release() =
+                indices.Clear()
+                reader.Dispose()
+
+            override x.Compute() =
+                let oldContent = reader.State.Content
+                reader.GetOperations x 
+                    |> DeltaList.collect (fun i op ->
+                        match op with
+                            | Set v -> 
+                                match MapExt.tryFind i oldContent with
+                                    | Some o -> 
+                                        if Unchecked.equals o v then
+                                            DeltaList.empty
+                                        else
+                                            let oi = indices.Revoke(o, i)
+                                            let i = indices.Invoke(v, i)
+                                            DeltaList.ofList [oi, Remove; i, Set v]
+                                    | None ->
+                                        let i = indices.Invoke(v, i)
+                                        DeltaList.single i (Set v)
+
+                            | Remove ->
+                                let v = oldContent |> MapExt.find i
+                                let i = indices.Revoke(v, i)
+                                DeltaList.single i Remove
+                    )
 
 
     /// the empty alist
@@ -690,3 +942,49 @@ module AList =
 
     let collect (mapping : 'a -> alist<'b>) (list : alist<'a>) =
         collecti (fun _ v -> mapping v) list
+
+
+    let toASet (l : alist<'a>) =
+        ASet.Implementation.aset <| fun scope -> new ToSetReader<'a>(scope, l)
+
+    let ofASet (set : aset<'a>) =
+        alist <| fun scope -> new ToListReader<'a>(scope, set)
+
+
+    let sortBy (f : 'a -> 'b) (list : alist<'a>) =
+        alist <| fun scope -> new ListSortByReader<'a, 'b>(scope, list, fun _ v -> f v)
+
+    let sortWith (cmp : 'a -> 'a -> int) (list : alist<'a>) =
+        let cmp = Comparer.ofFunction cmp
+        alist <| fun scope -> new ListSortWithReader<'a>(scope, list, cmp)
+
+    let sort<'a when 'a : comparison> (list : alist<'a>) =
+        let cmp = LanguagePrimitives.FastGenericComparer<'a>
+        alist <| fun scope -> new ListSortWithReader<'a>(scope, list, cmp)
+            
+
+[<AutoOpen>]
+module ``ASet -> AList interop`` =
+    open AList.Implementation
+    open AList.Readers
+
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    [<RequireQualifiedAccess>]
+    module ASet =
+        
+        let sortBy (f : 'a -> 'b) (set : aset<'a>) =
+            alist <| fun scope -> new SetSortByReader<'a, 'b>(scope, set, f)
+
+        let sortWith (cmp : 'a -> 'a -> int) (set : aset<'a>) =
+            let cmp = AList.Comparer.ofFunction cmp
+            alist <| fun scope -> new SetSortWithReader<'a>(scope, set, cmp)
+
+        let sort<'a when 'a : comparison> (set : aset<'a>) =
+            let cmp = LanguagePrimitives.FastGenericComparer<'a>
+            alist <| fun scope -> new SetSortWithReader<'a>(scope, set, cmp)
+            
+        let toAList (set : aset<'a>) =
+            AList.ofASet set
+
+        let ofAList (l : alist<'a>) =
+            AList.toASet l
