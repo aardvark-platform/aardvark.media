@@ -326,6 +326,27 @@ module ASet =
                 else
                     dirty |> Seq.fold (fun deltas r -> DeltaSet.combine deltas (r.GetOperations x)) DeltaSet.empty
 
+        type DifferenceReader<'a>(scope : Ag.Scope, l : aset<'a>, r : aset<'a>) =
+            inherit AbstractReader<deltaset<'a>>(scope, DeltaSet.monoid)
+            
+            let l = l.GetReader()
+            let r = r.GetReader()
+
+            override x.Release() =
+                l.Dispose()
+                r.Dispose()
+
+            override x.Compute() =
+                let lops = l.GetOperations x
+                let rops = r.GetOperations x
+
+                let rops = DeltaSet.map SetDelta.inverse rops
+
+                DeltaSet.combine lops rops
+
+
+
+
         type CollectReader<'a, 'b>(scope : Ag.Scope, input : aset<'a>, f : 'a -> aset<'b>) =
             inherit AbstractDirtyReader<ISetReader<'b>, deltaset<'b>>(scope, DeltaSet.monoid)
 
@@ -647,6 +668,10 @@ module ASet =
 
                 deltas
 
+    // =====================================================================================
+    // CREATORS (of*)
+    // =====================================================================================
+
     /// the empty aset
     let empty<'a> = EmptySet<'a>.Instance
 
@@ -678,11 +703,16 @@ module ASet =
             aset <| fun scope -> new ModSetReader<'a>(scope, m)
             
     /// creates a singleton set which will always contain the latest value of the given mod-cell
-    let ofSingleMod (m : IMod<'a>) =
+    let ofModSingle (m : IMod<'a>) =
         if m.IsConstant then
             constant <| lazy ( m |> Mod.force |> PRefSet.single )
         else
             aset <| fun scope -> new ModValueReader<'a>(scope, m)
+
+
+    // =====================================================================================
+    // VIEWS (to*)
+    // =====================================================================================
 
     /// creates a set from the current state of the aset
     let toSet (set : aset<'a>) =
@@ -704,11 +734,22 @@ module ASet =
     let toMod (s : aset<'a>) =
         s.Content
 
+
+    // =====================================================================================
+    // OPERATIONS
+    // =====================================================================================
+
     let union (l : aset<'a>) (r : aset<'a>) =
         if l.IsConstant && r.IsConstant then
             constant <| lazy ( PRefSet.union (Mod.force l.Content) (Mod.force r.Content) )
         else
             aset <| fun scope -> new UnionFixedReader<'a>(scope, PRefSet.ofList [l; r])
+
+    let difference (l : aset<'a>) (r : aset<'a>) =
+        if l.IsConstant && r.IsConstant then
+            constant <| lazy ( PRefSet.difference (Mod.force l.Content) (Mod.force r.Content) )
+        else
+            aset <| fun scope -> new DifferenceReader<'a>(scope, l, r)
 
     let unionMany' (sets : seq<aset<'a>>) =
         let sets = PRefSet.ofSeq sets
@@ -723,12 +764,9 @@ module ASet =
         else
             aset <| fun scope -> new UnionReader<'a>(scope, sets)
 
-    let flatten (set : aset<IMod<'a>>) =
-        aset <| fun scope -> new FlattenReader<'a>(scope, set)
-
-    /// creates a new aset using the given reader-creator
-    let create (f : Ag.Scope -> #IOpReader<deltaset<'a>>) =
-        aset f
+    // =====================================================================================
+    // PROJECTIONS
+    // =====================================================================================
 
     /// creates a new aset whose elements are the result of applying the given function to each of the elements of the given set
     let map (mapping : 'a -> 'b) (set : aset<'a>) =
@@ -759,12 +797,18 @@ module ASet =
         else
             aset <| fun scope -> new CollectReader<'a, 'b>(scope, set, mapping)
         
+    /// applies the given function to each element of the given aset. unions all the results and returns the combined aset
     let collect' (mapping : 'a -> #seq<'b>) (set : aset<'a>) =
         let mapping = mapping >> PRefSet.ofSeq
         if set.IsConstant then
             constant <| lazy ( set.Content |> Mod.force |> PRefSet.collect mapping )
         else
             aset <| fun scope -> new CollectSetReader<'a, 'b>(scope, set, mapping)
+
+
+    let flattenM (set : aset<IMod<'a>>) =
+        aset <| fun scope -> new FlattenReader<'a>(scope, set)
+
 
     let mapM (mapping : 'a -> IMod<'b>) (set : aset<'a>) =
         aset <| fun scope -> new MapMReader<'a, 'b>(scope, set, mapping)
@@ -801,6 +845,10 @@ module ASet =
             | false, false ->
                 let tup = Mod.map2 (fun a b -> (a,b)) a b
                 tup |> bind (fun (a,b) -> mapping a b)
+
+    /// creates a new aset using the given reader-creator
+    let create (f : Ag.Scope -> #IOpReader<deltaset<'a>>) =
+        aset f
 
 
     let foldHalfGroup (add : 's -> 'a -> 's) (trySub : 's -> 'a -> Option<'s>) (zero : 's) (s : aset<'a>) =
