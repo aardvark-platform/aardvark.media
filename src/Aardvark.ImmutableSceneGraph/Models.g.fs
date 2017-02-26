@@ -181,6 +181,8 @@ module Generated =
         }
         
         type Annotation = {
+            seqNumber : int
+            annType : string
             geometry : Polygon
             style : Style
         }
@@ -203,7 +205,8 @@ module Generated =
               working  : Option<OpenPolygon>
               style    : Style
               measureType : Choice.Model
-              styleType   : Choice.Model}
+              styleType   : Choice.Model
+              selected : pset<int>}
             
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
@@ -214,7 +217,8 @@ module Generated =
                   mworking = Mod.init (x.working)
                   mstyle = Mod.init(x.style)
                   mmeasureType = Mod.init(x.measureType)
-                  mstyleType = Mod.init(x.styleType)  }
+                  mstyleType = Mod.init(x.styleType) 
+                  mselected = ResetSet(x.selected)}
             
             interface IUnique with
                 
@@ -231,7 +235,8 @@ module Generated =
               mworking : ModRef<Option<OpenPolygon>>
               mstyle : ModRef<Style>
               mmeasureType : ModRef<Choice.Model>
-              mstyleType : ModRef<Choice.Model> }
+              mstyleType : ModRef<Choice.Model> 
+              mselected : ResetSet<int> }
             member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
@@ -242,6 +247,7 @@ module Generated =
                     x.mstyle.Value <- arg0.style
                     x.mmeasureType.Value <- arg0.measureType
                     x.mstyleType.Value <- arg0.styleType
+                    x.mselected.Update(arg0.selected)
     
     module PlaceTransformObjects = 
         open TranslateController

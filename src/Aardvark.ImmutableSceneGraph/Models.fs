@@ -66,6 +66,8 @@ module DrawingApp =
     type Polygon = list<V3d>
 
     type Annotation = {
+        seqNumber : int
+        annType : string
         geometry : Polygon
         style : Style
     }
@@ -83,6 +85,7 @@ module DrawingApp =
         picking : Option<int>
         style   : Style
         measureType : Choice.Model
+        selected : pset<int>
     }
 
 module PlaceTransformObjects =

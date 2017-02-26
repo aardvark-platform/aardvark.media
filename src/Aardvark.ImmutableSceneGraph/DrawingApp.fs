@@ -21,6 +21,11 @@ open Fable.Helpers.Virtualdom.Html
 
 module DrawingApp =
 
+    module Selection =
+        let select () = failwith ""
+        let deselect () = failwith ""
+        let isSelected () =  failwith ""
+
     open Aardvark.ImmutableSceneGraph
     open Aardvark.Elmish
     open Primitives
@@ -28,6 +33,7 @@ module DrawingApp =
     open SimpleDrawingApp
 
     type Action =
+        | Click of int
         | ClosePolygon
         | AddPoint   of V3d
         | MoveCursor of V3d
@@ -61,7 +67,10 @@ module DrawingApp =
                     | Some p -> 
                         { m with 
                             working = None 
-                            finished = PSet.add { geometry = p.finishedPoints; style = m.style } m.finished }
+                            finished = PSet.add { geometry = p.finishedPoints
+                                                  style = m.style
+                                                  seqNumber = m.finished.AsList.Length
+                                                  annType = m.measureType.selected } m.finished }
 
     //["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]
     let updateAddPoint (m : DrawingApp.Drawing) (p : V3d) =         
@@ -84,6 +93,11 @@ module DrawingApp =
     let update (picking : Option<int>) e (m : DrawingApp.Drawing) (cmd : Action) =
         let picking = m.picking
         match cmd, picking with
+            | Click i, _ when i <> -1 ->
+               if Seq.contains i m.selected 
+                            then { m with selected = PSet.remove i m.selected }
+                            else { m with selected = PSet.add i m.selected }            
+               |> stash   
             | ClosePolygon, _ -> updateClosePolygon m |> stash
             | AddPoint p, Some _ -> updateAddPoint m p |> stash
             | MoveCursor p, Some _ ->
@@ -93,8 +107,8 @@ module DrawingApp =
             | ChangeStyle s, _ -> 
                 { m with 
                     style = styles.[s];
-                    styleType = { m.styleType with selected = m.styleType.choices.[s] }}// |> stash
-            | Set_Type a, _ -> { m with measureType = Choice.update e m.measureType a} //|> stash
+                    styleType = { m.styleType with selected = m.styleType.choices.[s] }} |> stash
+            | Set_Type a, _ -> { m with measureType = Choice.update e m.measureType a}
             | Set_Style a, _ -> 
                 let style = Choice.update e m.styleType a
                 let index = choiceIndex style
@@ -118,22 +132,47 @@ module DrawingApp =
                 { m with picking = None }             
             | _,_ -> m    
 
-    let viewPolygon (p : list<V3d>) (r : float) =
+    let viewPolygon (p : list<V3d>) (r : float) (id : int) =
+        match p with
+            | [] -> [] 
+            | _ ->
+                let lines =  Polygon3d(p |> List.toSeq).EdgeLines
+                [           
+                    yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
+          
+                    let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)]
+                    for edge in lines |> Seq.take (Seq.length lines - 1)  do
+                        let v = edge.P1 - edge.P0
+                        yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.0) |> Scene.render pick
+                        yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
+                ]
+        |> Scene.group
+                
+    let c4bToHtml (c : C4b) = 
+        sprintf "rgb(%i,%i,%i)" c.R c.G c.B
+    
+    let selectionColor = C4b.Red//new C4b(150,150, 150)
+    let viewSelection (p : list<V3d>) (r : float) =
         let lines =  Polygon3d(p |> List.toSeq).EdgeLines
         [           
             yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
-          
             for edge in lines |> Seq.take (Seq.length lines - 1)  do
-                let v = edge.P1 - edge.P0
-                yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.0) |> Scene.render Pick.ignore 
                 yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
         ] |> Scene.group
 
     let viewDrawingPolygons (m :  DrawingApp.MDrawing) =
+        let isSelected id = Seq.contains id m.mselected
         aset {
-           
+                           
             for p in m.mfinished :> aset<_> do                 
-                yield [viewPolygon p.geometry p.style.thickness] |> Scene.colored (Mod.constant p.style.color)
+                let color = if isSelected p.seqNumber then selectionColor else p.style.color
+                yield [viewPolygon p.geometry p.style.thickness p.seqNumber] |> Scene.colored (Mod.constant p.style.color)
+
+            for id in m.mselected :> aset<_> do
+                printfn "selected: %i" id
+                match m.mfinished |> Seq.tryFind(fun x -> x.seqNumber = id) with
+                    | Some k ->  yield [viewSelection k.geometry (k.style.thickness * 1.01)] |> Scene.colored (Mod.constant selectionColor)
+                    | None -> ()
 
             let! style = m.mstyle
             let! working = m.mworking
@@ -142,7 +181,7 @@ module DrawingApp =
                 | Some v when v.cursor.IsSome -> 
                     let line = if pikcing.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
                     yield 
-                        [viewPolygon (line) style.thickness] |> Scene.colored (Mod.constant style.color)
+                        [viewPolygon (line) style.thickness -1] |> Scene.colored (Mod.constant style.color)
                     yield 
                         [ Sphere3d(V3d.OOO, style.thickness) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
@@ -187,29 +226,32 @@ module DrawingApp =
         [viewDrawing m 
          viewQuad    m]
             |> Scene.group
-            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)           
+            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
 
     let viewMeasurements (m : DrawingApp.Drawing) = 
+        let isSelected id = Seq.contains id m.selected
         div [clazz "ui relaxed divided list"] [
-            for me in m.finished do
-                yield div [clazz "item"] [
-                            i [clazz "large File Outline middle aligned icon"][]
+            for me in (m.finished |> Seq.sortBy (fun x -> x.seqNumber)) do
+                let background, fontcolor = if isSelected me.seqNumber then "#969696","#f0f0f0" else "#d9d9d9", "#252525"
+                
+                yield div [clazz "item"; Style ["backgroundColor", background]; onMouseClick (fun o -> Click me.seqNumber)] [
+                            i [clazz "large File Outline middle aligned icon"; Style ["color", me.style.color |> c4bToHtml]][]
                             div[clazz "content"] [
-                                a [clazz "header"][Text "Measure"]
-                                div [clazz "description"][Text "Measurement"]
+                                div [clazz "header"; Style ["color", fontcolor] ] [Text me.annType] 
+                                div [clazz "description"; Style ["color", fontcolor]] [Text (sprintf "%i" me.seqNumber)]
                             ]
                         ]
             ]
 
     let viewUI (m : DrawingApp.Drawing) =
         div [] [
-             div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
+             div [Style ["width", "80%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
+                  attribute "id" "renderControl"] [
                 button [clazz "ui icon button"; onMouseClick (fun _ -> Undo)] [i [clazz "arrow left icon"] []]
                 button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [i [clazz "arrow right icon"] []]
                 Choice.view m.measureType |> Html.map Set_Type
-                Choice.view m.styleType |> Html.map Set_Style
-                viewMeasurements m
-            ]            
+                Choice.view m.styleType |> Html.map Set_Style]
+             div [Style ["width", "20%"; "height", "100%"; "float", "left"; "backgroundColor", "#f7fbff"]] [viewMeasurements m]
         ]
 
     let subscriptions (m : DrawingApp.Drawing) =
@@ -235,6 +277,7 @@ module DrawingApp =
             style = styles.[0]
             measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Point" }
             styleType = { choices = ["#1";"#2";"#3"; "#4"]; selected = "#1" }
+            selected = PSet.empty
             }
 
     let app s =
