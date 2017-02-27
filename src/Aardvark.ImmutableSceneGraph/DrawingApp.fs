@@ -136,8 +136,12 @@ module DrawingApp =
         match p with
             | [] -> [] 
             | _ ->
+        match p with
+            | [] -> [] |> Scene.group
+            | _  ->
                 let lines =  Polygon3d(p |> List.toSeq).EdgeLines
-                [           
+                [     
+                    //drawing leading sphere      
                     yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
           
                     let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)]
@@ -176,10 +180,10 @@ module DrawingApp =
 
             let! style = m.mstyle
             let! working = m.mworking
-            let! pikcing = m.mpicking
+            let! picking = m.mpicking
             match working with
                 | Some v when v.cursor.IsSome -> 
-                    let line = if pikcing.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
+                    let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
                     yield 
                         [viewPolygon (line) style.thickness -1] |> Scene.colored (Mod.constant style.color)
                     yield 
@@ -227,6 +231,9 @@ module DrawingApp =
          viewQuad    m]
             |> Scene.group
             |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
+
+    let colorToHTML (c:C4b) =
+        sprintf "rgb(%i,%i,%i)" c.R c.G c.B        
 
     let viewMeasurements (m : DrawingApp.Drawing) = 
         let isSelected id = Seq.contains id m.selected

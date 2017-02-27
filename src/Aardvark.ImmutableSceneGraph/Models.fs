@@ -70,6 +70,7 @@ module DrawingApp =
         annType : string
         geometry : Polygon
         style : Style
+        measureType : string
     }
 
     type OpenPolygon = {

@@ -85,7 +85,7 @@ let main argv =
     win.FormBorderStyle <- FormBorderStyle.None
     let mutable started = false
 
-    let desiredSize = V2i(800,600)
+    let desiredSize = V2i(1280,800)
 
     use client = new Browser(win.FramebufferSignature,win.Time,app.Runtime, true, win.Sizes)
 
