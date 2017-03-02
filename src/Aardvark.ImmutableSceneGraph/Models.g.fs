@@ -184,8 +184,7 @@ module Generated =
             seqNumber : int
             annType : string
             geometry : Polygon
-            style : Style
-            measureType : string
+            style : Style            
         }
 
         type OpenPolygon = 

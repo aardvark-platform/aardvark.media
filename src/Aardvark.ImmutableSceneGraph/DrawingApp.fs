@@ -125,20 +125,14 @@ module DrawingApp =
                                 | None -> m
                                 | Some k -> k
             | PickStart, _   -> { m with picking = Some 0 }
-            | PickStop, _    ->  
-//                match m.working with
-//                    | None -> { m with working = Some { finishedPoints = []; cursor = None }; picking = None}
-//                    | Some v -> { m with working = Some { v with cursor = None }; picking = None}     
-                { m with picking = None }             
+            | PickStop, _    -> { m with picking = None }
             | _,_ -> m    
 
-    let viewPolygon (p : list<V3d>) (r : float) (id : int) =
+    let viewPolygon (p : list<V3d>) (r : float) (id : int) =        
         match p with
-            | [] -> [] 
-            | _ ->
-        match p with
-            | [] -> [] |> Scene.group
+            | [] -> []
             | _  ->
+
                 let lines =  Polygon3d(p |> List.toSeq).EdgeLines
                 [     
                     //drawing leading sphere      
