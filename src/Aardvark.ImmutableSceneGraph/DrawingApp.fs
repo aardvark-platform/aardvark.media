@@ -34,7 +34,7 @@ module DrawingApp =
 
     type Action =
         | Click of int
-        | ClosePolygon
+        | Finish
         | AddPoint   of V3d
         | MoveCursor of V3d
         | ChangeStyle of int
@@ -61,7 +61,7 @@ module DrawingApp =
     let stash (m : DrawingApp.Drawing) =
         { m with history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None }
 
-    let updateClosePolygon (m : DrawingApp.Drawing) = 
+    let finishPolygon (m : DrawingApp.Drawing) = 
                 match m.working with
                     | None -> m
                     | Some p -> 
@@ -76,18 +76,15 @@ module DrawingApp =
     let updateAddPoint (m : DrawingApp.Drawing) (p : V3d) =         
         match m.working with
             | None -> 
-                let k = { m with working = Some { finishedPoints = [ p ]; cursor = None; }}
-                match m.measureType.selected with
-                    | "Point" -> k
-                    | _       -> k
+                { m with working = Some { finishedPoints = [ p ]; cursor = None; }}
             | Some v -> 
                 let k = { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
                 match m.measureType.selected with
-                    | "Line"         -> if k.working.Value.finishedPoints.Length = 2 then updateClosePolygon k else k
+                    | "Point"        -> if k.working.Value.finishedPoints.Length = 1 then finishPolygon k else k
+                    | "Line"         -> if k.working.Value.finishedPoints.Length = 2 then finishPolygon k else k
                     | "Polyline"     -> k
                     | "Polygon"      -> k
                     | "DipAndStrike" -> k
-                    | "Point"        -> k
                     | _ -> failwith (sprintf "measure mode %A not recognized" m.measureType.selected)
         
     let update (picking : Option<int>) e (m : DrawingApp.Drawing) (cmd : Action) =
@@ -98,7 +95,7 @@ module DrawingApp =
                             then { m with selected = PSet.remove i m.selected }
                             else { m with selected = PSet.add i m.selected }            
                |> stash   
-            | ClosePolygon, _ -> updateClosePolygon m |> stash
+            | Finish, _ -> finishPolygon m |> stash
             | AddPoint p, Some _ -> updateAddPoint m p |> stash
             | MoveCursor p, Some _ ->
                 match m.working with
@@ -108,7 +105,7 @@ module DrawingApp =
                 { m with 
                     style = styles.[s];
                     styleType = { m.styleType with selected = m.styleType.choices.[s] }} |> stash
-            | Set_Type a, _ -> { m with measureType = Choice.update e m.measureType a}
+            | Set_Type a, _ when m.working.IsNone -> { m with measureType = Choice.update e m.measureType a}
             | Set_Style a, _ -> 
                 let style = Choice.update e m.styleType a
                 let index = choiceIndex style
@@ -128,18 +125,18 @@ module DrawingApp =
             | PickStop, _    -> { m with picking = None }
             | _,_ -> m    
 
-    let viewPolygon (p : list<V3d>) (r : float) (id : int) =        
+    let viewPolygon (p : list<V3d>) (r : float) (id : int) (close : bool) =        
         match p with
             | [] -> []
-            | _  ->
-
+            | _  ->                
                 let lines =  Polygon3d(p |> List.toSeq).EdgeLines
                 [     
                     //drawing leading sphere      
                     yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
           
                     let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)]
-                    for edge in lines |> Seq.take (Seq.length lines - 1)  do
+                    let take = if close then Seq.length lines else Seq.length lines - 1
+                    for edge in lines |> Seq.take take do
                         let v = edge.P1 - edge.P0
                         yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.0) |> Scene.render pick
                         yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
@@ -158,20 +155,26 @@ module DrawingApp =
                 yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
         ] |> Scene.group
 
+    let closed (p : DrawingApp.Annotation) =
+        p.annType = "Polygon"
+
     let viewDrawingPolygons (m :  DrawingApp.MDrawing) =
         let isSelected id = Seq.contains id m.mselected
         aset {
-                           
+                    
+            // draw all finished polygons       
             for p in m.mfinished :> aset<_> do                 
-                let color = if isSelected p.seqNumber then selectionColor else p.style.color
-                yield [viewPolygon p.geometry p.style.thickness p.seqNumber] |> Scene.colored (Mod.constant p.style.color)
+                let color = if isSelected p.seqNumber then selectionColor else p.style.color                
+                yield [viewPolygon p.geometry p.style.thickness p.seqNumber (closed p)] |> Scene.colored (Mod.constant p.style.color)
 
+            // draw selection geometry
             for id in m.mselected :> aset<_> do
                 printfn "selected: %i" id
                 match m.mfinished |> Seq.tryFind(fun x -> x.seqNumber = id) with
                     | Some k ->  yield [viewSelection k.geometry (k.style.thickness * 1.01)] |> Scene.colored (Mod.constant selectionColor)
                     | None -> ()
 
+            // draw working polygon
             let! style = m.mstyle
             let! working = m.mworking
             let! picking = m.mpicking
@@ -179,7 +182,7 @@ module DrawingApp =
                 | Some v when v.cursor.IsSome -> 
                     let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
                     yield 
-                        [viewPolygon (line) style.thickness -1] |> Scene.colored (Mod.constant style.color)
+                        [viewPolygon (line) style.thickness -1 (m.mmeasureType.Value.selected = "Polygon")] |> Scene.colored (Mod.constant style.color)
                     yield 
                         [ Sphere3d(V3d.OOO, style.thickness) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
@@ -232,6 +235,7 @@ module DrawingApp =
     let viewMeasurements (m : DrawingApp.Drawing) = 
         let isSelected id = Seq.contains id m.selected
         div [clazz "ui relaxed divided list"] [
+            yield h3 [] [Text "Annotations:"]
             for me in (m.finished |> Seq.sortBy (fun x -> x.seqNumber)) do
                 let background, fontcolor = if isSelected me.seqNumber then "#969696","#f0f0f0" else "#d9d9d9", "#252525"
                 
@@ -244,19 +248,51 @@ module DrawingApp =
                         ]
             ]
 
+    let viewMeasurementProperties (m : DrawingApp.Drawing) =       
+        match m.selected |> Seq.tryHead with
+            | None -> div[] [h3 [] [Text "Properties:"]]
+            | Some id -> div[] [ 
+                            yield h3 [] [Text (sprintf "Properties of %A:" id)]
+                            match (m.finished |> Seq.tryFind(fun x -> x.seqNumber = id)) with
+                                        | None -> yield Text "No Properties found"
+                                        | Some k -> 
+                                                yield Text k.annType
+                                                yield br []
+                                                yield Text (sprintf "Color: %A" k.style.color)
+                                                yield br []
+                                                yield Text (sprintf "Thickness: %A" k.style.thickness)
+                            
+                         ]
+            
+//            match (m.finished |> Seq.tryFind(fun x -> x.seqNumber = id)) with
+//                            | None -> div[] [h3 [] [Text "Properties:"]]
+//                            | Some ann -> div[] [
+//                                            h3 [] [Text "Properties:"]
+//                                            div [clazz "Segment"] [Text ann.annType]
+//                                            div [clazz "Segment"] [Text (sprintf "%A" ann.style)]
+//                                          ]
+    
     let viewUI (m : DrawingApp.Drawing) =
         div [] [
              div [Style ["width", "80%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
                   attribute "id" "renderControl"] [
                 button [clazz "ui icon button"; onMouseClick (fun _ -> Undo)] [i [clazz "arrow left icon"] []]
                 button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [i [clazz "arrow right icon"] []]
-                Choice.view m.measureType |> Html.map Set_Type
+                Choice.view m.measureType |> Html.map Set_Type 
                 Choice.view m.styleType |> Html.map Set_Style]
-             div [Style ["width", "20%"; "height", "100%"; "float", "left"; "backgroundColor", "#f7fbff"]] [viewMeasurements m]
+             div [Style ["width", "20%"; "height", "60%";
+                         "overflowY", "auto"; "float", "left"; "backgroundColor", "#fff7fb"
+                         "border-style", "solid"; "border-width", "1px 1px 0px 1px"]] [viewMeasurements m]
+             
+             div [Style ["width", "20%"; "height", "40%";
+                         "overflowY", "auto"; "float", "left"; "backgroundColor", "#fff7fb"
+                         "border-style", "solid"; "border-width", "1px 1px 1px 1px"]] [
+                            viewMeasurementProperties m
+            ]
         ]
 
     let subscriptions (m : DrawingApp.Drawing) =
-        Many [Input.key Down Keys.Enter (fun _ _-> ClosePolygon)
+        Many [Input.key Down Keys.Enter (fun _ _-> Finish)
               Input.key Down Keys.Left  (fun _ _-> Undo)
               Input.key Down Keys.Right (fun _ _-> Redo)
               
