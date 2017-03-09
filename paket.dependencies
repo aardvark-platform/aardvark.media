@@ -20,7 +20,7 @@ nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.9
 nuget FsPickler       ~> 3.2.0
 nuget FsPickler.Json  ~> 3.2.0
  
-nuget Fablish      ~> 1.7.9
+nuget Fablish      ~> 1.7.12
 
 nuget AssimpNet = 3.3.1
 

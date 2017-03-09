@@ -19,6 +19,15 @@ open Fablish
 open Fable.Helpers.Virtualdom
 open Fable.Helpers.Virtualdom.Html
 
+module AnnotationPropertiesApp =
+    type Action =                      
+        | Set_Thickness of Numeric.Action
+
+//    let update (env: Env<Action>) (model : DrawingApp.Annotation) (action : Action) =
+//        match action with            
+//            | Set_Thickness a -> { model with style = {model.style with thickness = Numeric.update env model.style.thickness a }}
+    
+
 module DrawingApp =
 
     module Selection =
@@ -262,15 +271,7 @@ module DrawingApp =
                                                 yield br []
                                                 yield Text (sprintf "Thickness: %A" k.style.thickness)
                             
-                         ]
-            
-//            match (m.finished |> Seq.tryFind(fun x -> x.seqNumber = id)) with
-//                            | None -> div[] [h3 [] [Text "Properties:"]]
-//                            | Some ann -> div[] [
-//                                            h3 [] [Text "Properties:"]
-//                                            div [clazz "Segment"] [Text ann.annType]
-//                                            div [clazz "Segment"] [Text (sprintf "%A" ann.style)]
-//                                          ]
+                         ]           
     
     let viewUI (m : DrawingApp.Drawing) =
         div [] [

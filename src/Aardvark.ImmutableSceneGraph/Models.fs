@@ -57,10 +57,9 @@ module SimpleDrawingApp =
 
 module DrawingApp =
 
-    type Style = {
-    //    name : string
+    type Style = {    
         color : C4b
-    //    thickness : float
+        thickness : float
     }
     
     type Polygon = list<V3d>
