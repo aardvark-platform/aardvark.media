@@ -59,7 +59,7 @@ module DrawingApp =
 
     type Style = {    
         color : C4b
-        thickness : float
+        thickness : Numeric.Model
     }
     
     type Polygon = list<V3d>
@@ -85,6 +85,7 @@ module DrawingApp =
         style   : Style
         measureType : Choice.Model
         selected : pset<int>
+        selectedAnn : Option<Annotation>
     }
 
 module PlaceTransformObjects =

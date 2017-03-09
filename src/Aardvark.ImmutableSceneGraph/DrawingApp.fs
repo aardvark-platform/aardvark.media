@@ -19,13 +19,30 @@ open Fablish
 open Fable.Helpers.Virtualdom
 open Fable.Helpers.Virtualdom.Html
 
+module List =
+    let rec updateIf (p : 'a -> bool) (f : 'a -> 'a) (xs : list<'a>) = 
+        match xs with
+            | x :: xs ->
+                if(p x) then (f x) :: updateIf p f xs
+                else x :: updateIf p f xs
+            | [] -> []
+
 module AnnotationPropertiesApp =
     type Action =                      
         | Set_Thickness of Numeric.Action
 
-//    let update (env: Env<Action>) (model : DrawingApp.Annotation) (action : Action) =
-//        match action with            
-//            | Set_Thickness a -> { model with style = {model.style with thickness = Numeric.update env model.style.thickness a }}
+    let update (env: Env<Action>) (model : DrawingApp.Annotation) (action : Action) =
+        match action with            
+            | Set_Thickness a -> { model with style = {model.style with thickness = Numeric.update env model.style.thickness a }}
+
+    let view (m : DrawingApp.Annotation) =
+        div[] [                                                        
+            Text m.annType
+            br []
+            Text (sprintf "Color: %A" m.style.color)
+            br []
+            Numeric.view m.style.thickness |> Html.map Set_Thickness                            
+        ]           
     
 
 module DrawingApp =
@@ -40,6 +57,16 @@ module DrawingApp =
     open Primitives
 
     open SimpleDrawingApp
+          
+    let initThickness = {
+        value   = 0.02
+        min     = 0.005
+        max     = 0.03
+        step    = 0.005
+        format  = "{0:0.000}"
+    }
+
+    let thickness v = { initThickness with value = v }
 
     type Action =
         | Click of int
@@ -53,13 +80,14 @@ module DrawingApp =
         | PickStop   
         | Set_Type    of Choice.Action
         | Set_Style   of Choice.Action
+        | SetAnnotationProperties of AnnotationPropertiesApp.Action
 
     let styles : List<DrawingApp.Style> = 
         [
-           { color = new C4b(33,113,181) ; thickness = 0.03 }
-           { color = new C4b(107,174,214); thickness = 0.02 }
-           { color = new C4b(189,215,231); thickness = 0.01 }
-           { color = new C4b(239,243,255); thickness = 0.005 }
+           { color = new C4b(33,113,181) ; thickness = thickness 0.03 }
+           { color = new C4b(107,174,214); thickness = thickness 0.02 }
+           { color = new C4b(189,215,231); thickness = thickness 0.01 }
+           { color = new C4b(239,243,255); thickness = thickness 0.005 }
         ]
 
     let choiceIndex (c : Choice.Model) =
@@ -100,10 +128,10 @@ module DrawingApp =
         let picking = m.picking
         match cmd, picking with
             | Click i, _ when i <> -1 ->
-               if Seq.contains i m.selected 
+               let m = if Seq.contains i m.selected 
                             then { m with selected = PSet.remove i m.selected }
-                            else { m with selected = PSet.add i m.selected }            
-               |> stash   
+                            else { m with selected = PSet.add i m.selected }
+               { m with selectedAnn = m.finished |> Seq.tryFind(fun x -> x.seqNumber = i)} |> stash
             | Finish, _ -> finishPolygon m |> stash
             | AddPoint p, Some _ -> updateAddPoint m p |> stash
             | MoveCursor p, Some _ ->
@@ -132,7 +160,20 @@ module DrawingApp =
                                 | Some k -> k
             | PickStart, _   -> { m with picking = Some 0 }
             | PickStop, _    -> { m with picking = None }
+            | SetAnnotationProperties a, _ -> 
+                            match m.selectedAnn with
+                                | Some x -> 
+                                    let ann' = AnnotationPropertiesApp.update (e |> Env.map SetAnnotationProperties) x a
+                                    let m = {m with selectedAnn = Some ann'} // update selected annotation
+                                    let annotations' = List.updateIf (
+                                                            fun (x : DrawingApp.Annotation) -> x.seqNumber = ann'.seqNumber) 
+                                                            (fun x -> ann') 
+                                                            m.finished.AsList
+
+                                    {m with finished = annotations' |> PSet.ofList }
+                                | None -> m                                                      
             | _,_ -> m    
+           
 
     let viewPolygon (p : list<V3d>) (r : float) (id : int) (close : bool) =        
         match p with
@@ -174,13 +215,13 @@ module DrawingApp =
             // draw all finished polygons       
             for p in m.mfinished :> aset<_> do                 
                 let color = if isSelected p.seqNumber then selectionColor else p.style.color                
-                yield [viewPolygon p.geometry p.style.thickness p.seqNumber (closed p)] |> Scene.colored (Mod.constant p.style.color)
+                yield [viewPolygon p.geometry p.style.thickness.value p.seqNumber (closed p)] |> Scene.colored (Mod.constant p.style.color)
 
             // draw selection geometry
             for id in m.mselected :> aset<_> do
                 printfn "selected: %i" id
                 match m.mfinished |> Seq.tryFind(fun x -> x.seqNumber = id) with
-                    | Some k ->  yield [viewSelection k.geometry (k.style.thickness * 1.01)] |> Scene.colored (Mod.constant selectionColor)
+                    | Some k ->  yield [viewSelection k.geometry (k.style.thickness.value * 1.01)] |> Scene.colored (Mod.constant selectionColor)
                     | None -> ()
 
             // draw working polygon
@@ -191,9 +232,9 @@ module DrawingApp =
                 | Some v when v.cursor.IsSome -> 
                     let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
                     yield 
-                        [viewPolygon (line) style.thickness -1 (m.mmeasureType.Value.selected = "Polygon")] |> Scene.colored (Mod.constant style.color)
+                        [viewPolygon (line) style.thickness.value -1 (m.mmeasureType.Value.selected = "Polygon")] |> Scene.colored (Mod.constant style.color)
                     yield 
-                        [ Sphere3d(V3d.OOO, style.thickness) |> Sphere |>  Scene.render Pick.ignore ] 
+                        [ Sphere3d(V3d.OOO, style.thickness.value) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
                             |> Scene.transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value))
                 | _ -> ()
@@ -257,21 +298,16 @@ module DrawingApp =
                         ]
             ]
 
-    let viewMeasurementProperties (m : DrawingApp.Drawing) =       
+    let viewProperties (m : DrawingApp.Drawing) =
         match m.selected |> Seq.tryHead with
             | None -> div[] [h3 [] [Text "Properties:"]]
             | Some id -> div[] [ 
                             yield h3 [] [Text (sprintf "Properties of %A:" id)]
                             match (m.finished |> Seq.tryFind(fun x -> x.seqNumber = id)) with
                                         | None -> yield Text "No Properties found"
-                                        | Some k -> 
-                                                yield Text k.annType
-                                                yield br []
-                                                yield Text (sprintf "Color: %A" k.style.color)
-                                                yield br []
-                                                yield Text (sprintf "Thickness: %A" k.style.thickness)
-                            
-                         ]           
+                                        | Some k -> yield AnnotationPropertiesApp.view m.selectedAnn.Value |> Html.map SetAnnotationProperties ]
+
+    
     
     let viewUI (m : DrawingApp.Drawing) =
         div [] [
@@ -288,7 +324,7 @@ module DrawingApp =
              div [Style ["width", "20%"; "height", "40%";
                          "overflowY", "auto"; "float", "left"; "backgroundColor", "#fff7fb"
                          "border-style", "solid"; "border-width", "1px 1px 1px 1px"]] [
-                            viewMeasurementProperties m
+                            viewProperties m
             ]
         ]
 
@@ -313,9 +349,10 @@ module DrawingApp =
             picking = None 
             filename = @"C:\Aardwork\wand.jpg"
             style = styles.[0]
-            measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Point" }
+            measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Polyline" }
             styleType = { choices = ["#1";"#2";"#3"; "#4"]; selected = "#1" }
             selected = PSet.empty
+            selectedAnn= None
             }
 
     let app s =

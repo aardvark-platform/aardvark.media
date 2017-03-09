@@ -177,7 +177,7 @@ module Generated =
 
         type Style = {
             color : C4b
-            thickness : float
+            thickness : Numeric.Model
         }
         
         type Annotation = {
@@ -206,7 +206,8 @@ module Generated =
               style    : Style
               measureType : Choice.Model
               styleType   : Choice.Model
-              selected : pset<int>}
+              selected : pset<int>
+              selectedAnn : Option<Annotation>}
             
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
