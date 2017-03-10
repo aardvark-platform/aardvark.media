@@ -19,6 +19,31 @@ open Fablish
 open Fable.Helpers.Virtualdom
 open Fable.Helpers.Virtualdom.Html
 
+module Choice =
+    let index (c : Choice.Model) =
+        match List.tryFindIndex (fun x -> x = c.selected) c.choices with
+            | Some i -> i
+            | None -> failwith "selected not found in choice list"
+
+module Default = 
+    let thickness = {
+        value   = 0.02
+        min     = 0.005
+        max     = 0.03
+        step    = 0.005
+        format  = "{0:0.000}"
+    }
+
+    let thickness' v = { thickness with value = v }
+    
+
+module Html =
+    let ofC4b (c : C4b) = sprintf "rgb(%i,%i,%i)" c.R c.G c.B
+
+    let table rows = table [clazz "ui celled striped table unstackable"] [ tbody [] rows ]
+
+    let row k v =  tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
+    
 module List =
     let rec updateIf (p : 'a -> bool) (f : 'a -> 'a) (xs : list<'a>) = 
         match xs with
@@ -35,15 +60,17 @@ module AnnotationPropertiesApp =
         match action with            
             | Set_Thickness a -> { model with style = {model.style with thickness = Numeric.update env model.style.thickness a }}
 
+    //let table' = table [clazz "ui celled striped table unstackable"]
+       
     let view (m : DrawingApp.Annotation) =
-        div[] [                                                        
-            Text m.annType
-            br []
-            Text (sprintf "Color: %A" m.style.color)
-            br []
-            Numeric.view m.style.thickness |> Html.map Set_Thickness                            
-        ]           
-    
+        let c = sprintf "%A" (Html.ofC4b m.style.color)
+        div[] [                                                                    
+            Html.table [                                            
+                Html.row "Type:"      [ Text  m.annType ]
+                Html.row "Color:"     [ div [Style ["color", c]] [ Text c ]]
+                Html.row "Thickness:" [ Numeric.view m.style.thickness |> Html.map Set_Thickness ]
+            ]
+        ]                       
 
 module DrawingApp =
 
@@ -57,16 +84,8 @@ module DrawingApp =
     open Primitives
 
     open SimpleDrawingApp
-          
-    let initThickness = {
-        value   = 0.02
-        min     = 0.005
-        max     = 0.03
-        step    = 0.005
-        format  = "{0:0.000}"
-    }
-
-    let thickness v = { initThickness with value = v }
+            
+    let thickness v = { Default.thickness with value = v }
 
     type Action =
         | Click of int
@@ -84,16 +103,11 @@ module DrawingApp =
 
     let styles : List<DrawingApp.Style> = 
         [
-           { color = new C4b(33,113,181) ; thickness = thickness 0.03 }
-           { color = new C4b(107,174,214); thickness = thickness 0.02 }
-           { color = new C4b(189,215,231); thickness = thickness 0.01 }
-           { color = new C4b(239,243,255); thickness = thickness 0.005 }
-        ]
-
-    let choiceIndex (c : Choice.Model) =
-        match List.tryFindIndex (fun x -> x = c.selected) c.choices with
-            | Some i -> i
-            | None -> failwith "selected not found in choice list"
+           { color = new C4b(33,113,181) ; thickness = Default.thickness' 0.03 }
+           { color = new C4b(107,174,214); thickness = Default.thickness' 0.02 }
+           { color = new C4b(189,215,231); thickness = Default.thickness' 0.01 }
+           { color = new C4b(239,243,255); thickness = Default.thickness' 0.005 }
+        ]    
 
     let stash (m : DrawingApp.Drawing) =
         { m with history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None }
@@ -108,8 +122,7 @@ module DrawingApp =
                                                   style = m.style
                                                   seqNumber = m.finished.AsList.Length
                                                   annType = m.measureType.selected } m.finished }
-
-    //["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]
+    
     let updateAddPoint (m : DrawingApp.Drawing) (p : V3d) =         
         match m.working with
             | None -> 
@@ -145,13 +158,11 @@ module DrawingApp =
             | Set_Type a, _ when m.working.IsNone -> { m with measureType = Choice.update e m.measureType a}
             | Set_Style a, _ -> 
                 let style = Choice.update e m.styleType a
-                let index = choiceIndex style
+                let index = Choice.index style
                 
-                { m with 
-                    styleType = style
-                    style = styles.[index]
-                    history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None
-                    }
+                { m with styleType = style
+                         style = styles.[index]
+                         history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None}
             | Undo, _ -> match !m.history with
                                 | None -> m
                                 | Some k -> { k with future = EqualOf.toEqual <| Some m }
@@ -169,12 +180,11 @@ module DrawingApp =
                                                             fun (x : DrawingApp.Annotation) -> x.seqNumber = ann'.seqNumber) 
                                                             (fun x -> ann') 
                                                             m.finished.AsList
-
                                     {m with finished = annotations' |> PSet.ofList }
                                 | None -> m                                                      
             | _,_ -> m    
            
-
+    // view 3d Stuff
     let viewPolygon (p : list<V3d>) (r : float) (id : int) (close : bool) =        
         match p with
             | [] -> []
@@ -191,12 +201,9 @@ module DrawingApp =
                         yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.0) |> Scene.render pick
                         yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
                 ]
-        |> Scene.group
-                
-    let c4bToHtml (c : C4b) = 
-        sprintf "rgb(%i,%i,%i)" c.R c.G c.B
+        |> Scene.group                
     
-    let selectionColor = C4b.Red//new C4b(150,150, 150)
+    let selectionColor = C4b.Red
     let viewSelection (p : list<V3d>) (r : float) =
         let lines =  Polygon3d(p |> List.toSeq).EdgeLines
         [           
@@ -205,8 +212,7 @@ module DrawingApp =
                 yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
         ] |> Scene.group
 
-    let closed (p : DrawingApp.Annotation) =
-        p.annType = "Polygon"
+    let closed (p : DrawingApp.Annotation) = p.annType = "Polygon"
 
     let viewDrawingPolygons (m :  DrawingApp.MDrawing) =
         let isSelected id = Seq.contains id m.mselected
@@ -253,8 +259,7 @@ module DrawingApp =
             |> Scene.agroup 
             |> Scene.effect [
                     toEffect DefaultSurfaces.trafo;
-                    toEffect DefaultSurfaces.vertexColor;]
-                   // toEffect DefaultSurfaces.simpleLighting]
+                    toEffect DefaultSurfaces.vertexColor;]                   
 
     let viewQuad (m : DrawingApp.MDrawing) =
         let texture = 
@@ -277,11 +282,9 @@ module DrawingApp =
         [viewDrawing m 
          viewQuad    m]
             |> Scene.group
-            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
+            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)    
 
-    let colorToHTML (c:C4b) =
-        sprintf "rgb(%i,%i,%i)" c.R c.G c.B        
-
+    // view GUI stuff
     let viewMeasurements (m : DrawingApp.Drawing) = 
         let isSelected id = Seq.contains id m.selected
         div [clazz "ui relaxed divided list"] [
@@ -290,7 +293,7 @@ module DrawingApp =
                 let background, fontcolor = if isSelected me.seqNumber then "#969696","#f0f0f0" else "#d9d9d9", "#252525"
                 
                 yield div [clazz "item"; Style ["backgroundColor", background]; onMouseClick (fun o -> Click me.seqNumber)] [
-                            i [clazz "large File Outline middle aligned icon"; Style ["color", me.style.color |> c4bToHtml]][]
+                            i [clazz "large File Outline middle aligned icon"; Style ["color", me.style.color |> Html.ofC4b]][]
                             div[clazz "content"] [
                                 div [clazz "header"; Style ["color", fontcolor] ] [Text me.annType] 
                                 div [clazz "description"; Style ["color", fontcolor]] [Text (sprintf "%i" me.seqNumber)]
@@ -306,9 +309,7 @@ module DrawingApp =
                             match (m.finished |> Seq.tryFind(fun x -> x.seqNumber = id)) with
                                         | None -> yield Text "No Properties found"
                                         | Some k -> yield AnnotationPropertiesApp.view m.selectedAnn.Value |> Html.map SetAnnotationProperties ]
-
-    
-    
+     
     let viewUI (m : DrawingApp.Drawing) =
         div [] [
              div [Style ["width", "80%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
@@ -328,6 +329,7 @@ module DrawingApp =
             ]
         ]
 
+    // app setup
     let subscriptions (m : DrawingApp.Drawing) =
         Many [Input.key Down Keys.Enter (fun _ _-> Finish)
               Input.key Down Keys.Left  (fun _ _-> Undo)

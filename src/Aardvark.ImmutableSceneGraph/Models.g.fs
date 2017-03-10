@@ -183,7 +183,7 @@ module Generated =
         type Annotation = {
             seqNumber : int
             annType : string
-            geometry : Polygon
+            geometry : Polygon // think of record type
             style : Style            
         }
 
