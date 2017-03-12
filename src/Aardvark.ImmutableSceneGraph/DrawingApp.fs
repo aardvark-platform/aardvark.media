@@ -19,54 +19,38 @@ open Fablish
 open Fable.Helpers.Virtualdom
 open Fable.Helpers.Virtualdom.Html
 
-module Choice =
-    let index (c : Choice.Model) =
-        match List.tryFindIndex (fun x -> x = c.selected) c.choices with
-            | Some i -> i
-            | None -> failwith "selected not found in choice list"
-
-module Default = 
-    let thickness = {
-        value   = 0.02
-        min     = 0.005
-        max     = 0.03
-        step    = 0.005
-        format  = "{0:0.000}"
-    }
-
-    let thickness' v = { thickness with value = v }
-    
-
-module Html =
-    let ofC4b (c : C4b) = sprintf "rgb(%i,%i,%i)" c.R c.G c.B
-
-    let table rows = table [clazz "ui celled striped table unstackable"] [ tbody [] rows ]
-
-    let row k v =  tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
-    
-module List =
-    let rec updateIf (p : 'a -> bool) (f : 'a -> 'a) (xs : list<'a>) = 
-        match xs with
-            | x :: xs ->
-                if(p x) then (f x) :: updateIf p f xs
-                else x :: updateIf p f xs
-            | [] -> []
+module Styles =
+    let standard : List<DrawingApp.Style> = 
+        [
+           { color = new C4b(33,113,181) ; thickness = DrawingApp.Default.thickness' 0.03 }
+           { color = new C4b(107,174,214); thickness = DrawingApp.Default.thickness' 0.02 }
+           { color = new C4b(189,215,231); thickness = DrawingApp.Default.thickness' 0.01 }
+           { color = new C4b(239,243,255); thickness = DrawingApp.Default.thickness' 0.005 }
+        ]   
 
 module AnnotationPropertiesApp =
     type Action =                      
         | Set_Thickness of Numeric.Action
+        | Set_Style     of Choice.Action
 
     let update (env: Env<Action>) (model : DrawingApp.Annotation) (action : Action) =
         match action with            
             | Set_Thickness a -> { model with style = {model.style with thickness = Numeric.update env model.style.thickness a }}
+            | Set_Style s -> 
+                let style' = Choice.update env model.styleType s
+                let index = Choice.index style'
+                let style' = Styles.standard.[index]
+
+                { model with style = style'; styleType = Choice.update env model.styleType s }
 
     //let table' = table [clazz "ui celled striped table unstackable"]
        
     let view (m : DrawingApp.Annotation) =
         let c = sprintf "%A" (Html.ofC4b m.style.color)
         div[] [                                                                    
-            Html.table [                                            
+            Html.table [
                 Html.row "Type:"      [ Text  m.annType ]
+                Html.row "Style:"     [ Choice.view m.styleType |> Html.map Set_Style ]
                 Html.row "Color:"     [ div [Style ["color", c]] [ Text c ]]
                 Html.row "Thickness:" [ Numeric.view m.style.thickness |> Html.map Set_Thickness ]
             ]
@@ -84,6 +68,7 @@ module DrawingApp =
     open Primitives
 
     open SimpleDrawingApp
+    open DrawingApp
             
     let thickness v = { Default.thickness with value = v }
 
@@ -99,20 +84,12 @@ module DrawingApp =
         | PickStop   
         | Set_Type    of Choice.Action
         | Set_Style   of Choice.Action
-        | SetAnnotationProperties of AnnotationPropertiesApp.Action
+        | SetAnnotationProperties of AnnotationPropertiesApp.Action    
 
-    let styles : List<DrawingApp.Style> = 
-        [
-           { color = new C4b(33,113,181) ; thickness = Default.thickness' 0.03 }
-           { color = new C4b(107,174,214); thickness = Default.thickness' 0.02 }
-           { color = new C4b(189,215,231); thickness = Default.thickness' 0.01 }
-           { color = new C4b(239,243,255); thickness = Default.thickness' 0.005 }
-        ]    
-
-    let stash (m : DrawingApp.Drawing) =
+    let stash (m : Drawing) =
         { m with history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None }
 
-    let finishPolygon (m : DrawingApp.Drawing) = 
+    let finishPolygon (m : Drawing) = 
                 match m.working with
                     | None -> m
                     | Some p -> 
@@ -121,9 +98,11 @@ module DrawingApp =
                             finished = PSet.add { geometry = p.finishedPoints
                                                   style = m.style
                                                   seqNumber = m.finished.AsList.Length
-                                                  annType = m.measureType.selected } m.finished }
+                                                  annType = m.measureType.selected 
+                                                  styleType = m.styleType
+                                                  } m.finished }
     
-    let updateAddPoint (m : DrawingApp.Drawing) (p : V3d) =         
+    let updateAddPoint (m : Drawing) (p : V3d) =         
         match m.working with
             | None -> 
                 { m with working = Some { finishedPoints = [ p ]; cursor = None; }}
@@ -137,7 +116,7 @@ module DrawingApp =
                     | "DipAndStrike" -> k
                     | _ -> failwith (sprintf "measure mode %A not recognized" m.measureType.selected)
         
-    let update (picking : Option<int>) e (m : DrawingApp.Drawing) (cmd : Action) =
+    let update (picking : Option<int>) e (m : Drawing) (cmd : Action) =
         let picking = m.picking
         match cmd, picking with
             | Click i, _ when i <> -1 ->
@@ -153,16 +132,15 @@ module DrawingApp =
                     | Some v -> { m with working = Some { v with cursor = Some p }}
             | ChangeStyle s, _ -> 
                 { m with 
-                    style = styles.[s];
+                    style = Styles.standard.[s];
                     styleType = { m.styleType with selected = m.styleType.choices.[s] }} |> stash
             | Set_Type a, _ when m.working.IsNone -> { m with measureType = Choice.update e m.measureType a}
             | Set_Style a, _ -> 
                 let style = Choice.update e m.styleType a
                 let index = Choice.index style
                 
-                { m with styleType = style
-                         style = styles.[index]
-                         history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None}
+                { m with styleType = style; style = Styles.standard.[index] } |> stash
+                    
             | Undo, _ -> match !m.history with
                                 | None -> m
                                 | Some k -> { k with future = EqualOf.toEqual <| Some m }
@@ -177,7 +155,7 @@ module DrawingApp =
                                     let ann' = AnnotationPropertiesApp.update (e |> Env.map SetAnnotationProperties) x a
                                     let m = {m with selectedAnn = Some ann'} // update selected annotation
                                     let annotations' = List.updateIf (
-                                                            fun (x : DrawingApp.Annotation) -> x.seqNumber = ann'.seqNumber) 
+                                                            fun (x : Annotation) -> x.seqNumber = ann'.seqNumber) 
                                                             (fun x -> ann') 
                                                             m.finished.AsList
                                     {m with finished = annotations' |> PSet.ofList }
@@ -212,9 +190,9 @@ module DrawingApp =
                 yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
         ] |> Scene.group
 
-    let closed (p : DrawingApp.Annotation) = p.annType = "Polygon"
+    let closed (p : Annotation) = p.annType = "Polygon"
 
-    let viewDrawingPolygons (m :  DrawingApp.MDrawing) =
+    let viewDrawingPolygons (m :  MDrawing) =
         let isSelected id = Seq.contains id m.mselected
         aset {
                     
@@ -254,14 +232,14 @@ module DrawingApp =
                                ] 
                       ] |>  Scene.colored (Mod.constant C4b.Gray)
 
-    let viewDrawing (m : DrawingApp.MDrawing) =         
+    let viewDrawing (m : MDrawing) =         
         viewDrawingPolygons m 
             |> Scene.agroup 
             |> Scene.effect [
                     toEffect DefaultSurfaces.trafo;
                     toEffect DefaultSurfaces.vertexColor;]                   
 
-    let viewQuad (m : DrawingApp.MDrawing) =
+    let viewQuad (m : MDrawing) =
         let texture = 
             m.mfilename |> Mod.map (fun path -> 
                 let pi = PixTexture2d(PixImageMipMap([|PixImage.Create(path)|]),true)
@@ -276,7 +254,7 @@ module DrawingApp =
                     toEffect DefaultSurfaces.vertexColor;
                     toEffect DefaultSurfaces.diffuseTexture]
         
-    let view3D (sizes : IMod<V2i>) (m : DrawingApp.MDrawing) =        
+    let view3D (sizes : IMod<V2i>) (m : MDrawing) =        
         let cameraView = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI |> Mod.constant
         let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))        
         [viewDrawing m 
@@ -285,7 +263,7 @@ module DrawingApp =
             |> Scene.camera (Mod.map2 Camera.create cameraView frustum)    
 
     // view GUI stuff
-    let viewMeasurements (m : DrawingApp.Drawing) = 
+    let viewMeasurements (m : Drawing) = 
         let isSelected id = Seq.contains id m.selected
         div [clazz "ui relaxed divided list"] [
             yield h3 [] [Text "Annotations:"]
@@ -301,7 +279,7 @@ module DrawingApp =
                         ]
             ]
 
-    let viewProperties (m : DrawingApp.Drawing) =
+    let viewProperties (m : Drawing) =
         match m.selected |> Seq.tryHead with
             | None -> div[] [h3 [] [Text "Properties:"]]
             | Some id -> div[] [ 
@@ -310,19 +288,35 @@ module DrawingApp =
                                         | None -> yield Text "No Properties found"
                                         | Some k -> yield AnnotationPropertiesApp.view m.selectedAnn.Value |> Html.map SetAnnotationProperties ]
      
-    let viewUI (m : DrawingApp.Drawing) =
+    let viewUI (m : Drawing) =
         div [] [
-             div [Style ["width", "80%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
+             //Rendercontrol
+             div [Style ["width", "75%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
                   attribute "id" "renderControl"] [
-                button [clazz "ui icon button"; onMouseClick (fun _ -> Undo)] [i [clazz "arrow left icon"] []]
-                button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [i [clazz "arrow right icon"] []]
-                Choice.view m.measureType |> Html.map Set_Type 
-                Choice.view m.styleType |> Html.map Set_Style]
-             div [Style ["width", "20%"; "height", "60%";
+
+                //Overlay
+                Html.Layout.horizontal [
+                    Html.Layout.boxH [ 
+                        div [clazz "ui buttons"] [
+                            button [clazz "ui icon button"; onMouseClick (fun _ -> Undo)] [i [clazz "arrow left icon"] []]
+                            button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [i [clazz "arrow right icon"] []]
+                        ]
+                    ]
+                    Html.Layout.boxH [ Choice.view m.measureType |> Html.map Set_Type ]
+                    Html.Layout.boxH [ Choice.view m.styleType |> Html.map Set_Style ]
+                    Html.Layout.finish()
+                ]
+             ]
+
+             //Measurement List
+             div [Style ["width", "25%"; "height", "60%";
                          "overflowY", "auto"; "float", "left"; "backgroundColor", "#fff7fb"
-                         "border-style", "solid"; "border-width", "1px 1px 0px 1px"]] [viewMeasurements m]
+                         "border-style", "solid"; "border-width", "1px 1px 0px 1px"]] [
+                            viewMeasurements m
+             ]
              
-             div [Style ["width", "20%"; "height", "40%";
+             //Measurement Properties
+             div [Style ["width", "25%"; "height", "40%";
                          "overflowY", "auto"; "float", "left"; "backgroundColor", "#fff7fb"
                          "border-style", "solid"; "border-width", "1px 1px 1px 1px"]] [
                             viewProperties m
@@ -330,7 +324,7 @@ module DrawingApp =
         ]
 
     // app setup
-    let subscriptions (m : DrawingApp.Drawing) =
+    let subscriptions (m : Drawing) =
         Many [Input.key Down Keys.Enter (fun _ _-> Finish)
               Input.key Down Keys.Left  (fun _ _-> Undo)
               Input.key Down Keys.Right (fun _ _-> Redo)
@@ -343,16 +337,16 @@ module DrawingApp =
               Input.key Down Keys.D4  (fun _ _-> ChangeStyle 3)
               ]
 
-    let (initial : DrawingApp.Drawing) = { 
+    let (initial : Drawing) = { 
             finished = PSet.empty
             working = None
             _id = null
             history = EqualOf.toEqual None; future = EqualOf.toEqual None
             picking = None 
             filename = @"C:\Aardwork\wand.jpg"
-            style = styles.[0]
+            style = Styles.standard.[0]
             measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Polyline" }
-            styleType = { choices = ["#1";"#2";"#3"; "#4"]; selected = "#1" }
+            styleType = { choices = ["#Fascies";"#Bed";"#Crossbed"; "#Grain"]; selected = "#Fascies" }
             selected = PSet.empty
             selectedAnn= None
             }

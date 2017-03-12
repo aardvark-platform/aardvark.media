@@ -185,6 +185,7 @@ module Generated =
             annType : string
             geometry : Polygon // think of record type
             style : Style            
+            styleType : Choice.Model
         }
 
         type OpenPolygon = 

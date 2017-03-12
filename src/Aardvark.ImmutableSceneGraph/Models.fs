@@ -56,11 +56,22 @@ module SimpleDrawingApp =
     }
 
 module DrawingApp =
-
+    
     type Style = {    
         color : C4b
         thickness : Numeric.Model
     }
+
+    module Default =
+        let thickness = {
+            value   = 0.02
+            min     = 0.005
+            max     = 0.03
+            step    = 0.005
+            format  = "{0:0.000}"
+        }
+
+        let thickness' v = { thickness with value = v } 
     
     type Polygon = list<V3d>
 
@@ -68,6 +79,7 @@ module DrawingApp =
         seqNumber : int
         annType : string
         geometry : Polygon
+
         style : Style        
     }
 

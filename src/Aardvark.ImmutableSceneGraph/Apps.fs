@@ -462,7 +462,6 @@ module ComposedTestApp =
             subscriptions = subscriptions time
         }
 
-
 module TextureExample = 
     open Aardvark.Base
     open Aardvark.Base.Rendering
