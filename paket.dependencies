@@ -2,18 +2,18 @@ framework: net45
 source https://api.nuget.org/v3/index.json
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 
-nuget Aardvark.Base                        ~> 2.4.7
-nuget Aardvark.Base.Incremental            ~> 2.4.7
-nuget Aardvark.Base.FSharp                 ~> 2.4.7
-nuget Aardvark.Base.Essentials             ~> 2.4.7
+nuget Aardvark.Base                        ~> 3.0.4
+nuget Aardvark.Base.Incremental            ~> 3.0.4
+nuget Aardvark.Base.FSharp                 ~> 3.0.4
+nuget Aardvark.Base.Essentials             ~> 3.0.4
 
-nuget Aardvark.Base.Rendering              ~> 2.7.2
-nuget Aardvark.Application.WinForms.GL     ~> 2.7.2
-nuget Aardvark.SceneGraph                  ~> 2.7.2
-nuget Aardvark.Rendering.NanoVg            ~> 2.7.2
-nuget Aardvark.Rendering.Text              ~> 2.7.2
+nuget Aardvark.Base.Rendering              ~> 3.1.0
+nuget Aardvark.Application.WinForms.GL     ~> 3.1.0
+nuget Aardvark.SceneGraph                  ~> 3.1.0
+nuget Aardvark.Rendering.NanoVg            ~> 3.1.0
+nuget Aardvark.Rendering.Text              ~> 3.1.0
 
-nuget Aardvark.Compiler.DomainTypes
+nuget Aardvark.Compiler.DomainTypes        ~> 0.1.2
 
 nuget Another.Unofficial.Xilium.CefGlue ~> 0.0.9
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.9
@@ -30,10 +30,9 @@ nuget Suave                 ~> 2.0.2
 nuget FSharp.Compiler.Service   ~> 9.0.1
 nuget FSharp.Compiler.Service.ProjectCracker ~> 9.0.1
 group Build
+framework: net45
 content: none
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 source https://api.nuget.org/v3/index.json
-
 nuget FSharp.Formatting.CommandTool
-
 github vrvis/Aardvark.Fake:standalone

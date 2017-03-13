@@ -234,7 +234,7 @@ type IUiUpdate<'msg> =
     inherit IAdaptiveObject
     abstract member Tag : string
     abstract member Id : string
-    abstract member Update : IAdaptiveObject * Expr * UpdateState<'msg> -> Expr
+    abstract member Update : AdaptiveToken * Expr * UpdateState<'msg> -> Expr
     abstract member Destroy : UpdateState<'msg> -> unit
 
 
@@ -249,12 +249,12 @@ type AbstractUiUpdate<'msg>(id : string, n : Ui<'msg>) =
     member x.Id = id
     member x.Tag = n.Tag
 
-    abstract member Update : Expr * UpdateState<'msg> -> Expr
+    abstract member PerformUpdate : AdaptiveToken * Expr * UpdateState<'msg> -> Expr
     abstract member Destroy : UpdateState<'msg> -> unit
     
-    member x.Update(caller : IAdaptiveObject, self : Expr, state : UpdateState<'msg>) = 
-        x.EvaluateIfNeeded caller self (fun () ->
-            x.Update(self, state)
+    member x.Update(caller : AdaptiveToken, self : Expr, state : UpdateState<'msg>) = 
+        x.EvaluateIfNeeded caller self (fun caller ->
+            x.PerformUpdate(caller, self, state)
         )
 
     interface IUiUpdate<'msg> with
@@ -266,29 +266,29 @@ type AbstractUiUpdate<'msg>(id : string, n : Ui<'msg>) =
 type AttributeUpdate<'msg>(id : string, n : Ui<'msg>) =
     inherit AbstractUiUpdate<'msg>(id, n)
 
-    let reader = n.Attributes.ASet.GetReader()
+    let reader = n.Attributes.GetReader()
 
     override x.Destroy(state : UpdateState<'msg>) =
-        for (key, v) in reader.Content do
+        for (key, v) in reader.State do
             match v with
                 | Event _ -> state.handlers.Remove((id, key)) |> ignore
                 | _ ->  ()
         reader.Dispose()
 
-    override x.Update(self : Expr, state : UpdateState<'msg>) =
+    override x.PerformUpdate(token : AdaptiveToken, self : Expr, state : UpdateState<'msg>) =
         let mutable e = self
         // process attribute changes
         let values = Dictionary()
-        let removed = Dictionary()
-        for d in reader.GetDelta x do
+        let removed = HashSet()
+        for key, d in reader.GetOperations token do
             match d with
-                | Add(key, value) ->
+                | Set(value) ->
                     removed.Remove key |> ignore
                     values.[key] <- value
 
-                | Rem(key, value) ->
+                | ElementOperation.Remove ->
                     if not (values.ContainsKey key) then
-                        removed.[key] <- value
+                        removed.Add key |> ignore
 
         for (key, value) in Dictionary.toSeq values do
             match value with
@@ -301,11 +301,9 @@ type AttributeUpdate<'msg>(id : string, n : Ui<'msg>) =
                     e <- AttributeSet(e, key, value)
                     state.handlers.[(id, key)] <- f
 
-        for (key, value) in Dictionary.toSeq removed do
+        for key in removed do
             e <- AttributeRem(e, key)
-            match value with
-                | Event _ -> state.handlers.Remove((id, key)) |> ignore
-                | _ -> ()
+            state.handlers.Remove((id, key)) |> ignore
 
         e
 
@@ -313,24 +311,18 @@ type ChildrenUpdate<'msg>(id : string, n : Ui<'msg>, l : alist<IUiUpdate<'msg>>)
     inherit AbstractUiUpdate<'msg>(id, n)
     let reader = l.GetReader()
 
-    static let splitDeltas (d : list<Delta<'a>>) =
-        let rec splitDeltas (add : list<'a>) (rem : list<'a>) (d : list<Delta<'a>>) =
+    static let splitDeltas (d : list<Index * ElementOperation<'a>>) =
+        let rec splitDeltas (add : list<Index * 'a>) (rem : list<Index>) (d : list<Index * ElementOperation<'a>>) =
             match d with
                 | [] -> add, rem
-                | d :: rest -> 
-                    match d with
-                        | Add v -> splitDeltas (v :: add) rem rest
-                        | Rem v -> splitDeltas add (v :: rem) rest
+                | (i,op) :: rest -> 
+                    match op with
+                        | Set v -> splitDeltas ((i,v) :: add) rem rest
+                        | ElementOperation.Remove -> splitDeltas add (i :: rem) rest
         splitDeltas [] [] d
 
     static let cmpState =
-        { new IComparer<ISortKey * IUiUpdate<'msg> * bool> with
-            member x.Compare((l,_,_), (r,_,_)) =
-                compare l r
-        }
-
-    static let cmpDelta =
-        { new IComparer<ISortKey * IUiUpdate<'msg>> with
+        { new IComparer<Index * IUiUpdate<'msg>> with
             member x.Compare((l,_), (r,_)) =
                 compare l r
         }
@@ -347,12 +339,14 @@ type ChildrenUpdate<'msg>(id : string, n : Ui<'msg>, l : alist<IUiUpdate<'msg>>)
 
         l, s, r
 
+
+    let mutable content = SortedSetExt<Index * IUiUpdate<'msg>>(cmpState)
     let mutable innerUpdates : Option<list<IUiUpdate<'msg> * Expr>> = None
 
-    member x.UpdateInner(caller : IAdaptiveObject, state : UpdateState<'msg>) =
+    member x.UpdateInner(caller : AdaptiveToken, state : UpdateState<'msg>) =
         match innerUpdates with
             | None ->
-                reader.Content.All |> Seq.toList |> List.map (fun (_,n) ->
+                reader.State |> Seq.toList |> List.map (fun n ->
                     n.Update(caller, Element n.Id, state)
                 )
             | Some inner ->  
@@ -364,72 +358,74 @@ type ChildrenUpdate<'msg>(id : string, n : Ui<'msg>, l : alist<IUiUpdate<'msg>>)
                 res
 
     override x.Destroy(state) =
-        for (_,e) in reader.Content.All do
+        for e in reader.State do
             e.Destroy state
         reader.Dispose()
 
-    override x.Update(self : Expr, state : UpdateState<'msg>) =
+    override x.PerformUpdate(token : AdaptiveToken, expr : Expr, state : UpdateState<'msg>) =
         let mutable inner = []
-        let mutable e = self
         let self = { name = "_" + id }
 
-        let oldContent = Dictionary.ofSeq reader.Content.All
-        let added, removed = reader.GetDelta x |> splitDeltas
-        for (k,_) in removed do oldContent.Remove k |> ignore
+        let oldContent = reader.State
+        let ops = reader.GetOperations token
+        printfn "%A" ops
 
-        let sorted = SortedSetExt<ISortKey * IUiUpdate<'msg> * bool>(cmpState)
-        for (KeyValue(k,v)) in oldContent do sorted.Add(k, v, false) |> ignore
+        let isNew = HashSet<IUiUpdate<'msg>>()
+        let res = System.Collections.Generic.List()
+        for i, op in PDeltaList.toSeq ops do
+            match op with
+                | ElementOperation.Remove ->
+                    let (_,s,_) = findNeighbours (i,Unchecked.defaultof<_>) content
+                    match s with
+                        | Some(si,self) -> 
+                            content.Remove (si, self) |> ignore
+                            res.Add (Remove(Element self.Id))
+                        | None -> 
+                            failwithf "removal of unknown object %A" i
+                | Set n ->
+                    let (prev,old,next) = findNeighbours (i,Unchecked.defaultof<_>) content
+                    match old with
+                        | Some(_,o) -> 
+                            // update
+                            inner <- (n, Element n.Id) :: inner
 
-        let sortedAdds = SortedSetExt<ISortKey * IUiUpdate<'msg>>(cmpDelta)
-        for a in added do sortedAdds.Add a |> ignore
+                        | None ->
+                            // insert
+                            let insert (f : Expr -> Expr) =
+                                let var = { name = "_" + n.Id }
+                                inner <- (n, Var var) :: inner
+                                isNew.Add n |> ignore
+                                content.Add(i, n) |> ignore
+                                Let(var, Create(n.Tag, n.Id), f (Var var) ) |> res.Add
 
-        let removals =
-            removed |> List.map (fun (_,n) ->
-                Remove(Element n.Id)
-            )
+                            match prev, next with
+                                | _, None ->
+                                    // last element
+                                    insert (fun s -> Append(Var self, s))
 
-        let additions =
-            sortedAdds |> Seq.toList |> List.map (fun (k,n) ->
-                let insert (f : Expr -> Expr) =
-                    sorted.Add(k,n,true) |> ignore
-                    let var = { name = "_" + n.Id }
+                                | None, _ ->   
+                                    // first element
+                                    insert (fun s -> Prepend(Var self, s))
 
-                    inner <- (n, Var var) :: inner
+                                | Some (pk, pn), _ when not (isNew.Contains pn) ->
+                                    // prev not new
+                                    insert (fun s -> InsertAfter(Element pn.Id, s))
 
-                    Let(var, Create(n.Tag, n.Id), f (Var var) )
-          
-                            
-                let prev, ex, next = findNeighbours (k,n,true) sorted
-                if Option.isSome ex then
-                    failwithf "[JS] duplicate entry %A" (k,n)
+                                | _, Some (nk, nn) when not (isNew.Contains nn) ->
+                                    // next not new
+                                    insert (fun s -> InsertBefore(Element nn.Id, s))
 
-                match prev, next with
-                    | _, None ->
-                        // last element
-                        insert (fun s -> Append(Var self, s))
+                                | Some (_,_), Some (_,_) ->
+                                    failwith "should be impossible"
 
-                    | None, _ ->   
-                        // first element
-                        insert (fun s -> Prepend(Var self, s))
 
-                    | Some (pk, pn, false), _ ->
-                        // prev not new
-                        insert (fun s -> InsertAfter(Element pn.Id, s))
-
-                    | _, Some (nk, nn, false) ->
-                        // next not new
-                        insert (fun s -> InsertBefore(Element nn.Id, s))
-
-                    | Some (_,_,true), Some (_,_,true) ->
-                        failwith "should be impossible"
-            )
-
-        for (KeyValue(_,n)) in oldContent do
+        
+        for n in oldContent do
             inner <- (n, Element n.Id) :: inner
-
         innerUpdates <- Some inner
+        
+        Let(self, expr, Sequential (CSharpList.toList res))
 
-        Let(self, e, Sequential (removals @ additions))
 
 type ContentUpdate<'msg>(id : string, n : Ui<'msg>, content : IMod<string>) =
     inherit AbstractUiUpdate<'msg>(id, n)
@@ -439,8 +435,8 @@ type ContentUpdate<'msg>(id : string, n : Ui<'msg>, content : IMod<string>) =
     override x.Destroy(state : UpdateState<'msg>) =
         old <- ""
 
-    override x.Update(self : Expr, state : UpdateState<'msg>) =
-        let v = content.GetValue x
+    override x.PerformUpdate(token : AdaptiveToken, self : Expr, state : UpdateState<'msg>) =
+        let v = content.GetValue token
         if old <> v then
             old <- v
             HtmlSet(self, v)
@@ -455,7 +451,7 @@ type SceneUpdate<'msg>(id : string, n : Ui<'msg>, content : IRenderControl -> IR
         state.scenes.Remove id |> ignore
         content <- unbox
 
-    override x.Update(self : Expr, state : UpdateState<'msg>) =
+    override x.PerformUpdate(token : AdaptiveToken, self : Expr, state : UpdateState<'msg>) =
         state.scenes.[id] <- content
         self
     
@@ -487,11 +483,11 @@ type UiUpdate<'msg> private (id : string, node : Ui<'msg>) =
         att.Destroy(state)
         contentUpdate.Destroy(state)
 
-    override x.Update(self : Expr, state : UpdateState<'msg>) =
-        let self = att.Update(x, self, state)
-        let self = contentUpdate.Update(x, self, state)
+    override x.PerformUpdate(token : AdaptiveToken, self : Expr, state : UpdateState<'msg>) =
+        let self = att.Update(token, self, state)
+        let self = contentUpdate.Update(token, self, state)
 
-        let inner = updateInner(x, state)
+        let inner = updateInner(token, state)
         match inner with
             | [] -> self
             | l -> Sequential (self :: inner)
@@ -589,7 +585,8 @@ module Ui =
             let mutable initial = true
             let performUpdate (s : WebSocket) =
                 lock reader (fun () ->
-                    let code = reader.Update(null, Body, state) |> Expr.eliminateDeadCode |> Expr.toString
+                    let expr = reader.Update(AdaptiveToken.Top, Body, state) 
+                    let code = expr |> Expr.eliminateDeadCode |> Expr.toString
                     let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
 
                     if code = "" then
@@ -666,34 +663,33 @@ module Ui =
         {
             cview : 'mmodel -> Ui<'msg>
             cupdate : 'model -> 'msg -> 'model
-            cinit : 'model -> ReuseCache -> 'mmodel
-            capply : 'mmodel -> ReuseCache -> 'model -> unit
+            cinit : 'model -> 'mmodel
+            capply : 'mmodel -> 'model -> unit
             cinitial : 'model
         }
 
 
     let startElm (runtime : IRuntime) (port : int) (app : ConcreteMApp<'m, 'mm, 'msg>) =
-        let cache = ReuseCache()
         let imut = Mod.init app.cinitial
-        let mut = app.cinit app.cinitial cache
+        let mut = app.cinit app.cinitial
         let perform (msg : 'msg) =
             let newImut = app.cupdate imut.Value msg
             transact (fun () ->
                 imut.Value <- newImut
-                app.capply mut cache newImut
+                app.capply mut newImut
             )
 
         let view = app.cview mut
 
         start runtime port perform view
 
-    let inline startElm'<'model, 'msg, 'mmodel when 'model : (member ToMod : ReuseCache -> 'mmodel) and 'mmodel : (member Apply : 'model * ReuseCache -> unit)> (runtime : IRuntime) (port : int) (app : App<'model, 'mmodel, 'msg>) =   
+    let inline startElm'<'model, 'msg, 'mmodel when 'mmodel : (static member Create : 'model -> 'mmodel) and 'mmodel : (member Update : 'model -> unit)> (runtime : IRuntime) (port : int) (app : App<'model, 'mmodel, 'msg>) =   
         let capp = 
             {
                 cview = app.view
                 cupdate = app.update
-                cinit = fun m c -> (^model : (member ToMod : ReuseCache -> 'mmodel) (m, c))
-                capply = fun mm c m -> (^mmodel : (member Apply : 'model * ReuseCache -> unit) (mm, m, c))
+                cinit = fun m -> (^mmodel : (static member Create : 'model -> 'mmodel) (m))
+                capply = fun mm m -> (^mmodel : (member Update : 'model -> unit) (mm,m))
                 cinitial = app.initial
             }
 
@@ -708,23 +704,23 @@ module Bla =
         type Model =
             {
                 lastName : Option<string>
-                elements : pset<string>
+                elements : plist<string>
             }
 
-            member x.ToMod(cache : ReuseCache) =
-                {
-                    mlastName = Mod.init x.lastName
-                    melements = ResetSet<string>(x.elements)
-                }
 
         and MModel =
             {
-                mlastName : ModRef<Option<string>>
-                melements : ResetSet<string>
+                mlastName : ResetMod<Option<string>>
+                melements : ResetList<string>
             }
+            static member Create(m : Model) =
+                {
+                    mlastName = ResetMod(m.lastName)
+                    melements = ResetList(m.elements)
+                }
 
-            member x.Apply(m : Model, cache : ReuseCache) =
-                x.mlastName.Value <- m.lastName
+            member x.Update(m : Model) =
+                x.mlastName.Update(m.lastName)
                 x.melements.Update(m.elements)
 
         type Message =
@@ -732,7 +728,7 @@ module Bla =
 
         let update (m : Model) (msg : Message) =
             match msg with
-                | AddButton str -> { m with lastName = Some str; elements = PSet.add str m.elements }
+                | AddButton str -> { m with lastName = Some str; elements = PList.append str m.elements }
 
         let view (m : MModel) =
             Ui(
@@ -742,7 +738,7 @@ module Bla =
                     Ui(
                         "div",
                         AMap.empty,
-                        m.melements |> ASet.sort |> AList.map (fun str ->
+                        m.melements |> AList.map (fun str ->
                             Ui(
                                 "button",
                                 AMap.ofList ["onclick", Event([], fun _ -> AddButton (Guid.NewGuid() |> string))],
@@ -778,7 +774,7 @@ module Bla =
         let initial =
             {
                 lastName = None
-                elements = PSet.ofList ["A"; "B"]
+                elements = PList.ofList ["A"; "B"]
             }
 
         let start (runtime : IRuntime) (port : int) =
@@ -791,7 +787,7 @@ module Bla =
 
     let test =
         let initial = List.init 20 (fun i -> System.String [|'A' + char i|])
-        let elements = COrderedSet.ofList initial
+        let elements = clist initial
         let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
         let view = Mod.init view
 
@@ -802,10 +798,10 @@ module Bla =
                 Ui(
                     "div",
                     AMap.empty,
-                    elements |> AList.map (fun c ->
+                    elements |> AList.mapi (fun ci c ->
                         Ui(
                             "button",
-                            AMap.ofList ["onclick", Event([], fun _ () -> [1 .. 50] |> List.iter (fun i -> elements.InsertAfter(c,string elements.Count)|> ignore))],
+                            AMap.ofList ["onclick", Event([], fun _ () -> [1 .. 50] |> List.iter (fun i -> elements.Append(string elements.Count)|> ignore))],
                             AList.ofList [ Ui("span", AMap.empty, Mod.constant c) ]
                         )
                     )   

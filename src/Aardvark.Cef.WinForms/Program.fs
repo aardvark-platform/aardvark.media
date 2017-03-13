@@ -339,16 +339,18 @@ type CefRenderControl(runtime : IRuntime, parent : BrowserControl, id : string) 
     let renderer = 
         async {
             do! Async.SwitchToNewThread()
+            let mutable lastToken = AdaptiveToken.Top
             while true do
                 let e = queue.Take()
-
                 try
                     match e with
                         | Choice2Of2 tcs ->
-                            let res = renderResult.GetValue(outputThing)
+                            let t = AdaptiveToken.Top
+                            let res = renderResult.GetValue(t.WithCaller outputThing)
+                            lastToken <- t
                             tcs.SetResult res
                         | Choice1Of2 () ->
-                            AdaptiveSystemState.popReadLocks []
+                            lastToken.Release()
                             outputThing.OutOfDate <- false
                             transact (fun () -> time.MarkOutdated())
                 with e ->
