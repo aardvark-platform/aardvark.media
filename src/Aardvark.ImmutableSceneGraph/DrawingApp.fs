@@ -58,17 +58,24 @@ module AnnotationPropertiesApp =
 
 module DrawingApp =
 
-    module Selection =
-        let select () = failwith ""
-        let deselect () = failwith ""
-        let isSelected () =  failwith ""
+    module Annotations = 
+        let tryGet (m:DrawingApp.Drawing) sn = 
+            m.finished |> Seq.tryFind(fun x -> x.seqNumber = sn)
+
+        let update (m : DrawingApp.Drawing) (ann : DrawingApp.Annotation) = 
+            m.finished.AsList 
+                |> List.updateIf (fun x -> x.seqNumber = ann.seqNumber) (fun x -> ann) 
+                |> pset.OfList
+                                                          
+            
+        
 
     open Aardvark.ImmutableSceneGraph
     open Aardvark.Elmish
     open Primitives
 
     open SimpleDrawingApp
-    open DrawingApp
+    open DrawingApp    
             
     let thickness v = { Default.thickness with value = v }
 
@@ -84,7 +91,10 @@ module DrawingApp =
         | PickStop   
         | Set_Type    of Choice.Action
         | Set_Style   of Choice.Action
-        | SetAnnotationProperties of AnnotationPropertiesApp.Action    
+        | SetAnnotationProperties of AnnotationPropertiesApp.Action            
+        | FreeFlyAction   of FreeFlyCameraApp.Action
+        | DragStart       of PixelPosition
+        | DragStop        of PixelPosition
 
     let stash (m : Drawing) =
         { m with history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None }
@@ -100,31 +110,34 @@ module DrawingApp =
                                                   seqNumber = m.finished.AsList.Length
                                                   annType = m.measureType.selected 
                                                   styleType = m.styleType
-                                                  } m.finished }
-    
+                                                  } m.finished }    
+
     let updateAddPoint (m : Drawing) (p : V3d) =         
-        match m.working with
-            | None -> 
-                { m with working = Some { finishedPoints = [ p ]; cursor = None; }}
+        match m.working with            
             | Some v -> 
                 let k = { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
-                match m.measureType.selected with
-                    | "Point"        -> if k.working.Value.finishedPoints.Length = 1 then finishPolygon k else k
+                match m.measureType.selected with          
+                    | "Point"        -> finishPolygon k
                     | "Line"         -> if k.working.Value.finishedPoints.Length = 2 then finishPolygon k else k
                     | "Polyline"     -> k
                     | "Polygon"      -> k
                     | "DipAndStrike" -> k
                     | _ -> failwith (sprintf "measure mode %A not recognized" m.measureType.selected)
+            | None -> m
         
-    let update (picking : Option<int>) e (m : Drawing) (cmd : Action) =
+    let update (picking : Option<int>) e m (cmd : Action) =
         let picking = m.picking
         match cmd, picking with
             | Click i, _ when i <> -1 ->
-               let m = if Seq.contains i m.selected 
-                            then { m with selected = PSet.remove i m.selected }
-                            else { m with selected = PSet.add i m.selected }
-               { m with selectedAnn = m.finished |> Seq.tryFind(fun x -> x.seqNumber = i)} |> stash
-            | Finish, _ -> finishPolygon m |> stash
+              let c = { m with selected = PSet.empty }
+              (if Seq.contains i c.selected 
+                            then { c with selected = PSet.remove i c.selected; selectedAnn = None }
+                            else { c with selected = PSet.add i c.selected; selectedAnn = Annotations.tryGet m i })
+              |> stash
+            | Finish, _ -> 
+                match m.working with
+                    | Some x when x.finishedPoints.Length > 0 -> finishPolygon m |> stash
+                    | _ -> m
             | AddPoint p, Some _ -> updateAddPoint m p |> stash
             | MoveCursor p, Some _ ->
                 match m.working with
@@ -153,13 +166,13 @@ module DrawingApp =
                             match m.selectedAnn with
                                 | Some x -> 
                                     let ann' = AnnotationPropertiesApp.update (e |> Env.map SetAnnotationProperties) x a
-                                    let m = {m with selectedAnn = Some ann'} // update selected annotation
-                                    let annotations' = List.updateIf (
-                                                            fun (x : Annotation) -> x.seqNumber = ann'.seqNumber) 
-                                                            (fun x -> ann') 
-                                                            m.finished.AsList
-                                    {m with finished = annotations' |> PSet.ofList }
-                                | None -> m                                                      
+                                    let m = {m with selectedAnn = Some ann'} // update selected annotation                                    
+                                    { m with finished = Annotations.update m ann' }
+                                | None -> m           
+                            |> stash          
+            | FreeFlyAction a, None -> { m with ViewerState =  FreeFlyCameraApp.update (e |> Env.map FreeFlyAction) m.ViewerState a }
+            | DragStart p, None->  { m with ViewerState = { m.ViewerState with lookingAround = Some p }}
+            | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
             | _,_ -> m    
            
     // view 3d Stuff
@@ -215,10 +228,9 @@ module DrawingApp =
             match working with
                 | Some v when v.cursor.IsSome -> 
                     let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
-                    yield 
-                        [viewPolygon (line) style.thickness.value -1 (m.mmeasureType.Value.selected = "Polygon")] |> Scene.colored (Mod.constant style.color)
-                    yield 
-                        [ Sphere3d(V3d.OOO, style.thickness.value) |> Sphere |>  Scene.render Pick.ignore ] 
+                    yield [viewPolygon (line) style.thickness.value -1 (m.mmeasureType.Value.selected = "Polygon")] 
+                            |> Scene.colored (Mod.constant style.color)
+                    yield [ Sphere3d(V3d.OOO, style.thickness.value) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
                             |> Scene.transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value))
                 | _ -> ()
@@ -254,13 +266,12 @@ module DrawingApp =
                     toEffect DefaultSurfaces.vertexColor;
                     toEffect DefaultSurfaces.diffuseTexture]
         
-    let view3D (sizes : IMod<V2i>) (m : MDrawing) =        
-        let cameraView = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI |> Mod.constant
+    let view3D (sizes : IMod<V2i>) (m : MDrawing) =            
         let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))        
         [viewDrawing m 
          viewQuad    m]
             |> Scene.group
-            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)    
+            |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera frustum)    
 
     // view GUI stuff
     let viewMeasurements (m : Drawing) = 
@@ -280,18 +291,17 @@ module DrawingApp =
             ]
 
     let viewProperties (m : Drawing) =
-        match m.selected |> Seq.tryHead with
+        match m.selectedAnn with
             | None -> div[] [h3 [] [Text "Properties:"]]
-            | Some id -> div[] [ 
-                            yield h3 [] [Text (sprintf "Properties of %A:" id)]
-                            match (m.finished |> Seq.tryFind(fun x -> x.seqNumber = id)) with
-                                        | None -> yield Text "No Properties found"
-                                        | Some k -> yield AnnotationPropertiesApp.view m.selectedAnn.Value |> Html.map SetAnnotationProperties ]
+            | Some ann -> div[] [ 
+                            yield h3 [] [Text (sprintf "Properties of %A:" ann.seqNumber)]
+                            yield AnnotationPropertiesApp.view ann |> Html.map SetAnnotationProperties    
+                          ]                                    
      
     let viewUI (m : Drawing) =
         div [] [
              //Rendercontrol
-             div [Style ["width", "75%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
+             div [clazz "unselectable"; Style ["width", "75%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
                   attribute "id" "renderControl"] [
 
                 //Overlay
@@ -324,7 +334,7 @@ module DrawingApp =
         ]
 
     // app setup
-    let subscriptions (m : Drawing) =
+    let subscriptions (time : IMod<DateTime>) (m : Drawing) =
         Many [Input.key Down Keys.Enter (fun _ _-> Finish)
               Input.key Down Keys.Left  (fun _ _-> Undo)
               Input.key Down Keys.Right (fun _ _-> Redo)
@@ -335,29 +345,33 @@ module DrawingApp =
               Input.key Down Keys.D2  (fun _ _-> ChangeStyle 1)
               Input.key Down Keys.D3  (fun _ _-> ChangeStyle 2)
               Input.key Down Keys.D4  (fun _ _-> ChangeStyle 3)
-              ]
+
+              FreeFlyCameraApp.subscriptions time m.ViewerState |> Sub.map FreeFlyAction   
+
+              Input.toggleMouse Input.Mouse.left DragStart DragStop]
 
     let (initial : Drawing) = { 
-            finished = PSet.empty
-            working = None
-            _id = null
-            history = EqualOf.toEqual None; future = EqualOf.toEqual None
-            picking = None 
-            filename = @"C:\Aardwork\wand.jpg"
-            style = Styles.standard.[0]
-            measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Polyline" }
-            styleType = { choices = ["#Fascies";"#Bed";"#Crossbed"; "#Grain"]; selected = "#Fascies" }
-            selected = PSet.empty
-            selectedAnn= None
-            }
+        ViewerState = FreeFlyCameraApp.initial
+        finished = PSet.empty
+        working = None
+        _id = null
+        history = EqualOf.toEqual None; future = EqualOf.toEqual None
+        picking = None 
+        filename = @"C:\Aardwork\wand.jpg"
+        style = Styles.standard.[0]
+        measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Polyline" }
+        styleType = { choices = ["#Fascies";"#Bed";"#Crossbed"; "#Grain"]; selected = "#Fascies" }
+        selected = PSet.empty
+        selectedAnn= None
+        }
 
-    let app s =
+    let app s time =
         {
             initial = initial
             update = update (None)
             view = view3D s
             ofPickMsg = fun _ _ -> []
-            subscriptions = subscriptions
+            subscriptions = subscriptions time
         }
 
     let createApp f time keyboard mouse viewport camera =
@@ -370,7 +384,7 @@ module DrawingApp =
             update = update f
             view = view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
             ofPickMsg = fun _ _ -> []
-            subscriptions = subscriptions
+            subscriptions = subscriptions time
         }
 
         let viewApp = 

@@ -5,8 +5,29 @@ open Fablish
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
-type Axis = X | Y | Z
 
+module Camera =
+    open Aardvark.Base
+    open Aardvark.Base.Rendering
+    
+    type NavigationMode = FreeFly | Orbital
+
+    [<DomainType>]
+    type Model = { 
+        camera : CameraView
+        //frustum : Frustum 
+        lookingAround : Option<PixelPosition>
+        panning : Option<PixelPosition>
+        zooming : Option<PixelPosition>
+        picking : Option<int>
+        center : Option<V3d>
+        navigationMode : NavigationMode
+
+        forward : V2d
+        forwardSpeed : float
+    }
+
+type Axis = X | Y | Z
 module TranslateController =
 
 
@@ -90,6 +111,7 @@ module DrawingApp =
     
     [<DomainType>]
     type Drawing = {
+        ViewerState : Camera.Model
         history  : Option<Drawing>
         finished : pset<Annotation>
         working  : Option<OpenPolygon>

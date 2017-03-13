@@ -19,7 +19,7 @@ module OrbitCameraApp =
     open Aardvark.Base.Rendering
 
     open Scratch.DomainTypes2
-    open CameraTest
+    open Camera
     open Primitives
     open Aardvark.ImmutableSceneGraph.Scene
 
@@ -140,7 +140,7 @@ module OrbitCameraApp =
 module CameraUtilities =
 
     open Scratch.DomainTypes2
-    open CameraTest
+    open Camera
     open Input
     
     type MouseAction =
@@ -172,7 +172,7 @@ module FreeFlyCameraApp =
     open Aardvark.Base
     open Aardvark.Base.Rendering
     open Scratch.DomainTypes2
-    open CameraTest
+    open Camera
     open Primitives
     open Aardvark.ImmutableSceneGraph.Scene
     open Input

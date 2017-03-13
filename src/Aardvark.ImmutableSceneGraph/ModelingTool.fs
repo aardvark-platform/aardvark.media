@@ -87,7 +87,7 @@ module Models =
     type State = 
         { mutable _id : Id
           primary : Option<Object>
-          cameraModel : Scratch.DomainTypes2.Generated.CameraTest.Model
+          cameraModel : Scratch.DomainTypes.Generated.Camera.Model
           objects : pset<Object>
           mode : Mode
           geometryImport : GeometryImport
@@ -119,7 +119,7 @@ module Models =
     and [<DomainType>] MState = 
         { mutable _original : State
           mprimary : ModRef<Option<MObject>>
-          mcameraModel : Scratch.DomainTypes2.Generated.CameraTest.MModel
+          mcameraModel : Scratch.DomainTypes.Generated.Camera.MModel
           mobjects : MapSet<Object, MObject>
           mmode : MMode 
           mgeometryImport : ModRef<GeometryImport>

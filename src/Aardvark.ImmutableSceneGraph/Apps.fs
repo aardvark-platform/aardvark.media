@@ -292,7 +292,7 @@ module ComposedTestApp =
     open Aardvark.Base.Rendering
 
     open Scratch.DomainTypes2
-    open CameraTest
+    open Camera
     open Primitives
     open Aardvark.ImmutableSceneGraph.Scene
     open ComposedTest
@@ -467,7 +467,7 @@ module TextureExample =
     open Aardvark.Base.Rendering
 
     open Scratch.DomainTypes2
-    open CameraTest
+    open Camera
     open Primitives
     open Aardvark.ImmutableSceneGraph.Scene
 
