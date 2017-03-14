@@ -6,7 +6,6 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Incremental.Operators
 open Aardvark.Base.Rendering
-open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.Application.WinForms
 open System.Collections.Generic
@@ -71,19 +70,19 @@ module SimpleOrder =
     [<AllowNullLiteral>]
     type SortKey =
         class
-            val mutable public Clock : Order
+            val mutable public Order : Order
             val mutable public Tag : uint64
             val mutable public Next : SortKey
             val mutable public Prev : SortKey
 
             member x.Time =
-                x.Tag - x.Clock.Root.Tag
+                x.Tag - x.Order.Root.Tag
 
             member x.CompareTo (o : SortKey) =
                 if isNull o.Next || isNull x.Next then
                     failwith "cannot compare deleted times"
 
-                if o.Clock <> x.Clock then
+                if o.Order <> x.Order then
                     failwith "cannot compare times from different clocks"
 
                 compare x.Time o.Time
@@ -102,17 +101,17 @@ module SimpleOrder =
 
             interface IDisposable with
                 member x.Dispose() =
-                    x.Clock.Delete x
+                    x.Order.Delete x
 
             override x.GetHashCode() = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(x)
             override x.Equals o = System.Object.ReferenceEquals(x,o)
 
             interface ISortKey with
-                member x.Clock = x.Clock :> IOrder
+                member x.Clock = x.Order :> IOrder
                 member x.IsDeleted = isNull x.Next
                 //member x.Next = x.Next :> ISortKey
 
-            new(c) = { Clock = c; Tag = 0UL; Next = null; Prev = null }
+            new(c) = { Order = c; Tag = 0UL; Next = null; Prev = null }
         end
 
     and Order =
@@ -121,7 +120,7 @@ module SimpleOrder =
             val mutable public Count : int
 
             member x.After (t : SortKey) =
-                if t.Clock <> x then
+                if t.Order <> x then
                     failwith "cannot insert after a different clock's time"
 
                 let distance (a : SortKey) (b : SortKey) =
@@ -171,7 +170,7 @@ module SimpleOrder =
 
             member x.Delete (t : SortKey) =
                 if not (isNull t.Next) then
-                    if t.Clock <> x then
+                    if t.Order <> x then
                         failwith "cannot delete time from different clock"
 
                     t.Prev.Next <- t.Next
@@ -179,7 +178,7 @@ module SimpleOrder =
                     t.Next <- null
                     t.Prev <- null
                     t.Tag <- 0UL
-                    t.Clock <- Unchecked.defaultof<_>      
+                    t.Order <- Unchecked.defaultof<_>      
 
             member x.Clear() =
                 let r = new SortKey(x)
@@ -205,7 +204,6 @@ module SimpleOrder =
 
     let create() =
         Order.New()
-
 
 
 [<EntryPoint>]

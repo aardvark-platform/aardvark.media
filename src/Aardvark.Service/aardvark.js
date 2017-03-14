@@ -4,6 +4,10 @@ var urlCreator = window.URL || window.webkitURL;
 
 // rendering related
 
+HTMLElement.prototype.addAtEnd = function (element) {
+    $(this).append([element]);
+};
+
 function initRenderTargetEvents(eventSocket, canvas, id) {
     canvas.isRendering = false;
     canvas.contentEditable = true;
