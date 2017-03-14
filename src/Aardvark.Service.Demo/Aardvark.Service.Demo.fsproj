@@ -72,6 +72,8 @@
   -->
   <ItemGroup>
     <Compile Include="Ui.fs" />
+    <Compile Include="UiReader.fs" />
+    <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
@@ -87,6 +89,7 @@
       <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <Reference Include="System.Web" />
   </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">

@@ -10,410 +10,131 @@ open Aardvark.Application
 open Aardvark.Application.WinForms
 open System.Collections.Generic
 open System.Collections.Concurrent
+open Aardvark.UI
+open Aardvark.SceneGraph
+open Aardvark.Rendering.Text
 
-[<AutoOpen>]
-module GCRef =
-    open System.Collections.Concurrent
-    open System.Collections.Generic
-    
-    type GCEntry<'a> =
-        struct
-            val mutable public Value : 'a
-            val mutable public Next : int
-
-            new(value : 'a, next : int) = { Value = value; Next = next }
-        end
-
-    type GCRef<'a when 'a :> IDisposable> private(id : int) =
+module TestApp =
         
-        static let lockObj = obj()
-        static let mutable table : GCEntry<'a>[] = Array.zeroCreate 1024
-        static let mutable count = 0
-        static let mutable free = 0
+    type Model =
+        {
+            lastName : Option<string>
+            elements : plist<string>
+        }
 
-        static let rec add (value : 'a) =
-            lock lockObj (fun () ->
-                if free > 0 then
-                    let id = free - 1
-                    table.[id].Value <- value
-                    free <- table.[id].Next
-                    id
-                else
-                    if count < table.Length then
-                        let id = count
-                        table.[id].Value <- value
-                        count <- id + 1
-                        id 
-                    else
-                        Array.Resize(&table, 2 * table.Length)
-                        add value
+    type MModel =
+        {
+            mlastName : ResetMod<Option<string>>
+            melements : ResetList<string>
+        }
+        static member Create(m : Model) =
+            {
+                mlastName = ResetMod(m.lastName)
+                melements = ResetList(m.elements)
+            }
+
+        member x.Update(m : Model) =
+            if x.mlastName.GetValue() <> m.lastName then
+                x.mlastName.Update(m.lastName)
+            x.melements.Update(m.elements)
+
+    type Message =
+        | AddButton of Index * string
+
+    let initial =
+        {
+            lastName = None
+            elements = PList.ofList ["A"; "B"]
+        }
+
+    let update (m : Model) (msg : Message) =
+        match msg with
+            | AddButton(before, str) -> 
+                { m with lastName = Some str; elements = PList.append str m.elements }
+
+    let view (m : MModel) =
+        div' [attribute "style" "display: flex; flex-direction: column; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
+
+            div AMap.empty (
+                m.melements |> AList.mapi (fun i str ->
+                    button' [onClick (fun () ->  AddButton (i, Guid.NewGuid() |> string))] [
+                        text' ("<&" + str + "&>")
+                    ]
+                )
             )
 
-        static let remove (id : int) =
-            lock lockObj (fun () ->
-                let o = table.[id].Value
-                o.Dispose()
-                table.[id] <- GCEntry(Unchecked.defaultof<_>, free)
-                free <- id + 1
+            sg' [attribute "style" "display: flex; width: 100%; height: 100%"] (fun ctrl ->
+                let value = m.mlastName |> Mod.map (function Some str -> str | None -> "yeah")
+
+                let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
+                let proj = ctrl.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
+                let view = view |> DefaultCameraController.control ctrl.Mouse ctrl.Keyboard ctrl.Time
+                
+                Sg.markdown MarkdownConfig.light value
+                    |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
+                    |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
             )
 
-        member x.Value =
-            table.[id].Value
+        ]
+        //Ui(
+        //    "div",
+        //    AMap.empty,
+        //    AList.ofList [
+        //        Ui(
+        //            "div",
+        //            AMap.empty,
+        //            m.melements |> AList.mapi (fun i str ->
+        //                Ui(
+        //                    "button",
+        //                    AMap.ofList ["onclick", Event([], fun _ -> AddButton (i, Guid.NewGuid() |> string))],
+        //                    Mod.constant ("<&" + str + "&>")
+        //                )
+        //            )
+        //        )
 
-        override x.Finalize() =
-            remove id
+        //        Ui(
+        //            "div",
+        //            AMap.ofList ["class", Value "aardvark"; "style", Value "height: 600px; width: 800px"],
+        //            fun (ctrl : IRenderControl) ->
+                            
+        //                let value =
+        //                    m.mlastName |> Mod.map (function Some str -> str | None -> "yeah")
 
-        new(value : 'a) = GCRef<'a>(add value)
+        //                let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
+        //                let proj = ctrl.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
+        //                let view = view |> DefaultCameraController.control ctrl.Mouse ctrl.Keyboard ctrl.Time
 
-module SimpleOrder =
-    
-    [<AllowNullLiteral>]
-    type SortKey =
-        class
-            val mutable public Order : Order
-            val mutable public Tag : uint64
-            val mutable public Next : SortKey
-            val mutable public Prev : SortKey
+        //                let sg = 
+        //                    Sg.markdown MarkdownConfig.light value
+        //                        |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
+        //                        |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
 
-            member x.Time =
-                x.Tag - x.Order.Root.Tag
+        //                ctrl.Runtime.CompileRender(ctrl.FramebufferSignature, sg)
 
-            member x.CompareTo (o : SortKey) =
-                if isNull o.Next || isNull x.Next then
-                    failwith "cannot compare deleted times"
+        //        )
 
-                if o.Order <> x.Order then
-                    failwith "cannot compare times from different clocks"
+        //    ]
+        //)
 
-                compare x.Time o.Time
 
-            interface IComparable with
-                member x.CompareTo o =
-                    match o with
-                        | :? SortKey as o -> x.CompareTo(o)
-                        | _ -> failwithf "cannot compare time with %A" o
-
-            interface IComparable<ISortKey> with
-                member x.CompareTo o =
-                    match o with
-                        | :? SortKey as o -> x.CompareTo o
-                        | _ -> failwithf "cannot compare time with %A" o
-
-            interface IDisposable with
-                member x.Dispose() =
-                    x.Order.Delete x
-
-            override x.GetHashCode() = System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(x)
-            override x.Equals o = System.Object.ReferenceEquals(x,o)
-
-            interface ISortKey with
-                member x.Clock = x.Order :> IOrder
-                member x.IsDeleted = isNull x.Next
-                //member x.Next = x.Next :> ISortKey
-
-            new(c) = { Order = c; Tag = 0UL; Next = null; Prev = null }
-        end
-
-    and Order =
-        class
-            val mutable public Root : SortKey
-            val mutable public Count : int
-
-            member x.After (t : SortKey) =
-                if t.Order <> x then
-                    failwith "cannot insert after a different clock's time"
-
-                let distance (a : SortKey) (b : SortKey) =
-                    if a = b then System.UInt64.MaxValue
-                    else b.Tag - a.Tag
-
-                let mutable dn = distance t t.Next
-
-                // if the distance to the next time is 1 (no room)
-                // relabel all times s.t. the new one can be inserted
-                if dn = 1UL then
-                    // find a range s.t. distance(range) >= 1 + |range|^2 
-                    let mutable current = t.Next
-                    let mutable j = 1UL
-                    while distance t current < 1UL + j * j do
-                        current <- current.Next
-                        j <- j + 1UL
-
-                    // distribute all times in the range equally spaced
-                    let step = (distance t current) / j
-                    current <- t.Next
-                    let mutable currentTime = t.Tag + step
-                    for k in 1UL..(j-1UL) do
-                        current.Tag <- currentTime
-                        current <- current.Next
-                        currentTime <- currentTime + step
-
-                    // store the distance to the next time
-                    dn <- step
-
-                // insert the new time with distance (dn / 2) after
-                // the given one (there has to be enough room now)
-                let res = new SortKey(x)
-                res.Tag <- t.Tag + dn / 2UL
-
-                res.Next <- t.Next
-                res.Prev <- t
-                t.Next.Prev <- res
-                t.Next <- res
-
-                res
-
-            member x.Before (t : SortKey) =
-                if t = x.Root then
-                    failwith "cannot insert before root-time"
-                x.After t.Prev
-
-            member x.Delete (t : SortKey) =
-                if not (isNull t.Next) then
-                    if t.Order <> x then
-                        failwith "cannot delete time from different clock"
-
-                    t.Prev.Next <- t.Next
-                    t.Next.Prev <- t.Prev
-                    t.Next <- null
-                    t.Prev <- null
-                    t.Tag <- 0UL
-                    t.Order <- Unchecked.defaultof<_>      
-
-            member x.Clear() =
-                let r = new SortKey(x)
-                x.Root <- r
-                r.Next <- r
-                r.Prev <- r
-                x.Count <- 1
-
-            interface IOrder with
-                member x.Root = x.Root :> ISortKey
-                member x.Count = x.Count
-
-            static member New() =
-                let c = Order()
-                let r = new SortKey(c)
-                c.Root <- r
-                r.Next <- r
-                r.Prev <- r
-                c
-
-            private new() = { Root = null; Count = 1 }
-        end
-
-    let create() =
-        Order.New()
+    let start (runtime : IRuntime) (port : int) =
+        App.start runtime port {
+            view = view
+            update = update
+            initial = initial
+        }
 
 
 [<EntryPoint>]
 let main args =
-//
-////    let a = MapExt.ofList [1,1;2,2;3,3;4,4;5,5]
-////
-////   
-////
-////
-////    printfn "map:           %A" a
-////    printfn "min:           %A" (MapExt.min a)
-////    printfn "max:           %A" (MapExt.max a)
-////    printfn "item 1:        %A" (MapExt.item 1 a)
-////    printfn "rem 1:         %A" (MapExt.alter 1 (fun _ o -> None) a)
-////    printfn "add 1 100:     %A" (MapExt.alter 1 (fun _ o -> Some 100) a)
-////    printfn "map:           %A" (MapExt.mapMonotonic (fun k v -> k + 1, v) a)
-////
-////    let b = MapExt.mapMonotonic (fun k v -> 2 * k, 2*v) a
-////    
-////    printfn "item 4:        %A" (MapExt.item 4 a)
-////    printfn "item 0:        %A" (MapExt.item 0 a)
-////
-////
-////    printfn "10: %A" (MapExt.tryFind 2 b)
-////
-////    let a = MapExt.ofList [1,1;2,2]
-////    let b = MapExt.ofList (List.init 10 (fun i -> i+4, i+4))
-////    a.Validate()
-////    b.Validate()
-////
-////    let test = MapExt.union a (MapExt.add 3 3 b)
-////    test.Validate()
-////    printfn "%A" test
-////
-////    let l, self, r = MapExt.split 4 test
-////    l.Validate()
-////    r.Validate()
-////    printfn "<4: %A" l
-////    printfn "=4: %A" self
-////    printfn ">4: %A" r
-////
-////    let test = MapExt.union l r
-////    printfn "union: %A" test
-////    test.Validate()
-////
-////
-////    let a = MapExt.ofList [1, "1"; 2, "2"; 5, "5"]
-////    let b = MapExt.ofList [1, "a"; 2, "b"; 3, "c"; 4, "d"]
-////
-////    let merge (key : int) (l : Option<string>) (r : Option<string>) =
-////        match l, r with
-////            | None, None -> "THATS BAD"
-////            | None, Some r -> r
-////            | Some l, None -> l
-////            | Some l, Some r -> l + " " + r
-////
-////    let c = MapExt.map2 merge a b
-////    printfn "%A" (MapExt.toList c) // [|(1, "1;a"); (2, "2;b"); (3, "c"); (4, "d"); (5, "5")|]
-////
-////    Environment.Exit 0
-//
-//
-//
-//    let l = clist [1;2;3]
-//
-//    let inner = clist [1;2]
-//
-//    let test = 
-//        l |> AList.collecti (fun i v -> 
-//            inner :> alist<_>
-//        )
-//
-//    
-//
-//    let set = test |> AList.toASet
-//    
-//    let sorted = test |> AList.sortBy id
-//
-//    let r = test.GetReader()
-//    let r2 = set.GetReader()
-//    let r3 = sorted.GetReader()
-//    let print (name : string)=
-//        Log.start "%s" name
-//        let ops = r.GetOperations AdaptiveToken.Top
-//        Log.line "state: %A" r.State
-//        Log.line "ops:   %A" ops
-//
-//        let setOps = r2.GetOperations AdaptiveToken.Top
-//        Log.line "set:   %A" r2.State
-//        Log.line "setop: %A" setOps
-//        
-//        let sortedOps = r3.GetOperations AdaptiveToken.Top
-//        Log.line "sort:   %A" r3.State
-//        Log.line "sortop: %A" sortedOps
-//
-//        Log.stop()
-//
-//
-//    print "initial" // [1;2;1;2;1;2]
-//
-//    let t4 = transact (fun () -> l.Append 4)
-//    print "append 4" // [1;2;1;2;1;2;1;2]
-//
-//    transact (fun () -> l.Remove t4 |> ignore)
-//    print "remove 4"// [1;2;1;2;1;2]
-//
-//
-//    transact (fun () -> inner.RemoveAt 0)
-//    print "inner.remove 1" // [2;2;2]
-//
-//    transact (fun () -> inner.Insert(0, 10) |> ignore)
-//    print "inner.insert(0, 10)" // [10;2;10;2;10;2]
-//
-//    transact (fun () -> inner.Insert(1, 5) |> ignore)
-//    print "inner.insert(1, 5)" // [10;5;2;10;5;2;10;5;2]
-//    
-//
-//    transact (fun () -> inner.[0] <- 1) 
-//    print "inner.[0] <- 1" // [1;5;2;1;5;2;1;5;2]
-//
-//
-//    Environment.Exit 0
-//
-//    let set = cset<int> [1; 2]
-//
-//    let test = 
-//        set |> ASet.collect (fun v ->
-//            ASet.ofList [ v; 2 * v ]
-//        )
-//
-//    let print (r : ISetReader<'a>) =
-//        let ops = r.GetOperations AdaptiveToken.Top
-//        Log.line "state: %A" r.State
-//        Log.line "ops:   %A" ops
-//
-//    let r = test.GetReader()
-//    print r
-//
-//    transact (fun () -> set.Remove 2 |> ignore)
-//    print r
-//
-//    transact (fun () -> set.Add 3 |> ignore; set.Remove 1 |> ignore)
-//    print r
-//
-//    transact (fun () -> set.Add 2 |> ignore; set.Add 0 |> ignore)
-//    print r
-//
-//    Environment.Exit 0
-//
-//    let test() =
-//        let o = SimpleOrder.create()
-//
-//        let a = o.After(o.Root) |> GCRef
-//        let b = o.After(a.Value) |> GCRef
-//        let c = o.After(b.Value) |> GCRef
-//        let d = o.After(c.Value) |> GCRef
-//
-//
-//
-//        (a,d)
-//
-//    let (a,b) = test()
-//    System.GC.Collect()
-//    System.GC.WaitForFullGCComplete() |> ignore
-//    System.GC.WaitForFullGCComplete() |> ignore
-//
-//    printfn "all dead: %A" (a.Value.Next = b.Value)
-//    Environment.Exit 0
-
     Ag.initialize()
     Aardvark.Init()
-
-
-
-
-
+    
     use app = new OpenGlApplication()
     let runtime = app.Runtime
-
-
-
-
-    Aardvark.UI.Bla.TestApp.start runtime 8888
-//    Server.start runtime 8888 [] (fun id yeah ->
-//        let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
-//        let proj = yeah.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
-//
-//        let view =
-//            view |> DefaultCameraController.control yeah.Mouse yeah.Keyboard yeah.Time
-//
-//        let trafo = yeah.Time |> Mod.map (fun dt -> Trafo3d.RotationZ(float dt.Ticks / float TimeSpan.TicksPerSecond))
-//
-//        let sg =
-//            Sg.box' C4b.Red (Box3d(-V3d.III, V3d.III))
-//                |> Sg.trafo trafo
-//                |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
-//                |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
-//                |> Sg.diffuseFileTexture' @"E:\Development\WorkDirectory\DataSVN\cliffs_color.jpg" true
-//                |> Sg.shader {
-//                    do! DefaultSurfaces.trafo
-//                    do! DefaultSurfaces.diffuseTexture
-//                    do! DefaultSurfaces.simpleLighting
-//                }
-//
-//
-//        let task = runtime.CompileRender(yeah.FramebufferSignature, sg)
-//        Some task
-//    )
-
+    
+    TestApp.start runtime 8888
+    
     Console.ReadLine() |> ignore
     0
 

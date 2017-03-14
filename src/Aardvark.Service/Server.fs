@@ -352,14 +352,15 @@ module Server =
 
         member x.Dispose() =
             try
-                eventQueue.Dispose()
+                transact (fun () ->
+                    eventQueue.Dispose()
 
-                clearTask.Dispose()
-                renderTask.Value.Dispose()
+                    clearTask.Dispose()
+                    renderTask.Value.Dispose()
 
-                framebuffer.Release()
-                runtime.DeleteFramebufferSignature signature
-
+                    framebuffer.Release()
+                    runtime.DeleteFramebufferSignature signature
+                )
                 renderTask.UnsafeCache <- RenderTask.empty
             with e ->
                 Log.warn "[Service:%s] shutdown faulted %A" targetId e
