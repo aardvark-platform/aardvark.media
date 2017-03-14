@@ -50,15 +50,38 @@ module TestApp =
     let update (m : Model) (msg : Message) =
         match msg with
             | AddButton(before, str) -> 
-                { m with lastName = Some str; elements = PList.append str m.elements }
+                { m with lastName = Some str; elements = PList.insertAfter before str m.elements }
 
     let view (m : MModel) =
         div' [attribute "style" "display: flex; flex-direction: column; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
 
+            //Ui(
+            //    "div", 
+            //    AMap.empty, 
+            //    Required = Map.ofList ["d3", "https://cdnjs.cloudflare.com/ajax/libs/d3/4.7.3/d3.min.js"],
+            //    BootCode = Some (fun id -> 
+            //        String.concat "\r\n" [
+            //            sprintf "var sampleSVG = d3.select(\"#%s\")" id
+            //            "    .append(\"svg\")"
+            //            "    .attr(\"width\", 100)"
+            //            "    .attr(\"height\", 100);    "
+            //            ""
+            //            "sampleSVG.append(\"circle\")"
+            //            "    .style(\"stroke\", \"gray\")"
+            //            "    .style(\"fill\", \"white\")"
+            //            "    .attr(\"r\", 40)"
+            //            "    .attr(\"cx\", 50)"
+            //            "    .attr(\"cy\", 50)"
+            //            "    .on(\"mouseover\", function(){d3.select(this).style(\"fill\", \"aliceblue\");})"
+            //            "    .on(\"mouseout\", function(){d3.select(this).style(\"fill\", \"white\");});"
+            //        ]
+            //    )
+            //)
+
             div AMap.empty (
                 m.melements |> AList.mapi (fun i str ->
-                    button' [onClick (fun () ->  AddButton (i, Guid.NewGuid() |> string))] [
-                        text' ("<&" + str + "&>")
+                    button' [onClick (fun () -> AddButton (i, Guid.NewGuid() |> string))] [
+                        text' str
                     ]
                 )
             )

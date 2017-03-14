@@ -27,9 +27,21 @@ type AttributeValue<'msg> =
 
 type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : UiContent<'msg>) =
     let mutable initialAttributes : Map<string, AttributeValue<'msg>> = Map.empty
+    let mutable required : Map<string, string> = Map.empty
+    let mutable bootCode : Option<string -> string> = None
+
+
     member x.Tag = tag
     member x.Attributes = attributes
     member x.Content = content
+
+    member x.Required
+        with get() = required
+        and set r = required <- r
+
+    member x.BootCode
+        with get() = bootCode
+        and set code = bootCode <- code
 
     member x.InitialAttributes
         with get() = initialAttributes

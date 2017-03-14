@@ -23,6 +23,8 @@ type JSExpr =
     | InsertBefore of reference : JSExpr * inner : JSExpr // in html arguments switched
     | InsertAfter of reference : JSExpr * inner : JSExpr
 
+    | Raw of code : string
+    | AddReference of name : string * url : string
     | Sequential of list<JSExpr>
     | GetElementById of string
     | Let of JSVar * JSExpr * JSExpr
@@ -36,6 +38,12 @@ module JSExpr =
         
     let rec toJQueryString (e : JSExpr) =
         match e with
+            | AddReference(name, url) ->
+                sprintf "aardvark.addReference(\"%s\", \"%s\");" name url
+
+            | Raw code ->
+                code
+
             | Body ->
                 "$(document.body)"
 
@@ -96,6 +104,12 @@ module JSExpr =
 
     let rec toString (e : JSExpr) =
         match e with
+            | AddReference(name, url) ->
+                sprintf "aardvark.addReference(\"%s\", \"%s\");" name url
+
+            | Raw code ->
+                code
+
             | Body ->
                 "document.body"
 
@@ -386,6 +400,16 @@ module UiReaders =
                 
             if initial then
                 initial <- false
+
+                for (name, url) in Map.toSeq ui.Required do
+                    code.Add(AddReference(name, url))
+
+                match ui.BootCode with
+                    | Some getBootCode ->
+                        let boot = getBootCode id
+                        code.Add(Raw boot)
+                    | None ->
+                        ()
                 for (name, value) in Map.toSeq ui.InitialAttributes do
                     let value = 
                         match value with
