@@ -20,68 +20,123 @@ module TestApp =
         {
             lastName : Option<string>
             elements : plist<string>
+            hasD3Hate : bool
         }
 
     type MModel =
         {
             mlastName : ResetMod<Option<string>>
             melements : ResetList<string>
+            mhasD3Hate : ResetMod<bool>
         }
         static member Create(m : Model) =
             {
                 mlastName = ResetMod(m.lastName)
                 melements = ResetList(m.elements)
+                mhasD3Hate = ResetMod(m.hasD3Hate)
             }
 
         member x.Update(m : Model) =
             if x.mlastName.GetValue() <> m.lastName then
                 x.mlastName.Update(m.lastName)
+            if x.mhasD3Hate.GetValue() <> m.hasD3Hate then
+                x.mhasD3Hate.Update(m.hasD3Hate)
             x.melements.Update(m.elements)
 
     type Message =
         | AddButton of Index * string
+        | Hugo of list<string>
+        | ToggleD3Hate
 
     let initial =
         {
             lastName = None
-            elements = PList.ofList ["A"; "B"]
+            elements = PList.ofList ["A"; "B"; "C"]
+            hasD3Hate = true
         }
 
     let update (m : Model) (msg : Message) =
         match msg with
             | AddButton(before, str) -> 
-                { m with lastName = Some str; elements = PList.insertAfter before str m.elements }
+                { m with lastName = Some str; elements = PList.remove before m.elements }
+            | Hugo l ->
+                let res : list<string> = l |> List.map Pickler.json.UnPickleOfString
+                printfn "%A" res
+                m
+            | ToggleD3Hate ->
+                { m with hasD3Hate = not m.hasD3Hate }
+
 
     let view (m : MModel) =
         div' [attribute "style" "display: flex; flex-direction: column; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
+            
+            div AMap.empty (
+                alist {
+                    let! hasHate = m.mhasD3Hate
+                    if hasHate then
+                        yield Ui(
+                            "div", 
+                            AMap.empty, 
+                            Required = 
+                                [ 
+                                    { kind = Script; name = "d3"; url = "https://cdnjs.cloudflare.com/ajax/libs/d3/4.7.3/d3.min.js" } 
+                                ],
 
-            //Ui(
-            //    "div", 
-            //    AMap.empty, 
-            //    Required = Map.ofList ["d3", "https://cdnjs.cloudflare.com/ajax/libs/d3/4.7.3/d3.min.js"],
-            //    BootCode = Some (fun id -> 
-            //        String.concat "\r\n" [
-            //            sprintf "var sampleSVG = d3.select(\"#%s\")" id
-            //            "    .append(\"svg\")"
-            //            "    .attr(\"width\", 100)"
-            //            "    .attr(\"height\", 100);    "
-            //            ""
-            //            "sampleSVG.append(\"circle\")"
-            //            "    .style(\"stroke\", \"gray\")"
-            //            "    .style(\"fill\", \"white\")"
-            //            "    .attr(\"r\", 40)"
-            //            "    .attr(\"cx\", 50)"
-            //            "    .attr(\"cy\", 50)"
-            //            "    .on(\"mouseover\", function(){d3.select(this).style(\"fill\", \"aliceblue\");})"
-            //            "    .on(\"mouseout\", function(){d3.select(this).style(\"fill\", \"white\");});"
-            //        ]
-            //    )
-            //)
+                            Callbacks = 
+                                Map.ofList [
+                                    "bla", Hugo
+                                ],
+
+                            Channels = 
+                                [
+                                    new ModChannel<_>("urdar", m.mlastName)
+                                    new AListChannel<_>("heinzi", m.melements)
+                                ],
+
+                            Boot = Some (fun id -> 
+                                String.concat "\r\n" [
+                                    "urdar.onmessage = function(data) { console.warn(data); };"
+                                    "heinzi.onmessage = function(data) { console.warn(data); };"
+                                    ""
+                                    sprintf "console.warn(\"%s said hi\");" id
+                                    sprintf "var sampleSVG = d3.select(\"#%s\")" id
+                                    sprintf "    .append(\"svg\")"
+                                    sprintf "    .attr(\"width\", 100)"
+                                    sprintf "    .attr(\"height\", 100);    "
+                                    sprintf ""
+                                    sprintf "sampleSVG.append(\"circle\")"
+                                    sprintf "    .style(\"stroke\", \"gray\")"
+                                    sprintf "    .style(\"fill\", \"white\")"
+                                    sprintf "    .attr(\"r\", 40)"
+                                    sprintf "    .attr(\"cx\", 50)"
+                                    sprintf "    .attr(\"cy\", 50)"
+                                    sprintf "    .on(\"mouseover\", function(){d3.select(this).style(\"fill\", \"aliceblue\"); aardvark.processEvent(\"%s\", \"bla\", \"adorner\"); })" id
+                                    sprintf "    .on(\"mouseout\", function(){d3.select(this).style(\"fill\", \"white\"); aardvark.processEvent(\"%s\", \"bla\", \"dedorner\"); });" id
+                                ]
+                            ),
+
+                            Shutdown = Some (fun id ->
+                                sprintf "console.warn(\"%s said bye\");" id
+                            )   
+                        )
+                }
+            )
+
+            Ui(
+                "button",
+                AMap.ofList [attribute "class" "ui button"; onClick (fun () -> ToggleD3Hate)],
+                AList.ofList [text' "asdsad"],
+                Required = [ 
+                    { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
+                    { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
+                ]
+
+            )
 
             div AMap.empty (
                 m.melements |> AList.mapi (fun i str ->
                     button' [onClick (fun () -> AddButton (i, Guid.NewGuid() |> string))] [
-                        text' str
+                        Ui("span", AMap.empty, Mod.constant str, Shutdown = Some (sprintf "console.log(\"shutdown %s\")"))
                     ]
                 )
             )

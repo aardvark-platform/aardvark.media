@@ -21,15 +21,137 @@ open Aardvark.Service
 open Aardvark.Application
 open Aardvark.Rendering.Text
 
+type ReferenceKind =
+    | Script 
+    | Stylesheet
+
+type Reference = { kind : ReferenceKind; name : string; url : string }
+
+
+type ChannelMessage = { targetId : string; channel : string; data : string }
+[<AbstractClass>]
+type Channel(name : string) =
+    inherit AdaptiveObject()
+    abstract member Compute : AdaptiveToken -> string
+    abstract member Dispose : unit -> unit
+
+    member x.Name = name
+
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
+
+    member x.GetMessage(token : AdaptiveToken, targetId : string) =
+        x.EvaluateIfNeeded token None (fun token ->
+            Some { targetId = targetId; channel = name; data = x.Compute(token) }
+        )
+
+type ModChannel<'a>(name : string, m : IMod<'a>) =
+    inherit Channel(name)
+
+    override x.Dispose() =
+        ()
+
+    override x.Compute(token) =
+        let v = m.GetValue token
+        Pickler.json.PickleToString v
+
+
+[<RequireQualifiedAccess>]
+type private AListOp<'a> =
+    | Set of index : int * value : 'a
+    | Remove of index : int
+
+type AListChannel<'a>(name : string, m : alist<'a>) =
+    inherit Channel(name)
+
+    let reader = m.GetReader()
+    
+    override x.Dispose() =
+        reader.Dispose()
+
+    override x.Compute(token) =
+        let mutable state = reader.State.Content
+        let ops = reader.GetOperations token
+        
+        ops 
+            |> PDeltaList.toList
+            |> List.map (fun (i, op) ->
+                // TODO: maybe improve
+                let (l,s,r) = MapExt.split i state
+                let index = l.Count
+
+                match op with
+                    | Set v -> 
+                        state <- MapExt.add i v state
+                        AListOp.Set(index, v)
+                    | Remove -> 
+                        state <- MapExt.remove i state
+                        AListOp.Remove(index)
+            )
+            |> Pickler.json.PickleToString
+
+ 
+[<RequireQualifiedAccess>]
+type private ASetOp<'a> =
+    | Add of value : 'a
+    | Remove of value : 'a
+
+type ASetChannel<'a>(name : string, m : aset<'a>) =
+    inherit Channel(name)
+
+    let reader = m.GetReader()
+        
+    override x.Dispose() =
+        reader.Dispose()
+
+    override x.Compute(token) =
+        let ops = reader.GetOperations token
+
+        ops |> HDeltaSet.toList
+            |> List.map (fun op ->
+                match op with
+                    | Add(_,v) -> ASetOp.Add(v)
+                    | Rem(_,v) -> ASetOp.Remove(v)
+            )
+            |> Pickler.json.PickleToString
+
+[<RequireQualifiedAccess>]
+type private AMapOp<'a, 'b> =
+    | Set of key : 'a * value : 'b
+    | Remove of key : 'a
+
+type AMapChannel<'a, 'b>(name : string, m : amap<'a, 'b>) =
+    inherit Channel(name)
+
+    let reader = m.GetReader()
+
+    override x.Dispose() =
+        reader.Dispose()
+
+    override x.Compute(token) =
+        let ops = reader.GetOperations token
+ 
+        ops |> HMap.toList
+            |> List.map (fun (key, op) ->
+                match op with
+                    | Set v -> AMapOp.Set(key, v)
+                    | Remove -> AMapOp.Remove(key)
+            )
+            |> Pickler.json.PickleToString
+ 
+
 type AttributeValue<'msg> =
     | Event of list<string> * (list<string> -> 'msg)
     | Value of string
+    | ClientEvent of (string -> string)
 
 type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : UiContent<'msg>) =
     let mutable initialAttributes : Map<string, AttributeValue<'msg>> = Map.empty
-    let mutable required : Map<string, string> = Map.empty
-    let mutable bootCode : Option<string -> string> = None
-
+    let mutable required : list<Reference> = []
+    let mutable boot : Option<string -> string> = None
+    let mutable shutdown : Option<string -> string> = None
+    let mutable callbacks : Map<string, (list<string> -> 'msg)> = Map.empty
+    let mutable channels : list<Channel> = []
 
     member x.Tag = tag
     member x.Attributes = attributes
@@ -39,13 +161,25 @@ type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, con
         with get() = required
         and set r = required <- r
 
-    member x.BootCode
-        with get() = bootCode
-        and set code = bootCode <- code
+    member x.Boot
+        with get() = boot
+        and set code = boot <- code
+
+    member x.Shutdown
+        with get() = shutdown
+        and set code = shutdown <- code
+
+    member x.Callbacks
+        with get() = callbacks
+        and set cbs = callbacks <- cbs
 
     member x.InitialAttributes
         with get() = initialAttributes
         and set v = initialAttributes <- v
+
+    member x.Channels
+        with get() = channels
+        and set v = channels <- v
 
     new(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : alist<Ui<'msg>>) =
         Ui(tag, attributes, Children content)

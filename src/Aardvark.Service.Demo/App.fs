@@ -40,68 +40,71 @@ module ``UI Extensions`` =
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module Ui =
-        let private main =
-            String.concat "\r\n" [
-                "<html>"
-                "   <head>"
-                "       <title>Aardvark rocks \\o/</title>"
-                "       <script src=\"https://code.jquery.com/jquery-3.1.1.min.js\"></script>"
-                "       <script src=\"https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js\"></script>"
-                "       <script src=\"/aardvark.js\"></script>"
-                "       <script>"
-                "           var aardvark = {};"
-                "           var _refs = {};"
-                "           aardvark.referencedScripts = _refs;"
-                "           aardvark.referencedScripts[\"jquery\"] = true;"
-                "           aardvark.addReference = function(name, url) {"
-                "               if(!aardvark.referencedScripts[name]) {"
-                "                   aardvark.referencedScripts[name] = true;"
-                "                   var script = document.createElement(\"script\");"
-                "                   script.setAttribute(\"src\", url);"
-                "                   document.head.appendChild(script);"
-                "               }"
-                "           };"
-                "           "
-                "           function getUrl(proto, subpath) {"
-                "               var l = window.location;"
-                "               var path = l.pathname;"
-                "               if(l.port === \"\") {"
-                "                   return proto + l.hostname + path + subpath;"
-                "               }"
-                "               else {"
-                "                   return proto + l.hostname + ':' + l.port + path + subpath;"
-                "               }"
-                "           }"
-                "           var url = getUrl('ws://', 'events');"
-                "           var eventSocket = new WebSocket(url);"
-                ""
-                "           aardvark.processEvent = function () {"
-                "               console.warn(\"websocket not opened yet\");"
-                "           }"
-                ""
-                "           eventSocket.onopen = function () {"
-                "               aardvark.processEvent = function () {"
-                "                   var sender = arguments[0];"
-                "                   var name = arguments[1];"
-                "                   var args = [];"
-                "                   for (var i = 2; i < arguments.length; i++) {"
-                "                       args.push(JSON.stringify(arguments[i]));"
-                "                   }"
-                "                   var message = JSON.stringify({ sender: sender, name: name, args: args });"
-                "                   eventSocket.send(message);"
-                "               }"
-                "           };"
-                ""
-                "           eventSocket.onmessage = function (m) {"
-                "              eval(\"{\\r\\n\" + m.data + \"\\r\\n}\");"
-                "           };"
-                ""
-                "       </script>"
-                "   </head>"
-                "   <body style=\"width: 100%; height: 100%; border: 0; padding: 0; margin: 0\">"
-                "   </body>"
-                "</html>"
-            ]
+        let private main = File.readAllText @"template.html"
+            //String.concat "\r\n" [
+            //    "<html>"
+            //    "   <head>"
+            //    "       <title>Aardvark rocks \\o/</title>"
+            //    "       <script src=\"https://code.jquery.com/jquery-3.1.1.min.js\"></script>"
+            //    "       <script src=\"https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js\"></script>"
+            //    "       <script src=\"/aardvark.js\"></script>"
+            //    "       <script>"
+            //    "           var aardvark = {};"
+            //    "           var _refs = {};"
+            //    "           aardvark.referencedScripts = _refs;"
+            //    "           aardvark.referencedScripts[\"jquery\"] = true;"
+            //    "           aardvark.addReference = function(name, url) {"
+            //    "               if(!aardvark.referencedScripts[name]) {"
+            //    "                   aardvark.referencedScripts[name] = true;"
+            //    "                   var script = document.createElement(\"script\");"
+            //    "                   script.setAttribute(\"src\", url);"
+            //    "                   var loaded = false;"
+            //    "                   script.onloaded = function() { loaded = true; };"
+            //    "                   document.head.appendChild(script);"
+            //    "                   while(!loaded) {}"
+            //    "               }"
+            //    "           };"
+            //    "           "
+            //    "           function getUrl(proto, subpath) {"
+            //    "               var l = window.location;"
+            //    "               var path = l.pathname;"
+            //    "               if(l.port === \"\") {"
+            //    "                   return proto + l.hostname + path + subpath;"
+            //    "               }"
+            //    "               else {"
+            //    "                   return proto + l.hostname + ':' + l.port + path + subpath;"
+            //    "               }"
+            //    "           }"
+            //    "           var url = getUrl('ws://', 'events');"
+            //    "           var eventSocket = new WebSocket(url);"
+            //    ""
+            //    "           aardvark.processEvent = function () {"
+            //    "               console.warn(\"websocket not opened yet\");"
+            //    "           }"
+            //    ""
+            //    "           eventSocket.onopen = function () {"
+            //    "               aardvark.processEvent = function () {"
+            //    "                   var sender = arguments[0];"
+            //    "                   var name = arguments[1];"
+            //    "                   var args = [];"
+            //    "                   for (var i = 2; i < arguments.length; i++) {"
+            //    "                       args.push(JSON.stringify(arguments[i]));"
+            //    "                   }"
+            //    "                   var message = JSON.stringify({ sender: sender, name: name, args: args });"
+            //    "                   eventSocket.send(message);"
+            //    "               }"
+            //    "           };"
+            //    ""
+            //    "           eventSocket.onmessage = function (m) {"
+            //    "              eval(\"{\\r\\n\" + m.data + \"\\r\\n}\");"
+            //    "           };"
+            //    ""
+            //    "       </script>"
+            //    "   </head>"
+            //    "   <body style=\"width: 100%; height: 100%; border: 0; padding: 0; margin: 0\">"
+            //    "   </body>"
+            //    "</html>"
+            //]
 
         type WebSocket with
             member x.readMessage() =
@@ -119,39 +122,81 @@ module ``UI Extensions`` =
                 {
                     handlers = Dictionary()
                     scenes = Dictionary()
+                    references = Dictionary()
+                    activeChannels = Dictionary()
                 }
 
             let events (s : WebSocket) (ctx : HttpContext) =
+                let mutable existingChannels = Dictionary<string * string, Channel>()
+
                 let reader = ui.GetReader()
-                let mutable initial = true
-                let performUpdate (s : WebSocket) =
-                    lock reader (fun () ->
-                        let expr = reader.Update(AdaptiveToken.Top, Body, state) 
-                        let code = expr |> JSExpr.toString
-                        let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
+                let self =
+                    Mod.custom (fun self ->
+                        let performUpdate (s : WebSocket) =
+                            lock reader (fun () ->
+                                let expr = reader.Update(self, Body, state) 
+                                let code = expr |> JSExpr.toString
+                                let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
 
-                        if code = "" then
-                            ()
-                            //Log.line "empty update"
-                        else
+                                let newReferences = state.references.Values |> Seq.toArray
+                                state.references.Clear()
 
-                            //let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
-                            //lock runtime (fun () -> 
-                            //    Log.start "update"
-                            //    for l in lines do Log.line "%s" l
-                            //    Log.stop()
-                            //)
+                                let code = 
+                                    if newReferences.Length > 0 then
+                                        let args = 
+                                            newReferences |> Seq.map (fun r -> 
+                                                sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" (if r.kind = Script then "script" else "stylesheet") r.name r.url
+                                            ) |> String.concat "," |> sprintf "[%s]" 
+                                        let code = String.indent 1 code
+                                        sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
+                                    else
+                                        code
 
-                            let res = s.send Opcode.Text (ByteSegment(Encoding.UTF8.GetBytes(code))) true |> Async.RunSynchronously
-                            match res with
-                                | Choice1Of2 () ->
-                                    ()
-                                | Choice2Of2 err ->
-                                    failwithf "[WS] error: %A" err
+                                if code <> "" then
+                                    //let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
+                                    //lock runtime (fun () -> 
+                                    //    Log.start "update"
+                                    //    for l in lines do Log.line "%s" l
+                                    //    Log.stop()
+                                    //)
+
+                                    let res = s.send Opcode.Text (ByteSegment(Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
+                                    match res with
+                                        | Choice1Of2 () ->
+                                            ()
+                                        | Choice2Of2 err ->
+                                            failwithf "[WS] error: %A" err
+
+                                let newChannels = Dictionary()
+                                for KeyValue((id,name),channel) in state.activeChannels do
+                                    newChannels.[(id,name)] <- channel
+                                    existingChannels.Remove(id, name) |> ignore
+                                    let message = channel.GetMessage(self, id)
+                                    match message with
+                                        | Some message ->
+                                            let res = s.send Opcode.Text (ByteSegment(Encoding.UTF8.GetBytes("c" + Pickler.json.PickleToString message))) true |> Async.RunSynchronously
+                                            match res with
+                                                | Choice1Of2 () ->
+                                                    ()
+                                                | Choice2Of2 err ->
+                                                    failwithf "[WS] error: %A" err
+                                        | None -> 
+                                            ()
+
+                                for KeyValue((id,name),channel) in existingChannels do
+                                    let suicide = { targetId = id; channel = name; data = "commit-suicide" }
+                                    s.send Opcode.Text (ByteSegment(Encoding.UTF8.GetBytes("c" + Pickler.json.PickleToString suicide))) true |> Async.RunSynchronously |> ignore
+
+                                    channel.Dispose()
+
+                                existingChannels <- newChannels
+                        )
+
+                        performUpdate s
                     )
-            
+
                 let pending = MVar.create()
-                let subsription = reader.AddMarkingCallback(fun () -> MVar.put pending ())
+                let subsription = self.AddMarkingCallback(MVar.put pending)
 
             
                 let mutable running = true
@@ -159,7 +204,7 @@ module ``UI Extensions`` =
                     async {
                         while running do
                             let! _ = MVar.takeAsync pending
-                            performUpdate s
+                            self.GetValue(AdaptiveToken.Top)
                     }
 
                 Async.Start runner
@@ -185,7 +230,7 @@ module ``UI Extensions`` =
                                 | _ ->
                                     ()
                     finally
-                        reader.Destroy state
+                        reader.Destroy(state, JSExpr.GetElementById reader.Id) |> ignore
                 }
 
             let parts = 

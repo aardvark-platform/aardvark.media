@@ -24,7 +24,7 @@ type JSExpr =
     | InsertAfter of reference : JSExpr * inner : JSExpr
 
     | Raw of code : string
-    | AddReference of name : string * url : string
+    //| AddReferences of Map<string, string>
     | Sequential of list<JSExpr>
     | GetElementById of string
     | Let of JSVar * JSExpr * JSExpr
@@ -38,8 +38,9 @@ module JSExpr =
         
     let rec toJQueryString (e : JSExpr) =
         match e with
-            | AddReference(name, url) ->
-                sprintf "aardvark.addReference(\"%s\", \"%s\");" name url
+            //| AddReferences map ->
+            //    let args = map |> Map.toSeq |> Seq.map (fun (n,u) -> sprintf "{ name: \"%s\", url: \"%s\"}" n u) |> String.concat "," |> sprintf "[%s]"
+            //    sprintf "aardvark.addReferences(%s);" args
 
             | Raw code ->
                 code
@@ -104,8 +105,9 @@ module JSExpr =
 
     let rec toString (e : JSExpr) =
         match e with
-            | AddReference(name, url) ->
-                sprintf "aardvark.addReference(\"%s\", \"%s\");" name url
+            //| AddReferences map ->
+            //    let args = map |> Map.toSeq |> Seq.map (fun (n,u) -> sprintf "{ name: \"%s\", url: \"%s\"}" n u) |> String.concat "," |> sprintf "[%s]"
+            //    sprintf "aardvark.addReferences(%s);" args
 
             | Raw code ->
                 code
@@ -149,7 +151,7 @@ module JSExpr =
 
             | AppendChild(parent,inner) -> 
                 let parent = toString parent
-                sprintf "%s.addAtEnd(%s);" parent (toString inner)
+                sprintf "%s.appendChild(%s);" parent (toString inner)
 
             | InsertBefore(reference,element) -> 
                 match reference with
@@ -182,14 +184,16 @@ module JSExpr =
 
 type UpdateState<'msg> =
     {
-        handlers    : Dictionary<string * string, list<string> -> 'msg>
-        scenes      : Dictionary<string, IRenderControl -> IRenderTask>
+        handlers        : Dictionary<string * string, list<string> -> 'msg>
+        scenes          : Dictionary<string, IRenderControl -> IRenderTask>
+        references      : Dictionary<string * ReferenceKind, Reference>
+        activeChannels  : Dictionary<string * string, Channel>
     }
           
 type IUiReader<'msg> =
     inherit IAdaptiveObject
     abstract member Update : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
-    abstract member Destroy : UpdateState<'msg> -> unit
+    abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
 
 module UiReaders =
 
@@ -198,7 +202,7 @@ module UiReaders =
         inherit AdaptiveObject()
 
         abstract member PerformUpdate : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
-        abstract member Destroy : UpdateState<'msg> -> unit
+        abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
 
         member x.Update(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
             x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
@@ -207,7 +211,7 @@ module UiReaders =
 
         interface IUiReader<'msg> with
             member x.Update(t,s,state) = x.Update(t,s,state)
-            member x.Destroy(state) = x.Destroy(state)
+            member x.Destroy(state, self) = x.Destroy(state, self)
 
     and EmptyReader<'msg> private() =
         inherit ConstantObject()
@@ -217,7 +221,7 @@ module UiReaders =
 
         interface IUiReader<'msg> with
             member x.Update(_,_,_) = JSExpr.Nop
-            member x.Destroy(_) = ()
+            member x.Destroy(_,_) = JSExpr.Nop
             
 
     and TextReader<'msg>(text : IMod<string>) =
@@ -227,8 +231,8 @@ module UiReaders =
             let nt = text.GetValue token
             JSExpr.InnerText(self, nt)
 
-        override x.Destroy(state : UpdateState<'msg>) =
-            ()
+        override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
+            JSExpr.Nop
 
     and ChildrenReader<'msg>(id : string, children : alist<UiReader<'msg>>) =
         inherit AbstractUiReader<'msg>()
@@ -261,11 +265,13 @@ module UiReaders =
         //let mutable initial = true
         //let lastId = id + "_last"
 
-        override x.Destroy(state : UpdateState<'msg>) =
+        override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
+            let all = List()
             for (_,r) in content do
-                r.Value.Destroy(state)
+                r.Value.Destroy(state, GetElementById r.Value.Id) |> all.Add
             content.Clear()
             reader.Dispose()
+            JSExpr.Sequential (CSharpList.toList all)
 
         override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
             let code = List<JSExpr>()
@@ -289,7 +295,7 @@ module UiReaders =
                                 let n = !n
                                 content.Remove(i, Unchecked.defaultof<_>) |> ignore
                                 code.Add(Remove (GetElementById n.Id))
-                                n.Destroy(state)
+                                code.Add(n.Destroy(state, GetElementById n.Id))
                             | None ->
                                 failwith "sadasdlnsajdnmsad"
 
@@ -299,7 +305,7 @@ module UiReaders =
                         match s with
                             | Some ref ->
                                 let oldElement = !ref
-                                oldElement.Destroy(state)
+                                code.Add(oldElement.Destroy(state, GetElementById oldElement.Id))
                                 ref := newElement
 
                                 toUpdate <- PList.remove i toUpdate
@@ -355,8 +361,9 @@ module UiReaders =
 
         let mutable initial = true
 
-        override x.Destroy(state : UpdateState<'msg>) =
+        override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
             state.scenes.Remove(id) |> ignore
+            JSExpr.Nop
 
         override x.PerformUpdate(token, self, state) =
             if initial then
@@ -386,14 +393,33 @@ module UiReaders =
         member x.Tag = ui.Tag
         member x.Id = id
 
-        override x.Destroy(state : UpdateState<'msg>) =
+        override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
             for (name, v) in rAtt.State do
                 match v with
                     | Event _ -> state.handlers.Remove(id, name) |> ignore
                     | _ -> ()
 
+               
+            for (name,cb) in Map.toSeq ui.Callbacks do
+                state.handlers.Remove (id,name) |> ignore
+                
+            match ui.Boot with
+                | Some getBootCode ->
+                    for c in ui.Channels do
+                        state.activeChannels.Remove(id,c.Name) |> ignore
+                | None ->
+                    ()
+
             rAtt.Dispose()
-            rContent.Destroy(state)
+            match ui.Shutdown with
+                | Some shutdown ->
+                    JSExpr.Sequential [
+                        rContent.Destroy(state, self)
+                        Raw (shutdown id)
+                    ]
+                | None ->
+                    rContent.Destroy(state, self)
+                    
 
         override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
             let code = List()
@@ -401,15 +427,31 @@ module UiReaders =
             if initial then
                 initial <- false
 
-                for (name, url) in Map.toSeq ui.Required do
-                    code.Add(AddReference(name, url))
+                for (name,cb) in Map.toSeq ui.Callbacks do
+                    state.handlers.[(id,name)] <- cb
 
-                match ui.BootCode with
+                for r in ui.Required do
+                    state.references.[(r.name, r.kind)] <- r
+
+                // let a = Mod.map ....
+                // a.onmessage = function()
+
+                // channels = {};
+                // dataSocket.onmessage = function(e) {
+                //     var msg = JSON.parse(e.data);
+                //     channels[msg.channel].onmessage(msg.data);
+                //}
+
+                match ui.Boot with
                     | Some getBootCode ->
+                        for c in ui.Channels do
+                            state.activeChannels.[(id,c.Name)] <- c
+                        let prefix = ui.Channels |> List.map (fun c -> sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" c.Name id c.Name) |> String.concat "\r\n"
                         let boot = getBootCode id
-                        code.Add(Raw boot)
+                        code.Add(Raw (prefix + boot))
                     | None ->
                         ()
+
                 for (name, value) in Map.toSeq ui.InitialAttributes do
                     let value = 
                         match value with
@@ -420,6 +462,10 @@ module UiReaders =
                                 state.handlers.[(id, name)] <- cb
                                 let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
                                 sprintf "aardvark.processEvent(%s);" args
+
+                            | ClientEvent getCode ->
+                                let code = getCode id
+                                code
 
                     code.Add(SetAttribute(self, name, value))
 
@@ -436,6 +482,10 @@ module UiReaders =
                                     state.handlers.[(id, name)] <- cb
                                     let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
                                     sprintf "aardvark.processEvent(%s);" args
+                                    
+                                | ClientEvent getCode ->
+                                    let code = getCode id
+                                    code
 
                         code.Add(SetAttribute(self, name, value))
 
@@ -454,4 +504,4 @@ module UiReaders =
 module ``Extensions for Node`` =
     type Ui<'msg> with
         member x.GetReader() =
-            UiReaders.UiReader<'msg>(x) :> IUiReader<'msg>
+            UiReaders.UiReader<'msg>(x)

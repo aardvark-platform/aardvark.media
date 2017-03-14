@@ -2,11 +2,143 @@
 var urlCreator = window.URL || window.webkitURL;
 
 
-// rendering related
+var aardvark = {};
+aardvark.channels = {};
+aardvark.referencedScripts = {};
+aardvark.referencedScripts["jquery"] = true;
+aardvark.referencedStyles = {};
 
-HTMLElement.prototype.addAtEnd = function (element) {
-    $(this).append([element]);
+aardvark.processEvent = function () {
+    console.warn("websocket not opened yet");
 };
+
+aardvark.addReferences = function (refs, cont) {
+    function acc(i) {
+        
+        if (i >= refs.length) {
+            return cont;
+        }
+        else {
+            var ref = refs[i];
+            var kind = ref.kind;
+            var name = ref.name;
+            var url = ref.url;
+            if (kind === "script") {
+                if (!aardvark.referencedScripts[name]) {
+                    console.log("script " + name + " (" + url + ")");
+                    aardvark.referencedScripts[name] = true;
+                    return function () {
+                        var script = document.createElement("script");
+                        script.setAttribute("src", url);
+                        script.onload = acc(i + 1);
+                        document.head.appendChild(script);
+                    };
+                }
+                else return acc(i + 1);
+            }
+            else {
+                if (!aardvark.referencedStyles[name]) {
+                    console.log("style " + name + " (" + url + ")");
+                    aardvark.referencedStyles[name] = true;
+                    return function () {
+                        var script = document.createElement("link");
+                        script.setAttribute("rel", "stylesheet");
+                        script.setAttribute("href", url);
+                        script.onload = acc(i + 1);
+                        document.head.appendChild(script);
+                    };
+                }
+                else return acc(i + 1);
+            }
+
+        }
+    }
+
+    var real = acc(0);
+    real();
+    //for (key in refs) {
+    //    var ref = refs[key];
+    //    var kind = ref.kind;
+    //    var name = ref.name;
+    //    var url = ref.url;
+    //    var old = cc;
+    //    if (kind === "script") {
+    //        if (!aardvark.referencedScripts[name]) {
+    //            console.log("referencing " + name + " (" + url + ")");
+    //            aardvark.referencedScripts[name] = true;
+    //            cc = function () {
+    //                var script = document.createElement("script");
+    //                script.setAttribute("src", url);
+    //                script.onload = old;
+    //                document.head.appendChild(script);
+    //            };
+    //        }
+    //    }
+    //    else {
+    //        if (!aardvark.referencedStyles[name]) {
+    //            console.log("referencing " + name + " (" + url + ")");
+    //            aardvark.referencedStyles[name] = true;
+    //            cc = function () {
+    //                var script = document.createElement("link");
+    //                script.setAttribute("rel", "stylesheet");
+    //                script.setAttribute("href", url);
+    //                script.onload = old;
+    //                document.head.appendChild(script);
+    //            };
+    //        }
+    //    }
+    //}
+    //cc();
+
+};
+
+class Channel {
+
+    constructor(name) {
+        this.name = name;
+        this.pending = undefined;
+        this._recv = undefined;
+    }
+
+
+    received(data) {
+        if (data === "commit-suicide") {
+            console.warn(this.name + " couldn't take it no more and committed suicide")
+            delete aardvark.channels[name];
+        }
+        else {
+            if (this._recv) {
+                this._recv(data);
+            }
+        }
+    }
+
+    get onmessage() {
+        return this.received;
+    }
+
+    set onmessage(cb) {
+        this._recv = cb;
+    }
+
+}
+
+aardvark.getChannel = function (id, name) {
+    var channelName = id + "_" + name;
+    var channel = aardvark.channels[channelName];
+    if (channel) {
+        return channel;
+    }
+    else {
+        channel = new Channel(channelName);
+        aardvark.channels[channelName] = channel;
+        return channel;
+    }
+
+};
+
+
+// rendering related
 
 function initRenderTargetEvents(eventSocket, canvas, id) {
     canvas.isRendering = false;
@@ -91,8 +223,6 @@ function initRenderTargetEvents(eventSocket, canvas, id) {
     };
 
 }
-
-
 
 function getRenderFunction(id) {
     var $div = $('#' + id);
@@ -186,6 +316,50 @@ $(document).ready(function () {
 
     $("head").append($("<style type='text/css'>img.rendercontrol:focus { outline: none; }</style>"));
 
+
+    function getUrl(proto, subpath) {
+        var l = window.location;
+        var path = l.pathname;
+        if (l.port === "") {
+            return proto + l.hostname + path + subpath;
+        }
+        else {
+            return proto + l.hostname + ':' + l.port + path + subpath;
+        }
+    }
+    var url = getUrl('ws://', 'events');
+    var eventSocket = new WebSocket(url);
+
+    eventSocket.onopen = function () {
+        aardvark.processEvent = function () {
+            var sender = arguments[0];
+            var name = arguments[1];
+            var args = [];
+            for (var i = 2; i < arguments.length; i++) {
+                args.push(JSON.stringify(arguments[i]));
+            }
+            var message = JSON.stringify({ sender: sender, name: name, args: args });
+            eventSocket.send(message);
+        }
+    };
+
+    eventSocket.onmessage = function (m) {
+        var c = m.data.substring(0, 1);
+        var data = m.data.substring(1, m.data.length);
+        if (c === "x") {
+            eval("{\r\n" + data + "\r\n}");
+        }
+        else {
+            var message = JSON.parse(data);
+            var channelName = message.targetId + "_" + message.channel;
+            var channel = aardvark.channels[channelName];
+
+            if (channel && channel.onmessage) {
+                channel.onmessage(message.data);
+            }
+        }
+    };
+
     function checkDOMChange() {
         $('div.aardvark').each(function () {
             var $div = $(this);
@@ -200,3 +374,4 @@ $(document).ready(function () {
     checkDOMChange();
 
 });
+
