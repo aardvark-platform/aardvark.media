@@ -276,16 +276,20 @@ module DrawingApp =
     // view GUI stuff
     let viewMeasurements (m : Drawing) = 
         let isSelected id = Seq.contains id m.selected
-        div [clazz "ui relaxed divided list"] [
+        div [clazz "ui divided list"] [
             yield h3 [] [Text "Annotations:"]
             for me in (m.finished |> Seq.sortBy (fun x -> x.seqNumber)) do
                 let background, fontcolor = if isSelected me.seqNumber then "#969696","#f0f0f0" else "#d9d9d9", "#252525"
                 
                 yield div [clazz "item"; Style ["backgroundColor", background]; onMouseClick (fun o -> Click me.seqNumber)] [
-                            i [clazz "large File Outline middle aligned icon"; Style ["color", me.style.color |> Html.ofC4b]][]
+                            i [clazz "medium File Outline middle aligned icon"; Style ["color", me.style.color |> Html.ofC4b]][]
                             div[clazz "content"] [
-                                div [clazz "header"; Style ["color", fontcolor] ] [Text me.annType] 
-                                div [clazz "description"; Style ["color", fontcolor]] [Text (sprintf "%i" me.seqNumber)]
+                                Html.Layout.horizontal[ 
+                                    Html.Layout.boxH [ Text me.annType ] 
+                                    Html.Layout.boxH [ Text (sprintf "%i" me.seqNumber) ]
+                                ]
+//                                div [clazz "header"; Style ["color", fontcolor] ] [Text me.annType] 
+//                                div [clazz "description"; Style ["color", fontcolor]] [Text (sprintf "%i" me.seqNumber)]
                             ]
                         ]
             ]

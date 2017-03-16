@@ -308,6 +308,7 @@ module Generated =
             member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
+                    x.mViewerState.Apply(arg0.ViewerState, reuseCache)
                //     x.mhistory.Value <- arg0.history
                     x.mpicking.Value <- arg0.picking
                     x.mfinished.Update(arg0.finished)
