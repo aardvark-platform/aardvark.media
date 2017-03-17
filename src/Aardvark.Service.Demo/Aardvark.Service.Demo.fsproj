@@ -71,6 +71,7 @@
   </Target>
   -->
   <ItemGroup>
+    <Compile Include="Sg.fs" />
     <Compile Include="Ui.fs" />
     <Compile Include="UiReader.fs" />
     <Compile Include="App.fs" />

@@ -126,6 +126,9 @@ module ``UI Extensions`` =
                     activeChannels = Dictionary()
                 }
 
+            let messageQueue = new System.Collections.Concurrent.BlockingCollection<'action>()
+            let emit (msg : 'action) = messageQueue.Add msg
+
             let events (s : WebSocket) (ctx : HttpContext) =
                 let mutable existingChannels = Dictionary<string * string, Channel>()
 
@@ -200,14 +203,24 @@ module ``UI Extensions`` =
 
             
                 let mutable running = true
-                let runner =
+                let updater =
                     async {
                         while running do
                             let! _ = MVar.takeAsync pending
                             self.GetValue(AdaptiveToken.Top)
                     }
 
-                Async.Start runner
+                Async.Start updater
+
+                let processor =
+                    async {
+                        do! Async.SwitchToNewThread()
+                        while running do
+                            let v = messageQueue.Take()
+                            perform v
+                    }
+
+                Async.Start processor
 
                 socket {
                     try
@@ -220,7 +233,7 @@ module ``UI Extensions`` =
                                     match state.handlers.TryGetValue ((event.sender, event.name)) with
                                         | (true, f) ->
                                             let action = f (Array.toList event.args)
-                                            perform action
+                                            emit action
                                         | _ ->
                                             ()
 
@@ -241,8 +254,10 @@ module ``UI Extensions`` =
 
             Server.start runtime port parts (fun id ctrl ->
                 match state.scenes.TryGetValue id with
-                    | (true, f) -> ctrl |> f |> Some
-                    | _ -> None
+                    | (true, f) -> 
+                        ctrl |> f emit |> Some
+                    | _ -> 
+                        None
             )
      
      

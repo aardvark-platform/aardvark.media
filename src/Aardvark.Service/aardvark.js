@@ -159,39 +159,40 @@ function initRenderTargetEvents(eventSocket, canvas, id) {
 
     $canvas.click(function (e) {
         $canvas.focus();
-        processEvent(id, 'click', e.clientX, e.clientY, e.button);
+        processEvent(id, 'click', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
     $canvas.dblclick(function (e) {
         $canvas.focus();
-        processEvent(id, 'dblclick', e.clientX, e.clientY, e.button);
+        processEvent(id, 'dblclick', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
     $canvas.mousedown(function (e) {
         $canvas.focus();
-        processEvent(id, 'mousedown', e.clientX, e.clientY, e.button);
+        processEvent(id, 'mousedown', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
     $canvas.mouseup(function (e) {
-        processEvent(id, 'mouseup', e.clientX, e.clientY, e.button);
+        processEvent(id, 'mouseup', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
     $canvas.mousemove(function (e) {
-        processEvent(id, 'mousemove', e.clientX, e.clientY);
+        console.log(e);
+        processEvent(id, 'mousemove', e.offsetX, e.offsetY);
         e.preventDefault();
     });
 
     $canvas.mouseenter(function (e) {
-        processEvent(id, 'mouseenter', e.clientX, e.clientY);
+        processEvent(id, 'mouseenter', e.offsetX, e.offsetY);
         e.preventDefault();
     });
 
     $canvas.mouseout(function (e) {
-        processEvent(id, 'mouseout', e.clientX, e.clientY);
+        processEvent(id, 'mouseout', e.offsetX, e.offsetY);
         e.preventDefault();
     });
 

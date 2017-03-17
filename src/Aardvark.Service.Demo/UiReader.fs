@@ -185,7 +185,7 @@ module JSExpr =
 type UpdateState<'msg> =
     {
         handlers        : Dictionary<string * string, list<string> -> 'msg>
-        scenes          : Dictionary<string, IRenderControl -> IRenderTask>
+        scenes          : Dictionary<string, ('msg -> unit) -> IRenderControl -> IRenderTask>
         references      : Dictionary<string * ReferenceKind, Reference>
         activeChannels  : Dictionary<string * string, Channel>
     }
@@ -356,7 +356,7 @@ module UiReaders =
 
             JSExpr.Sequential (CSharpList.toList code)
 
-    and SceneReader<'msg>(id : string, create : IRenderControl -> IRenderTask) =
+    and SceneReader<'msg>(id : string, create : ('msg -> unit) -> IRenderControl -> IRenderTask) =
         inherit AbstractUiReader<'msg>()
 
         let mutable initial = true

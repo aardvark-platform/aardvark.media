@@ -50,6 +50,9 @@ module Pickler =
 
     let json = FsPickler.CreateJsonSerializer(false, true)
 
+type IServerRenderControl =
+    inherit IRenderControl
+    abstract member Disposed : IEvent<unit>
 
 module Server =
     open System.IO
@@ -146,6 +149,8 @@ module Server =
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
                     ctx |> downloadFBO jpeg downloadTime compressTime size
 
+
+
     type RenderControl(runtime : IRuntime, targetId : string, sock : WebSocket, samples : int) =
 
         let send (cmd : Command) =
@@ -181,7 +186,7 @@ module Server =
         let time = Mod.custom (fun _ -> DateTime.Now)
 
         let framebuffer = runtime.CreateFramebuffer(signature, Set.empty, currentSize)
-      
+
         let mutable frameCount = 0
         let renderTime      = Stopwatch()
         let downloadTime    = Stopwatch()
@@ -208,6 +213,7 @@ module Server =
                 renderTime.Stop()
 
                 let fbo = unbox<Aardvark.Rendering.GL.Framebuffer> fbo
+
                 let data = fbo.DownloadJpegColor(jpeg, downloadTime, compressTime)
 
                 presentTime.Start()
@@ -464,7 +470,7 @@ module Server =
 
 
         let render (targetId : string) (s : WebSocket) (context: HttpContext) =
-            let ctrl = RenderControl(runtime, targetId, s, 1)
+            let ctrl = RenderControl(runtime, targetId, s, 8)
 
             match content targetId ctrl with
                 | Some task -> ctrl.RenderTask <- task

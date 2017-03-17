@@ -5,8 +5,8 @@ open System.Text
 open System.Collections.Generic
 open System.Threading
 open Aardvark.Base
+open Aardvark.Base.Geometry
 open Aardvark.Base.Incremental
-open Aardvark.SceneGraph
 
 open Suave
 open Suave.Http
@@ -187,7 +187,7 @@ type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, con
     new(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : IMod<string>) =
         Ui(tag, attributes, Text content)
 
-    new(tag : string, attributes : amap<string, AttributeValue<'msg>>, sg : IRenderControl -> IRenderTask) =
+    new(tag : string, attributes : amap<string, AttributeValue<'msg>>, sg : ('msg -> unit) -> IRenderControl -> IRenderTask) =
         Ui(tag, attributes, Scene sg)
 
     new(tag : string, attributes : amap<string, AttributeValue<'msg>>) =
@@ -196,10 +196,11 @@ type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, con
 and UiContent<'msg> =
     | Children of alist<Ui<'msg>>
     | Text of IMod<string>
-    | Scene of (IRenderControl -> IRenderTask)
+    | Scene of (('msg -> unit) -> IRenderControl -> IRenderTask)
     | Empty
 
 type Attribute<'msg> = string * AttributeValue<'msg>
+
 
 [<AutoOpen>]
 module Tags =
@@ -208,12 +209,52 @@ module Tags =
    
     let inline text (content : IMod<string>) = Ui("span", AMap.empty, content)
 
-    let sg (att : amap<string, AttributeValue<'msg>>) (sg : IRenderControl -> ISg) =
-        let create (ctrl : IRenderControl) =
+    let sg (att : amap<string, AttributeValue<'msg>>) (sg : IRenderControl -> IMod<Camera> * ISg<'msg>) =
+        let create (sink : 'msg -> unit) (ctrl : IRenderControl) =
             let runtime = ctrl.Runtime
-            runtime.CompileRender(ctrl.FramebufferSignature, sg ctrl)
+            let cam, sg = sg ctrl
+            let sg = sg |> Sg.camera cam
 
-        Ui("div", att, create, InitialAttributes = Map.ofList ["class", Value "aardvark"])
+            let tree = PickTree.ofSg sg
+            let task = runtime.CompileRender(ctrl.FramebufferSignature, sg)
+
+            let ray = Mod.map2 (fun c p -> RayPart(Camera.pickRay c p |> FastRay3d)) cam ctrl.Mouse.Position
+
+            ctrl.Mouse.Click.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Click button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.DoubleClick.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.DoubleClick button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.Down.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Down button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.Up.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Up button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.Move.Values.Add(fun (o,n) ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Move, ray) do
+                    sink msg
+            )
+
+
+            task
+
+        Ui("div", att, create, InitialAttributes = Map.ofList ["class", (Value "aardvark")])
+        
 
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
     // Void elements
@@ -349,10 +390,49 @@ module PersistentTags =
    
     let inline text' (content : string) = Ui("span", AMap.empty, Mod.constant content)
 
-    let sg' (att : list<Attribute<'msg>>) (sg : IRenderControl -> ISg) =
-        let create (ctrl : IRenderControl) =
+    let sg' (att : list<Attribute<'msg>>) (sg : IRenderControl -> IMod<Camera> * ISg<'msg>) =
+        let create (sink : 'msg -> unit) (ctrl : IRenderControl) =
             let runtime = ctrl.Runtime
-            runtime.CompileRender(ctrl.FramebufferSignature, sg ctrl)
+            let cam, sg = sg ctrl
+            let sg = sg |> Sg.camera cam
+
+            let tree = PickTree.ofSg sg
+            let task = runtime.CompileRender(ctrl.FramebufferSignature, sg)
+
+            let ray = Mod.map2 (fun c p -> RayPart(Camera.pickRay c p |> FastRay3d)) cam ctrl.Mouse.Position
+
+            ctrl.Mouse.Click.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Click button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.DoubleClick.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.DoubleClick button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.Down.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Down button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.Up.Values.Add(fun button ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Up button, ray) do
+                    sink msg
+            )
+
+            ctrl.Mouse.Move.Values.Add(fun (o,n) ->
+                let ray = Mod.force ray
+                for msg in tree.Perform(SgEventKind.Move, ray) do
+                    sink msg
+            )
+
+
+            task
 
         Ui("div", AMap.ofHMap (att |> HMap.ofList |> HMap.add "class" (Value "aardvark")), create)
         
