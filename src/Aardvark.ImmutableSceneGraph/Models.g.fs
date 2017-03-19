@@ -244,17 +244,22 @@ module Generated =
             thickness : Numeric.Model
         }
         
+        type Segment = list<V3d>
+
         type Annotation = {
             seqNumber : int
             annType : string
             geometry : Polygon // think of record type
+            segments : list<Segment>
             style : Style            
             styleType : Choice.Model
+            projection : Choice.Model
         }
-
+        
         type OpenPolygon = 
             { cursor : Option<V3d>
               finishedPoints : list<V3d>
+              finishedSegments : list<Segment>
                }
         
 
@@ -272,6 +277,8 @@ module Generated =
               style    : Style
               measureType : Choice.Model
               styleType   : Choice.Model
+              projection : Choice.Model
+              samples : Numeric.Model
               selected : pset<int>
               selectedAnn : Option<Annotation>}
             
@@ -286,6 +293,8 @@ module Generated =
                   mstyle = Mod.init(x.style)
                   mmeasureType = Mod.init(x.measureType)
                   mstyleType = Mod.init(x.styleType) 
+                  mprojection = Mod.init(x.projection)
+                  msamples = Mod.init(x.samples)
                   mselected = ResetSet(x.selected)}
             
             interface IUnique with
@@ -304,6 +313,8 @@ module Generated =
               mstyle : ModRef<Style>
               mmeasureType : ModRef<Choice.Model>
               mstyleType : ModRef<Choice.Model> 
+              mprojection : ModRef<Choice.Model>
+              msamples : ModRef<Numeric.Model>
               mselected : ResetSet<int> }
             member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
@@ -316,6 +327,8 @@ module Generated =
                     x.mstyle.Value <- arg0.style
                     x.mmeasureType.Value <- arg0.measureType
                     x.mstyleType.Value <- arg0.styleType
+                    x.mprojection.Value <- arg0.projection
+                    x.msamples.Value <- arg0.samples
                     x.mselected.Update(arg0.selected)
     
     module PlaceTransformObjects = 

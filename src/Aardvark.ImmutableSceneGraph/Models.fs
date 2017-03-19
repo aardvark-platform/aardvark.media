@@ -93,20 +93,33 @@ module DrawingApp =
         }
 
         let thickness' v = { thickness with value = v } 
+
+        let samples = {
+            value   = 4.0
+            min     = 1.0
+            max     = 100.0
+            step    = 1.0
+            format  = "{0:0}"
+        }
+
+        let samples' v = { samples with value = v } 
     
     type Polygon = list<V3d>
-
+    type Segment = list<V3d>
+    
     type Annotation = {
         seqNumber : int
         annType : string
         geometry : Polygon
-
+        segments : list<Segment>
         style : Style        
+        projection : Choice.Model
     }
 
     type OpenPolygon = {
         cursor         : Option<V3d>
         finishedPoints : list<V3d>        
+        finishedSegments : list<Segment>
     }
     
     [<DomainType>]
@@ -118,6 +131,8 @@ module DrawingApp =
         picking : Option<int>
         style   : Style
         measureType : Choice.Model
+        projection : Choice.Model
+        samples : Numeric.Model
         selected : pset<int>
         selectedAnn : Option<Annotation>
     }

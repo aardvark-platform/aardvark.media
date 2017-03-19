@@ -254,7 +254,7 @@ module FreeFlyCameraApp =
 
 
     let initial = { 
-        camera = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+        camera = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI
         ///frustum = Frustum.perspective 60.0 0.01 10.0 (1024.0/768.0); 
         _id = null
         lookingAround = None

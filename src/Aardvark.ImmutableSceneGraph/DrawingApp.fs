@@ -32,6 +32,7 @@ module AnnotationPropertiesApp =
     type Action =                      
         | Set_Thickness of Numeric.Action
         | Set_Style     of Choice.Action
+        | Set_Projection     of Choice.Action
 
     let update (env: Env<Action>) (model : DrawingApp.Annotation) (action : Action) =
         match action with            
@@ -42,6 +43,8 @@ module AnnotationPropertiesApp =
                 let style' = Styles.standard.[index]
 
                 { model with style = style'; styleType = Choice.update env model.styleType s }
+            | Set_Projection s ->                 
+                { model with projection = Choice.update env model.projection s}
 
     //let table' = table [clazz "ui celled striped table unstackable"]
        
@@ -51,6 +54,7 @@ module AnnotationPropertiesApp =
             Html.table [
                 Html.row "Type:"      [ Text  m.annType ]
                 Html.row "Style:"     [ Choice.view m.styleType |> Html.map Set_Style ]
+                Html.row "Projection:"[ Choice.view m.projection |> Html.map Set_Projection ]
                 Html.row "Color:"     [ div [Style ["color", c]] [ Text c ]]
                 Html.row "Thickness:" [ Numeric.view m.style.thickness |> Html.map Set_Thickness ]
             ]
@@ -66,10 +70,7 @@ module DrawingApp =
             m.finished.AsList 
                 |> List.updateIf (fun x -> x.seqNumber = ann.seqNumber) (fun x -> ann) 
                 |> pset.OfList
-                                                          
-            
-        
-
+                                                                              
     open Aardvark.ImmutableSceneGraph
     open Aardvark.Elmish
     open Primitives
@@ -91,6 +92,8 @@ module DrawingApp =
         | PickStop   
         | Set_Type    of Choice.Action
         | Set_Style   of Choice.Action
+        | Set_Projection of Choice.Action
+        | Set_Samples of Numeric.Action
         | SetAnnotationProperties of AnnotationPropertiesApp.Action            
         | FreeFlyAction   of FreeFlyCameraApp.Action
         | DragStart       of PixelPosition
@@ -110,13 +113,31 @@ module DrawingApp =
                                                   seqNumber = m.finished.AsList.Length
                                                   annType = m.measureType.selected 
                                                   styleType = m.styleType
-                                                  } m.finished }    
+                                                  projection = m.projection
+                                                  segments = p.finishedSegments
+                                                  } m.finished }
 
+    let toEdges (points:seq<V3d>) = Polygon3d(points).EdgeLines
+
+    let sampleAlongEdge (noOfSamples:int) (edges : seq<Line3d>) =
+        edges |> Seq.map (fun e ->                     
+                    let step = (e.P1 - e.P0) / (float noOfSamples + 1.0)
+                    [1 .. noOfSamples] |> List.map (fun i -> e.P0 + step * (float i))) // for now only computes ray lookats
+    
     let updateAddPoint (m : Drawing) (p : V3d) =         
         match m.working with            
             | Some v -> 
-                let k = { m with working = Some { v with finishedPoints = p :: v.finishedPoints }}
-                match m.measureType.selected with          
+                                                
+                let points = (p :: v.finishedPoints)
+                let segments = points
+                                    |> List.toSeq 
+                                    |> toEdges 
+                                    |> sampleAlongEdge (int m.samples.value)
+                                    |> Seq.toList
+
+                let k = { m with working = Some { v with finishedSegments = segments; finishedPoints = points }}
+                                
+                match m.measureType.selected with
                     | "Point"        -> finishPolygon k
                     | "Line"         -> if k.working.Value.finishedPoints.Length = 2 then finishPolygon k else k
                     | "Polyline"     -> k
@@ -141,13 +162,15 @@ module DrawingApp =
             | AddPoint p, Some _ -> updateAddPoint m p |> stash
             | MoveCursor p, Some _ ->
                 match m.working with
-                    | None -> { m with working = Some { finishedPoints = []; cursor = Some p }}
+                    | None -> { m with working = Some { cursor = Some p; finishedPoints = []; finishedSegments = [] }}
                     | Some v -> { m with working = Some { v with cursor = Some p }}
             | ChangeStyle s, _ -> 
                 { m with 
                     style = Styles.standard.[s];
                     styleType = { m.styleType with selected = m.styleType.choices.[s] }} |> stash
-            | Set_Type a, _ when m.working.IsNone -> { m with measureType = Choice.update e m.measureType a}
+            | Set_Type a,       _ when m.working.IsNone -> { m with measureType = Choice.update e m.measureType a}
+            | Set_Projection a, _ when m.working.IsNone -> { m with projection = Choice.update e m.projection a}
+            | Set_Samples a, _ -> { m with samples = Numeric.update e m.samples a}
             | Set_Style a, _ -> 
                 let style = Choice.update e m.styleType a
                 let index = Choice.index style
@@ -175,22 +198,34 @@ module DrawingApp =
             | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
             | _,_ -> m    
            
-    // view 3d Stuff
-    let viewPolygon (p : list<V3d>) (r : float) (id : int) (close : bool) =        
+    // view annotations in 3D
+    let viewPolygon (p : list<V3d>) (segments: list<list<V3d>>) (r : float) (id : int) (close : bool) =        
         match p with
             | [] -> []
             | _  ->                
+                
                 let lines =  Polygon3d(p |> List.toSeq).EdgeLines
+
                 [     
                     //drawing leading sphere      
                     yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
           
-                    let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)]
-                    let take = if close then Seq.length lines else Seq.length lines - 1
+                    //only polygons with valid ids are pickable
+                    let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)] 
+
+                    // skip last segment if polygon is not closed
+                    let take = if close then Seq.length lines else Seq.length lines - 1 
+
+                    for s in segments |> Seq.take take do
+                        for p' in s do
+                            yield Sphere3d(p', r * 0.80) |> Sphere |> Scene.render Pick.ignore
+
                     for edge in lines |> Seq.take take do
                         let v = edge.P1 - edge.P0
-                        yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.0) |> Scene.render pick
+                        yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.5) |> Scene.render pick
                         yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
+
+                    
                 ]
         |> Scene.group                
     
@@ -212,7 +247,8 @@ module DrawingApp =
             // draw all finished polygons       
             for p in m.mfinished :> aset<_> do                 
                 let color = if isSelected p.seqNumber then selectionColor else p.style.color                
-                yield [viewPolygon p.geometry p.style.thickness.value p.seqNumber (closed p)] |> Scene.colored (Mod.constant p.style.color)
+                yield [viewPolygon p.geometry p.segments p.style.thickness.value p.seqNumber (closed p)] 
+                        |> Scene.colored (Mod.constant p.style.color)
 
             // draw selection geometry
             for id in m.mselected :> aset<_> do
@@ -227,8 +263,9 @@ module DrawingApp =
             let! picking = m.mpicking
             match working with
                 | Some v when v.cursor.IsSome -> 
-                    let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints
-                    yield [viewPolygon (line) style.thickness.value -1 (m.mmeasureType.Value.selected = "Polygon")] 
+                    let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints                    
+
+                    yield [viewPolygon (line) v.finishedSegments style.thickness.value -1 (m.mmeasureType.Value.selected = "Polygon")] 
                             |> Scene.colored (Mod.constant style.color)
                     yield [ Sphere3d(V3d.OOO, style.thickness.value) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
@@ -273,7 +310,7 @@ module DrawingApp =
             |> Scene.group
             |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera frustum)    
 
-    // view GUI stuff
+    // view GUI Eleements
     let viewMeasurements (m : Drawing) = 
         let isSelected id = Seq.contains id m.selected
         div [clazz "ui divided list"] [
@@ -287,6 +324,7 @@ module DrawingApp =
                                 Html.Layout.horizontal[ 
                                     Html.Layout.boxH [ Text me.annType ] 
                                     Html.Layout.boxH [ Text (sprintf "%i" me.seqNumber) ]
+                                    Html.Layout.boxH [ Text (sprintf "%A" me.projection.selected) ]
                                 ]
 //                                div [clazz "header"; Style ["color", fontcolor] ] [Text me.annType] 
 //                                div [clazz "description"; Style ["color", fontcolor]] [Text (sprintf "%i" me.seqNumber)]
@@ -318,6 +356,8 @@ module DrawingApp =
                     ]
                     Html.Layout.boxH [ Choice.view m.measureType |> Html.map Set_Type ]
                     Html.Layout.boxH [ Choice.view m.styleType |> Html.map Set_Style ]
+                    Html.Layout.boxH [ Choice.view m.projection |> Html.map Set_Projection ]
+                    Html.Layout.boxH [ Numeric.view m.samples |> Html.map Set_Samples ]
                     Html.Layout.finish()
                 ]
              ]
@@ -355,18 +395,20 @@ module DrawingApp =
               Input.toggleMouse Input.Mouse.left DragStart DragStop]
 
     let (initial : Drawing) = { 
+        _id = null
+        picking = None 
         ViewerState = FreeFlyCameraApp.initial
         finished = PSet.empty
         working = None
-        _id = null
-        history = EqualOf.toEqual None; future = EqualOf.toEqual None
-        picking = None 
-        filename = @"C:\Aardwork\wand.jpg"
         style = Styles.standard.[0]
         measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Polyline" }
         styleType = { choices = ["#Fascies";"#Bed";"#Crossbed"; "#Grain"]; selected = "#Fascies" }
+        projection = { choices = ["linear";"viewpoint";"top"]; selected = "viewpoint" }
+        samples = Default.samples' 4.0
+        history = EqualOf.toEqual None; future = EqualOf.toEqual None
         selected = PSet.empty
         selectedAnn= None
+        filename = @"C:\Aardwork\wand.jpg"
         }
 
     let app s time =
