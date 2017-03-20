@@ -181,7 +181,6 @@ function initRenderTargetEvents(eventSocket, canvas, id) {
     });
 
     $canvas.mousemove(function (e) {
-        console.log(e);
         processEvent(id, 'mousemove', e.offsetX, e.offsetY);
         e.preventDefault();
     });
@@ -315,7 +314,7 @@ function render(id) {
 
 $(document).ready(function () {
 
-    $("head").append($("<style type='text/css'>img.rendercontrol:focus { outline: none; }</style>"));
+    $("head").append($("<style type='text/css'>img.rendercontrol:focus { outline: none; } div.aardvark { background-color: black } </style>"));
 
 
     function getUrl(proto, subpath) {

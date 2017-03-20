@@ -153,6 +153,7 @@ type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, con
     let mutable callbacks : Map<string, (list<string> -> 'msg)> = Map.empty
     let mutable channels : list<Channel> = []
 
+
     member x.Tag = tag
     member x.Attributes = attributes
     member x.Content = content
@@ -180,6 +181,19 @@ type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, con
     member x.Channels
         with get() = channels
         and set v = channels <- v
+
+    member x.Copy() =
+        Ui<'msg>(
+            x.Tag,
+            x.Attributes,
+            x.Content,
+            InitialAttributes = x.InitialAttributes,
+            Required = x.Required,
+            Boot = x.Boot,
+            Shutdown = x.Shutdown,
+            Callbacks = x.Callbacks,
+            Channels = x.Channels
+        )
 
     new(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : alist<Ui<'msg>>) =
         Ui(tag, attributes, Children content)
@@ -437,6 +451,56 @@ module PersistentTags =
         Ui("div", AMap.ofHMap (att |> HMap.ofList |> HMap.add "class" (Value "aardvark")), create)
         
 
+    let require (libs : list<Reference>) (x : list<Ui<'msg>>) =
+        match x with
+            | [e] ->
+                let res = e.Copy()
+                res.Required <- libs @ res.Required
+                res
+            | _ ->
+                Ui("div", AMap.empty, AList.ofList x, Required = libs)
+
+    let onBoot (boot : string) (x : list<Ui<'msg>>) =
+        let boot =
+            if System.String.IsNullOrWhiteSpace boot then None
+            else Some (fun id -> boot.Replace("__ID__", id))
+            
+        match x with
+            | [e] ->
+                let res = e.Copy()
+                match res.Boot, boot with
+                    | Some o, Some n ->
+                        res.Boot <- Some (fun id -> o(id) + "\r\n" + n(id))
+                    | None, Some n ->
+                        res.Boot <- Some n
+                    | Some o, None ->
+                        res.Boot <- Some o
+                    | None, None ->
+                        res.Boot <- None
+                res
+            | _ ->
+                Ui("div", AMap.empty, AList.ofList x, Boot = boot)
+
+    let onShutdown (shutdown : string) (x : list<Ui<'msg>>) =
+        let shutdown =
+            if System.String.IsNullOrWhiteSpace shutdown then None
+            else Some (fun id -> shutdown.Replace("__ID__", id))
+            
+        match x with
+            | [e] ->
+                let res = e.Copy()
+                match res.Shutdown, shutdown with
+                    | Some o, Some n ->
+                        res.Shutdown <- Some (fun id -> o(id) + "\r\n" + n(id))
+                    | None, Some n ->
+                        res.Shutdown <- Some n
+                    | Some o, None ->
+                        res.Shutdown <- Some o
+                    | None, None ->
+                        res.Shutdown <- None
+                res
+            | _ ->
+                Ui("div", AMap.empty, AList.ofList x, Shutdown = shutdown)
 
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
     // Void elements
