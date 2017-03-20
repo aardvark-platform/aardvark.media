@@ -117,7 +117,14 @@ module DrawingApp =
                                                   segments = p.finishedSegments
                                                   } m.finished }
 
-    let toEdges (points:seq<V3d>) = Polygon3d(points).EdgeLines
+    //let toEdges (points:seq<V3d>) = Polygon3d(points).EdgeLines
+
+    let edgeLines (close : bool)  (p : list<V3d>) =        
+        let head = p |> List.head        
+        (if close then p @ [head] else p) 
+            |> List.pairwise
+            |> List.map (fun (a,b) -> new Line3d(a,b)) 
+            |> List.toSeq
 
     let sampleAlongEdge (noOfSamples:int) (edges : seq<Line3d>) =
         edges |> Seq.map (fun e ->                     
@@ -129,9 +136,8 @@ module DrawingApp =
             | Some v -> 
                                                 
                 let points = (p :: v.finishedPoints)
-                let segments = points
-                                    |> List.toSeq 
-                                    |> toEdges 
+                let segments = points                                    
+                                    |> edgeLines (m.measureType.selected = "Polygon")
                                     |> sampleAlongEdge (int m.samples.value)
                                     |> Seq.toList
 
@@ -197,6 +203,8 @@ module DrawingApp =
             | DragStart p, None->  { m with ViewerState = { m.ViewerState with lookingAround = Some p }}
             | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
             | _,_ -> m    
+
+    
            
     // view annotations in 3D
     let viewPolygon (p : list<V3d>) (segments: list<list<V3d>>) (r : float) (id : int) (close : bool) =        
@@ -204,34 +212,28 @@ module DrawingApp =
             | [] -> []
             | _  ->                
                 
-                let lines =  Polygon3d(p |> List.toSeq).EdgeLines
+                let lines = p |> edgeLines close               
 
-                [     
-                    //drawing leading sphere      
+                [   //drawing leading sphere      
                     yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
           
                     //only polygons with valid ids are pickable
                     let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)] 
-
-                    // skip last segment if polygon is not closed
-                    let take = if close then Seq.length lines else Seq.length lines - 1 
-
-                    for s in segments |> Seq.take take do
+                                        
+                    for s in segments do
                         for p' in s do
                             yield Sphere3d(p', r * 0.80) |> Sphere |> Scene.render Pick.ignore
 
-                    for edge in lines |> Seq.take take do
+                    for edge in lines do
                         let v = edge.P1 - edge.P0
                         yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.5) |> Scene.render pick
                         yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
-
-                    
                 ]
         |> Scene.group                
     
     let selectionColor = C4b.Red
-    let viewSelection (p : list<V3d>) (r : float) =
-        let lines =  Polygon3d(p |> List.toSeq).EdgeLines
+    let viewSelection (p : list<V3d>) (r : float) (close : bool) =
+        let lines =  p |> edgeLines close
         [           
             yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
             for edge in lines |> Seq.take (Seq.length lines - 1)  do
@@ -254,7 +256,8 @@ module DrawingApp =
             for id in m.mselected :> aset<_> do
                 printfn "selected: %i" id
                 match m.mfinished |> Seq.tryFind(fun x -> x.seqNumber = id) with
-                    | Some k ->  yield [viewSelection k.geometry (k.style.thickness.value * 1.01)] |> Scene.colored (Mod.constant selectionColor)
+                    | Some k ->  yield [viewSelection k.geometry (k.style.thickness.value * 1.01) (closed k)] 
+                                            |> Scene.colored (Mod.constant selectionColor)
                     | None -> ()
 
             // draw working polygon
