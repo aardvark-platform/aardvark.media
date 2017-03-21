@@ -45,7 +45,7 @@ type ComposedApp<'model,'msg>(initial : 'model, f : Env<'msg> -> 'model -> 'msg 
                     project newBigModel
                 )
         let r : Fablish.FablishResult<'innerModel,'innerMsg> = Fablish.Fablish.Serve<'innerModel,'innerMsg>(app, address, port, doUpdate)
-        innerApps.Add(fun m -> r.instance.EmitModel (project m) |> ignore) |> ignore
+        innerApps.Add(fun m -> lock x (fun _ -> r.instance.EmitModel (project m) |> ignore)) |> ignore
         r
 
     member x.Register(f : 'model -> unit) = 
@@ -69,7 +69,7 @@ module ComposedApp =
                 project newBigModel
             )
         let instance = Elmish.createAppAdaptiveD keyboard mouse viewport camera (Some doUpdate) app
-        comp.Register(fun m -> instance.emitModel (project m)) 
+        comp.Register(fun m -> lock comp (fun _ -> instance.emitModel (project m))) 
         instance
 
     let addUi (comp : ComposedApp<'model,'msg>)  (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
