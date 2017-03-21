@@ -69,7 +69,7 @@ module ComposedApp =
                 project newBigModel
             )
         let instance = Elmish.createAppAdaptiveD keyboard mouse viewport camera (Some doUpdate) app
-        comp.Register(fun m -> instance.emitModel (project m)) 
+        comp.Register(fun m -> lock comp (fun _ -> instance.emitModel (project m))) 
         instance
 
     let addUi (comp : ComposedApp<'model,'msg>)  (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
