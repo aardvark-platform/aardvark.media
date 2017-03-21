@@ -11,4 +11,5 @@ type Model =
         hasD3Hate   : bool
         boxScale    : float
         boxHovered  : bool
+        dragging    : bool
     }

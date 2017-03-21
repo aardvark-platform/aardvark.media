@@ -140,10 +140,11 @@ aardvark.getChannel = function (id, name) {
 
 // rendering related
 
-function initRenderTargetEvents(eventSocket, canvas, id) {
+function initRenderTargetEvents(canvas, parent, id) {
     canvas.isRendering = false;
     canvas.contentEditable = true;
     var $canvas = $(canvas);
+    var $parent = $(parent);
 
     var processEvent =
         function () {
@@ -159,31 +160,36 @@ function initRenderTargetEvents(eventSocket, canvas, id) {
 
     $canvas.click(function (e) {
         $canvas.focus();
-        processEvent(id, 'click', e.offsetX, e.offsetY, e.button);
+        $parent.trigger("click", e);
+        //processEvent(id, 'click', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
     $canvas.dblclick(function (e) {
         $canvas.focus();
-        processEvent(id, 'dblclick', e.offsetX, e.offsetY, e.button);
+        $parent.trigger("dblclick", e);
+        //processEvent(id, 'dblclick', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
     $canvas.mousedown(function (e) {
         $canvas.focus();
-        processEvent(id, 'mousedown', e.offsetX, e.offsetY, e.button);
+        $parent.trigger("mousedown", e);
+        //processEvent(id, 'mousedown', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
     $canvas.mouseup(function (e) {
-        processEvent(id, 'mouseup', e.offsetX, e.offsetY, e.button);
+        $parent.trigger("mouseup", e);
+        //processEvent(id, 'mouseup', e.offsetX, e.offsetY, e.button);
         e.preventDefault();
     });
 
-    $canvas.mousemove(function (e) {
-        processEvent(id, 'mousemove', e.offsetX, e.offsetY);
-        e.preventDefault();
-    });
+    //$canvas.mousemove(function (e) {
+    //    //$parent.trigger("mousemove", e);
+    //    //processEvent(id, 'mousemove', e.offsetX, e.offsetY);
+    //    //e.preventDefault();
+    //});
 
     $canvas.mouseenter(function (e) {
         processEvent(id, 'mouseenter', e.offsetX, e.offsetY);
@@ -229,6 +235,8 @@ function getRenderFunction(id) {
     var div = $div.get(0);
     if (div.renderFunction)
         return div.renderFunction;
+
+    div.oncontextmenu = function (e) { e.preventDefault(); };
 
     $div.append($('<img class="rendercontrol"/>'));
     var $img = $('#' + id + ' img');
@@ -278,7 +286,9 @@ function getRenderFunction(id) {
             socketOpen = true;
             requestRender();
 
-            initRenderTargetEvents(socket, img, id);
+            img.isRendering = false;
+            img.contentEditable = true;
+            //initRenderTargetEvents(img, div, id);
 
             $div.resize(function () {
                 requestRender();

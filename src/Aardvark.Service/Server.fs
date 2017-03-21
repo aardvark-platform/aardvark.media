@@ -106,8 +106,6 @@ module Server =
                 GL.DeleteBuffer(pbo)
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
 
-                    
-
         type Framebuffer with
             member x.DownloadJpegColor(jpeg : TJCompressor, downloadTime : Stopwatch, compressTime : Stopwatch) =
                 let ctx = x.Context
@@ -149,10 +147,39 @@ module Server =
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
                     ctx |> downloadFBO jpeg downloadTime compressTime size
 
+    type ServerRenderTask(runtime : IRuntime, signature : IFramebufferSignature, camera : IMod<Camera>, sg : IMod<Trafo3d> -> IMod<Trafo3d> -> aset<IRenderObject>) =
+        inherit AbstractRenderTask()
 
+        let aspect = Mod.init 1.0
+
+        let view = camera |> Mod.map (Camera.cameraView >> CameraView.viewTrafo)
+
+        let proj =
+            Mod.map2 (fun camera aspect -> camera.frustum |> Frustum.withAspect aspect |> Frustum.projTrafo) camera aspect
+
+        let objects = sg view proj
+        let task = runtime.CompileRender(signature, BackendConfiguration.Default, objects)
+
+        member x.Camera = camera
+
+        override x.Use(f : unit -> 'a) =
+            task.Use(f)
+
+        override x.Runtime = Some runtime
+        override x.FramebufferSignature = Some signature
+        override x.PerformUpdate(token, rt) =
+            task.Update(token, rt)
+
+        override x.Perform(token, rt, output) =
+            let a = float output.viewport.SizeX / float output.viewport.SizeY
+            transact (fun () -> aspect.Value <- a)
+            task.Run(token, rt, output)
+
+        override x.Dispose() =
+            task.Dispose()
 
     type RenderControl(runtime : IRuntime, targetId : string, sock : WebSocket, samples : int) =
-
+        let mutable camera = Mod.constant (Camera.create (CameraView.lookAt V3d.III V3d.Zero V3d.OOI) (Frustum.perspective 60.0 0.1 100.0 1.0))
         let send (cmd : Command) =
             let data = Pickler.json.Pickle cmd
             match sock.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously with
@@ -220,24 +247,31 @@ module Server =
                 data
             )
 
-        let keyboard = EventKeyboard()
-        let mouse = EventMouse(false)
+//        let keyboard = EventKeyboard()
+//        let mouse = EventMouse(false)
 
 
 
 
-        let mutable lastPos = PixelPosition()
-        let pos x y =
-            let res = PixelPosition(x,y,currentSize.Value.X, currentSize.Value.Y)
-            lastPos <- res
-            res
+        let lastPos = PixelPosition() |> Mod.init
 
-        let button b =
-            match b with
-                | 0 -> MouseButtons.Left
-                | 1 -> MouseButtons.Middle
-                | 2 -> MouseButtons.Right
-                | _ -> MouseButtons.None
+        let pickRay =
+            lazy (
+                Mod.map2 (fun c p -> Camera.pickRay c p |> FastRay3d |> Aardvark.Base.Geometry.RayPart) camera lastPos
+            )
+        
+
+//        let pos x y =
+//            let res = PixelPosition(x,y,currentSize.Value.X, currentSize.Value.Y)
+//            lastPos <- res
+//            res
+//
+//        let button b =
+//            match b with
+//                | 0 -> MouseButtons.Left
+//                | 1 -> MouseButtons.Middle
+//                | 2 -> MouseButtons.Right
+//                | _ -> MouseButtons.None
 
 
 
@@ -245,76 +279,86 @@ module Server =
             let s = currentSize.Value
 
             match e.name with
-
-                | "keydown" ->
-                    let key = Int32.Parse e.args.[0] |> KeyConverter.keyFromVirtualKey
-                    keyboard.KeyDown(key)
-
-                | "keyup" ->
-                    let key = Int32.Parse e.args.[0] |> KeyConverter.keyFromVirtualKey
-                    keyboard.KeyUp(key)
-
-                | "keypress" ->
-                    let c = e.args.[0].[0]
-                    keyboard.KeyPress(c)
-                        
-                | "click" ->
-                    let x = Int32.Parse e.args.[0]
-                    let y = Int32.Parse e.args.[1]
-                    let b = Int32.Parse e.args.[2] |> button
-                    mouse.Click(pos x y, b)
-
-                | "dblclick" ->
-                    let x = Int32.Parse e.args.[0]
-                    let y = Int32.Parse e.args.[1]
-                    let b = Int32.Parse e.args.[2] |> button
-                    mouse.DoubleClick(pos x y, b)
-
-                | "mousedown" ->
-                    let x = Int32.Parse e.args.[0]
-                    let y = Int32.Parse e.args.[1]
-                    let b = Int32.Parse e.args.[2] |> button
-                    mouse.Down(pos x y, b)
-
-                | "mouseup" ->
-                    let x = Int32.Parse e.args.[0]
-                    let y = Int32.Parse e.args.[1]
-                    let b = Int32.Parse e.args.[2] |> button
-                    mouse.Up(pos x y, b)
-                        
                 | "mousemove" ->
                     let x = Int32.Parse e.args.[0]
                     let y = Int32.Parse e.args.[1]
-                    mouse.Move(pos x y)
-                        
-                | "mouseenter" ->
-                    let x = Int32.Parse e.args.[0]
-                    let y = Int32.Parse e.args.[1]
-                    mouse.Enter(pos x y)
-                        
-                | "mouseout" ->
-                    let x = Int32.Parse e.args.[0]
-                    let y = Int32.Parse e.args.[1]
-                    mouse.Leave(pos x y)
-                        
-                | "mousewheel" ->
-                    let delta = Double.Parse(e.args.[0], System.Globalization.CultureInfo.InvariantCulture)
-                    mouse.Scroll(lastPos, delta)
-                       
+                    transact (fun () -> lastPos.Value <- PixelPosition(x,y,currentSize.Value.X, currentSize.Value.Y))
+
                 | _ ->
                     ()
+//                | "keydown" ->
+//                    let key = Int32.Parse e.args.[0] |> KeyConverter.keyFromVirtualKey
+//                    keyboard.KeyDown(key)
+//
+//                | "keyup" ->
+//                    let key = Int32.Parse e.args.[0] |> KeyConverter.keyFromVirtualKey
+//                    keyboard.KeyUp(key)
+//
+//                | "keypress" ->
+//                    let c = e.args.[0].[0]
+//                    keyboard.KeyPress(c)
+//                        
+//                | "click" ->
+//                    let x = Int32.Parse e.args.[0]
+//                    let y = Int32.Parse e.args.[1]
+//                    let b = Int32.Parse e.args.[2] |> button
+//                    mouse.Click(pos x y, b)
+//
+//                | "dblclick" ->
+//                    let x = Int32.Parse e.args.[0]
+//                    let y = Int32.Parse e.args.[1]
+//                    let b = Int32.Parse e.args.[2] |> button
+//                    mouse.DoubleClick(pos x y, b)
+//
+//                | "mousedown" ->
+//                    let x = Int32.Parse e.args.[0]
+//                    let y = Int32.Parse e.args.[1]
+//                    let b = Int32.Parse e.args.[2] |> button
+//                    mouse.Down(pos x y, b)
+//
+//                | "mouseup" ->
+//                    let x = Int32.Parse e.args.[0]
+//                    let y = Int32.Parse e.args.[1]
+//                    let b = Int32.Parse e.args.[2] |> button
+//                    mouse.Up(pos x y, b)
+//                        
+//                | "mousemove" ->
+//                    
+//                    let x = Int32.Parse e.args.[0]
+//                    let y = Int32.Parse e.args.[1]
+//                    mouse.Move(pos x y)
+//                        
+//                | "mouseenter" ->
+//                    let x = Int32.Parse e.args.[0]
+//                    let y = Int32.Parse e.args.[1]
+//                    mouse.Enter(pos x y)
+//                        
+//                | "mouseout" ->
+//                    let x = Int32.Parse e.args.[0]
+//                    let y = Int32.Parse e.args.[1]
+//                    mouse.Leave(pos x y)
+//                        
+//                | "mousewheel" ->
+//                    let delta = Double.Parse(e.args.[0], System.Globalization.CultureInfo.InvariantCulture)
+//                    mouse.Scroll(lastPos, delta)
+//                       
+//                | _ ->
+//                    ()
 
-
-        let eventQueue = new BlockingCollection<Event>()
+        let sem = new SemaphoreSlim(0)
+        let eventQueue = new ConcurrentQueue<Event>()
         
         let worker =
             async {
-                do! Async.SwitchToNewThread()
                 while true do
-                    let e = eventQueue.Take()
-                    do
-                        try processEvent e
-                        with e -> Log.warn "faulted: %A" e
+                    do! Async.AwaitTask(sem.WaitAsync())
+                    match eventQueue.TryDequeue() with
+                        | (true, e) -> 
+                            do
+                                try processEvent e
+                                with e -> Log.warn "faulted: %A" e
+                        | _ ->
+                            ()
             }
 
         let invalidate() =
@@ -322,9 +366,8 @@ module Server =
 
         do Async.Start worker
 
-        let renderQueue = new BlockingCollection<V2i>()
+        let renderQueue : MVar<V2i> = MVar.empty()
         let renderer =
-            
             async {
                 do! Async.SwitchToNewThread()
                 do
@@ -332,7 +375,7 @@ module Server =
                     use __ = glRuntime.Context.RenderingLock ctx
                     
                     while true do
-                        let size = renderQueue.Take()
+                        let size = MVar.take renderQueue
                         if size.AllGreater 0 then
                             try
                                 if currentSize.Value <> size then
@@ -351,6 +394,13 @@ module Server =
 
         do Async.Start renderer
 
+        member x.PickRay =
+            pickRay.Value
+        
+        member x.Camera
+            with get() = camera
+            and set c = camera <- c
+
         member x.RenderTask
             with get() = renderTask.Value
             and set t = transact (fun () -> renderTask.Value <- t)
@@ -359,7 +409,7 @@ module Server =
         member x.Dispose() =
             try
                 transact (fun () ->
-                    eventQueue.Dispose()
+                    sem.Dispose()
 
                     clearTask.Dispose()
                     renderTask.Value.Dispose()
@@ -374,7 +424,8 @@ module Server =
         member x.Received (msg : Message) =
             match msg with
                 | Event e ->
-                    eventQueue.Add e
+                    eventQueue.Enqueue e
+                    sem.Release() |> ignore
 
                 | Shutdown ->
                     x.Dispose()
@@ -422,18 +473,11 @@ module Server =
                     )
 
                 | RequestImage size ->
-                    renderQueue.Add size
-//                    try
-//                        if currentSize.Value <> size then
-//                            transact (fun () -> currentSize.Value <- size)
-//
-//                        let data = result.GetValue()
-//                        sendImage data
-//                    with e ->
-//                        Log.warn "render faulted %A" e
+                    MVar.put renderQueue size
                     
             ()
-
+            
+        member x.FramebufferSignature = signature
 
         interface IRenderTarget with
             member x.Runtime = runtime
@@ -445,10 +489,6 @@ module Server =
             member x.Samples = samples
             member x.Sizes = currentSize :> IMod<_>
             member x.Time = time
-
-        interface IRenderControl with
-            member x.Keyboard = keyboard :> IKeyboard
-            member x.Mouse = mouse :> IMouse
 
 
     type WebSocket with
@@ -462,45 +502,174 @@ module Server =
                     return (t, Array.append d rest)
             }
 
-    let start (runtime : IRuntime) (port : int) (additional : list<WebPart<HttpContext>>) (content : string -> IRenderControl -> Option<IRenderTask>) =
+    [<AbstractClass>]
+    type AbstractRenderResult() =
+        inherit AdaptiveObject()
+        
+        [<DefaultValue; ThreadStatic>]
+        static val mutable private TJCompressor : TJCompressor
+        
+        static let compressor() =
+            let current = AbstractRenderResult.TJCompressor
+            if isNull current then
+                let res = new TJCompressor()
+                AbstractRenderResult.TJCompressor <- res
+                res
+            else
+                current
+                
+
+        abstract member PerformRender : AdaptiveToken * V2i -> IFramebuffer
+        abstract member Dispose : unit -> unit
+
+        member x.Render(token : AdaptiveToken, size : V2i) =
+            x.EvaluateAlways token (fun token ->
+                let res = x.PerformRender(token, size)
+                res
+            )
+
+        member x.RenderJpeg(token : AdaptiveToken, size : V2i, download : Stopwatch, compress : Stopwatch) =
+            let res = x.Render(token, size)
+            match res with
+                | :? Aardvark.Rendering.GL.Framebuffer as fbo ->
+                    fbo.DownloadJpegColor(compressor(), download, compress)
+                | _ ->
+                    failwith "not implemented"
+
+
+
+
+
+    let start (runtime : IRuntime) (port : int) (additional : list<WebPart<HttpContext>>) (content : string -> IFramebufferSignature -> Option<AbstractRenderResult>) =
         let config =
             { defaultConfig with
                 bindings = [ HttpBinding.create HTTP IPAddress.Any (uint16 port) ] 
             }
 
 
+        let signature =
+            runtime.CreateFramebufferSignature(
+                1, [
+                    DefaultSemantic.Colors, RenderbufferFormat.Rgba8
+                    DefaultSemantic.Depth, RenderbufferFormat.Depth24Stencil8
+                ]
+            )
+
         let render (targetId : string) (s : WebSocket) (context: HttpContext) =
-            let ctrl = RenderControl(runtime, targetId, s, 8)
+            match content targetId signature with
+                | Some result ->
+                    let download = Stopwatch()
+                    let compress = Stopwatch()
 
-            match content targetId ctrl with
-                | Some task -> ctrl.RenderTask <- task
-                | None -> ()
+                    let lastSize = Mod.init V2i.II
+                    let jpegData = 
+                        Mod.custom (fun token ->
+                            let size = lastSize.GetValue token
+                            result.RenderJpeg(token, size, download, compress)
+                        )
 
-            socket {
-                let mutable running = true
-                try
-                    while running do
-                        let! msg = s.readMessage()
-                        match msg with
-                            | (Text, data) ->
-                                try
-                                    let msg = data |> Pickler.json.UnPickle
-                                    ctrl.Received msg
-                                with _ ->
-                                    Log.warn "[Service:%s] bad message: %A" targetId (Encoding.UTF8.GetString data)
+                    let mutable running = true
+                    let renderSize : MVar<V2i> = MVar.empty()
 
-                            | (Close, _) ->
-                                Log.line "[Service:%s] closing" targetId
-                                running <- false
+                    let caller = AdaptiveObject()
+                    let token = AdaptiveToken(caller, System.Collections.Generic.HashSet())
+                    let sub = caller.AddMarkingCallback (fun () -> MVar.put renderSize lastSize.Value)
 
-                            | (Binary,_) ->
-                                Log.warn "[Service:%s] bad message (binary)" targetId
-            
-                            | _ ->
-                                ()
-                finally
-                    ctrl.Received Shutdown
-            }
+                    let renderer =
+                        async {
+                            while running do
+                                let! size = MVar.takeAsync renderSize
+                                if size.AllGreater(0) then
+                                    transact (fun () -> lastSize.Value <- size)
+                                    let data = jpegData.GetValue(token)
+                                    let! res = s.send Binary (ByteSegment(data)) true
+                                    match res with
+                                        | Choice1Of2 () -> ()
+                                        | Choice2Of2 err ->
+                                            Log.error "rendering faulted %A" err
+                                else
+                                    ()
+
+                        }
+
+                    Async.Start renderer
+
+                    socket {
+                        try
+                            while running do
+                                let! (code, data) = s.readMessage()
+                                    
+                                match code with
+                                    | Text ->
+                                        try
+                                            let msg : Message = data |> Pickler.json.UnPickle
+                                            match msg with
+                                                | RequestImage size ->
+                                                    MVar.put renderSize size
+
+                                                | Rendered ->
+                                                    caller.OutOfDate <- false
+                                                    token.Release()
+
+                                                | Shutdown ->
+                                                    running <- false
+                                                    MVar.put renderSize V2i.Zero
+
+                                                | Event _ ->
+                                                    ()
+                                        with _ ->
+                                            Log.warn "[Service:%s] bad message: %A" targetId (Encoding.UTF8.GetString data)
+                                    
+                                    | Close ->
+                                        running <- false
+                                        MVar.put renderSize V2i.Zero
+
+                                    | _ ->
+                                        ()
+                        
+                        finally
+                            sub.Dispose()
+                            token.Release()
+                            result.Dispose()
+                    }
+                | None ->
+                    socket {
+                        ()
+                    }
+//            let ctrl = RenderControl(runtime, targetId, s, 8)
+//
+//            match content targetId ctrl.FramebufferSignature with
+//                | Some task -> 
+//                    ctrl.Camera <- task.Camera
+//                    ctrl.RenderTask <- task
+//                | None -> 
+//                    ()
+
+//            socket {
+//                let mutable running = true
+//                try
+//                    while running do
+//                        let! msg = s.readMessage()
+//                        match msg with
+//                            | (Text, data) ->
+//                                try
+//                                    let msg = data |> Pickler.json.UnPickle
+//                                    ctrl.Received msg
+//                                with _ ->
+//                                    Log.warn "[Service:%s] bad message: %A" targetId (Encoding.UTF8.GetString data)
+//
+//                            | (Close, _) ->
+//                                Log.line "[Service:%s] closing" targetId
+//                                running <- false
+//
+//                            | (Binary,_) ->
+//                                Log.warn "[Service:%s] bad message (binary)" targetId
+//            
+//                            | _ ->
+//                                ()
+//                finally
+//                    ctrl.Received Shutdown
+//            }
 
         let index = 
             choose [

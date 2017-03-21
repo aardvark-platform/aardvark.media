@@ -141,9 +141,11 @@ type AMapChannel<'a, 'b>(name : string, m : amap<'a, 'b>) =
  
 
 type AttributeValue<'msg> =
-    | Event of list<string> * (list<string> -> 'msg)
+    | Event of list<string> * (list<string> -> list<'msg>)
     | Value of string
     | ClientEvent of (string -> string)
+    | ControlEvent of list<string> * (V2i -> Camera -> list<string> -> list<'msg>)
+
 
 type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : UiContent<'msg>) =
     let mutable initialAttributes : Map<string, AttributeValue<'msg>> = Map.empty
@@ -201,8 +203,8 @@ type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, con
     new(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : IMod<string>) =
         Ui(tag, attributes, Text content)
 
-    new(tag : string, attributes : amap<string, AttributeValue<'msg>>, sg : ('msg -> unit) -> IRenderControl -> IRenderTask) =
-        Ui(tag, attributes, Scene sg)
+    new(tag : string, attributes : amap<string, AttributeValue<'msg>>, camera : IMod<Camera>, sg : ISg<'msg>) =
+        Ui(tag, attributes, Scene(camera,sg))
 
     new(tag : string, attributes : amap<string, AttributeValue<'msg>>) =
         Ui(tag, attributes, Empty)
@@ -210,7 +212,7 @@ type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, con
 and UiContent<'msg> =
     | Children of alist<Ui<'msg>>
     | Text of IMod<string>
-    | Scene of (('msg -> unit) -> IRenderControl -> IRenderTask)
+    | Scene of IMod<Camera> * ISg<'msg>
     | Empty
 
 type Attribute<'msg> = string * AttributeValue<'msg>
@@ -223,51 +225,50 @@ module Tags =
    
     let inline text (content : IMod<string>) = Ui("span", AMap.empty, content)
 
-    let sg (att : amap<string, AttributeValue<'msg>>) (sg : IRenderControl -> IMod<Camera> * ISg<'msg>) =
-        let create (sink : 'msg -> unit) (ctrl : IRenderControl) =
-            let runtime = ctrl.Runtime
-            let cam, sg = sg ctrl
-            let sg = sg |> Sg.camera cam
+    let sg (att : amap<string, AttributeValue<'msg>>) (cam : IMod<Camera>) (sg : ISg<'msg>) =
+//        let create (sink : 'msg -> unit) (ctrl : IRenderControl) =
+//            let runtime = ctrl.Runtime
+//            let sg = sg |> Sg.camera cam
+//
+//            let tree = PickTree.ofSg sg
+//            let task = runtime.CompileRender(ctrl.FramebufferSignature, sg)
+//
+//            let ray = Mod.map2 (fun c p -> RayPart(Camera.pickRay c p |> FastRay3d)) cam ctrl.Mouse.Position
+//
+//            ctrl.Mouse.Click.Values.Add(fun button ->
+//                let ray = Mod.force ray
+//                for msg in tree.Perform(SgEventKind.Click button, ray) do
+//                    sink msg
+//            )
+//
+//            ctrl.Mouse.DoubleClick.Values.Add(fun button ->
+//                let ray = Mod.force ray
+//                for msg in tree.Perform(SgEventKind.DoubleClick button, ray) do
+//                    sink msg
+//            )
+//
+//            ctrl.Mouse.Down.Values.Add(fun button ->
+//                let ray = Mod.force ray
+//                for msg in tree.Perform(SgEventKind.Down button, ray) do
+//                    sink msg
+//            )
+//
+//            ctrl.Mouse.Up.Values.Add(fun button ->
+//                let ray = Mod.force ray
+//                for msg in tree.Perform(SgEventKind.Up button, ray) do
+//                    sink msg
+//            )
+//
+//            ctrl.Mouse.Move.Values.Add(fun (o,n) ->
+//                let ray = Mod.force ray
+//                for msg in tree.Perform(SgEventKind.Move, ray) do
+//                    sink msg
+//            )
+//
+//
+//            task
 
-            let tree = PickTree.ofSg sg
-            let task = runtime.CompileRender(ctrl.FramebufferSignature, sg)
-
-            let ray = Mod.map2 (fun c p -> RayPart(Camera.pickRay c p |> FastRay3d)) cam ctrl.Mouse.Position
-
-            ctrl.Mouse.Click.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Click button, ray) do
-                    sink msg
-            )
-
-            ctrl.Mouse.DoubleClick.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.DoubleClick button, ray) do
-                    sink msg
-            )
-
-            ctrl.Mouse.Down.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Down button, ray) do
-                    sink msg
-            )
-
-            ctrl.Mouse.Up.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Up button, ray) do
-                    sink msg
-            )
-
-            ctrl.Mouse.Move.Values.Add(fun (o,n) ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Move, ray) do
-                    sink msg
-            )
-
-
-            task
-
-        Ui("div", att, create, InitialAttributes = Map.ofList ["class", (Value "aardvark")])
+        Ui("div", att, cam, sg, InitialAttributes = Map.ofList ["class", (Value "aardvark")])
         
 
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
@@ -397,6 +398,188 @@ module Tags =
     let inline menuitem x = elem "menuitem" x
     let inline summary x = elem "summary" x
 
+module HMap =
+
+    let private getPickRay (size : V2i) (cam : Camera) (args : list<string>) =
+        match args with
+            | x :: y :: rest ->
+                let pp = PixelPosition(int (float x), int (float y), size.X, size.Y)
+                let ray = Camera.pickRay cam pp |> FastRay3d |> RayPart
+
+                Some (ray, rest)
+            | _ ->
+                None
+
+
+
+    let addRayEvent (name : string) (rayEvent : RayPart -> list<'msg>) (att : hmap<string, AttributeValue<'msg>>) =
+        att |> HMap.update name (fun old ->
+            match old with
+                | Some (Event(args, cb)) -> 
+                    ControlEvent(
+                        "event.offsetX" :: "event.offsetY" :: args,
+                        fun size cam args ->
+                            match getPickRay size cam args with
+                                | Some (ray, args) ->
+                                    rayEvent ray @
+                                    cb args
+                                | None ->
+                                    cb args
+                    )
+
+                | Some (ControlEvent(args, cb)) ->
+                    ControlEvent(
+                        "event.offsetX" :: "event.offsetY" :: args,
+                        fun size cam args ->
+                            match getPickRay size cam args with
+                                | Some (ray, args) ->
+                                    rayEvent ray @
+                                    cb size cam args
+                                | None ->
+                                    cb size cam args
+                    )
+
+                | _ ->
+                    ControlEvent(
+                        ["event.offsetX"; "event.offsetY"],
+                        fun size cam args ->
+                            match getPickRay size cam args with
+                                | Some (ray, _) ->
+                                    rayEvent ray
+                                | None ->
+                                    []
+                    )
+                        
+                        
+        ) 
+
+    let addRayEvent1 (name : string) (arg : string) (rayEvent : string -> RayPart -> list<'msg>) (att : hmap<string, AttributeValue<'msg>>) =
+        att |> HMap.update name (fun old ->
+            match old with
+                | Some (Event(args, cb)) -> 
+                    ControlEvent(
+                        "event.offsetX" :: "event.offsetY" :: arg :: args,
+                        fun size cam args ->
+                            match getPickRay size cam args with
+                                | Some (ray, arg :: args) ->
+                                    rayEvent arg ray @
+                                    cb args
+                                | _ ->
+                                    cb args
+                    )
+
+                | Some (ControlEvent(args, cb)) ->
+                    ControlEvent(
+                        "event.offsetX" :: "event.offsetY" :: arg :: args,
+                        fun size cam args ->
+                            match getPickRay size cam args with
+                                | Some (ray, arg :: args) ->
+                                    rayEvent arg ray @
+                                    cb size cam args
+                                | _ ->
+                                    cb size cam args
+                    )
+
+                | _ ->
+                    ControlEvent(
+                        ["event.offsetX"; "event.offsetY"; arg],
+                        fun size cam args ->
+                            match getPickRay size cam args with
+                                | Some (ray, [arg]) ->
+                                    rayEvent arg ray
+                                | _ ->
+                                    []
+                    )
+                        
+                        
+        ) 
+
+module AttributeValue =
+    let private getPickRay (size : V2i) (cam : Camera) (args : list<string>) =
+        match args with
+            | x :: y :: rest ->
+                let pp = PixelPosition(int (float x), int (float y), size.X, size.Y)
+                let ray = Camera.pickRay cam pp |> FastRay3d |> RayPart
+
+                Some (ray, rest)
+            | _ ->
+                None
+
+
+    let withRay (rayEvent : RayPart -> list<'msg>) (v : Option<AttributeValue<'msg>>) =
+        match v with
+            | Some (Event(args, cb)) ->
+                ControlEvent(
+                    "event.offsetX" :: "event.offsetY" :: args,
+                    fun size cam args ->
+                        match getPickRay size cam args with
+                            | Some (ray, args) ->
+                                rayEvent ray @
+                                cb args
+                            | None ->
+                                cb args
+                )
+
+            | Some (ControlEvent(args, cb)) ->
+                ControlEvent(
+                    "event.offsetX" :: "event.offsetY" :: args,
+                    fun size cam args ->
+                        match getPickRay size cam args with
+                            | Some (ray, args) ->
+                                rayEvent ray @
+                                cb size cam args
+                            | None ->
+                                cb size cam args
+                )
+
+            | _ ->
+                ControlEvent(
+                    ["event.offsetX"; "event.offsetY"],
+                    fun size cam args ->
+                        match getPickRay size cam args with
+                            | Some (ray, _) ->
+                                rayEvent ray
+                            | None ->
+                                []
+                )
+
+    let withRay1 (arg : string) (rayEvent : string -> RayPart -> list<'msg>) (v : Option<AttributeValue<'msg>>) =
+        match v with
+            | Some (Event(args, cb)) ->
+                ControlEvent(
+                    "event.offsetX" :: "event.offsetY" :: arg :: args,
+                    fun size cam args ->
+                        match getPickRay size cam args with
+                            | Some (ray, arg :: args) ->
+                                rayEvent arg ray @
+                                cb args
+                            | _ ->
+                                cb args
+                )
+
+            | Some (ControlEvent(args, cb)) ->
+                ControlEvent(
+                    "event.offsetX" :: "event.offsetY" :: arg :: args,
+                    fun size cam args ->
+                        match getPickRay size cam args with
+                            | Some (ray, arg :: args) ->
+                                rayEvent arg ray @
+                                cb size cam args
+                            | _ ->
+                                cb size cam args
+                )
+
+            | _ ->
+                ControlEvent(
+                    ["event.offsetX"; "event.offsetY"; arg],
+                    fun size cam args ->
+                        match getPickRay size cam args with
+                            | Some (ray, [arg]) ->
+                                rayEvent arg ray
+                            | _ ->
+                                []
+                )
+
 [<AutoOpen>]
 module PersistentTags =
     let inline elem (tagName : string) (attrs : list<Attribute<'msg>>) (children : list<Ui<'msg>>) = Ui(tagName, AMap.ofList attrs, AList.ofList children)
@@ -404,52 +587,62 @@ module PersistentTags =
    
     let inline text' (content : string) = Ui("span", AMap.empty, Mod.constant content)
 
-    let sg' (att : list<Attribute<'msg>>) (sg : IRenderControl -> IMod<Camera> * ISg<'msg>) =
-        let create (sink : 'msg -> unit) (ctrl : IRenderControl) =
-            let runtime = ctrl.Runtime
-            let cam, sg = sg ctrl
-            let sg = sg |> Sg.camera cam
+    let internal getPickRay (size : V2i) (cam : Camera) (args : list<string>) =
+        match args with
+            | x :: y :: rest ->
+                let pp = PixelPosition(int (float x), int (float y), size.X, size.Y)
+                let ray = Camera.pickRay cam pp |> FastRay3d |> RayPart
 
-            let tree = PickTree.ofSg sg
-            let task = runtime.CompileRender(ctrl.FramebufferSignature, sg)
+                Some (ray, rest)
+            | _ ->
+                None
 
-            let ray = Mod.map2 (fun c p -> RayPart(Camera.pickRay c p |> FastRay3d)) cam ctrl.Mouse.Position
+    let internal button (str : string) =
+        match int (float str) with
+            | 1 -> MouseButtons.Left
+            | 2 -> MouseButtons.Middle
+            | 3 -> MouseButtons.Right
+            | _ -> MouseButtons.None
 
-            ctrl.Mouse.Click.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Click button, ray) do
-                    sink msg
+    let renderControl (cam : IMod<Camera>) (attributes : amap<string, AttributeValue<'msg>>) (sg : ISg<'msg>) =
+        let pickTree = PickTree.ofSg sg
+
+        let keys = 
+            HSet.ofList [
+                "class"; "onmousemove"; "onmousedown"; "onmouseup"; "onclick"; "ondblclick"
+            ]
+
+        let attributes = 
+            attributes |> AMap.update keys (fun k v ->
+                match k with
+                    | "class" ->
+                        match v with
+                            | Some (Value str) -> Value ("aardvark " + str)
+                            | _ -> Value "aardvark"
+
+                    | "onmousemove" ->
+                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(Move, ray))
+                        
+                    | "onmousedown" ->
+                        v |> AttributeValue.withRay1 "event.which" (fun b ray -> pickTree.Perform(Down (button b), ray))
+                        
+                    | "onmouseup" ->
+                        v |> AttributeValue.withRay1 "event.which" (fun b ray -> pickTree.Perform(Up (button b), ray))
+                        
+                    | "onclick" ->
+                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(Click MouseButtons.Left, ray))
+
+                    | "ondblclick" ->
+                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(DoubleClick MouseButtons.Left, ray))
+
+                    | _ ->
+                        Option.get v
             )
 
-            ctrl.Mouse.DoubleClick.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.DoubleClick button, ray) do
-                    sink msg
-            )
-
-            ctrl.Mouse.Down.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Down button, ray) do
-                    sink msg
-            )
-
-            ctrl.Mouse.Up.Values.Add(fun button ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Up button, ray) do
-                    sink msg
-            )
-
-            ctrl.Mouse.Move.Values.Add(fun (o,n) ->
-                let ray = Mod.force ray
-                for msg in tree.Perform(SgEventKind.Move, ray) do
-                    sink msg
-            )
-
-
-            task
-
-        Ui("div", AMap.ofHMap (att |> HMap.ofList |> HMap.add "class" (Value "aardvark")), create)
+        Ui("div", attributes, cam, sg)
         
+    let renderControl' (cam : IMod<Camera>) (attributes : list<Attribute<'msg>>) (sg : ISg<'msg>) =
+        renderControl cam (AMap.ofList attributes) sg
 
     let require (libs : list<Reference>) (x : list<Ui<'msg>>) =
         match x with
@@ -650,14 +843,98 @@ module Attributes =
 
 [<AutoOpen>]
 module Events =
-    let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = eventType, AttributeValue.Event(args, cb)
+    let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = eventType, AttributeValue.Event(args, cb >> List.singleton)
 
 
     let onMouseClick (cb : V2i -> 'msg) = onEvent "onclick" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
     let onContextMenu (cb : unit -> 'msg) = onEvent "oncontextmenu" [] (ignore >> cb)
     let onDblClick (cb : V2i -> 'msg) = onEvent "ondblclick" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
-    let onMouseDown (cb : V2i -> 'msg) = onEvent "onmousedown" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
-    let onMouseUp (cb : V2i -> 'msg) = onEvent "onmouseup" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+    
+    let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
+        onEvent 
+            "onmousedown" 
+            ["event.clientX"; "event.clientY"; "event.which"] 
+            (fun args ->
+                match args with
+                    | x :: y :: b :: _ ->
+                        let x = int (float x)
+                        let y = int (float y)
+                        let b = button b
+                        cb b (V2i(x,y))
+                    | _ ->
+                        failwith "asdasd"
+            )
 
+    let onMouseUp (cb : MouseButtons -> V2i -> 'msg) = 
+        onEvent 
+            "onmouseup" 
+            ["event.clientX"; "event.clientY"; "event.which"] 
+            (fun args ->
+                match args with
+                    | x :: y :: b :: _ ->
+                        let x = int (float x)
+                        let y = int (float y)
+                        let b = button b
+                        cb b (V2i(x,y))
+                    | _ ->
+                        failwith "asdasd"
+            )
 
     let onClick (cb : unit -> 'msg) = onEvent "onclick" [] (ignore >> cb)
+
+
+    let rayEvent (name : string) (args : list<string>) (cb : list<string> -> RayPart -> 'msg) =
+        name,
+        ControlEvent (
+            ["event.clientX"; "event.clientY"] @ args,
+            fun (size : V2i) (cam : Camera) (l : list<string>) -> 
+                match l with
+                    | x :: y :: rest ->
+                        let pos = PixelPosition(int (float x), int (float y), size.X, size.Y)
+                        let ray = Camera.pickRay cam pos
+                        [cb rest (RayPart(FastRay3d(ray)))]
+                    | _ ->
+                        failwith "asdasdasd"
+        )
+
+    let onRayMove (cb : RayPart -> 'msg) =
+        rayEvent "onmousemove" [] (fun _ r -> cb r)
+
+    let onRayDown (cb : MouseButtons -> RayPart -> 'msg) =
+        rayEvent "onmousedown" ["event.which"] (fun strs r -> 
+            match strs with
+                | [str] -> 
+                    let v = Double.Parse(str) |> int
+                    let button = 
+                        match v with
+                            | 1 -> MouseButtons.Left
+                            | 2 -> MouseButtons.Middle
+                            | 3 -> MouseButtons.Right
+                            | _ -> MouseButtons.None
+
+                    cb button r
+                | _ ->
+                    failwith "asdasdasd"
+        )
+
+    let onRayUp (cb : MouseButtons -> RayPart -> 'msg) =
+        rayEvent "onmouseup" ["event.which"] (fun strs r -> 
+            match strs with
+                | [str] -> 
+                    let v = Double.Parse(str) |> int
+                    let button = 
+                        match v with
+                            | 1 -> MouseButtons.Left
+                            | 2 -> MouseButtons.Middle
+                            | 3 -> MouseButtons.Right
+                            | _ -> MouseButtons.None
+
+                    cb button r
+                | _ ->
+                    failwith "asdasdasd"
+        )
+
+
+    let onlyWhen (m : IMod<bool>) (att : Attribute<'msg>) =
+        let (k,v) = att
+        k, m |> Mod.map (function true -> Some v | false -> None)

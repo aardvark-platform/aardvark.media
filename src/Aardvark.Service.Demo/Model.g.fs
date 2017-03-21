@@ -15,12 +15,14 @@ module Mutable =
         let _hasD3Hate = ResetMod(__initial.hasD3Hate)
         let _boxScale = ResetMod(__initial.boxScale)
         let _boxHovered = ResetMod(__initial.boxHovered)
+        let _dragging = ResetMod(__initial.dragging)
         
         member x.lastName = _lastName :> IMod<_>
         member x.elements = _elements :> alist<_>
         member x.hasD3Hate = _hasD3Hate :> IMod<_>
         member x.boxScale = _boxScale :> IMod<_>
         member x.boxHovered = _boxHovered :> IMod<_>
+        member x.dragging = _dragging :> IMod<_>
         
         member x.Update(__model : Demo.TestApp.Model) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -30,6 +32,7 @@ module Mutable =
                 _hasD3Hate.Update(__model.hasD3Hate)
                 _boxScale.Update(__model.boxScale)
                 _boxHovered.Update(__model.boxHovered)
+                _dragging.Update(__model.dragging)
         
         static member Create(initial) = MModel(initial)
         
@@ -44,6 +47,7 @@ module Mutable =
         let inline hasD3Hate (m : MModel) = m.hasD3Hate
         let inline boxScale (m : MModel) = m.boxScale
         let inline boxHovered (m : MModel) = m.boxHovered
+        let inline dragging (m : MModel) = m.dragging
     
     
     
@@ -81,4 +85,10 @@ module Mutable =
                     override x.Get(r) = r.boxHovered
                     override x.Set(r,v) = { r with boxHovered = v }
                     override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
+                }
+            let dragging =
+                { new Lens<Demo.TestApp.Model, Microsoft.FSharp.Core.bool>() with
+                    override x.Get(r) = r.dragging
+                    override x.Set(r,v) = { r with dragging = v }
+                    override x.Update(r,f) = { r with dragging = f r.dragging }
                 }

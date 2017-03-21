@@ -100,6 +100,7 @@ module TurboJpegNative =
     [<MarshalAs(UnmanagedType.LPStr)>]
     extern string tjGetErrorStr()
 
+[<AllowNullLiteral>]
 type TJCompressor() =
     let mutable handle = TurboJpegNative.tjInitCompress()
 

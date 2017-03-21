@@ -184,8 +184,8 @@ module JSExpr =
 
 type UpdateState<'msg> =
     {
-        handlers        : Dictionary<string * string, list<string> -> 'msg>
-        scenes          : Dictionary<string, ('msg -> unit) -> IRenderControl -> IRenderTask>
+        handlers        : Dictionary<string * string, V2i -> Camera -> list<string> -> list<'msg>>
+        scenes          : Dictionary<string, Ui<'msg> * IMod<Camera> * ISg<'msg>>
         references      : Dictionary<string * ReferenceKind, Reference>
         activeChannels  : Dictionary<string * string, Channel>
     }
@@ -356,7 +356,7 @@ module UiReaders =
 
             JSExpr.Sequential (CSharpList.toList code)
 
-    and SceneReader<'msg>(id : string, create : ('msg -> unit) -> IRenderControl -> IRenderTask) =
+    and SceneReader<'msg>(ui : Ui<'msg>, id : string, cam : IMod<Camera>, sg : ISg<'msg>) =
         inherit AbstractUiReader<'msg>()
 
         let mutable initial = true
@@ -368,7 +368,7 @@ module UiReaders =
         override x.PerformUpdate(token, self, state) =
             if initial then
                 initial <- false
-                state.scenes.[id] <- create
+                state.scenes.[id] <- (ui, cam, sg)
             JSExpr.Nop
 
     and UiReader<'msg>(ui : Ui<'msg>, id : string) =
@@ -384,7 +384,7 @@ module UiReaders =
             match ui.Content with
                 | Children children -> ChildrenReader(id, AList.map UiReader children) :> IUiReader<_>
                 | Text text -> TextReader text :> IUiReader<_>
-                | Scene create -> SceneReader(id, create) :> IUiReader<_>
+                | Scene(cam,sg) -> SceneReader(ui, id, cam, sg) :> IUiReader<_>
                 | Empty -> EmptyReader.Instance
 
         let mutable initial = true
@@ -428,7 +428,7 @@ module UiReaders =
                 initial <- false
 
                 for (name,cb) in Map.toSeq ui.Callbacks do
-                    state.handlers.[(id,name)] <- cb
+                    state.handlers.[(id,name)] <- fun _ _ v -> [cb v]
 
                 for r in ui.Required do
                     state.references.[(r.name, r.kind)] <- r
@@ -459,13 +459,18 @@ module UiReaders =
                                 str
 
                             | Event (props, cb) ->
-                                state.handlers.[(id, name)] <- cb
+                                state.handlers.[(id, name)] <- fun _ _ v -> cb v
                                 let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                                sprintf "aardvark.processEvent(%s);" args
+                                sprintf "aardvark.processEvent(%s)" args
 
                             | ClientEvent getCode ->
                                 let code = getCode id
                                 code
+
+                            | ControlEvent(props, cb) ->
+                                state.handlers.[(id, name)] <- fun s c v -> cb s c v
+                                let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
+                                sprintf "aardvark.processEvent(%s); event.preventDefault();" args
 
                     code.Add(SetAttribute(self, name, value))
 
@@ -479,13 +484,18 @@ module UiReaders =
                                     str
 
                                 | Event (props, cb) ->
-                                    state.handlers.[(id, name)] <- cb
+                                    state.handlers.[(id, name)] <- fun _ _ v -> cb v
                                     let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                                    sprintf "aardvark.processEvent(%s);" args
+                                    sprintf "aardvark.processEvent(%s)" args
                                     
                                 | ClientEvent getCode ->
                                     let code = getCode id
                                     code
+
+                                | ControlEvent(props, cb) ->
+                                    state.handlers.[(id, name)] <- fun s c v -> cb s c v
+                                    let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
+                                    sprintf "aardvark.processEvent(%s); event.preventDefault();" args
 
                         code.Add(SetAttribute(self, name, value))
 

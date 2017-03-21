@@ -16,6 +16,7 @@ open Suave.Sockets.Control
 open Suave.WebSocket
 
 open Aardvark.Base
+open Aardvark.Base.Ag
 open Aardvark.Base.Incremental
 open Aardvark.Service
 
@@ -40,72 +41,10 @@ module ``UI Extensions`` =
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module Ui =
-        let private main = File.readAllText @"template.html"
-            //String.concat "\r\n" [
-            //    "<html>"
-            //    "   <head>"
-            //    "       <title>Aardvark rocks \\o/</title>"
-            //    "       <script src=\"https://code.jquery.com/jquery-3.1.1.min.js\"></script>"
-            //    "       <script src=\"https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js\"></script>"
-            //    "       <script src=\"/aardvark.js\"></script>"
-            //    "       <script>"
-            //    "           var aardvark = {};"
-            //    "           var _refs = {};"
-            //    "           aardvark.referencedScripts = _refs;"
-            //    "           aardvark.referencedScripts[\"jquery\"] = true;"
-            //    "           aardvark.addReference = function(name, url) {"
-            //    "               if(!aardvark.referencedScripts[name]) {"
-            //    "                   aardvark.referencedScripts[name] = true;"
-            //    "                   var script = document.createElement(\"script\");"
-            //    "                   script.setAttribute(\"src\", url);"
-            //    "                   var loaded = false;"
-            //    "                   script.onloaded = function() { loaded = true; };"
-            //    "                   document.head.appendChild(script);"
-            //    "                   while(!loaded) {}"
-            //    "               }"
-            //    "           };"
-            //    "           "
-            //    "           function getUrl(proto, subpath) {"
-            //    "               var l = window.location;"
-            //    "               var path = l.pathname;"
-            //    "               if(l.port === \"\") {"
-            //    "                   return proto + l.hostname + path + subpath;"
-            //    "               }"
-            //    "               else {"
-            //    "                   return proto + l.hostname + ':' + l.port + path + subpath;"
-            //    "               }"
-            //    "           }"
-            //    "           var url = getUrl('ws://', 'events');"
-            //    "           var eventSocket = new WebSocket(url);"
-            //    ""
-            //    "           aardvark.processEvent = function () {"
-            //    "               console.warn(\"websocket not opened yet\");"
-            //    "           }"
-            //    ""
-            //    "           eventSocket.onopen = function () {"
-            //    "               aardvark.processEvent = function () {"
-            //    "                   var sender = arguments[0];"
-            //    "                   var name = arguments[1];"
-            //    "                   var args = [];"
-            //    "                   for (var i = 2; i < arguments.length; i++) {"
-            //    "                       args.push(JSON.stringify(arguments[i]));"
-            //    "                   }"
-            //    "                   var message = JSON.stringify({ sender: sender, name: name, args: args });"
-            //    "                   eventSocket.send(message);"
-            //    "               }"
-            //    "           };"
-            //    ""
-            //    "           eventSocket.onmessage = function (m) {"
-            //    "              eval(\"{\\r\\n\" + m.data + \"\\r\\n}\");"
-            //    "           };"
-            //    ""
-            //    "       </script>"
-            //    "   </head>"
-            //    "   <body style=\"width: 100%; height: 100%; border: 0; padding: 0; margin: 0\">"
-            //    "   </body>"
-            //    "</html>"
-            //]
+        open System.Threading
 
+        let private main = File.readAllText @"template.html"
+       
         type WebSocket with
             member x.readMessage() =
                 socket {
@@ -117,7 +56,81 @@ module ``UI Extensions`` =
                         return (t, Array.append d rest)
                 }
 
+
+        type Renderable<'msg>(runtime : IRuntime, signature : IFramebufferSignature, sg : ISg<'msg>) =
+            inherit AdaptiveObject()
+
+            static let cache = Dict<Ui<'msg>, Renderable<'msg>>()
+
+            static let noCamera = 
+                let view = CameraView(V3d.OIO, V3d.Zero, V3d.OOI, V3d.OIO, V3d.IOO)
+                let proj = Frustum.ortho (Box3d(-V3d.III, V3d.III))
+                Camera.create view proj
+
+            let mutable refCount = 0
+
+            let cam = Mod.init noCamera
+
+            let sg = sg |> Sg.camera cam
+            let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
+            let render = runtime.CompileRender(signature, sg)
+            let pickTree = PickTree.ofSg sg
+
+            let task =
+                RenderTask.ofList [
+                    clear
+                    render
+                ]
+
+            static member Get(runtime : IRuntime, signature : IFramebufferSignature, ui : Ui<'msg>, sg : ISg<'msg>) =
+                lock cache (fun () ->
+                    cache.GetOrCreate(ui, fun ui -> Renderable<'msg>(runtime, signature, sg))
+                )
+
+            member x.Runtime = runtime
+
+            member x.FramebufferSignature = signature
+
+            member x.Render(token : AdaptiveToken, camera : Camera, output : OutputDescription) =
+                x.EvaluateAlways token (fun token ->
+                    transact (fun () -> cam.Value <- camera)
+                    task.Run(token, RenderToken.Empty, output)
+                )
+
+            member x.PickTree = pickTree
+
+        type RenderResult<'msg>(r : Renderable<'msg>, cam : IMod<Camera>) =
+            inherit Server.AbstractRenderResult()
+            let size = Mod.init V2i.II
+            let framebuffer = r.Runtime.CreateFramebuffer(r.FramebufferSignature, Set.empty, size)
+            do framebuffer.Acquire()
+            
+
+            let cam =
+                adaptive {
+                    let! s = size
+                    let! cam = cam
+                    let frustum = cam |> Camera.frustum |> Frustum.withAspect (float s.X / float s.Y)
+                    return Camera.create (Camera.cameraView cam) frustum
+                }
+
+            member x.Size = size :> IMod<_>
+            member x.Camera = cam
+
+            override x.PerformRender(token : AdaptiveToken, s : V2i) =
+                transact (fun () -> size.Value <- s)
+                let fbo = framebuffer.GetValue()
+                let output = OutputDescription.ofFramebuffer fbo
+                r.Render(token, cam.GetValue(token), output)
+                fbo
+
+            override x.Dispose() =
+                transact (fun () ->
+                    framebuffer.Release()
+                )
+
         let start (runtime : IRuntime) (port : int) (perform : 'action -> unit) (ui : Ui<'action>) =
+        
             let state =
                 {
                     handlers = Dictionary()
@@ -125,6 +138,8 @@ module ``UI Extensions`` =
                     references = Dictionary()
                     activeChannels = Dictionary()
                 }
+
+            let cameras = Dictionary<string, IMod<V2i> * IMod<Camera>>()
 
             let messageQueue = new System.Collections.Concurrent.BlockingCollection<'action>()
             let emit (msg : 'action) = messageQueue.Add msg
@@ -207,7 +222,8 @@ module ``UI Extensions`` =
                     async {
                         while running do
                             let! _ = MVar.takeAsync pending
-                            self.GetValue(AdaptiveToken.Top)
+                            if running then
+                                self.GetValue(AdaptiveToken.Top)
                     }
 
                 Async.Start updater
@@ -222,6 +238,11 @@ module ``UI Extensions`` =
 
                 Async.Start processor
 
+                let noCamera = 
+                    let view = CameraView(V3d.OIO, V3d.Zero, V3d.OOI, V3d.OIO, V3d.IOO)
+                    let proj = Frustum.ortho (Box3d(-V3d.III, V3d.III))
+                    Camera.create view proj
+
                 socket {
                     try
                         while running do
@@ -232,13 +253,18 @@ module ``UI Extensions`` =
 
                                     match state.handlers.TryGetValue ((event.sender, event.name)) with
                                         | (true, f) ->
-                                            let action = f (Array.toList event.args)
-                                            emit action
+                                            let size, camera = 
+                                                match cameras.TryGetValue event.sender with
+                                                    | (true, (size, cam)) -> (Mod.force size, Mod.force cam)
+                                                    | _ -> V2i.Zero,noCamera
+                                            let action = f size camera (Array.toList event.args)
+                                            for a in action do emit a
                                         | _ ->
                                             ()
 
                                 | (Opcode.Close,_) ->
                                     running <- false
+                                    MVar.put pending ()
                         
                                 | _ ->
                                     ()
@@ -252,10 +278,55 @@ module ``UI Extensions`` =
                     GET >=> path "/main/events" >=> handShake events
                 ]
 
-            Server.start runtime port parts (fun id ctrl ->
+            Server.start runtime port parts (fun id signature ->
                 match state.scenes.TryGetValue id with
-                    | (true, f) -> 
-                        ctrl |> f emit |> Some
+                    | (true, (ui, cam, sg)) -> 
+                        let renderable = Renderable<'action>.Get(runtime, signature, ui, sg)
+
+                        let res = RenderResult(renderable, cam)
+                        do lock cameras (fun () -> cameras.[id] <- (res.Size, res.Camera))
+//                        let size = Mod.init V2i.II
+//                        let cam =
+//                            adaptive {
+//                                let! s = size
+//                                let! cam = cam
+//                                let frustum = cam |> Camera.frustum |> Frustum.withAspect (float s.X / float s.Y)
+//                                return Camera.create (Camera.cameraView cam) frustum
+//                            }
+//
+//                        lock cameras (fun () -> cameras.[id] <- (size :> IMod<_>,cam))
+//                        let framebuffer = runtime.CreateFramebuffer(signature, Set.empty, size)
+//
+//                        let sg = sg |> Sg.camera cam
+//                        let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
+//                        let render = runtime.CompileRender(signature, sg)
+//
+//                        framebuffer.Acquire()
+//
+//                        let pickTree = PickTree.ofSg sg
+//
+//                        let res =
+//                            { new Server.AbstractRenderResult() with
+//                                override x.PerformRender(token : AdaptiveToken, s : V2i) =
+//                                    transact (fun () -> size.Value <- s)
+//                                    let fbo = framebuffer.GetValue()
+//                                    let output = OutputDescription.ofFramebuffer fbo
+//
+//                                    clear.Run(token, RenderToken.Empty, output)
+//                                    render.Run(token, RenderToken.Empty, output)
+//
+//                                    fbo
+//
+//                                override x.Dispose() =
+//                                    transact (fun () ->
+//                                        pickTree.Dispose()
+//                                        framebuffer.Release()
+//                                        clear.Dispose()
+//                                        render.Dispose()
+//                                    )
+//                            }
+
+                        Some (res :> Server.AbstractRenderResult)
                     | _ -> 
                         None
             )
