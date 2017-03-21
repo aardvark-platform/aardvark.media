@@ -133,6 +133,7 @@ module Elmish =
         {
             send : 'msg -> 'model
             emitModel : 'model -> unit
+            model : IMod<'model>
             sg : ISg
         }
 
@@ -386,7 +387,7 @@ module Elmish =
 
 
 
-        { send = send; sg = view :> ISg; emitModel = updateModel }
+        { send = send; sg = view :> ISg; emitModel = updateModel; model = model :> IMod<_> }
 
     let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
         createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app
