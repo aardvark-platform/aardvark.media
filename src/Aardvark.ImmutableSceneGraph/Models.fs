@@ -124,7 +124,7 @@ module DrawingApp =
     
     [<DomainType>]
     type Drawing = {
-        ViewerState : Camera.Model
+        //ViewerState : Camera.Model
         history  : Option<Drawing>
         finished : pset<Annotation>
         working  : Option<OpenPolygon>
@@ -135,6 +135,14 @@ module DrawingApp =
         samples : Numeric.Model
         selected : pset<int>
         selectedAnn : Option<Annotation>
+    }
+
+module ComposeTest =
+
+    [<DomainType>]
+    type Model = {
+        ViewerState : Camera.Model
+        Drawing : DrawingApp.Drawing
     }
 
 module PlaceTransformObjects =

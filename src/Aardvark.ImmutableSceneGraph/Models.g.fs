@@ -267,7 +267,7 @@ module Generated =
         [<DomainType>]
         type Drawing = 
             { mutable _id : Id
-              ViewerState      : Camera.Model
+          //    ViewerState      : Camera.Model
               history  : EqualOf<Option<Drawing>>
               future   : EqualOf<Option<Drawing>>
               picking  : Option<int>
@@ -285,7 +285,7 @@ module Generated =
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
               //    mhistory = Mod.init (x.history)
-                  mViewerState = x.ViewerState.ToMod reuseCache
+              //    mViewerState = x.ViewerState.ToMod reuseCache
                   mpicking = Mod.init(x.picking)
                   mfilename = Mod.init(x.filename)
                   mfinished = ResetSet(x.finished)
@@ -305,7 +305,7 @@ module Generated =
         
         and [<DomainType>] MDrawing = 
             { mutable _original : Drawing     
-              mViewerState : Camera.MModel
+           //   mViewerState : Camera.MModel
               mfilename : ModRef<string>
               mpicking : ModRef<Option<int>>
               mfinished : ResetSet<Annotation>
@@ -319,7 +319,7 @@ module Generated =
             member x.Apply(arg0 : Drawing, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
-                    x.mViewerState.Apply(arg0.ViewerState, reuseCache)
+             //       x.mViewerState.Apply(arg0.ViewerState, reuseCache)
                //     x.mhistory.Value <- arg0.history
                     x.mpicking.Value <- arg0.picking
                     x.mfinished.Update(arg0.finished)
@@ -523,3 +523,32 @@ module Generated =
                     x._original <- arg0
                     x.mui.Apply(arg0.ui, reuseCache)
                     x.mscene.Apply(arg0.scene, reuseCache)
+
+    module ComposeTest =
+        open ComposeTest
+
+        [<DomainType>]
+        type Model = 
+            {   mutable _id : Id
+                Drawing : DrawingApp.Drawing
+                ViewerState : Camera.Model }
+            
+            member x.ToMod(reuseCache : ReuseCache) = 
+                {   _original = x
+                    mDrawing = x.Drawing.ToMod(reuseCache)
+                    mViewerState = x.ViewerState.ToMod(reuseCache) }
+            
+            interface IUnique with                
+                member x.Id 
+                    with get () = x._id
+                    and set v = x._id <- v
+        
+        and [<DomainType>] MModel = 
+            {   mutable _original : Model
+                mDrawing : DrawingApp.MDrawing
+                mViewerState : Camera.MModel }
+            member x.Apply(arg0 : Model, reuseCache : ReuseCache) = 
+                if not (System.Object.ReferenceEquals(arg0, x._original)) then 
+                    x._original <- arg0
+                    x.mDrawing.Apply(arg0.Drawing, reuseCache)
+                    x.mViewerState.Apply(arg0.ViewerState, reuseCache)

@@ -95,9 +95,9 @@ module DrawingApp =
         | Set_Projection of Choice.Action
         | Set_Samples of Numeric.Action
         | SetAnnotationProperties of AnnotationPropertiesApp.Action            
-        | FreeFlyAction   of FreeFlyCameraApp.Action
-        | DragStart       of PixelPosition
-        | DragStop        of PixelPosition
+//        | FreeFlyAction   of FreeFlyCameraApp.Action
+//        | DragStart       of PixelPosition
+//        | DragStop        of PixelPosition
 
     let stash (m : Drawing) =
         { m with history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None }
@@ -136,10 +136,15 @@ module DrawingApp =
             | Some v -> 
                                                 
                 let points = (p :: v.finishedPoints)
-                let segments = points                                    
+                let segments = []
+
+                let segments = if m.projection.selected <> "linear" then
+                                  points                                    
                                     |> edgeLines (m.measureType.selected = "Polygon")
-                                    |> sampleAlongEdge (int m.samples.value)
+                                    |> sampleAlongEdge (int m.samples.value) // resamples everything on every update, not smart ;)
                                     |> Seq.toList
+                                else []
+
 
                 let k = { m with working = Some { v with finishedSegments = segments; finishedPoints = points }}
                                 
@@ -199,9 +204,9 @@ module DrawingApp =
                                     { m with finished = Annotations.update m ann' }
                                 | None -> m           
                             |> stash          
-            | FreeFlyAction a, None -> { m with ViewerState =  FreeFlyCameraApp.update (e |> Env.map FreeFlyAction) m.ViewerState a }
-            | DragStart p, None->  { m with ViewerState = { m.ViewerState with lookingAround = Some p }}
-            | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
+//            | FreeFlyAction a, None -> { m with ViewerState =  FreeFlyCameraApp.update (e |> Env.map FreeFlyAction) m.ViewerState a }
+//            | DragStart p, None->  { m with ViewerState = { m.ViewerState with lookingAround = Some p }}
+//            | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
             | _,_ -> m    
 
     
@@ -236,7 +241,7 @@ module DrawingApp =
         let lines =  p |> edgeLines close
         [           
             yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
-            for edge in lines |> Seq.take (Seq.length lines - 1)  do
+            for edge in lines do
                 yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
         ] |> Scene.group
 
@@ -307,11 +312,12 @@ module DrawingApp =
                     toEffect DefaultSurfaces.diffuseTexture]
         
     let view3D (sizes : IMod<V2i>) (m : MDrawing) =            
+        let cameraView = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI |> Mod.constant
         let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))        
         [viewDrawing m 
          viewQuad    m]
             |> Scene.group
-            |> Scene.camera (Mod.map2 Camera.create m.mViewerState.mcamera frustum)    
+            |> Scene.camera (Mod.map2 Camera.create cameraView frustum)    
 
     // view GUI Eleements
     let viewMeasurements (m : Drawing) = 
@@ -393,14 +399,15 @@ module DrawingApp =
               Input.key Down Keys.D3  (fun _ _-> ChangeStyle 2)
               Input.key Down Keys.D4  (fun _ _-> ChangeStyle 3)
 
-              FreeFlyCameraApp.subscriptions time m.ViewerState |> Sub.map FreeFlyAction   
+          //    FreeFlyCameraApp.subscriptions time m.ViewerState |> Sub.map FreeFlyAction   
 
-              Input.toggleMouse Input.Mouse.left DragStart DragStop]
+            //  Input.toggleMouse Input.Mouse.left DragStart DragStop
+            ]
 
     let (initial : Drawing) = { 
         _id = null
         picking = None 
-        ViewerState = FreeFlyCameraApp.initial
+       // ViewerState = FreeFlyCameraApp.initial
         finished = PSet.empty
         working = None
         style = Styles.standard.[0]
@@ -450,3 +457,42 @@ module DrawingApp =
 
         three3dInstance, fablishInstance
 
+module ComposeTest =
+
+    open ComposeTest
+
+    let app s time =
+        {
+            initial = DrawingApp.initial
+            update = DrawingApp.update (None)
+            view = DrawingApp.view3D s
+            ofPickMsg = fun _ _ -> []
+            subscriptions = DrawingApp.subscriptions time
+        }
+
+    let createApp f time keyboard mouse viewport camera =
+
+        let initial = DrawingApp.initial
+        let composed = ComposedApp.ofUpdate initial (DrawingApp.update f)
+
+        let three3dApp  = {
+            initial = initial
+            update = DrawingApp.update f
+            view = DrawingApp.view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
+            ofPickMsg = fun _ _ -> []
+            subscriptions = DrawingApp.subscriptions time
+        }
+
+        let viewApp = 
+            {
+                initial = initial 
+                update = DrawingApp.update f
+                view = DrawingApp.viewUI
+                subscriptions = Fablish.CommonTypes.Subscriptions.none
+                onRendered = OnRendered.ignore
+            }
+
+        let three3dInstance = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+        let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
+
+        three3dInstance, fablishInstance
