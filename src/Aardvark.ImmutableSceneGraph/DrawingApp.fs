@@ -311,9 +311,9 @@ module DrawingApp =
                     toEffect DefaultSurfaces.vertexColor;
                     toEffect DefaultSurfaces.diffuseTexture]
         
-    let view3D (sizes : IMod<V2i>) (m : MDrawing) =            
+    let view3D (ctrl : IRenderControl) (m : MDrawing) =            
         let cameraView = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI |> Mod.constant
-        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))        
+        let frustum = ctrl.Sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))        
         [viewDrawing m 
          viewQuad    m]
             |> Scene.group
@@ -352,7 +352,7 @@ module DrawingApp =
     let viewUI (m : Drawing) =
         div [] [
              //Rendercontrol
-             div [clazz "unselectable"; Style ["width", "75%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
+             div [clazz "unselectable aardvark"; Style ["width", "75%"; "height", "100%"; "background-color", "transparent"; "float", "right"]; 
                   attribute "id" "renderControl"] [
 
                 //Overlay
@@ -387,7 +387,8 @@ module DrawingApp =
         ]
 
     // app setup
-    let subscriptions (time : IMod<DateTime>) (m : Drawing) =
+    let subscriptions (ctrl : IRenderControl) (m : Drawing) =
+        let time = ctrl.Time
         Many [Input.key Down Keys.Enter (fun _ _-> Finish)
               Input.key Down Keys.Left  (fun _ _-> Undo)
               Input.key Down Keys.Right (fun _ _-> Redo)
@@ -418,30 +419,32 @@ module DrawingApp =
         history = EqualOf.toEqual None; future = EqualOf.toEqual None
         selected = PSet.empty
         selectedAnn= None
-        filename = @"C:\Aardwork\wand.jpg"
+        filename = @"E:\Development\WorkDirectory\DataSVN\pattern.jpg"
         }
 
-    let app s time =
+    let app =
         {
             initial = initial
             update = update (None)
-            view = view3D s
+            view = view3D
             ofPickMsg = fun _ _ -> []
-            subscriptions = subscriptions time
+            subscriptions = subscriptions
         }
 
-    let createApp f time keyboard mouse viewport camera =
+    let three3dApp f  = {
+        initial = initial
+        update = update f
+        view = view3D 
+        ofPickMsg = fun _ _ -> []
+        subscriptions = subscriptions
+    }
+
+    let createApp f =
 
         let initial = initial
         let composed = ComposedApp.ofUpdate initial (update f)
 
-        let three3dApp  = {
-            initial = initial
-            update = update f
-            view = view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
-            ofPickMsg = fun _ _ -> []
-            subscriptions = subscriptions time
-        }
+        let three3dApp = three3dApp f
 
         let viewApp = 
             {
@@ -452,7 +455,7 @@ module DrawingApp =
                 onRendered = OnRendered.ignore
             }
 
-        let three3dInstance = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+        let three3dInstance = fun ctrl camera -> ComposedApp.add3d composed ctrl camera three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance
@@ -461,16 +464,16 @@ module ComposeTest =
 
     open ComposeTest
 
-    let app s time =
+    let app time =
         {
             initial = DrawingApp.initial
             update = DrawingApp.update (None)
-            view = DrawingApp.view3D s
+            view = DrawingApp.view3D
             ofPickMsg = fun _ _ -> []
-            subscriptions = DrawingApp.subscriptions time
+            subscriptions = DrawingApp.subscriptions
         }
 
-    let createApp f time keyboard mouse viewport camera =
+    let createApp f ctrl camera =
 
         let initial = DrawingApp.initial
         let composed = ComposedApp.ofUpdate initial (DrawingApp.update f)
@@ -478,9 +481,9 @@ module ComposeTest =
         let three3dApp  = {
             initial = initial
             update = DrawingApp.update f
-            view = DrawingApp.view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
+            view = DrawingApp.view3D
             ofPickMsg = fun _ _ -> []
-            subscriptions = DrawingApp.subscriptions time
+            subscriptions = DrawingApp.subscriptions
         }
 
         let viewApp = 
@@ -492,7 +495,7 @@ module ComposeTest =
                 onRendered = OnRendered.ignore
             }
 
-        let three3dInstance = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+        let three3dInstance = ComposedApp.add3d composed ctrl camera three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance

@@ -84,24 +84,24 @@ module SimpleDrawingApp =
         let t = viewDrawingPolygons m
         Scene.agroup  t
 
-    let viewScene (sizes : IMod<V2i>) (m : MModel) =
+    let viewScene (ctrl : IRenderControl) (m : MModel) =
         let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
-        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
+        let frustum = ctrl.Sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
         view m
             |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
             |> Scene.effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
 
 
-    let subscriptions (m : Model) =
+    let subscriptions (ctrl : IRenderControl) (m : Model) =
         Many [Input.key Down Keys.Enter (fun _ _-> ClosePolygon)]
 
     let initial = { finished = PSet.empty; working = None; _id = null }
 
-    let app s =
+    let app : App<Model, MModel, Action, ISg<Action>> =
         {
             initial = initial
             update = update (Some 0)
-            view = viewScene s
+            view = viewScene
             ofPickMsg = fun _ _ -> []
             subscriptions = subscriptions
         }
@@ -246,7 +246,7 @@ module PlaceTransformObjects =
         }
 
 
-    let view (m : MModel) =
+    let view (ctrl : IRenderControl) (m : MModel) =
         aset {
             yield! viewObjects m
             yield 
@@ -282,7 +282,7 @@ module PlaceTransformObjects =
 
             view = view
             ofPickMsg = ofPickMsgModel 
-            subscriptions = Subscriptions.none
+            subscriptions = fun _ -> Subscriptions.none
         }
 
 module ComposedTestApp = 
@@ -392,16 +392,17 @@ module ComposedTestApp =
         yield! TranslateController.ofPickMsgModel m.Translation pick |> List.map (fun a -> TranslateAction a)
     ]       
 
-    let subscriptions (time : IMod<DateTime>)  (m : ComposedTest.Model) =
+    let subscriptions (ctrl : IRenderControl) (m : ComposedTest.Model) =
+        let time = ctrl.Time
         Many [      
             match m.ViewerState.navigationMode with
-                | FreeFly -> yield FreeFlyCameraApp.subscriptions time m.ViewerState |> Sub.map FreeFlyAction                     
+                | FreeFly -> yield FreeFlyCameraApp.subscriptions ctrl m.ViewerState |> Sub.map FreeFlyAction                     
                 | Orbital -> ()
-            yield OrbitCameraApp.subscriptions time m.ViewerState |> Sub.map OrbitAction
+            yield OrbitCameraApp.subscriptions ctrl m.ViewerState |> Sub.map OrbitAction
 
             match m.InteractionState with
                 | InteractionMode.MeasurePick -> 
-                    yield SimpleDrawingApp.subscriptions m.Drawing |> Sub.map DrawingAction        
+                    yield SimpleDrawingApp.subscriptions ctrl m.Drawing |> Sub.map DrawingAction        
                 | InteractionMode.TrafoPick -> ()
                 | InteractionMode.Disabled | InteractionMode.ExplorePick -> ()
            
@@ -419,8 +420,8 @@ module ComposedTestApp =
     let viewTranslate m = TranslateController.viewModel m.mTranslation |> Scene.map TranslateAction
 
     // scene as parameter, isg 
-    let view (frustum : IMod<Frustum>) (m : ComposedTest.MModel) : ISg<Action> =
-
+    let view (ctrl : IRenderControl) (m : ComposedTest.MModel) : ISg<Action> =
+        let frustum = ctrl.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
         let groundPlane =
             Quad (Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |])
              |> Scene.render [   on (Mouse.down' MouseButtons.Left) (OrbitAction   << OrbitCameraApp.PickPoint) 
@@ -451,13 +452,13 @@ module ComposedTestApp =
         InteractionState = ComposedTest.InteractionMode.TrafoPick       
         }
 
-    let app time frustum = //: App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
+    let app = //: App<ComposedTest.Model,ComposedTest.MModel,Action,ISg<Action>> =
         {
             initial = initial
             update = update
-            view = view frustum
+            view = view
             ofPickMsg = ofPickMsgModel // TranslateController.ofPickMsg 
-            subscriptions = subscriptions time
+            subscriptions = subscriptions
         }
 
 module TextureExample = 
@@ -501,9 +502,9 @@ module TextureExample =
              |> Scene.render [on Mouse.move (fun p -> printfn "moved : %A" p)]
         model |> Scene.textured texture
 
-    let viewScene sizes (m : MModel) =
+    let viewScene (ctrl : IRenderControl) (m : MModel) =
         let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
-        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
+        let frustum = ctrl.Sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
         view m
             |> Scene.camera (Mod.map2 Camera.create cameraView frustum)
             |> Scene.effect [toEffect DefaultSurfaces.trafo; 
@@ -511,11 +512,11 @@ module TextureExample =
                              toEffect DefaultSurfaces.diffuseTexture
                              toEffect DefaultSurfaces.simpleLighting]
          
-    let app sizes =
+    let app =
         {
             initial = { filename = @"C:\Users\BOOM\Desktop\P1010819.jpg" }
             update = update
-            view = viewScene sizes
+            view = viewScene
             ofPickMsg = fun _ _ -> []
-            subscriptions = Subscriptions.none
+            subscriptions = fun _ -> Subscriptions.none
         }

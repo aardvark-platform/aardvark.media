@@ -322,30 +322,27 @@ module Server =
 
         do Async.Start worker
 
-        let renderQueue = new BlockingCollection<V2i>()
+        let renderQueue : MVar<V2i> = MVar.empty()
         let renderer =
-            
             async {
-                do! Async.SwitchToNewThread()
-                do
-                    let mutable acquired = false
-                    use __ = glRuntime.Context.RenderingLock ctx
-                    
-                    while true do
-                        let size = renderQueue.Take()
-                        if size.AllGreater 0 then
-                            try
-                                if currentSize.Value <> size then
-                                    transact (fun () -> currentSize.Value <- size)
+                let mutable acquired = false
 
-                                if not acquired then
-                                    framebuffer.Acquire()
-                                    acquired <- true
+                while true do
+                    let! size = MVar.takeAsync renderQueue
+                    if size.AllGreater 0 then
+                        use __ = glRuntime.Context.RenderingLock ctx
+                        try
+                            if currentSize.Value <> size then
+                                transact (fun () -> currentSize.Value <- size)
 
-                                let data = result.GetValue()
-                                sendImage data
-                            with e ->
-                                Log.warn "render faulted %A" e
+                            if not acquired then
+                                framebuffer.Acquire()
+                                acquired <- true
+
+                            let data = result.GetValue()
+                            sendImage data
+                        with e ->
+                            Log.warn "render faulted %A" e
                 
             }
 
@@ -422,15 +419,7 @@ module Server =
                     )
 
                 | RequestImage size ->
-                    renderQueue.Add size
-//                    try
-//                        if currentSize.Value <> size then
-//                            transact (fun () -> currentSize.Value <- size)
-//
-//                        let data = result.GetValue()
-//                        sendImage data
-//                    with e ->
-//                        Log.warn "render faulted %A" e
+                    MVar.put renderQueue size
                     
             ()
 

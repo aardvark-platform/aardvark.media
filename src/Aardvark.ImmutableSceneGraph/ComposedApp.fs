@@ -59,7 +59,7 @@ module ComposedApp =
     
     let ofUpdate initial update = ComposedApp<_,_>(initial, update)
 
-    let inline add3d (comp : ComposedApp<'model,'msg>) (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (app : App<_,_,_,_>)  (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
+    let inline add3d (comp : ComposedApp<'model,'msg>) (ctrl : IRenderControl) (camera : IMod<Camera>) (app : App<_,_,_,_>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
             lock comp (fun _ -> 
                 let bigModel = buildModel m comp.Model
@@ -68,7 +68,7 @@ module ComposedApp =
                 for a in comp.InnerApps do a newBigModel
                 project newBigModel
             )
-        let instance = Elmish.createAppAdaptiveD keyboard mouse viewport camera (Some doUpdate) app
+        let instance = Elmish.createAppAdaptiveD ctrl camera (Some doUpdate) app
         comp.Register(fun m -> lock comp (fun _ -> instance.emitModel (project m))) 
         instance
 
@@ -139,13 +139,13 @@ module SingleMultiView =
             let s = { m.scene with scene = { m.scene.scene with trafo = Trafo3d.Identity }}
             { m with ui = { m.ui with cnt = 0 }; scene = s }
 
-    let view3D (sizes : IMod<V2i>) (m : MModel) =
-        m.mscene  |> TranslateController.viewScene sizes |> Scene.map Translate
+    let view3D (ctrl : IRenderControl) (m : MModel) =
+        m.mscene  |> TranslateController.viewScene ctrl |> Scene.map Translate
 
     let ofPickMsg (m : Model) (noPick) = TranslateController.ofPickMsg m.scene noPick |> List.map Translate
 
 
-    let createApp keyboard mouse viewport camera =
+    let createApp (ctrl : IRenderControl) camera =
 
         let initial = { ui = TestApp.initial; scene = TranslateController.initial; _id = null } 
         let composed = ComposedApp.ofUpdate initial update 
@@ -153,9 +153,9 @@ module SingleMultiView =
         let three3dApp : App<Model,MModel,Action,ISg<Action>> = {
             initial = initial
             update = update
-            view = view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
+            view = view3D
             ofPickMsg = ofPickMsg
-            subscriptions = Subscriptions.none
+            subscriptions = fun _ -> Subscriptions.none
         }
 
         let viewApp : Fablish.App<Model,Action,DomNode<Action>> = 
@@ -167,7 +167,7 @@ module SingleMultiView =
                 onRendered = OnRendered.ignore
             }
 
-        let three3dInstance : Elmish.Running<Model,Action> = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+        let three3dInstance : Elmish.Running<Model,Action> = ComposedApp.add3d composed ctrl camera three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance
@@ -234,8 +234,8 @@ module NiceComposeExample =
             let s = { m.scene with scene = { m.scene.scene with trafo = Trafo3d.Identity }}
             { m with ui = { m.ui with cnt = 0 }; scene = s }
 
-    let view3D (sizes : IMod<V2i>) (m : MModel) =
-        m.mscene  |> TranslateController.viewScene sizes |> Scene.map Translate
+    let view3D (ctrl : IRenderControl) (m : MModel) =
+        m.mscene  |> TranslateController.viewScene ctrl |> Scene.map Translate
 
     let ofPickMsg (m : Model) (noPick) = TranslateController.ofPickMsg m.scene noPick |> List.map Translate
 

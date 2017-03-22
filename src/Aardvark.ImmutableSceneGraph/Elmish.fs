@@ -101,13 +101,11 @@ module Input =
 
 type App<'model,'mmodel,'msg,'view> =
     {
-        initial   : 'model
-        update    :  Env<'msg> -> 'model  -> 'msg  -> 'model
-        view      : 'mmodel    -> 'view
-
-        subscriptions : 'model -> Sub<'msg>
-
-        ofPickMsg : 'model     -> GlobalPick  -> list<'msg>
+        initial         : 'model
+        update          : Env<'msg> -> 'model  -> 'msg  -> 'model
+        view            : IRenderControl -> 'mmodel    -> 'view
+        subscriptions   : IRenderControl -> 'model -> Sub<'msg>
+        ofPickMsg       : 'model     -> GlobalPick  -> list<'msg>
     }
 
 type Unpersist<'immut,'mut> =
@@ -137,14 +135,16 @@ module Elmish =
             sg : ISg
         }
 
-    let createAppAdaptive (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessageO : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
-
+    let createAppAdaptive (ctrl : IRenderControl) (camera : IMod<Camera>) (unpersist :  Unpersist<'model,'mmodel>) (onMessageO : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)  =
+        let keyboard = ctrl.Keyboard
+        let mouse = ctrl.Mouse
         let model = Mod.init app.initial
 
         let mutable currentlyActive = false
 
         let transformPixel (p : PixelPosition) =
-            let p = PixelPosition(p.Position, Mod.force viewport)
+            let s = Mod.force ctrl.Sizes
+            let p = PixelPosition(p.Position, Box2i.FromMinAndSize(V2i.Zero, s))
             p
 
         let reuseCache = ReuseCache()
@@ -243,9 +243,9 @@ module Elmish =
                 d.Dispose()
                 if modSubscriptions.Remove k |> not then printf "[elimish] should not occur"
 
-        let updateSubscriptions (m : 'model) =
+        let updateSubscriptions (ctrl : IRenderControl) (m : 'model) =
             if currentlyActive then
-                let subs = app.subscriptions m
+                let subs = app.subscriptions ctrl m
                 moves <- Sub.filterMoves subs
                 clicks <- Sub.filterMouseClicks subs
                 mouseActions <- Sub.filterMouseThings subs
@@ -258,7 +258,7 @@ module Elmish =
         let updateModel (m : 'model) =
             transact (fun () -> 
                 model.Value <- m
-                updateSubscriptions m |> ignore
+                updateSubscriptions ctrl m |> ignore
                 unpersist.apply m mmodel reuseCache
             )
 
@@ -268,7 +268,7 @@ module Elmish =
 
         let send msg =
             let m' = app.update env model.Value msg
-            updateSubscriptions m'
+            updateSubscriptions ctrl m'
             updateModel m'
             m'
 
@@ -288,7 +288,8 @@ module Elmish =
                 | None -> (fun model msg -> let m' = app.update env model msg in updateModel m'; m')
                 | Some v -> v
 
-        let view = app.view mmodel
+
+        let view = app.view ctrl mmodel
         let pickObjects = view.PickObjects()
         let pickReader = pickObjects.GetReader()
 
@@ -333,8 +334,7 @@ module Elmish =
                 updateModel model 
 
         mouse.Move.Values.Subscribe(fun (oldP,newP) ->
-            let bounds = viewport |> Mod.force
-            currentlyActive <- bounds.Contains newP.Position 
+            currentlyActive <- true
             handleMouseEvent MouseEvent.Move
         ) |> ignore
 
@@ -389,7 +389,7 @@ module Elmish =
 
         { send = send; sg = view :> ISg; emitModel = updateModel; model = model :> IMod<_> }
 
-    let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
-        createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app
+    let inline createAppAdaptiveD (ctrl : IRenderControl) (camera : IMod<Camera>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
+        createAppAdaptive ctrl camera ( unpersist ()) onMessage app
 
 

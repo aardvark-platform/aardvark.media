@@ -67,11 +67,85 @@ module ElmishService =
     open Aardvark.Elmish
     open Aardvark.Service
 
-    let run (runtime : IRuntime) (threeD : IMod<V2i> -> Elmish.Running<'model, 'msg>) =
+    let run (runtime : IRuntime) (threeD : string -> IRenderControl -> Elmish.Running<'model, 'msg>) =
         Aardvark.Service.Server.start runtime 8989 [] (fun id ctrl ->
-            let task = runtime.CompileRender(ctrl.FramebufferSignature, BackendConfiguration.Default, (threeD ctrl.Sizes).sg)
+            let task = runtime.CompileRender(ctrl.FramebufferSignature, BackendConfiguration.Default, (threeD id ctrl).sg)
             Some task
         )
+
+
+[<AutoOpen>]
+module MixedAppImpl = 
+    open Fablish
+    open Fable.Helpers.Virtualdom
+    open Fable.Helpers.Virtualdom.Html
+    open Aardvark.ImmutableSceneGraph
+
+    module MixedApp =
+
+
+        let serve2' (runtime : IRuntime) (u : Aardvark.Elmish.Unpersist<'m3, 'mm3>) (app : App<'mui, 'aui, DomNode<'aui>>) (threeD : Aardvark.Elmish.App<'m3, 'mm3, 'a3, Aardvark.ImmutableSceneGraph.ISg<'a3>>) =
+            
+            let initial = app.initial, threeD.initial
+
+            let update (e : Env<Choice<'aui, 'a3>>) ((mui,m3)) (msg : Choice<'aui, 'a3>) =
+                match msg with
+                    | Choice1Of2 aui -> 
+                        (app.update (Env.map Choice1Of2 e) mui aui, m3)
+                    | Choice2Of2 a3 ->
+                        (mui, threeD.update (Env.map Choice2Of2 e) m3 a3)
+
+            let composed = ComposedApp.ofUpdate initial update
+                     
+            let fablishResult = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" app (fun m (_,t) -> (m,t)) fst Choice1Of2
+
+            Async.Start <|
+                async {
+                    do! Async.SwitchToNewThread()
+                    ElmishService.run runtime (fun name win ->
+                        let three3dApp = threeD
+                                
+                        let cameraView = 
+                            CameraView.lookAt (V3d(6.0, 6.0, 6.0)) V3d.Zero V3d.OOI
+                                //|> DefaultCameraController.control win.Mouse win.Keyboard win.Time
+                                |> Mod.constant 
+
+                        let frustum = 
+                            win.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
+
+
+                        let camera = Mod.map2 Camera.create cameraView frustum
+
+                        let add3d (ctrl : IRenderControl) (camera : IMod<Camera>) (app : Aardvark.Elmish.App<'m3,'mm3,'a3,_>) =
+                            let doUpdate (m : 'm3) (msg : 'a3) =
+                                lock composed (fun _ -> 
+                                    let bigModel = m
+                                    let bigMsg = Choice2Of2 msg
+                                    let newBigModel = composed.Update bigMsg
+                                    for a in composed.InnerApps do a newBigModel
+                                    let _,m = newBigModel
+                                    m
+                                )
+
+                            let instance = Aardvark.Elmish.Elmish.createAppAdaptive ctrl camera u (Some doUpdate) app
+                            composed.Register(fun (_,m) -> lock composed (fun _ -> instance.emitModel m)) 
+                            instance
+
+                        let three3dInstance = add3d win camera three3dApp
+                        three3dInstance
+                    )
+                }
+
+            fablishResult   
+        
+        let inline serve2 (runtime : IRuntime) (app : App<'mui, 'aui, DomNode<'aui>>) (threeD : Aardvark.Elmish.App<'m3, 'mm3, 'a3, Aardvark.ImmutableSceneGraph.ISg<'a3>>) =
+            let toMod m c = (^m3 : (member ToMod : ReuseCache -> 'mm3) (m,c))
+            let apply i m c = (^mm3 : (member Apply : ^m3 * ReuseCache -> unit) (m,i,c))
+            serve2'
+                runtime
+                { Aardvark.Elmish.Unpersist.unpersist = toMod; Aardvark.Elmish.Unpersist.apply = apply }
+                app
+                threeD
 
 
 
@@ -91,11 +165,11 @@ let main argv =
     Aardvark.Init()
 
     use app = new OpenGlApplication()
-    use win = app.CreateSimpleRenderWindow()
-    win.Text <- "Aardvark rocks media \\o/"
-    win.Load.Add(fun _ -> win.Size <- V2i(0,0))
-    win.FormBorderStyle <- FormBorderStyle.None
-    let mutable started = false
+    //use win = app.CreateSimpleRenderWindow()
+//    win.Text <- "Aardvark rocks media \\o/"
+//    win.Load.Add(fun _ -> win.Size <- V2i(0,0))
+//    win.FormBorderStyle <- FormBorderStyle.None
+    //let mutable started = false
 
     let desiredSize = V2i(1280,800)
 
@@ -104,34 +178,32 @@ let main argv =
     browser.Dock <- DockStyle.Fill
     form.Controls.Add browser
 
-    let composed = ComposedApp.ofUpdate  { Explicit.ui = TestApp.initial; Explicit.scene = TranslateController.initial } Explicit.update
+    let er, fi = DrawingApp.createApp (Some 0)
+    browser.StartUrl <- fi.localUrl
 
     Async.Start <|
         async {
             do! Async.SwitchToNewThread()
-            ElmishService.run app.Runtime (fun size ->
-
-                let renderRect = size |> Mod.map (fun s -> Box2i.FromMinAndSize(V2i.Zero,s))
+            ElmishService.run app.Runtime (fun name win ->
                 let cameraView = 
-                    CameraView.lookAt (V3d(6.0, 6.0, 6.0)) V3d.Zero V3d.OOI
+                    CameraView.lookAt (V3d(3.0, 3.0, 3.0)) V3d.Zero V3d.OOI
+                        |> Mod.constant
                         //|> DefaultCameraController.control win.Mouse win.Keyboard win.Time
-                        |> Mod.constant 
 
                 let frustum = 
-                    size |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
-
+                    win.Sizes
+                        |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
 
                 let camera = Mod.map2 Camera.create cameraView frustum
 
-                let three3dApp = TranslateController.app size
-                let three3dInstance = ComposedApp.add3d composed win.Keyboard win.Mouse renderRect camera three3dApp (fun m app -> { app with scene = m }) (fun app -> app.scene) Explicit.AppMsg.SceneMsg
+                let three3dInstance = er win camera
                 three3dInstance
             )
         }
-
-
-    let fablishResult = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg
-    browser.StartUrl <- fablishResult.localUrl
+//
+//
+//    let fablishResult = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg
+//    browser.StartUrl <- fablishResult.localUrl
 
 
     Application.Run form

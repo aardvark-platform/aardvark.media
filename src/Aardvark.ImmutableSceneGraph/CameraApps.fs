@@ -104,7 +104,7 @@ module OrbitCameraApp =
                 { m with center = Some c; camera = CameraView.lookAt tempCam.Location c tempCam.Up }
             | _ -> m
 
-    let subscriptions (time : IMod<DateTime>) (m : Model) =
+    let subscriptions (ctrl : IRenderControl) (m : Model) =
         Many [                            
                 
             Input.moveDelta MouseDelta                
@@ -128,13 +128,13 @@ module OrbitCameraApp =
 
     let ofPickMsg _ m = []
 
-    let app time : App<Model,MModel,Action,ISg<Action>> =
+    let app : App<Model,MModel,Action,ISg<Action>> =
         {
             initial = initial
             update = update true
-            view = view
+            view = fun _ -> view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions time
+            subscriptions = subscriptions
         }
 
 module CameraUtilities =
@@ -235,7 +235,8 @@ module FreeFlyCameraApp =
 
     let ofPickMsg _ m = []
 
-    let subscriptions (time : IMod<DateTime>) (m : Model) =
+    let subscriptions (ctrl : IRenderControl) (m : Model) =
+        let time = ctrl.Time
         Many [
             
             Input.toggleKey Keys.W (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
@@ -276,13 +277,13 @@ module FreeFlyCameraApp =
             lookingAround = None
             forwardSpeed = 0.0 }
 
-    let app time : App<Model,MModel,Action,ISg<Action>> =
+    let app : App<Model,MModel,Action,ISg<Action>> =
         {
             initial = initial
             update = update
-            view = view
+            view = fun _ -> view
             ofPickMsg = ofPickMsg 
-            subscriptions = subscriptions time
+            subscriptions = subscriptions
         }
 
 

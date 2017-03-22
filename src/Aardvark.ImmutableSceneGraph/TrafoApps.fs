@@ -130,9 +130,9 @@ module TranslateController =
             ]
         ]
 
-    let viewScene (sizes : IMod<V2i>) s =   
+    let viewScene (ctrl : IRenderControl) s =   
         let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
-        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
+        let frustum = ctrl.Sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
 
         [[Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |] |> Quad |> render Pick.ignore ]|> colored (Mod.constant C4b.Gray);
         viewModel s.mscene ]
@@ -151,12 +151,12 @@ module TranslateController =
     let ofPickMsg (model : Scene) noPick =
         ofPickMsgModel model.scene noPick
 
-    let app (sizes : IMod<V2i>) = {
+    let app = {
         initial = initial
         update = update
-        view = viewScene sizes
+        view = viewScene
         ofPickMsg = ofPickMsg
-        subscriptions = Subscriptions.none
+        subscriptions = fun _ -> Subscriptions.none
     }
 
 module RotateController =
@@ -264,9 +264,9 @@ module RotateController =
                 viewCircle Axis.Z ifHit
             ] |> Scene.group
 
-    let viewScene (sizes : IMod<V2i>) s =   
+    let viewScene (ctrl : IRenderControl) s =   
         let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI |> Mod.constant
-        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
+        let frustum = ctrl.Sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))
 
         [
             [Quad3d [| V3d(-2,-2,0); V3d(2,-2,0); V3d(2,2,0); V3d(-2,2,0) |] |> Quad |> render Pick.ignore ]|> colored (Mod.constant C4b.Gray);
@@ -287,10 +287,10 @@ module RotateController =
     let ofPickMsg (model : Scene) noPick =
         ofPickMsgModel model.scene noPick
 
-    let app (sizes : IMod<V2i>) = {
+    let app = {
         initial = initial
         update = update
-        view = viewScene sizes
+        view = viewScene
         ofPickMsg = ofPickMsg
-        subscriptions = Subscriptions.none
+        subscriptions = fun _ -> Subscriptions.none
     }

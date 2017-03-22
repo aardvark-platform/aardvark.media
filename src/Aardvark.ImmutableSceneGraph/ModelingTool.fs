@@ -279,17 +279,17 @@ module ModelingTool =
                             |> Scene.effect [toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor; toEffect DefaultSurfaces.simpleLighting]
         } |> Scene.agroup
 
-    let view3D (sizes : IMod<V2i>) (m : MState) =
-        let frustum = sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 10.0 (float s.X / float s.Y))            
+    let view3D (ctrl : IRenderControl) (m : MState) =
+        let frustum = ctrl.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 10.0 (float s.X / float s.Y))            
         viewModels m
          |> Scene.camera (Mod.map2 Camera.create m.mcameraModel.mcamera frustum)
          |> Scene.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.diffuseTexture |> toEffect]
 
     let initial = { _id = null; primary = None; cameraModel = Scratch.FreeFlyCameraApp.initial; objects = PSet.empty; mode = Mode.Selecting; geometryImport = ""; interactionState = TranslateController.initalModel }
 
-    let subscriptions (time : IMod<DateTime>) (m : State) =
+    let subscriptions (ctrl : IRenderControl) (m : State) =
         Aardvark.Elmish.Sub.Many [
-            if m.primary.IsNone then yield FreeFlyCameraApp.subscriptions time m.cameraModel |> Aardvark.Elmish.Sub.map CameraAction
+            if m.primary.IsNone then yield FreeFlyCameraApp.subscriptions ctrl m.cameraModel |> Aardvark.Elmish.Sub.map CameraAction
             yield Input.key Direction.Up Keys.Escape (fun _ _ -> Unselect) 
         ]
 
@@ -307,7 +307,7 @@ module ModelingTool =
         TranslateController.ofPickMsgModel m.interactionState noPick |> List.map Interact
 
 
-    let createApp f time keyboard mouse viewport camera =
+    let createApp f ctrl camera =
 
         let initial = initial
         let composed = ComposedApp.ofUpdate initial (update f)
@@ -315,9 +315,9 @@ module ModelingTool =
         let three3dApp  = {
             initial = initial
             update = update f
-            view = view3D (viewport |> Mod.map (fun (a : Box2i) -> a.Size))
+            view = view3D
             ofPickMsg = ofPickMsg
-            subscriptions = subscriptions time
+            subscriptions = subscriptions
         }
 
         let viewApp = 
@@ -329,7 +329,7 @@ module ModelingTool =
                 onRendered = OnRendered.ignore
             }
 
-        let three3dInstance = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+        let three3dInstance = ComposedApp.add3d composed ctrl camera three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance
