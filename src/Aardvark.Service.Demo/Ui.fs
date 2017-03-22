@@ -845,6 +845,7 @@ module Attributes =
 module Events =
     let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = eventType, AttributeValue.Event(args, cb >> List.singleton)
 
+    let onMouseMove (cb : V2i -> 'msg) = onEvent "onmousemove" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
     let onMouseClick (cb : V2i -> 'msg) = onEvent "onclick" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
     let onContextMenu (cb : unit -> 'msg) = onEvent "oncontextmenu" [] (ignore >> cb)
@@ -934,6 +935,10 @@ module Events =
                     failwith "asdasdasd"
         )
 
+
+    let always (att : Attribute<'msg>) =
+        let (k,v) = att
+        k, Mod.constant (Some v)
 
     let onlyWhen (m : IMod<bool>) (att : Attribute<'msg>) =
         let (k,v) = att

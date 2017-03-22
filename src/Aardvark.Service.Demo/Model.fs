@@ -13,3 +13,16 @@ type Model =
         boxHovered  : bool
         dragging    : bool
     }
+
+
+
+[<DomainType>]
+type CameraControllerState =
+    {
+        view : CameraView
+        moveDirection : V3d
+        dragStart : V2i
+        look : bool
+        zoom : bool
+        pan : bool
+    }

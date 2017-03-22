@@ -177,47 +177,113 @@ module TestApp =
             )
 
         ]
-        //Ui(
-        //    "div",
-        //    AMap.empty,
-        //    AList.ofList [
-        //        Ui(
-        //            "div",
-        //            AMap.empty,
-        //            m.melements |> AList.mapi (fun i str ->
-        //                Ui(
-        //                    "button",
-        //                    AMap.ofList ["onclick", Event([], fun _ -> AddButton (i, Guid.NewGuid() |> string))],
-        //                    Mod.constant ("<&" + str + "&>")
-        //                )
-        //            )
-        //        )
 
-        //        Ui(
-        //            "div",
-        //            AMap.ofList ["class", Value "aardvark"; "style", Value "height: 600px; width: 800px"],
-        //            fun (ctrl : IRenderControl) ->
-                            
-        //                let value =
-        //                    m.mlastName |> Mod.map (function Some str -> str | None -> "yeah")
+    let start (runtime : IRuntime) (port : int) =
+        App.start runtime port {
+            view = view
+            update = update
+            initial = initial
+        }
 
-        //                let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
-        //                let proj = ctrl.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
-        //                let view = view |> DefaultCameraController.control ctrl.Mouse ctrl.Keyboard ctrl.Time
+module CameraController =
+    open Aardvark.Base.Incremental.Operators
 
-        //                let sg = 
-        //                    Sg.markdown MarkdownConfig.light value
-        //                        |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
-        //                        |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
+    type Message = 
+        | Down of button : MouseButtons * pos : V2i
+        | Up of button : MouseButtons
+        | Move of V2i
 
-        //                ctrl.Runtime.CompileRender(ctrl.FramebufferSignature, sg)
+    let initial =
+        {
+            view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
+            moveDirection = V3d.Zero
+            dragStart = V2i.Zero
+            look = false
+            zoom = false
+            pan = false
+        }
 
-        //        )
+    let update (model : CameraControllerState) (message : Message) =
+        match message with
+            | Down(button,pos) ->
+                let model = { model with dragStart = pos }
+                match button with
+                    | MouseButtons.Left -> { model with look = true }
+                    | MouseButtons.Middle -> { model with pan = true }
+                    | MouseButtons.Right -> { model with zoom = true }
+                    | _ -> model
 
-        //    ]
-        //)
+            | Up button ->
+                match button with
+                    | MouseButtons.Left -> { model with look = false }
+                    | MouseButtons.Middle -> { model with pan = false }
+                    | MouseButtons.Right -> { model with zoom = false }
+                    | _ -> model
 
+            | Move pos  ->
+                let cam = model.view
+                let delta = pos - model.dragStart
 
+                let cam =
+                    if model.look then
+                        let trafo =
+                            M44d.Rotation(cam.Right, float delta.Y * -0.01) *
+                            M44d.Rotation(cam.Sky, float delta.X * -0.01)
+
+                        let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
+                        cam.WithForward newForward
+                    else
+                        cam
+
+                let cam =
+                    if model.zoom then
+                        let step = -0.05 * (cam.Forward * float delta.Y)
+                        cam.WithLocation(cam.Location + step)
+                    else
+                        cam
+
+                let cam =
+                    if model.pan then
+                        let step = 0.05 * (cam.Down * float delta.Y + cam.Right * float delta.X)
+                        cam.WithLocation(cam.Location + step)
+                    else
+                        cam
+
+                { model with view = cam; dragStart = pos }
+
+    let withCameraController (state : MCameraControllerState) (f : Message -> 'msg) (m : list<Ui<'msg>>) =
+        let attributes =
+            AMap.ofList [
+                always ("style", Value "display: flex; width: 100%; height: 100%")
+                always (onMouseDown (fun b p -> f (Down(b,p))))
+                always (onMouseUp (fun b p -> f (Up b)))
+                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
+            ]
+            |> AMap.flattenM
+            |> AMap.choose (fun _ v -> v)
+
+        div attributes (AList.ofList m)
+
+    let view (state : MCameraControllerState) =
+        let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
+        div' [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
+            
+            withCameraController state id [
+                renderControl 
+                    (state.view |> Mod.map (fun v -> Camera.create v frustum))
+                    (AMap.ofList ["style", Value "display: flex; width: 100%; height: 100%"])
+                    (
+                        Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
+                            |> Sg.shader {
+                                do! DefaultSurfaces.trafo
+                                do! DefaultSurfaces.vertexColor
+                                do! DefaultSurfaces.simpleLighting
+                            }
+                            |> Sg.noEvents
+                    )
+            ]
+
+        ]
     let start (runtime : IRuntime) (port : int) =
         App.start runtime port {
             view = view
@@ -234,7 +300,7 @@ let main args =
     use app = new OpenGlApplication()
     let runtime = app.Runtime
     
-    TestApp.start runtime 8888
+    CameraController.start runtime 8888
     
     Console.ReadLine() |> ignore
     0

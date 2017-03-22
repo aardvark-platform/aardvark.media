@@ -74,13 +74,14 @@ module ``UI Extensions`` =
             let sg = sg |> Sg.camera cam
             let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
             let render = runtime.CompileRender(signature, sg)
-            let pickTree = PickTree.ofSg sg
-
+   
             let task =
                 RenderTask.ofList [
                     clear
                     render
                 ]
+
+            let mutable runCount = 0
 
             static member Get(runtime : IRuntime, signature : IFramebufferSignature, ui : Ui<'msg>, sg : ISg<'msg>) =
                 lock cache (fun () ->
@@ -93,16 +94,73 @@ module ``UI Extensions`` =
 
             member x.Render(token : AdaptiveToken, camera : Camera, output : OutputDescription) =
                 x.EvaluateAlways token (fun token ->
-                    transact (fun () -> cam.Value <- camera)
-                    task.Run(token, RenderToken.Empty, output)
+                    x.OutOfDate <- true
+                    runCount <- runCount + 1
+
+                    let innerToken = token.Isolated
+                    try
+                        if runCount > 1 then
+                            printfn "hate"
+
+                        let old = cam.Value
+                        transact (fun () -> cam.Value <- camera)
+
+                        task.Run(innerToken, RenderToken.Empty, output)
+                        task.Outputs.Add x |> ignore
+
+                        runCount <- runCount - 1
+                    finally
+                        innerToken.Release()
                 )
 
-            member x.PickTree = pickTree
+            member x.GetResult(cam : IMod<Camera>) =
+                RenderableResult(x, cam)
 
-        type RenderResult<'msg>(r : Renderable<'msg>, cam : IMod<Camera>) =
+        and RenderableResult<'msg>(r : Renderable<'msg>, camera : IMod<Camera>) =
             inherit Server.AbstractRenderResult()
             let size = Mod.init V2i.II
             let framebuffer = r.Runtime.CreateFramebuffer(r.FramebufferSignature, Set.empty, size)
+            do framebuffer.Acquire()
+
+            let innerCamera = Mod.init (Mod.force camera)
+            let mutable inEvaluate = false
+
+            member x.Size = size :> IMod<_>
+            member x.Camera = innerCamera :> IMod<_>
+
+            override x.Mark() =
+                if inEvaluate then false
+                else true
+
+            override x.PerformRender(token : AdaptiveToken, s : V2i) =
+                inEvaluate <- true
+
+                let cam = camera.GetValue token
+                let frustum = cam |> Camera.frustum |> Frustum.withAspect (float s.X / float s.Y)
+                let innerCam = Camera.create (Camera.cameraView cam) frustum
+
+                transact (fun () -> 
+                    size.Value <- s
+                    innerCamera.Value <- innerCam
+                )
+
+                let fbo = framebuffer.GetValue()
+                let output = OutputDescription.ofFramebuffer fbo
+
+                r.Render(token, innerCam, output)
+
+                inEvaluate <- false
+                fbo
+
+            override x.Dispose() =
+                transact (fun () ->
+                    framebuffer.Release()
+                )
+
+        type RenderResult<'msg>(runtime : IRuntime, signature : IFramebufferSignature, sg : ISg<'msg>, cam : IMod<Camera>) =
+            inherit Server.AbstractRenderResult()
+            let size = Mod.init V2i.II
+            let framebuffer = runtime.CreateFramebuffer(signature, Set.empty, size)
             do framebuffer.Acquire()
             
 
@@ -114,6 +172,10 @@ module ``UI Extensions`` =
                     return Camera.create (Camera.cameraView cam) frustum
                 }
 
+            let sg = sg |> Sg.camera cam
+            let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
+            let render = runtime.CompileRender(signature, sg)
+
             member x.Size = size :> IMod<_>
             member x.Camera = cam
 
@@ -121,11 +183,14 @@ module ``UI Extensions`` =
                 transact (fun () -> size.Value <- s)
                 let fbo = framebuffer.GetValue()
                 let output = OutputDescription.ofFramebuffer fbo
-                r.Render(token, cam.GetValue(token), output)
+                clear.Run(token, RenderToken.Empty, output)
+                render.Run(token, RenderToken.Empty, output)
                 fbo
 
             override x.Dispose() =
                 transact (fun () ->
+                    clear.Dispose()
+                    render.Dispose()
                     framebuffer.Release()
                 )
 
@@ -282,49 +347,11 @@ module ``UI Extensions`` =
                 match state.scenes.TryGetValue id with
                     | (true, (ui, cam, sg)) -> 
                         let renderable = Renderable<'action>.Get(runtime, signature, ui, sg)
+                        let res = renderable.GetResult(cam)
 
-                        let res = RenderResult(renderable, cam)
+                        //let res = RenderResult(runtime, signature, sg, cam)
+
                         do lock cameras (fun () -> cameras.[id] <- (res.Size, res.Camera))
-//                        let size = Mod.init V2i.II
-//                        let cam =
-//                            adaptive {
-//                                let! s = size
-//                                let! cam = cam
-//                                let frustum = cam |> Camera.frustum |> Frustum.withAspect (float s.X / float s.Y)
-//                                return Camera.create (Camera.cameraView cam) frustum
-//                            }
-//
-//                        lock cameras (fun () -> cameras.[id] <- (size :> IMod<_>,cam))
-//                        let framebuffer = runtime.CreateFramebuffer(signature, Set.empty, size)
-//
-//                        let sg = sg |> Sg.camera cam
-//                        let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
-//                        let render = runtime.CompileRender(signature, sg)
-//
-//                        framebuffer.Acquire()
-//
-//                        let pickTree = PickTree.ofSg sg
-//
-//                        let res =
-//                            { new Server.AbstractRenderResult() with
-//                                override x.PerformRender(token : AdaptiveToken, s : V2i) =
-//                                    transact (fun () -> size.Value <- s)
-//                                    let fbo = framebuffer.GetValue()
-//                                    let output = OutputDescription.ofFramebuffer fbo
-//
-//                                    clear.Run(token, RenderToken.Empty, output)
-//                                    render.Run(token, RenderToken.Empty, output)
-//
-//                                    fbo
-//
-//                                override x.Dispose() =
-//                                    transact (fun () ->
-//                                        pickTree.Dispose()
-//                                        framebuffer.Release()
-//                                        clear.Dispose()
-//                                        render.Dispose()
-//                                    )
-//                            }
 
                         Some (res :> Server.AbstractRenderResult)
                     | _ -> 
