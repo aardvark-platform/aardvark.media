@@ -196,7 +196,6 @@ module CameraController =
     let initial =
         {
             view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
-            moveDirection = V3d.Zero
             dragStart = V2i.Zero
             look = false
             zoom = false
@@ -254,7 +253,7 @@ module CameraController =
     let withCameraController (state : MCameraControllerState) (f : Message -> 'msg) (m : list<Ui<'msg>>) =
         let attributes =
             AMap.ofList [
-                always ("style", Value "display: flex; width: 100%; height: 100%")
+                always (attribute "style" "display: flex; width: 100%; height: 100%")
                 always (onMouseDown (fun b p -> f (Down(b,p))))
                 always (onMouseUp (fun b p -> f (Up b)))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
@@ -264,26 +263,90 @@ module CameraController =
 
         div attributes (AList.ofList m)
 
+    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : amap<string, AttributeValue<'msg>>) (sg : ISg<'msg>) =
+        let attributes =
+            AMap.ofList [
+                always (attribute "style" "display: flex; width: 100%; height: 100%")
+                always (onMouseDown (fun b p -> f (Down(b,p))))
+                always (onMouseUp (fun b p -> f (Up b)))
+                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
+            ]
+            |> AMap.flattenM
+            |> AMap.choose (fun _ v -> v)
+
+
+//        let camSg : ISg<Message> =
+//            failwith ""
+
+        let cam = Mod.map2 Camera.create state.view frustum 
+        renderControl cam attributes sg
+
+//
+//    type Tool<'model, 'msg> = 
+//        {
+//            initial : 'model
+//            update : 'model -> 'msg -> 'model
+//            view : 'model -> hmap<string, AttributeValue<'msg>>
+//        }
+//
+//    let cameraControllerApp =
+//        {
+//            view = 
+//                fun model ->
+//                    HMap.ofList [
+//                        if model.zoom || model.pan || model.look then
+//                            yield onMouseMove Move
+//
+//                        yield onMouseDown (fun b p -> Down(b,p))
+//                        yield onMouseUp (fun b _ -> Up b)
+//                    ]
+//            update = update
+//            initial = initial
+//        }
+
+//    let run (f : 'model -> 'msg) (app : Tool<'model, 'm>) : amap<string, AttributeValue<'msg>> =
+////        let rec run (m : 'model) =
+////            
+////        failwith ""
+//
+////    let att = cameraControllerApp |> run (fun (cam : CameraControllerState) -> Down (MouseButtons.None, V2i.Zero))
+//
+//    let controlWASD (msg : CameraControllerState -> 'msg) : Attribute<'msg> =
+//        failwith ""
+
     let view (state : MCameraControllerState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
         div' [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
+  
+            controlledControl state id 
+                (Mod.constant frustum)
+                (AMap.empty)
+                (
+                    Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
+                        |> Sg.shader {
+                            do! DefaultSurfaces.trafo
+                            do! DefaultSurfaces.vertexColor
+                            do! DefaultSurfaces.simpleLighting
+                        }
+                        |> Sg.noEvents
+                )
             
-            withCameraController state id [
-                renderControl 
-                    (state.view |> Mod.map (fun v -> Camera.create v frustum))
-                    (AMap.ofList ["style", Value "display: flex; width: 100%; height: 100%"])
-                    (
-                        Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
-                            |> Sg.shader {
-                                do! DefaultSurfaces.trafo
-                                do! DefaultSurfaces.vertexColor
-                                do! DefaultSurfaces.simpleLighting
-                            }
-                            |> Sg.noEvents
-                    )
-            ]
-
+            controlledControl state id 
+                (Mod.constant frustum)
+                (AMap.empty)
+                (
+                    Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
+                        |> Sg.shader {
+                            do! DefaultSurfaces.trafo
+                            do! DefaultSurfaces.vertexColor
+                            do! DefaultSurfaces.simpleLighting
+                        }
+                        |> Sg.noEvents
+                )
         ]
+
+
+
     let start (runtime : IRuntime) (port : int) =
         App.start runtime port {
             view = view

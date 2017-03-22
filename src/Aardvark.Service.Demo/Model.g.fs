@@ -96,14 +96,12 @@ module Mutable =
     type MCameraControllerState private(__initial : Demo.TestApp.CameraControllerState) =
         let mutable __current = __initial
         let _view = ResetMod(__initial.view)
-        let _moveDirection = ResetMod(__initial.moveDirection)
         let _dragStart = ResetMod(__initial.dragStart)
         let _look = ResetMod(__initial.look)
         let _zoom = ResetMod(__initial.zoom)
         let _pan = ResetMod(__initial.pan)
         
         member x.view = _view :> IMod<_>
-        member x.moveDirection = _moveDirection :> IMod<_>
         member x.dragStart = _dragStart :> IMod<_>
         member x.look = _look :> IMod<_>
         member x.zoom = _zoom :> IMod<_>
@@ -113,7 +111,6 @@ module Mutable =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _view.Update(__model.view)
-                _moveDirection.Update(__model.moveDirection)
                 _dragStart.Update(__model.dragStart)
                 _look.Update(__model.look)
                 _zoom.Update(__model.zoom)
@@ -128,7 +125,6 @@ module Mutable =
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module MCameraControllerState =
         let inline view (m : MCameraControllerState) = m.view
-        let inline moveDirection (m : MCameraControllerState) = m.moveDirection
         let inline dragStart (m : MCameraControllerState) = m.dragStart
         let inline look (m : MCameraControllerState) = m.look
         let inline zoom (m : MCameraControllerState) = m.zoom
@@ -146,12 +142,6 @@ module Mutable =
                     override x.Get(r) = r.view
                     override x.Set(r,v) = { r with view = v }
                     override x.Update(r,f) = { r with view = f r.view }
-                }
-            let moveDirection =
-                { new Lens<Demo.TestApp.CameraControllerState, Aardvark.Base.V3d>() with
-                    override x.Get(r) = r.moveDirection
-                    override x.Set(r,v) = { r with moveDirection = v }
-                    override x.Update(r,f) = { r with moveDirection = f r.moveDirection }
                 }
             let dragStart =
                 { new Lens<Demo.TestApp.CameraControllerState, Aardvark.Base.V2i>() with
