@@ -10,6 +10,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.Process", "Aar
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.ImmutableSceneGraph", "Aardvark.ImmutableSceneGraph\Aardvark.ImmutableSceneGraph.fsproj", "{89F9D8D0-6E20-4A7D-AFAB-821C69FDC304}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Service", "Aardvark.Service\Aardvark.Service.fsproj", "{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{89F9D8D0-6E20-4A7D-AFAB-821C69FDC304}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{89F9D8D0-6E20-4A7D-AFAB-821C69FDC304}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{89F9D8D0-6E20-4A7D-AFAB-821C69FDC304}.Release|Any CPU.Build.0 = Release|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

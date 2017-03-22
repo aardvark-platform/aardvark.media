@@ -1,0 +1,10 @@
+Aardvark.Base
+Aardvark.Base.Incremental
+Aardvark.Base.FSharp
+Aardvark.Base.Rendering
+Aardvark.Rendering.GL
+Aardvark.Application
+
+FsPickler
+FsPickler.Json
+Fablish

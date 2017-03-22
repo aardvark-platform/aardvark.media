@@ -1,3 +1,4 @@
+framework: net45
 source https://api.nuget.org/v3/index.json
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 
@@ -25,6 +26,7 @@ nuget Fablish      ~> 1.7.12
 nuget AssimpNet = 3.3.1
 
 group Build
+framework: net45
 content: none
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 source https://api.nuget.org/v3/index.json

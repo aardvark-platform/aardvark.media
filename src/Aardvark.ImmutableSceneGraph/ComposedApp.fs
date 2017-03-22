@@ -116,16 +116,14 @@ module SingleMultiView =
 
 
     let viewUI (m : Model) =
-        div [] [
-            div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
-                text (sprintf "current content: %d" m.ui.cnt)
-                br []
-                button [onMouseClick (fun dontCare -> TestApp.Inc); attribute "class" "ui button"] [text "increment"] |> Html.map UiOnly
-                button [onMouseClick (fun dontCare -> TestApp.Inc)] [text "decrement"]  |> Html.map UiOnly
-                button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
-                br []
-                text (sprintf "ray: %s" m.ui.info)
-            ]
+        div [Style ["width", "100%"; "height", "100%"]] [
+            text (sprintf "current content: %d" m.ui.cnt)
+            br []
+            button [onMouseClick (fun dontCare -> TestApp.Inc); attribute "class" "ui button"] [text "increment"] |> Html.map UiOnly
+            button [onMouseClick (fun dontCare -> TestApp.Inc)] [text "decrement"]  |> Html.map UiOnly
+            button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
+            br []
+            div [Style ["width", "100%"; "height", "100%"]; clazz "aardvark"; attribute "id" "renderControl"] []
         ]
 
     let update (e : Env<Action>) (m : Model) (a : Action) =

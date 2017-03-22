@@ -126,16 +126,14 @@ module TestApp =
             | SetInfo info -> { m with info = info}
 
     let view (m : Model) : DomNode<Action> =
-        div [] [
-            div [Style ["width", "100%"; "height", "100%"; "background-color", "transparent"]; attribute "id" "renderControl"] [
-                text (sprintf "current content: %d" m.cnt)
-                br []
-                button [onMouseClick (fun dontCare -> Inc); attribute "class" "ui button"] [text "increment"]
-                button [onMouseClick (fun dontCare -> Dec)] [text "decrement"]
-                button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
-                br []
-                text (sprintf "ray: %s" m.info)
-            ]
+        div [Style ["width", "100%"; "height", "100%"]] [
+            text (sprintf "current content: %d" m.cnt)
+            br []
+            button [onMouseClick (fun dontCare -> Inc); attribute "class" "ui button"] [text "increment"] 
+            button [onMouseClick (fun dontCare -> Dec)] [text "decrement"]
+            button [onMouseClick (fun dontCare -> Reset)] [text "reset"]
+            br []
+            div [Style ["width", "100%"; "height", "100%"]; clazz "aardvark"; attribute "id" "renderControl"] []
         ]
 
     let initial = { info = "not known"; cnt = 0; _id = null }
