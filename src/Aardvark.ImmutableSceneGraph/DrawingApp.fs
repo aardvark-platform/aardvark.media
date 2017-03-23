@@ -419,7 +419,7 @@ module DrawingApp =
         history = EqualOf.toEqual None; future = EqualOf.toEqual None
         selected = PSet.empty
         selectedAnn= None
-        filename = @"E:\Development\WorkDirectory\DataSVN\pattern.jpg"
+        filename = @"C:\Aardwork\IL.png"
         }
 
     let app =
@@ -455,7 +455,7 @@ module DrawingApp =
                 onRendered = OnRendered.ignore
             }
 
-        let three3dInstance = fun ctrl camera -> ComposedApp.add3d composed ctrl camera three3dApp (fun m app -> m) id id
+        let three3dInstance = fun ctrl camera -> ComposedApp.add3d' composed ctrl camera (Elmish.unpersist ()) three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance

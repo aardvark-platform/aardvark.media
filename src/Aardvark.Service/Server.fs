@@ -323,12 +323,23 @@ module Server =
         do Async.Start worker
 
         let renderQueue : MVar<V2i> = MVar.empty()
+        let renderedQueue : MVar<unit> = MVar.empty()
+        let caller = AdaptiveObject()
+
+        let hate = caller.AddMarkingCallback(fun _ -> printfn "outdated!"; MVar.put renderQueue currentSize.Value) 
+        
+
         let renderer =
             async {
                 let mutable acquired = false
 
+                do! Async.SwitchToNewThread()
+
                 while true do
-                    let! size = MVar.takeAsync renderQueue
+                    let size = MVar.take renderQueue
+                    
+                    printfn "took from renderQ: %A" size
+
                     if size.AllGreater 0 then
                         use __ = glRuntime.Context.RenderingLock ctx
                         try
@@ -339,11 +350,17 @@ module Server =
                                 framebuffer.Acquire()
                                 acquired <- true
 
-                            let data = result.GetValue()
+                            let data = result.GetValue caller
                             sendImage data
                         with e ->
                             Log.warn "render faulted %A" e
-                
+
+
+                        let rendered = MVar.take renderedQueue
+                        printfn "now rendered"
+                        caller.OutOfDate <- false
+                        AdaptiveSystemState.popReadLocks []
+                        transact (fun () -> time.MarkOutdated())
             }
 
         do Async.Start renderer
@@ -365,6 +382,7 @@ module Server =
                     runtime.DeleteFramebufferSignature signature
                 )
                 renderTask.UnsafeCache <- RenderTask.empty
+                hate.Dispose()
             with e ->
                 Log.warn "[Service:%s] shutdown faulted %A" targetId e
 
@@ -406,17 +424,7 @@ module Server =
 
 
                     frameCount <- frameCount + 1
-
-
-
-                    transact (fun () -> time.MarkOutdated())
-
-                    lock result (fun () ->
-                        if result.OutOfDate then 
-                            invalidate()
-                        else
-                            result.AddVolatileMarkingCallback(fun () -> invalidate()) |> ignore
-                    )
+                    MVar.put renderedQueue ()
 
                 | RequestImage size ->
                     MVar.put renderQueue size

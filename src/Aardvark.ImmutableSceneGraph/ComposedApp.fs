@@ -59,7 +59,7 @@ module ComposedApp =
     
     let ofUpdate initial update = ComposedApp<_,_>(initial, update)
 
-    let inline add3d (comp : ComposedApp<'model,'msg>) (ctrl : IRenderControl) (camera : IMod<Camera>) (app : App<_,_,_,_>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
+    let add3d' (comp : ComposedApp<'model,'msg>) (ctrl : IRenderControl) (camera : IMod<Camera>) unpersist (app : App<_,_,_,_>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         let doUpdate (m : 'innerModel) (msg : 'innerMsg) : 'innerModel =
             lock comp (fun _ -> 
                 let bigModel = buildModel m comp.Model
@@ -68,9 +68,12 @@ module ComposedApp =
                 for a in comp.InnerApps do a newBigModel
                 project newBigModel
             )
-        let instance = Elmish.createAppAdaptiveD ctrl camera (Some doUpdate) app
+        let instance = Elmish.createAppAdaptive ctrl camera unpersist (Some doUpdate) app
         comp.Register(fun m -> lock comp (fun _ -> instance.emitModel (project m))) 
         instance
+
+    let inline add3d (comp : ComposedApp<'model,'msg>) (ctrl : IRenderControl) (camera : IMod<Camera>) (app : App<_,_,_,_>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
+        add3d' comp ctrl camera ( Elmish.unpersist ()) app buildModel project buildAction
 
     let addUi (comp : ComposedApp<'model,'msg>)  (address : IPAddress) (port : string)  (app : Fablish.App<'innerModel,'innerMsg,DomNode<'innerMsg>>) (buildModel : 'innerModel -> 'model -> 'model) (project : 'model -> 'innerModel) (buildAction : 'innerMsg -> 'msg) =
         comp.AddUi address port app buildModel project buildAction
