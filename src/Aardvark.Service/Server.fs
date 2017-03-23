@@ -196,13 +196,14 @@ module Server =
 
         let jpeg = new TJCompressor()
 
-        let ctx = Aardvark.Rendering.GL.ContextHandle.create()
+        //let ctx = Aardvark.Rendering.GL.ContextHandle.create()
         let glRuntime = unbox<Aardvark.Rendering.GL.Runtime> runtime
 
 
         let result : IMod<byte[]> =
             Mod.custom (fun self ->
                 
+                use __ = glRuntime.Context.ResourceLock
                 let renderTask = renderTask.GetValue self
                 let fbo = framebuffer.GetValue self
 
@@ -231,6 +232,14 @@ module Server =
             let res = PixelPosition(x,y,currentSize.Value.X, currentSize.Value.Y)
             lastPos <- res
             res
+
+        let tryPos x y =
+            let res = PixelPosition(x,y,currentSize.Value.X, currentSize.Value.Y)
+            if lastPos.Position <> res.Position then
+                lastPos <- res
+                res |> Some
+            else 
+                None
 
         let button b =
             match b with
@@ -285,7 +294,9 @@ module Server =
                 | "mousemove" ->
                     let x = Int32.Parse e.args.[0]
                     let y = Int32.Parse e.args.[1]
-                    mouse.Move(pos x y)
+                    match tryPos x y with
+                        | None -> ()
+                        | Some p -> mouse.Move p
                         
                 | "mouseenter" ->
                     let x = Int32.Parse e.args.[0]
@@ -305,16 +316,18 @@ module Server =
                     ()
 
 
-        let eventQueue = new BlockingCollection<Event>()
+        let eventQueue = new ConcurrentQueue<Event>()
         
+        let sem = new System.Threading.SemaphoreSlim(0)
         let worker =
             async {
-                do! Async.SwitchToNewThread()
+                //do! Async.SwitchToNewThread()
                 while true do
-                    let e = eventQueue.Take()
-                    do
-                        try processEvent e
-                        with e -> Log.warn "faulted: %A" e
+                    let! e = sem.WaitAsync() |> Async.AwaitTask
+                    let _,e = eventQueue.TryDequeue()
+                    //do! Async.SwitchToNewThread()
+                    try processEvent e
+                    with e -> Log.warn "faulted: %A" e
             }
 
         let invalidate() =
@@ -326,41 +339,49 @@ module Server =
         let renderedQueue : MVar<unit> = MVar.empty()
         let caller = AdaptiveObject()
 
-        let hate = caller.AddMarkingCallback(fun _ -> printfn "outdated!"; MVar.put renderQueue currentSize.Value) 
+        let hate = caller.AddMarkingCallback(fun _ ->  MVar.put renderQueue currentSize.Value) 
         
 
         let renderer =
             async {
                 let mutable acquired = false
 
-                do! Async.SwitchToNewThread()
+                //do! Async.SwitchToNewThread()
 
                 while true do
-                    let size = MVar.take renderQueue
+                    let! size = MVar.takeAsync renderQueue
                     
-                    printfn "took from renderQ: %A" size
+                    //printfn "took from renderQ: %A on queue: %A" size  System.Threading.Thread.CurrentThread.ManagedThreadId
 
                     if size.AllGreater 0 then
-                        use __ = glRuntime.Context.RenderingLock ctx
                         try
                             if currentSize.Value <> size then
                                 transact (fun () -> currentSize.Value <- size)
 
-                            if not acquired then
-                                framebuffer.Acquire()
-                                acquired <- true
 
-                            let data = result.GetValue caller
-                            sendImage data
+                            caller.EvaluateAlways null (fun () ->
+                                //let d = glRuntime.Context.RenderingLock ctx
+                                if not acquired then
+                                    framebuffer.Acquire()
+                                    acquired <- true
+                                let data = result.GetValue caller
+                                //d.Dispose()
+                                sendImage data
+                                //let rendered = MVar.take renderedQueue
+                                ()
+                                //printfn "now rendered: %A"  System.Threading.Thread.CurrentThread.ManagedThreadId
+                            )
+                            transact (fun () -> time.MarkOutdated())
+                            do Thread.Sleep(15)
                         with e ->
                             Log.warn "render faulted %A" e
 
-
-                        let rendered = MVar.take renderedQueue
-                        printfn "now rendered"
-                        caller.OutOfDate <- false
-                        AdaptiveSystemState.popReadLocks []
-                        transact (fun () -> time.MarkOutdated())
+//
+//                        let rendered = MVar.take renderedQueue
+//                        printfn "now rendered: %A"  System.Threading.Thread.CurrentThread.ManagedThreadId
+//                        caller.OutOfDate <- false
+//                        Monitor.Exit caller
+//                        AdaptiveSystemState.popReadLocks []
             }
 
         do Async.Start renderer
@@ -373,7 +394,7 @@ module Server =
         member x.Dispose() =
             try
                 transact (fun () ->
-                    eventQueue.Dispose()
+                    sem.Dispose()
 
                     clearTask.Dispose()
                     renderTask.Value.Dispose()
@@ -389,7 +410,8 @@ module Server =
         member x.Received (msg : Message) =
             match msg with
                 | Event e ->
-                    eventQueue.Add e
+                    eventQueue.Enqueue e
+                    sem.Release() |> ignore
 
                 | Shutdown ->
                     x.Dispose()

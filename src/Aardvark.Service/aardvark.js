@@ -45,9 +45,18 @@ function initRenderTargetEvents(eventSocket, canvas, id) {
         e.preventDefault();
     });
 
+    var lastX = 0;
+    var lastY = 0;
+
     $canvas.mousemove(function (e) {
-        processEvent(id, 'mousemove', e.offsetX, e.offsetY);
-        e.preventDefault();
+
+        if (Math.abs(e.offsetX - lastX) > 0 || Math.abs(e.offsetY - lastY) > 0) {
+
+            lastX = e.offsetX;
+            lastY = e.offsetY;
+            processEvent(id, 'mousemove', e.offsetX, e.offsetY);
+            e.preventDefault();
+        }
     });
 
     $canvas.mouseenter(function (e) {
@@ -160,6 +169,7 @@ function getRenderFunction(id) {
                 var msg = JSON.parse(m.data);
                 if (msg.Case === "Invalidate") {
                     // TODO: what if not visible??
+                    //setTimeout(requestRender, 5);
                     requestRender();
                 }
                 else {

@@ -140,7 +140,6 @@ module Elmish =
         let mouse = ctrl.Mouse
         let model = Mod.init app.initial
 
-        let mutable currentlyActive = false
 
         let transformPixel (p : PixelPosition) =
             let s = Mod.force ctrl.Sizes
@@ -159,20 +158,16 @@ module Elmish =
         let mutable times = []
 
         let moveSub (oldP,newP) =
-            if currentlyActive then
                 moves |> List.map (fun f -> f (oldP,newP)) |> List.fold onMessage model.Value |> ignore
 
         let mouseActionsSub dir p =
-            if currentlyActive then
-                mouseActions |> List.choose (fun f -> f dir p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
+            mouseActions |> List.choose (fun f -> f dir p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
 
         let mouseClicks p =
-            if currentlyActive then
-                clicks |> List.choose (fun f -> f p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
+            clicks |> List.choose (fun f -> f p (mouse.Position.GetValue())) |> List.fold onMessage model.Value |> ignore
 
         let keysSub dir k =
-            if currentlyActive then
-                keys |> List.choose (fun f -> f dir k) |> List.fold onMessage model.Value |> ignore
+            keys |> List.choose (fun f -> f dir k) |> List.fold onMessage model.Value |> ignore
 
         let currentTimer = new Dictionary<TimeSpan,ref<list<DateTime -> 'msg> * list<IDisposable>> * System.Timers.Timer>()
         let enterTimes xs =
@@ -202,7 +197,7 @@ module Elmish =
             
             for i in toRemove do currentTimer.Remove i |> ignore
 
-        mouse.Move.Values.Subscribe(moveSub) |> ignore
+        //mouse.Move.Values.Subscribe(moveSub) |> ignore
         mouse.Click.Values.Subscribe(mouseClicks) |> ignore
         mouse.Down.Values.Subscribe(fun p -> mouseActionsSub Direction.Down p) |> ignore
         mouse.Up.Values.Subscribe(fun p -> mouseActionsSub Direction.Up p) |> ignore
@@ -244,15 +239,14 @@ module Elmish =
                 if modSubscriptions.Remove k |> not then printf "[elimish] should not occur"
 
         let updateSubscriptions (ctrl : IRenderControl) (m : 'model) =
-            if currentlyActive then
-                let subs = app.subscriptions ctrl m
-                moves <- Sub.filterMoves subs
-                clicks <- Sub.filterMouseClicks subs
-                mouseActions <- Sub.filterMouseThings subs
-                keys <- Sub.filterKeys subs
-                times <- Sub.filterTimes subs
-                fixupModRegistrations (Sub.filterMods subs)
-                enterTimes times
+            let subs = app.subscriptions ctrl m
+            moves <- Sub.filterMoves subs
+            clicks <- Sub.filterMouseClicks subs
+            mouseActions <- Sub.filterMouseThings subs
+            keys <- Sub.filterKeys subs
+            times <- Sub.filterTimes subs
+            fixupModRegistrations (Sub.filterMods subs)
+            enterTimes times
             ()
 
         let updateModel (m : 'model) =
@@ -323,19 +317,26 @@ module Elmish =
 
 
         let handleMouseEvent mouseEvent =
-            if currentlyActive then
-                let picks = pick (mouse.Position |> Mod.force |> transformPixel)
-                let mutable model = updatePickMsg { mouseEvent = mouseEvent; hits = List.isEmpty picks |> not; keyEvent = KeyEvent.NoEvent } model.Value
-                for (ray,d,(msg,transparency)) in picks do
-                    let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d; ray = ray; key = KeyEvent.NoEvent }
-                    match msg occ with
-                        | Some r -> model <- onMessage model r
-                        | _ -> ()
-                updateModel model 
+            let picks = pick (mouse.Position |> Mod.force |> transformPixel)
+            let mutable model = updatePickMsg { mouseEvent = mouseEvent; hits = List.isEmpty picks |> not; keyEvent = KeyEvent.NoEvent } model.Value
+            for (ray,d,(msg,transparency)) in picks do
+                let occ : PickOccurance = { mouse = mouseEvent; point = ray.GetPointOnRay d; ray = ray; key = KeyEvent.NoEvent }
+                match msg occ with
+                    | Some r -> model <- onMessage model r
+                    | _ -> ()
+            updateModel model 
 
+        let mutable lastMouse = DateTime.Now
         mouse.Move.Values.Subscribe(fun (oldP,newP) ->
-            currentlyActive <- true
             handleMouseEvent MouseEvent.Move
+//            Async.Start <|
+//                async {
+//                    do! Async.SwitchToNewThread()
+//            //if ( DateTime.Now-lastMouse).TotalMilliseconds > 10.0 then
+//                    currentlyActive <- true
+//                    lastMouse <- DateTime.Now
+//                    handleMouseEvent MouseEvent.Move
+//                }
         ) |> ignore
 
         mouse.Down.Values.Subscribe(fun p ->  
@@ -352,15 +353,14 @@ module Elmish =
 
 
         let handleKeyEvent (key : KeyEvent) =
-            if currentlyActive then
-                let picks = pick (mouse.Position |> Mod.force |> transformPixel)
-                let mutable model = model.Value
-                for (ray,d,(msg,transparency)) in picks do
-                    let occ : PickOccurance = { mouse = MouseEvent.NoEvent; key = key; point = ray.GetPointOnRay d; ray = ray }
-                    match msg occ with
-                        | Some r -> model <- onMessage model r
-                        | _ -> ()
-                updateModel model 
+            let picks = pick (mouse.Position |> Mod.force |> transformPixel)
+            let mutable model = model.Value
+            for (ray,d,(msg,transparency)) in picks do
+                let occ : PickOccurance = { mouse = MouseEvent.NoEvent; key = key; point = ray.GetPointOnRay d; ray = ray }
+                match msg occ with
+                    | Some r -> model <- onMessage model r
+                    | _ -> ()
+            updateModel model 
 
 
         keyboard.KeyUp(altKey).Values.Subscribe( fun k ->

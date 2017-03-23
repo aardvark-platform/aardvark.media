@@ -151,9 +151,9 @@ module MixedAppImpl =
 
 [<EntryPoint;STAThread>]
 let main argv = 
-  //  InteractionTest.run()
+    //InteractionTest.run()
   //  InteractionTest.fablishTest()
-   // System.Environment.Exit 0
+  //  System.Environment.Exit 0
 
     Chromium.init()
 
@@ -200,6 +200,7 @@ let main argv =
                 three3dInstance
             )
         }
+    //Console.ReadLine() |> ignore
 //
 //
 //    let fablishResult = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" TestApp.app (fun m app -> { app with ui = m}) (fun app -> app.ui) Explicit.AppMsg.UiMsg
