@@ -1,8 +1,0 @@
-type project
-id Aardvark.ImmutableSceneGraph
-authors VRVis Research Center
-description
-    immutable scene graph
-files
-	..\..\bin\Release\Aardvark.ImmutableSceneGraph.exe ==> lib\net45
-	..\..\bin\Release\Aardvark.ImmutableSceneGraph.pdb ==> lib\net45

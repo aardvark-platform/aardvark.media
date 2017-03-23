@@ -17,6 +17,7 @@ open Aardvark.Rendering.Text
 open Demo.TestApp
 open Demo.TestApp.Mutable
 
+
 module TestApp =
 
     type Message =
@@ -408,11 +409,13 @@ module CameraController =
         }
 
 
-[<EntryPoint>]
+[<EntryPoint; STAThread>]
 let main args =
+    Viewer.Viewer.run args
+    System.Environment.Exit 0
+    
     Ag.initialize()
     Aardvark.Init()
-    
     use app = new OpenGlApplication()
     let runtime = app.Runtime
     

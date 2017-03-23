@@ -258,12 +258,12 @@ module ``UI Extensions`` =
                                         code
 
                                 if code <> "" then
-                                    //let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
-                                    //lock runtime (fun () -> 
-                                    //    Log.start "update"
-                                    //    for l in lines do Log.line "%s" l
-                                    //    Log.stop()
-                                    //)
+                                    let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
+                                    lock runtime (fun () -> 
+                                        Log.start "update"
+                                        for l in lines do Log.line "%s" l
+                                        Log.stop()
+                                    )
 
                                     let res = s.send Opcode.Text (ByteSegment(Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
                                     match res with

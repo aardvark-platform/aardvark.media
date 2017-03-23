@@ -661,7 +661,6 @@ module PersistentTags =
                 res
             | _ ->
                 Ui("div", AMap.empty, AList.ofList x, Required = libs)
-
     let onBoot (boot : string) (x : list<Ui<'msg>>) =
         let boot =
             if System.String.IsNullOrWhiteSpace boot then None
@@ -838,6 +837,8 @@ module Attributes =
 
     /// Class attribute helper
     let inline Class value = attribute "class" value
+    
+    let inline clazz value = attribute "class" value
 
     /// Helper to build space separated class
     let inline classList (list: (string*bool) seq) =
@@ -892,6 +893,10 @@ module Events =
 
     let onClick (cb : unit -> 'msg) = onEvent "onclick" [] (ignore >> cb)
 
+
+    let clientEvent (name : string) (cb : string) =
+        name,
+        ClientEvent(fun id -> cb.Replace("__ID__", id))
 
     let onKeyDown (cb : Keys -> 'msg) =
         "onkeydown" ,
