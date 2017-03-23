@@ -106,6 +106,7 @@ module PickStuff =
             | Cylinder    of center : V3d * dir : V3d * height : float * radius : float
             | Quad        of Quad3d 
             | Box         of bounds : Box3d * solid : bool * visible : bool
+            | CustomPick  of (Trafo3d -> Ray3d -> Option<double>)
             | Everything
 
         let hitPrimitive (p : Primitive) (trafo : Trafo3d) (ray : Ray3d) action =
@@ -130,6 +131,10 @@ module PickStuff =
                 | Box (b,_,_) -> 
                     let mutable t = 0.0
                     if b.Transformed(trafo.Forward).Intersects(ray,&t) then [ray, t, action] else []
+                | CustomPick(f) -> 
+                    match f trafo ray with
+                        | Some t -> [ray, t, action]
+                        | None -> []
                 | Everything ->
                     [ray, 0.0, action]
 
@@ -183,6 +188,7 @@ type On<'msg>(picks : list<PickOperation<'msg>>, children : list<ISg<'msg>>) =
 type Leaf<'msg>(xs : Primitive) =
     interface ISg<'msg>
     member x.Primitive = xs
+
 
 type ViewTrafo<'msg>(v : IMod<Trafo3d>, c : IMod<ISg<'msg>>) =
     inherit AbstractApplicator<'msg>(c)
@@ -273,6 +279,7 @@ type LeafSemantics() =
                     if solid then Sg.box c (Mod.constant b) |> Semantic.renderObjects
                     else Sg.wireBox c (Mod.constant b) |> Semantic.renderObjects
                 else ASet.empty
+            | CustomPick _ -> ASet.empty
             | Everything -> ASet.empty
 
       
