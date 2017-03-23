@@ -30,37 +30,6 @@ type CameraControllerState =
         zoom : bool
         pan : bool
 
+        moveVec : V3i
+        lastTime : Option<float>
     }
-
-type CameraControllerStateThing =
-    {
-        cview : CameraView
-
-        cdragStart : Map<int, V2i>
-        clook : Map<int, bool>
-        czoom : Map<int, bool>
-        cpan : Map<int, bool>
-
-    }
-
-    member x.ClientState (i : int, initial : CameraControllerState) =
-        {
-            view = x.cview
-            dragStart = Map.tryFind i x.cdragStart |> Option.defaultValue initial.dragStart
-            look = Map.tryFind i x.clook |> Option.defaultValue initial.look
-            zoom = Map.tryFind i x.czoom |> Option.defaultValue initial.zoom
-            pan = Map.tryFind i x.cpan |> Option.defaultValue initial.pan
-        }
-
-    member x.WithClientState (i : int, state : CameraControllerState) =
-        {
-            cview = state.view
-            cdragStart = Map.add i state.dragStart x.cdragStart
-            clook = Map.add i state.look x.clook
-            czoom = Map.add i state.zoom x.czoom
-            cpan = Map.add i state.pan x.cpan
-        }
-        
-
-type MCameraControllerStateThing(initial) =
-    member x.cview : IMod<CameraView> = failwith ""

@@ -612,6 +612,15 @@ module PersistentTags =
                 "class"; "onmousemove"; "onmousedown"; "onmouseup"; "onclick"; "ondblclick"
             ]
 
+//        let own =
+//            pickTree.Needed |> AMap.mapSet (fun k ->
+//                match k with
+//                    | SgEventKind.Click ->
+//                        None |> AttributeValue.withRay1 "event.which" (fun ray -> pickTree.Perform(Click (button b), ray))
+//                    | _ ->
+//                        failwith ""
+//            )
+
         let attributes = 
             attributes |> AMap.update keys (fun k v ->
                 match k with
@@ -884,6 +893,42 @@ module Events =
     let onClick (cb : unit -> 'msg) = onEvent "onclick" [] (ignore >> cb)
 
 
+    let onKeyDown (cb : Keys -> 'msg) =
+        "onkeydown" ,
+        ControlEvent(
+            ["event.repeat"; "event.keyCode"],
+            (fun _ _ args ->
+                match args with
+                    | rep :: keyCode :: _ ->
+                        if rep <> "true" then
+                            let keyCode = int (float keyCode)
+                            let key = KeyConverter.keyFromVirtualKey keyCode
+                            [cb key]
+                        else
+                            []
+                    | _ ->
+                        []
+            )
+        )
+
+    let onKeyUp (cb : Keys -> 'msg) =
+        "onkeyup" ,
+        ControlEvent(
+            ["event.repeat"; "event.keyCode"],
+            (fun _ _ args ->
+                match args with
+                    | rep :: keyCode :: _ ->
+                        if rep <> "true" then
+                            let keyCode = int (float keyCode)
+                            let key = KeyConverter.keyFromVirtualKey keyCode
+                            [cb key]
+                        else
+                            []
+                    | _ ->
+                        []
+            )
+        )
+
     let rayEvent (name : string) (args : list<string>) (cb : list<string> -> RayPart -> 'msg) =
         name,
         ControlEvent (
@@ -935,6 +980,13 @@ module Events =
                     failwith "asdasdasd"
         )
 
+
+    let onRendered (cb : V2i -> Camera -> DateTime -> 'msg) =
+        "onrendered", 
+        ControlEvent([], fun s c t ->
+            let t = DateTime(Int64.Parse t.[0])
+            [cb s c t]
+        )
 
     let always (att : Attribute<'msg>) =
         let (k,v) = att

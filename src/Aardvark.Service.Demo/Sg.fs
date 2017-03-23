@@ -429,6 +429,13 @@ type PickTree<'msg>(sg : ISg<'msg>) =
     let objects : aset<PickObject> = sg?PickObjects()
     let bvh = BvhTree.ofASet PickObject.bounds objects
 
+    let needed = 
+        objects |> ASet.collect (fun o ->
+            let evts : aset<SgEventKind> = o.Scope?NeededEvents
+            evts
+        )
+
+    
     static let intersectLeaf (kind : SgEventKind) (part : RayPart) (p : PickObject) =
         let pickable = p.Pickable |> Mod.force
         match Pickable.intersect part pickable with
@@ -490,6 +497,8 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                     | None ->
                         []
 
+    member x.Needed = needed
+
     member x.Perform(kind : SgEventKind, part : RayPart) =
         let bvh = bvh |> Mod.force
         bvh |> perform kind part
@@ -515,10 +524,21 @@ open Aardvark.UI
 module MessageSemantics =
 
     type ISg<'msg> with
+        member x.NeededEvents : aset<SgEventKind> = x?NeededEvents
         member x.MessageProcessor : MessageProcessor<'msg> = x?MessageProcessor
 
     [<Semantic>]
     type MessageSem() =
+
+        member x.NeededEvents(root : Root<ISg<'msg>>) =
+            root.Child?NeededEvents <- ASet.empty<SgEventKind>
+
+        member x.NeededEvents(app : Sg.EventApplicator<'msg>) =
+            let parent = app.NeededEvents
+            let mine = app.Events |> Map.toSeq |> Seq.map fst |> ASet.ofSeq
+
+            app.Child?NeededEvents <- ASet.union parent mine
+
         member x.MessageProcessor(app : Sg.EventApplicator<'msg>) =
             let parent = app.MessageProcessor
 

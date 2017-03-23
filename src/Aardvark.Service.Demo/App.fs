@@ -195,9 +195,15 @@ module ``UI Extensions`` =
                 )
 
         let start (runtime : IRuntime) (port : int) (perform : 'action -> unit) (ui : Ui<'action>) =
-        
+            let noCamera = 
+                let view = CameraView(V3d.OIO, V3d.Zero, V3d.OOI, V3d.OIO, V3d.IOO)
+                let proj = Frustum.ortho (Box3d(-V3d.III, V3d.III))
+                Camera.create view proj
+    
             let state =
                 {
+                    newTimeHandlers = Dictionary()
+                    timeHandlers = Dictionary()
                     handlers = Dictionary()
                     scenes = Dictionary()
                     references = Dictionary()
@@ -217,12 +223,28 @@ module ``UI Extensions`` =
                     Mod.custom (fun self ->
                         let performUpdate (s : WebSocket) =
                             lock reader (fun () ->
-                                let expr = reader.Update(self, Body, state) 
+                                
+                                let expr = 
+                                    lock state (fun () -> 
+                                        state.newTimeHandlers.Clear()
+                                        reader.Update(self, Body, state)
+                                    )
+
                                 let code = expr |> JSExpr.toString
                                 let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
 
                                 let newReferences = state.references.Values |> Seq.toArray
                                 state.references.Clear()
+
+                                for (KeyValue(id, cb)) in state.newTimeHandlers do
+                                    let size, cam = 
+                                        match cameras.TryGetValue id with
+                                            | (true, (s,c)) -> Mod.force s, Mod.force c
+                                            | _ -> V2i.Zero, noCamera
+
+                                    for msg in cb size cam DateTime.Now do
+                                        emit msg
+
 
                                 let code = 
                                     if newReferences.Length > 0 then
@@ -303,10 +325,6 @@ module ``UI Extensions`` =
 
                 Async.Start processor
 
-                let noCamera = 
-                    let view = CameraView(V3d.OIO, V3d.Zero, V3d.OOI, V3d.OIO, V3d.IOO)
-                    let proj = Frustum.ortho (Box3d(-V3d.III, V3d.III))
-                    Camera.create view proj
 
                 socket {
                     try
@@ -348,6 +366,17 @@ module ``UI Extensions`` =
                     | (true, (ui, cam, sg)) -> 
                         let renderable = Renderable<'action>.Get(runtime, signature, ui, sg)
                         let res = renderable.GetResult(cam)
+
+                        res.OnRendered.Add(fun size ->
+                            let (exists, handler) = lock state (fun () -> state.timeHandlers.TryGetValue id)
+                            if exists then
+                                match handler size (Mod.force cam) DateTime.Now with
+                                    | [] -> ()
+                                    | messages -> 
+                                        System.Threading.Tasks.Task.Run(fun () ->
+                                            for msg in messages do emit msg
+                                        ) |> ignore
+                        )
 
                         //let res = RenderResult(runtime, signature, sg, cam)
 

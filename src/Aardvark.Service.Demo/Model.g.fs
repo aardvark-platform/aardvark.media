@@ -100,12 +100,16 @@ module Mutable =
         let _look = ResetMod(__initial.look)
         let _zoom = ResetMod(__initial.zoom)
         let _pan = ResetMod(__initial.pan)
+        let _moveVec = ResetMod(__initial.moveVec)
+        let _lastTime = ResetMod(__initial.lastTime)
         
         member x.view = _view :> IMod<_>
         member x.dragStart = _dragStart :> IMod<_>
         member x.look = _look :> IMod<_>
         member x.zoom = _zoom :> IMod<_>
         member x.pan = _pan :> IMod<_>
+        member x.moveVec = _moveVec :> IMod<_>
+        member x.lastTime = _lastTime :> IMod<_>
         
         member x.Update(__model : Demo.TestApp.CameraControllerState) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -115,6 +119,8 @@ module Mutable =
                 _look.Update(__model.look)
                 _zoom.Update(__model.zoom)
                 _pan.Update(__model.pan)
+                _moveVec.Update(__model.moveVec)
+                _lastTime.Update(__model.lastTime)
         
         static member Create(initial) = MCameraControllerState(initial)
         
@@ -129,6 +135,8 @@ module Mutable =
         let inline look (m : MCameraControllerState) = m.look
         let inline zoom (m : MCameraControllerState) = m.zoom
         let inline pan (m : MCameraControllerState) = m.pan
+        let inline moveVec (m : MCameraControllerState) = m.moveVec
+        let inline lastTime (m : MCameraControllerState) = m.lastTime
     
     
     
@@ -166,4 +174,16 @@ module Mutable =
                     override x.Get(r) = r.pan
                     override x.Set(r,v) = { r with pan = v }
                     override x.Update(r,f) = { r with pan = f r.pan }
+                }
+            let moveVec =
+                { new Lens<Demo.TestApp.CameraControllerState, Aardvark.Base.V3i>() with
+                    override x.Get(r) = r.moveVec
+                    override x.Set(r,v) = { r with moveVec = v }
+                    override x.Update(r,f) = { r with moveVec = f r.moveVec }
+                }
+            let lastTime =
+                { new Lens<Demo.TestApp.CameraControllerState, Microsoft.FSharp.Core.Option<Microsoft.FSharp.Core.float>>() with
+                    override x.Get(r) = r.lastTime
+                    override x.Set(r,v) = { r with lastTime = v }
+                    override x.Update(r,f) = { r with lastTime = f r.lastTime }
                 }

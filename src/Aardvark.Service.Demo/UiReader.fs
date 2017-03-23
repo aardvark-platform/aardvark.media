@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.UI
 
+open System
 open System.Threading
 open System.Collections.Generic
 open Aardvark.Base
@@ -181,9 +182,10 @@ module JSExpr =
             | Remove e ->
                 sprintf "%s.remove();" (toString e)
        
-
 type UpdateState<'msg> =
     {
+        newTimeHandlers : Dictionary<string, V2i -> Camera -> DateTime -> list<'msg>>
+        timeHandlers    : Dictionary<string, V2i -> Camera -> DateTime -> list<'msg>>
         handlers        : Dictionary<string * string, V2i -> Camera -> list<string> -> list<'msg>>
         scenes          : Dictionary<string, Ui<'msg> * IMod<Camera> * ISg<'msg>>
         references      : Dictionary<string * ReferenceKind, Reference>
@@ -390,6 +392,54 @@ module UiReaders =
         let mutable initial = true
 
 
+        static let toAttributeValue (state : UpdateState<'msg>) (id : string) (name : string) (v : AttributeValue<'msg>) =
+            match name with
+                | "onrendered" ->
+                    let cb =
+                        match v with
+                            | Event([], cb) -> 
+                                Some (fun _ _ (d : DateTime) -> cb [string d.Ticks])
+                            | ControlEvent([], cb) ->
+                                Some (fun s c (d : DateTime) -> cb s c [string d.Ticks])
+                            | _ ->
+                                None
+
+                    match cb with
+                        | Some cb -> 
+                            state.newTimeHandlers.[id] <- cb
+                            state.timeHandlers.[id] <- cb
+                        | None -> ()
+
+                    None
+                | _ -> 
+                    match v with
+                        | Value str -> 
+                            Some str
+
+                        | Event (props, cb) ->
+                            state.handlers.[(id, name)] <- fun _ _ v -> cb v
+                            let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
+                            sprintf "aardvark.processEvent(%s)" args |> Some
+                                    
+                        | ClientEvent getCode ->
+                            let code = getCode id
+                            Some code
+
+                        | ControlEvent(props, cb) ->
+                            state.handlers.[(id, name)] <- fun s c v -> cb s c v
+                            let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
+                            sprintf "aardvark.processEvent(%s); event.preventDefault();" args |> Some
+
+        static let destroyAttribute (state : UpdateState<'msg>) (id : string) (name : string) =
+            match name with
+                | "onrendered" -> 
+                    state.timeHandlers.Remove id |> ignore
+                    false
+                | _ ->
+                    state.handlers.Remove (id,name) |> ignore
+                    true
+
+
         member x.Tag = ui.Tag
         member x.Id = id
 
@@ -453,56 +503,29 @@ module UiReaders =
                         ()
 
                 for (name, value) in Map.toSeq ui.InitialAttributes do
-                    let value = 
-                        match value with
-                            | Value str -> 
-                                str
-
-                            | Event (props, cb) ->
-                                state.handlers.[(id, name)] <- fun _ _ v -> cb v
-                                let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                                sprintf "aardvark.processEvent(%s)" args
-
-                            | ClientEvent getCode ->
-                                let code = getCode id
-                                code
-
-                            | ControlEvent(props, cb) ->
-                                state.handlers.[(id, name)] <- fun s c v -> cb s c v
-                                let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                                sprintf "aardvark.processEvent(%s); event.preventDefault();" args
-
-                    code.Add(SetAttribute(self, name, value))
+                    match toAttributeValue state id name value with
+                        | Some value ->
+                            code.Add(SetAttribute(self, name, value))
+                        | None ->
+                            ()
 
             let attOps = rAtt.GetOperations(token)
             for (name, op) in attOps do
                 match op with
                     | ElementOperation.Set v -> 
-                        let value = 
-                            match v with
-                                | Value str -> 
-                                    str
-
-                                | Event (props, cb) ->
-                                    state.handlers.[(id, name)] <- fun _ _ v -> cb v
-                                    let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                                    sprintf "aardvark.processEvent(%s)" args
-                                    
-                                | ClientEvent getCode ->
-                                    let code = getCode id
-                                    code
-
-                                | ControlEvent(props, cb) ->
-                                    state.handlers.[(id, name)] <- fun s c v -> cb s c v
-                                    let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                                    sprintf "aardvark.processEvent(%s); event.preventDefault();" args
-
-                        code.Add(SetAttribute(self, name, value))
+                        match toAttributeValue state id name v with
+                            | Some value -> 
+                                code.Add(SetAttribute(self, name, value))
+                            | None ->
+                                ()
 
                     | ElementOperation.Remove ->
-                        code.Add(RemoveAttribute(self, name))
+                        if destroyAttribute state id name then
+                            code.Add(RemoveAttribute(self, name))
 
             code.Add (rContent.Update(token, self, state))
+
+
 
             JSExpr.Sequential (CSharpList.toList code)
 

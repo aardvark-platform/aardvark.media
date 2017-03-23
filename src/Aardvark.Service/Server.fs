@@ -41,6 +41,8 @@ type Message =
 
 type Command =
     | Invalidate
+    | Subscribe of eventName : string
+    | Unsubscribe of eventName : string
     
 
 
@@ -73,8 +75,7 @@ module Server =
         open System.Security
         open Microsoft.FSharp.NativeInterop
 
-        let downloadFBO (jpeg : TJCompressor) (downloadTime : Stopwatch) (compressTime : Stopwatch) (size : V2i) (ctx : Context) =
-            downloadTime.Start()
+        let downloadFBO (jpeg : TJCompressor) (size : V2i) (ctx : Context) =
             let pbo = GL.GenBuffer()
 
             let rowSize = 3 * size.X
@@ -88,8 +89,6 @@ module Server =
                 GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgb, PixelType.UnsignedByte, 0n)
 
                 let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
-                downloadTime.Stop()
-                compressTime.Start()
 
                 jpeg.Compress(
                     ptr, alignedRowSize, size.X, size.Y, 
@@ -100,14 +99,13 @@ module Server =
                 )
 
             finally
-                compressTime.Stop()
                 GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
                 GL.DeleteBuffer(pbo)
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
 
         type Framebuffer with
-            member x.DownloadJpegColor(jpeg : TJCompressor, downloadTime : Stopwatch, compressTime : Stopwatch) =
+            member x.DownloadJpegColor(jpeg : TJCompressor) =
                 let ctx = x.Context
                 use __ = ctx.ResourceLock
 
@@ -138,14 +136,14 @@ module Server =
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
                     
                     try
-                        ctx |> downloadFBO jpeg downloadTime compressTime size
+                        ctx |> downloadFBO jpeg size
                     finally
                         GL.DeleteFramebuffer(fbo)
                         GL.DeleteRenderbuffer(resolved)
 
                 else
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-                    ctx |> downloadFBO jpeg downloadTime compressTime size
+                    ctx |> downloadFBO jpeg size
 
     type ServerRenderTask(runtime : IRuntime, signature : IFramebufferSignature, camera : IMod<Camera>, sg : IMod<Trafo3d> -> IMod<Trafo3d> -> aset<IRenderObject>) =
         inherit AbstractRenderTask()
@@ -215,11 +213,6 @@ module Server =
         let framebuffer = runtime.CreateFramebuffer(signature, Set.empty, currentSize)
 
         let mutable frameCount = 0
-        let renderTime      = Stopwatch()
-        let downloadTime    = Stopwatch()
-        let compressTime    = Stopwatch()
-        let presentTime     = Stopwatch()
-        let totalTime       = Stopwatch()
 
         let jpeg = new TJCompressor()
 
@@ -233,17 +226,14 @@ module Server =
                 let renderTask = renderTask.GetValue self
                 let fbo = framebuffer.GetValue self
 
-                renderTime.Start()
                 let output = OutputDescription.ofFramebuffer fbo
                 clearTask.Run(self, RenderToken.Empty, output)
                 renderTask.Run(self, RenderToken.Empty, output)
-                renderTime.Stop()
 
                 let fbo = unbox<Aardvark.Rendering.GL.Framebuffer> fbo
 
-                let data = fbo.DownloadJpegColor(jpeg, downloadTime, compressTime)
+                let data = fbo.DownloadJpegColor(jpeg)
 
-                presentTime.Start()
                 data
             )
 
@@ -431,34 +421,6 @@ module Server =
                     x.Dispose()
 
                 | Rendered ->
-                    presentTime.Stop()
-                    
-
-                    if frameCount >= 30 then
-                        totalTime.Stop()
-                        Log.start "statistics"
-
-                        let accounted = renderTime.MicroTime + downloadTime.MicroTime + compressTime.MicroTime + presentTime.MicroTime
-                        let unaccounted = totalTime.MicroTime - accounted
-
-                        Log.line "render    %A" (renderTime.MicroTime / float frameCount)
-                        Log.line "download  %A" (downloadTime.MicroTime / float frameCount)
-                        Log.line "compress  %A" (compressTime.MicroTime / float frameCount)
-                        Log.line "present   %A" (presentTime.MicroTime / float frameCount)
-                        Log.line "unknown   %A" (unaccounted / float frameCount)
-                        Log.line "total     %A (%.2f fps)" (totalTime.MicroTime / float frameCount) (float frameCount / totalTime.Elapsed.TotalSeconds)
-
-                        renderTime.Reset()
-                        downloadTime.Reset()
-                        compressTime.Reset()
-                        presentTime.Reset()
-                        totalTime.Reset()
-                        frameCount <- 0
-
-                        Log.stop()
-                        totalTime.Start()
-
-
                     frameCount <- frameCount + 1
 
 
@@ -506,6 +468,8 @@ module Server =
     type AbstractRenderResult() =
         inherit AdaptiveObject()
         
+
+
         [<DefaultValue; ThreadStatic>]
         static val mutable private TJCompressor : TJCompressor
         
@@ -517,10 +481,17 @@ module Server =
                 res
             else
                 current
-                
+        
+        let rendered = new Event<V2i>()
+        member x.OnRendered = rendered.Publish
+
+
 
         abstract member PerformRender : AdaptiveToken * V2i -> IFramebuffer
         abstract member Dispose : unit -> unit
+
+        member x.Presented(size : V2i) =
+            rendered.Trigger(size)
 
         member x.Render(token : AdaptiveToken, size : V2i) =
             x.EvaluateAlways token (fun token ->
@@ -528,24 +499,19 @@ module Server =
                 res
             )
 
-        member x.RenderJpeg(token : AdaptiveToken, size : V2i, download : Stopwatch, compress : Stopwatch) =
+        member x.RenderJpeg(token : AdaptiveToken, size : V2i) =
             let res = x.Render(token, size)
             match res with
                 | :? Aardvark.Rendering.GL.Framebuffer as fbo ->
-                    fbo.DownloadJpegColor(compressor(), download, compress)
+                    fbo.DownloadJpegColor(compressor())
                 | _ ->
                     failwith "not implemented"
-
-
-
-
 
     let start (runtime : IRuntime) (port : int) (additional : list<WebPart<HttpContext>>) (content : string -> IFramebufferSignature -> Option<AbstractRenderResult>) =
         let config =
             { defaultConfig with
                 bindings = [ HttpBinding.create HTTP IPAddress.Any (uint16 port) ] 
             }
-
 
         let signature =
             runtime.CreateFramebufferSignature(
@@ -556,16 +522,17 @@ module Server =
             )
 
         let render (targetId : string) (s : WebSocket) (context: HttpContext) =
+            let request = context.request
+            let p = request.query |> Map.ofList
+            printfn "%A" p
+
             match content targetId signature with
                 | Some result ->
-                    let download = Stopwatch()
-                    let compress = Stopwatch()
-
                     let lastSize = Mod.init V2i.II
                     let jpegData = 
                         Mod.custom (fun token ->
                             let size = lastSize.GetValue token
-                            result.RenderJpeg(token, size, download, compress)
+                            result.RenderJpeg(token, size)
                         )
 
                     let mutable running = true
@@ -610,6 +577,7 @@ module Server =
                                                 | Rendered ->
                                                     caller.OutOfDate <- false
                                                     token.Release()
+                                                    result.Presented(lastSize.Value)
 
                                                 | Shutdown ->
                                                     running <- false
@@ -636,40 +604,6 @@ module Server =
                     socket {
                         ()
                     }
-//            let ctrl = RenderControl(runtime, targetId, s, 8)
-//
-//            match content targetId ctrl.FramebufferSignature with
-//                | Some task -> 
-//                    ctrl.Camera <- task.Camera
-//                    ctrl.RenderTask <- task
-//                | None -> 
-//                    ()
-
-//            socket {
-//                let mutable running = true
-//                try
-//                    while running do
-//                        let! msg = s.readMessage()
-//                        match msg with
-//                            | (Text, data) ->
-//                                try
-//                                    let msg = data |> Pickler.json.UnPickle
-//                                    ctrl.Received msg
-//                                with _ ->
-//                                    Log.warn "[Service:%s] bad message: %A" targetId (Encoding.UTF8.GetString data)
-//
-//                            | (Close, _) ->
-//                                Log.line "[Service:%s] closing" targetId
-//                                running <- false
-//
-//                            | (Binary,_) ->
-//                                Log.warn "[Service:%s] bad message (binary)" targetId
-//            
-//                            | _ ->
-//                                ()
-//                finally
-//                    ctrl.Received Shutdown
-//            }
 
         let index = 
             choose [
