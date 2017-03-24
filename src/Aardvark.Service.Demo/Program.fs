@@ -87,7 +87,7 @@ module TestApp =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
         let cam = Mod.constant (Camera.create view frustum)
 
-        div' [style { backgroundColor C4b.Red }; attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
+        div' [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
 
             require semui  [
                 div' [ attribute "class" "ui visible sidebar inverted vertical menu"; attribute "style" "min-width: 250px" ] [

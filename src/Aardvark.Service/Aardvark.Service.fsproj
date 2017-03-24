@@ -61,12 +61,13 @@
   </Target>
   -->
   <ItemGroup>
-    <Content Include="aardvark.js">
+    <EmbeddedResource Include="aardvark.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <None Include="template.html">
+    </EmbeddedResource>
+    <EmbeddedResource Include="aardvark.css" />
+    <EmbeddedResource Include="template.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    </EmbeddedResource>
     <Compile Include="TurboJpeg.fs" />
     <Compile Include="Server.fs" />
   </ItemGroup>

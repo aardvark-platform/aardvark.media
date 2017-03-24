@@ -1,0 +1,36 @@
+﻿
+.menubutton .text {
+  position: absolute;
+  white-space: nowrap;
+  top: auto;
+  left: 54px;
+  opacity: 0;
+  transition: 0.3s opacity 0.3s;
+}
+
+.fixed.launch.button.menubutton:hover .text {
+  opacity: 1;
+}
+
+.fixed.launch.button.menubutton {
+    display: block;
+    position: fixed; 
+    top: 2.5em; 
+    left: 0px; 
+    width: 55px; 
+    height: auto; 
+    white-space: nowrap; 
+    overflow: hidden;
+    transition: 0.3s width ease; 
+    text-align: left;
+    padding-left: .75em;
+    border-radius: 0 .28571429rem .28571429rem 0;
+}
+
+.fixed.launch.button.menubutton .icon {
+    margin-left: 0px;
+}
+
+.fixed.launch.button.menubutton:hover {
+    width: 130px;
+}

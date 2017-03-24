@@ -840,6 +840,11 @@ module Attributes =
     
     let inline clazz value = attribute "class" value
 
+    let inline style value = attribute "style" value
+
+    let inline js (name : string) (code : string) =
+        name, ClientEvent(fun id -> code.Replace("__ID__", id))
+
     /// Helper to build space separated class
     let inline classList (list: (string*bool) seq) =
         list

@@ -110,58 +110,87 @@ module Viewer =
 
 
     let view (model : MViewerModel) =
+        let cam =
+            Mod.constant (Camera.create (CameraView.lookAt (V3d(3.0, 4.0, 5.0)) V3d.Zero V3d.OOI) (Frustum.perspective 60.0 0.1 100.0 1.0))
         require semui [
-            button' [clazz "ui button"; clientEvent "onclick" "$('.ui.modal').modal('show');"] [
-                text' "Import"
-            ]
+            div' [clazz "pushable"] [
 
-            onBoot "$('#__ID__').modal();" [
-                div' [clazz "ui modal"] [
-                    i' [clazz "close icon"] []
-                    div' [clazz "header"] [text' "Open File"]
-                    div' [clazz "content"] [
-                        button' [clazz "ui button"; onClick (fun _ -> OpenFile)] [text' "browse"]
-                        br' []
-                        text (
-                            model.file |> Mod.map (fun str -> 
-                                match str with
-                                    | Some str -> System.Web.HtmlString("file: " + str.Replace("\\", "\\\\")).ToHtmlString()
-                                    | None -> "please select a file"
-                            )
-                        )
-
-                        br' []
-
-                        text' "Up Direction: "
-
-                        onBoot "setTimeout(0);$(__ID__).dropdown();" [
-                            div' [clazz "ui dropdown"] [
-                                input' [attribute "type" "hidden"; attribute "name" "updir"]
-                                i' [clazz "dropdown icon"] []
-                                div' [clazz "default text"] [ text' "Up Direction"]
-                                div' [clazz "menu"] [
-                                    div' [clazz "item"; attribute "data-value" "x"] [text' "X"]
-                                    div' [clazz "item"; attribute "data-value" "y"] [text' "Y"]
-                                    div' [clazz "item"; attribute "data-value" "z"] [text' "Z"]
+                div' [ clazz "ui sidebar inverted vertical menu wide" ] [
+                    div' [ clazz "item"] [ 
+                        b' [] [text' "File"]
+                        div' [ clazz "menu" ] [
+                            div' [clazz "item"] [
+                                button' [clazz "ui button"; clientEvent "onclick" "$('.ui.modal').modal('show'); $('#n14').dropdown();"] [
+                                    text' "Import"
                                 ]
                             ]
                         ]
-//                        select' [clazz "ui dropdown mini"; ] [
-//                            option' [] [text' "X"]
-//                            option' [] [text' "Y"]
-//                            option' [attribute "selected" "selected"] [text' "Z"]
-//                        ] 
-
-                        br' []
-
                     ]
-                    div' [clazz "actions"] [
-                        div' [clazz "ui button deny"; onClick (fun _ -> Nope)] [text' "Cancel"]
-                        div' [clazz "ui button positive"; onClick (fun _ -> Accept)] [text' "Open"]
+                ]
+
+                div' [clazz "pusher"] [
+
+                    div' [
+                        clazz "ui black big launch right attached fixed button menubutton"
+                        js "onclick"        "$('.sidebar').sidebar('toggle');"
+                    ] [
+                        i' [clazz "content icon"] [] 
+                        Ui("span", AMap.ofList [clazz "text"], Mod.constant "Menu")
+                    ]
+
+                    renderControl'
+                        cam
+                        [
+                            attribute "style" "width:100%; height: 100%"
+                        ]
+                        (
+                            Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
+                                |> Sg.shader {
+                                    do! DefaultSurfaces.trafo
+                                    do! DefaultSurfaces.vertexColor
+                                    do! DefaultSurfaces.simpleLighting
+                                }
+                                |> Sg.noEvents
+                        )
+
+
+                    onBoot "$('#__ID__').modal({ onApprove: function() { $('.sidebar').sidebar('hide'); } });" [
+                        div' [clazz "ui modal"] [
+                            i' [clazz "close icon"] []
+                            div' [clazz "header"] [text' "Open File"]
+                            div' [clazz "content"] [
+                                button' [clazz "ui button"; onClick (fun _ -> OpenFile)] [text' "browse"]
+                                br' []
+                                text (
+                                    model.file |> Mod.map (fun str -> 
+                                        match str with
+                                            | Some str -> System.Web.HtmlString("file: " + str.Replace("\\", "\\\\")).ToHtmlString()
+                                            | None -> "please select a file"
+                                    )
+                                )
+//
+//                                br' []
+//
+//                                text' "Up Direction: "
+//
+//
+//                                select' [] [
+//                                    option' [attribute "value" "x"] [text' "X"]
+//                                    option' [attribute "value" "y"] [text' "Y"]
+//                                    option' [attribute "value" "z"; attribute "selected" "selected"] [text' "Z"]
+//                                ]
+//
+//                                br' []
+
+                            ]
+                            div' [clazz "actions"] [
+                                div' [clazz "ui button deny"; onClick (fun _ -> Nope)] [text' "Cancel"]
+                                div' [clazz "ui button positive"; onClick (fun _ -> Accept)] [text' "Open"]
+                            ]
+                        ]
                     ]
                 ]
             ]
-            //div' [clazz "ui modal"] []
 
         ]
 

@@ -60,8 +60,27 @@ module Server =
     open System.IO
     open System.Diagnostics
 
-    let template = File.ReadAllText("template.html")
-    let aardvark = File.ReadAllText("aardvark.js")
+    let private tryFindResource = 
+        let self = typeof<IServerRenderControl>.Assembly
+        let names = self.GetManifestResourceNames()
+        let cache = System.Collections.Concurrent.ConcurrentDictionary<string, Option<string>>()
+        fun (name : string) ->
+            cache.GetOrAdd(name, fun name ->
+                try
+                    use stream = self.GetManifestResourceStream(name)
+                    let reader = new StreamReader(stream)
+                    let content = reader.ReadToEnd()
+                    Some content
+                with _ ->
+                    None
+            )
+
+
+
+
+    let template = tryFindResource "template.html" |> Option.get
+    let aardvarkjs = tryFindResource "aardvark.js" |> Option.get
+    let aardvarkcss = tryFindResource "aardvark.css" |> Option.get
 
     [<AutoOpen>]
     module private GLDownload = 
@@ -608,7 +627,8 @@ module Server =
         let index = 
             choose [
                 yield GET >=> path "/" >=> OK template
-                yield GET >=> path "/aardvark.js" >=> OK aardvark
+                yield GET >=> path "/aardvark.js" >=> OK aardvarkjs
+                yield GET >=> path "/aardvark.css" >=> OK aardvarkcss
                 yield pathScan "/render/%s" (render >> handShake)
                 yield! additional
             ]
