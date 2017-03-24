@@ -63,24 +63,31 @@ module Server =
     let private tryFindResource = 
         let self = typeof<IServerRenderControl>.Assembly
         let names = self.GetManifestResourceNames()
-        let cache = System.Collections.Concurrent.ConcurrentDictionary<string, Option<string>>()
+        let cache = System.Collections.Concurrent.ConcurrentDictionary<string, Option<byte[]>>()
         fun (name : string) ->
             cache.GetOrAdd(name, fun name ->
                 try
                     use stream = self.GetManifestResourceStream(name)
-                    let reader = new StreamReader(stream)
-                    let content = reader.ReadToEnd()
-                    Some content
+                    let arr = Array.zeroCreate (int stream.Length)
+                    let mutable read = 0
+                    while read < arr.Length do
+                        read <- read + stream.Read(arr, read, arr.Length - read)
+
+                    Some arr
                 with _ ->
                     None
             )
 
+    let private tryFindText name =
+        match tryFindResource name with
+            | Some res -> System.Text.Encoding.UTF8.GetString(res) |> Some
+            | None -> None
 
 
-
-    let template = tryFindResource "template.html" |> Option.get
-    let aardvarkjs = tryFindResource "aardvark.js" |> Option.get
-    let aardvarkcss = tryFindResource "aardvark.css" |> Option.get
+    let template = tryFindText "template.html" |> Option.get
+    let aardvarkjs = tryFindText "aardvark.js" |> Option.get
+    let aardvarkcss = tryFindText "aardvark.css" |> Option.get
+    let aardvarksvg = tryFindText "aardvark.svg" |> Option.get
 
     [<AutoOpen>]
     module private GLDownload = 
@@ -530,6 +537,11 @@ module Server =
         let config =
             { defaultConfig with
                 bindings = [ HttpBinding.create HTTP IPAddress.Any (uint16 port) ] 
+//                mimeTypesMap = fun str ->
+//                    match str with
+//                        | ".svg" -> Some { MimeType.name = "image/svg+xml"; MimeType.compression = false }
+//                        | _ -> defaultConfig.mimeTypesMap str
+
             }
 
         let signature =
@@ -624,11 +636,13 @@ module Server =
                         ()
                     }
 
+
         let index = 
             choose [
                 yield GET >=> path "/" >=> OK template
                 yield GET >=> path "/aardvark.js" >=> OK aardvarkjs
                 yield GET >=> path "/aardvark.css" >=> OK aardvarkcss
+                yield GET >=> path "/aardvark.svg" >=> OK aardvarksvg >=> Writers.setMimeType "image/svg+xml"
                 yield pathScan "/render/%s" (render >> handShake)
                 yield! additional
             ]

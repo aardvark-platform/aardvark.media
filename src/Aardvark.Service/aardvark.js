@@ -24,14 +24,36 @@ class Renderer {
         this.buffer = [];
         this.isOpen = false;
         this.isClosed = false;
+        this.loading = true;
 
         this.init();
     }
 
+    createLoader() {
+        if (!this.loader) {
+            var loader = document.createElement("div");
+            this.div.appendChild(loader);
+            loader.setAttribute("class", "loader");
+
+            this.loader = loader;
+        }
+        return this.loader;
+    }
+
+    destroyLoader() {
+        if (this.loader) {
+            var loader = this.loader;
+            delete this.loader;
+            this.div.removeChild(loader);
+        }
+    }
+
     init() {
         var img = document.createElement("img");
-        img.setAttribute("class", "rendercontrol");
         this.div.appendChild(img);
+        img.setAttribute("class", "rendercontrol");
+
+        this.createLoader();
         this.img = img;
 
 
@@ -65,11 +87,13 @@ class Renderer {
         socket.onclose = function () {
             self.isOpen = false;
             self.isClosed = true;
+            self.fadeOut();
         };
 
         socket.onerror = function (err) {
             console.warn(err);
             self.isClosed = true;
+            self.fadeOut();
         };
 
         this.img.oncontextmenu = function (e) { e.preventDefault(); };
@@ -241,11 +265,33 @@ class Renderer {
         }
     }
 
+    fadeIn() {
+        if (this.loading) {
+            this.loading = false;
+            var self = this;
+            console.log("start fade");
+            $(this.img).animate({ opacity: 1.0 }, 400, "swing", function () {
+                self.destroyLoader();
+            });
+        }
+    }
+
+    fadeOut() {
+        if (!this.loading) {
+            this.loading = true;
+            this.createLoader();
+            console.log("start fade");
+            $(this.img).animate({ opacity: 0.0 }, 400, "swing", function () { console.log("faded"); });
+        }
+    }
 
     received(msg) {
         if (msg.data instanceof Blob) {
             this.img.src = urlCreator.createObjectURL(msg.data);
             this.send(JSON.stringify({ Case: "Rendered" }));
+            if (this.loading) {
+                this.fadeIn();
+            }
         }
         else {
             var o = JSON.parse(msg.data);
@@ -424,9 +470,6 @@ aardvark.render = function (id) {
 
 $(document).ready(function () {
 
-    $("head").append($("<style type='text/css'>img.rendercontrol:focus { outline: none; } div.aardvark { background-color: black } </style>"));
-
-
     function getUrl(proto, subpath) {
         var l = window.location;
         var path = l.pathname;
@@ -468,6 +511,15 @@ $(document).ready(function () {
                 channel.onmessage(message.data);
             }
         }
+    };
+
+    eventSocket.onclose = function () {
+        aardvark.processEvent = function () { };
+    };
+
+    eventSocket.onerror = function (e) {
+        console.warn(e);
+        aardvark.processEvent = function () { };
     };
 
     function checkDOMChange() {

@@ -138,6 +138,10 @@ module Viewer =
                         Ui("span", AMap.ofList [clazz "text"], Mod.constant "Menu")
                     ]
 
+//                    div' [clazz "aardvark"; attribute "style" "width:100%; height: 100%"] [
+//                        img' [clazz "rendercontrol loading"]
+//                    ]
+
                     renderControl'
                         cam
                         [
@@ -217,14 +221,14 @@ module Viewer =
         Async.Start <|
             async {
                 do! Async.SwitchToNewThread()
-                App.start runtime 1234 app
+                App.start runtime 4321 app
             }
 
 
-        use form = new Form()
+        use form = new Form(Width = 1024, Height = 768)
         use ctrl = new Xilium.CefGlue.WindowsForms.CefWebBrowser()
         ctrl.Dock <- DockStyle.Fill
         form.Controls.Add ctrl
-        ctrl.StartUrl <- "http://localhost:1234/main/"
+        ctrl.StartUrl <- "http://localhost:4321/main/"
 
         Application.Run form
