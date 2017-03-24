@@ -350,6 +350,7 @@
     <EmbeddedResource Include="template.html">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
+    <EmbeddedResource Include="aardvark-light.svg" />
     <EmbeddedResource Include="aardvark.svg" />
     <Compile Include="TurboJpeg.fs" />
     <Compile Include="Server.fs" />

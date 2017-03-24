@@ -80,6 +80,7 @@ module Viewer =
         | Accept 
         | Nope
         | OpenFile
+        | TimeElapsed
 
     let openDialog () =
         let mutable r = Unchecked.defaultof<_>
@@ -91,8 +92,17 @@ module Viewer =
             else r <- None
         )) |> ignore
         r
+
+    let sw = System.Diagnostics.Stopwatch()
+    
+
     let update (model : ViewerModel) (msg : Message) =
         match msg with
+            | TimeElapsed ->
+                let dt = sw.Elapsed.TotalSeconds
+                sw.Restart()
+                { model with rotation = model.rotation + dt }
+
             | OpenFile ->
                 let res = openDialog()
                 { model with file = res }
@@ -146,6 +156,7 @@ module Viewer =
                         cam
                         [
                             attribute "style" "width:100%; height: 100%"
+                            onRendered (fun _ _ _ -> TimeElapsed)
                         ]
                         (
                             Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
@@ -155,6 +166,7 @@ module Viewer =
                                     do! DefaultSurfaces.simpleLighting
                                 }
                                 |> Sg.noEvents
+                                |> Sg.trafo (model.rotation |> Mod.map Trafo3d.RotationZ)
                         )
 
 
@@ -200,7 +212,7 @@ module Viewer =
 
     let app =
         {
-            initial = { file = None }
+            initial = { rotation = 0.0; file = None }
             update = update
             view = view
         }

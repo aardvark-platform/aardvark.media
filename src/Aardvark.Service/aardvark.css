@@ -1,14 +1,23 @@
 ﻿
+/* RenderControl styles */
 img.rendercontrol:focus { 
     outline: none; 
 } 
 
 img.rendercontrol {
-    background-color: dimgray;
     opacity: 0;
 }
 
-div.loader {
+div.aardvark:focus { 
+    outline: none; 
+} 
+
+div.aardvark { 
+    display: block;
+}
+
+/* Loading-Screen */
+div.loaderOld {
     position:absolute;
 
     background-image: 
@@ -46,16 +55,111 @@ div.loader {
     z-index: -1;
 }
 
+div.loader {
+    position:absolute;
 
-div.aardvark:focus { 
-    outline: none; 
-} 
+    background-color: black;
 
-div.aardvark { 
-    display: block;
+    background-image: 
+        url('/aardvark-light.svg');
+     
+    background-size: 
+        300px;
+
+    background-position: 
+        center center;
+
+    background-repeat: 
+        no-repeat;
+
+    left: 0px;
+    top: 0px;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+}
+
+.fountainG{
+	position:absolute;
+	top:0;
+	background-color:rgb(115,115,115);
+	width:28px;
+	height:28px;
+	animation-name:bounce_fountainG;
+	animation-duration:1.5s;
+	animation-iteration-count:infinite;
+	animation-direction:normal;
+	transform:scale(.5);
+	border-radius:19px;
+}
+
+.fountainG_0{
+	position:absolute;
+	width:234px;
+	height:28px;
+	margin-left:-117px;
+    margin-top: 100px;
+    left: 50%;
+    top: 50%;
+}
+.fountainG.fountainG_1{
+	left:0;
+	animation-delay:0.6s;
+}
+
+.fountainG.fountainG_2{
+	left:29px;
+	animation-delay:0.75s;
+}
+
+.fountainG.fountainG_3{
+	left:58px;
+	animation-delay:0.9s;
+}
+
+.fountainG.fountainG_4{
+	left:88px;
+	animation-delay:1.05s;
+}
+
+.fountainG.fountainG_5{
+	left:117px;
+	animation-delay:1.2s;
+}
+
+.fountainG.fountainG_6{
+	left:146px;
+	animation-delay:1.35s;
+}
+
+.fountainG.fountainG_7{
+	left:175px;
+	animation-delay:1.5s;
+}
+
+.fountainG.fountainG_8{
+	left:205px;
+	animation-delay:1.64s;
 }
 
 
+
+@keyframes bounce_fountainG{
+	0%{
+	    transform:scale(1);
+		background-color:rgb(115,115,115);
+	}
+
+	100%{
+	    transform:scale(.5);
+		background-color:rgb(255,255,255);
+	}
+}
+
+
+
+
+/* Menu-Button (fixed location atm.) */
 .fixed.launch.button.menubutton .text {
   position: absolute;
   white-space: nowrap;

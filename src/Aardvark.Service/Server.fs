@@ -88,6 +88,7 @@ module Server =
     let aardvarkjs = tryFindText "aardvark.js" |> Option.get
     let aardvarkcss = tryFindText "aardvark.css" |> Option.get
     let aardvarksvg = tryFindText "aardvark.svg" |> Option.get
+    let aardvarksvgLight = tryFindText "aardvark-light.svg" |> Option.get
 
     [<AutoOpen>]
     module private GLDownload = 
@@ -643,6 +644,7 @@ module Server =
                 yield GET >=> path "/aardvark.js" >=> OK aardvarkjs
                 yield GET >=> path "/aardvark.css" >=> OK aardvarkcss
                 yield GET >=> path "/aardvark.svg" >=> OK aardvarksvg >=> Writers.setMimeType "image/svg+xml"
+                yield GET >=> path "/aardvark-light.svg" >=> OK aardvarksvgLight >=> Writers.setMimeType "image/svg+xml"
                 yield pathScan "/render/%s" (render >> handShake)
                 yield! additional
             ]

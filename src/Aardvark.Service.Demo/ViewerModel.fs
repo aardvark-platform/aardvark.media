@@ -7,4 +7,5 @@ open Aardvark.Base.Incremental
 type ViewerModel =
     {
         file : Option<string>
+        rotation : float
     }

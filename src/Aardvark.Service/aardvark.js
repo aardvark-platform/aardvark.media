@@ -35,6 +35,20 @@ class Renderer {
             this.div.appendChild(loader);
             loader.setAttribute("class", "loader");
 
+            $(loader).html(
+                "<div class='fountainG_0'>" +
+	            "<div class='fountainG_1 fountainG'></div>" +
+	            "<div class='fountainG_2 fountainG'></div>" +
+	            "<div class='fountainG_3 fountainG'></div>" +
+	            "<div class='fountainG_4 fountainG'></div>" +
+	            "<div class='fountainG_5 fountainG'></div>" +
+	            "<div class='fountainG_6 fountainG'></div>" +
+	            "<div class='fountainG_7 fountainG'></div>" +
+	            "<div class='fountainG_8 fountainG'></div>" +
+                "</div>"
+            );
+
+
             this.loader = loader;
         }
         return this.loader;
@@ -269,7 +283,7 @@ class Renderer {
         if (this.loading) {
             this.loading = false;
             var self = this;
-            console.log("start fade");
+            console.log("aardvark here");
             $(this.img).animate({ opacity: 1.0 }, 400, "swing", function () {
                 self.destroyLoader();
             });
@@ -280,8 +294,8 @@ class Renderer {
         if (!this.loading) {
             this.loading = true;
             this.createLoader();
-            console.log("start fade");
-            $(this.img).animate({ opacity: 0.0 }, 400, "swing", function () { console.log("faded"); });
+            console.log("aardvark died");
+            $(this.img).animate({ opacity: 0.0 }, 400, "swing");
         }
     }
 
