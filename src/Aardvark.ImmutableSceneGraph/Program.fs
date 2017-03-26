@@ -138,7 +138,7 @@ let main argv =
         else 
             //let three3dInstance, fablishResult = SingleMultiView.createApp win.Keyboard win.Mouse renderRect camera
             //let three3dInstance, fablishResult = ModelingTool.createApp win win.Time win.Keyboard win.Mouse renderRect camera
-            let three3dInstance, fablishResult = ComposeTest.createApp (Some 0) win.Time win.Keyboard win.Mouse renderRect camera
+            let three3dInstance, fablishResult = ComposeTestDrawing.createApp (Some 0) win.Time win.Keyboard win.Mouse renderRect camera
             let res = client.LoadUrlAsync fablishResult.localUrl
             three3dInstance.sg, fablishResult.shutdown
 

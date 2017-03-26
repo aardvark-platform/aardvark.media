@@ -287,7 +287,7 @@ module PlaceTransformObjects =
             subscriptions = Subscriptions.none
         }
 
-module ComposedTestApp = 
+module IntegrationApp = 
     open Aardvark.Base
     open Aardvark.Base.Rendering
 

@@ -120,10 +120,12 @@ module OrbitCameraApp =
         panning = None
         zooming = None
         picking = None
-        forward = V2d.OO
-        forwardSpeed = 0.0
+        forward = V2d.OO        
         center = Some V3d.Zero
         navigationMode = NavigationMode.FreeFly
+        zoomFactor = 2.0
+        orientFactor = 2.0
+        panFactor = 2.0
         }
 
     let ofPickMsg _ m = []
@@ -204,9 +206,9 @@ module FreeFlyCameraApp =
     let left = -V2d.IO
     let right = V2d.IO
     let clampDir (v : V2d) = V2d(clamp -1.0 1.0 v.X, clamp -1.0 1.0 v.Y)
-    let orientationFctr = 1.0
-    let panningFctr = 1.0
-    let zoomingFctr = 1.0
+    let orientationFctr = 2.0
+    let panningFctr = 3.0
+    let zoomingFctr = 3.0
 
     let update e (m : Model) msg = 
         match msg with            
@@ -238,17 +240,17 @@ module FreeFlyCameraApp =
     let subscriptions (time : IMod<DateTime>) (m : Model) =
         Many [
             
-            Input.toggleKey Keys.W (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
-            Input.toggleKey Keys.S (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
-            Input.toggleKey Keys.A (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
-            Input.toggleKey Keys.D (fun _ -> AddMove right)     (fun _ -> RemoveMove right)                                   
+            Input.toggleKey Keys.Up (fun _ -> AddMove forward)   (fun _ -> RemoveMove forward)
+            Input.toggleKey Keys.Down (fun _ -> AddMove backward)  (fun _ -> RemoveMove backward)
+            Input.toggleKey Keys.Left (fun _ -> AddMove left)      (fun _ -> RemoveMove left)
+            Input.toggleKey Keys.Right (fun _ -> AddMove right)     (fun _ -> RemoveMove right)                                   
             
             Input.moveDelta MouseDelta     
 
             //Input.key Direction.Down Keys.W (fun b a -> TimeStep 20.0)
 
-            //Sub.time(TimeSpan.FromMilliseconds 25.0) ( fun a -> TimeStep 25.0)
-            //Sub.ofMod time (fun t ms -> [TimeStep ms])
+          //  Sub.time(TimeSpan.FromMilliseconds 25.0) ( fun a -> TimeStep 25.0)
+          //  Sub.ofMod time (fun t ms -> [TimeStep ms])
             Sub.Many <| CameraUtilities.mouseSubscriptions m |> Sub.map MouseAction
         ]
 
@@ -261,10 +263,12 @@ module FreeFlyCameraApp =
         panning = None
         zooming = None
         picking = None
-        forward = V2d.OO
-        forwardSpeed = 0.0 
+        forward = V2d.OO        
         center = Some V3d.Zero
         navigationMode = NavigationMode.FreeFly
+        zoomFactor = 2.0
+        orientFactor = 2.0
+        panFactor = 2.0
         }
 
     let groundIt (m : Model) =
@@ -274,7 +278,9 @@ module FreeFlyCameraApp =
             picking = None
             forward = V2d.OO
             lookingAround = None
-            forwardSpeed = 0.0 }
+            zoomFactor = 2.0
+            orientFactor = 2.0
+            panFactor = 2.0 }
 
     let app time : App<Model,MModel,Action,ISg<Action>> =
         {

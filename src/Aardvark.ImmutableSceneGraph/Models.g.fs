@@ -25,7 +25,9 @@ module Generated =
               center : Option<V3d>
               navigationMode : NavigationMode
               forward : V2d
-              forwardSpeed : float }
+              zoomFactor : float 
+              panFactor : float
+              orientFactor : float}
             
             member x.ToMod(reuseCache : ReuseCache) = 
                 { _original = x
@@ -38,7 +40,9 @@ module Generated =
                   mcenter = Mod.init (x.center)
                   mnavigationMode = Mod.init (x.navigationMode)
                   mforward = Mod.init (x.forward)
-                  mforwardSpeed = Mod.init (x.forwardSpeed) }
+                  mzoomFactor = Mod.init (x.zoomFactor)
+                  mpanFactor = Mod.init (x.panFactor)
+                  morientFactor = Mod.init(x.orientFactor) }
             
             interface IUnique with
                 
@@ -57,7 +61,9 @@ module Generated =
               mcenter : ModRef<Option<V3d>>
               mnavigationMode : ModRef<NavigationMode>
               mforward : ModRef<V2d>
-              mforwardSpeed : ModRef<float> }
+              mzoomFactor : ModRef<float>
+              mpanFactor : ModRef<float>
+              morientFactor : ModRef<float> }
             member x.Apply(arg0 : Model, reuseCache : ReuseCache) = 
                 if not (System.Object.ReferenceEquals(arg0, x._original)) then 
                     x._original <- arg0
@@ -69,7 +75,9 @@ module Generated =
                     x.mcenter.Value <- arg0.center
                     x.mnavigationMode.Value <- arg0.navigationMode
                     x.mforward.Value <- arg0.forward
-                    x.mforwardSpeed.Value <- arg0.forwardSpeed
+                    x.mzoomFactor.Value <- arg0.zoomFactor
+                    x.mpanFactor.Value <- arg0.panFactor
+                    x.morientFactor.Value <- arg0.orientFactor
     
     type Axis = 
         | X

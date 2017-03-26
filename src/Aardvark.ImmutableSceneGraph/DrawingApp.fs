@@ -457,7 +457,7 @@ module DrawingApp =
 
         three3dInstance, fablishInstance
 
-module ComposeTest =
+module ComposeTestDrawing =
 
     open ComposeTest
 
@@ -496,3 +496,43 @@ module ComposeTest =
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance
+
+//module ComposeTestIntegration =
+//
+//    open ComposeTest
+//
+//    let app s time =
+//        {
+//            initial = IntegrationApp.initial
+//            update = IntegrationApp.update
+//            view = IntegrationApp.view s
+//            ofPickMsg = fun _ _ -> []
+//            subscriptions = IntegrationApp.subscriptions time
+//        }
+//
+//    let createApp f time keyboard mouse viewport camera =
+//
+//        let initial = IntegrationApp.initial
+//        let composed = ComposedApp.ofUpdate initial (IntegrationApp.update)
+//
+//        let three3dApp  = {
+//            initial = initial
+//            update = IntegrationApp.update
+//            view = IntegrationApp.view 
+//            ofPickMsg = fun _ _ -> []
+//            subscriptions = IntegrationApp.subscriptions time
+//        }
+//
+//        let viewApp = 
+//            {
+//                initial = initial 
+//                update = IntegrationApp.update
+//                view = IntegrationApp.vi
+//                subscriptions = Fablish.CommonTypes.Subscriptions.none
+//                onRendered = OnRendered.ignore
+//            }
+//
+//        let three3dInstance = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+//        let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
+//
+//        three3dInstance, fablishInstance
