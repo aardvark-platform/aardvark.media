@@ -205,25 +205,22 @@ module FreeFlyCameraApp =
     let backward = -V2d.OI
     let left = -V2d.IO
     let right = V2d.IO
-    let clampDir (v : V2d) = V2d(clamp -1.0 1.0 v.X, clamp -1.0 1.0 v.Y)
-    let orientationFctr = 2.0
-    let panningFctr = 3.0
-    let zoomingFctr = 3.0
+    let clampDir (v : V2d) = V2d(clamp -1.0 1.0 v.X, clamp -1.0 1.0 v.Y)    
 
     let update e (m : Model) msg = 
         match msg with            
             | MouseDelta d -> 
                 match (m.lookingAround, m.panning, m.zooming) with
                     | Some _, None, None -> //orient
-                        let delta = Constant.PiTimesTwo * d * orientationFctr
+                        let delta = Constant.PiTimesTwo * d * m.orientFactor
                         let t = M44d.Rotation (m.camera.Right, -delta.Y) * M44d.Rotation (m.camera.Sky, -delta.X)
                         let forward = t.TransformDir m.camera.Forward |> Vec.normalize
                         { m with camera = m.camera.WithForward forward }
                     | None, Some _, None -> //pan
-                        let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * panningFctr
+                        let step = (m.camera.Down * float d.Y + m.camera.Right * float d.X) * m.panFactor
                         { m with camera = m.camera.WithLocation (m.camera.Location + step )}
                     | None, None, Some _ -> //zoom
-                        let step = (m.camera.Forward * float -d.Y) * zoomingFctr                        
+                        let step = (m.camera.Forward * float -d.Y) * m.zoomFactor                        
                         { m with camera = m.camera.WithLocation (m.camera.Location + step)}
                     | _,_,_ -> m
             | AddMove d    -> { m with forward = clampDir <| m.forward + d }
