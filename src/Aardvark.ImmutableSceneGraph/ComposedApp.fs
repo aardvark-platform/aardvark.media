@@ -169,7 +169,7 @@ module SingleMultiView =
                 onRendered = OnRendered.ignore
             }
 
-        let three3dInstance : Elmish.Running<Model,Action> = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
+        let three3dInstance : Elmish.Running<Model,_,Action> = ComposedApp.add3d composed keyboard mouse viewport camera three3dApp (fun m app -> m) id id
         let fablishInstance = ComposedApp.addUi composed Net.IPAddress.Loopback "8083" viewApp (fun m app -> m) id id
 
         three3dInstance, fablishInstance

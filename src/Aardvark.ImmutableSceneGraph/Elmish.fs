@@ -129,11 +129,12 @@ module Elmish =
         let inline a  (immut : ^immut) (mut : ^mut) (scope : ReuseCache) = (^mut : (member Apply : ^immut * ReuseCache -> unit) (mut,immut,scope))
         { unpersist = u; apply = a }
 
-    type Running<'model,'msg> =
+    type Running<'model,'mmodel,'msg> =
         {
             send : 'msg -> 'model
             emitModel : 'model -> unit
             model : IMod<'model>
+            mmodel : 'mmodel
             sg : ISg
         }
 
@@ -387,7 +388,7 @@ module Elmish =
 
 
 
-        { send = send; sg = view :> ISg; emitModel = updateModel; model = model :> IMod<_> }
+        { send = send; sg = view :> ISg; emitModel = updateModel; model = model :> IMod<_>; mmodel = mmodel }
 
     let inline createAppAdaptiveD (keyboard : IKeyboard) (mouse : IMouse) (viewport : IMod<Box2i>) (camera : IMod<Camera>) (onMessage : Option<Fablish.CommonTypes.Callback<'model,'msg>>) (app : App<'model,'mmodel,'msg, ISg<'msg>>)=
         createAppAdaptive keyboard mouse viewport camera ( unpersist ()) onMessage app
