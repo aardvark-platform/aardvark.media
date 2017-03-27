@@ -66,6 +66,13 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <PropertyGroup>
+        <__paket__AssimpNet_targets>AssimpNet</__paket__AssimpNet_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <PropertyGroup>
         <__paket__Aardvark_Compiler_DomainTypes_targets>Aardvark.Compiler.DomainTypes</__paket__Aardvark_Compiler_DomainTypes_targets>
       </PropertyGroup>
     </When>
@@ -84,6 +91,7 @@
     <Compile Include="Style.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="CameraController.fs" />
     <Compile Include="ViewerModel.fs" />
     <Compile Include="Viewer.fs" />
     <Compile Include="Program.fs" />
@@ -280,6 +288,17 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="Aardvark.SceneGraph.IO">
+          <HintPath>..\..\packages\Aardvark.SceneGraph.IO\lib\net45\Aardvark.SceneGraph.IO.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="Xilium.CefGlue">
           <HintPath>..\..\packages\Another.Unofficial.Xilium.CefGlue\lib\net40\Xilium.CefGlue.dll</HintPath>
           <Private>True</Private>
@@ -304,6 +323,17 @@
       <ItemGroup>
         <Reference Include="Xilium.CefGlue.WindowsForms">
           <HintPath>..\..\packages\Another.Unofficial.Xilium.CefGlue.WindowsForms\lib\net40\Xilium.CefGlue.WindowsForms.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="AssimpNet">
+          <HintPath>..\..\packages\AssimpNet\lib\net45\AssimpNet.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -542,5 +572,6 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes\build\$(__paket__Aardvark_Compiler_DomainTypes_targets).targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes\build\$(__paket__Aardvark_Compiler_DomainTypes_targets).targets')" Label="Paket" />
+  <Import Project="..\..\packages\AssimpNet\build\$(__paket__AssimpNet_targets).targets" Condition="Exists('..\..\packages\AssimpNet\build\$(__paket__AssimpNet_targets).targets')" Label="Paket" />
   <Import Project="..\..\packages\FSharp.Compiler.Service.ProjectCracker\build\$(__paket__FSharp_Compiler_Service_ProjectCracker_targets).targets" Condition="Exists('..\..\packages\FSharp.Compiler.Service.ProjectCracker\build\$(__paket__FSharp_Compiler_Service_ProjectCracker_targets).targets')" Label="Paket" />
 </Project>

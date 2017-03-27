@@ -416,6 +416,9 @@ module Sg =
     let normalizeAdaptive (sg : ISg<'msg>) =
         sg |> unboxed (Sg.normalizeAdaptive)
 
+    let effect e (sg : ISg<'msg>) =
+        sg |> unboxed (Sg.effect e)
+
     let adapter (o : obj) : ISg<'msg> =
         Sg.adapter o |> box
 

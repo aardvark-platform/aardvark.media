@@ -34,8 +34,14 @@ type JSExpr =
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module JSExpr =
+
+    let rx = System.Text.RegularExpressions.Regex "\\\"|\\\\"
+
     let escape (str : string) =
-        str.Replace("\"", "\\\"")
+        rx.Replace(str, fun m ->
+            if m.Value = "\"" then "\\\""
+            else "\\\\"
+        )
         
     let rec toJQueryString (e : JSExpr) =
         match e with
@@ -413,7 +419,7 @@ module UiReaders =
                     None
                 | _ -> 
                     match v with
-                        | Value str -> 
+                        | AttributeValue.Value str -> 
                             Some str
 
                         | Event (props, cb) ->

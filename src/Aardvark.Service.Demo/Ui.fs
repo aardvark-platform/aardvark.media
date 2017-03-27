@@ -604,6 +604,38 @@ module PersistentTags =
             | 3 -> MouseButtons.Right
             | _ -> MouseButtons.None
 
+    let mergeAttributes (key : string) (l : AttributeValue<'msg>) (r : AttributeValue<'msg>) =
+        match key, l, r with
+            | "class", Value l, Value r -> Value (l + " " + r)
+            | _, Event(la,lf), Event(ra, rf) ->
+                let cnt = List.length la
+                Event(la @ ra, fun args ->
+                    let la, ra = List.splitAt cnt args
+                    lf la @ rf ra
+                ) 
+            | _, ControlEvent(la,lf), ControlEvent(ra, rf) ->
+                let cnt = List.length la
+                ControlEvent(la @ ra, fun s c args ->
+                    let la, ra = List.splitAt cnt args
+                    lf s c la @ rf s c ra
+                ) 
+            | _, Event(la,lf), ControlEvent(ra, rf) ->
+                let cnt = List.length la
+                ControlEvent(la @ ra, fun s c args ->
+                    let la, ra = List.splitAt cnt args
+                    lf la @ rf s c ra
+                ) 
+                
+            | _, ControlEvent(la,lf), Event(ra, rf) ->
+                let cnt = List.length la
+                ControlEvent(la @ ra, fun s c args ->
+                    let la, ra = List.splitAt cnt args
+                    lf s c la @ rf ra
+                ) 
+
+            | _ ->
+                r
+
     let renderControl (cam : IMod<Camera>) (attributes : amap<string, AttributeValue<'msg>>) (sg : ISg<'msg>) =
         let pickTree = PickTree.ofSg sg
 
@@ -621,32 +653,39 @@ module PersistentTags =
 //                        failwith ""
 //            )
 
-        let attributes = 
-            attributes |> AMap.update keys (fun k v ->
-                match k with
-                    | "class" ->
-                        match v with
-                            | Some (Value str) -> Value ("aardvark " + str)
-                            | _ -> Value "aardvark"
+        let local =
+            AMap.ofList [
+                "class" , Value "aardvark"
+            ]
 
-                    | "onmousemove" ->
-                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(Move, ray))
-                        
-                    | "onmousedown" ->
-                        v |> AttributeValue.withRay1 "event.which" (fun b ray -> pickTree.Perform(Down (button b), ray))
-                        
-                    | "onmouseup" ->
-                        v |> AttributeValue.withRay1 "event.which" (fun b ray -> pickTree.Perform(Up (button b), ray))
-                        
-                    | "onclick" ->
-                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(Click MouseButtons.Left, ray))
+        let attributes = AMap.unionWith mergeAttributes local attributes
 
-                    | "ondblclick" ->
-                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(DoubleClick MouseButtons.Left, ray))
-
-                    | _ ->
-                        Option.get v
-            )
+//        let attributes = 
+//            attributes |> AMap.update keys (fun k v ->
+//                match k with
+//                    | "class" ->
+//                        match v with
+//                            | Some (Value str) -> Value ("aardvark " + str)
+//                            | _ -> Value "aardvark"
+//
+//                    | "onmousemove" ->
+//                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(Move, ray))
+//                        
+//                    | "onmousedown" ->
+//                        v |> AttributeValue.withRay1 "event.which" (fun b ray -> pickTree.Perform(Down (button b), ray))
+//                        
+//                    | "onmouseup" ->
+//                        v |> AttributeValue.withRay1 "event.which" (fun b ray -> pickTree.Perform(Up (button b), ray))
+//                        
+//                    | "onclick" ->
+//                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(Click MouseButtons.Left, ray))
+//
+//                    | "ondblclick" ->
+//                        v |> AttributeValue.withRay (fun ray -> pickTree.Perform(DoubleClick MouseButtons.Left, ray))
+//
+//                    | _ ->
+//                        Option.get v
+//            )
 
         Ui("div", attributes, cam, sg)
         
