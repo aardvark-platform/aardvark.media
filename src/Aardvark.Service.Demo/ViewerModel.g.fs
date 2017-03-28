@@ -15,12 +15,16 @@ module Mutable =
         let _scenes = ResetSet(__initial.scenes)
         let _bounds = ResetMod(__initial.bounds)
         let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _fillMode = ResetMod(__initial.fillMode)
+        let _cullMode = ResetMod(__initial.cullMode)
         
         member x.files = _files :> IMod<_>
         member x.rotation = _rotation :> IMod<_>
         member x.scenes = _scenes :> aset<_>
         member x.bounds = _bounds :> IMod<_>
         member x.camera = _camera
+        member x.fillMode = _fillMode :> IMod<_>
+        member x.cullMode = _cullMode :> IMod<_>
         
         member x.Update(__model : Viewer.ViewerModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -30,6 +34,8 @@ module Mutable =
                 _scenes.Update(__model.scenes)
                 _bounds.Update(__model.bounds)
                 _camera.Update(__model.camera)
+                _fillMode.Update(__model.fillMode)
+                _cullMode.Update(__model.cullMode)
         
         static member Create(initial) = MViewerModel(initial)
         
@@ -44,6 +50,8 @@ module Mutable =
         let inline scenes (m : MViewerModel) = m.scenes
         let inline bounds (m : MViewerModel) = m.bounds
         let inline camera (m : MViewerModel) = m.camera
+        let inline fillMode (m : MViewerModel) = m.fillMode
+        let inline cullMode (m : MViewerModel) = m.cullMode
     
     
     
@@ -81,4 +89,16 @@ module Mutable =
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
+                }
+            let fillMode =
+                { new Lens<Viewer.ViewerModel, Aardvark.Base.Rendering.FillMode>() with
+                    override x.Get(r) = r.fillMode
+                    override x.Set(r,v) = { r with fillMode = v }
+                    override x.Update(r,f) = { r with fillMode = f r.fillMode }
+                }
+            let cullMode =
+                { new Lens<Viewer.ViewerModel, Aardvark.Base.Rendering.CullMode>() with
+                    override x.Get(r) = r.cullMode
+                    override x.Set(r,v) = { r with cullMode = v }
+                    override x.Update(r,f) = { r with cullMode = f r.cullMode }
                 }

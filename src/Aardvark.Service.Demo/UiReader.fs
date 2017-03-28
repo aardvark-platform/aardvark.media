@@ -468,41 +468,6 @@ module UiReaders =
 
         override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
             let code = List()
-                
-            if initial then
-                initial <- false
-
-                for (name,cb) in Map.toSeq ui.Callbacks do
-                    state.handlers.[(id,name)] <- fun _ _ v -> [cb v]
-
-                for r in ui.Required do
-                    state.references.[(r.name, r.kind)] <- r
-
-                // let a = Mod.map ....
-                // a.onmessage = function()
-
-                // channels = {};
-                // dataSocket.onmessage = function(e) {
-                //     var msg = JSON.parse(e.data);
-                //     channels[msg.channel].onmessage(msg.data);
-                //}
-
-                match ui.Boot with
-                    | Some getBootCode ->
-                        for c in ui.Channels do
-                            state.activeChannels.[(id,c.Name)] <- c
-                        let prefix = ui.Channels |> List.map (fun c -> sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" c.Name id c.Name) |> String.concat "\r\n"
-                        let boot = getBootCode id
-                        code.Add(Raw (prefix + boot))
-                    | None ->
-                        ()
-
-                for (name, value) in Map.toSeq ui.InitialAttributes do
-                    match toAttributeValue state id name value with
-                        | Some value ->
-                            code.Add(SetAttribute(self, name, value))
-                        | None ->
-                            ()
 
             let attOps = rAtt.GetOperations(token)
             for (name, op) in attOps do
@@ -520,6 +485,32 @@ module UiReaders =
 
             code.Add (rContent.Update(token, self, state))
 
+                
+            if initial then
+                initial <- false
+
+                for (name,cb) in Map.toSeq ui.Callbacks do
+                    state.handlers.[(id,name)] <- fun _ _ v -> [cb v]
+
+                for r in ui.Required do
+                    state.references.[(r.name, r.kind)] <- r
+
+                match ui.Boot with
+                    | Some getBootCode ->
+                        for c in ui.Channels do
+                            state.activeChannels.[(id,c.Name)] <- c
+                        let prefix = ui.Channels |> List.map (fun c -> sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" c.Name id c.Name) |> String.concat "\r\n"
+                        let boot = getBootCode id
+                        code.Add(Raw (prefix + boot))
+                    | None ->
+                        ()
+
+                for (name, value) in Map.toSeq ui.InitialAttributes do
+                    match toAttributeValue state id name value with
+                        | Some value ->
+                            code.Add(SetAttribute(self, name, value))
+                        | None ->
+                            ()
 
 
             JSExpr.Sequential (CSharpList.toList code)

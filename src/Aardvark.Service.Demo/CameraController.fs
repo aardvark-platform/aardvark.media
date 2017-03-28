@@ -30,6 +30,7 @@ module CameraController =
         | StepTime
         | KeyDown of key : Keys
         | KeyUp of key : Keys
+        | Blur
 
     let initial =
         {
@@ -38,15 +39,23 @@ module CameraController =
             look = false
             zoom = false
             pan = false
+            forward = false; backward = false; left = false; right = false
             moveVec = V3i.Zero
             lastTime = None
+            stash = None
         }
 
     let sw = System.Diagnostics.Stopwatch()
     do sw.Start()
 
+    let withTime (model : CameraControllerState) =
+        { model with lastTime = Some sw.Elapsed.TotalSeconds }
+
     let update (model : CameraControllerState) (message : Message) =
         match message with
+            | Blur ->
+                { initial with view = model.view; lastTime = None }
+
             | StepTime ->
                 let now = sw.Elapsed.TotalSeconds
                 let cam = model.view
@@ -72,18 +81,56 @@ module CameraController =
 
                 { model with lastTime = Some now; view = cam }
 
-            | KeyDown Keys.W | KeyUp Keys.S -> 
-                { model with moveVec = model.moveVec + V3i(0, 0, 1); lastTime = Some sw.Elapsed.TotalSeconds }
+            | KeyDown Keys.W ->
+                if not model.forward then
+                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI }
+                else
+                    model
 
-            | KeyDown Keys.S | KeyUp Keys.W ->
-                { model with moveVec = model.moveVec + V3i(0, 0, -1); lastTime = Some sw.Elapsed.TotalSeconds }
-                
-            | KeyDown Keys.A | KeyUp Keys.D ->
-                { model with moveVec = model.moveVec + V3i(-1, 0, 0); lastTime = Some sw.Elapsed.TotalSeconds }
+            | KeyUp Keys.W ->
+                if model.forward then
+                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI }
+                else
+                    model
 
-            | KeyDown Keys.D | KeyUp Keys.A ->
-                { model with moveVec = model.moveVec + V3i(1, 0, 0); lastTime = Some sw.Elapsed.TotalSeconds }
-                
+            | KeyDown Keys.S ->
+                if not model.backward then
+                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI }
+                else
+                    model
+
+            | KeyUp Keys.S ->
+                if model.backward then
+                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI }
+                else
+                    model
+
+
+
+            | KeyDown Keys.A ->
+                if not model.left then
+                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO }
+                else
+                    model
+
+            | KeyUp Keys.A ->
+                if model.left then
+                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO }
+                else
+                    model
+
+
+            | KeyDown Keys.D ->
+                if not model.right then
+                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO }
+                else
+                    model
+
+            | KeyUp Keys.D ->
+                if model.right then
+                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO }
+                else
+                    model
 
             | KeyDown _ | KeyUp _ ->
                 model
@@ -135,21 +182,10 @@ module CameraController =
 
                 { model with view = cam; dragStart = pos }
 
-    let withCameraController (state : MCameraControllerState) (f : Message -> 'msg) (m : list<Ui<'msg>>) =
-        let attributes =
-            AMap.ofList [
-                always (attribute "style" "display: flex; width: 100%; height: 100%")
-                always (onMouseDown (fun b p -> f (Down(b,p))))
-                always (onMouseUp (fun b p -> f (Up b)))
-                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
-            ]
-            |> AMap.flattenM
-
-        div attributes (AList.ofList m)
-
     let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : amap<string, AttributeValue<'msg>>) (sg : ISg<'msg>) =
         let attributes =
             AMap.ofList [
+                always (onBlur (fun _ -> f Blur))
                 always (onMouseDown (fun b p -> f (Down(b,p))))
                 always (onMouseUp (fun b p -> f (Up b)))
                 always (onKeyDown (KeyDown >> f))

@@ -502,6 +502,41 @@ module Viewer =
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
         ]  
 
+    module SemUi =
+        
+        let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : IMod<'a>) (change : 'a -> 'msg) =
+            let names = Enum.GetNames(typeof<'a>)
+            let values = Enum.GetValues(typeof<'a>) |> unbox<'a[]>
+            let nv = Array.zip names values
+
+            let attributes (name : string) (value : 'a) =
+                AMap.ofList [
+                    always (attribute "value" name)
+                    onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
+                ]
+                |> AMap.flattenM
+
+            onBoot "$('#__ID__').dropdown();" (
+                select' [clazz "ui dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
+                    for (name, value) in nv do
+                        let att = attributes name value
+                        yield option att (AList.ofList [text' name])
+                ]
+            )
+
+        let menu (c : string )(entries : list<string * list<Ui<'msg>>>) =
+            div' [ clazz c ] (
+                entries |> List.map (fun (name, children) ->
+                    div' [ clazz "item"] [ 
+                        b' [] [text' name]
+                        div' [ clazz "menu" ] (
+                            children |> List.map (fun c ->
+                                div' [clazz "item"] [c]
+                            )
+                        )
+                    ]
+                )
+            )
 
     let sw = System.Diagnostics.Stopwatch()
     
@@ -531,6 +566,12 @@ module Viewer =
             | CameraMessage msg ->
                 { model with camera = CameraController.update model.camera msg }
 
+            | SetFillMode mode ->
+                { model with fillMode = mode }
+
+            | SetCullMode mode ->
+                { model with cullMode = mode }
+
     let view (model : MViewerModel) =
         let cam =
             model.camera.view 
@@ -552,18 +593,40 @@ module Viewer =
         require semui [
             div' [clazz "pushable"] [
 
-                div' [ clazz "ui sidebar inverted vertical menu wide" ] [
-                    div' [ clazz "item"] [ 
-                        b' [] [text' "File"]
-                        div' [ clazz "menu" ] [
-                            div' [clazz "item"] [
-                                button' [clazz "ui button"; clientEvent "onclick" "$('.ui.modal').modal('show');"] [
-                                    text' "Import"
+                SemUi.menu "ui sidebar inverted vertical menu wide" [
+
+                    "File", 
+                    [
+                        button' [clazz "ui button"; clientEvent "onclick" "$('.ui.modal').modal('show');"] [
+                            text' "Import"
+                        ]
+                    ]
+
+                    "Rendering", 
+                    [
+                        table' [clazz "ui celled striped table inverted"] [
+                            tr' [] [
+                                td' [clazz "right aligned"] [
+                                    text' "FillMode:"
+                                ]
+                                td' [clazz "right aligned"] [
+                                    SemUi.dropDown model.fillMode SetFillMode
+                                ]
+                            ]
+
+                            tr' [] [
+                                td' [clazz "right aligned"] [
+                                    text' "CullMode:"
+                                ]
+                                td' [clazz "right aligned"] [
+                                    SemUi.dropDown model.cullMode SetCullMode
                                 ]
                             ]
                         ]
                     ]
+
                 ]
+
 
                 div' [clazz "pusher"] [
 
@@ -583,6 +646,8 @@ module Viewer =
                         (
                             model.scenes
                                 |> Sg.set
+                                |> Sg.fillMode model.fillMode
+                                |> Sg.cullMode model.cullMode
                                 |> Sg.trafo (model.bounds |> Mod.map normalizeTrafo)
                                 |> Sg.transform (Trafo3d.FromOrthoNormalBasis(V3d.IOO, V3d.OOI, -V3d.OIO))
                                 |> Sg.effect [
@@ -594,7 +659,7 @@ module Viewer =
                         )
 
 
-                    onBoot "$('#__ID__').modal({ onApprove: function() { $('.sidebar').sidebar('hide'); } });" [
+                    onBoot "$('#__ID__').modal({ onApprove: function() { $('.sidebar').sidebar('hide'); } });" (
                         div' [clazz "ui modal"] [
                             i' [clazz "close icon"] []
                             div' [clazz "header"] [text' "Open File"]
@@ -626,7 +691,7 @@ module Viewer =
                                 div' [clazz "ui button positive"; onClick (fun _ -> Import)] [text' "Import"]
                             ]
                         ]
-                    ]
+                    )
                 ]
             ]
 
@@ -638,15 +703,17 @@ module Viewer =
             files = []
             scenes = HSet.empty
             bounds = Box3d.Unit
+            fillMode = FillMode.Fill
+            cullMode = CullMode.None
             camera =
                 {
                     view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
                     dragStart = V2i.Zero
-                    look = false
-                    zoom = false
-                    pan = false
+                    look = false; zoom = false; pan = false
+                    forward = false; backward = false; left = false; right = false
                     moveVec = V3i.Zero
                     lastTime = None
+                    stash = None
                 }
         }
 
@@ -685,6 +752,6 @@ module Viewer =
         form.Controls.Add ctrl
         ctrl.StartUrl <- "http://localhost:4321/main/"
 
-        ctrl.ShowDevTools()
+        //ctrl.ShowDevTools()
 
         Application.Run form

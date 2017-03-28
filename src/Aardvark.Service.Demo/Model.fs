@@ -30,6 +30,16 @@ type CameraControllerState =
         zoom : bool
         pan : bool
 
+        forward : bool
+        backward : bool
+        left : bool
+        right : bool
         moveVec : V3i
+
+
         lastTime : Option<float>
+
+        [<TreatAsValue>]
+        stash : Option<CameraControllerState> 
+
     }

@@ -569,47 +569,40 @@ module PersistentTags =
                 res
             | _ ->
                 Ui("div", AMap.empty, AList.ofList x, Required = libs)
-    let onBoot (boot : string) (x : list<Ui<'msg>>) =
+
+    let onBoot (boot : string) (e : Ui<'msg>) =
         let boot =
             if System.String.IsNullOrWhiteSpace boot then None
             else Some (fun id -> boot.Replace("__ID__", id))
             
-        match x with
-            | [e] ->
-                let res = e.Copy()
-                match res.Boot, boot with
-                    | Some o, Some n ->
-                        res.Boot <- Some (fun id -> o(id) + "\r\n" + n(id))
-                    | None, Some n ->
-                        res.Boot <- Some n
-                    | Some o, None ->
-                        res.Boot <- Some o
-                    | None, None ->
-                        res.Boot <- None
-                res
-            | _ ->
-                Ui("div", AMap.empty, AList.ofList x, Boot = boot)
+        let res = e.Copy()
+        match res.Boot, boot with
+            | Some o, Some n ->
+                res.Boot <- Some (fun id -> o(id) + "\r\n" + n(id))
+            | None, Some n ->
+                res.Boot <- Some n
+            | Some o, None ->
+                res.Boot <- Some o
+            | None, None ->
+                res.Boot <- None
+        res
 
-    let onShutdown (shutdown : string) (x : list<Ui<'msg>>) =
+    let onShutdown (shutdown : string) (e : Ui<'msg>) =
         let shutdown =
             if System.String.IsNullOrWhiteSpace shutdown then None
             else Some (fun id -> shutdown.Replace("__ID__", id))
-            
-        match x with
-            | [e] ->
-                let res = e.Copy()
-                match res.Shutdown, shutdown with
-                    | Some o, Some n ->
-                        res.Shutdown <- Some (fun id -> o(id) + "\r\n" + n(id))
-                    | None, Some n ->
-                        res.Shutdown <- Some n
-                    | Some o, None ->
-                        res.Shutdown <- Some o
-                    | None, None ->
-                        res.Shutdown <- None
-                res
-            | _ ->
-                Ui("div", AMap.empty, AList.ofList x, Shutdown = shutdown)
+     
+        let res = e.Copy()
+        match res.Shutdown, shutdown with
+            | Some o, Some n ->
+                res.Shutdown <- Some (fun id -> o(id) + "\r\n" + n(id))
+            | None, Some n ->
+                res.Shutdown <- Some n
+            | Some o, None ->
+                res.Shutdown <- Some o
+            | None, None ->
+                res.Shutdown <- None
+        res
 
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
     // Void elements
@@ -769,12 +762,33 @@ module Events =
     let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = 
         eventType, AttributeValue.Event(EventDescription.simple args cb)
 
-    let onMouseMove (cb : V2i -> 'msg) = onEvent "onmousemove" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+    let onFocus (cb : unit -> 'msg) =
+        onEvent "onfocus" [] (ignore >> cb)
+        
+    let onBlur (cb : unit -> 'msg) =
+        onEvent "onblur" [] (ignore >> cb)
 
-    let onMouseClick (cb : V2i -> 'msg) = onEvent "onclick" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
-    let onContextMenu (cb : unit -> 'msg) = onEvent "oncontextmenu" [] (ignore >> cb)
-    let onDblClick (cb : V2i -> 'msg) = onEvent "ondblclick" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+    let onMouseEnter (cb : V2i -> 'msg) =
+        onEvent "onmouseenter" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
+    let onMouseLeave (cb : V2i -> 'msg) =
+        onEvent "onmouseout" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+        
+    let onMouseMove (cb : V2i -> 'msg) = 
+        onEvent "onmousemove" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
+    let onMouseClick (cb : V2i -> 'msg) = 
+        onEvent "onclick" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
+    let onMouseDoubleClick (cb : V2i -> 'msg) = 
+        onEvent "ondblclick" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
     
+    let onContextMenu (cb : unit -> 'msg) = 
+        onEvent "oncontextmenu" [] (ignore >> cb)
+    
+    let onChange (cb : string -> 'msg) = 
+        onEvent "onchange" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
     let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
         onEvent 
             "onmousedown" 
@@ -806,7 +820,6 @@ module Events =
             )
 
     let onClick (cb : unit -> 'msg) = onEvent "onclick" [] (ignore >> cb)
-
 
     let clientEvent (name : string) (cb : string) =
         name,
@@ -899,7 +912,6 @@ module Events =
                 | _ ->
                     failwith "asdasdasd"
         )
-
 
     let onRendered (cb : V2i -> Camera -> DateTime -> 'msg) =
         "onrendered", 

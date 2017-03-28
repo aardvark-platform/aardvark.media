@@ -1,6 +1,7 @@
 ﻿namespace Viewer
 
 open Aardvark.Base
+open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.UI
 open Demo.TestApp
@@ -12,6 +13,8 @@ type Message =
     | Import
     | Cancel
     | CameraMessage of CameraController.Message
+    | SetFillMode of FillMode
+    | SetCullMode of CullMode
 
 [<DomainType>]
 type ViewerModel =
@@ -21,4 +24,6 @@ type ViewerModel =
         scenes : hset<ISg<Message>>
         bounds : Box3d
         camera : Demo.TestApp.CameraControllerState
+        fillMode : FillMode
+        cullMode : CullMode
     }
