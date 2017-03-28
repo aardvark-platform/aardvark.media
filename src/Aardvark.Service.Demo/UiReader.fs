@@ -403,10 +403,8 @@ module UiReaders =
                 | "onrendered" ->
                     let cb =
                         match v with
-                            | Event([], cb) -> 
-                                Some (fun _ _ (d : DateTime) -> cb [string d.Ticks])
-                            | ControlEvent([], cb) ->
-                                Some (fun s c (d : DateTime) -> cb s c [string d.Ticks])
+                            | Event(desc) -> 
+                                Some (fun s c (d : DateTime) -> desc.reaction s c [string d.Ticks])
                             | _ ->
                                 None
 
@@ -422,19 +420,10 @@ module UiReaders =
                         | AttributeValue.Value str -> 
                             Some str
 
-                        | Event (props, cb) ->
-                            state.handlers.[(id, name)] <- fun _ _ v -> cb v
-                            let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                            sprintf "aardvark.processEvent(%s)" args |> Some
-                                    
-                        | ClientEvent getCode ->
-                            let code = getCode id
+                        | Event desc ->
+                            let code = EventDescription.toString id name desc
+                            state.handlers.[(id, name)] <- desc.reaction
                             Some code
-
-                        | ControlEvent(props, cb) ->
-                            state.handlers.[(id, name)] <- fun s c v -> cb s c v
-                            let args = (sprintf "\"%s\"" id) :: (sprintf "\"%s\"" name) :: props |> String.concat ","
-                            sprintf "aardvark.processEvent(%s); event.preventDefault();" args |> Some
 
         static let destroyAttribute (state : UpdateState<'msg>) (id : string) (name : string) =
             match name with

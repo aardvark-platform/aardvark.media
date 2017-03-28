@@ -641,8 +641,8 @@ module Server =
         let index = 
             choose [
                 yield GET >=> path "/" >=> OK template
-                yield GET >=> path "/aardvark.js" >=> OK aardvarkjs
-                yield GET >=> path "/aardvark.css" >=> OK aardvarkcss
+                yield GET >=> path "/aardvark.js" >=> OK aardvarkjs >=> Writers.setMimeType "text/javascript"
+                yield GET >=> path "/aardvark.css" >=> OK aardvarkcss >=> Writers.setMimeType "text/css"
                 yield GET >=> path "/aardvark.svg" >=> OK aardvarksvg >=> Writers.setMimeType "image/svg+xml"
                 yield GET >=> path "/aardvark-light.svg" >=> OK aardvarksvgLight >=> Writers.setMimeType "image/svg+xml"
                 yield pathScan "/render/%s" (render >> handShake)

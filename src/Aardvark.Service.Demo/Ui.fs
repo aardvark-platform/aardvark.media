@@ -139,12 +139,66 @@ type AMapChannel<'a, 'b>(name : string, m : amap<'a, 'b>) =
             )
             |> Pickler.json.PickleToString
  
+type ID = string
+type Args = list<string>
+
+
+type EventDescription<'msg> =
+    {
+        client     : (ID -> Args -> string) -> string -> string
+        reaction   : V2i -> Camera -> list<string> -> list<'msg>
+    }
+
+module EventDescription =
+
+    let private processEvent (name : string) (id : string) (args : Args) =
+        let args = sprintf "'%s'" id :: sprintf "'%s'" name :: args
+        sprintf "aardvark.processEvent(%s);" (String.concat ", " args)
+        
+    let client (code : string -> string) =
+        { 
+            client = fun _ id -> code id
+            reaction = fun _ _ _ -> []
+        }
+
+    let simple (args : list<string>) (cb : list<string> -> 'msg) =
+        {
+            client = fun send id -> send id args + " event.preventDefault();"
+            reaction = fun _ _ args -> [ cb args ]
+        }
+
+    let control (args : list<string>) (cb : V2i -> Camera -> list<string> -> list<'msg>) =
+        {
+            client = fun send id -> send id args + " event.preventDefault();"
+            reaction = fun s c args -> cb s c args
+        }
+
+    let toString (id : string) (name : string) (evt : EventDescription<'msg>) =
+        let send = processEvent name
+        evt.client send id
+
+    let merge (l : EventDescription<'msg>) (r : EventDescription<'msg>) =
+        let wrap (i : int) (send : ID -> Args -> string) (id : string) (args : list<string>) =
+            send id (string i :: args)
+        {
+            client = fun send id -> l.client (wrap 0 send) id + r.client (wrap 1 send) id
+            reaction = fun s c args ->
+                match args with
+                    | id :: args ->
+                        match id with
+                            | "0" -> l.reaction s c args
+                            | "1" -> r.reaction s c args
+                            | _ -> []
+                    | _ ->
+                        []
+        }
+    
 
 type AttributeValue<'msg> =
-    | Event of list<string> * (list<string> -> list<'msg>)
+    | Event of EventDescription<'msg>
     | Value of string
-    | ClientEvent of (string -> string)
-    | ControlEvent of list<string> * (V2i -> Camera -> list<string> -> list<'msg>)
+//    | ClientEvent of (string -> string)
+//    | ControlEvent of list<string> * (V2i -> Camera -> list<string> -> list<'msg>)
 
 
 type Ui<'msg>(tag : string, attributes : amap<string, AttributeValue<'msg>>, content : UiContent<'msg>) =
@@ -410,90 +464,6 @@ module HMap =
             | _ ->
                 None
 
-
-
-    let addRayEvent (name : string) (rayEvent : RayPart -> list<'msg>) (att : hmap<string, AttributeValue<'msg>>) =
-        att |> HMap.update name (fun old ->
-            match old with
-                | Some (Event(args, cb)) -> 
-                    ControlEvent(
-                        "event.offsetX" :: "event.offsetY" :: args,
-                        fun size cam args ->
-                            match getPickRay size cam args with
-                                | Some (ray, args) ->
-                                    rayEvent ray @
-                                    cb args
-                                | None ->
-                                    cb args
-                    )
-
-                | Some (ControlEvent(args, cb)) ->
-                    ControlEvent(
-                        "event.offsetX" :: "event.offsetY" :: args,
-                        fun size cam args ->
-                            match getPickRay size cam args with
-                                | Some (ray, args) ->
-                                    rayEvent ray @
-                                    cb size cam args
-                                | None ->
-                                    cb size cam args
-                    )
-
-                | _ ->
-                    ControlEvent(
-                        ["event.offsetX"; "event.offsetY"],
-                        fun size cam args ->
-                            match getPickRay size cam args with
-                                | Some (ray, _) ->
-                                    rayEvent ray
-                                | None ->
-                                    []
-                    )
-                        
-                        
-        ) 
-
-    let addRayEvent1 (name : string) (arg : string) (rayEvent : string -> RayPart -> list<'msg>) (att : hmap<string, AttributeValue<'msg>>) =
-        att |> HMap.update name (fun old ->
-            match old with
-                | Some (Event(args, cb)) -> 
-                    ControlEvent(
-                        "event.offsetX" :: "event.offsetY" :: arg :: args,
-                        fun size cam args ->
-                            match getPickRay size cam args with
-                                | Some (ray, arg :: args) ->
-                                    rayEvent arg ray @
-                                    cb args
-                                | _ ->
-                                    cb args
-                    )
-
-                | Some (ControlEvent(args, cb)) ->
-                    ControlEvent(
-                        "event.offsetX" :: "event.offsetY" :: arg :: args,
-                        fun size cam args ->
-                            match getPickRay size cam args with
-                                | Some (ray, arg :: args) ->
-                                    rayEvent arg ray @
-                                    cb size cam args
-                                | _ ->
-                                    cb size cam args
-                    )
-
-                | _ ->
-                    ControlEvent(
-                        ["event.offsetX"; "event.offsetY"; arg],
-                        fun size cam args ->
-                            match getPickRay size cam args with
-                                | Some (ray, [arg]) ->
-                                    rayEvent arg ray
-                                | _ ->
-                                    []
-                    )
-                        
-                        
-        ) 
-
 module AttributeValue =
     let private getPickRay (size : V2i) (cam : Camera) (args : list<string>) =
         match args with
@@ -504,81 +474,6 @@ module AttributeValue =
                 Some (ray, rest)
             | _ ->
                 None
-
-
-    let withRay (rayEvent : RayPart -> list<'msg>) (v : Option<AttributeValue<'msg>>) =
-        match v with
-            | Some (Event(args, cb)) ->
-                ControlEvent(
-                    "event.offsetX" :: "event.offsetY" :: args,
-                    fun size cam args ->
-                        match getPickRay size cam args with
-                            | Some (ray, args) ->
-                                rayEvent ray @
-                                cb args
-                            | None ->
-                                cb args
-                )
-
-            | Some (ControlEvent(args, cb)) ->
-                ControlEvent(
-                    "event.offsetX" :: "event.offsetY" :: args,
-                    fun size cam args ->
-                        match getPickRay size cam args with
-                            | Some (ray, args) ->
-                                rayEvent ray @
-                                cb size cam args
-                            | None ->
-                                cb size cam args
-                )
-
-            | _ ->
-                ControlEvent(
-                    ["event.offsetX"; "event.offsetY"],
-                    fun size cam args ->
-                        match getPickRay size cam args with
-                            | Some (ray, _) ->
-                                rayEvent ray
-                            | None ->
-                                []
-                )
-
-    let withRay1 (arg : string) (rayEvent : string -> RayPart -> list<'msg>) (v : Option<AttributeValue<'msg>>) =
-        match v with
-            | Some (Event(args, cb)) ->
-                ControlEvent(
-                    "event.offsetX" :: "event.offsetY" :: arg :: args,
-                    fun size cam args ->
-                        match getPickRay size cam args with
-                            | Some (ray, arg :: args) ->
-                                rayEvent arg ray @
-                                cb args
-                            | _ ->
-                                cb args
-                )
-
-            | Some (ControlEvent(args, cb)) ->
-                ControlEvent(
-                    "event.offsetX" :: "event.offsetY" :: arg :: args,
-                    fun size cam args ->
-                        match getPickRay size cam args with
-                            | Some (ray, arg :: args) ->
-                                rayEvent arg ray @
-                                cb size cam args
-                            | _ ->
-                                cb size cam args
-                )
-
-            | _ ->
-                ControlEvent(
-                    ["event.offsetX"; "event.offsetY"; arg],
-                    fun size cam args ->
-                        match getPickRay size cam args with
-                            | Some (ray, [arg]) ->
-                                rayEvent arg ray
-                            | _ ->
-                                []
-                )
 
 [<AutoOpen>]
 module PersistentTags =
@@ -607,42 +502,16 @@ module PersistentTags =
     let mergeAttributes (key : string) (l : AttributeValue<'msg>) (r : AttributeValue<'msg>) =
         match key, l, r with
             | "class", Value l, Value r -> Value (l + " " + r)
-            | _, Event(la,lf), Event(ra, rf) ->
-                let cnt = List.length la
-                Event(la @ ra, fun args ->
-                    let la, ra = List.splitAt cnt args
-                    lf la @ rf ra
-                ) 
-            | _, ControlEvent(la,lf), ControlEvent(ra, rf) ->
-                let cnt = List.length la
-                ControlEvent(la @ ra, fun s c args ->
-                    let la, ra = List.splitAt cnt args
-                    lf s c la @ rf s c ra
-                ) 
-            | _, Event(la,lf), ControlEvent(ra, rf) ->
-                let cnt = List.length la
-                ControlEvent(la @ ra, fun s c args ->
-                    let la, ra = List.splitAt cnt args
-                    lf la @ rf s c ra
-                ) 
-                
-            | _, ControlEvent(la,lf), Event(ra, rf) ->
-                let cnt = List.length la
-                ControlEvent(la @ ra, fun s c args ->
-                    let la, ra = List.splitAt cnt args
-                    lf s c la @ rf ra
-                ) 
-
-            | _ ->
-                r
+            | _, Event(l), Event(r) -> Event(EventDescription.merge l r)
+            | _ -> r
 
     let renderControl (cam : IMod<Camera>) (attributes : amap<string, AttributeValue<'msg>>) (sg : ISg<'msg>) =
         let pickTree = PickTree.ofSg sg
 
-        let keys = 
-            HSet.ofList [
-                "class"; "onmousemove"; "onmousedown"; "onmouseup"; "onclick"; "ondblclick"
-            ]
+//        let keys = 
+//            HSet.ofList [
+//                "class"; "onmousemove"; "onmousedown"; "onmouseup"; "onclick"; "ondblclick"
+//            ]
 
 //        let own =
 //            pickTree.Needed |> AMap.mapSet (fun k ->
@@ -687,7 +556,7 @@ module PersistentTags =
 //                        Option.get v
 //            )
 
-        Ui("div", attributes, cam, sg)
+        Ui("div", attributes, cam, sg, Boot = Some (sprintf "aardvark.getRenderer('%s')"))
         
     let renderControl' (cam : IMod<Camera>) (attributes : list<Attribute<'msg>>) (sg : ISg<'msg>) =
         renderControl cam (AMap.ofList attributes) sg
@@ -882,7 +751,7 @@ module Attributes =
     let inline style value = attribute "style" value
 
     let inline js (name : string) (code : string) =
-        name, ClientEvent(fun id -> code.Replace("__ID__", id))
+        name, Event(EventDescription.client <| fun id -> code.Replace("__ID__", id))
 
     /// Helper to build space separated class
     let inline classList (list: (string*bool) seq) =
@@ -897,7 +766,8 @@ module Attributes =
 
 [<AutoOpen>]
 module Events =
-    let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = eventType, AttributeValue.Event(args, cb >> List.singleton)
+    let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = 
+        eventType, AttributeValue.Event(EventDescription.simple args cb)
 
     let onMouseMove (cb : V2i -> 'msg) = onEvent "onmousemove" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
@@ -940,56 +810,57 @@ module Events =
 
     let clientEvent (name : string) (cb : string) =
         name,
-        ClientEvent(fun id -> cb.Replace("__ID__", id))
+        Event(EventDescription.client <| fun id -> cb.Replace("__ID__", id))
 
     let onKeyDown (cb : Keys -> 'msg) =
         "onkeydown" ,
-        ControlEvent(
-            ["event.repeat"; "event.keyCode"],
-            (fun _ _ args ->
-                match args with
-                    | rep :: keyCode :: _ ->
-                        if rep <> "true" then
-                            let keyCode = int (float keyCode)
-                            let key = KeyConverter.keyFromVirtualKey keyCode
-                            [cb key]
-                        else
+        Event(
+            EventDescription.control
+                ["event.repeat"; "event.keyCode"]
+                (fun _ _ args ->
+                    match args with
+                        | rep :: keyCode :: _ ->
+                            if rep <> "true" then
+                                let keyCode = int (float keyCode)
+                                let key = KeyConverter.keyFromVirtualKey keyCode
+                                [ cb key ]
+                            else
+                                []
+                        | _ ->
                             []
-                    | _ ->
-                        []
-            )
+                )
         )
 
     let onKeyUp (cb : Keys -> 'msg) =
         "onkeyup" ,
-        ControlEvent(
-            ["event.repeat"; "event.keyCode"],
-            (fun _ _ args ->
-                match args with
-                    | rep :: keyCode :: _ ->
-                        if rep <> "true" then
+        Event(
+            EventDescription.control
+                ["event.keyCode"]
+                (fun _ _ args ->
+                    match args with
+                        | keyCode :: _ ->
                             let keyCode = int (float keyCode)
                             let key = KeyConverter.keyFromVirtualKey keyCode
                             [cb key]
-                        else
+                        | _ ->
                             []
-                    | _ ->
-                        []
-            )
+                )
         )
 
     let rayEvent (name : string) (args : list<string>) (cb : list<string> -> RayPart -> 'msg) =
         name,
-        ControlEvent (
-            ["event.clientX"; "event.clientY"] @ args,
-            fun (size : V2i) (cam : Camera) (l : list<string>) -> 
-                match l with
-                    | x :: y :: rest ->
-                        let pos = PixelPosition(int (float x), int (float y), size.X, size.Y)
-                        let ray = Camera.pickRay cam pos
-                        [cb rest (RayPart(FastRay3d(ray)))]
-                    | _ ->
-                        failwith "asdasdasd"
+        Event (
+            EventDescription.control
+                (["event.clientX"; "event.clientY"] @ args)
+                (fun (size : V2i) (cam : Camera) (l : list<string>) -> 
+                    match l with
+                        | x :: y :: rest ->
+                            let pos = PixelPosition(int (float x), int (float y), size.X, size.Y)
+                            let ray = Camera.pickRay cam pos
+                            [cb rest (RayPart(FastRay3d(ray)))]
+                        | _ ->
+                            failwith "asdasdasd"
+                )
         )
 
     let onRayMove (cb : RayPart -> 'msg) =
@@ -1032,10 +903,12 @@ module Events =
 
     let onRendered (cb : V2i -> Camera -> DateTime -> 'msg) =
         "onrendered", 
-        ControlEvent([], fun s c t ->
-            let t = DateTime(Int64.Parse t.[0])
-            [cb s c t]
-        )
+        Event { 
+            client = fun send id -> ""
+            reaction = fun s c t ->
+                let t = DateTime(Int64.Parse t.[0])
+                [cb s c t]
+        }
 
     let always (att : Attribute<'msg>) =
         let (k,v) = att

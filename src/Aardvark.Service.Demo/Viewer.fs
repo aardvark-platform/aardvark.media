@@ -19,6 +19,7 @@ open Xilium.CefGlue.Platform.Windows
 open Xilium.CefGlue.WindowsForms
 open System.Windows.Forms
 open Aardvark.SceneGraph.IO
+open System.Windows.Forms
 open Viewer
 open Demo
 
@@ -191,8 +192,37 @@ module Chromium =
 
             res
 
+    type Command =
+        | OpenDialog of int * OpenDialogConfig
+
+    type Response =
+        | Abort of int
+        | Ok of int * list<string>
+
+        member x.id =
+            match x with
+                | Abort i -> i
+                | Ok(i,_) -> i
+
+    module IPC =
+        let pickler = MBrace.FsPickler.BinarySerializer()
+
+        let toProcessMessage (a : 'a) =
+            let message = CefProcessMessage.Create(typeof<'a>.Name)
+            use v = CefBinaryValue.Create(pickler.Pickle a)
+            message.Arguments.SetBinary(0, v) |> ignore
+            message
+
+        let tryReadProcessMessage<'a> (msg : CefProcessMessage) : Option<'a> =
+            if msg.Name = typeof<'a>.Name then
+                let bin = msg.Arguments.GetBinary(0)
+                bin.ToArray() |> pickler.UnPickle|> Some
+            else
+                None
+
     type AardvarkIO(browser : CefBrowser, ctx : CefV8Context) as this =
         inherit CefV8Handler()
+
         let functions : Dictionary<string, CefV8Value[] -> CefResult> = 
             typeof<AardvarkIO>.GetMethods(BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.DeclaredOnly)
                 |> Seq.filter (fun mi -> mi.ReturnType = typeof<CefResult> && mi.GetParameters().Length = 1)
@@ -201,9 +231,10 @@ module Chromium =
 
                 
         let runner = ctx.GetTaskRunner()
+        let reactions = ConcurrentDictionary<int, CefV8Value[] -> CefV8Value>()
+        let mutable currentId = 0
 
         member x.FunctionNames = 
-            printfn "NAMES: %A" (Seq.toList functions.Keys)
             functions.Keys
 
         override x.Execute(name, _, args, ret, exn) =
@@ -222,7 +253,29 @@ module Chromium =
                     exn <- sprintf "unknown function %s" name
                     false
 
-    
+        member x.got(response : Response) =
+            match reactions.TryRemove response.id with
+                | (true, f) ->
+                    runner.PostTask {
+                        new CefTask() with
+                            member x.Execute() =
+                                ctx.Use (fun () ->
+                                    match response with
+                                        | Ok(_,files) ->
+                                            let files = List.toArray files
+                                            use arr = CefV8Value.CreateArray(files.Length)
+                                            for i in 0 .. files.Length - 1 do
+                                                use file = CefV8Value.CreateString files.[i]
+                                                arr.SetValue(i, file) |> ignore
+
+                                            f [| arr |] |> ignore
+                                        | Abort _ ->
+                                            f [| |] |> ignore
+                                )
+                    }
+                | _ ->
+                    true
+
         member x.openFileDialog(args : CefV8Value[]) =
             
             let config =
@@ -233,65 +286,14 @@ module Chromium =
 
             match config with
                 | Some (config, f) -> 
-                    //System.Diagnostics.Debugger.Launch() |> ignore
+                    let id = Interlocked.Increment(&currentId)
+                    reactions.[id] <- f
+                    use msg = IPC.toProcessMessage (OpenDialog(id, config))
+                    browser.SendProcessMessage(CefProcessId.Browser, msg) |> ignore
 
-                    let showDialog = 
-                        match config.mode with
-                            | OpenDialogMode.Folder ->
-                                fun () ->
-
-                                    ()
-                            | _ -> 
-                                fun () -> 
-                                    let dialog = 
-                                        new OpenFileDialog(
-                                            Title = config.title,
-                                            Multiselect = config.allowMultiple,
-                                            InitialDirectory = config.startPath
-                                        )
-
-                                    if config.filters.Length > 0 then
-                                        dialog.Filter <- String.concat "|" config.filters
-                                        dialog.FilterIndex <- config.activeFilter
-
-                                    printfn "%A" dialog.Multiselect
-
-                                    let res = dialog.ShowDialog()
-
-
-                                    match res with
-                                        | DialogResult.OK -> 
-                                            let files = dialog.FileNames
-                                            runner.PostTask {
-                                                new CefTask() with
-                                                    override x.Execute() =
-                                                        ctx.Use (fun () ->
-                                                            use arr = CefV8Value.CreateArray(files.Length)
-                                                            for i in 0 .. files.Length - 1 do
-                                                                use file = CefV8Value.CreateString files.[i]
-                                                                arr.SetValue(i, file) |> ignore
-
-                                                            f [| arr |] |> ignore
-                                                        )
-                                            } |> ignore
-                                        | _ -> 
-                                            runner.PostTask {
-                                                new CefTask() with
-                                                    override x.Execute() =
-                                                        ctx.Use (fun () ->
-                                                            f [| |] |> ignore
-                                                        )
-                                            } |> ignore
-
-                    let thread = new Thread(ThreadStart(showDialog), IsBackground = true)
-                    thread.SetApartmentState(ApartmentState.STA)
-                    thread.Start()
                     NoRet
                 | _ ->
                     Error "no argument for openFileDialog"
-
-
-
 
     let inline check str v = if not v then failwithf "[CEF] %s" str
    
@@ -299,23 +301,102 @@ module Chromium =
     type RenderProcessHandler() =
         inherit CefRenderProcessHandler()
 
+        let aardvarks = ConcurrentDictionary<int, AardvarkIO>()
+
         override x.OnContextCreated(browser : CefBrowser, frame : CefFrame, ctx : CefV8Context) =
             base.OnContextCreated(browser, frame, ctx)
 
-  
             ctx.Use (fun () ->
-                use glob = ctx.GetGlobal()
+                use scope = ctx.GetGlobal()
+                use glob = scope.GetValue("document")
                 use target = CefV8Value.CreateObject(null)
-                glob.SetValue("aardvarkio", target, CefV8PropertyAttribute.DontDelete) 
+                glob.SetValue("aardvark", target, CefV8PropertyAttribute.DontDelete) 
                     |> check "could not set global aardvark-value"
 
                 let aardvark = AardvarkIO(browser, ctx)
+                aardvarks.[browser.Identifier] <- aardvark
+                
                 for name in aardvark.FunctionNames do
                     use f = CefV8Value.CreateFunction(name, aardvark)
                     target.SetValue(name, f, CefV8PropertyAttribute.DontDelete) 
                         |> check "could not attach function to aardvark-value"
             )
 
+        override x.OnProcessMessageReceived(browser, source, msg) =
+            match IPC.tryReadProcessMessage<Response> msg with
+                | Some response ->
+                    match aardvarks.TryGetValue browser.Identifier with
+                        | (true, aardvark) ->
+                            aardvark.got(response)
+                        | _ ->
+                            true
+                | _ ->
+                    base.OnProcessMessageReceived(browser, source, msg)
+
+    open System.IO
+    type MyCefClient(browser : CefWebBrowser) =
+        inherit CefWebClient(browser)
+
+        let lastPathFile = 
+            let programName = Assembly.GetEntryAssembly().FullName
+            Path.Combine(Path.GetTempPath(), programName + ".path")
+
+        let getInitialPath (def : string) =
+            if File.Exists lastPathFile then
+                File.ReadAllText lastPathFile
+            else
+                def
+
+        let setPath (path : string) =
+            File.WriteAllText(lastPathFile, path)
+
+        override x.OnProcessMessageReceived(sourceBrowser, source, msg) =
+            match IPC.tryReadProcessMessage<Command> msg with
+                | Some command ->
+                    match command with
+                        | OpenDialog(id, config) ->
+                            let showDialog = 
+                                match config.mode with
+                                    | OpenDialogMode.Folder ->
+                                        fun () ->
+
+                                            ()
+                                    | _ -> 
+                                        fun () -> 
+                                            let dialog = 
+                                                new OpenFileDialog(
+                                                    Title = config.title,
+                                                    Multiselect = config.allowMultiple,
+                                                    InitialDirectory = getInitialPath config.startPath
+                                                )
+
+
+                                            if config.filters.Length > 0 then
+                                                dialog.Filter <- String.concat "|" config.filters
+                                                dialog.FilterIndex <- config.activeFilter
+
+                                            let res = dialog.ShowDialog()
+
+
+                                            match res with
+                                                | DialogResult.OK -> 
+                                                    let files = dialog.FileNames
+                                                    let path = files |> Seq.truncate 1 |> Seq.map Path.GetDirectoryName |> Seq.tryHead
+                                                    match path with
+                                                        | Some p -> setPath p
+                                                        | None -> ()
+
+                                                    use msg = IPC.toProcessMessage (Response.Ok(id, Array.toList files))
+                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                | _ -> 
+                                                    use msg = IPC.toProcessMessage (Response.Abort id)
+                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+
+
+                            browser.BeginInvoke(Action(showDialog)) |> ignore
+                            true
+                | None ->
+                    base.OnProcessMessageReceived(sourceBrowser, source, msg)
 
     type MyCefApp() =
         inherit CefApp()
@@ -324,6 +405,7 @@ module Chromium =
 
         override x.GetRenderProcessHandler() =
             handler :> CefRenderProcessHandler
+
 
     let mutable private initialized = false
     let l = obj()
@@ -360,6 +442,56 @@ module Chromium =
                     CefRuntime.Shutdown()
                 )
         )
+ 
+type AardvarkCefBrowser() =
+    inherit CefWebBrowser()
+
+    let mutable devTools = false
+    
+    let ownBrowser = System.Threading.Tasks.TaskCompletionSource<CefBrowser>()
+
+    let showDevTools (x : AardvarkCefBrowser) =
+        let form = x.FindForm()
+        let host = x.Browser.GetHost()
+        let parent = host.GetWindowHandle()
+        let wi = CefWindowInfo.Create();
+        //wi.SetAsChild(parent, CefRectangle(0, x.ClientSize.Height - 200, x.ClientSize.Width, 200))
+        wi.SetAsPopup(parent, "Developer Tools");
+        wi.Width <- 500
+        wi.Height <- form.Height
+        wi.X <- form.DesktopLocation.X + form.Width
+        wi.Y <- form.DesktopLocation.Y
+
+
+        //wi.Style <- WindowStyle.WS_POPUP
+        host.ShowDevTools(wi, new DevToolsWebClient(x), new CefBrowserSettings(), CefPoint(-1, -1));
+
+    let closeDevTools (x : AardvarkCefBrowser) =
+        let host = x.Browser.GetHost()
+        host.CloseDevTools()
+
+    override x.CreateWebClient() =
+        new Chromium.MyCefClient(x) :> CefWebClient
+
+    member x.ShowDevTools() =
+        if not devTools then
+            devTools <- true
+
+            let hasBrowser =
+                try not (isNull x.Browser)
+                with _ -> false
+
+            if hasBrowser then
+                showDevTools x
+            else
+                x.BrowserCreated.Add (fun _ -> 
+                    if devTools then
+                        showDevTools x
+                )
+
+and private DevToolsWebClient(parent : AardvarkCefBrowser) =
+    inherit CefClient()
+
     
      
 module Viewer =
@@ -370,17 +502,6 @@ module Viewer =
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
         ]  
 
-
-    let openDialog () =
-        let mutable r = Unchecked.defaultof<_>
-        let w = Application.OpenForms.[0]
-        w.Invoke(Action(fun _ -> 
-            let dialog = new OpenFileDialog()
-            if dialog.ShowDialog() = DialogResult.OK then
-                r <- Some dialog.FileName
-            else r <- None
-        )) |> ignore
-        r
 
     let sw = System.Diagnostics.Stopwatch()
     
@@ -480,8 +601,8 @@ module Viewer =
                             div' [clazz "content"] [
                                 button' [
                                     clazz "ui button"
-                                    onEvent "onchoose" ["event.files"] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> OpenFile)
-                                    "onclick", ClientEvent(sprintf "aardvarkio.openFileDialog({ allowMultiple: true }, function(files) { if(files != undefined) aardvark.processEvent('%s', 'onchoose', files); });")
+                                    onEvent "onchoose" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> OpenFile)
+                                    clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
                                 ] [ text' "browse"]
 
                                 br' []
@@ -498,19 +619,6 @@ module Viewer =
                                                     yield br' []
                                     }
                                 )
-//
-//                                br' []
-//
-//                                text' "Up Direction: "
-//
-//
-//                                select' [] [
-//                                    option' [attribute "value" "x"] [text' "X"]
-//                                    option' [attribute "value" "y"] [text' "Y"]
-//                                    option' [attribute "value" "z"; attribute "selected" "selected"] [text' "Z"]
-//                                ]
-//
-//                                br' []
 
                             ]
                             div' [clazz "actions"] [
@@ -572,9 +680,11 @@ module Viewer =
 
 
         use form = new Form(Width = 1024, Height = 768)
-        use ctrl = new CefWebBrowser()
+        use ctrl = new AardvarkCefBrowser()
         ctrl.Dock <- DockStyle.Fill
         form.Controls.Add ctrl
         ctrl.StartUrl <- "http://localhost:4321/main/"
+
+        ctrl.ShowDevTools()
 
         Application.Run form

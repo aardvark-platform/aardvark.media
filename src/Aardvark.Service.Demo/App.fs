@@ -157,6 +157,8 @@ module ``UI Extensions`` =
                     framebuffer.Release()
                 )
 
+
+
         type RenderResult<'msg>(runtime : IRuntime, signature : IFramebufferSignature, sg : ISg<'msg>, cam : IMod<Camera>) =
             inherit Server.AbstractRenderResult()
             let size = Mod.init V2i.II
@@ -194,7 +196,8 @@ module ``UI Extensions`` =
                     framebuffer.Release()
                 )
 
-        let start (runtime : IRuntime) (port : int) (perform : 'action -> unit) (ui : Ui<'action>) =
+
+        let start (runtime : IRuntime) (port : int) (perform : list<'action> -> unit) (ui : Ui<'action>) =
             let noCamera = 
                 let view = CameraView(V3d.OIO, V3d.Zero, V3d.OOI, V3d.OIO, V3d.IOO)
                 let proj = Frustum.ortho (Box3d(-V3d.III, V3d.III))
@@ -212,8 +215,18 @@ module ``UI Extensions`` =
 
             let cameras = Dictionary<string, IMod<V2i> * IMod<Camera>>()
 
-            let messageQueue = new System.Collections.Concurrent.BlockingCollection<'action>()
-            let emit (msg : 'action) = messageQueue.Add msg
+            let messageQueue = System.Collections.Generic.List<'action>(1024)
+//            let messagesPending = new AutoResetEvent(false)
+//            let mutable messageQueue : list<'action> = [] //new System.Collections.Concurrent.BlockingCollection<'action>()
+            let emit (msg : list<'action>) = 
+                match msg with
+                    | [] -> 
+                        ()
+                    | _ -> 
+                        lock messageQueue (fun () ->
+                            messageQueue.AddRange msg
+                            Monitor.Pulse messageQueue
+                        )
 
             let events (s : WebSocket) (ctx : HttpContext) =
                 let mutable existingChannels = Dictionary<string * string, Channel>()
@@ -242,8 +255,8 @@ module ``UI Extensions`` =
                                             | (true, (s,c)) -> Mod.force s, Mod.force c
                                             | _ -> V2i.Zero, noCamera
 
-                                    for msg in cb size cam DateTime.Now do
-                                        emit msg
+                                    let msg = cb size cam DateTime.Now
+                                    emit msg
 
 
                                 let code = 
@@ -315,12 +328,51 @@ module ``UI Extensions`` =
 
                 Async.Start updater
 
+                let histogram = Dict<int, ref<int>>()
+                let mutable steps = 0
+                let mutable total = 0
+
                 let processor =
                     async {
                         do! Async.SwitchToNewThread()
                         while running do
-                            let v = messageQueue.Take()
+                            Monitor.Enter messageQueue
+                            while messageQueue.Count = 0 do
+                                Monitor.Wait messageQueue |> ignore
+
+                            
+                            let h = histogram.GetOrCreate(messageQueue.Count, fun _ -> ref 0)
+                            h := !h + 1
+                            steps <- steps + 1
+
+                            if steps % 200 = 0 then
+                                Log.start "updates"
+                                let entries = histogram |> Seq.map (fun (KeyValue(k,v)) -> k,float !v / float steps) |> Seq.toList |> List.sortBy fst
+                                for (cnt, f) in entries do
+                                    let w = f * 10.0
+                                    let width = w |> floor |> int
+                                    let frac = w % float width
+
+                                    let c = 
+                                        if frac < 0.25 then ""
+                                        elif frac < 0.5 then "."
+                                        elif frac < 0.75 then "+"
+                                        else "#"
+
+                                    let str = System.String('#', width) + c
+                                    Log.line "%d: %s" cnt str
+
+                                steps <- 0
+                                histogram.Clear()
+                                Log.stop()
+
+                            let v = CSharpList.toList messageQueue
+                            messageQueue.Clear()
+                            Monitor.Exit messageQueue
+
+
                             perform v
+
                     }
 
                 Async.Start processor
@@ -341,7 +393,7 @@ module ``UI Extensions`` =
                                                     | (true, (size, cam)) -> (Mod.force size, Mod.force cam)
                                                     | _ -> V2i.Zero,noCamera
                                             let action = f size camera (Array.toList event.args)
-                                            for a in action do emit a
+                                            emit action
                                         | _ ->
                                             ()
 
@@ -374,7 +426,7 @@ module ``UI Extensions`` =
                                     | [] -> ()
                                     | messages -> 
                                         System.Threading.Tasks.Task.Run(fun () ->
-                                            for msg in messages do emit msg
+                                            emit messages
                                         ) |> ignore
                         )
 
@@ -394,8 +446,8 @@ module App =
     let startMApp (runtime : IRuntime) (port : int) (app : MApp<'m, 'mm, 'msg>) =
         let imut = Mod.init app.cinitial
         let mut = app.cinit app.cinitial
-        let perform (msg : 'msg) =
-            let newImut = app.cupdate imut.Value msg
+        let perform (msg : list<'msg>) =
+            let newImut = msg |> List.fold app.cupdate imut.Value
             transact (fun () ->
                 imut.Value <- newImut
                 app.capply mut newImut

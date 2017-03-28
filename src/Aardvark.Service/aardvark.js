@@ -2,15 +2,36 @@
 var urlCreator = window.URL || window.webkitURL;
 
 
-var aardvark = {};
-aardvark.channels = {};
-aardvark.referencedScripts = {};
-aardvark.referencedScripts["jquery"] = true;
-aardvark.referencedStyles = {};
+if (!document.aardvark) {
+    console.debug("[Aardvark] creating aardvark-value");
+    document.aardvark = {};
+}
+var aardvark = document.aardvark;
 
-aardvark.processEvent = function () {
-    console.warn("websocket not opened yet");
-};
+if (!aardvark.channels) {
+    console.debug("[Aardvark] creating aardvark-channels");
+    aardvark.channels = {};
+}
+if (!aardvark.referencedScripts) {
+    console.debug("[Aardvark] creating aardvark-script-references");
+    aardvark.referencedScripts = {};
+}
+
+if (!aardvark.referencedStyles) {
+    console.debug("[Aardvark] creating aardvark-stylesheet-references");
+    aardvark.referencedStyles = {};
+}
+
+aardvark.referencedScripts["jquery"] = true;
+
+aardvark.customEventHandling = true;
+if (!aardvark.processEvent) {
+    console.debug("[Aardvark] creating aardvark-event-processor");
+    aardvark.customEventHandling = false
+    aardvark.processEvent = function () {
+        console.warn("[Aardvark] cannot process events yet (websocket not opened)");
+    };
+}
 
 class Renderer {
 
@@ -70,8 +91,15 @@ class Renderer {
         this.createLoader();
         this.img = img;
 
+        var overlay = document.createElement("span")
+        this.div.appendChild(overlay);
+        overlay.className = "fps";
+        overlay.innerText = "";
+        this.overlay = overlay;
+        this.frameCount = 0;
 
-        this.div.contentEditable = true;
+        this.div.tabIndex = 1;
+        //this.img.contentEditable = true;
         
         img.style.cursor = "default";
 
@@ -283,10 +311,11 @@ class Renderer {
         if (this.loading) {
             this.loading = false;
             var self = this;
-            console.log("aardvark here");
+            console.debug("[Aardvark] initialized renderControl " + this.id);
             $(this.img).animate({ opacity: 1.0 }, 400, "swing", function () {
                 self.destroyLoader();
             });
+
         }
     }
 
@@ -294,13 +323,41 @@ class Renderer {
         if (!this.loading) {
             this.loading = true;
             this.createLoader();
-            console.log("aardvark died");
+            console.debug("[Aardvark] closed renderControl " + this.id);
             $(this.img).animate({ opacity: 0.0 }, 400, "swing");
         }
     }
 
     received(msg) {
         if (msg.data instanceof Blob) {
+            var now = performance.now();
+            if (!this.lastTime) {
+                this.lastTime = now;
+            }
+
+            if (now - this.lastTime > 1000.0) {
+                if (this.frameCount > 0) {
+                    var dt = now - this.lastTime;
+                    var cnt = this.frameCount;
+                    this.lastTime = now;
+                    this.frameCount = 0;
+                    var fps = 1000.0 * cnt / dt;
+                    this.overlay.innerText = fps.toFixed(2) + " fps";
+                    if (this.overlay.style.opacity < 0.5) {
+                        $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
+                    }
+                }
+                else {
+                    if (this.overlay.style.opacity > 0.5) {
+                        $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
+                    }
+                }
+            }
+
+            this.frameCount++;
+
+
+
             this.img.src = urlCreator.createObjectURL(msg.data);
             this.send(JSON.stringify({ Case: "Rendered" }));
             if (this.loading) {
@@ -340,85 +397,53 @@ class Renderer {
 
 }
 
-aardvark.addReferences = function (refs, cont) {
-    function acc(i) {
-        
-        if (i >= refs.length) {
-            return cont;
-        }
-        else {
-            var ref = refs[i];
-            var kind = ref.kind;
-            var name = ref.name;
-            var url = ref.url;
-            if (kind === "script") {
-                if (!aardvark.referencedScripts[name]) {
-                    console.log("script " + name + " (" + url + ")");
-                    aardvark.referencedScripts[name] = true;
-                    return function () {
-                        var script = document.createElement("script");
-                        script.setAttribute("src", url);
-                        script.onload = acc(i + 1);
-                        document.head.appendChild(script);
-                    };
-                }
-                else return acc(i + 1);
+if (!aardvark.addReferences) {
+    aardvark.addReferences = function (refs, cont) {
+        function acc(i) {
+
+            if (i >= refs.length) {
+                return cont;
             }
             else {
-                if (!aardvark.referencedStyles[name]) {
-                    console.log("style " + name + " (" + url + ")");
-                    aardvark.referencedStyles[name] = true;
-                    return function () {
-                        var script = document.createElement("link");
-                        script.setAttribute("rel", "stylesheet");
-                        script.setAttribute("href", url);
-                        script.onload = acc(i + 1);
-                        document.head.appendChild(script);
-                    };
+                var ref = refs[i];
+                var kind = ref.kind;
+                var name = ref.name;
+                var url = ref.url;
+                if (kind === "script") {
+                    if (!aardvark.referencedScripts[name]) {
+                        console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
+                        aardvark.referencedScripts[name] = true;
+                        return function () {
+                            var script = document.createElement("script");
+                            script.setAttribute("src", url);
+                            script.onload = acc(i + 1);
+                            document.head.appendChild(script);
+                        };
+                    }
+                    else return acc(i + 1);
                 }
-                else return acc(i + 1);
+                else {
+                    if (!aardvark.referencedStyles[name]) {
+                        console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
+                        aardvark.referencedStyles[name] = true;
+                        return function () {
+                            var script = document.createElement("link");
+                            script.setAttribute("rel", "stylesheet");
+                            script.setAttribute("href", url);
+                            script.onload = acc(i + 1);
+                            document.head.appendChild(script);
+                        };
+                    }
+                    else return acc(i + 1);
+                }
+
             }
-
         }
-    }
 
-    var real = acc(0);
-    real();
-    //for (key in refs) {
-    //    var ref = refs[key];
-    //    var kind = ref.kind;
-    //    var name = ref.name;
-    //    var url = ref.url;
-    //    var old = cc;
-    //    if (kind === "script") {
-    //        if (!aardvark.referencedScripts[name]) {
-    //            console.log("referencing " + name + " (" + url + ")");
-    //            aardvark.referencedScripts[name] = true;
-    //            cc = function () {
-    //                var script = document.createElement("script");
-    //                script.setAttribute("src", url);
-    //                script.onload = old;
-    //                document.head.appendChild(script);
-    //            };
-    //        }
-    //    }
-    //    else {
-    //        if (!aardvark.referencedStyles[name]) {
-    //            console.log("referencing " + name + " (" + url + ")");
-    //            aardvark.referencedStyles[name] = true;
-    //            cc = function () {
-    //                var script = document.createElement("link");
-    //                script.setAttribute("rel", "stylesheet");
-    //                script.setAttribute("href", url);
-    //                script.onload = old;
-    //                document.head.appendChild(script);
-    //            };
-    //        }
-    //    }
-    //}
-    //cc();
-
-};
+        var real = acc(0);
+        real();
+    };
+}
 
 class Channel {
 
@@ -431,7 +456,7 @@ class Channel {
 
     received(data) {
         if (data === "commit-suicide") {
-            console.warn(this.name + " couldn't take it no more and committed suicide")
+            console.debug("[Aardvark] channel " + this.name + " was closed")
             delete aardvark.channels[name];
         }
         else {
@@ -451,103 +476,109 @@ class Channel {
 
 }
 
-aardvark.getChannel = function (id, name) {
-    var channelName = id + "_" + name;
-    var channel = aardvark.channels[channelName];
-    if (channel) {
-        return channel;
-    }
-    else {
-        channel = new Channel(channelName);
-        aardvark.channels[channelName] = channel;
-        return channel;
-    }
+if (!aardvark.getChannel) {
+    aardvark.getChannel = function (id, name) {
+        var channelName = id + "_" + name;
+        var channel = aardvark.channels[channelName];
+        if (channel) {
+            return channel;
+        }
+        else {
+            channel = new Channel(channelName);
+            aardvark.channels[channelName] = channel;
+            return channel;
+        }
 
-};
-
-
-// rendering related
-aardvark.getRenderer = function (id) {
-    var div = document.getElementById(id);
-    if (!div.renderer) {
-        var renderer = new Renderer(id, 8);
-        div.renderer = renderer;
-    }
-
-    return div.renderer;
+    };
 }
 
-aardvark.render = function (id) {
-    var r = aardvark.getRenderer(id);
-    r.render();
+// rendering related
+if (!aardvark.getRenderer) {
+    aardvark.getRenderer = function (id) {
+        var div = document.getElementById(id);
+        if (!div.renderer) {
+            var renderer = new Renderer(id, 8);
+            div.renderer = renderer;
+        }
+
+        return div.renderer;
+    }
+}
+
+if (!aardvark.render) {
+    aardvark.render = function (id) {
+        var r = aardvark.getRenderer(id);
+        r.render();
+    }
 }
 
 $(document).ready(function () {
-
-    function getUrl(proto, subpath) {
-        var l = window.location;
-        var path = l.pathname;
-        if (l.port === "") {
-            return proto + l.hostname + path + subpath;
-        }
-        else {
-            return proto + l.hostname + ':' + l.port + path + subpath;
-        }
-    }
-    var url = getUrl('ws://', 'events');
-    var eventSocket = new WebSocket(url);
-
-    eventSocket.onopen = function () {
-        aardvark.processEvent = function () {
-            var sender = arguments[0];
-            var name = arguments[1];
-            var args = [];
-            for (var i = 2; i < arguments.length; i++) {
-                args.push(JSON.stringify(arguments[i]));
+    if (!aardvark.customEventHandling) {
+        function getUrl(proto, subpath) {
+            var l = window.location;
+            var path = l.pathname;
+            if (l.port === "") {
+                return proto + l.hostname + path + subpath;
             }
-            var message = JSON.stringify({ sender: sender, name: name, args: args });
-            eventSocket.send(message);
-        }
-    };
-
-    eventSocket.onmessage = function (m) {
-        var c = m.data.substring(0, 1);
-        var data = m.data.substring(1, m.data.length);
-        if (c === "x") {
-            eval("{\r\n" + data + "\r\n}");
-        }
-        else {
-            var message = JSON.parse(data);
-            var channelName = message.targetId + "_" + message.channel;
-            var channel = aardvark.channels[channelName];
-
-            if (channel && channel.onmessage) {
-                channel.onmessage(message.data);
+            else {
+                return proto + l.hostname + ':' + l.port + path + subpath;
             }
         }
-    };
+        var url = getUrl('ws://', 'events');
+        var eventSocket = new WebSocket(url);
 
-    eventSocket.onclose = function () {
-        aardvark.processEvent = function () { };
-    };
+        eventSocket.onopen = function () {
+            aardvark.processEvent = function () {
+                var sender = arguments[0];
+                var name = arguments[1];
+                var args = [];
+                for (var i = 2; i < arguments.length; i++) {
+                    args.push(JSON.stringify(arguments[i]));
+                }
+                var message = JSON.stringify({ sender: sender, name: name, args: args });
+                eventSocket.send(message);
+            }
+        };
 
-    eventSocket.onerror = function (e) {
-        console.warn(e);
-        aardvark.processEvent = function () { };
-    };
+        eventSocket.onmessage = function (m) {
+            var c = m.data.substring(0, 1);
+            var data = m.data.substring(1, m.data.length);
+            if (c === "x") {
+                eval("{\r\n" + data + "\r\n}");
+            }
+            else {
+                var message = JSON.parse(data);
+                var channelName = message.targetId + "_" + message.channel;
+                var channel = aardvark.channels[channelName];
 
-    function checkDOMChange() {
-        $('div.aardvark').each(function () {
-            var $div = $(this);
-            var div = $div.get(0);
-            aardvark.getRenderer(div.id);
+                if (channel && channel.onmessage) {
+                    channel.onmessage(message.data);
+                }
+            }
+        };
 
-        });
+        eventSocket.onclose = function () {
+            aardvark.processEvent = function () { };
+        };
 
-        setTimeout(checkDOMChange, 100);
+        eventSocket.onerror = function (e) {
+            console.warn(e);
+            aardvark.processEvent = function () { };
+        };
     }
 
-    checkDOMChange();
+    //function checkDOMChange() {
+    //    $('div.aardvark').each(function () {
+    //        var $div = $(this);
+    //        var div = $div.get(0);
+    //        aardvark.getRenderer(div.id);
+
+    //    });
+
+    //    setTimeout(checkDOMChange, 100);
+    //}
+
+    //checkDOMChange();
 
 });
 

@@ -6,6 +6,7 @@ img.rendercontrol:focus {
 
 img.rendercontrol {
     opacity: 0;
+    user-select: none;
 }
 
 div.aardvark:focus { 
@@ -14,6 +15,17 @@ div.aardvark:focus {
 
 div.aardvark { 
     display: block;
+    user-select: none;
+}
+
+span.fps {
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+    font-size: larger;
+    font-weight: bolder;
+    color: white;
+    opacity: 0;
 }
 
 /* Loading-Screen */
