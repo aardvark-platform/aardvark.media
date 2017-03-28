@@ -637,9 +637,24 @@ module Server =
                         ()
                     }
 
+//        let setCORSHeaders =
+//            Writers.setHeader "Access-Control-Allow-Origin" "*" >=> 
+//            Writers.setHeader "Access-Control-Allow-Credentials" "true" >=> 
+//            Writers.setHeader "Access-Control-Allow-Methods" "GET,HEAD,OPTIONS,POST,PUT" >=> 
+//            Writers.setHeader "Access-Control-Allow-Headers" "Origin, X-Requested-With, Content-Type, Accept, Authorization"
 
+        let cfg =
+            {
+                CORS.CORSConfig.allowCookies = true
+                CORS.CORSConfig.allowedMethods = CORS.InclusiveOption.All
+                CORS.CORSConfig.allowedUris = CORS.InclusiveOption.All
+                CORS.CORSConfig.exposeHeaders = true
+                CORS.CORSConfig.maxAge = None
+            }
+        let cors = Suave.CORS.cors cfg
         let index = 
             choose [
+                
                 yield GET >=> path "/" >=> OK template
                 yield GET >=> path "/aardvark.js" >=> OK aardvarkjs >=> Writers.setMimeType "text/javascript"
                 yield GET >=> path "/aardvark.css" >=> OK aardvarkcss >=> Writers.setMimeType "text/css"
@@ -648,7 +663,6 @@ module Server =
                 yield pathScan "/render/%s" (render >> handShake)
                 yield! additional
             ]
-
         startWebServer config index
 
 

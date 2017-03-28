@@ -39,6 +39,23 @@ type MApp<'model, 'mmodel, 'msg> =
 [<AutoOpen>]
 module ``UI Extensions`` =
 
+    type FileSystemKind =
+        | Folder = 0
+        | File = 1
+        | Disk = 2
+        | DVD = 3
+        | Network = 4
+        | Removable = 5
+        | Unknown = 6
+
+    type FileSystemEntry =
+        {
+            kind : FileSystemKind
+            size : int64
+            path : string
+            name : string
+        }
+
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module Ui =
         open System.Threading
@@ -407,10 +424,81 @@ module ``UI Extensions`` =
                         reader.Destroy(state, JSExpr.GetElementById reader.Id) |> ignore
                 }
 
+            let getEntries (path : string) =
+                if System.IO.Directory.Exists path then
+                    let all = System.IO.Directory.GetFileSystemEntries(path)
+                    all |> Array.map (fun path ->
+                        let kind, size = 
+                            if System.IO.Directory.Exists(path) then 
+                                FileSystemKind.Folder, -1L
+
+                            else 
+                                let info = System.IO.FileInfo(path)
+                                FileSystemKind.File, info.Length
+
+                                    
+
+                        {
+                            kind = kind
+                            size = size
+                            path = path
+                            name = System.IO.Path.GetFileName path
+                        }
+                    )
+                else    
+                    [||]
+
+            let getDrives() =
+                System.IO.DriveInfo.GetDrives() |> Array.map (fun d ->
+                    let kind =
+                        match d.DriveType with
+                            | IO.DriveType.Fixed -> FileSystemKind.Disk
+                            | IO.DriveType.CDRom -> FileSystemKind.DVD
+                            | IO.DriveType.Network -> FileSystemKind.Network
+                            | IO.DriveType.Removable -> FileSystemKind.Removable
+                            | _ -> FileSystemKind.Unknown
+
+                    if d.IsReady then
+                        {
+                            kind = kind
+                            size = d.TotalSize
+                            path = d.Name
+                            name = d.VolumeLabel
+                        }
+                    else
+                        {
+                            kind = kind
+                            size = -1L
+                            path = d.Name
+                            name = d.Name
+                        }
+                )
+
+            let fs  =
+                request (fun r ->
+                    let data = 
+                        match r.queryParam "path" with
+                            | Choice1Of2 path -> getEntries path
+                            | Choice2Of2 _ -> getDrives()
+
+                    let data = Pickler.json.PickleToString data
+                    OK data >=> Writers.setMimeType "application/json"
+                )
+
+            let browser = 
+                if Environment.MachineName.ToLower() = "monster64" then
+                    fun () -> File.readAllText @"E:\Development\aardvark-media\src\Aardvark.Service.Demo\browser.html"
+                else
+                    use stream = typeof<FileSystemEntry>.Assembly.GetManifestResourceStream("browser.html")
+                    let reader = new System.IO.StreamReader(stream)
+                    let str = reader.ReadToEnd()
+                    fun () -> str
             let parts = 
                 [
                     GET >=> path "/main/" >=> OK main
                     GET >=> path "/main/events" >=> handShake events
+                    GET >=> path "/fs" >=> fs
+                    GET >=> path "/browser" >=> (fun ctx -> ctx |> OK (browser()))
                 ]
 
             Server.start runtime port parts (fun id signature ->

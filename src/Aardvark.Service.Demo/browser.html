@@ -1,0 +1,231 @@
+<html>
+	<head>
+		<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" />
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" />
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js"></script>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.css" />
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.js"></script>
+		<link rel="stylesheet" href="http://jquery.jcubic.pl/css/jquery.splitter.css" />
+		<script src="http://jquery.jcubic.pl/js/jquery.splitter.js" ></script>
+	</head>
+	<body style="width: 100%; height: 100%; border: 0; padding: 0; margin: 0">
+		<script type="text/javascript">	
+
+			$(function() {
+			
+				var cache = {};
+			
+				function browse(url, entry, cont) {
+					//var url = "http://localhost:4321/fs";
+				    if (entry) url = url + "?path=" + entry.path;
+					
+					if(cache[url]) {
+						cont(cache[url]);
+					}
+					else {
+						
+						
+						var request = new XMLHttpRequest();
+						request.open("GET", url, true);
+						request.setRequestHeader('Access-Control-Allow-Headers', '*');
+						request.setRequestHeader('Access-Control-Allow-Origin', '*');
+						
+						request.onload = function (e) {
+						    if (entry) {
+						        console.debug("loaded " + entry.path);
+						    }
+							var entries = JSON.parse(request.responseText);
+							cache[url] = entries;
+							
+							for(var i = 0; i < entries.length; i++) {
+								var e = entries[i];
+								var icon = "folder";
+								if(e.kind === "Disk") icon = "disk outline";
+								else if(e.kind === "DVD") icon = "file code outline";
+								else if(e.kind === "Removable") icon = "folder outline";
+								else if(e.kind === "Network") icon = "cloud";
+								else if(e.kind === "Folder") icon = "folder outline";
+								else if(e.kind === "File") icon = "file outline";
+								e.icon = icon;
+							}
+							
+							
+							cont(entries);
+						};
+						
+						request.onerror = function(e) {
+							console.warn(e);
+						};
+						request.send(null);
+					}
+				};
+								
+				function getChildren(url, self, obj, cb) {
+					var entry = undefined;
+					if (obj.id !== '#') entry = obj.original.entry;
+					
+					browse(url, entry, function (entries) {
+						
+						var nodes = [];
+						for(var i = 0; i < entries.length; i++) {
+							var e = entries[i];
+							
+							if (entry) {
+							    e.parent = entry;
+							}
+
+							var isDevice = e.kind === "Disk" || e.kind === "DVD" || e.kind === "Removable" || e.kind === "Network";
+							var name = isDevice ? e.path : e.name;
+							var hasChildren = isDevice || e.kind === "Folder";
+							
+							
+							
+							if(hasChildren) {
+							
+								nodes.push(
+									{
+										'entry': e,
+										'id': e.path,
+										'entry': e,
+										'text': name,
+										'children': hasChildren,
+										'icon': e.icon + ' icon jstree-themeicon-custom' 
+									}
+								);
+							}
+							
+						}
+						cb.call(self, nodes);
+						
+						
+					});
+					
+				};
+				
+				
+				$.fn.filetree = function(url) {
+					this.jstree(
+						{ 
+							core: 
+							{ 
+								data: function(o,a) { getChildren(url, this, o, a); }
+							} 
+						}
+					);
+					
+					this.browse = function(entry, cont) {
+					    browse(url, entry, cont);
+					};
+					
+					return this;
+				};
+				
+				$.fn.selected = function() {
+					if(arguments.length === 0) {
+						var self = this.get(0);
+						var all = this.jstree('get_selected');
+						
+						return all;
+					}
+					if(arguments.length === 1) {
+						var arg = arguments[0];
+						if(typeof arg === "function") {
+							this.on("select_node.jstree", function (e,a) {
+								var entry = a.node.original.entry;
+								arg(entry);
+							});
+						}
+						
+					}
+					
+					return this;
+				};
+				
+			});
+			
+			$(document).ready(function() {
+			
+				var jstree = $('#tree').filetree("http://localhost:4321/fs");
+					
+				$('#splitter').height("100%").split({
+					orientation: 'vertical',
+					limit: 10,
+					position: '30%'
+				});
+					
+				$(window).resize(function(e) {
+					
+					$('#splitter').height("100%");
+				});
+					
+				jstree.selected(function (e) {
+
+				    var comp = e.path.split('\\').map(function (part) { });
+
+
+
+				    if (e.parent) {
+				        var c = e;
+				        var comp = [];
+				        while (c) {
+				            comp.unshift("<div class='ui section'><i class='" + c.icon + " icon'></i></div>" + c.name);
+				            c = c.parent;
+				        }
+
+				        $('#path').html(comp.join(""));
+				    }
+
+					jstree.browse(e, function(entries) {
+					
+						var code = "";
+						
+						for(var i = 0; i < entries.length; i++) {
+							var e = entries[i];
+							code += "<tr><td><i class='" + e.icon + " icon'></i> " + e.name + "</td>" +
+                                    "<td>" + e.size + "</td>" +
+                                    "<td>" + e.kind + "</td>";
+						}
+						
+						
+						$('#current tbody').height(400).html(code);
+						
+					
+						console.log(entries);
+					});
+				});
+			});
+			
+		</script>
+		
+		<div>
+            <div id="path">
+
+            </div>
+
+		    <div id="splitter" style="width: 100%; height: 100%">
+			    <div id="tree" style="padding-left: initial"></div>
+			
+			    <div id="container" >
+				    <table class="ui celled table small" id="current">
+					    <thead>
+						    <tr>
+							    <th>Name</th>
+							    <th>Size</th>
+							    <th>Type</th>
+						    </tr>
+					    </thead>
+					    <tbody>
+						    <tr>
+							    <td>First</td>
+							    <td>Size</td>
+							    <td>Type</td>
+						    </tr>
+					    </tbody>
+				    </table>
+			    </div>
+		    </div>
+		</div>
+		
+	</body>
+</html>

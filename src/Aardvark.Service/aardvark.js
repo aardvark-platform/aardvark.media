@@ -2,11 +2,19 @@
 var urlCreator = window.URL || window.webkitURL;
 
 
+
 if (!document.aardvark) {
     console.debug("[Aardvark] creating aardvark-value");
     document.aardvark = {};
 }
 var aardvark = document.aardvark;
+
+if (!aardvark.openFileDialog) {
+    aardvark.openFileDialog = function () {
+        var myWindow = window.open("", "", "width=200,height=100");
+        alert("Aardvark openFileDialog is not implemented for remote clients");
+    };
+}
 
 if (!aardvark.channels) {
     console.debug("[Aardvark] creating aardvark-channels");
