@@ -63,6 +63,11 @@ module ``UI Extensions`` =
                 size : int64
                 path : string
                 name : string
+                lastAccessTime : DateTime
+                lastWriteTime : DateTime
+                creationTime : DateTime
+                hasSubFolders : bool
+                hidden : bool
             }
 
         let cleanPath (path : string) =
@@ -101,25 +106,39 @@ module ``UI Extensions`` =
             let path = localPath path
 
             if System.IO.Directory.Exists path then
-                let all = System.IO.Directory.GetFileSystemEntries(path)
-                all |> Array.map (fun path ->
-                    let kind, size = 
-                        if System.IO.Directory.Exists(path) then 
-                            FileSystemKind.Folder, -1L
+                try 
+                    let all = System.IO.Directory.GetFileSystemEntries(path)
+                    all |> Array.map (fun path ->
+                        let kind, info, size, hasSubFolders = 
+                            if System.IO.Directory.Exists(path) then 
+                                let info = DirectoryInfo(path)
+                                let hasChildren = 
+                                    try info.GetDirectories().Length > 0
+                                    with _ -> false
 
-                        else 
-                            let info = System.IO.FileInfo(path)
-                            FileSystemKind.File, info.Length
+                                FileSystemKind.Folder, info :> FileSystemInfo, -1L, hasChildren
 
-                                    
+                            else 
+                                let info = System.IO.FileInfo(path)
+                                FileSystemKind.File, info :> FileSystemInfo, info.Length, false
 
-                    {
-                        kind = kind
-                        size = size
-                        path = cleanPath path
-                        name = System.IO.Path.GetFileName path
-                    }
-                )
+
+                        let att = info.Attributes
+
+                        {
+                            kind = kind
+                            size = size
+                            path = cleanPath path
+                            name = System.IO.Path.GetFileName path
+                            lastAccessTime = info.LastAccessTimeUtc
+                            lastWriteTime = info.LastWriteTimeUtc
+                            creationTime = info.CreationTimeUtc
+                            hasSubFolders = hasSubFolders
+                            hidden = att.HasFlag(FileAttributes.Hidden) || att.HasFlag(FileAttributes.System)
+                        }
+                    )
+                with _ ->
+                    [||]
             else    
                 [||]
 
@@ -142,11 +161,22 @@ module ``UI Extensions`` =
                     let name =
                         if String.IsNullOrWhiteSpace d.VolumeLabel then driveName
                         else d.VolumeLabel + " (" + driveName + ")"
+
+                    let info = DirectoryInfo(d.Name)
+                    let hasSubFolders = 
+                        try info.GetDirectories().Length > 0
+                        with _ -> false
+
                     {
                         kind = kind
                         size = d.TotalSize
                         path = cleanPath d.Name
                         name = name
+                        lastAccessTime = DateTime.MinValue
+                        lastWriteTime = DateTime.MinValue
+                        creationTime = DateTime.MinValue
+                        hasSubFolders = hasSubFolders
+                        hidden = false
                     }
                 else
                     {
@@ -154,6 +184,11 @@ module ``UI Extensions`` =
                         size = -1L
                         path = cleanPath d.Name
                         name = driveName
+                        lastAccessTime = DateTime.MinValue
+                        lastWriteTime = DateTime.MinValue
+                        creationTime = DateTime.MinValue
+                        hasSubFolders = false
+                        hidden = false
                     }
             )
 

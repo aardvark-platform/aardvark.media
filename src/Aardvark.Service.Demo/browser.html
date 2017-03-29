@@ -77,8 +77,7 @@
 							var hasChildren = isDevice || e.kind === "Folder";
 							
 							
-							
-							if(hasChildren) {
+							if(hasChildren && !e.hidden) {
 							
 								nodes.push(
 									{
@@ -86,7 +85,7 @@
 										'id': e.path,
 										'entry': e,
 										'text': e.displayName,
-										'children': hasChildren,
+										'children': e.hasSubFolders,
 										'icon': e.icon + ' icon jstree-themeicon-custom' 
 									}
 								);
@@ -306,10 +305,12 @@
 						var code = "";
 						
 						for(var i = 0; i < entries.length; i++) {
-							var e = entries[i];
-							code += "<tr><td><i class='" + e.icon + " icon'></i> " + e.name + "</td>" +
-                                    "<td>" + e.size + "</td>" +
-                                    "<td>" + e.kind + "</td>";
+						    var e = entries[i];
+						    if (!e.hidden) {
+						        code += "<tr><td><i class='" + e.icon + " icon'></i> " + e.name + "</td>" +
+                                        "<td>" + e.size + "</td>" +
+                                        "<td>" + e.kind + "</td>";
+						    }
 						}
 						
 						
