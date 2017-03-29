@@ -39,22 +39,140 @@ type MApp<'model, 'mmodel, 'msg> =
 [<AutoOpen>]
 module ``UI Extensions`` =
 
-    type FileSystemKind =
-        | Folder = 0
-        | File = 1
-        | Disk = 2
-        | DVD = 3
-        | Network = 4
-        | Removable = 5
-        | Unknown = 6
 
-    type FileSystemEntry =
-        {
-            kind : FileSystemKind
-            size : int64
-            path : string
-            name : string
-        }
+
+
+    module FileSystem =
+        open System.IO
+        open System.Text.RegularExpressions
+
+        let diskRx = Regex @"^(?<name>[a-zA-Z_]+):((\\)?)$"
+
+        type FileSystemKind =
+            | Folder = 0
+            | File = 1
+            | Disk = 2
+            | DVD = 3
+            | Network = 4
+            | Removable = 5
+            | Unknown = 6
+
+        type FileSystemEntry =
+            {
+                kind : FileSystemKind
+                size : int64
+                path : string
+                name : string
+            }
+
+        let cleanPath (path : string) =
+            let path = Path.GetFullPath path
+            let components = path.Split([| Path.DirectorySeparatorChar; Path.AltDirectorySeparatorChar |], StringSplitOptions.RemoveEmptyEntries) |> Array.toList
+
+            let components =
+                match components with
+                    | h :: rest ->
+                        match Environment.OSVersion with
+                            | Windows ->
+                                let m = diskRx.Match h
+                                if m.Success then m.Groups.["name"].Value :: rest
+                                else h :: rest
+                            | _ ->
+                                h :: rest
+                    | [] ->
+                        []
+                        
+            "/" + String.concat "/" components
+
+        let localPath (path : string) =
+            let components = path.Split([|'/'|], StringSplitOptions.RemoveEmptyEntries) |> Array.toList
+            
+            let components = 
+                match Environment.OSVersion, components with
+                    | Windows,  h :: rest   -> (h + ":\\") :: rest
+                    | _,        h :: rest   -> h :: rest
+                    | _                     -> []
+                    
+            let path = Path.Combine(List.toArray components)
+            path
+
+
+        let getEntries (path : string) =
+            let path = localPath path
+
+            if System.IO.Directory.Exists path then
+                let all = System.IO.Directory.GetFileSystemEntries(path)
+                all |> Array.map (fun path ->
+                    let kind, size = 
+                        if System.IO.Directory.Exists(path) then 
+                            FileSystemKind.Folder, -1L
+
+                        else 
+                            let info = System.IO.FileInfo(path)
+                            FileSystemKind.File, info.Length
+
+                                    
+
+                    {
+                        kind = kind
+                        size = size
+                        path = cleanPath path
+                        name = System.IO.Path.GetFileName path
+                    }
+                )
+            else    
+                [||]
+
+        let getDrives() =
+            System.IO.DriveInfo.GetDrives() |> Array.map (fun d ->
+                let kind =
+                    match d.DriveType with
+                        | IO.DriveType.Fixed -> FileSystemKind.Disk
+                        | IO.DriveType.CDRom -> FileSystemKind.DVD
+                        | IO.DriveType.Network -> FileSystemKind.Network
+                        | IO.DriveType.Removable -> FileSystemKind.Removable
+                        | _ -> FileSystemKind.Unknown
+
+                let driveName =
+                    let m = diskRx.Match d.Name
+                    if m.Success then m.Groups.["name"].Value + ":"
+                    else d.Name
+
+                if d.IsReady then
+                    let name =
+                        if String.IsNullOrWhiteSpace d.VolumeLabel then driveName
+                        else d.VolumeLabel + " (" + driveName + ")"
+                    {
+                        kind = kind
+                        size = d.TotalSize
+                        path = cleanPath d.Name
+                        name = name
+                    }
+                else
+                    {
+                        kind = kind
+                        size = -1L
+                        path = cleanPath d.Name
+                        name = driveName
+                    }
+            )
+
+        let fs  =
+            request (fun r ->
+                let data = 
+                    match r.queryParam "path" with
+                        | Choice2Of2 _ | Choice1Of2 "/" ->
+                            match Environment.OSVersion with
+                                | Windows -> getDrives()
+                                | _ -> getEntries "/"
+
+                        | Choice1Of2 path -> 
+                            getEntries path
+
+                let data = Pickler.json.PickleToString data
+                OK data >=> Writers.setMimeType "application/json"
+            )
+
 
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module Ui =
@@ -423,81 +541,22 @@ module ``UI Extensions`` =
                     finally
                         reader.Destroy(state, JSExpr.GetElementById reader.Id) |> ignore
                 }
-
-            let getEntries (path : string) =
-                if System.IO.Directory.Exists path then
-                    let all = System.IO.Directory.GetFileSystemEntries(path)
-                    all |> Array.map (fun path ->
-                        let kind, size = 
-                            if System.IO.Directory.Exists(path) then 
-                                FileSystemKind.Folder, -1L
-
-                            else 
-                                let info = System.IO.FileInfo(path)
-                                FileSystemKind.File, info.Length
-
-                                    
-
-                        {
-                            kind = kind
-                            size = size
-                            path = path
-                            name = System.IO.Path.GetFileName path
-                        }
-                    )
-                else    
-                    [||]
-
-            let getDrives() =
-                System.IO.DriveInfo.GetDrives() |> Array.map (fun d ->
-                    let kind =
-                        match d.DriveType with
-                            | IO.DriveType.Fixed -> FileSystemKind.Disk
-                            | IO.DriveType.CDRom -> FileSystemKind.DVD
-                            | IO.DriveType.Network -> FileSystemKind.Network
-                            | IO.DriveType.Removable -> FileSystemKind.Removable
-                            | _ -> FileSystemKind.Unknown
-
-                    if d.IsReady then
-                        {
-                            kind = kind
-                            size = d.TotalSize
-                            path = d.Name
-                            name = d.VolumeLabel
-                        }
-                    else
-                        {
-                            kind = kind
-                            size = -1L
-                            path = d.Name
-                            name = d.Name
-                        }
-                )
-
-            let fs  =
-                request (fun r ->
-                    let data = 
-                        match r.queryParam "path" with
-                            | Choice1Of2 path -> getEntries path
-                            | Choice2Of2 _ -> getDrives()
-
-                    let data = Pickler.json.PickleToString data
-                    OK data >=> Writers.setMimeType "application/json"
-                )
+             
 
             let browser = 
                 if Environment.MachineName.ToLower() = "monster64" then
                     fun () -> File.readAllText @"E:\Development\aardvark-media\src\Aardvark.Service.Demo\browser.html"
                 else
-                    use stream = typeof<FileSystemEntry>.Assembly.GetManifestResourceStream("browser.html")
+                    use stream = typeof<App<_,_,_>>.Assembly.GetManifestResourceStream("browser.html")
                     let reader = new System.IO.StreamReader(stream)
                     let str = reader.ReadToEnd()
                     fun () -> str
+
             let parts = 
                 [
                     GET >=> path "/main/" >=> OK main
                     GET >=> path "/main/events" >=> handShake events
-                    GET >=> path "/fs" >=> fs
+                    GET >=> path "/fs" >=> FileSystem.fs
                     GET >=> path "/browser" >=> (fun ctx -> ctx |> OK (browser()))
                 ]
 

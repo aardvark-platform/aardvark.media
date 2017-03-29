@@ -41,13 +41,15 @@
 							for(var i = 0; i < entries.length; i++) {
 								var e = entries[i];
 								var icon = "folder";
-								if(e.kind === "Disk") icon = "disk outline";
-								else if(e.kind === "DVD") icon = "file code outline";
-								else if(e.kind === "Removable") icon = "folder outline";
-								else if(e.kind === "Network") icon = "cloud";
-								else if(e.kind === "Folder") icon = "folder outline";
-								else if(e.kind === "File") icon = "file outline";
+								if (e.kind === "Disk") icon = "disk outline";
+								else if (e.kind === "DVD") icon = "file code outline";
+								else if (e.kind === "Removable") icon = "folder outline";
+								else if (e.kind === "Network") icon = "cloud";
+								else if (e.kind === "Folder") icon = "folder outline";
+								else if (e.kind === "File") icon = "file outline";
 								e.icon = icon;
+								e.displayName = e.name;
+								e.parent = entry;
 							}
 							
 							
@@ -71,12 +73,7 @@
 						for(var i = 0; i < entries.length; i++) {
 							var e = entries[i];
 							
-							if (entry) {
-							    e.parent = entry;
-							}
-
 							var isDevice = e.kind === "Disk" || e.kind === "DVD" || e.kind === "Removable" || e.kind === "Network";
-							var name = isDevice ? e.path : e.name;
 							var hasChildren = isDevice || e.kind === "Folder";
 							
 							
@@ -88,7 +85,7 @@
 										'entry': e,
 										'id': e.path,
 										'entry': e,
-										'text': name,
+										'text': e.displayName,
 										'children': hasChildren,
 										'icon': e.icon + ' icon jstree-themeicon-custom' 
 									}
@@ -104,23 +101,33 @@
 				};
 				
 				
-				$.fn.filetree = function(url) {
-					this.jstree(
-						{ 
-							core: 
-							{ 
-								data: function(o,a) { getChildren(url, this, o, a); }
-							} 
-						}
-					);
+				$.fn.filetree = function (url) {
+				    this.each(function (t) {
+				        $(this).jstree(
+						    {
+						        core:
+							    {
+							        data: function (o, a) { getChildren(url, this, o, a); }
+							    }
+						    }
+					    );
+
+				        this.browse = function (entry, cont) {
+				            browse(url, entry, cont);
+				        };
+
+				    });
 					
-					this.browse = function(entry, cont) {
-					    browse(url, entry, cont);
-					};
 					
 					return this;
 				};
 				
+				$.fn.browse = function (entry, cont) {
+				    var t = this.get(0);
+				    if (t.browse) t.browse(entry, cont);
+				    return this;
+				};
+
 				$.fn.selected = function() {
 					if(arguments.length === 0) {
 						var self = this.get(0);
@@ -142,6 +149,89 @@
 					return this;
 				};
 				
+				$.fn.findEntry = function (path, cont) {
+				    var comp = path.split('/');
+				    function browseRec(self, ci, parent, cont) {
+				        if (ci >= comp.length) {
+				            cont(parent);
+				        }
+				        else {
+				            var c = comp[ci];
+				            if (c === "") {
+				                browseRec(self, ci + 1, parent, cont);
+				            }
+				            else {
+				                var p = "/" + c;
+				                if (parent) {
+				                    if (parent.path.endsWith("/")) p = parent.path + c;
+				                    else p = parent.path + "/" + c;
+				                }
+
+				                self.browse(parent, function (entries) {
+				                    var index = -1;
+				                    for (var i = 0; i < entries.length; i++) {
+				                        if (entries[i].path === p) {
+				                            index = i;
+				                            break;
+				                        }
+				                    }
+
+				                    if (index >= 0) {
+				                        browseRec(self, ci + 1, entries[index], cont);
+				                    }
+				                    else {
+				                        cont(undefined);
+				                    }
+
+				                });
+				            }
+				        }
+				    }
+
+				    browseRec(this, 0, undefined, cont);
+				};
+
+				$.fn.path = function () {
+				    var self = this.get(0);
+				    var all = this.jstree('get_selected');
+
+				    return all[0];
+				};
+
+				$.fn.navigate = function (entry) {
+				    console.log("navigate " + entry.path);
+				    function nav(tree, e, last) {
+				        if (e) {
+				            var loadParent = nav(tree, e.parent, false);
+
+				            var loadSelf = function(cb) {
+				                loadParent(function () {
+				                    if (last) {
+				                        tree.jstree("deselect_all");
+				                        tree.jstree('select_node', e.path);
+				                        cb(e);
+				                    }
+				                    else {
+				                        tree.jstree('open', e.path);
+				                        tree.jstree('load_node', e.path, cb);
+				                    }
+				                });
+				            };
+
+				            return loadSelf;
+
+				        }
+				        else {
+				            var f = function (cb) { return cb(); };
+				            return f;
+				        }
+				    
+				    }
+				    var tree = this;
+				    var loader = nav(tree, entry, true);
+				    loader(function () { console.log("navigated"); });
+				};
+
 			});
 			
 			$(document).ready(function() {
@@ -159,21 +249,56 @@
 					$('#splitter').height("100%");
 				});
 					
+			    $('#pathstr')
+                    .change(function () {
+                        var newPath = this.value;
+                        console.log(newPath);
+                        if (newPath !== jstree.path()) {
+                            jstree.findEntry(newPath, function (e) {
+                                jstree.navigate(e);
+                            });
+                            console.log("navigate to " + newPath);
+                        }
+                    })
+                    .keydown(function (e) {
+                        if (e.which == 13) {
+                            $(this).blur();
+                        }
+                    })
+                    .focus(function () {
+                        $('#path').hide();
+                        this.value = jstree.path();
+                        $(this).select();
+                    })
+                    .blur(function () {
+                        $('#path').show();
+                        this.value = "";
+                    });
+
 				jstree.selected(function (e) {
 
-				    var comp = e.path.split('\\').map(function (part) { });
 
+				    if (e) {
+				        var target = $("<div class='ui buttons tiny'></div>");
 
+				        function traverse(c, last) {
+				            if (c) {
+				                var arr = "";
+				                if (!last) arr = "<i class='right angle icon'></i>"
+				                var button = $("<button class='ui button tiny'><i class='" + c.icon + " icon'></i>" + c.displayName + arr + "</button>");
 
-				    if (e.parent) {
-				        var c = e;
-				        var comp = [];
-				        while (c) {
-				            comp.unshift("<div class='ui section'><i class='" + c.icon + " icon'></i></div>" + c.name);
-				            c = c.parent;
+				                button.click(function () {
+				                    jstree.navigate(c);
+				                });
+				                target.prepend(button);
+				                traverse(c.parent, false);
+				            }
 				        }
 
-				        $('#path').html(comp.join(""));
+
+				        traverse(e, true);
+
+				        $('#path div').replaceWith(target);
 				    }
 
 					jstree.browse(e, function(entries) {
@@ -199,11 +324,14 @@
 		</script>
 		
 		<div>
-            <div id="path">
-
+            <div class="ui fluid container" style="position: fixed; top: 0px; left: 0px">
+                <div class="ui fluid icon input">
+                    <input type="text" id="pathstr" />
+                    <div id="path" style="position: absolute; left: 5px; top: 3px"><div></div></div>
+                </div>
             </div>
 
-		    <div id="splitter" style="width: 100%; height: 100%">
+		    <div id="splitter" style="position: fixed; top: 50px; width: 100%; height: 100%">
 			    <div id="tree" style="padding-left: initial"></div>
 			
 			    <div id="container" >
