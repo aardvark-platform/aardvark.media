@@ -1,0 +1,152 @@
+﻿<html>
+    <head>
+        <title>Aardvark rocks \o/</title>
+        <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.js"></script>
+        <script>
+
+            function splitPath(path) {
+                var dirPart, filePart;
+                path.replace(/^(.*\/)?([^/]*)$/, function (_, dir, file) {
+                    dirPart = dir; filePart = file;
+                });
+                return { dirPart: dirPart, filePart: filePart };
+            }
+
+            var getRelativeUrl = function (protocol, relativePath) {
+                var location = window.location;
+                var path = splitPath(location.pathname);
+                var dir = path.dirPart;
+
+                if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+                if (!dir.startsWith("/")) dir = "/" + dir;
+                if (!dir.endsWith("/")) dir = dir + "/";
+
+                var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
+                console.warn(path);
+
+                return path;
+            }
+
+            $(document).ready(function () {
+                var url = getRelativeUrl("http", "stats.json");
+
+                function updateStats(cont) {
+                    var request = new XMLHttpRequest();
+                    request.open("GET", url, true);
+                    request.setRequestHeader('Access-Control-Allow-Headers', '*');
+                    request.setRequestHeader('Access-Control-Allow-Origin', '*');
+
+                    request.onload = function (e) {
+                        var entries = JSON.parse(request.responseText);
+                        cont(entries);
+                    };
+
+                    request.onerror = function (e) {
+                        cont([]);
+                    };
+
+                    request.send(null);
+                }
+
+                var template = $('#template table').html();
+
+                function display() {
+                    updateStats(function (entries) {
+
+                        var code = ""
+
+                        for (var i = 0; i < entries.length; i++) {
+                            var e = entries[i];
+
+                            code +=
+                                template
+                                    .replace("__NAME__", e.name)
+                                    .replace("__GUID__", e.session)
+                                    .replace("__FRAME_COUNT__", e.frameCount)
+                                    .replace("__FRAME_TIME__", e.frameTime.toFixed(2) + "s")
+                                    .replace("__FPS__", (e.frameCount / e.frameTime).toFixed(2) + "fps")
+                                    .replace("__INVALIDATION__", (100.0 * e.invalidateTime / e.frameTime).toFixed(2) + "%")
+                                    .replace("__COMPRESSION__", (100.0 * e.compressTime / e.frameTime).toFixed(2) + "%")
+                                    .replace("__RENDERING__", (100.0 * e.renderTime / e.frameTime).toFixed(2) + "%");
+
+                        }
+
+
+                        $('#stats').html(code);
+
+                        setTimeout(display, 500);
+                    });
+                }
+
+                display();
+
+            });
+
+        </script>
+
+    </head>
+    <body style="height: initial">
+        <table class="ui celled striped table inverted" style="margin: 6pt;" id="stats">
+        </table>
+
+        <div id="template" style="display: none">
+            <table class="ui celled striped table inverted" style="margin: 6pt;">
+                <tr>
+                    <td class="top aligned collapsing">
+                        <div class="ui label huge big green">__NAME__</div><br /><br />
+                        <div class="ui mini label grey">__GUID__</div>
+                    </td>
+                    <td>
+                        <table class="ui celled striped table inverted">
+                            <tr>
+                                <td class="collapsing">
+                                    <div class="ui label orange">Frames</div>
+                                </td>
+                                <td class="left aligned">
+                                    __FRAME_COUNT__
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="collapsing">
+                                    <div class="ui label orange">FPS</div>
+                                </td>
+                                <td class="left aligned">
+                                    __FPS__
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="collapsing">
+                                    <div class="ui label orange">Invalidation</div>
+                                </td>
+                                <td class="left aligned">
+                                    __INVALIDATION__
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="collapsing">
+                                    <div class="ui label orange">Compression</div>
+                                </td>
+                                <td class="left aligned">
+                                    __COMPRESSION__
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class="collapsing">
+                                    <div class="ui label orange">Rendering</div>
+                                </td>
+                                <td class="left aligned">
+                                    __RENDERING__
+                                </td>
+                            </tr>
+
+                        </table>
+                    </td>
+                </tr>
+
+            </table>
+        </div>
+</body>
+</html>

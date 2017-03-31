@@ -1,13 +1,38 @@
-﻿var webSocketUrl = "ws://" + window.location.hostname + ":" + window.location.port;
-var urlCreator = window.URL || window.webkitURL;
-
-
+﻿var urlCreator = window.URL;
 
 if (!document.aardvark) {
     console.debug("[Aardvark] creating aardvark-value");
     document.aardvark = {};
 }
 var aardvark = document.aardvark;
+
+if (!aardvark.newguid) {
+    aardvark.newguid = function() {
+        /// <summary>
+        ///    Creates a unique id for identification purposes.
+        /// </summary>
+        /// <param name="separator" type="String" optional="true">
+        /// The optional separator for grouping the generated segmants: default "-".    
+        /// </param>
+
+        var delim = "-";
+
+        function S4() {
+            return (((1 + Math.random()) * 0x10000) | 0).toString(16).substring(1);
+        }
+
+        return (S4() + S4() + delim + S4() + delim + S4() + delim + S4() + delim + S4() + S4() + S4());
+    };
+
+}
+
+if (!sessionStorage.aardvarkId) {
+    sessionStorage.aardvarkId = aardvark.newguid();
+}
+
+if (!aardvark.guid) {
+    aardvark.guid = sessionStorage.aardvarkId;
+}
 
 if (!aardvark.openFileDialog) {
     aardvark.openFileDialog = function () {
@@ -33,22 +58,54 @@ if (!aardvark.referencedStyles) {
 aardvark.referencedScripts["jquery"] = true;
 
 aardvark.customEventHandling = true;
-if (!aardvark.processEvent) {
-    console.debug("[Aardvark] creating aardvark-event-processor");
-    aardvark.customEventHandling = false
-    aardvark.processEvent = function () {
-        console.warn("[Aardvark] cannot process events yet (websocket not opened)");
-    };
+if (!aardvark.noEvents) {
+    if (!aardvark.processEvent) {
+        console.debug("[Aardvark] creating aardvark-event-processor");
+        aardvark.customEventHandling = false
+        aardvark.processEvent = function () {
+            console.warn("[Aardvark] cannot process events yet (websocket not opened)");
+        };
+    }
+}
+
+if (!aardvark.getRelativeUrl) {
+    function splitPath(path) {
+        var dirPart, filePart;
+        path.replace(/^(.*\/)?([^/]*)$/, function (_, dir, file) {
+            dirPart = dir; filePart = file;
+        });
+        return { dirPart: dirPart, filePart: filePart };
+    }
+
+    aardvark.getRelativeUrl = function (protocol, relativePath) {
+        var location = window.location;
+        var path = splitPath(location.pathname);
+        var dir = path.dirPart;
+
+        if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+        if (!dir.startsWith("/")) dir = "/" + dir;
+        if (!dir.endsWith("/")) dir = dir + "/";
+
+        var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
+        console.warn(path);
+
+        return path;
+    }
 }
 
 class Renderer {
 
-    constructor(id, samples) {
+    constructor(id) {
         this.id = id;
         this.div = document.getElementById(id);
 
-        if (!samples) this.samples = 1;
-        else this.samples = samples;
+        var scene = this.div.getAttribute("data-scene");
+        if (!scene) scene = id;
+        this.scene = scene;
+
+        var samples = this.div.getAttribute("data-samples");
+        if (!samples) samples = 1;
+        this.samples = samples;
 
         this.buffer = [];
         this.isOpen = false;
@@ -111,40 +168,51 @@ class Renderer {
         
         img.style.cursor = "default";
 
-        var socket = new WebSocket(webSocketUrl + "/render/" + this.id + "?samples=" + this.samples);
-        socket.binaryType = "blob";
-        this.socket = socket;
+        var url = aardvark.getRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples);
+
 
 
         var self = this;
+
         this.img.onclick = function () { self.div.focus(); };
         
-        socket.onopen = function () {
-            for (var i = 0; i < self.buffer.length; i++) {
-                socket.send(self.buffer[i]);
-            }
-            self.isOpen = true;
-            self.buffer = [];
+        function connect() {
+            var socket = new WebSocket(url);
+            socket.binaryType = "blob";
+            self.socket = socket;
 
-            self.render();
+            socket.onopen = function () {
+                for (var i = 0; i < self.buffer.length; i++) {
+                    socket.send(self.buffer[i]);
+                }
+                self.isClosed = false;
+                self.isOpen = true;
+                self.buffer = [];
 
-        };
+                self.render();
 
-        socket.onmessage = function (msg) {
-            self.received(msg);
-        };
+            };
 
-        socket.onclose = function () {
-            self.isOpen = false;
-            self.isClosed = true;
-            self.fadeOut();
-        };
+            socket.onmessage = function (msg) {
+                self.received(msg);
+            };
 
-        socket.onerror = function (err) {
-            console.warn(err);
-            self.isClosed = true;
-            self.fadeOut();
-        };
+            socket.onclose = function () {
+                self.isOpen = false;
+                self.isClosed = true;
+                self.fadeOut();
+                //setTimeout(connect, 500);
+            };
+
+            socket.onerror = function (err) {
+                console.warn(err);
+                self.isClosed = true;
+                self.fadeOut();
+                //setTimeout(connect, 500);
+            };
+        }
+
+        connect();
 
         this.img.oncontextmenu = function (e) { e.preventDefault(); };
 
@@ -152,6 +220,16 @@ class Renderer {
             self.render();
         });
 
+    }
+
+    change(scene, samples) {
+        if (this.scene != scene || this.samples != samples) {
+            console.warn("changing to " + scene + "/" + samples);
+            var message = { Case: "Change", scene: scene, samples: samples };
+            this.send(JSON.stringify(message));
+            this.scene = scene;
+            this.samples = samples;
+        }
     }
 
     send(data) {
@@ -505,12 +583,22 @@ if (!aardvark.getRenderer) {
     aardvark.getRenderer = function (id) {
         var div = document.getElementById(id);
         if (!div.renderer) {
-            var renderer = new Renderer(id, 8);
+            var renderer = new Renderer(id);
             div.renderer = renderer;
         }
 
         return div.renderer;
     }
+
+
+    $.fn.renderer = function () {
+        
+        var self = this.get(0);
+        if (self && self.id) {
+            return aardvark.getRenderer(self.id);
+        }
+        else return undefined;
+    };
 }
 
 if (!aardvark.render) {
@@ -522,17 +610,7 @@ if (!aardvark.render) {
 
 $(document).ready(function () {
     if (!aardvark.customEventHandling) {
-        function getUrl(proto, subpath) {
-            var l = window.location;
-            var path = l.pathname;
-            if (l.port === "") {
-                return proto + l.hostname + path + subpath;
-            }
-            else {
-                return proto + l.hostname + ':' + l.port + path + subpath;
-            }
-        }
-        var url = getUrl('ws://', 'events');
+        var url = aardvark.getRelativeUrl('ws', 'events?session=' + aardvark.guid);
         var eventSocket = new WebSocket(url);
 
         eventSocket.onopen = function () {
@@ -570,23 +648,23 @@ $(document).ready(function () {
         };
 
         eventSocket.onerror = function (e) {
-            console.warn(e);
             aardvark.processEvent = function () { };
         };
     }
+    else if(aardvark.noEvents) {
+        function checkDOMChange() {
+            $('div.aardvark').each(function () {
+                var $div = $(this);
+                var div = $div.get(0);
+                if (!div.id) div.id = aardvark.newguid();
 
-    //function checkDOMChange() {
-    //    $('div.aardvark').each(function () {
-    //        var $div = $(this);
-    //        var div = $div.get(0);
-    //        aardvark.getRenderer(div.id);
+                aardvark.getRenderer(div.id);
 
-    //    });
-
-    //    setTimeout(checkDOMChange, 100);
-    //}
-
-    //checkDOMChange();
+            });
+            setTimeout(checkDOMChange, 100);
+        }
+        checkDOMChange();
+    }
 
 });
 
