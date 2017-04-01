@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
+open Aardvark.SceneGraph
 open Aardvark.UI
 open Demo.TestApp
 open Demo
@@ -21,7 +22,7 @@ type ViewerModel =
     {
         files : list<string>
         rotation : float
-        scenes : hset<ISg<Message>>
+        scenes : hset<ISg>
         bounds : Box3d
         camera : Demo.TestApp.CameraControllerState
         fillMode : FillMode

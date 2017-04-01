@@ -182,27 +182,26 @@ module CameraController =
 
                 { model with view = cam; dragStart = pos }
 
-    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : amap<string, AttributeValue<'msg>>) (sg : ISg<'msg>) =
+    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg) =
         let attributes =
-            AMap.ofList [
+            AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
                 always (onMouseDown (fun b p -> f (Down(b,p))))
                 always (onMouseUp (fun b p -> f (Up b)))
                 always (onKeyDown (KeyDown >> f))
                 always (onKeyUp (KeyUp >> f))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
-                onlyWhen (state.moveVec |> Mod.map (fun v -> v <> V3i.Zero)) (onRendered (fun s c t -> f StepTime))
+//                onlyWhen (state.moveVec |> Mod.map (fun v -> v <> V3i.Zero)) (onRendered (fun s c t -> f StepTime))
             ]
-            |> AMap.flattenM
 
-        let attributes = AMap.unionWith mergeAttributes att attributes
+        let attributes = AttributeMap.union att attributes
 
 
 //        let camSg : ISg<Message> =
 //            failwith ""
 
         let cam = Mod.map2 Camera.create state.view frustum 
-        renderControl cam attributes sg
+        Incremental.renderControl cam attributes sg
 
 //
 //    type Tool<'model, 'msg> = 
@@ -239,11 +238,11 @@ module CameraController =
 
     let view (state : MCameraControllerState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
-        div' [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
+        div [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
   
             controlledControl state id 
                 (Mod.constant frustum)
-                (AMap.empty)
+                (AttributeMap.empty)
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
                         |> Sg.shader {
@@ -251,7 +250,6 @@ module CameraController =
                             do! DefaultSurfaces.vertexColor
                             do! DefaultSurfaces.simpleLighting
                         }
-                        |> Sg.noEvents
                 )
             
 //            controlledControl state id 
@@ -270,8 +268,9 @@ module CameraController =
 
 
 
-    let start (runtime : IRuntime) (port : int) =
-        App.start runtime port {
+    let start () =
+        App.start {
+            unpersist = Unpersist.instance
             view = view
             update = update
             initial = initial

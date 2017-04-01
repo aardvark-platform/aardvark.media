@@ -168,7 +168,9 @@ module TimeExtensions =
 
 type ClientInfo =
     {
+        token : AdaptiveToken
         signature : IFramebufferSignature
+        targetId : string
         sceneName : string
         session : Guid
         size : V2i
@@ -207,6 +209,19 @@ type ClientValues internal(_signature : IFramebufferSignature) =
 [<AbstractClass>]
 type Scene() =
     let cache = ConcurrentDictionary<IFramebufferSignature, ConcreteScene>()
+    let clientInfos = ConcurrentDictionary<Guid * string, unit -> Option<ClientInfo * Camera>>()
+
+
+    member internal x.AddClientInfo(session : Guid, id : string, getter : unit -> Option<ClientInfo * Camera>) =
+        clientInfos.TryAdd((session, id), getter) |> ignore
+        
+    member internal x.RemoveClientInfo(session : Guid, id : string) =
+        clientInfos.TryRemove((session, id)) |> ignore
+
+    member x.TryGetClientInfo(session : Guid, id : string) : Option<ClientInfo * Camera> =
+        match clientInfos.TryGetValue ((session, id)) with
+            | (true, getter) -> getter()
+            | _ -> None
 
     member internal x.GetConcreteScene(name : string, signature : IFramebufferSignature) =
         cache.GetOrAdd(signature, fun signature -> ConcreteScene(name, signature, x))
@@ -276,6 +291,8 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
         refCount <- refCount - 1
         if refCount = 0 then
             timer.Change(deleteTimeout, Timeout.Infinite) |> ignore
+            
+    member x.Scene = scene
                     
     member internal x.Apply(info : ClientInfo, s : Camera) =
         state.Update(info, s)
@@ -331,10 +348,17 @@ module Scene =
     let ofArray (scenes : Scene[]) = ArrayScene(scenes) :> Scene
     let ofList (scenes : list<Scene>) = ArrayScene(List.toArray scenes) :> Scene
     let ofSeq (scenes : seq<Scene>) = ArrayScene(Seq.toArray scenes) :> Scene
+    
         
+type Server =
+    {
+        runtime         : IRuntime
+        content         : string -> Option<Scene>
+        cameras         : ClientInfo -> Option<Camera>
+    }
 
-
-type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    let runtime = server.runtime
     let mutable task = RenderTask.empty
 
     let targetSize = Mod.init V2i.II
@@ -345,6 +369,8 @@ type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebuf
     let mutable depth : Option<IRenderbuffer> = None 
     let mutable color : Option<IRenderbuffer> = None
     let mutable target : Option<IFramebuffer> = None 
+
+
 
     let deleteFramebuffer() =
         target |> Option.iter runtime.DeleteFramebuffer
@@ -404,6 +430,17 @@ type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebuf
 
     let mutable currentScene : Option<ConcreteScene> = None
 
+    let mutable lastInfo : Option<ClientInfo> = None
+
+    let getInfo() =
+        match lastInfo with
+            | Some lastInfo ->
+                let now = { lastInfo with time = MicroTime.Now }
+                match server.cameras now with
+                    | Some cam -> Some (now, cam)
+                    | None -> None
+            | _ ->
+                None
 
     let rebuildTask (name : string) (signature : IFramebufferSignature) =
         transact (fun () -> task.Dispose())
@@ -411,6 +448,11 @@ type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebuf
         let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
         let render = newScene.CreateNewRenderTask()
         task <- RenderTask.ofList [clear; render]
+
+        // needs to hold
+        let lastInfo = lastInfo.Value
+        newScene.Scene.AddClientInfo(lastInfo.session, lastInfo.targetId, getInfo)
+
         currentScene <- Some newScene
         newScene, task
 
@@ -418,6 +460,9 @@ type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebuf
         match currentScene with
             | Some scene ->
                 if scene.Name <> name || scene.FramebufferSignature <> signature then
+                    match lastInfo with
+                        | Some info -> scene.Scene.RemoveClientInfo(info.session, info.targetId)
+                        | _ -> ()
                     rebuildTask name signature
                 else
                     scene, task
@@ -426,7 +471,8 @@ type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebuf
 
     member x.Run(token : AdaptiveToken, info : ClientInfo, cam : Camera) =
         use t = runtime.ContextLock
-        
+        lastInfo <- Some info
+
         let scene, task = getSceneAndTask info.sceneName info.signature
         let target = getFramebuffer info.size info.signature
 
@@ -449,12 +495,19 @@ type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebuf
         data
 
     member x.Dispose() =
+        match lastInfo, currentScene with
+            | Some i, Some s ->
+                s.Scene.RemoveClientInfo(i.session, i.targetId)
+                lastInfo <- None
+            | _ -> 
+                ()
         deleteFramebuffer()
         task.Dispose()
         renderTime.Reset()
         compressTime.Reset()
         frameCount <- 0
         currentScene <- None
+        lastInfo <- None
 
     member x.RenderTime = renderTime.MicroTime
     member x.CompressTime = compressTime.MicroTime
@@ -466,7 +519,7 @@ type internal ClientRenderTask internal(runtime : IRuntime, getScene : IFramebuf
 
 type internal ClientCreateInfo =
     {
-        runtime         : IRuntime
+        server          : Server
         session         : Guid
         id              : string
         sceneName       : string
@@ -482,7 +535,7 @@ type internal Client(createInfo : ClientCreateInfo, getCamera : ClientInfo -> Ca
     let sender = AdaptiveObject()
     let requestedSize : MVar<V2i> = MVar.empty()
     let mutable createInfo = createInfo
-    let mutable task = new ClientRenderTask(createInfo.runtime, getContent)
+    let mutable task = new ClientRenderTask(createInfo.server, getContent)
     let mutable running = false
     let mutable disposed = 0
 
@@ -508,7 +561,9 @@ type internal Client(createInfo : ClientCreateInfo, getCamera : ClientInfo -> Ca
 
     let mutable info =
         {
+            token = Unchecked.defaultof<AdaptiveToken>
             signature = createInfo.getSignature createInfo.samples
+            targetId = createInfo.id
             sceneName = createInfo.sceneName
             session = createInfo.session
             samples = createInfo.samples
@@ -523,9 +578,9 @@ type internal Client(createInfo : ClientCreateInfo, getCamera : ClientInfo -> Ca
         while running do
             let size = MVar.take requestedSize
             if size.AllGreater 0 then
-                let info = Interlocked.Change(&info, fun info -> { info with size = size; time = MicroTime.Now })
 
                 sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                    let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now })
                     try
                         let state = getCamera info
                         let data = task.Run(token, info, state)
@@ -557,7 +612,7 @@ type internal Client(createInfo : ClientCreateInfo, getCamera : ClientInfo -> Ca
         if Interlocked.Exchange(&disposed, 0) = 1 then
             Log.line "[Client] %d: revived" id
             createInfo <- newInfo
-            task <- new ClientRenderTask(newInfo.runtime, getContent)
+            task <- new ClientRenderTask(newInfo.server, getContent)
             subscription <- subscribe()
             renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
 
@@ -622,12 +677,7 @@ type internal Client(createInfo : ClientCreateInfo, getCamera : ClientInfo -> Ca
         member x.Dispose() = x.Dispose()
 
 
-type Server =
-    {
-        runtime         : IRuntime
-        content         : string -> Option<Scene>
-        cameras         : ClientInfo -> Option<Camera>
-    }
+
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -795,7 +845,7 @@ module Server =
 
             let createInfo =
                 {
-                    runtime         = info.runtime
+                    server          = info
                     session         = sessionId
                     id              = targetId
                     sceneName       = sceneName
@@ -851,11 +901,13 @@ module Server =
             match Map.tryFind "w" args, Map.tryFind "h" args with
                 | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
                     let scene = content signature sceneName
-                    use task = new ClientRenderTask(info.runtime, content)
+                    use task = new ClientRenderTask(info, content)
 
                     let clientInfo = 
                         {
+                            token = AdaptiveToken.Top
                             signature = signature
+                            targetId = ""
                             sceneName = sceneName
                             session = Guid.Empty
                             size = V2i(w,h)

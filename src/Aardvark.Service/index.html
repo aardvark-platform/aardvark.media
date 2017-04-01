@@ -3,24 +3,18 @@
         <title>Aardvark rocks \o/</title>
         <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js"></script>
+        <script src="./aardvark.js"></script>
         <script>
-            var aardvark = {};
-            document.aardvark = aardvark;
-            aardvark.noEvents = true;
-
-
             function changeScene(e) {
                 var renderer = $('#renderView').renderer();
                 renderer.change(e.target.value, 1)
             }
-
         </script>
-        <script src="./aardvark.js"></script>
         <link rel="stylesheet" type="text/css" href="./aardvark.css">
     </head>
     <body style="width: 100%; height: 100%; border: 0; padding: 0; margin: 0">
         <div id="renderView" class="aardvark" data-samples="1" data-scene="bla" style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; border: 0; padding: 0; margin: 0">
         </div>
-        <input id="currentScene" style="position: fixed; top: 0px; left: 0px; width: 100%;" type="text" size="100" onchange="changeScene(event);"/> <br />
+        <input id="currentScene" style="position: fixed; top: 0px; left: 0px; width: 100%;" type="text" size="100" onchange="changeScene(event);" value="bla"/> <br />
     </body>
 </html>

@@ -98,6 +98,11 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj">
+      <Name>Aardvark.UI</Name>
+      <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>

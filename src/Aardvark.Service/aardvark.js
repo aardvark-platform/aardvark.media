@@ -36,7 +36,6 @@ if (!aardvark.guid) {
 
 if (!aardvark.openFileDialog) {
     aardvark.openFileDialog = function () {
-        var myWindow = window.open("", "", "width=200,height=100");
         alert("Aardvark openFileDialog is not implemented for remote clients");
     };
 }
@@ -45,6 +44,7 @@ if (!aardvark.channels) {
     console.debug("[Aardvark] creating aardvark-channels");
     aardvark.channels = {};
 }
+
 if (!aardvark.referencedScripts) {
     console.debug("[Aardvark] creating aardvark-script-references");
     aardvark.referencedScripts = {};
@@ -57,15 +57,11 @@ if (!aardvark.referencedStyles) {
 
 aardvark.referencedScripts["jquery"] = true;
 
-aardvark.customEventHandling = true;
-if (!aardvark.noEvents) {
-    if (!aardvark.processEvent) {
-        console.debug("[Aardvark] creating aardvark-event-processor");
-        aardvark.customEventHandling = false
-        aardvark.processEvent = function () {
-            console.warn("[Aardvark] cannot process events yet (websocket not opened)");
-        };
-    }
+if (!aardvark.processEvent) {
+    console.debug("[Aardvark] creating aardvark-event-processor");
+    aardvark.processEvent = function () {
+        console.warn("[Aardvark] cannot process events yet (websocket not opened)");
+    };
 }
 
 if (!aardvark.getRelativeUrl) {
@@ -77,6 +73,29 @@ if (!aardvark.getRelativeUrl) {
         return { dirPart: dirPart, filePart: filePart };
     }
 
+    var scripts = document.head.getElementsByTagName("script");
+    var selfScript = undefined;
+    for (var i = 0; i < scripts.length; i++) {
+        var t = scripts[i];
+        var comp = splitPath(t.src);
+        if (comp.filePart === "aardvark.js") {
+            selfScript = comp.dirPart;
+            break;
+        }
+    }
+
+    if (selfScript) {
+        console.debug("[Aardvark] self-url: " + selfScript);
+
+        aardvark.getScriptRelativeUrl = function (protocol, relativePath) {
+
+            if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+
+            return selfScript.replace("https://", protocol + "://").replace("http://", protocol + "://") + relativePath;
+        };
+
+    }
+    
     aardvark.getRelativeUrl = function (protocol, relativePath) {
         var location = window.location;
         var path = splitPath(location.pathname);
@@ -168,7 +187,7 @@ class Renderer {
         
         img.style.cursor = "default";
 
-        var url = aardvark.getRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples);
+        var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples);
 
 
 
@@ -248,7 +267,7 @@ class Renderer {
         for (var i = 1; i < arguments.length; i++) {
             args.push(JSON.stringify(arguments[i]));
         }
-        var message = JSON.stringify({ Case: "Event", evt: { sender: sender, name: name, args: args } });
+        var message = JSON.stringify({ sender: sender, name: name, args: args });
         this.send(message);
     }
 
@@ -608,9 +627,9 @@ if (!aardvark.render) {
     }
 }
 
-$(document).ready(function () {
-    if (!aardvark.customEventHandling) {
-        var url = aardvark.getRelativeUrl('ws', 'events?session=' + aardvark.guid);
+if (!aardvark.connect) {
+    aardvark.connect = function (path) {
+        var url = aardvark.getRelativeUrl('ws', path + '?session=' + aardvark.guid);
         var eventSocket = new WebSocket(url);
 
         eventSocket.onopen = function () {
@@ -651,20 +670,15 @@ $(document).ready(function () {
             aardvark.processEvent = function () { };
         };
     }
-    else if(aardvark.noEvents) {
-        function checkDOMChange() {
-            $('div.aardvark').each(function () {
-                var $div = $(this);
-                var div = $div.get(0);
-                if (!div.id) div.id = aardvark.newguid();
+}
 
-                aardvark.getRenderer(div.id);
-
-            });
-            setTimeout(checkDOMChange, 100);
-        }
-        checkDOMChange();
-    }
-
+$(document).ready(function () {
+    // initialize all aardvark-controls 
+    $('div.aardvark').each(function () {
+        var $div = $(this);
+        var div = $div.get(0);
+        if (!div.id) div.id = aardvark.newguid();
+        aardvark.getRenderer(div.id);
+    });
 });
 

@@ -510,28 +510,27 @@ module Viewer =
             let nv = Array.zip names values
 
             let attributes (name : string) (value : 'a) =
-                AMap.ofList [
+                AttributeMap.ofListCond [
                     always (attribute "value" name)
                     onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
                 ]
-                |> AMap.flattenM
 
             onBoot "$('#__ID__').dropdown();" (
-                select' [clazz "ui dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
+                select [clazz "ui dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
                     for (name, value) in nv do
                         let att = attributes name value
-                        yield option att (AList.ofList [text' name])
+                        yield Incremental.option att (AList.ofList [text name])
                 ]
             )
 
-        let menu (c : string )(entries : list<string * list<Ui<'msg>>>) =
-            div' [ clazz c ] (
+        let menu (c : string )(entries : list<string * list<DomNode<'msg>>>) =
+            div [ clazz c ] (
                 entries |> List.map (fun (name, children) ->
-                    div' [ clazz "item"] [ 
-                        b' [] [text' name]
-                        div' [ clazz "menu" ] (
+                    div [ clazz "item"] [ 
+                        b [] [text name]
+                        div [ clazz "menu" ] (
                             children |> List.map (fun c ->
-                                div' [clazz "item"] [c]
+                                div [clazz "item"] [c]
                             )
                         )
                     ]
@@ -564,6 +563,7 @@ module Viewer =
                 { model with files = [] }
 
             | CameraMessage msg ->
+                Log.line "cam: %A" msg
                 { model with camera = CameraController.update model.camera msg }
 
             | SetFillMode mode ->
@@ -590,35 +590,35 @@ module Viewer =
             Trafo3d.Scale(scale)
 
 
-        require semui [
-            div' [clazz "pushable"] [
+        require semui (
+            div [clazz "pushable"] [
 
                 SemUi.menu "ui sidebar inverted vertical menu wide" [
 
                     "File", 
                     [
-                        button' [clazz "ui button"; clientEvent "onclick" "$('.ui.modal').modal('show');"] [
-                            text' "Import"
+                        button [clazz "ui button"; clientEvent "onclick" "$('.ui.modal').modal('show');"] [
+                            text "Import"
                         ]
                     ]
 
                     "Rendering", 
                     [
-                        table' [clazz "ui celled striped table inverted"] [
-                            tr' [] [
-                                td' [clazz "right aligned"] [
-                                    text' "FillMode:"
+                        table [clazz "ui celled striped table inverted"] [
+                            tr [] [
+                                td [clazz "right aligned"] [
+                                    text "FillMode:"
                                 ]
-                                td' [clazz "right aligned"] [
+                                td [clazz "right aligned"] [
                                     SemUi.dropDown model.fillMode SetFillMode
                                 ]
                             ]
 
-                            tr' [] [
-                                td' [clazz "right aligned"] [
-                                    text' "CullMode:"
+                            tr [] [
+                                td [clazz "right aligned"] [
+                                    text "CullMode:"
                                 ]
-                                td' [clazz "right aligned"] [
+                                td [clazz "right aligned"] [
                                     SemUi.dropDown model.cullMode SetCullMode
                                 ]
                             ]
@@ -628,18 +628,18 @@ module Viewer =
                 ]
 
 
-                div' [clazz "pusher"] [
+                div [clazz "pusher"] [
 
-                    div' [
+                    div [
                         clazz "ui black big launch right attached fixed button menubutton"
                         js "onclick"        "$('.sidebar').sidebar('toggle');"
                     ] [
-                        i' [clazz "content icon"] [] 
-                        Ui("span", AMap.ofList [clazz "text"], Mod.constant "Menu")
+                        i [clazz "content icon"] [] 
+                        span [clazz "text"] [text "Menu"]
                     ]
 
                     CameraController.controlledControl model.camera CameraMessage frustum
-                        (AMap.ofList [
+                        (AttributeMap.ofList [
                             attribute "style" "width:100%; height: 100%"
                             //onRendered (fun _ _ _ -> TimeElapsed)
                         ])
@@ -660,42 +660,42 @@ module Viewer =
 
 
                     onBoot "$('#__ID__').modal({ onApprove: function() { $('.sidebar').sidebar('hide'); } });" (
-                        div' [clazz "ui modal"] [
-                            i' [clazz "close icon"] []
-                            div' [clazz "header"] [text' "Open File"]
-                            div' [clazz "content"] [
-                                button' [
+                        div [clazz "ui modal"] [
+                            i [clazz "close icon"] []
+                            div [clazz "header"] [text "Open File"]
+                            div [clazz "content"] [
+                                button [
                                     clazz "ui button"
                                     onEvent "onchoose" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> OpenFile)
                                     clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
-                                ] [ text' "browse"]
+                                ] [ text "browse"]
 
-                                br' []
-                                div AMap.empty (
+                                br []
+                                Incremental.div AttributeMap.empty (
                                     alist {
                                         let! files = model.files
                                         match files with
                                             | [] -> 
-                                                yield text' "please select a file"
+                                                yield text "please select a file"
                                             | files ->
                                                 for f in files do
                                                     let str = System.Web.HtmlString("files: " + f.Replace("\\", "\\\\")).ToHtmlString()
-                                                    yield text' str
-                                                    yield br' []
+                                                    yield text str
+                                                    yield br []
                                     }
                                 )
 
                             ]
-                            div' [clazz "actions"] [
-                                div' [clazz "ui button deny"; onClick (fun _ -> Cancel)] [text' "Cancel"]
-                                div' [clazz "ui button positive"; onClick (fun _ -> Import)] [text' "Import"]
+                            div [clazz "actions"] [
+                                div [clazz "ui button deny"; onClick (fun _ -> Cancel)] [text "Cancel"]
+                                div [clazz "ui button positive"; onClick (fun _ -> Import)] [text "Import"]
                             ]
                         ]
                     )
                 ]
             ]
 
-        ]
+        )
 
     let initial =
         {
@@ -719,6 +719,7 @@ module Viewer =
 
     let app =
         {
+            unpersist = Unpersist.instance
             initial = initial
             update = update
             view = view
@@ -738,19 +739,16 @@ module Viewer =
         use gl = new OpenGlApplication()
         let runtime = gl.Runtime
     
+        let mapp = App.start app
 
-        Async.Start <|
-            async {
-                do! Async.SwitchToNewThread()
-                App.start runtime 4321 app
-            }
-
+        let part = MutableApp.toWebPart runtime mapp
+        Suave.WebPart.startServer 4321 [part]
 
         use form = new Form(Width = 1024, Height = 768)
         use ctrl = new AardvarkCefBrowser()
         ctrl.Dock <- DockStyle.Fill
         form.Controls.Add ctrl
-        ctrl.StartUrl <- "http://localhost:4321/main/"
+        ctrl.StartUrl <- "http://localhost:4321/"
 
         //ctrl.ShowDevTools()
 

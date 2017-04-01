@@ -87,56 +87,55 @@ module TestApp =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
         let cam = Mod.constant (Camera.create view frustum)
 
-        div' [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
+        div [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
 
-            require semui  [
-                div' [ attribute "class" "ui visible sidebar inverted vertical menu"; attribute "style" "min-width: 250px" ] [
-                    div' [ clazz "item"] [ 
-                        b' [] [text' "Instructions"]
-                        div' [ clazz "menu" ] [
-                            span' [clazz "item"] [text' "use typical WASD bindings to navigate"]
-                            span' [clazz "item"] [text' "hover the box to see its highlighting"]
-                            span' [clazz "item"] [text' "double click the box to persistently enlarge it"]
+            require semui (
+                div [ attribute "class" "ui visible sidebar inverted vertical menu"; attribute "style" "min-width: 250px" ] [
+                    div [ clazz "item"] [ 
+                        b [] [text "Instructions"]
+                        div [ clazz "menu" ] [
+                            span [clazz "item"] [text "use typical WASD bindings to navigate"]
+                            span [clazz "item"] [text "hover the box to see its highlighting"]
+                            span [clazz "item"] [text "double click the box to persistently enlarge it"]
                         ]
                     ]
 
-                    div' [ clazz "item"] [ 
-                        b' [] [text' "Actions"]
-                        div' [ clazz "menu" ] [
-                            div' [ clazz "item "] [ 
-                                button' [clazz "ui button tiny"; onClick (fun () -> Scale) ] [text' "increase scale"]
+                    div [ clazz "item"] [ 
+                        b [] [text "Actions"]
+                        div [ clazz "menu" ] [
+                            div [ clazz "item "] [ 
+                                button [clazz "ui button tiny"; onClick (fun () -> Scale) ] [text "increase scale"]
                             ]
-                            div' [ clazz "item "] [ 
-                                button' [ clazz "ui button tiny"; onClick (fun () -> ResetScale) ] [text' "reset scale"]
+                            div [ clazz "item "] [ 
+                                button [ clazz "ui button tiny"; onClick (fun () -> ResetScale) ] [text "reset scale"]
                             ]
                         ]
                     ]
 
-                    div' [ clazz "item"] [ 
-                        b' [] [text' "Status"]
-                        div' [ clazz "menu" ] [
-                            span' [clazz "item"; attribute "style" "color: red; font-weight: bold"] [ 
-                                m.boxHovered |> Mod.map (function true -> "hovered" | false -> "not hovered") |> text 
+                    div [ clazz "item"] [ 
+                        b [] [text "Status"]
+                        div [ clazz "menu" ] [
+                            span [clazz "item"; attribute "style" "color: red; font-weight: bold"] [ 
+                                m.boxHovered |> Mod.map (function true -> "hovered" | false -> "not hovered") |> Incremental.text 
                             ]
                             
-                            div' [clazz "item"] [
-                                span' [] [text' "current scale: "]
-                                span' [attribute "style" "color: red; font-weight: bold"] [ m.boxScale |> Mod.map string |> text ]
+                            div [clazz "item"] [
+                                span [] [text "current scale: "]
+                                span [attribute "style" "color: red; font-weight: bold"] [ m.boxScale |> Mod.map string |> Incremental.text ]
                             ]
                         ]
                     ]
                 ]
-            ]
+            )
 
-            renderControl
+            Incremental.renderControl
                 cam
                 (
-                    AMap.ofList [
-                        "style", (Mod.constant (Value "display: flex; width: 100%; height: 100%" |> Some))
-                        onlyWhen m.dragging (onRayMove (fun r -> MoveRay r))
+                    AttributeMap.ofListCond [
+                        always (style "display: flex; width: 100%; height: 100%")
+                        //onlyWhen m.dragging (onRayMove (fun r -> MoveRay r))
                         onlyWhen m.dragging (onMouseUp (fun b r -> StopDrag))
                     ] 
-                    |> AMap.flattenM
                 )
                 (
                     let value = m.lastName |> Mod.map (function Some str -> str | None -> "yeah")
@@ -152,23 +151,22 @@ module TestApp =
                                 do! DefaultSurfaces.vertexColor
                                 do! DefaultSurfaces.simpleLighting
                                }
-                            |> Sg.noEvents
                             |> Sg.pickable (PickShape.Box baseBox)             
 
                     let sg = 
                         box |> Sg.trafo (m.boxScale |> Mod.map Trafo3d.Scale)
-                            |> Sg.withEvents [
-                                Sg.onenter (fun p -> Enter)
-                                Sg.onleave (fun () -> Exit)
-                                Sg.ondblclick (fun () -> Scale)
-                                Sg.onmousedown MouseButtons.Left (fun _ -> StartDrag)
-                            ]
+//                            |> Sg.withEvents [
+//                                Sg.onenter (fun p -> Enter)
+//                                Sg.onleave (fun () -> Exit)
+//                                Sg.ondblclick (fun () -> Scale)
+//                                Sg.onmousedown MouseButtons.Left (fun _ -> StartDrag)
+//                            ]
 
                     Sg.ofList [
                         sg
 
                         Sg.markdown MarkdownConfig.light (m.lastName |> Mod.map (Option.defaultValue "yeah"))
-                            |> Sg.noEvents
+                            //|> Sg.noEvents
                             |> Sg.transform (Trafo3d.FromOrthoNormalBasis(-V3d.IOO, V3d.OOI, V3d.OIO))
                             |> Sg.translate 0.0 0.0 3.0
                     ]
@@ -178,8 +176,9 @@ module TestApp =
 
         ]
 
-    let start (runtime : IRuntime) (port : int) =
-        App.start runtime port {
+    let start () =
+        App.start {
+            unpersist = Unpersist.instance
             view = view
             update = update
             initial = initial
@@ -194,72 +193,80 @@ open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main args =
-    Ag.initialize()
-    Aardvark.Init()
-    use app = new OpenGlApplication()
-    let runtime = app.Runtime
+//   
+//    Ag.initialize()
+//    Aardvark.Init()
+//    use app = new OpenGlApplication()
+//    let runtime = app.Runtime
 
-    let t = Mod.time |> Mod.map (fun t -> Trafo3d.RotationZ(float t.Ticks / float TimeSpan.TicksPerSecond))
-
-
-    let hugo =
-        Scene.custom (fun state ->
-            let cube =
-                Sg.box (Mod.constant C4b.Blue) (Box3d(-V3d.III, V3d.III) |> Mod.constant)
-                    |> Sg.shader {
-                        do! DefaultSurfaces.trafo
-                        do! DefaultSurfaces.vertexColor
-                        do! DefaultSurfaces.simpleLighting
-                    }
-                    |> Sg.trafo t
-                    |> Sg.uniform "ViewportSize" state.size
-                    |> Sg.viewTrafo (state.camera |> Mod.map CameraView.viewTrafo)
-                    |> Sg.projTrafo (state.frustum |> Mod.map Frustum.projTrafo)
-
-            state.runtime.CompileRender(state.signature, cube)
-        )
-
-    let scene =
-        Scene.custom (fun state ->
-            let color = 
-                state.session |> Mod.map (fun (g : Guid) -> 
-                    let v = BitConverter.ToUInt64(g.ToByteArray(), 0)
-                    if v % 2UL = 0UL then C4b.Green
-                    else C4b.Red
-                )
-
-            let cube =
-                Sg.box color (Box3d(-V3d.III, V3d.III) |> Mod.constant)
-                    |> Sg.shader {
-                        do! DefaultSurfaces.trafo
-                        do! DefaultSurfaces.vertexColor
-                        do! DefaultSurfaces.simpleLighting
-                    }
-                    |> Sg.trafo t
-                    |> Sg.uniform "ViewportSize" state.size
-                    |> Sg.viewTrafo (state.camera |> Mod.map CameraView.viewTrafo)
-                    |> Sg.projTrafo (state.frustum |> Mod.map Frustum.projTrafo)
-
-            state.runtime.CompileRender(state.signature, cube)
-        )
-
-    let content (name : string) =
-        if name = "hugo" then Some hugo
-        else Some scene
-
-    let clientState (info : ClientInfo) =
-        let size = info.size
-        let view = CameraView.lookAt (V3d(5,4,3)) V3d.Zero V3d.OOI
-        let proj = Frustum.perspective 60.0 0.1 100.0 (float size.X / float size.Y)
-        { camera = view; frustum = proj }
-
-    let rendering = Server.create runtime content clientState
-
-    WebPart.runServer 4321 [ 
-        GET >=> prefix "/test" >=> rendering 
-    ]
-
-    Environment.Exit 0
+//    let t = Mod.time |> Mod.map (fun t -> Trafo3d.RotationZ(float t.Ticks / float TimeSpan.TicksPerSecond))
+//
+//
+//    let hugo =
+//        Scene.custom (fun state ->
+//            let cube =
+//                Sg.box (Mod.constant C4b.Blue) (Box3d(-V3d.III, V3d.III) |> Mod.constant)
+//                    |> Sg.shader {
+//                        do! DefaultSurfaces.trafo
+//                        do! DefaultSurfaces.vertexColor
+//                        do! DefaultSurfaces.simpleLighting
+//                    }
+//                    |> Sg.trafo t
+//                    |> Sg.uniform "ViewportSize" state.size
+//                    |> Sg.viewTrafo (state.camera |> Mod.map CameraView.viewTrafo)
+//                    |> Sg.projTrafo (state.frustum |> Mod.map Frustum.projTrafo)
+//
+//            state.runtime.CompileRender(state.signature, cube)
+//        )
+//
+//    let scene =
+//        Scene.custom (fun state ->
+//            let color = 
+//                state.session |> Mod.map (fun (g : Guid) -> 
+//                    let v = BitConverter.ToUInt64(g.ToByteArray(), 0)
+//                    if v % 2UL = 0UL then C4b.Green
+//                    else C4b.Red
+//                )
+//
+//            let cube =
+//                Sg.box color (Box3d(-V3d.III, V3d.III) |> Mod.constant)
+//                    |> Sg.shader {
+//                        do! DefaultSurfaces.trafo
+//                        do! DefaultSurfaces.vertexColor
+//                        do! DefaultSurfaces.simpleLighting
+//                    }
+//                    |> Sg.trafo t
+//                    |> Sg.uniform "ViewportSize" state.size
+//                    |> Sg.viewTrafo (state.camera |> Mod.map CameraView.viewTrafo)
+//                    |> Sg.projTrafo (state.frustum |> Mod.map Frustum.projTrafo)
+//
+//            state.runtime.CompileRender(state.signature, cube)
+//        )
+//
+//    let content (name : string) =
+//        if name = "hugo" then Some hugo
+//        else Some scene
+//
+//    let clientState (info : ClientInfo) =
+//        let size = info.size
+//        let view = CameraView.lookAt (V3d(5,4,3)) V3d.Zero V3d.OOI
+//        let proj = Frustum.perspective 60.0 0.1 100.0 (float size.X / float size.Y)
+//        Some { cameraView = view; frustum = proj }
+//
+//    let server =
+//        {
+//            runtime = runtime
+//            content = content
+//            cameras = clientState
+//        }
+//
+//    let rendering = Server.toWebPart server
+//
+//    WebPart.runServer 4321 [ 
+//        GET >=> rendering 
+//    ]
+//
+//    Environment.Exit 0
 
     Viewer.Viewer.run args
     System.Environment.Exit 0
