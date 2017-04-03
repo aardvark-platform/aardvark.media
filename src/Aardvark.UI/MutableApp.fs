@@ -68,7 +68,7 @@ module MutableApp =
     let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =
         
         let sceneStore =
-            ConcurrentDictionary<string, Scene * (ClientInfo -> Camera)>()
+            ConcurrentDictionary<string, Scene * (ClientInfo -> ClientState)>()
 
         
         let renderer =
@@ -79,7 +79,7 @@ module MutableApp =
                         | (true, (scene, cam)) -> Some scene
                         | _ -> None
 
-                cameras = fun clientInfo ->
+                getState = fun clientInfo ->
                     match sceneStore.TryGetValue clientInfo.sceneName with
                         | (true, (scene, cam)) -> Some (cam clientInfo)
                         | _ -> None

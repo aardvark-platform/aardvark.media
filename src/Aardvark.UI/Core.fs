@@ -6,8 +6,8 @@ open Aardvark.Base.Geometry
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.Application
+open Aardvark.Service
 open Aardvark.UI.Semantics
-
 [<AutoOpen>]
 module private Utils =
     open Aardvark.Base.TypeInfo
@@ -295,14 +295,13 @@ type SceneEventProcessor<'msg>() =
     static let empty =
         { new SceneEventProcessor<'msg>() with
             member x.NeededEvents = ASet.empty
-            member x.Process _ = []
+            member x.Process(_,_) = []
         }
 
     static member Empty = empty
 
-
     abstract member NeededEvents : aset<SceneEventKind>
-    abstract member Process : evt : SceneEvent -> list<'msg>
+    abstract member Process : source : Guid * evt : SceneEvent -> list<'msg>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SceneEventProcessor =
@@ -318,7 +317,7 @@ module SceneEventProcessor =
                 )
 
             override x.NeededEvents = needed.Value
-            override x.Process e = inner |> List.collect (fun i -> i.Process e)
+            override x.Process(sender, e) = inner |> List.collect (fun i -> i.Process(sender, e))
     
     let empty<'msg> = SceneEventProcessor<'msg>.Empty
 
@@ -395,7 +394,7 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
 and DomContent<'msg> =
     | Empty
     | Children of alist<DomNode<'msg>>
-    | Scene of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Camera)
+    | Scene of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState)
     | Text of IMod<string>
 
 open Aardvark.Service
@@ -434,20 +433,23 @@ type DomNode private() =
     static member Node(tag : string, attributes : AttributeMap<'msg>, content : alist<DomNode<'msg>>) =
         DomNode<'msg>(tag, attributes, DomContent.Children content)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, camera : Aardvark.Service.ClientInfo -> Camera,scene : Aardvark.Service.Scene) =
+    static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState,scene : Aardvark.Service.Scene) =
 
         let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : list<'msg> =
             match scene.TryGetClientInfo(sourceSession, sourceId) with
-                | Some (info, camera) -> 
+                | Some (info, state) -> 
                     let pp = PixelPosition(pos.X, pos.Y, info.size.X, info.size.Y)
-                    let ray = Camera.pickRay camera pp |> FastRay3d |> RayPart
+                    let ray = state |> ClientState.pickRay pp |> FastRay3d |> RayPart
 
-                    processor.Process {
-                        kind    = kind
-                        ray     = ray 
-                        rayT    = -1.0
-                        buttons = buttons
-                    } 
+                    processor.Process(
+                        sourceSession, {
+                            kind    = kind
+                            ray     = ray 
+                            rayT    = -1.0
+                            buttons = buttons
+                        }
+                    )
+
                 | None ->
                     Log.warn "[UI] could not get client info for %A/%s" sourceSession sourceId
                     []
@@ -507,28 +509,39 @@ type DomNode private() =
         let boot (id : string) =
             sprintf "aardvark.getRenderer(\"%s\");" id
 
-        DomNode<'msg>("div", ownAttributes, DomContent.Scene(scene, camera)).WithBoot(Some boot)
+        DomNode<'msg>("div", ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : Aardvark.Service.ClientInfo -> Camera, scene : Aardvark.Service.Scene) =
-        DomNode.RenderControl(attributes, SceneEventProcessor.empty, camera, scene)
+    static member RenderControl(attributes : AttributeMap<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, scene : Aardvark.Service.Scene) =
+        DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene)
     
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, scene : Aardvark.Service.Scene) =
-        let getCamera(c : Aardvark.Service.ClientInfo) =
+        let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
-            { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
-        DomNode.RenderControl(attributes, SceneEventProcessor.empty, getCamera, scene)
+            let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+
+            {
+                viewTrafo = CameraView.viewTrafo cam.cameraView
+                projTrafo = Frustum.projTrafo cam.frustum
+            }
+
+        DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene)
 
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>) =
-        let getCamera(c : Aardvark.Service.ClientInfo) =
+        let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
-            { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+            let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+
+            {
+                viewTrafo = CameraView.viewTrafo cam.cameraView
+                projTrafo = Frustum.projTrafo cam.frustum
+            }
 
         let scene =
             Scene.custom (fun values ->
                 let sg =
                     sg
-                        |> Sg.viewTrafo (values.camera |> Mod.map CameraView.viewTrafo)
-                        |> Sg.projTrafo (values.frustum |> Mod.map Frustum.projTrafo)
+                        |> Sg.viewTrafo values.viewTrafo
+                        |> Sg.projTrafo values.projTrafo
                         |> Sg.uniform "ViewportSize" values.size
 
                 values.runtime.CompileRender(values.signature, sg)
@@ -541,10 +554,11 @@ type DomNode private() =
                 member x.NeededEvents = 
                     tree.Needed.Content |> Mod.force |> printfn "needed: %A"
                     tree.Needed
-                member x.Process (evt : SceneEvent) = tree.Perform evt
+                member x.Process (source : Guid, evt : SceneEvent) = 
+                    tree.Perform evt
             }
 
-        DomNode.RenderControl(attributes, proc, getCamera, scene)
+        DomNode.RenderControl(attributes, proc, getState, scene)
 
     static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>) : DomNode<'msg> =
         DomNode.RenderControl(AttributeMap.empty, camera, scene)

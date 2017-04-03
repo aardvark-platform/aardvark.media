@@ -1,5 +1,6 @@
 ﻿namespace Demo.TestApp
 
+open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
@@ -8,12 +9,12 @@ type ClientLocalAttribute() = inherit System.Attribute()
 [<DomainType>]
 type Model =
     {
-        lastName    : Option<string>
-        elements    : plist<string>
-        hasD3Hate   : bool
-        boxScale    : float
-        boxHovered  : bool
-        dragging    : bool
+        boxHovered      : bool
+        dragging        : bool
+        lastName        : Option<string>
+        elements        : plist<string>
+        hasD3Hate       : bool
+        boxScale        : float
     }
 
 

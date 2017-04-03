@@ -14,7 +14,7 @@ open Aardvark.UI
 
 type UpdateState<'msg> =
     {
-        scenes              : Dictionary<string, Scene * (ClientInfo -> Camera)>
+        scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
         handlers            : Dictionary<string * string, Guid -> string -> list<string> -> list<'msg>>
         references          : Dictionary<string * ReferenceKind, Reference>
     }
@@ -40,7 +40,7 @@ type AbstractUpdater<'msg>() =
         member x.Update(t,s,state) = x.Update(t,s,state)
         member x.Destroy(state, self) = x.Destroy(state, self)
 
-type SceneUpdater<'msg>(ui : DomNode<'msg>, id : string, scene : Scene, camera : ClientInfo -> Camera) =
+type SceneUpdater<'msg>(ui : DomNode<'msg>, id : string, scene : Scene, camera : ClientInfo -> ClientState) =
     inherit AbstractUpdater<'msg>()
 
     let mutable initial = true

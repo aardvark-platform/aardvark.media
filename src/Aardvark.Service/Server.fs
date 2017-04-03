@@ -178,22 +178,37 @@ type ClientInfo =
         time : MicroTime
     }
 
+type ClientState =
+    {
+        viewTrafo   : Trafo3d
+        projTrafo   : Trafo3d
+    }
+    
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module ClientState =
+    let pickRay (pp : PixelPosition) (state : ClientState) =
+        let n = pp.NormalizedPosition
+        let ndc = V3d(2.0 * n.X - 1.0, 1.0 - 2.0 * n.Y, 0.0)
+        let viewDir = state.projTrafo.Backward.TransformPosProj ndc |> Vec.normalize
+        let ray = Ray3d(V3d.Zero, viewDir)
+        ray.Transformed(state.viewTrafo.Backward)
+
 
 type ClientValues internal(_signature : IFramebufferSignature) =
     
     let _time = Mod.init MicroTime.Zero
     let _session = Mod.init Guid.Empty
     let _size = Mod.init V2i.II
-    let _camera = Mod.init (CameraView.lookAt V3d.III V3d.Zero V3d.OOI)
-    let _frustum = Mod.init (Frustum.perspective 60.0 0.1 100.0 1.0)
+    let _viewTrafo = Mod.init Trafo3d.Identity
+    let _projTrafo = Mod.init Trafo3d.Identity
     let _samples = Mod.init 1
 
-    member internal x.Update(info : ClientInfo, state : Camera) =
+    member internal x.Update(info : ClientInfo, state : ClientState) =
         _size.Value <- info.size
         _time.Value <- info.time
         _session.Value <- info.session
-        _camera.Value <- state.cameraView
-        _frustum.Value <- state.frustum
+        _viewTrafo.Value <- state.viewTrafo
+        _projTrafo.Value <- state.projTrafo
         _samples.Value <- info.samples
 
     member x.runtime = _signature.Runtime
@@ -201,24 +216,24 @@ type ClientValues internal(_signature : IFramebufferSignature) =
     member x.size = _size :> IMod<_>
     member x.time = _time :> IMod<_>
     member x.session = _session :> IMod<_>
-    member x.camera = _camera :> IMod<_>
-    member x.frustum = _frustum :> IMod<_>
+    member x.viewTrafo = _viewTrafo :> IMod<_>
+    member x.projTrafo = _projTrafo :> IMod<_>
     member x.samples = _samples :> IMod<_>
 
 
 [<AbstractClass>]
 type Scene() =
     let cache = ConcurrentDictionary<IFramebufferSignature, ConcreteScene>()
-    let clientInfos = ConcurrentDictionary<Guid * string, unit -> Option<ClientInfo * Camera>>()
+    let clientInfos = ConcurrentDictionary<Guid * string, unit -> Option<ClientInfo * ClientState>>()
 
 
-    member internal x.AddClientInfo(session : Guid, id : string, getter : unit -> Option<ClientInfo * Camera>) =
+    member internal x.AddClientInfo(session : Guid, id : string, getter : unit -> Option<ClientInfo * ClientState>) =
         clientInfos.TryAdd((session, id), getter) |> ignore
         
     member internal x.RemoveClientInfo(session : Guid, id : string) =
         clientInfos.TryRemove((session, id)) |> ignore
 
-    member x.TryGetClientInfo(session : Guid, id : string) : Option<ClientInfo * Camera> =
+    member x.TryGetClientInfo(session : Guid, id : string) : Option<ClientInfo * ClientState> =
         match clientInfos.TryGetValue ((session, id)) with
             | (true, getter) -> getter()
             | _ -> None
@@ -294,7 +309,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
             
     member x.Scene = scene
                     
-    member internal x.Apply(info : ClientInfo, s : Camera) =
+    member internal x.Apply(info : ClientInfo, s : ClientState) =
         state.Update(info, s)
 
     member internal x.CreateNewRenderTask() =
@@ -320,7 +335,6 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
     member x.Name = name
 
     member x.FramebufferSignature = signature
-
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Scene =
@@ -354,7 +368,7 @@ type Server =
     {
         runtime         : IRuntime
         content         : string -> Option<Scene>
-        cameras         : ClientInfo -> Option<Camera>
+        getState        : ClientInfo -> Option<ClientState>
     }
 
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
@@ -436,7 +450,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         match lastInfo with
             | Some lastInfo ->
                 let now = { lastInfo with time = MicroTime.Now }
-                match server.cameras now with
+                match server.getState now with
                     | Some cam -> Some (now, cam)
                     | None -> None
             | _ ->
@@ -469,7 +483,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             | None ->
                 rebuildTask name signature
 
-    member x.Run(token : AdaptiveToken, info : ClientInfo, cam : Camera) =
+    member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
         use t = runtime.ContextLock
         lastInfo <- Some info
 
@@ -481,7 +495,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             scene.EvaluateAlways innerToken (fun token ->
                 scene.OutOfDate <- true
                 renderTime.Start()
-                transact (fun () -> scene.Apply(info, cam))
+                transact (fun () -> scene.Apply(info, state))
                 task.Run(token, RenderToken.Empty, OutputDescription.ofFramebuffer target)
                 renderTime.Stop()
             )
@@ -528,7 +542,7 @@ type internal ClientCreateInfo =
         getSignature    : int -> IFramebufferSignature
     }
 
-type internal Client(createInfo : ClientCreateInfo, getCamera : ClientInfo -> Camera, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
+type internal Client(createInfo : ClientCreateInfo, getState : ClientInfo -> ClientState, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
     static let mutable currentId = 0
  
     let id = Interlocked.Increment(&currentId)
@@ -582,7 +596,7 @@ type internal Client(createInfo : ClientCreateInfo, getCamera : ClientInfo -> Ca
                 sender.EvaluateAlways AdaptiveToken.Top (fun token ->
                     let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now })
                     try
-                        let state = getCamera info
+                        let state = getState info
                         let data = task.Run(token, info, state)
 
                         let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
@@ -758,20 +772,20 @@ module Server =
                 | (true, v) -> Some v
                 | _ -> None
 
-        let noCamera =
-            let view = CameraView(V3d.OIO, V3d.Zero, V3d.OOI, V3d.OIO, V3d.IOO)
-            let frustum = { left = -1.0; right = 1.0; top = 1.0; bottom = -1.0; near = -1.0; far = 1.0 }
-            Camera.create view frustum
-
+        let noState =
+            {
+                viewTrafo = Trafo3d.Identity
+                projTrafo = Trafo3d.Identity
+            }
     let empty (r : IRuntime) =
         {
             runtime = r
             content = fun _ -> None
-            cameras = fun _ -> None
+            getState = fun _ -> None
         }
 
-    let withCameras (get : ClientInfo -> Camera) (server : Server) =
-        { server with cameras = get >> Some }
+    let withState (get : ClientInfo -> ClientState) (server : Server) =
+        { server with getState = get >> Some }
 
     let withContent (get : string -> Option<Scene>) (server : Server) =
         { server with content = get }
@@ -812,10 +826,10 @@ module Server =
                 )
             )
 
-        let getCamera (ci : ClientInfo) =
-            match info.cameras ci with
+        let getState (ci : ClientInfo) =
+            match info.getState ci with
                 | Some c -> c
-                | None -> noCamera
+                | None -> noState
 
 
 
@@ -859,7 +873,7 @@ module Server =
                 lock clients (fun () ->
                     clients.GetOrCreate(key, fun (sessionId, targetId) ->
                         Log.line "[Server] created client for (%A/%s)" sessionId targetId
-                        new Client(createInfo, getCamera, content)
+                        new Client(createInfo, getState, content)
                     )
                 )
 
@@ -915,7 +929,7 @@ module Server =
                             time = MicroTime.Now
                         }
 
-                    let state = getCamera clientInfo
+                    let state = getState clientInfo
                     let data = task.Run(AdaptiveToken.Top, clientInfo, state)
 
                     context |> (ok data >=> Writers.setMimeType "image/jpeg")

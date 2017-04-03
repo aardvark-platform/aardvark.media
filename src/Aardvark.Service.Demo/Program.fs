@@ -195,7 +195,7 @@ open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main args =
-   
+
     Ag.initialize()
     Aardvark.Init()
     use app = new OpenGlApplication()

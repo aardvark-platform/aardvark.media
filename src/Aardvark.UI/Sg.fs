@@ -28,9 +28,6 @@ type SceneEvent =
     member x.position = x.ray.Ray.Ray.GetPointOnRay x.rayT
 
 
-
-type private PickObject = Aardvark.SceneGraph.``Sg Picking Extensions``.PickObject
-
 module SgTools =
     
     type IMessageProcessor<'a> =
@@ -375,7 +372,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
     let objects : aset<PickObject> = sg?PickObjects()
     let bvh = BvhTree.ofASet PickObject.bounds objects
 
-    let needed =
+    let needed = //ASet.ofList [ SceneEventKind.Click; SceneEventKind.DoubleClick; SceneEventKind.Down; SceneEventKind.Up; SceneEventKind.Move]
         objects |> ASet.collect (fun o -> 
             match Ag.tryGetInhAttribute o.Scope "PickProcessor" with
                 | Some (:? SgTools.IMessageProcessor<SceneEvent,'msg> as proc) ->
@@ -467,9 +464,6 @@ type private PickObject = Aardvark.SceneGraph.``Sg Picking Extensions``.PickObje
 [<AutoOpen>]
 module ``Message Semantics`` =
     open Aardvark.SceneGraph
-//
-//    type private EventCallback<'msg> = RayPart -> float -> list<'msg>
-//    type private EventTable<'msg> = hmap<SceneEventKind, EventCallback<'msg>>
 
     type IRuntime with
         member x.CompileRender(fbo : IFramebufferSignature, config : BackendConfiguration, sg : ISg<'msg>) =
@@ -561,7 +555,7 @@ module ``Message Semantics`` =
             app.Child?MessageProcessor <- parent.Map(ASet.empty, app.Mapping)
 
         member x.PickProcessor(root : Root<ISg<'msg>>) =
-            root.Child?PickProcessor <- MessageProcessor.ignore<SceneEventKind * RayPart * float, 'msg>
+            root.Child?PickProcessor <- MessageProcessor.ignore<SceneEvent, 'msg>
 
         member x.PickProcessor(app : Sg.EventApplicator<'msg>) =
             let msg = app.MessageProcessor

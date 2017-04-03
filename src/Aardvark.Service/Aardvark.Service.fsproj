@@ -61,13 +61,9 @@
   </Target>
   -->
   <ItemGroup>
-    <EmbeddedResource Include="aardvark.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="aardvark.js" />
     <EmbeddedResource Include="aardvark.css" />
-    <EmbeddedResource Include="index.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </EmbeddedResource>
+    <EmbeddedResource Include="index.html" />
     <EmbeddedResource Include="stats.html" />
     <EmbeddedResource Include="aardvark-light.svg" />
     <EmbeddedResource Include="aardvark.svg" />
