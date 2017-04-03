@@ -73,7 +73,7 @@ module Mutable =
                     override x.Update(r,f) = { r with rotation = f r.rotation }
                 }
             let scenes =
-                { new Lens<Viewer.ViewerModel, Aardvark.Base.hset<Aardvark.SceneGraph.ISg>>() with
+                { new Lens<Viewer.ViewerModel, Aardvark.Base.hset<Aardvark.UI.ISg<Viewer.Message>>>() with
                     override x.Get(r) = r.scenes
                     override x.Set(r,v) = { r with scenes = v }
                     override x.Update(r,f) = { r with scenes = f r.scenes }

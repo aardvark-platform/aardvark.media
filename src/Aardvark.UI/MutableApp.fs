@@ -55,7 +55,7 @@ module MutableApp =
         {
             sender  : string
             name    : string
-            args    : list<string>
+            args    : array<string>
         }
 
     let private (|Guid|_|) (str : string) =
@@ -158,15 +158,15 @@ module MutableApp =
                                         let evt : EventMessage = Pickler.json.UnPickle data
                                         match state.handlers.TryGetValue((evt.sender, evt.name)) with
                                             | (true, handler) ->
-                                                let messages = handler sessionId evt.sender evt.args
+                                                let messages = handler sessionId evt.sender (Array.toList evt.args)
                                                 match messages with
                                                     | [] -> ()
                                                     | _ -> app.update sessionId messages
                                             | _ ->
                                                 ()
 
-                                    with _ ->
-                                        Log.warn "unpickle faulted"
+                                    with e ->
+                                        Log.warn "unpickle faulted: %A" e
 
                                 | Opcode.Close ->
                                     running <- false

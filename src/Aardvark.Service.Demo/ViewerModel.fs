@@ -22,7 +22,7 @@ type ViewerModel =
     {
         files : list<string>
         rotation : float
-        scenes : hset<ISg>
+        scenes : hset<ISg<Message>>
         bounds : Box3d
         camera : Demo.TestApp.CameraControllerState
         fillMode : FillMode

@@ -151,22 +151,24 @@ module TestApp =
                                 do! DefaultSurfaces.vertexColor
                                 do! DefaultSurfaces.simpleLighting
                                }
-                            |> Sg.pickable (PickShape.Box baseBox)             
+                            |> Sg.noEvents
+                            |> Sg.pickable (PickShape.Box baseBox)        
+                                 
 
                     let sg = 
                         box |> Sg.trafo (m.boxScale |> Mod.map Trafo3d.Scale)
-//                            |> Sg.withEvents [
-//                                Sg.onenter (fun p -> Enter)
-//                                Sg.onleave (fun () -> Exit)
-//                                Sg.ondblclick (fun () -> Scale)
-//                                Sg.onmousedown MouseButtons.Left (fun _ -> StartDrag)
-//                            ]
+                            |> Sg.withEvents [
+                                Sg.onEnter (fun p -> Enter)
+                                Sg.onLeave (fun () -> Exit)
+                                Sg.onDoubleClick (fun _ -> Scale)
+                                //Sg.onMouseDown (fun _ _ -> StartDrag)
+                            ]
 
                     Sg.ofList [
                         sg
 
                         Sg.markdown MarkdownConfig.light (m.lastName |> Mod.map (Option.defaultValue "yeah"))
-                            //|> Sg.noEvents
+                            |> Sg.noEvents
                             |> Sg.transform (Trafo3d.FromOrthoNormalBasis(-V3d.IOO, V3d.OOI, V3d.OIO))
                             |> Sg.translate 0.0 0.0 3.0
                     ]
@@ -193,83 +195,20 @@ open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main args =
-//   
-//    Ag.initialize()
-//    Aardvark.Init()
-//    use app = new OpenGlApplication()
-//    let runtime = app.Runtime
+   
+    Ag.initialize()
+    Aardvark.Init()
+    use app = new OpenGlApplication()
+    let runtime = app.Runtime
 
-//    let t = Mod.time |> Mod.map (fun t -> Trafo3d.RotationZ(float t.Ticks / float TimeSpan.TicksPerSecond))
-//
-//
-//    let hugo =
-//        Scene.custom (fun state ->
-//            let cube =
-//                Sg.box (Mod.constant C4b.Blue) (Box3d(-V3d.III, V3d.III) |> Mod.constant)
-//                    |> Sg.shader {
-//                        do! DefaultSurfaces.trafo
-//                        do! DefaultSurfaces.vertexColor
-//                        do! DefaultSurfaces.simpleLighting
-//                    }
-//                    |> Sg.trafo t
-//                    |> Sg.uniform "ViewportSize" state.size
-//                    |> Sg.viewTrafo (state.camera |> Mod.map CameraView.viewTrafo)
-//                    |> Sg.projTrafo (state.frustum |> Mod.map Frustum.projTrafo)
-//
-//            state.runtime.CompileRender(state.signature, cube)
-//        )
-//
-//    let scene =
-//        Scene.custom (fun state ->
-//            let color = 
-//                state.session |> Mod.map (fun (g : Guid) -> 
-//                    let v = BitConverter.ToUInt64(g.ToByteArray(), 0)
-//                    if v % 2UL = 0UL then C4b.Green
-//                    else C4b.Red
-//                )
-//
-//            let cube =
-//                Sg.box color (Box3d(-V3d.III, V3d.III) |> Mod.constant)
-//                    |> Sg.shader {
-//                        do! DefaultSurfaces.trafo
-//                        do! DefaultSurfaces.vertexColor
-//                        do! DefaultSurfaces.simpleLighting
-//                    }
-//                    |> Sg.trafo t
-//                    |> Sg.uniform "ViewportSize" state.size
-//                    |> Sg.viewTrafo (state.camera |> Mod.map CameraView.viewTrafo)
-//                    |> Sg.projTrafo (state.frustum |> Mod.map Frustum.projTrafo)
-//
-//            state.runtime.CompileRender(state.signature, cube)
-//        )
-//
-//    let content (name : string) =
-//        if name = "hugo" then Some hugo
-//        else Some scene
-//
-//    let clientState (info : ClientInfo) =
-//        let size = info.size
-//        let view = CameraView.lookAt (V3d(5,4,3)) V3d.Zero V3d.OOI
-//        let proj = Frustum.perspective 60.0 0.1 100.0 (float size.X / float size.Y)
-//        Some { cameraView = view; frustum = proj }
-//
-//    let server =
-//        {
-//            runtime = runtime
-//            content = content
-//            cameras = clientState
-//        }
-//
-//    let rendering = Server.toWebPart server
-//
-//    WebPart.runServer 4321 [ 
-//        GET >=> rendering 
-//    ]
-//
-//    Environment.Exit 0
+    let a = TestApp.start()
+
+    WebPart.runServer 4321 [ 
+        MutableApp.toWebPart runtime a
+    ]
+    System.Environment.Exit 0
 
     Viewer.Viewer.run args
-    System.Environment.Exit 0
     
 //    Ag.initialize()
 //    Aardvark.Init()

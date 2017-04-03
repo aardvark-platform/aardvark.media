@@ -182,7 +182,7 @@ module CameraController =
 
                 { model with view = cam; dragStart = pos }
 
-    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg) =
+    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         let attributes =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
@@ -250,6 +250,7 @@ module CameraController =
                             do! DefaultSurfaces.vertexColor
                             do! DefaultSurfaces.simpleLighting
                         }
+                        |> Sg.noEvents
                 )
             
 //            controlledControl state id 

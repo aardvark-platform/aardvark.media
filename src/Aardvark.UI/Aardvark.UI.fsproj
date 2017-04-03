@@ -355,6 +355,7 @@
   <ItemGroup>
     <EmbeddedResource Include="template.html" />
     <Content Include="aardvark-events.js" />
+    <Compile Include="Sg.fs" />
     <Compile Include="Core.fs" />
     <Compile Include="Javascript.fs" />
     <Compile Include="Updater.fs" />

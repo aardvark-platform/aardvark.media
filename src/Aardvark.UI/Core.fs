@@ -4,9 +4,9 @@ open System
 open Aardvark.Base
 open Aardvark.Base.Geometry
 open Aardvark.Base.Rendering
-open Aardvark.SceneGraph
 open Aardvark.Base.Incremental
 open Aardvark.Application
+open Aardvark.UI.Semantics
 
 [<AutoOpen>]
 module private Utils =
@@ -289,24 +289,6 @@ type ReferenceKind =
 type Reference = { kind : ReferenceKind; name : string; url : string }
 
 
-
-type SceneEventKind =
-    | Enter
-    | Leave
-    | Move
-    | Click
-    | DoubleClick
-    | Down
-    | Up
-
-type SceneEvent =
-    {
-        kind    : SceneEventKind
-        ray     : RayPart
-        buttons : MouseButtons
-    }
-
-
 [<AbstractClass>]
 type SceneEventProcessor<'msg>() =
 
@@ -463,6 +445,7 @@ type DomNode private() =
                     processor.Process {
                         kind    = kind
                         ray     = ray 
+                        rayT    = -1.0
                         buttons = buttons
                     } 
                 | None ->
@@ -496,7 +479,14 @@ type DomNode private() =
 
         let events =
             processor.NeededEvents 
-                |> ASet.choose (fun k -> Map.tryFind k eventNames) 
+                |> ASet.choose (fun k -> 
+                    match Map.tryFind k eventNames with
+                        | Some name -> Some name
+                        | None -> 
+                            match k with
+                                | SceneEventKind.Enter | SceneEventKind.Leave -> Some "onmousemove"
+                                | _ -> None
+                ) 
                 |> AMap.mapSet (fun name ->
                     match Map.tryFind name eventKinds with
                         | Some kind ->
@@ -528,11 +518,15 @@ type DomNode private() =
             { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
         DomNode.RenderControl(attributes, SceneEventProcessor.empty, getCamera, scene)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, scene : ISg) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>) =
+        let getCamera(c : Aardvark.Service.ClientInfo) =
+            let cam = camera.GetValue(c.token)
+            { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+
         let scene =
             Scene.custom (fun values ->
                 let sg =
-                    scene
+                    sg
                         |> Sg.viewTrafo (values.camera |> Mod.map CameraView.viewTrafo)
                         |> Sg.projTrafo (values.frustum |> Mod.map Frustum.projTrafo)
                         |> Sg.uniform "ViewportSize" values.size
@@ -540,9 +534,19 @@ type DomNode private() =
                 values.runtime.CompileRender(values.signature, sg)
             )
 
-        DomNode.RenderControl(attributes, camera, scene)
+        let tree = PickTree.ofSg sg
 
-    static member RenderControl(camera : IMod<Camera>, scene : ISg) : DomNode<'msg> =
+        let proc =
+            { new SceneEventProcessor<'msg>() with
+                member x.NeededEvents = 
+                    tree.Needed.Content |> Mod.force |> printfn "needed: %A"
+                    tree.Needed
+                member x.Process (evt : SceneEvent) = tree.Perform evt
+            }
+
+        DomNode.RenderControl(attributes, proc, getCamera, scene)
+
+    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>) : DomNode<'msg> =
         DomNode.RenderControl(AttributeMap.empty, camera, scene)
 
 
