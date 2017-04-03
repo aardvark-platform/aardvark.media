@@ -462,8 +462,11 @@ class Renderer {
             this.frameCount++;
 
 
-
+            var oldUrl = this.img.src;
             this.img.src = urlCreator.createObjectURL(msg.data);
+
+            urlCreator.revokeObjectURL(oldUrl);
+
             this.send(JSON.stringify({ Case: "Rendered" }));
             if (this.loading) {
                 this.fadeIn();

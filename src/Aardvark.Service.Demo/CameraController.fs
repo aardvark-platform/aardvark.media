@@ -269,10 +269,29 @@ module CameraController =
 
 
 
+
+    let threads (state : CameraControllerState) =
+        let pool = ThreadPool.create()
+       
+        let rec time() =
+            proclist {
+                do! Proc.Sleep 10
+                yield StepTime
+                yield! time()
+            }
+
+        if state.moveVec <> V3i.Zero then
+            ThreadPool.add "timer" (time()) pool
+
+        else
+            pool
+
+
     let start () =
         App.start {
             unpersist = Unpersist.instance
             view = view
+            threads = threads
             update = update
             initial = initial
         }

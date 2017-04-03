@@ -23,18 +23,67 @@ type App<'model, 'mmodel, 'msg> =
     {
         unpersist   : Unpersist<'model, 'mmodel>
         initial     : 'model
+        threads     : 'model -> ThreadPool<'msg>
         update      : 'model -> 'msg -> 'model
         view        : 'mmodel -> DomNode<'msg>
     }
 
 module App =
     let start (app : App<'model, 'mmodel, 'msg>) =
+        let l = obj()
         let state = Mod.init app.initial
         let mstate = app.unpersist.create app.initial
         let node = app.view mstate
 
         let mutable running = true
         let messageQueue = List<'msg>(128)
+
+        let mutable currentThreads = ThreadPool.create()
+
+        let update (source : Guid) (msgs : list<'msg>) =
+            lock messageQueue (fun () ->
+                messageQueue.AddRange msgs
+                Monitor.Pulse messageQueue
+            )
+
+        let rec adjustThreads (newThreads : ThreadPool<'msg>) =
+            let merge (id : string) (oldThread : Option<Command<'msg>>) (newThread : Option<Command<'msg>>) : Option<Command<'msg>> =
+                match oldThread, newThread with
+                    | Some o, None ->
+                        o.Stop()
+                        newThread
+                    | None, Some n -> 
+                        n.Start(emit)
+                        newThread
+                    | Some o, Some n ->
+                        oldThread
+//                        if o <> n then
+//                            o.Stop()
+//                            n.Start(emit)
+
+                    | None, None -> 
+                        None
+            
+            currentThreads <- ThreadPool<'msg>(HMap.choose2 merge currentThreads.store newThreads.store)
+
+
+        and doit(msgs : list<'msg>) =
+            transact (fun () ->
+                lock l (fun () ->
+                    let newState = msgs |> List.fold app.update state.Value
+                    let newThreads = app.threads newState
+                    adjustThreads newThreads
+                    state.Value <- newState
+                    app.unpersist.update mstate newState
+                )
+            )
+
+        and emit (msg : 'msg) =
+            lock messageQueue (fun () ->
+                messageQueue.Add msg
+                Monitor.Pulse messageQueue
+            )
+
 
         let updateThread =
             async {
@@ -45,22 +94,14 @@ module App =
                         Monitor.Wait(messageQueue) |> ignore
                     
                     let messages = messageQueue |> CSharpList.toList
-                    messageQueue.Clear()
+                    messageQueue.Clear()                 
                     Monitor.Exit(messageQueue)
-                    let newState = messages |> List.fold app.update state.Value
-                    transact (fun () ->
-                        state.Value <- newState
-                        app.unpersist.update mstate newState
-                    )
+
+                    doit messages
             }
 
         Async.Start updateThread
 
-        let update (source : Guid) (msgs : list<'msg>) =
-            lock messageQueue (fun () ->
-                messageQueue.AddRange msgs
-                Monitor.Pulse messageQueue
-            )
 
         {
             model = state

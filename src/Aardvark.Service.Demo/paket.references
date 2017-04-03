@@ -6,7 +6,7 @@ Aardvark.Application.WinForms.GL
 Aardvark.SceneGraph
 Aardvark.SceneGraph.IO
 Aardvark.Rendering.Text
-Aardvark.Compiler.DomainTypes
+Aardvark.Compiler.DomainTypes.MSBuild
 
 FsPickler
 FsPickler.Json

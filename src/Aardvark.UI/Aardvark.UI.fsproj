@@ -59,6 +59,32 @@
   <Target Name="AfterBuild">
   </Target>
   -->
+  <ItemGroup>
+    <EmbeddedResource Include="template.html" />
+    <Content Include="aardvark-events.js" />
+    <Compile Include="Sg.fs" />
+    <Compile Include="Core.fs" />
+    <Compile Include="Javascript.fs" />
+    <Compile Include="Updater.fs" />
+    <Compile Include="MutableApp.fs" />
+    <Compile Include="App.fs" />
+    <Compile Include="Tags.fs" />
+    <Compile Include="Attributes.fs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj">
+      <Name>Aardvark.Service</Name>
+      <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -138,6 +164,17 @@
       <ItemGroup>
         <Reference Include="Aardvark.Base.Runtime">
           <HintPath>..\..\packages\Aardvark.Base.Runtime\lib\net45\Aardvark.Base.Runtime.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="Aardvark.Compiler.DomainTypes">
+          <HintPath>..\..\packages\Aardvark.Compiler.DomainTypes\lib\net45\Aardvark.Compiler.DomainTypes.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -352,30 +389,4 @@
       </ItemGroup>
     </When>
   </Choose>
-  <ItemGroup>
-    <EmbeddedResource Include="template.html" />
-    <Content Include="aardvark-events.js" />
-    <Compile Include="Sg.fs" />
-    <Compile Include="Core.fs" />
-    <Compile Include="Javascript.fs" />
-    <Compile Include="Updater.fs" />
-    <Compile Include="MutableApp.fs" />
-    <Compile Include="App.fs" />
-    <Compile Include="Tags.fs" />
-    <Compile Include="Attributes.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj">
-      <Name>Aardvark.Service</Name>
-      <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-  </ItemGroup>
 </Project>

@@ -181,6 +181,7 @@ module TestApp =
     let start () =
         App.start {
             unpersist = Unpersist.instance
+            threads = fun _ -> ThreadPool.create()
             view = view
             update = update
             initial = initial
@@ -195,18 +196,18 @@ open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main args =
-
-    Ag.initialize()
-    Aardvark.Init()
-    use app = new OpenGlApplication()
-    let runtime = app.Runtime
-
-    let a = TestApp.start()
-
-    WebPart.runServer 4321 [ 
-        MutableApp.toWebPart runtime a
-    ]
-    System.Environment.Exit 0
+//    
+//    Ag.initialize()
+//    Aardvark.Init()
+//    use app = new OpenGlApplication()
+//    let runtime = app.Runtime
+//
+//    let a = Demo.CameraController.start()
+//
+//    WebPart.runServer 4321 [ 
+//        MutableApp.toWebPart runtime a
+//    ]
+//    System.Environment.Exit 0
 
     Viewer.Viewer.run args
     

@@ -720,6 +720,7 @@ module Viewer =
     let app =
         {
             unpersist = Unpersist.instance
+            threads = fun model -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
             initial = initial
             update = update
             view = view

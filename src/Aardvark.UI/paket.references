@@ -5,6 +5,7 @@ Aardvark.Base.Rendering
 Aardvark.Rendering.GL
 Aardvark.Application
 Aardvark.SceneGraph
+Aardvark.Compiler.DomainTypes
 
 FsPickler
 FsPickler.Json

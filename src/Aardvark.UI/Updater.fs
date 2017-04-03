@@ -24,6 +24,9 @@ type IUpdater<'msg> =
     abstract member Update : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
     abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
 
+    //abstract member Html : AdaptiveToken -> 
+
+
 [<AbstractClass>]
 type AbstractUpdater<'msg>() =
     inherit AdaptiveObject()
