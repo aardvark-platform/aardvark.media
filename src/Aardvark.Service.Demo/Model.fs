@@ -17,10 +17,6 @@ type Model =
         boxScale        : float
     }
 
-
-
-
-
 [<DomainType>]
 type CameraControllerState =
     {

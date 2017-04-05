@@ -21,6 +21,7 @@ type Message =
 [<DomainType>]
 type ViewerModel =
     {
+
         files : list<string>
         rotation : float
         scenes : hset<ISg<Message>>

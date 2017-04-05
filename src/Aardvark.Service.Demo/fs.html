@@ -1,0 +1,488 @@
+<html>
+	<head>
+		<script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.js"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" />
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js"></script>
+
+        <style>
+            .jstree-default-dark {
+                background-color: #1b1c1d;
+            }
+
+            .jstree-default-dark .jstree-anchor {
+                text-shadow: none;
+                transition: none;
+                color: rgba(255,255,255,.9);
+            }
+
+            .jstree-default-dark .jstree-hovered {
+                background-color: white;
+                color:rgba(0,0,0,.8);
+            }
+
+            .jstree-default-dark .jstree-hovered .icon.inverted {
+                color: rgba(0,0,0,.8);
+            }
+            
+            div.filebrowser {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                height: 100%;
+                margin: 0px;
+                background-color: #1b1c1d;
+                border-radius: .28571429rem;
+            }
+
+            div.filebrowser.header {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+                height: 3.2em;
+                padding: 4px;
+            }
+
+            div.filebrowser.path {
+                display: block;
+                height: 100%;
+                padding-left: 10px;
+            }
+
+            div.filebrowser.path .ui.input {
+                width: 100%;
+                height: 100%;
+            }
+
+            div.filebrowser.path .ui.input input {
+                background-color: #1b1c1d;
+                color: rgba(255,255,255,.9);
+                border: solid 2px rgba(255,255,255,.9);
+                text-indent: 100%;
+                white-space: nowrap;
+                overflow: hidden;
+            }
+
+            div.filebrowser.path .ui.input input::selection {
+                background-color: #FFFFFF;
+                color: #1b1c1d;
+            }
+            div.filebrowser.path .browsebuttons {
+                position: relative;
+                top: -100%;
+                width: 100%;
+                height: 100%;
+                margin: 0;
+            }
+
+            div .filebrowser.body {
+                display: flex;
+                flex-direction: row;
+                height: 100%;
+                align-content:flex-start;
+            }
+
+            .filebrowser.tree {
+                width: 25%;
+                border-bottom-right-radius: 0;
+                border-top-right-radius: 0;
+                border-top-left-radius: 0;
+                color: rgba(255,255,255,.9);
+                overflow-y: auto;
+                overflow-x: hidden;
+            }
+
+            .filebrowser.splitter {
+                flex: 0 0 6px;
+                cursor: ew-resize;
+                background-color: white;
+                width: 6px;
+                border-radius: 0;
+            }
+
+            .filebrowser.splitter:hover {
+                background-color: #5fa2db;
+            }
+
+            .filebrowser.list {
+                background-color: green;
+                width: 75%;
+                border-bottom-left-radius: 0;
+                border-top-right-radius: 0;
+                border-top-left-radius: 0;
+            }
+
+
+        </style>
+
+        <script>
+
+            function splitPath(path) {
+                var dirPart, filePart;
+                path.replace(/^(.*\/)?([^/]*)$/, function (_, dir, file) {
+                    dirPart = dir; filePart = file;
+                });
+                return { dirPart: dirPart, filePart: filePart };
+            }
+
+
+            var getRelativeUrl = function (protocol, relativePath) {
+                var location = window.location;
+                var path = splitPath(location.pathname);
+                var dir = path.dirPart;
+
+                if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+                if (!dir.startsWith("/")) dir = "/" + dir;
+                if (!dir.endsWith("/")) dir = dir + "/";
+
+                var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
+                console.warn(path);
+
+                return path;
+            };
+    
+        </script>
+
+		<script>
+
+            class FileBrowser {
+                constructor(config) {
+                    this.config = config;
+                    this.browseCache = {};
+                    this.caching = config.caching == undefined ? true : config.caching;
+
+                    if (!config.browse) {
+                        if (!config.url) {
+                            console.error("[FS] no url given");
+                            throw "[FS] no url given";
+                        }
+                        var self = this;
+                        this.browsefn = function (path, cont) {
+                            var pathUrl = self.config.url + "?path=" + path;
+                            console.debug("[FS] reading: " + pathUrl);
+
+                            var request = new XMLHttpRequest();
+                            request.open("GET", pathUrl);
+
+                            request.onerror = function () {
+                                console.warn("[FS] got no response");
+                                cont({ success: false, entries: [] });
+                            }
+
+                            request.onload = function (e) {
+                                var response = request.responseText;
+
+                                if (response) {
+                                    var data = JSON.parse(response);
+                                    console.debug("[FS] got response: { success: " + data.success + "}");
+                                    cont(data);
+                                }
+                                else {
+                                    console.warn("[FS] got no response");
+                                    cont({ success: false, entries: [] });
+                                }
+                            };
+
+                            request.send()
+                        };
+
+                    }
+                    else {
+                        this.browsefn = config.browse;
+                    }
+
+                }
+
+                browse(path, cont) {
+                    if (this.caching) {
+                        var self = this;
+                        var cacheEntry = self.browseCache[path];
+                        if (cacheEntry) {
+                            cont(cacheEntry);
+                        }
+                        else {
+                            this.browsefn(path, function (res) {
+                                self.browseCache[path] = res;
+                                cont(res);
+                            });
+                        }
+
+                    }
+                    else {
+                        this.browsefn(path, cont);
+                    }
+                }
+
+            }
+
+
+            function initTree(element, browser) {
+
+                function getChildren(element, obj, cb) {
+                    var path = "/"
+                    if (obj.id !== '#') path = obj.original.path;
+
+                    browser.browse(path, function (result) {
+                        if (result.success) {
+
+                            var all = 
+                                result.entries
+                                    .filter(e => (e.isDevice || e.hasChildren) && !e.isHidden && !e.isSystem)
+                                    .map(function (e) {
+                                        var icon = "folder";
+                                        if (e.kind === "Disk") icon = "disk outline";
+                                        else if (e.kind === "DVD") icon = "file code outline";
+                                        else if (e.kind === "Removable") icon = "folder outline";
+                                        else if (e.kind === "Share") icon = "cloud";
+                                        else if (e.kind === "Folder") icon = "folder outline";
+                                        else if (e.kind === "File") icon = "file outline";
+
+                                        return {
+                                            path: e.path,
+                                            text: e.name,
+                                            children: e.hasFolders,
+                                            icon: icon + ' icon inverted jstree-themeicon-custom'
+                                        }
+                                    });
+
+                            cb(all);
+
+                        }
+                    });
+
+
+                }
+
+                $(element).jstree(
+				    {
+					    core:
+					    {
+					        themes: {
+					            name: "default-dark"
+					        },
+						    data: function (o, a) { getChildren(this, o, a); }
+					    }
+				    }
+			    );
+            }
+
+
+            function createUI(element, browser) {
+
+                var d = document.createDocumentFragment();
+
+                var root = document.createElement("div")
+                root.className = "filebrowser";
+
+                var header = document.createElement("div");
+                header.classList = "filebrowser header";
+
+
+
+                var pathElement = document.createElement("div");
+                pathElement.classList = "filebrowser path";
+
+                var text = document.createElement("div");
+
+                var textBox = document.createElement("input");
+                textBox.type = "text";
+                text.appendChild(textBox);
+
+                text.classList = "ui input"
+
+                pathElement.appendChild(text);
+
+                var overlay = document.createElement("div");
+                overlay.classList = "browsebuttons ui buttons inverted small"
+                pathElement.appendChild(overlay);
+
+                var nav = document.createElement("div")
+                nav.classList = "ui icon buttons inverted";
+
+
+                var back = document.createElement("button");
+                back.classList = "ui button inverted";
+                back.innerHTML = "<i class='arrow left icon'></i>"
+
+                var forward = document.createElement("button");
+                forward.classList = "ui button inverted";
+                forward.innerHTML = "<i class='arrow right icon'></i>"
+
+                var up = document.createElement("button");
+                up.classList = "ui button inverted";
+                up.innerHTML = "<i class='arrow up icon'></i>"
+
+                nav.appendChild(back);
+                nav.appendChild(forward);
+                nav.appendChild(up);
+
+                overlay.contentEditable = true;
+                overlay.onfocus = function (e) {
+                    overlay.style.display = "none";
+                    textBox.style.textIndent = "initial";
+                    textBox.style.whiteSpace = "initial";
+                    textBox.style.overflow = "initial";
+                    textBox.select();
+                };
+
+                textBox.onblur = function (e) {
+                    overlay.style.display = "block";
+                    textBox.style.textIndent = "100%";
+                    textBox.style.whiteSpace = "nowrap";
+                    textBox.style.overflow = "hidden";
+                };
+
+                function setPath(path) {
+                    textBox.value = path;
+                    var comp = path.split('/');
+
+                    var inner =
+                        comp
+                        .filter(n => n.length > 0)
+                        .map(function (name, index) {
+                            var content = name;
+                            if (index < comp.length - 1) content += "<i class='angle right icon'></i>";
+                            return "<button class='ui button inverted small' style='height: 100%'>" + content + "</button>"
+                        })
+                        .join("");
+
+                    $(overlay).html(inner + "<div style='width: 100%'></div>");
+                    console.log(comp);
+                }
+
+                textBox.onchange = function (e) {
+                    setPath(textBox.value);
+                };
+
+
+                var tree = document.createElement("div");
+                tree.classList = "filebrowser tree";
+                var splitter = document.createElement("div");
+                splitter.classList = "filebrowser splitter";
+                var list = document.createElement("div");
+                list.classList = "filebrowser list";
+
+                var realTree = document.createElement("div");
+                tree.appendChild(realTree);
+
+                initTree(realTree, browser);
+
+                var drag = false;
+                var off = 0;
+                var org = 0;
+                var splitWidth = 10;
+
+                splitter.onmousedown = function (e) {
+                    org = tree.getBoundingClientRect().width;
+                    off = e.screenX;
+                    drag = true;
+                    splitWidth = splitter.getBoundingClientRect().width;
+                };
+                $(document).mouseup(function (e) { drag = false; });
+
+                $(document).mousemove(function (e) {
+                    if (drag) {
+                        var max = root.getBoundingClientRect();
+                        var newWidth = org + (e.screenX - off);
+                        if (newWidth < 50) newWidth = 50;
+                        if (newWidth > max.width - 50) newWidth = max.width - 50;
+                        tree.style.width = newWidth + "px";
+
+                        var rem = max.width - splitWidth - newWidth;
+                        list.style.width = rem + "px";
+                        e.preventDefault();
+                    }
+                });
+
+
+
+                var body = document.createElement("div");
+                body.classList = "filebrowser body";
+
+                body.appendChild(tree);
+                body.appendChild(splitter);
+                body.appendChild(list);
+
+
+                header.appendChild(nav);
+                header.appendChild(pathElement);
+                root.appendChild(header);
+                root.appendChild(body);
+
+                d.appendChild(root);
+                element.appendChild(d);
+
+
+
+
+                setPath("C:/Users/Schorsch/Desktop/bla");
+
+
+                //$(element).append("<div class='filebrowser'><div class='filebrowser header'><input type='text' value='asdsadasd' /><div></div></div></div")
+
+
+            }
+            
+            
+
+            $.fn.filebrowser = function (browser) {
+                // extract the browser-config (if any)
+                if (!browser) {
+                    if (this.length > 0) {
+                        return this.get(0).filebrowser;
+                    }
+                    else {
+                        return undefined;
+                    }
+                }
+
+
+                this.each(function (index, item) {
+                    if (!item.filebrowser) {
+                        console.log(item);
+                        createUI(item, browser);
+                        item.filebrowser = browser;
+                    }
+                });
+
+
+                return browser;
+            };
+
+            var config =
+                {
+                    url: getRelativeUrl("http", "fs.json"), //"http://localhost:4321/fs.json",
+                    caching: true,
+                    onselect: function (path) { console.log("[FS] selected: " + path); }
+                };
+
+            var browser = new FileBrowser(config);
+
+
+            $(document).ready(function () {
+                $('.browser').filebrowser(browser);
+
+                //var b = $('.browser').filebrowser();
+                //b.browse("/C", function (entries) {
+                //    $('.browser').text(JSON.stringify(entries));
+
+                //    b.browse("/C", function (entries) {
+                //        $('.browser').text(JSON.stringify(entries));
+                //    });
+
+                //});
+
+
+            });
+
+		</script>
+		
+	</head>
+	<body>
+        <div class="ui segment">
+            <div class="browser" style="display: flex; width: 100%; height: 768px; padding:0; margin: 0; border:0;" ></div>
+        </div>
+	</body>
+</html>
