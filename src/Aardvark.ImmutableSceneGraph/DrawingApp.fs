@@ -36,10 +36,10 @@ module Serialization =
 module Styles =
     let standard : List<DrawingApp.Style> = 
         [
-           { color = new C4b(33,113,181) ; thickness = DrawingApp.Default.thickness' 0.03 }
-           { color = new C4b(107,174,214); thickness = DrawingApp.Default.thickness' 0.02 }
-           { color = new C4b(189,215,231); thickness = DrawingApp.Default.thickness' 0.01 }
-           { color = new C4b(239,243,255); thickness = DrawingApp.Default.thickness' 0.005 }
+           { color = new C4b(33,113,181) ; thickness = DrawingApp.Default.thickness' 4.0 }
+           { color = new C4b(107,174,214); thickness = DrawingApp.Default.thickness' 3.0 }
+           { color = new C4b(189,215,231); thickness = DrawingApp.Default.thickness' 2.0 }
+           { color = new C4b(239,243,255); thickness = DrawingApp.Default.thickness' 1.0 }
         ]   
 
 module AnnotationPropertiesApp =
@@ -161,11 +161,9 @@ module DrawingApp =
                                                     
                         { m with 
                             working = None 
-                            finished = PSet.add f m.finished }
+                            finished = PSet.add f m.finished }    
 
-    //let toEdges (points:seq<V3d>) = Polygon3d(points).EdgeLines
-
-    let edgeLines (close : bool)  (p : list<V3d>) =        
+    let edgeLines (close : bool)  (p : list<V3d>) =
         let head = p |> List.head        
         (if close then p @ [head] else p) 
             |> List.pairwise
@@ -263,61 +261,111 @@ module DrawingApp =
 //            | FreeFlyAction a, None -> { m with ViewerState =  FreeFlyCameraApp.update (e |> Env.map FreeFlyAction) m.ViewerState a }
 //            | DragStart p, None->  { m with ViewerState = { m.ViewerState with lookingAround = Some p }}
 //            | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
-            | _,_ -> m    
-
+            | _,_ -> m        
     
-           
-    // view annotations in 3D
-    let viewPolygon (p : list<V3d>) (segments: list<list<V3d>>) (r : float) (id : int) (close : bool) =        
-        match p with
-            | [] -> []
-            | _  ->                
-                
-                let lines = p |> edgeLines close               
-
-                [   //drawing leading sphere      
-                    yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
-          
-                    //only polygons with valid ids are pickable
-                    let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)] 
-                                        
-                    for s in segments do
-                        for p' in s do
-                            yield Sphere3d(p', r * 0.80) |> Sphere |> Scene.render Pick.ignore
-
-                    for edge in lines do
-                        let v = edge.P1 - edge.P0
-                        yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.5) |> Scene.render pick
-                        yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
-                ]
-        |> Scene.group                
-    
-    let selectionColor = C4b.Red
-    let viewSelection (p : list<V3d>) (r : float) (close : bool) =
-        let lines =  p |> edgeLines close
-        [           
-            yield Sphere3d(List.rev p |> List.head, r) |> Sphere |> Scene.render Pick.ignore
-            for edge in lines do
-                yield Sphere3d(edge.P0, r) |> Sphere |> Scene.render Pick.ignore
-        ] |> Scene.group
-
     let closed (p : Annotation) = p.annType = "Polygon"
 
-    let viewDrawingPolygons (m :  MDrawing) =
+    let computeScale (view : IMod<CameraView>) (frustum : IMod<Frustum>) (p:V3d) =
+        
+        let v = view.GetValue()
+        let f = frustum.GetValue()
+        let distV = p - v.Location
+        let distF = V3d.Dot(v.Forward, distV)
+
+        distF / 800.0
+       
+
+    // view annotations in 3D
+    let viewPolygonSpheres (view : IMod<CameraView>) (frustum : IMod<Frustum>) (a:Annotation) =        
+        let p = a.geometry
+        let r = a.style.thickness.value
+
+        match p with
+            | [] -> []
+            | _  ->
+                
+                let lines = p |> edgeLines (closed a)
+
+                [   //drawing leading sphere      
+                    let head = List.rev p |> List.head
+                    let scale = computeScale view frustum
+
+                    yield Sphere3d(head, r * (scale head) ) |> Sphere |> Scene.render Pick.ignore
+                                                                                      
+                    for s in a.segments do
+                        for p' in s do
+                            yield Sphere3d(p', (scale p') * r * 0.80) |> Sphere |> Scene.render Pick.ignore
+
+                    for edge in lines do
+                        let v = edge.P1 - edge.P0                    
+                      
+                        yield Sphere3d(edge.P0, (scale edge.P0) * r) |> Sphere |> Scene.render Pick.ignore
+                ]
+        |> Scene.group
+        
+//    let viewPolygonLinesCylinder (p : list<V3d>) (segments: list<list<V3d>>) (r : float) (id : int) (close : bool) =
+//         match p with
+//            | [] -> []
+//            | _  ->     
+//                let lines = p |> edgeLines close
+//                [
+//                    //only polygons with valid ids are pickable
+//                    let pick = if id = -1 then Pick.ignore else [on Mouse.down (fun x -> Click id)] 
+//                    for edge in lines do
+//                        let v = edge.P1 - edge.P0
+//                        yield Primitives.cylinder edge.P0 v.Normalized v.Length (r/2.5) |> Scene.render pick
+//                ]
+//         |> Scene.group   
+         
+    let viewPolygonLines (a : Annotation) =
+        match a.geometry with
+            | [] -> []
+            | _  -> 
+                    [ yield Sg.lines (Mod.constant a.style.color) (a.geometry |> edgeLines (closed a) |> Seq.toArray |> Mod.init)             
+                        |> Sg.uniform "LineWidth" (Mod.constant a.style.thickness.value) 
+                        |> Scene.ofSg ]                            
+                               
+        |> Scene.group
+        |> Scene.effect [
+                    DefaultSurfaces.vertexColor |> toEffect
+                    DefaultSurfaces.trafo |> toEffect
+                    DefaultSurfaces.thickLine |> toEffect ]                                          
+
+    
+
+    let viewPolygon (view : IMod<CameraView>) (frustum : IMod<Frustum>) (a : Annotation) =
+        [ viewPolygonLines a
+          viewPolygonSpheres view frustum a ] |> Scene.group    
+    
+    let selectionColor = C4b.Red
+    let viewSelection (view : IMod<CameraView>) (frustum : IMod<Frustum>) (p : list<V3d>) (r : float) (close : bool) =
+        let lines =  p |> edgeLines close
+        [           
+            let head = List.rev p |> List.head
+            let scale = computeScale view frustum
+
+            yield Sphere3d(head, (scale head) * r) |> Sphere |> Scene.render Pick.ignore
+            for edge in lines do
+                yield Sphere3d(edge.P0, (scale edge.P0) * r) |> Sphere |> Scene.render Pick.ignore
+        ] |> Scene.group
+
+    
+
+    let viewDrawingPolygons (view : IMod<CameraView>) (frustum : IMod<Frustum>) (m :  MDrawing) =
         let isSelected id = Seq.contains id m.mselected
         aset {
                     
             // draw all finished polygons       
             for p in m.mfinished :> aset<_> do                 
-                let color = if isSelected p.seqNumber then selectionColor else p.style.color                
-                yield [viewPolygon p.geometry p.segments p.style.thickness.value p.seqNumber (closed p)] 
+                let color = if isSelected p.seqNumber then selectionColor else p.style.color
+                yield [viewPolygon view frustum p] 
                         |> Scene.colored (Mod.constant p.style.color)
 
             // draw selection geometry
             for id in m.mselected :> aset<_> do
                 printfn "selected: %i" id
                 match m.mfinished |> Seq.tryFind(fun x -> x.seqNumber = id) with
-                    | Some k ->  yield [viewSelection k.geometry (k.style.thickness.value * 1.01) (closed k)] 
+                    | Some k ->  yield [viewSelection view frustum k.geometry (k.style.thickness.value * 1.01) (closed k)] 
                                             |> Scene.colored (Mod.constant selectionColor)
                     | None -> ()
 
@@ -327,11 +375,24 @@ module DrawingApp =
             let! picking = m.mpicking
             match working with
                 | Some v when v.cursor.IsSome -> 
-                    let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints                    
+                    let polyline = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints      
+                                  
+                    let wAnnotation : Annotation = {
+                        seqNumber = -1
+                        annType = m.mmeasureType.Value.selected
+                        geometry = polyline
+                        segments = v.finishedSegments
+                        style = m.mstyle.Value
+                        styleType = m.mstyleType.Value
+                        projection = m.mprojection.Value
+                    }
 
-                    yield [viewPolygon (line) v.finishedSegments style.thickness.value -1 (m.mmeasureType.Value.selected = "Polygon")] 
+                    yield [viewPolygon view frustum wAnnotation] 
                             |> Scene.colored (Mod.constant style.color) 
-                    yield [ Sphere3d(V3d.OOO, style.thickness.value) |> Sphere |>  Scene.render Pick.ignore ] 
+
+                    let scale = computeScale view frustum v.cursor.Value
+
+                    yield [ Sphere3d(V3d.OOO, style.thickness.value * scale) |> Sphere |>  Scene.render Pick.ignore ]
                             |> Scene.colored (Mod.constant C4b.Red)
                             |> Scene.transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value)) 
                 | _ -> ()
@@ -345,8 +406,8 @@ module DrawingApp =
                                ] 
                       ] |>  Scene.colored (Mod.constant C4b.Gray)
 
-    let viewDrawing (m : MDrawing) =         
-        viewDrawingPolygons m 
+    let viewDrawing (view : IMod<CameraView>) (frustum : IMod<Frustum>) (m : MDrawing) =         
+        viewDrawingPolygons view frustum m 
             |> Scene.agroup 
             |> Scene.effect [
                     toEffect DefaultSurfaces.trafo;
@@ -373,7 +434,7 @@ module DrawingApp =
     let view3D (sizes : IMod<V2i>) (m : MDrawing) =     
         let cameraView = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI |> Mod.constant
         let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))       
-        [viewDrawing m 
+        [viewDrawing cameraView frustum m 
          viewQuad    m]
             |> Scene.group
             |> Scene.camera (Mod.map2 Camera.create cameraView frustum)    
@@ -474,8 +535,6 @@ module DrawingApp =
 
             //  Input.toggleMouse Input.Mouse.left DragStart DragStop
             ]
-
-    
 
     let app s time =
         {
