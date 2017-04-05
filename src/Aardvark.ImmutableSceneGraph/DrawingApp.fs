@@ -36,10 +36,10 @@ module Serialization =
 module Styles =
     let standard : List<DrawingApp.Style> = 
         [
-           { color = new C4b(33,113,181) ; thickness = DrawingApp.Default.thickness' 4.0 }
-           { color = new C4b(107,174,214); thickness = DrawingApp.Default.thickness' 3.0 }
-           { color = new C4b(189,215,231); thickness = DrawingApp.Default.thickness' 2.0 }
-           { color = new C4b(239,243,255); thickness = DrawingApp.Default.thickness' 1.0 }
+           { color = new C4b(34,94,168) ; thickness = DrawingApp.Default.thickness' 4.0 }
+           { color = new C4b(65,182,196); thickness = DrawingApp.Default.thickness' 3.0 }
+           { color = new C4b(161,218,180); thickness = DrawingApp.Default.thickness' 2.0 }
+           { color = new C4b(255,255,204); thickness = DrawingApp.Default.thickness' 1.0 }
         ]   
 
 module AnnotationPropertiesApp =
