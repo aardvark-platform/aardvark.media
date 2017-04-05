@@ -66,6 +66,7 @@
     <Compile Include="TrafoApps.fs" />
     <Compile Include="Apps.fs" />
     <Compile Include="ComposedApp.fs" />
+    <Compile Include="Communication.fs" />
     <Compile Include="DrawingApp.fs" />
     <Compile Include="ModelingTool.fs" />
     <Compile Include="InteractionTest.fs" />

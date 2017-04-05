@@ -125,6 +125,7 @@ module DrawingApp =
     [<DomainType>]
     type Drawing = {
         //ViewerState : Camera.Model
+        future   : Option<Drawing>
         history  : Option<Drawing>
         finished : pset<Annotation>
         working  : Option<OpenPolygon>

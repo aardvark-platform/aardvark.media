@@ -19,6 +19,20 @@ open Fablish
 open Fable.Helpers.Virtualdom
 open Fable.Helpers.Virtualdom.Html
 
+module Serialization =
+    open MBrace.FsPickler
+    open System.IO
+    let binarySerializer = FsPickler.CreateBinarySerializer()
+    
+    let save (model : DrawingApp.Drawing) path = 
+        let arr = binarySerializer.Pickle model
+        File.WriteAllBytes(path, arr);
+
+    let load path : DrawingApp.Drawing = 
+        let arr = File.ReadAllBytes(path);
+        let app = binarySerializer.UnPickle arr
+        app
+
 module Styles =
     let standard : List<DrawingApp.Style> = 
         [
@@ -77,8 +91,27 @@ module DrawingApp =
 
     open SimpleDrawingApp
     open DrawingApp    
+
+    open Newtonsoft.Json
             
     let thickness v = { Default.thickness with value = v }
+
+    let initial : Drawing = { 
+        _id = null
+        picking = None 
+       // ViewerState = FreeFlyCameraApp.initial
+        finished = PSet.empty
+        working = None
+        style = Styles.standard.[0]
+        measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Polyline" }
+        styleType = { choices = ["#Fascies";"#Bed";"#Crossbed"; "#Grain"]; selected = "#Fascies" }
+        projection = { choices = ["linear";"viewpoint";"top"]; selected = "viewpoint" }
+        samples = Default.samples' 4.0
+        history = EqualOf.toEqual None; future = EqualOf.toEqual None
+        selected = PSet.empty
+        selectedAnn= None
+        filename = @"C:\Aardwork\wand.jpg"
+        }
 
     type Action =
         | Click of int
@@ -95,27 +128,40 @@ module DrawingApp =
         | Set_Projection of Choice.Action
         | Set_Samples of Numeric.Action
         | SetAnnotationProperties of AnnotationPropertiesApp.Action            
+        | Save
+        | Load
+        | Clear
+        | Send
 //        | FreeFlyAction   of FreeFlyCameraApp.Action
 //        | DragStart       of PixelPosition
 //        | DragStop        of PixelPosition
 
+    let send2Js = Communication.start()
+
     let stash (m : Drawing) =
         { m with history = EqualOf.toEqual (Some m); future = EqualOf.toEqual None }
+
+    let clearUndoRedo (m : Drawing) =
+        { m with history = EqualOf.toEqual None; future = EqualOf.toEqual None }  
 
     let finishPolygon (m : Drawing) = 
                 match m.working with
                     | None -> m
                     | Some p -> 
+                        let f = { geometry = p.finishedPoints
+                                  style = m.style
+                                  seqNumber = m.finished.AsList.Length
+                                  annType = m.measureType.selected 
+                                  styleType = m.styleType
+                                  projection = m.projection
+                                  segments = p.finishedSegments
+                                }
+
+                     //   f |> DrawingApp.Lite.ofAnnotation |> JsonConvert.SerializeObject |> send2Js.send |> ignore
+                                                    
                         { m with 
                             working = None 
-                            finished = PSet.add { geometry = p.finishedPoints
-                                                  style = m.style
-                                                  seqNumber = m.finished.AsList.Length
-                                                  annType = m.measureType.selected 
-                                                  styleType = m.styleType
-                                                  projection = m.projection
-                                                  segments = p.finishedSegments
-                                                  } m.finished }
+                            finished = PSet.add f m.finished }
 
     //let toEdges (points:seq<V3d>) = Polygon3d(points).EdgeLines
 
@@ -145,7 +191,6 @@ module DrawingApp =
                                     |> Seq.toList
                                 else []
 
-
                 let k = { m with working = Some { v with finishedSegments = segments; finishedPoints = points }}
                                 
                 match m.measureType.selected with
@@ -155,8 +200,8 @@ module DrawingApp =
                     | "Polygon"      -> k
                     | "DipAndStrike" -> k
                     | _ -> failwith (sprintf "measure mode %A not recognized" m.measureType.selected)
-            | None -> m
-        
+            | None -> m                       
+                    
     let update (picking : Option<int>) e m (cmd : Action) =
         let picking = m.picking
         match cmd, picking with
@@ -166,9 +211,10 @@ module DrawingApp =
                             then { c with selected = PSet.remove i c.selected; selectedAnn = None }
                             else { c with selected = PSet.add i c.selected; selectedAnn = Annotations.tryGet m i })
               |> stash
-            | Finish, _ -> 
+            | Finish, _ ->                
                 match m.working with
-                    | Some x when x.finishedPoints.Length > 0 -> finishPolygon m |> stash
+                    | Some x when x.finishedPoints.Length > 0 -> 
+                        finishPolygon m |> stash
                     | _ -> m
             | AddPoint p, Some _ -> updateAddPoint m p |> stash
             | MoveCursor p, Some _ ->
@@ -204,6 +250,16 @@ module DrawingApp =
                                     { m with finished = Annotations.update m ann' }
                                 | None -> m           
                             |> stash          
+            | Save, _ -> let m = m  |> clearUndoRedo
+                         //Communication.app(
+             
+                         Serialization.save m "./drawing"
+                         m
+            | Load, _ -> Serialization.load "./drawing" |> clearUndoRedo
+            | Clear, _ -> initial
+            | Send, _ ->
+                m |> DrawingApp.Lite.ofDrawing |> JsonConvert.SerializeObject |> send2Js.send |> ignore                
+                m
 //            | FreeFlyAction a, None -> { m with ViewerState =  FreeFlyCameraApp.update (e |> Env.map FreeFlyAction) m.ViewerState a }
 //            | DragStart p, None->  { m with ViewerState = { m.ViewerState with lookingAround = Some p }}
 //            | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
@@ -274,10 +330,10 @@ module DrawingApp =
                     let line = if picking.IsSome then (v.cursor.Value :: v.finishedPoints) else v.finishedPoints                    
 
                     yield [viewPolygon (line) v.finishedSegments style.thickness.value -1 (m.mmeasureType.Value.selected = "Polygon")] 
-                            |> Scene.colored (Mod.constant style.color)
+                            |> Scene.colored (Mod.constant style.color) 
                     yield [ Sphere3d(V3d.OOO, style.thickness.value) |> Sphere |>  Scene.render Pick.ignore ] 
                             |> Scene.colored (Mod.constant C4b.Red)
-                            |> Scene.transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value))
+                            |> Scene.transform' (Mod.constant <| Trafo3d.Translation(v.cursor.Value)) 
                 | _ -> ()
         }
         
@@ -294,7 +350,10 @@ module DrawingApp =
             |> Scene.agroup 
             |> Scene.effect [
                     toEffect DefaultSurfaces.trafo;
-                    toEffect DefaultSurfaces.vertexColor;]                   
+                    toEffect DefaultSurfaces.vertexColor]
+                 //   toEffect DefaultSurfaces.thickLine]
+     //       |> Sg.uniform "LineWidth" (Mod.constant 5.0)       
+            
 
     let viewQuad (m : MDrawing) =
         let texture = 
@@ -311,9 +370,9 @@ module DrawingApp =
                     toEffect DefaultSurfaces.vertexColor;
                     toEffect DefaultSurfaces.diffuseTexture]
         
-    let view3D (sizes : IMod<V2i>) (m : MDrawing) =            
+    let view3D (sizes : IMod<V2i>) (m : MDrawing) =     
         let cameraView = CameraView.lookAt (V3d.IOO * 5.0) V3d.OOO V3d.OOI |> Mod.constant
-        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))        
+        let frustum = sizes |> Mod.map (fun (b : V2i) -> Frustum.perspective 60.0 0.1 10.0 (float b.X / float b.Y))       
         [viewDrawing m 
          viewQuad    m]
             |> Scene.group
@@ -366,7 +425,19 @@ module DrawingApp =
                     Html.Layout.boxH [ Choice.view m.measureType |> Html.map Set_Type ]
                     Html.Layout.boxH [ Choice.view m.styleType |> Html.map Set_Style ]
                     Html.Layout.boxH [ Choice.view m.projection |> Html.map Set_Projection ]
-                    Html.Layout.boxH [ Numeric.view m.samples |> Html.map Set_Samples ]
+                    Html.Layout.boxH [ Numeric.view m.samples |> Html.map Set_Samples ]                    
+                    Html.Layout.boxH [
+                        div [clazz "ui buttons"] [
+                                button [clazz "ui icon button"; onMouseClick (fun _ -> Save)] [
+                                    i [clazz "save icon"] [] ]
+                                button [clazz "ui icon button"; onMouseClick (fun _ -> Load)] [
+                                    i [clazz "folder outline icon"] [] ]
+                                button [clazz "ui icon button"; onMouseClick (fun _ -> Clear)] [
+                                    i [clazz "file outline icon"] [] ]
+                                button [clazz "ui icon button"; onMouseClick (fun _ -> Send)] [
+                                    i [clazz "external icon"] [] ]
+                        ]
+                    ]
                     Html.Layout.finish()
                 ]
              ]
@@ -404,22 +475,7 @@ module DrawingApp =
             //  Input.toggleMouse Input.Mouse.left DragStart DragStop
             ]
 
-    let (initial : Drawing) = { 
-        _id = null
-        picking = None 
-       // ViewerState = FreeFlyCameraApp.initial
-        finished = PSet.empty
-        working = None
-        style = Styles.standard.[0]
-        measureType = { choices = ["Point";"Line";"Polyline"; "Polygon"; "DipAndStrike" ]; selected = "Polyline" }
-        styleType = { choices = ["#Fascies";"#Bed";"#Crossbed"; "#Grain"]; selected = "#Fascies" }
-        projection = { choices = ["linear";"viewpoint";"top"]; selected = "viewpoint" }
-        samples = Default.samples' 4.0
-        history = EqualOf.toEqual None; future = EqualOf.toEqual None
-        selected = PSet.empty
-        selectedAnn= None
-        filename = @"C:\Aardwork\wand.jpg"
-        }
+    
 
     let app s time =
         {
@@ -442,6 +498,7 @@ module DrawingApp =
             ofPickMsg = fun _ _ -> []
             subscriptions = subscriptions time
         }
+
 
         let viewApp = 
             {

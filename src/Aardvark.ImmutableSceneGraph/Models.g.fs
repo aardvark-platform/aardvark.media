@@ -245,6 +245,8 @@ module Generated =
                     x.mworking.Value <- arg0.working
 
     module DrawingApp = 
+       
+
         type Polygon = list<V3d>
 
         type Style = {
@@ -268,9 +270,7 @@ module Generated =
             { cursor : Option<V3d>
               finishedPoints : list<V3d>
               finishedSegments : list<Segment>
-               }
-        
-
+               }                        
 
         [<DomainType>]
         type Drawing = 
@@ -338,6 +338,53 @@ module Generated =
                     x.mprojection.Value <- arg0.projection
                     x.msamples.Value <- arg0.samples
                     x.mselected.Update(arg0.selected)
+
+        module Lite =
+            type _V3d = {
+                X : double
+                Y : double
+                Z : double
+            }
+
+            type _Polygon = list<_V3d>
+
+            type _Segment = list<_V3d>
+
+            type _Annotation = {
+                seqNumber : int
+                annType : string
+                geometry : _Polygon // think of record type
+                segments : list<_Segment>
+                color : string
+                thickness : double
+                styleType : string
+                projection : string
+                elevation : double
+            }
+
+            let ofV3d (v:V3d) : _V3d = { X = v.X; Y = v.Y; Z = v.Z }
+
+            let ofPolygon (p:Polygon) : _Polygon = p |> List.map ofV3d
+
+            let ofSegment (s:Segment) : _Segment = s |> List.map ofV3d
+
+            let ofAnnotation (a:Annotation) : _Annotation =
+                let polygon = ofPolygon a.geometry
+                let avgHeight = (polygon |> List.map (fun v -> v.Z ) |> List.sum) / double polygon.Length
+                {
+                    seqNumber = a.seqNumber
+                    annType = a.annType
+                    geometry = polygon
+                    segments = a.segments |> List.map (fun x -> ofSegment x)
+                    color = a.style.color.ToString()
+                    thickness = a.style.thickness.value
+                    styleType = a.styleType.selected
+                    projection = a.projection.selected
+                    elevation = avgHeight
+                }  
+
+            let ofDrawing (m : Drawing) : list<_Annotation> =
+                m.finished.AsList |> List.map ofAnnotation
     
     module PlaceTransformObjects = 
         open TranslateController
