@@ -994,10 +994,14 @@ module Viewer =
    
 
     let fstest() =
+        use stream = typeof<FileSystem>.Assembly.GetManifestResourceStream("fs.html")
+        let reader = new StreamReader(stream)
+        let html = reader.ReadToEnd()
+
         let fs = FileSystem(@"C:\Program Files (x86)\Microsoft Visual Studio 14.0")
         Suave.WebPart.runServer 4321 [
             GET >=> path "/fs.json" >=> FileSystem.toWebPart fs
-            GET >=> path "/" >=> (fun ctx -> ctx |> (OK (File.ReadAllText @"C:\Users\Schorsch\Desktop\fs.html")))
+            GET >=> path "/" >=> OK html
         ]
         Environment.Exit 0
 
