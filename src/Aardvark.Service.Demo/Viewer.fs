@@ -996,12 +996,20 @@ module Viewer =
     let fstest() =
         use stream = typeof<FileSystem>.Assembly.GetManifestResourceStream("fs.html")
         let reader = new StreamReader(stream)
-        let html = reader.ReadToEnd()
+        let str = reader.ReadToEnd()
 
-        let fs = FileSystem(@"C:\Program Files (x86)\Microsoft Visual Studio 14.0")
+        let html() = 
+            if Environment.MachineName.ToLower() = "monster64" then
+                 File.ReadAllText @"E:\Development\aardvark-media\src\Aardvark.Service.Demo\fs.html"
+            else
+                str
+
+
+
+        let fs = FileSystem()
         Suave.WebPart.runServer 4321 [
             GET >=> path "/fs.json" >=> FileSystem.toWebPart fs
-            GET >=> path "/" >=> OK html
+            GET >=> path "/" >=> (fun ctx -> ctx |> OK (html()))
         ]
         Environment.Exit 0
 
