@@ -15,6 +15,7 @@ type Model =
         elements        : plist<string>
         hasD3Hate       : bool
         boxScale        : float
+        lastTime        : MicroTime
     }
 
 [<DomainType>]

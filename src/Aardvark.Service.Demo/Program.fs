@@ -32,6 +32,7 @@ module TestApp =
         | StartDrag
         | StopDrag
         | MoveRay of Option<float> * RayPart
+        | NewTime 
 
     let initial =
         {
@@ -41,6 +42,7 @@ module TestApp =
             boxHovered = false
             boxScale = 1.0
             dragging = false
+            lastTime = MicroTime.Now
         }
 
     let update (m : Model) (msg : Message) =
@@ -69,6 +71,10 @@ module TestApp =
             | StopDrag ->
                 printfn "stop"
                 { m with dragging = false }
+
+            | NewTime ->
+                let now = MicroTime.Now
+                { m with lastName = Some (string (now - m.lastTime)); lastTime = now }
 
             | MoveRay(t,r) ->
                 match t with
@@ -181,10 +187,19 @@ module TestApp =
 
         ]
 
+    let rec timerThread() =
+        proclist {
+            do! Proc.Sleep 10
+            yield NewTime
+            yield! timerThread()
+        }
+
+    let pool = ThreadPool.create() |> ThreadPool.add "timer" (timerThread())
+
     let start () =
         App.start {
             unpersist = Unpersist.instance
-            threads = fun _ -> ThreadPool.create()
+            threads = fun _ -> pool
             view = view
             update = update
             initial = initial

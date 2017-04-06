@@ -16,6 +16,7 @@ module Mutable =
         let _elements = ResetList(__initial.elements)
         let _hasD3Hate = ResetMod(__initial.hasD3Hate)
         let _boxScale = ResetMod(__initial.boxScale)
+        let _lastTime = ResetMod(__initial.lastTime)
         
         member x.boxHovered = _boxHovered :> IMod<_>
         member x.dragging = _dragging :> IMod<_>
@@ -23,6 +24,7 @@ module Mutable =
         member x.elements = _elements :> alist<_>
         member x.hasD3Hate = _hasD3Hate :> IMod<_>
         member x.boxScale = _boxScale :> IMod<_>
+        member x.lastTime = _lastTime :> IMod<_>
         
         member x.Update(__model : Demo.TestApp.Model) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -33,6 +35,7 @@ module Mutable =
                 _elements.Update(__model.elements)
                 _hasD3Hate.Update(__model.hasD3Hate)
                 _boxScale.Update(__model.boxScale)
+                _lastTime.Update(__model.lastTime)
         
         static member Create(initial) = MModel(initial)
         
@@ -48,6 +51,7 @@ module Mutable =
         let inline elements (m : MModel) = m.elements
         let inline hasD3Hate (m : MModel) = m.hasD3Hate
         let inline boxScale (m : MModel) = m.boxScale
+        let inline lastTime (m : MModel) = m.lastTime
     
     
     
@@ -91,6 +95,12 @@ module Mutable =
                     override x.Get(r) = r.boxScale
                     override x.Set(r,v) = { r with boxScale = v }
                     override x.Update(r,f) = { r with boxScale = f r.boxScale }
+                }
+            let lastTime =
+                { new Lens<Demo.TestApp.Model, Aardvark.Base.MicroTime>() with
+                    override x.Get(r) = r.lastTime
+                    override x.Set(r,v) = { r with lastTime = v }
+                    override x.Update(r,f) = { r with lastTime = f r.lastTime }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MCameraControllerState private(__initial : Demo.TestApp.CameraControllerState) =

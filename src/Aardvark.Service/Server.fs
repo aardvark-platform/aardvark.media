@@ -204,12 +204,19 @@ type ClientValues internal(_signature : IFramebufferSignature) =
     let _samples = Mod.init 1
 
     member internal x.Update(info : ClientInfo, state : ClientState) =
-        _size.Value <- info.size
         _time.Value <- info.time
         _session.Value <- info.session
+
+        _size.Value <- info.size
         _viewTrafo.Value <- state.viewTrafo
         _projTrafo.Value <- state.projTrafo
         _samples.Value <- info.samples
+//
+//        _size.MarkOutdated()
+//        _viewTrafo.MarkOutdated()
+//        _projTrafo.MarkOutdated()
+//        _samples.MarkOutdated()
+//        _session.MarkOutdated()
 
     member x.runtime = _signature.Runtime
     member x.signature = _signature
@@ -250,10 +257,6 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
 
     let mutable refCount = 0
     let mutable task : Option<IRenderTask> = None
- 
-    let size = Mod.init V2i.II
-    let cameraView = Mod.init (CameraView.lookAt V3d.III V3d.Zero V3d.OOI)
-    let frustum = Mod.init (Frustum.perspective 60.0 0.1 100.0 1.0)
 
     let state = ClientValues(signature)
 
@@ -312,6 +315,8 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
     member internal x.Apply(info : ClientInfo, s : ClientState) =
         state.Update(info, s)
 
+    member internal x.State = state
+
     member internal x.CreateNewRenderTask() =
         lock x (fun () ->
             let task = create()
@@ -331,8 +336,6 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
     
             } :> IRenderTask
         )
-
-    member x.Name = name
 
     member x.FramebufferSignature = signature
 
@@ -384,6 +387,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let mutable color : Option<IRenderbuffer> = None
     let mutable target : Option<IFramebuffer> = None 
 
+    static let mutable threadCount = 0
 
 
     let deleteFramebuffer() =
@@ -442,7 +446,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let compressTime = Stopwatch()
     let mutable frameCount = 0
 
-    let mutable currentScene : Option<ConcreteScene> = None
+    let mutable currentScene : Option<string * ConcreteScene> = None
 
     let mutable lastInfo : Option<ClientInfo> = None
 
@@ -457,6 +461,10 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 None
 
     let rebuildTask (name : string) (signature : IFramebufferSignature) =
+        match currentScene with
+            | Some (oldName, scene) -> Log.warn "rebuild(%s <> %s)"  oldName name
+            | _ -> ()
+
         transact (fun () -> task.Dispose())
         let newScene = getScene signature name
         let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
@@ -467,13 +475,13 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         let lastInfo = lastInfo.Value
         newScene.Scene.AddClientInfo(lastInfo.session, lastInfo.targetId, getInfo)
 
-        currentScene <- Some newScene
+        currentScene <- Some (name, newScene)
         newScene, task
 
     let getSceneAndTask (name : string) (signature : IFramebufferSignature) =
         match currentScene with
-            | Some scene ->
-                if scene.Name <> name || scene.FramebufferSignature <> signature then
+            | Some(sceneName, scene) ->
+                if sceneName <> name || scene.FramebufferSignature <> signature then
                     match lastInfo with
                         | Some info -> scene.Scene.RemoveClientInfo(info.session, info.targetId)
                         | _ -> ()
@@ -484,33 +492,48 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 rebuildTask name signature
 
     member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
-        use t = runtime.ContextLock
         lastInfo <- Some info
 
         let scene, task = getSceneAndTask info.sceneName info.signature
-        let target = getFramebuffer info.size info.signature
 
-        let innerToken = token.Isolated
-        try
-            scene.EvaluateAlways innerToken (fun token ->
-                scene.OutOfDate <- true
-                renderTime.Start()
-                transact (fun () -> scene.Apply(info, state))
-                task.Run(token, RenderToken.Empty, OutputDescription.ofFramebuffer target)
-                renderTime.Stop()
-            )
-        finally
-            innerToken.Release()
+        let mutable t = Unchecked.defaultof<IDisposable>
+        let mutable target = Unchecked.defaultof<IFramebuffer>
 
+        lock scene (fun () ->
+            if Interlocked.Increment(&threadCount) > 1 then
+                Log.warn "HATE"
+            t <- runtime.ContextLock
+            target <- getFramebuffer info.size info.signature
+            let innerToken = token.Isolated
+            try
+                scene.EvaluateAlways innerToken (fun innerToken ->
+                    scene.OutOfDate <- true
+                    renderTime.Start()
+                    transact (fun () -> scene.Apply(info, state))
+
+                    task.Run(innerToken, RenderToken.Empty, OutputDescription.ofFramebuffer target)
+                    renderTime.Stop()
+                    innerToken.Release()
+                )
+            finally
+                //printfn "race here"
+                innerToken.Release()
+//                let real = scene.State.projTrafo |> Mod.force
+//                let should = state.projTrafo
+//                if real <> should then
+//                    Log.warn "bad"
+                Interlocked.Decrement(&threadCount) |> ignore
+        )
         compressTime.Start()
         let data = target.DownloadJpegColor()
         compressTime.Stop()
+        t.Dispose()
         frameCount <- frameCount + 1
         data
 
     member x.Dispose() =
         match lastInfo, currentScene with
-            | Some i, Some s ->
+            | Some i, Some(_,s) ->
                 s.Scene.RemoveClientInfo(i.session, i.targetId)
                 lastInfo <- None
             | _ -> 
@@ -836,7 +859,7 @@ module Server =
         let content signature id  =
             match info.content id with   
                 | Some scene -> scene.GetConcreteScene(id, signature)
-                | None -> Scene.empty .GetConcreteScene(id, signature)
+                | None -> Scene.empty.GetConcreteScene(id, signature)
 
         let render (targetId : string) (ws : WebSocket) (context: HttpContext) =
             let request = context.request
