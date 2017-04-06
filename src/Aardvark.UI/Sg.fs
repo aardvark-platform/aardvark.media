@@ -396,15 +396,16 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
     let mutable last = None
     
-    let perform (evt : SceneEvent) (bvh : BvhTree<PickObject>) =
+    let perform (evt : byref<SceneEvent>) (bvh : BvhTree<PickObject>) =
         match bvh.Intersect(intersectLeaf evt.kind, evt.ray) with
             | Some (hit) ->
                 let proc = hit.Value
-                let evt = { evt with rayT = hit.T }
+                evt <- { evt with rayT = hit.T }
 
                 let perform (evt : SceneEvent) =
                     proc.Process evt
 
+                let evt = evt
                 let boot() =
                     [
                         yield! perform { evt with kind = SceneEventKind.Enter }
@@ -434,9 +435,9 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
     member x.Needed = needed
 
-    member x.Perform(evt : SceneEvent) =
+    member x.Perform(evt : byref<SceneEvent>) =
         let bvh = bvh |> Mod.force
-        bvh |> perform evt
+        perform &evt bvh
         
     member x.Dispose() =
         bvh.Dispose()
@@ -446,7 +447,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
 module PickTree =
     let ofSg (sg : ISg<'msg>) = new PickTree<'msg>(sg)
-    let perform (evt : SceneEvent) (tree : PickTree<'msg>) = tree.Perform(evt)
+    let perform (evt : byref<SceneEvent>) (tree : PickTree<'msg>) = tree.Perform(&evt)
 
 
 namespace Aardvark.UI.Semantics

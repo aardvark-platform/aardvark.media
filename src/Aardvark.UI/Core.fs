@@ -8,6 +8,28 @@ open Aardvark.Base.Incremental
 open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Semantics
+
+module AMap =
+    let keys (m : amap<'k, 'v>) : aset<'k> =
+        ASet.create (fun scope ->
+            let reader = m.GetReader()
+            { new AbstractReader<hdeltaset<'k>>(scope, HDeltaSet.monoid) with
+                member x.Release() =
+                    reader.Dispose()
+
+                member x.Compute(token) =
+                    let ops = reader.GetOperations token
+
+                    ops |> HMap.map (fun key op ->
+                        match op with
+                            | Set _ -> +1
+                            | Remove -> -1
+                    ) |> HDeltaSet.ofHMap
+            }
+        )
+
+
+
 [<AutoOpen>]
 module private Utils =
     open Aardvark.Base.TypeInfo
@@ -157,6 +179,7 @@ module Event =
 type AttributeValue<'msg> =
     | String of string
     | Event of Event<'msg>
+    | RenderControlEvent of (SceneEvent -> list<'msg>)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AttributeValue =
@@ -166,8 +189,13 @@ module AttributeValue =
             | _, AttributeValue.Event l, AttributeValue.Event r -> 
                 AttributeValue.Event (Event.combine l r)
 
+            | _, AttributeValue.RenderControlEvent l,  AttributeValue.RenderControlEvent r ->
+                 AttributeValue.RenderControlEvent (fun a -> l a @ r a)
+
             | "class", AttributeValue.String l, AttributeValue.String r -> 
                 AttributeValue.String (l + " " + r)
+
+
 
             | _ -> 
                 r
@@ -301,7 +329,7 @@ type SceneEventProcessor<'msg>() =
     static member Empty = empty
 
     abstract member NeededEvents : aset<SceneEventKind>
-    abstract member Process : source : Guid * evt : SceneEvent -> list<'msg>
+    abstract member Process : source : Guid * evt : byref<SceneEvent> -> list<'msg>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SceneEventProcessor =
@@ -317,8 +345,12 @@ module SceneEventProcessor =
                 )
 
             override x.NeededEvents = needed.Value
-            override x.Process(sender, e) = inner |> List.collect (fun i -> i.Process(sender, e))
-    
+            override x.Process(sender, e) = 
+                let res = System.Collections.Generic.List()
+                for p in inner do
+                    res.AddRange(p.Process(sender, &e))
+                res |> CSharpList.toList
+
     let empty<'msg> = SceneEventProcessor<'msg>.Empty
 
     let union (l : SceneEventProcessor<'msg>) (r : SceneEventProcessor<'msg>) =
@@ -435,20 +467,44 @@ type DomNode private() =
 
     static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState,scene : Aardvark.Service.Scene) =
 
+        
+        let controlEvents = 
+            attributes |> AttributeMap.toAMap |> AMap.choose (fun k v -> 
+                if k.StartsWith "RenderControl." then
+                    match v with
+                        | AttributeValue.RenderControlEvent cb -> Some cb
+                        | _ -> None
+                else
+                    None    
+            )
+
+        let needed =
+            controlEvents |> AMap.keys |> ASet.choose (fun str -> Map.tryFind (str.Substring(14)) eventKinds )
+
+
+
         let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : list<'msg> =
             match scene.TryGetClientInfo(sourceSession, sourceId) with
                 | Some (info, state) -> 
                     let pp = PixelPosition(pos.X, pos.Y, info.size.X, info.size.Y)
                     let ray = state |> ClientState.pickRay pp |> FastRay3d |> RayPart
 
-                    processor.Process(
-                        sourceSession, {
+                    let mutable evt = 
+                        {
                             kind    = kind
                             ray     = ray 
                             rayT    = -1.0
                             buttons = buttons
                         }
-                    )
+
+                    let procRes = processor.Process(sourceSession, &evt)
+
+                    let renderControlName = "RenderControl." + eventNames.[kind]
+                    match HMap.tryFind renderControlName (Mod.force controlEvents.Content) with
+                        | Some cb ->
+                            cb evt @ procRes
+                        | None -> 
+                            procRes
 
                 | None ->
                     Log.warn "[UI] could not get client info for %A/%s" sourceSession sourceId
@@ -480,7 +536,7 @@ type DomNode private() =
             }
 
         let events =
-            processor.NeededEvents 
+            ASet.union needed processor.NeededEvents 
                 |> ASet.choose (fun k -> 
                     match Map.tryFind k eventNames with
                         | Some name -> Some name
@@ -554,8 +610,8 @@ type DomNode private() =
                 member x.NeededEvents = 
                     tree.Needed.Content |> Mod.force |> printfn "needed: %A"
                     tree.Needed
-                member x.Process (source : Guid, evt : SceneEvent) = 
-                    tree.Perform evt
+                member x.Process (source : Guid, evt : byref<SceneEvent>) = 
+                    tree.Perform(&evt)
             }
 
         DomNode.RenderControl(attributes, proc, getState, scene)

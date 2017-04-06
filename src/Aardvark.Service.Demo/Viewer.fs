@@ -825,7 +825,7 @@ module Viewer =
                 { model with files = [] }
 
             | CameraMessage msg ->
-                Log.line "cam: %A" msg
+                //Log.line "cam: %A" msg
                 { model with camera = CameraController.update model.camera msg }
 
             | SetFillMode mode ->
@@ -861,7 +861,7 @@ module Viewer =
 
                     "File", 
                     [
-                        button [clazz "ui button"; clientEvent "onclick" "$('.ui.modal').modal('show');"] [
+                        button [clazz "ui button"; clientEvent "onclick" "$('.ui.modal[data-bla=hugo]').modal('show');"] [
                             text "Import"
                         ]
                     ]
@@ -923,7 +923,7 @@ module Viewer =
                         )
                    
                     onBoot "$('#__ID__').modal({ onApprove: function() { $('.sidebar').sidebar('hide'); } });" (
-                        div [clazz "ui modal"] [
+                        div [clazz "ui modal"; attribute "data-bla" "hugo"] [
                             i [clazz "close icon"] []
                             div [clazz "header"] [text "Open File"]
                             div [clazz "content"] [
@@ -1014,7 +1014,7 @@ module Viewer =
         Environment.Exit 0
 
     let run argv = 
-        fstest()
+        //fstest()
         ChromiumUtilities.unpackCef()
         Chromium.init argv
 

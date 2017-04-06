@@ -31,7 +31,7 @@ module TestApp =
 
         | StartDrag
         | StopDrag
-        | MoveRay of RayPart
+        | MoveRay of Option<float> * RayPart
 
     let initial =
         {
@@ -70,9 +70,12 @@ module TestApp =
                 printfn "stop"
                 { m with dragging = false }
 
-            | MoveRay r ->
-                printfn "move"
-                m
+            | MoveRay(t,r) ->
+                match t with
+                    | Some t ->
+                        { m with lastName = Some (string t) }
+                    | None ->
+                        { m with lastName = None }// Some "no hit" }
 
     let clazz str = attribute "class" str
 
@@ -133,7 +136,7 @@ module TestApp =
                 (
                     AttributeMap.ofListCond [
                         always (style "display: flex; width: 100%; height: 100%")
-                        //onlyWhen m.dragging (onRayMove (fun r -> MoveRay r))
+                        onlyWhen m.dragging (RenderControl.onMouseMove (fun r t -> MoveRay(t,r)))
                         onlyWhen m.dragging (onMouseUp (fun b r -> StopDrag))
                     ] 
                 )
@@ -161,7 +164,7 @@ module TestApp =
                                 Sg.onEnter (fun p -> Enter)
                                 Sg.onLeave (fun () -> Exit)
                                 Sg.onDoubleClick (fun _ -> Scale)
-                                //Sg.onMouseDown (fun _ _ -> StartDrag)
+                                Sg.onMouseDown (fun _ _ -> StartDrag)
                             ]
 
                     Sg.ofList [
@@ -196,20 +199,20 @@ open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main args =
-//    
-//    Ag.initialize()
-//    Aardvark.Init()
-//    use app = new OpenGlApplication()
-//    let runtime = app.Runtime
-//
-//    let a = Demo.CameraController.start()
-//
-//    WebPart.runServer 4321 [ 
-//        MutableApp.toWebPart runtime a
-//    ]
-//    System.Environment.Exit 0
+    
+    Ag.initialize()
+    Aardvark.Init()
+    use app = new OpenGlApplication()
+    let runtime = app.Runtime
 
-    Viewer.Viewer.run args
+    let a = TestApp.start()
+
+    WebPart.runServer 4321 [ 
+        MutableApp.toWebPart runtime a
+    ]
+    System.Environment.Exit 0
+
+    //Viewer.Viewer.run args
     
 //    Ag.initialize()
 //    Aardvark.Init()
