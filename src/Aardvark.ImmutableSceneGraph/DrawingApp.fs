@@ -33,6 +33,9 @@ module Serialization =
         let app = binarySerializer.UnPickle arr
         app
 
+    let writeToFile path (contents : string) =
+        System.IO.File.WriteAllText(path, contents)
+
 module Styles =
     let standard : List<DrawingApp.Style> = 
         [
@@ -132,6 +135,7 @@ module DrawingApp =
         | Load
         | Clear
         | Send
+        | Export
 //        | FreeFlyAction   of FreeFlyCameraApp.Action
 //        | DragStart       of PixelPosition
 //        | DragStop        of PixelPosition
@@ -258,6 +262,10 @@ module DrawingApp =
             | Send, _ ->
                 m |> DrawingApp.Lite.ofDrawing |> JsonConvert.SerializeObject |> send2Js.send |> ignore                
                 m
+            | Export, _ ->
+                let json = m |> DrawingApp.Lite.ofDrawing |> JsonConvert.SerializeObject
+                Serialization.writeToFile ".\drawing.json" json
+                m
 //            | FreeFlyAction a, None -> { m with ViewerState =  FreeFlyCameraApp.update (e |> Env.map FreeFlyAction) m.ViewerState a }
 //            | DragStart p, None->  { m with ViewerState = { m.ViewerState with lookingAround = Some p }}
 //            | DragStop _, None  -> { m with ViewerState = { m.ViewerState with lookingAround = None }}
@@ -273,7 +281,8 @@ module DrawingApp =
         let distF = V3d.Dot(v.Forward, distV)
 
         distF / 800.0
-       
+
+   
 
     // view annotations in 3D
     let viewPolygonSpheres (view : IMod<CameraView>) (frustum : IMod<Frustum>) (a:Annotation) =        
@@ -285,21 +294,22 @@ module DrawingApp =
             | _  ->
                 
                 let lines = p |> edgeLines (closed a)
-
+               
+                let pick = if a.seqNumber = -1 then Pick.ignore else [on Mouse.down (fun x -> Click a.seqNumber)] 
                 [   //drawing leading sphere      
                     let head = List.rev p |> List.head
                     let scale = computeScale view frustum
 
-                    yield Sphere3d(head, r * (scale head) ) |> Sphere |> Scene.render Pick.ignore
+                    yield Sphere3d(head, r * (scale head) ) |> Sphere |> Scene.render pick
                                                                                       
                     for s in a.segments do
                         for p' in s do
-                            yield Sphere3d(p', (scale p') * r * 0.80) |> Sphere |> Scene.render Pick.ignore
+                            yield Sphere3d(p', (scale p') * r * 0.80) |> Sphere |> Scene.render pick
 
                     for edge in lines do
                         let v = edge.P1 - edge.P0                    
                       
-                        yield Sphere3d(edge.P0, (scale edge.P0) * r) |> Sphere |> Scene.render Pick.ignore
+                        yield Sphere3d(edge.P0, (scale edge.P0) * r) |> Sphere |> Scene.render pick
                 ]
         |> Scene.group
         
@@ -496,6 +506,8 @@ module DrawingApp =
                                 button [clazz "ui icon button"; onMouseClick (fun _ -> Clear)] [
                                     i [clazz "file outline icon"] [] ]
                                 button [clazz "ui icon button"; onMouseClick (fun _ -> Send)] [
+                                    i [clazz "external icon"] [] ]
+                                button [clazz "ui icon button"; onMouseClick (fun _ -> Export)] [
                                     i [clazz "external icon"] [] ]
                         ]
                     ]

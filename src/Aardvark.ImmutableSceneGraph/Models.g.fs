@@ -360,6 +360,7 @@ module Generated =
                 styleType : string
                 projection : string
                 elevation : double
+                distance : double
             }
 
             let ofV3d (v:V3d) : _V3d = { X = v.X; Y = v.Y; Z = v.Z }
@@ -368,9 +369,22 @@ module Generated =
 
             let ofSegment (s:Segment) : _Segment = s |> List.map ofV3d
 
+            let rec fold f s xs =
+                match xs with
+                    | x::xs -> 
+                            let r = fold f s xs
+                            f x r
+                    | [] -> s
+
+            let sum = [ 1 .. 10 ] |> List.fold (fun s e -> s * e) 1
+
+            let sumDistance (polyline : Polygon) : double =
+                polyline |> List.pairwise |> List.fold (fun s (a,b) -> s + (b - a).LengthSquared) 0.0 |> Math.Sqrt
+
             let ofAnnotation (a:Annotation) : _Annotation =
                 let polygon = ofPolygon a.geometry
                 let avgHeight = (polygon |> List.map (fun v -> v.Z ) |> List.sum) / double polygon.Length
+                let distance = sumDistance a.geometry
                 {
                     seqNumber = a.seqNumber
                     annType = a.annType
@@ -381,6 +395,7 @@ module Generated =
                     styleType = a.styleType.selected
                     projection = a.projection.selected
                     elevation = avgHeight
+                    distance = distance
                 }  
 
             let ofDrawing (m : Drawing) : list<_Annotation> =
