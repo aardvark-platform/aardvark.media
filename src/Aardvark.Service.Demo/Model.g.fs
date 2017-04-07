@@ -8,6 +8,41 @@ open Aardvark.Base.Incremental
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    type MUrdar private(__initial : Demo.TestApp.Urdar) =
+        let mutable __current = __initial
+        let _urdar = ResetMod(__initial.urdar)
+        
+        member x.urdar = _urdar :> IMod<_>
+        
+        member x.Update(__model : Demo.TestApp.Urdar) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _urdar.Update(__model.urdar)
+        
+        static member Create(initial) = MUrdar(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MUrdar =
+        let inline urdar (m : MUrdar) = m.urdar
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module Urdar =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let urdar =
+                { new Lens<Demo.TestApp.Urdar, Microsoft.FSharp.Core.int>() with
+                    override x.Get(r) = r.urdar
+                    override x.Set(r,v) = { r with urdar = v }
+                    override x.Update(r,f) = { r with urdar = f r.urdar }
+                }
+    [<StructuredFormatDisplay("{AsString}")>]
     type MModel private(__initial : Demo.TestApp.Model) =
         let mutable __current = __initial
         let _boxHovered = ResetMod(__initial.boxHovered)
@@ -16,6 +51,7 @@ module Mutable =
         let _elements = ResetList(__initial.elements)
         let _hasD3Hate = ResetMod(__initial.hasD3Hate)
         let _boxScale = ResetMod(__initial.boxScale)
+        let _objects = ResetMapMap(__initial.objects, (fun k v -> MUrdar.Create(v)), (fun (m,i) -> m.Update(i)))
         let _lastTime = ResetMod(__initial.lastTime)
         
         member x.boxHovered = _boxHovered :> IMod<_>
@@ -24,6 +60,7 @@ module Mutable =
         member x.elements = _elements :> alist<_>
         member x.hasD3Hate = _hasD3Hate :> IMod<_>
         member x.boxScale = _boxScale :> IMod<_>
+        member x.objects = _objects :> amap<_,_>
         member x.lastTime = _lastTime :> IMod<_>
         
         member x.Update(__model : Demo.TestApp.Model) =
@@ -35,6 +72,7 @@ module Mutable =
                 _elements.Update(__model.elements)
                 _hasD3Hate.Update(__model.hasD3Hate)
                 _boxScale.Update(__model.boxScale)
+                _objects.Update(__model.objects)
                 _lastTime.Update(__model.lastTime)
         
         static member Create(initial) = MModel(initial)
@@ -51,6 +89,7 @@ module Mutable =
         let inline elements (m : MModel) = m.elements
         let inline hasD3Hate (m : MModel) = m.hasD3Hate
         let inline boxScale (m : MModel) = m.boxScale
+        let inline objects (m : MModel) = m.objects
         let inline lastTime (m : MModel) = m.lastTime
     
     
@@ -95,6 +134,12 @@ module Mutable =
                     override x.Get(r) = r.boxScale
                     override x.Set(r,v) = { r with boxScale = v }
                     override x.Update(r,f) = { r with boxScale = f r.boxScale }
+                }
+            let objects =
+                { new Lens<Demo.TestApp.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string, Demo.TestApp.Urdar>>() with
+                    override x.Get(r) = r.objects
+                    override x.Set(r,v) = { r with objects = v }
+                    override x.Update(r,f) = { r with objects = f r.objects }
                 }
             let lastTime =
                 { new Lens<Demo.TestApp.Model, Aardvark.Base.MicroTime>() with

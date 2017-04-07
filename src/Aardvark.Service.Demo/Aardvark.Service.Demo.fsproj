@@ -87,14 +87,11 @@
   <ItemGroup>
     <EmbeddedResource Include="fs.html" />
     <EmbeddedResource Include="browser.html" />
-    <Compile Include="Sg.fs" />
-    <Compile Include="Ui.fs" />
-    <Compile Include="UiReader.fs" />
-    <Compile Include="Style.fs" />
-    <Compile Include="App.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="CameraController.fs" />
     <Compile Include="ViewerModel.fs" />
+    <Compile Include="ChromiumStuff.fs" />
+    <Compile Include="FileSystem.fs" />
     <Compile Include="Viewer.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -7,6 +7,9 @@ open Aardvark.Base.Incremental
 type ClientLocalAttribute() = inherit System.Attribute()
 
 [<DomainType>]
+type Urdar = { urdar : int }
+
+[<DomainType>]
 type Model =
     {
         boxHovered      : bool
@@ -15,6 +18,7 @@ type Model =
         elements        : plist<string>
         hasD3Hate       : bool
         boxScale        : float
+        objects         : hmap<string,Urdar>
         lastTime        : MicroTime
     }
 

@@ -43,6 +43,7 @@ module TestApp =
             boxScale = 1.0
             dragging = false
             lastTime = MicroTime.Now
+            objects = HMap.empty
         }
 
     let update (m : Model) (msg : Message) =
@@ -211,10 +212,13 @@ open Suave.Operators
 open Suave.Filters
 open Suave.WebPart
 
+open System.Windows.Forms
 
-[<EntryPoint; STAThread>]
-let main args =
-    
+
+let kitchenSink argv =
+    Xilium.CefGlue.ChromiumUtilities.unpackCef()
+    Chromium.init argv
+
     Ag.initialize()
     Aardvark.Init()
     use app = new OpenGlApplication()
@@ -222,20 +226,30 @@ let main args =
 
     let a = TestApp.start()
 
-    WebPart.runServer 4321 [ 
+    WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
-    ]
+    ]  
+
+    use form = new Form(Width = 1024, Height = 768)
+    use ctrl = new AardvarkCefBrowser()
+    ctrl.Dock <- DockStyle.Fill
+    form.Controls.Add ctrl
+    ctrl.StartUrl <- "http://localhost:4321/"
+
+    //ctrl.ShowDevTools()
+
+    Application.Run form
     System.Environment.Exit 0
 
-    //Viewer.Viewer.run args
+let modelviewer args =
+    Viewer.Viewer.run args
+    System.Environment.Exit 0
+
+[<EntryPoint; STAThread>]
+let main args =
     
-//    Ag.initialize()
-//    Aardvark.Init()
-//    use app = new OpenGlApplication()
-//    let runtime = app.Runtime
-//    
-//    TestApp.start runtime 8888
-//    
-//    Console.ReadLine() |> ignore
+    kitchenSink args
+    //modelviewer args
+
     0
 
