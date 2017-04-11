@@ -103,10 +103,7 @@ module Viewer =
 
             | SetCullMode mode ->
                 { model with cullMode = mode }
-
     
-
-
     let view (model : MViewerModel) =
         let cam =
             model.camera.view 

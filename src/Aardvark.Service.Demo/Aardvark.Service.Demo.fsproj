@@ -90,9 +90,13 @@
     <Compile Include="Model.fs" />
     <Compile Include="CameraController.fs" />
     <Compile Include="ViewerModel.fs" />
+    <Compile Include="UI.Primitives.Models.fs" />
     <Compile Include="ChromiumStuff.fs" />
     <Compile Include="FileSystem.fs" />
+    <Compile Include="UI.Primitives.fs" />
     <Compile Include="Viewer.fs" />
+    <Compile Include="KitchenSink.fs" />
+    <Compile Include="AnnotationApp.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
