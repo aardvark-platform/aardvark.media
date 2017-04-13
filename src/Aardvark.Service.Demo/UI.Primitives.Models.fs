@@ -6,17 +6,12 @@ open Aardvark.Base.Incremental
 open Aardvark.SceneGraph
 open Aardvark.UI
 
-
-type Numeric = {    
+[<DomainType>]
+type NumericBox = {
     value : float
     min   : float
     max   : float
     step  : float
     format: string
-}
-
-[<DomainType>]
-type NumericBox = {
-    value : Numeric
 }
 

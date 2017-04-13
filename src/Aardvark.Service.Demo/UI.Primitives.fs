@@ -42,7 +42,7 @@ module Numeric =
             | Set s     ->
                 let parsed = 0.0
                 match Double.TryParse(s, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
-                    | (true,v) -> { model with value = { model.value with value = Fun.Clamp(v, model.value.min, model.value.max) } }
+                    | (true,v) -> { model with value = Fun.Clamp(v, model.min, model.max)  }
                     | _ -> 
                         printfn "validation failed: %s" s
                         model  
@@ -50,20 +50,35 @@ module Numeric =
 
     let numericField set (model:MNumericBox) inputType =         
        // let formatString = model.format.
-        let num = model.value |> Mod.force
+        let num = model.value
+
+        let t = 
+            match inputType with
+                | Slider -> "range" | InputBox -> "number"
+       
+        let format (format : string) (value : float) =
+            String.Format(Globalization.CultureInfo.InvariantCulture, format, value) |> AttributeValue.String |> Some
+
+        let attributes =
+            AttributeMap.ofListCond [
+                //style "textAlign:right"
+                "style", Mod.constant (AttributeValue.String "text-align:right" |> Some)
+                "type", Mod.constant (AttributeValue.String t |> Some)
+                "step", Mod.map (fun step -> sprintf "%f" step |> AttributeValue.String |> Some) model.step
+                "min", Mod.map (fun step -> sprintf "%f" step |> AttributeValue.String |> Some) model.min
+                "max", Mod.map (fun step -> sprintf "%f" step |> AttributeValue.String |> Some) model.max
+                always (onChange (unbox >> set))
+                "value", Mod.map2 format model.format model.value
+            ]
+
             
-        input [
-            style "textAlign:right"
-            attribute "value" (String.Format(Globalization.CultureInfo.InvariantCulture,
-                                   num.format,
-                                   num.value)) // custom number formatting
-            attribute "type" (match inputType with | Slider -> "range"; | InputBox -> "number") 
-            attribute "step" (sprintf "%f" num.step)
-            attribute "min" (sprintf "%f" num.min)
-            attribute "max" (sprintf "%f" num.max)
-          //  onWheel (fun d -> model.value + (d.Y * model.step) |> string |> set)
-            onChange (unbox >> set)
-        ] 
+//        input [
+//            style "textAlign:right"
+//            attribute "value" (String.Format(Globalization.CultureInfo.InvariantCulture,
+//                                   num.format,
+//                                   num.value)) 
+//        ] 
+        Incremental.input attributes
 
     let view' (inputTypes : list<NumericInputType>) (model : MNumericBox) : DomNode<Action> =
         inputTypes 
@@ -74,16 +89,12 @@ module Numeric =
     let view (model : MNumericBox) =
         view' [InputBox]
 
-    let initial = {
+    let init = {
         value   = 3.0
         min     = 0.0
         max     = 15.0
         step    = 1.5
         format  = "{0:0.00}"
-    }
-
-    let init = {
-        value = initial
     }
 
     let rec timerThread() =
