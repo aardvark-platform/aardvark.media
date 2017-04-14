@@ -19,8 +19,8 @@ type Properties = { isExpanded : bool; isSelected : bool; isActive : bool }
 
 [<DomainType>]
 type Tree =
-    | Node of value : string * properties : Properties * children : plist<Tree>
-    | Leaf of value : string
+    | Node of value : int * properties : Properties * children : plist<Tree>
+    | Leaf of value : int
 
 [<AutoOpen>]
 module Tree =

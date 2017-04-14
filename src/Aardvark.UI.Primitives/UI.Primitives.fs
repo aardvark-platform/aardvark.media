@@ -17,6 +17,11 @@ module UI =
 
         onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
 
+module Combinators =
+    let (=>) n v = attribute n v
+
+open Combinators
+
 type NumericInputType = Slider | InputBox
 
 module List =
@@ -57,10 +62,10 @@ module Numeric =
                 yield style "text-align:right"
                 match inputType with
                     | Slider ->   
-                        yield attribute "type" "range"
+                        yield "type" => "range"
                         yield onInput set   // continous updates for slider
                     | InputBox -> 
-                        yield attribute "type" "number"
+                        yield "type" => "number"
                         yield onChange set  // batch updates for input box (to let user type)
 
                 let! step = model.step
@@ -68,14 +73,14 @@ module Numeric =
 
                 let! min = model.min
                 let! max = model.max
-                yield attribute "step" (sprintf "%f" step)
-                yield attribute "min"  (sprintf "%f" min)
-                yield attribute "max"  (sprintf "%f" max)
+                yield "step" => sprintf "%f" step
+                yield "min"  => sprintf "%f" min
+                yield "max"  => sprintf "%f" max
 
                 let! value = model.value
 
                 let! format = model.format
-                yield attribute "value" (formatNumber format value)
+                yield "value" => formatNumber format value
             } 
 
         Incremental.input (AttributeMap.ofAMap attributes)
@@ -140,13 +145,16 @@ module TreeView =
 
     let view attribs children = Incremental.div (AttributeMap.ofList [clazz "ui list"]) children
 
-    let leaf click content =
-        div [ clazz "item"; onMouseClick (fun _ -> click ()) ] [
+    let leaf click content dragStartMsg dragStopMsg =
+        let dragStart = onEvent "ondragstart" ["event.target.id"] (fun xs -> printfn "start: %A" xs; dragStartMsg)
+        let dragOver = js "ondragover" "event.preventDefault()"
+        let dragStop = onEvent "ondrop" ["event.target.id"] (fun xs -> printfn "stop %A" xs; dragStartMsg)
+        div [ clazz "item"; onMouseClick (fun _ -> click ()); dragStart; dragOver; dragStop; "draggable" => "true" ] [
             i [ clazz "file icon" ] []
             Incremental.div (AttributeMap.ofList [clazz "content" ]) content
         ]
 
-    let node (isExpanded : IMod<bool>) (clickMsg : unit -> 'a) header description children content =
+    let node (isExpanded : IMod<bool>) (clickMsg : unit -> 'a) header description children =
         let itemAttributes =
             amap {
                 yield onMouseClick (fun _ -> clickMsg ())
@@ -165,15 +173,14 @@ module TreeView =
 
         div [ clazz "item" ] [
              Incremental.i itemAttributes AList.empty
-             //Incremental.div (AttributeMap.union defaultStyle elemStyle) AList.empty
              div [ clazz "content" ] [
                  div [ clazz "header"] [header]
                  div [ clazz "description noselect"] [description]
                  Incremental.div (AttributeMap.ofAMap childrenAttribs) 
                     <| alist { 
-                         let! isExpanded = isExpanded
-                         if isExpanded then yield! children
-                       }
+                        let! isExpanded = isExpanded
+                        if isExpanded then yield! children
+                    }
              ]
         ]
 
@@ -186,59 +193,94 @@ module TreeViewApp =
     type Action =
         | Click of list<Index>
         | ToggleExpand of list<Index>
+        | AddChild of list<Index>
+        | RemChild of list<Index>
+        | Nop
 
     let click v () = Click v
     let toggle v () = ToggleExpand v
+    let addChild v () = AddChild v
+    let remChild v () = RemChild v
 
     let defaultP = { isExpanded = true; isSelected = false; isActive = false }
 
     let init =
         { data =
-            Tree.node "a" defaultP <| PList.ofList [ 
-                Leaf "1" 
-                Leaf "2" 
-                Tree.node "b" defaultP <| PList.ofList [
-                    yield Leaf "3" 
-                    yield Leaf "4" 
+            Tree.node 0 defaultP <| PList.ofList [ 
+                Leaf 1
+                Leaf 2 
+                Tree.node 3 defaultP <| PList.ofList [
+                    yield Leaf 4
+                    yield Leaf 5 
                 ]
             ] 
         }
 
-    let rec updateAt (p : list<Index>) (f : Tree -> Tree) (t : Tree) =
-        match p with
-            | [] -> f t
-            | x::rest -> 
-                match t with
-                    | Leaf _ -> t
-                    | Node(l,p,xs) -> 
-                        match PList.tryGet x xs with
-                            | Some c -> Node(l,p, PList.set x (updateAt rest f c) xs)
-                            | None   -> t
+    let updateAt (p : list<Index>) (f : Tree -> Tree) (t : Tree) =
+        let rec go (p : list<Index>) (t : Tree)  =
+            match p with
+                | [] -> f t
+                | x::rest -> 
+                    match t with
+                        | Leaf _ -> t
+                        | Node(l,p,xs) -> 
+                            match PList.tryGet x xs with
+                                | Some c -> Node(l,p, PList.set x (go rest c) xs)
+                                | None   -> t
+        go (List.rev p) t
 
     let update (model : TreeModel) action =
         printfn "action: %A" action
         match action with
-            | Click _ -> model
+            | Click p -> 
+                { model with
+                    data = updateAt p (function | Leaf v -> Leaf (v + 1) | p -> p) model.data
+                }
             | ToggleExpand p -> 
                 { model with
                     data = 
                         updateAt p (
-                            function 
-                                | Node(l,p,xs) -> 
-                                    Node(l, { p with isExpanded = not p.isExpanded},xs)
-                                | Leaf v -> Leaf v
+                            function | Leaf v -> Leaf v
+                                     | Node(l,p,xs) -> 
+                                         Node(l, { p with isExpanded = not p.isExpanded}, xs)
                         ) model.data
                 }
+            | AddChild p -> 
+                { model with
+                    data = updateAt p (
+                             function | Leaf v -> Leaf v
+                                      | Node(l,p,xs) -> 
+                                         Node(l,p, PList.append (Leaf (PList.count xs + 1)) xs)
+                           ) model.data
+                }
+            | RemChild p -> 
+                { model with
+                    data = updateAt p (
+                             function | Leaf v -> Leaf v
+                                      | Node(l,p,xs) -> 
+                                          Node(l,p, if PList.count xs > 0 then PList.removeAt 0 xs else xs)
+                           ) model.data
+                }
+            | Nop -> model
 
+    let viewLabel v = v |> Mod.map string |> Incremental.text
 
     let rec viewTree path (model : IMod<MTree>) =
         alist {
             let! model = model
             match model with
-            | MLeaf v -> yield TreeView.leaf (click path) (AList.ofList [Incremental.text v])
+            | MLeaf v -> 
+                yield TreeView.leaf (click path) (AList.ofList [viewLabel v]) Nop Nop
             | MNode(s, p, xs) -> 
                 let children = AList.collecti (fun i v -> viewTree (i::path) v) xs
-                yield TreeView.node p.isExpanded (toggle path) (Incremental.text s) (text "description") children (text "content")
+                let desc =
+                    div [] [
+                         i [ clazz "plus icon";  onClick (addChild path) ] []
+                         i [ clazz "minus icon"; onClick (remChild path) ] []
+                    ]
+                yield TreeView.node p.isExpanded (toggle path) 
+                                    (viewLabel s) desc
+                                    children
         }
 
     let view (model : MTreeModel) =
@@ -246,7 +288,7 @@ module TreeViewApp =
             TreeView.view [] (viewTree [] model.data)
         )
 
-    let app : App<TreeModel,MTreeModel,Action> =
+    let app =
         {
             unpersist =  Unpersist.instance
             threads = fun _ -> ThreadPool.create()

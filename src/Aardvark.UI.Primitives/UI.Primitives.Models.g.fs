@@ -156,7 +156,7 @@ module Mutable =
             if not (m.GetValue().TryUpdate v) then
                 m.Update(MTree.CreateValue v)
     
-    and private MNode(__initial : Aardvark.UI.Tree, value : Microsoft.FSharp.Core.string, properties : Aardvark.UI.Properties, children : Aardvark.Base.plist<Aardvark.UI.Tree>) =
+    and private MNode(__initial : Aardvark.UI.Tree, value : Microsoft.FSharp.Core.int, properties : Aardvark.UI.Properties, children : Aardvark.Base.plist<Aardvark.UI.Tree>) =
         inherit MTree()
         
         let mutable __current = __initial
@@ -183,7 +183,7 @@ module Mutable =
                         true
                     | _ -> false
     
-    and private MLeaf(__initial : Aardvark.UI.Tree, value : Microsoft.FSharp.Core.string) =
+    and private MLeaf(__initial : Aardvark.UI.Tree, value : Microsoft.FSharp.Core.int) =
         inherit MTree()
         
         let mutable __current = __initial
