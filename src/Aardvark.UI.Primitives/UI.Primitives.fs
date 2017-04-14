@@ -36,7 +36,7 @@ module Numeric =
         | Set of string
         | Step of float    
 
-    let update (model : NumericBox) (action : Action) =
+    let update (model : NumericInput) (action : Action) =
         match action with
             | Set s     ->
                 let parsed = 0.0
@@ -50,7 +50,7 @@ module Numeric =
     let formatNumber (format : string) (value : float) =
         String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-    let numericField (set : string -> Action) (model : MNumericBox) inputType =         
+    let numericField (set : string -> Action) (model : MNumericInput) inputType =         
       
         let attributes = 
             amap {
@@ -80,13 +80,13 @@ module Numeric =
 
         Incremental.input (AttributeMap.ofAMap attributes)
 
-    let view' (inputTypes : list<NumericInputType>) (model : MNumericBox) : DomNode<Action> =
+    let view' (inputTypes : list<NumericInputType>) (model : MNumericInput) : DomNode<Action> =
         inputTypes 
             |> List.map (numericField Set model) 
             |> List.intersperse (text " ") 
             |> div []
 
-    let view (model : MNumericBox) =
+    let view (model : MNumericInput) =
         view' [InputBox]
 
     let init = {
@@ -107,6 +107,153 @@ module Numeric =
         }
 
     let app = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
+
+    let start () =
+        App.start app
+
+
+module Html =
+
+    module Layout =
+        let boxH ch = td [clazz "collapsing"; style "padding: 0px 5px 0px 0px"] ch
+
+        let horizontal ch = table [clazz "ui table"; style "backgroundColor: transparent"] [ tbody [] [ tr [] ch ] ]
+
+        let finish<'msg> = td[] []
+
+    let ofC4b (c : C4b) = sprintf "rgb(%i,%i,%i)" c.R c.G c.B
+
+    let table rows = table [clazz "ui table unstackable"] [ tbody [] rows ]
+
+    let row k v = tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
+
+    let semui =
+        [ 
+            { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
+            { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
+        ]  
+
+module TreeView =
+    
+    type Action<'id> = 
+        | Click of 'id
+
+    let view attribs children = Incremental.div (AttributeMap.ofList [clazz "ui list"]) children
+
+    let leaf click content =
+        div [ clazz "item"; onMouseClick (fun _ -> click ()) ] [
+            i [ clazz "file icon" ] []
+            Incremental.div (AttributeMap.ofList [clazz "content" ]) content
+        ]
+
+    let node (isExpanded : IMod<bool>) (clickMsg : unit -> 'a) header description children content =
+        let itemAttributes =
+            amap {
+                yield onMouseClick (fun _ -> clickMsg ())
+                let! selected = isExpanded
+                if selected then yield clazz "icon large outline open folder"
+                else             yield clazz "icon large outline folder"
+            } |> AttributeMap.ofAMap
+
+        let childrenAttribs =
+            amap {
+                yield clazz "list"
+                let! isExpanded = isExpanded
+                if isExpanded then yield style "visible"
+                else yield style "hidden"
+            }
+
+        div [ clazz "item" ] [
+             Incremental.i itemAttributes AList.empty
+             //Incremental.div (AttributeMap.union defaultStyle elemStyle) AList.empty
+             div [ clazz "content" ] [
+                 div [ clazz "header"] [header]
+                 div [ clazz "description noselect"] [description]
+                 Incremental.div (AttributeMap.ofAMap childrenAttribs) 
+                    <| alist { 
+                         let! isExpanded = isExpanded
+                         if isExpanded then yield! children
+                       }
+             ]
+        ]
+
+
+
+module TreeViewApp =
+    
+    open TreeView
+
+    type Action =
+        | Click of list<Index>
+        | ToggleExpand of list<Index>
+
+    let click v () = Click v
+    let toggle v () = ToggleExpand v
+
+    let defaultP = { isExpanded = true; isSelected = false; isActive = false }
+
+    let init =
+        { data =
+            Tree.node "a" defaultP <| PList.ofList [ 
+                Leaf "1" 
+                Leaf "2" 
+                Tree.node "b" defaultP <| PList.ofList [
+                    yield Leaf "3" 
+                    yield Leaf "4" 
+                ]
+            ] 
+        }
+
+    let rec updateAt (p : list<Index>) (f : Tree -> Tree) (t : Tree) =
+        match p with
+            | [] -> f t
+            | x::rest -> 
+                match t with
+                    | Leaf _ -> t
+                    | Node(l,p,xs) -> 
+                        match PList.tryGet x xs with
+                            | Some c -> Node(l,p, PList.set x (updateAt rest f c) xs)
+                            | None   -> t
+
+    let update (model : TreeModel) action =
+        printfn "action: %A" action
+        match action with
+            | Click _ -> model
+            | ToggleExpand p -> 
+                { model with
+                    data = 
+                        updateAt p (
+                            function 
+                                | Node(l,p,xs) -> 
+                                    Node(l, { p with isExpanded = not p.isExpanded},xs)
+                                | Leaf v -> Leaf v
+                        ) model.data
+                }
+
+
+    let rec viewTree path (model : IMod<MTree>) =
+        alist {
+            let! model = model
+            match model with
+            | MLeaf v -> yield TreeView.leaf (click path) (AList.ofList [Incremental.text v])
+            | MNode(s, p, xs) -> 
+                let children = AList.collecti (fun i v -> viewTree (i::path) v) xs
+                yield TreeView.node p.isExpanded (toggle path) (Incremental.text s) (text "description") children (text "content")
+        }
+
+    let view (model : MTreeModel) =
+        require Html.semui (
+            TreeView.view [] (viewTree [] model.data)
+        )
+
+    let app : App<TreeModel,MTreeModel,Action> =
+        {
+            unpersist =  Unpersist.instance
+            threads = fun _ -> ThreadPool.create()
+            initial = init
+            update = update
+            view = view 
+        }
 
     let start () =
         App.start app

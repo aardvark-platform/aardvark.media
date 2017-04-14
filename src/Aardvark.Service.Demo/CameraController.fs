@@ -252,19 +252,6 @@ module CameraController =
                         }
                         |> Sg.noEvents
                 )
-            
-//            controlledControl state id 
-//                (Mod.constant frustum)
-//                (AMap.empty)
-//                (
-//                    Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
-//                        |> Sg.shader {
-//                            do! DefaultSurfaces.trafo
-//                            do! DefaultSurfaces.vertexColor
-//                            do! DefaultSurfaces.simpleLighting
-//                        }
-//                        |> Sg.noEvents
-//                )
         ]
 
 

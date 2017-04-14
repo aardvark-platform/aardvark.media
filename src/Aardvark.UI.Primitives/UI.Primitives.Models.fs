@@ -6,7 +6,7 @@ open Aardvark.Base.Incremental
 open Aardvark.UI
 
 [<DomainType>]
-type NumericBox = {
+type NumericInput = {
     value : float
     min   : float
     max   : float
@@ -14,3 +14,18 @@ type NumericBox = {
     format: string
 }
 
+[<DomainType>]
+type Properties = { isExpanded : bool; isSelected : bool; isActive : bool }
+
+[<DomainType>]
+type Tree =
+    | Node of value : string * properties : Properties * children : plist<Tree>
+    | Leaf of value : string
+
+[<AutoOpen>]
+module Tree =
+    let node v p c = Node(v, p, c)
+
+
+[<DomainType>]
+type TreeModel = { data: Tree }
