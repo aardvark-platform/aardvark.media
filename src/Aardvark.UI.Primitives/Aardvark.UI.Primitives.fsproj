@@ -5,14 +5,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>222260e2-428b-485d-89fb-bfbf1d87cd06</ProjectGuid>
+    <ProjectGuid>f0d88aca-53db-492c-88cf-080f67fef6b8</ProjectGuid>
     <OutputType>Library</OutputType>
-    <RootNamespace>Aardvark.UI</RootNamespace>
-    <AssemblyName>Aardvark.UI</AssemblyName>
+    <RootNamespace>Aardvark.UI.Primitives</RootNamespace>
+    <AssemblyName>Aardvark.UI.Primitives</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <Name>Aardvark.UI</Name>
+    <Name>Aardvark.UI.Primitives</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -23,18 +23,16 @@
     <OutputPath>..\..\bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>
-    </DocumentationFile>
+    <DocumentationFile>bin\Debug\Aardvark.UI.Primitives.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>..\..\bin\Release\</OutputPath>
+    <OutputPath>..\..\bin\Debug\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
-    <DocumentationFile>
-    </DocumentationFile>
+    <DocumentationFile>bin\Release\Aardvark.UI.Primitives.XML</DocumentationFile>
   </PropertyGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
@@ -52,6 +50,13 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <PropertyGroup>
+        <__paket__Aardvark_Compiler_DomainTypes_targets>Aardvark.Compiler.DomainTypes</__paket__Aardvark_Compiler_DomainTypes_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
@@ -60,20 +65,15 @@
   </Target>
   -->
   <ItemGroup>
-    <EmbeddedResource Include="template.html" />
-    <Content Include="aardvark-events.js" />
-    <Compile Include="Sg.fs" />
-    <Compile Include="Core.fs" />
-    <Compile Include="Javascript.fs" />
-    <Compile Include="Updater.fs" />
-    <Compile Include="MutableApp.fs" />
-    <Compile Include="App.fs" />
-    <Compile Include="Tags.fs" />
-    <Compile Include="Attributes.fs" />
+    <Compile Include="UI.Primitives.Models.fs" />
+    <Compile Include="UI.Primitives.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
@@ -82,18 +82,12 @@
       <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj">
+      <Name>Aardvark.UI</Name>
+      <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
+      <Private>True</Private>
+    </ProjectReference>
   </ItemGroup>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="Aardvark.Application">
-          <HintPath>..\..\packages\Aardvark.Application\lib\net45\Aardvark.Application.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -160,56 +154,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="Aardvark.Base.Runtime">
-          <HintPath>..\..\packages\Aardvark.Base.Runtime\lib\net45\Aardvark.Base.Runtime.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
         <Reference Include="Aardvark.Compiler.DomainTypes">
           <HintPath>..\..\packages\Aardvark.Compiler.DomainTypes\lib\net45\Aardvark.Compiler.DomainTypes.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="Aardvark.Rendering.GL">
-          <HintPath>..\..\packages\Aardvark.Rendering.GL\lib\net45\Aardvark.Rendering.GL.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="OpenTK">
-          <HintPath>..\..\packages\Aardvark.Rendering.GL\lib\net45\OpenTK.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="OpenTK.Compatibility">
-          <HintPath>..\..\packages\Aardvark.Rendering.GL\lib\net45\OpenTK.Compatibility.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="OpenTK.GLControl">
-          <HintPath>..\..\packages\Aardvark.Rendering.GL\lib\net45\OpenTK.GLControl.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="Aardvark.SceneGraph">
-          <HintPath>..\..\packages\Aardvark.SceneGraph\lib\net45\Aardvark.SceneGraph.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -241,102 +187,8 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="FShade.GLSL">
-          <HintPath>..\..\packages\FShade.GLSL\lib\net45\FShade.GLSL.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
         <Reference Include="FShade.Imperative">
           <HintPath>..\..\packages\FShade.Imperative\lib\net45\FShade.Imperative.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="FShade.SpirV">
-          <HintPath>..\..\packages\FShade.SpirV\lib\net45\FShade.SpirV.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="FSharp.Core">
-          <HintPath>..\..\packages\FSharp.Core\lib\net40\FSharp.Core.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="FSharp.Quotations.Evaluator">
-          <HintPath>..\..\packages\FSharp.Quotations.Evaluator\lib\net40\FSharp.Quotations.Evaluator.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="System.Runtime.Serialization">
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="System.Xml">
-          <Paket>True</Paket>
-        </Reference>
-        <Reference Include="FsPickler">
-          <HintPath>..\..\packages\FsPickler\lib\net45\FsPickler.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="FsPickler.Json">
-          <HintPath>..\..\packages\FsPickler.Json\lib\net45\FsPickler.Json.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="Newtonsoft.Json">
-          <HintPath>..\..\packages\Newtonsoft.Json\lib\net45\Newtonsoft.Json.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="Suave">
-          <HintPath>..\..\packages\Suave\lib\net40\Suave.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -387,15 +239,5 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
-        <Reference Include="System.ValueTuple">
-          <HintPath>..\..\packages\System.ValueTuple\lib\netstandard1.0\System.ValueTuple.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
+  <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes.MSBuild\build\$(__paket__Aardvark_Compiler_DomainTypes_targets).targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes.MSBuild\build\$(__paket__Aardvark_Compiler_DomainTypes_targets).targets')" Label="Paket" />
 </Project>

@@ -38,6 +38,8 @@ module private Utils =
 
 module Pickler =
     let json = Aardvark.Service.Pickler.json
+    let unpickleOfJson s = json.UnPickleOfString s
+    let jsonToString s = json.PickleToString s
 
 
 type Event<'msg> =

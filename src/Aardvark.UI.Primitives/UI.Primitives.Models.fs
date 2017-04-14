@@ -1,9 +1,8 @@
-﻿namespace UiPrimitives
+﻿namespace Aardvark.UI
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
-open Aardvark.SceneGraph
 open Aardvark.UI
 
 [<DomainType>]

@@ -1,4 +1,0 @@
-﻿namespace Viewer
-
-//module AnnotationApp
-

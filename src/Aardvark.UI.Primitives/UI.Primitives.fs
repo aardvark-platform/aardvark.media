@@ -1,11 +1,10 @@
-﻿namespace Viewer
+﻿namespace Aardvark.UI
 
 open System
 open Suave
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
-open UiPrimitives
 
 module UI = 
     open Aardvark.Base
@@ -13,7 +12,7 @@ module UI =
 
     let onWheel (f : Aardvark.Base.V2d -> 'msg) =
         let serverClick (args : list<string>) : Aardvark.Base.V2d = 
-            let delta = List.head args |> Pickler.json.UnPickleOfString
+            let delta = List.head args |> Pickler.unpickleOfJson
             delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
 
         onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
@@ -51,7 +50,7 @@ module Numeric =
     let formatNumber (format : string) (value : float) =
         String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-    let numericField (set : string -> Action) (model:MNumericBox) inputType =         
+    let numericField (set : string -> Action) (model : MNumericBox) inputType =         
       
         let attributes = 
             amap {

@@ -36,7 +36,7 @@ let kitchenSink argv =
     let runtime = app.Runtime
 
     let a = Viewer.KitchenSinkApp.start()
-    let a = Viewer.Numeric.start()
+    let a = Aardvark.UI.Numeric.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a

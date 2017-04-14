@@ -43,5 +43,4 @@ type CameraControllerState =
 
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 
-
     }
