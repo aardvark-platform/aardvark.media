@@ -64,6 +64,17 @@ module Events =
     let onChange (cb : string -> 'msg) = 
         onEvent "onchange" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
+    /// for continous updates (e.g. see http://stackoverflow.com/questions/18544890/onchange-event-on-input-type-range-is-not-triggering-in-firefox-while-dragging)
+    let onInput (cb : string -> 'msg) = 
+        onEvent "oninput" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
+    let onWheel (f : Aardvark.Base.V2d -> 'msg) =
+        let serverClick (args : list<string>) : Aardvark.Base.V2d = 
+            let delta = List.head args |> Pickler.json.UnPickleOfString
+            delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
+
+        onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"] (serverClick >> f)
+
     let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
         onEvent 
             "onmousedown" 
@@ -149,3 +160,4 @@ module Events =
     let onlyWhen (m : IMod<bool>) (att : Attribute<'msg>) =
         let (k,v) = att
         k, m |> Mod.map (function true -> Some v | false -> None)
+

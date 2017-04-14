@@ -7,16 +7,16 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open UiPrimitives
 
-//module Helpers = 
-    //let onWheel (f : Aardvark.Base.V2d -> 'msg) =
-    //    let clientClick = 
-    //        """function(ev) { 
-    //            return { X : ev.deltaX.toFixed(), Y : ev.deltaY.toFixed() };
-    //        }"""
-    //    let serverClick (str : string) : Aardvark.Base.V2d = 
-    //        Pickler.json.UnPickleOfString str / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
+module UI = 
+    open Aardvark.Base
+    open Aardvark.UI
 
-    //    ClientEvent("onWheel", clientClick, serverClick >> f)
+    let onWheel (f : Aardvark.Base.V2d -> 'msg) =
+        let serverClick (args : list<string>) : Aardvark.Base.V2d = 
+            let delta = List.head args |> Pickler.json.UnPickleOfString
+            delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
+
+        onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
 
 type NumericInputType = Slider | InputBox
 
@@ -35,7 +35,7 @@ module Numeric =
 
     type Action = 
         | Set of string
-        | NewTime    
+        | Step of float    
 
     let update (model : NumericBox) (action : Action) =
         match action with
@@ -46,39 +46,40 @@ module Numeric =
                     | _ -> 
                         printfn "validation failed: %s" s
                         model  
-             | _ -> model
+             | Step v -> { model with value = model.value + v }
 
-    let numericField set (model:MNumericBox) inputType =         
-       // let formatString = model.format.
-        let num = model.value
+    let formatNumber (format : string) (value : float) =
+        String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-        let t = 
-            match inputType with
-                | Slider -> "range" | InputBox -> "number"
-       
-        let format (format : string) (value : float) =
-            String.Format(Globalization.CultureInfo.InvariantCulture, format, value) |> AttributeValue.String |> Some
+    let numericField (set : string -> Action) (model:MNumericBox) inputType =         
+      
+        let attributes = 
+            amap {
+                yield style "text-align:right"
+                match inputType with
+                    | Slider ->   
+                        yield attribute "type" "range"
+                        yield onInput set   // continous updates for slider
+                    | InputBox -> 
+                        yield attribute "type" "number"
+                        yield onChange set  // batch updates for input box (to let user type)
 
-        let attributes =
-            AttributeMap.ofListCond [
-                //style "textAlign:right"
-                "style", Mod.constant (AttributeValue.String "text-align:right" |> Some)
-                "type", Mod.constant (AttributeValue.String t |> Some)
-                "step", Mod.map (fun step -> sprintf "%f" step |> AttributeValue.String |> Some) model.step
-                "min", Mod.map (fun step -> sprintf "%f" step |> AttributeValue.String |> Some) model.min
-                "max", Mod.map (fun step -> sprintf "%f" step |> AttributeValue.String |> Some) model.max
-                always (onChange (unbox >> set))
-                "value", Mod.map2 format model.format model.value
-            ]
+                let! step = model.step
+                yield UI.onWheel (fun d ->  d.Y * step |> Step)
 
-            
-//        input [
-//            style "textAlign:right"
-//            attribute "value" (String.Format(Globalization.CultureInfo.InvariantCulture,
-//                                   num.format,
-//                                   num.value)) 
-//        ] 
-        Incremental.input attributes
+                let! min = model.min
+                let! max = model.max
+                yield attribute "step" (sprintf "%f" step)
+                yield attribute "min"  (sprintf "%f" min)
+                yield attribute "max"  (sprintf "%f" max)
+
+                let! value = model.value
+
+                let! format = model.format
+                yield attribute "value" (formatNumber format value)
+            } 
+
+        Incremental.input (AttributeMap.ofAMap attributes)
 
     let view' (inputTypes : list<NumericInputType>) (model : MNumericBox) : DomNode<Action> =
         inputTypes 
@@ -97,20 +98,13 @@ module Numeric =
         format  = "{0:0.00}"
     }
 
-    let rec timerThread() =
-        proclist {
-            do! Proc.Sleep 10
-            yield NewTime
-            yield! timerThread()
-        }
-
-    let app' t =
+    let app' inputTypes =
         {
             unpersist = Unpersist.instance
-            threads = fun _ -> ThreadPool.create() |> ThreadPool.add "timer" (timerThread())
+            threads = fun _ -> ThreadPool.create()
             initial = init
             update = update
-            view = view' t
+            view = view' inputTypes
         }
 
     let app = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]

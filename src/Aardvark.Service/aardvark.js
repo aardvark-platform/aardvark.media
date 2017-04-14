@@ -675,6 +675,19 @@ if (!aardvark.connect) {
     }
 }
 
+function setAttribute(id,name,value)
+{
+    if(name=="value")
+    {
+        id.setAttribute(name,value);
+        id.value = value;
+    }
+    else 
+    {   
+        id.setAttribute(name,value);
+    }
+}
+
 $(document).ready(function () {
     // initialize all aardvark-controls 
     $('div.aardvark').each(function () {
