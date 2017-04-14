@@ -3,6 +3,8 @@
 open System
 open System.IO
 
+open Aardvark.Base
+
 
 type FSEntryKind =
     | Unknown = 0
