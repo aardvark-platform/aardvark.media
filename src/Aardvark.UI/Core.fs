@@ -177,6 +177,12 @@ module Event =
                 
                 }
 
+    let map (f : 'a -> 'b) (e : Event<'a>) = 
+        {
+            clientSide = e.clientSide; 
+            serverSide = fun session id args -> List.map f (e.serverSide session id args) 
+        }
+
 [<RequireQualifiedAccess>]
 type AttributeValue<'msg> =
     | String of string
@@ -201,6 +207,12 @@ module AttributeValue =
 
             | _ -> 
                 r
+
+    let map (f : 'a -> 'b) (v : AttributeValue<'a>) = 
+        match v with
+            | AttributeValue.Event e -> AttributeValue.Event (Event.map f e)
+            | AttributeValue.String s -> AttributeValue.String s
+            | AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
 
 
 type AttributeMap<'msg>(map : amap<string, AttributeValue<'msg>>) =
@@ -303,6 +315,9 @@ module AttributeMap =
 
     let map (mapping : string -> AttributeValue<'a> -> AttributeValue<'b>) (map : AttributeMap<'a>) =
         AttributeMap(AMap.map mapping map.AMap)
+    
+    let mapAttributes (mapping : AttributeValue<'a> -> AttributeValue<'b>) (map : AttributeMap<'a>) =
+        AttributeMap(AMap.map (fun _ v -> mapping v) map.AMap)
 
     let choose (mapping : string -> AttributeValue<'a> -> Option<AttributeValue<'b>>) (map : AttributeMap<'a>) =
         AttributeMap(AMap.choose mapping map.AMap)
@@ -404,7 +419,16 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
             Callbacks = x.Callbacks
         )
 
-
+    member x.Map(f : 'msg -> 'b) = 
+        DomNode<'b>(
+            x.Tag,
+            x.Attributes |> AttributeMap.mapAttributes (AttributeValue.map f),
+            DomContent.Map(x.Content, f),
+            Required = x.Required,
+            Boot = x.Boot,
+            Shutdown = x.Shutdown,
+            Callbacks = (x.Callbacks |> Map.map (fun k v -> fun xs -> f (v xs)))
+        )
     member x.WithRequired (required : list<Reference>) =
         let res = x.Copy()
         res.Required <- required
@@ -428,9 +452,17 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
 and DomContent<'msg> =
     | Empty
     | Children of alist<DomNode<'msg>>
-    | Scene of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState)
-    | Text of IMod<string>
+    | Scene    of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState)
+    | Text     of IMod<string>
 
+    with 
+        static member Map(x : DomContent<'msg>, f : 'msg -> 'b) = 
+            match x with
+                | Empty -> Empty
+                | Children xs -> Children (AList.map (fun (n:DomNode<'msg>) -> n.Map f) xs)
+                | Scene(s,f)  -> Scene(s,f)
+                | Text t      -> Text t
+            
 open Aardvark.Service
 
 type DomNode private() =

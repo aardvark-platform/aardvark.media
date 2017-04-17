@@ -123,7 +123,7 @@ module KitchenSinkApp =
                             ]
                         ]
                     ]
-
+                    
                     div [ clazz "item"] [ 
                         b [] [text "Status"]
                         div [ clazz "menu" ] [

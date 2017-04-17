@@ -17,6 +17,9 @@ module UI =
 
         onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
 
+    let map (f : 'a -> 'b) (source : DomNode<'a>) : DomNode<'b> =
+        source.Map f
+
 module Combinators =
     let (=>) n v = attribute n v
 
@@ -147,10 +150,10 @@ module TreeView =
 
     let leaf click content dragStartMsg dragStopMsg =
         let dragStart = onEvent "ondragstart" ["event.target.id"] (fun xs -> printfn "start: %A" xs; dragStartMsg)
-        let dragOver = js "ondragover" "event.preventDefault()"
-        let dragStop = onEvent "ondrop" ["event.target.id"] (fun xs -> printfn "stop %A" xs; dragStartMsg)
-        div [ clazz "item"; onMouseClick (fun _ -> click ()); dragStart; dragOver; dragStop; "draggable" => "true" ] [
-            i [ clazz "file icon" ] []
+        let dragOver = js "ondragover" "console.warn('urdar'); event.preventDefault()"
+        let dragStop = js "ondrop" "console.warn('bla'); event.preventDefault()" //onEvent "ondrop" ["event.preventDefault(); event.target.id"] (fun xs -> printfn "stop %A" xs; dragStartMsg)
+        div [ clazz "item"; onMouseClick (fun _ -> click ()); dragStart; dragOver; dragStop; "draggable" => "true"] [
+            i [ clazz "file icon";  ] []
             Incremental.div (AttributeMap.ofList [clazz "content" ]) content
         ]
 
