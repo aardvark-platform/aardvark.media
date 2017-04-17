@@ -14,6 +14,7 @@ module AnnotationProperties =
         | SetProjection   of Projection
         | ChangeThickness of Numeric.Action
         | SetText         of string
+        | ToggleVisible
 
     let update (model : Annotation) (msg : Action) =
         match msg with
@@ -25,6 +26,8 @@ module AnnotationProperties =
                 { model with thickness = Numeric.update model.thickness a}
             | SetText t ->
                 { model with text = t}
+            | ToggleVisible ->
+                { model with visible = (not model.visible)}
 
     let view (model : MAnnotation) =
 
@@ -34,6 +37,7 @@ module AnnotationProperties =
                             Html.row "Projection:" [Html.SemUi.dropDown model.projection SetProjection]      
                             Html.row "Thickness:" [div [clazz "ui input"] [ Numeric.view' [InputBox] model.thickness |> UI.map ChangeThickness ]]
                             Html.row "Text:" [Html.SemUi.textBox model.text SetText ]
+                            Html.row "Visible:" [Html.SemUi.toggleBox model.visible ToggleVisible ]
                         ]
         )
 

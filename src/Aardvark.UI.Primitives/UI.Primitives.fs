@@ -172,8 +172,7 @@ module Html =
                 ]
             )
 
-        let textBox (text : IMod<string>) (set : string -> 'msg) = 
-         //   let att = AttributeMap.ofList [attribute "type" "text"]
+        let textBox (text : IMod<string>) (set : string -> 'msg) =          
             
             let attributes = 
                 amap {
@@ -187,7 +186,26 @@ module Html =
                 Incremental.input (AttributeMap.ofAMap attributes)
             ]
 
-module TreeView =
+        let toggleBox (state : IMod<bool>) (toggle : 'msg) =
+
+            let attributes = 
+                amap {
+                     yield "type" => "checkbox"
+                     yield onChange (fun _ -> toggle)
+
+                     let! check = state
+                     let checkText = if check then "checked" else ""
+                     yield "checked" => checkText
+                }
+
+            div [clazz "ui toggle checkbox"] [
+                Incremental.input (AttributeMap.ofAMap attributes)
+                label [] [text ""]
+            ]
+
+        let toggleImage (state : IMod<bool>) (toggle : unit -> 'msg) = 0
+
+module TreeView = 
     
     type Action<'id> = 
         | Click of 'id
