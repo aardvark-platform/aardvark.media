@@ -36,6 +36,15 @@ module List =
             | xs -> x::sep::xs) ls []
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Choice =
+    open Aardvark.Base
+    open Aardvark.UI
+
+    type Model = Red=0 | Yellow=1 | Blue=2 
+
+    type Action = Select of Model
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Numeric = 
     open Aardvark.Base
     open Aardvark.UI
@@ -119,7 +128,6 @@ module Numeric =
     let start () =
         App.start app
 
-
 module Html =
 
     module Layout =
@@ -131,7 +139,7 @@ module Html =
 
     let ofC4b (c : C4b) = sprintf "rgb(%i,%i,%i)" c.R c.G c.B
 
-    let table rows = table [clazz "ui table unstackable"] [ tbody [] rows ]
+    let table rows = table [clazz "ui celled striped inverted table unstackable"] [ tbody [] rows ]
 
     let row k v = tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
 
@@ -139,7 +147,28 @@ module Html =
         [ 
             { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
-        ]  
+        ]      
+
+    module SemUi =
+        
+        let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : IMod<'a>) (change : 'a -> 'msg) =
+            let names = Enum.GetNames(typeof<'a>)
+            let values = Enum.GetValues(typeof<'a>) |> unbox<'a[]>
+            let nv = Array.zip names values
+
+            let attributes (name : string) (value : 'a) =
+                AttributeMap.ofListCond [
+                    always (attribute "value" name)
+                    onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
+                ]
+
+            onBoot "$('#__ID__').dropdown();" (
+                select [clazz "ui dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
+                    for (name, value) in nv do
+                        let att = attributes name value
+                        yield Incremental.option att (AList.ofList [text name])
+                ]
+            )
 
 module TreeView =
     
@@ -187,8 +216,6 @@ module TreeView =
              ]
         ]
 
-
-
 module TreeViewApp =
     
     open TreeView
@@ -209,12 +236,12 @@ module TreeViewApp =
 
     let init =
         { data =
-            Tree.node 0 defaultP <| PList.ofList [ 
-                Leaf 1
-                Leaf 2 
-                Tree.node 3 defaultP <| PList.ofList [
-                    yield Leaf 4
-                    yield Leaf 5 
+            Tree.node (LeafValue.Text "0") defaultP <| PList.ofList [ 
+                Leaf (LeafValue.Number 1)
+                Leaf (LeafValue.Text "2" )
+                Tree.node (LeafValue.Number 3) defaultP <| PList.ofList [
+                    yield Leaf (LeafValue.Number 4)
+                    yield Leaf (LeafValue.Number 5) 
                 ]
             ] 
         }
@@ -235,9 +262,12 @@ module TreeViewApp =
     let update (model : TreeModel) action =
         printfn "action: %A" action
         match action with
-            | Click p -> 
+            | Click p ->                 
                 { model with
-                    data = updateAt p (function | Leaf v -> Leaf (v + 1) | p -> p) model.data
+                    data = updateAt p (function | Leaf v ->( match v with 
+                                                                | LeafValue.Number n -> Leaf ( LeafValue.Number (n + 1))
+                                                                | LeafValue.Text t -> Leaf ( LeafValue.Text t))
+                                                | p -> p) model.data
                 }
             | ToggleExpand p -> 
                 { model with
@@ -253,7 +283,10 @@ module TreeViewApp =
                     data = updateAt p (
                              function | Leaf v -> Leaf v
                                       | Node(l,p,xs) -> 
-                                         Node(l,p, PList.append (Leaf (PList.count xs + 1)) xs)
+                                            let value = match l with
+                                                           | Number n -> Number (PList.count xs + 1)
+                                                           | Text   t -> LeafValue.Text t
+                                            Node(l,p, PList.append (Leaf value) xs)
                            ) model.data
                 }
             | RemChild p -> 
@@ -265,8 +298,13 @@ module TreeViewApp =
                            ) model.data
                 }
             | Nop -> model
-
-    let viewLabel v = v |> Mod.map string |> Incremental.text
+    
+    let viewLabel v = 
+        v |> Mod.bind (fun u -> match u with 
+                                    | MNumber n -> n |> Mod.map (fun x -> sprintf "Number %A" (string x))
+                                    | MText t   -> t |> Mod.map (fun x -> sprintf "Text %A" x))
+        |> Incremental.text
+                        
 
     let rec viewTree path (model : IMod<MTree>) =
         alist {

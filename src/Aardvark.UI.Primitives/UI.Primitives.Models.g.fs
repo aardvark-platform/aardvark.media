@@ -83,6 +83,124 @@ module Mutable =
                     override x.Update(r,f) = { r with format = f r.format }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    type MChoice private(__initial : Aardvark.UI.Choice) =
+        let mutable __current = __initial
+        let _choices = ResetMod(__initial.choices)
+        let _selected = ResetMod(__initial.selected)
+        
+        member x.choices = _choices :> IMod<_>
+        member x.selected = _selected :> IMod<_>
+        
+        member x.Update(__model : Aardvark.UI.Choice) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _choices.Update(__model.choices)
+                _selected.Update(__model.selected)
+        
+        static member Create(initial) = MChoice(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MChoice =
+        let inline choices (m : MChoice) = m.choices
+        let inline selected (m : MChoice) = m.selected
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module Choice =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let choices =
+                { new Lens<Aardvark.UI.Choice, Microsoft.FSharp.Collections.list<Microsoft.FSharp.Core.string>>() with
+                    override x.Get(r) = r.choices
+                    override x.Set(r,v) = { r with choices = v }
+                    override x.Update(r,f) = { r with choices = f r.choices }
+                }
+            let selected =
+                { new Lens<Aardvark.UI.Choice, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.selected
+                    override x.Set(r,v) = { r with selected = v }
+                    override x.Update(r,f) = { r with selected = f r.selected }
+                }
+    [<AbstractClass; System.Runtime.CompilerServices.Extension; StructuredFormatDisplay("{AsString}")>]
+    type MLeafValue() =
+        abstract member TryUpdate : Aardvark.UI.LeafValue -> bool
+        abstract member AsString : string
+        
+        static member private CreateValue(__model : Aardvark.UI.LeafValue) = 
+            match __model with
+                | Number(item) -> MNumber(__model, item) :> MLeafValue
+                | Text(item) -> MText(__model, item) :> MLeafValue
+        
+        static member Create(v : Aardvark.UI.LeafValue) =
+            ResetMod(MLeafValue.CreateValue v) :> IMod<_>
+        
+        [<System.Runtime.CompilerServices.Extension>]
+        static member Update(m : IMod<MLeafValue>, v : Aardvark.UI.LeafValue) =
+            let m = unbox<ResetMod<MLeafValue>> m
+            if not (m.GetValue().TryUpdate v) then
+                m.Update(MLeafValue.CreateValue v)
+    
+    and private MNumber(__initial : Aardvark.UI.LeafValue, item : Microsoft.FSharp.Core.int) =
+        inherit MLeafValue()
+        
+        let mutable __current = __initial
+        let _item = ResetMod(item)
+        member x.item = _item :> IMod<_>
+        
+        override x.ToString() = __current.ToString()
+        override x.AsString = sprintf "%A" __current
+        
+        override x.TryUpdate(__model : Aardvark.UI.LeafValue) = 
+            if System.Object.ReferenceEquals(__current, __model) then
+                true
+            else
+                match __model with
+                    | Number(item) -> 
+                        __current <- __model
+                        _item.Update(item)
+                        true
+                    | _ -> false
+    
+    and private MText(__initial : Aardvark.UI.LeafValue, item : Microsoft.FSharp.Core.string) =
+        inherit MLeafValue()
+        
+        let mutable __current = __initial
+        let _item = ResetMod(item)
+        member x.item = _item :> IMod<_>
+        
+        override x.ToString() = __current.ToString()
+        override x.AsString = sprintf "%A" __current
+        
+        override x.TryUpdate(__model : Aardvark.UI.LeafValue) = 
+            if System.Object.ReferenceEquals(__current, __model) then
+                true
+            else
+                match __model with
+                    | Text(item) -> 
+                        __current <- __model
+                        _item.Update(item)
+                        true
+                    | _ -> false
+    
+    
+    [<AutoOpen>]
+    module MLeafValuePatterns =
+        let (|MNumber|MText|) (m : MLeafValue) =
+            match m with
+            | :? MNumber as v -> MNumber(v.item)
+            | :? MText as v -> MText(v.item)
+            | _ -> failwith "impossible"
+    
+    
+    
+    
+    [<StructuredFormatDisplay("{AsString}")>]
     type MProperties private(__initial : Aardvark.UI.Properties) =
         let mutable __current = __initial
         let _isExpanded = ResetMod(__initial.isExpanded)
@@ -156,14 +274,14 @@ module Mutable =
             if not (m.GetValue().TryUpdate v) then
                 m.Update(MTree.CreateValue v)
     
-    and private MNode(__initial : Aardvark.UI.Tree, value : Microsoft.FSharp.Core.int, properties : Aardvark.UI.Properties, children : Aardvark.Base.plist<Aardvark.UI.Tree>) =
+    and private MNode(__initial : Aardvark.UI.Tree, value : Aardvark.UI.LeafValue, properties : Aardvark.UI.Properties, children : Aardvark.Base.plist<Aardvark.UI.Tree>) =
         inherit MTree()
         
         let mutable __current = __initial
-        let _value = ResetMod(value)
+        let _value = MLeafValue.Create(value)
         let _properties = MProperties.Create(properties)
         let _children = ResetMapList(children, (fun _ -> MTree.Create), fun (m,i) -> m.Update(i))
-        member x.value = _value :> IMod<_>
+        member x.value = _value
         member x.properties = _properties
         member x.children = _children :> alist<_>
         
@@ -183,12 +301,12 @@ module Mutable =
                         true
                     | _ -> false
     
-    and private MLeaf(__initial : Aardvark.UI.Tree, value : Microsoft.FSharp.Core.int) =
+    and private MLeaf(__initial : Aardvark.UI.Tree, value : Aardvark.UI.LeafValue) =
         inherit MTree()
         
         let mutable __current = __initial
-        let _value = ResetMod(value)
-        member x.value = _value :> IMod<_>
+        let _value = MLeafValue.Create(value)
+        member x.value = _value
         
         override x.ToString() = __current.ToString()
         override x.AsString = sprintf "%A" __current

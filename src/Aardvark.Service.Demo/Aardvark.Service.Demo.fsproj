@@ -88,10 +88,12 @@
     <EmbeddedResource Include="fs.html" />
     <EmbeddedResource Include="browser.html" />
     <Compile Include="Model.fs" />
+    <Compile Include="PRo3dModels.fs" />
     <Compile Include="CameraController.fs" />
     <Compile Include="ChromiumStuff.fs" />
     <Compile Include="FileSystem.fs" />
     <Compile Include="ViewerModel.fs" />
+    <Compile Include="UI.Composed.fs" />
     <Compile Include="Viewer.fs" />
     <Compile Include="KitchenSink.fs" />
     <Compile Include="Program.fs" />

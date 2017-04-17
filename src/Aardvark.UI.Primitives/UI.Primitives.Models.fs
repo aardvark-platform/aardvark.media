@@ -15,12 +15,23 @@ type NumericInput = {
 }
 
 [<DomainType>]
+type Choice = {     
+    choices     : list<string>
+    selected    : string
+}
+
+[<DomainType>]
+type LeafValue = 
+    | Number of int 
+    | Text of string
+
+[<DomainType>]
 type Properties = { isExpanded : bool; isSelected : bool; isActive : bool }
 
 [<DomainType>]
 type Tree =
-    | Node of value : int * properties : Properties * children : plist<Tree>
-    | Leaf of value : int
+    | Node of value : LeafValue * properties : Properties * children : plist<Tree>
+    | Leaf of value : LeafValue
 
 [<AutoOpen>]
 module Tree =

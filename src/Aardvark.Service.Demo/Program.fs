@@ -24,6 +24,7 @@ open Suave.Filters
 open Suave.WebPart
 
 open System.Windows.Forms
+open UI.Composed
 
 
 let kitchenSink argv =
@@ -35,9 +36,10 @@ let kitchenSink argv =
     use app = new OpenGlApplication()
     let runtime = app.Runtime
 
-    let a = Viewer.KitchenSinkApp.start()
+    //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
     //let a = TreeViewApp.start()
+    let a = AnnotationProperties.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
@@ -62,7 +64,7 @@ let modelviewer args =
 let main args =
     
     kitchenSink args
-    //modelviewer args
+   // modelviewer args
 
     0
 

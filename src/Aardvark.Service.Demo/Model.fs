@@ -3,6 +3,9 @@
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.UI.Mutable
+open Aardvark.UI
+open FShade.Primitives
 
 type ClientLocalAttribute() = inherit System.Attribute()
 
@@ -44,3 +47,4 @@ type CameraControllerState =
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 
     }
+
