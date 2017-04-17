@@ -13,6 +13,7 @@ module AnnotationProperties =
         | SetGeometry     of Geometry
         | SetProjection   of Projection
         | ChangeThickness of Numeric.Action
+        | SetText         of string
 
     let update (model : Annotation) (msg : Action) =
         match msg with
@@ -22,6 +23,8 @@ module AnnotationProperties =
                 { model with projection = mode}
             | ChangeThickness a ->
                 { model with thickness = Numeric.update model.thickness a}
+            | SetText t ->
+                { model with text = t}
 
     let view (model : MAnnotation) =
 
@@ -29,7 +32,8 @@ module AnnotationProperties =
             Html.table [                            
                             Html.row "Geometry:" [Html.SemUi.dropDown model.geometry SetGeometry]
                             Html.row "Projection:" [Html.SemUi.dropDown model.projection SetProjection]      
-                            Html.row "Thickness:" [Numeric.view' [InputBox] model.thickness |> UI.map ChangeThickness ]
+                            Html.row "Thickness:" [div [clazz "ui input"] [ Numeric.view' [InputBox] model.thickness |> UI.map ChangeThickness ]]
+                            Html.row "Text:" [Html.SemUi.textBox model.text SetText ]
                         ]
         )
 

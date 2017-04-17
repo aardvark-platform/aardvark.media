@@ -71,7 +71,7 @@ module Numeric =
       
         let attributes = 
             amap {
-                yield style "text-align:right"
+                yield style "text-align:right"                
                 match inputType with
                     | Slider ->   
                         yield "type" => "range"
@@ -150,6 +150,8 @@ module Html =
         ]      
 
     module SemUi =
+        open Aardvark.Base.AMD64.Compiler
+        open Aardvark.Base.Geometry.RayHit
         
         let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : IMod<'a>) (change : 'a -> 'msg) =
             let names = Enum.GetNames(typeof<'a>)
@@ -169,6 +171,21 @@ module Html =
                         yield Incremental.option att (AList.ofList [text name])
                 ]
             )
+
+        let textBox (text : IMod<string>) (set : string -> 'msg) = 
+         //   let att = AttributeMap.ofList [attribute "type" "text"]
+            
+            let attributes = 
+                amap {
+                     yield "type" => "text"
+                     let! t = text
+                     yield onChange set
+                     yield "value" => t 
+                }
+
+            div [clazz "ui input"] [
+                Incremental.input (AttributeMap.ofAMap attributes)
+            ]
 
 module TreeView =
     

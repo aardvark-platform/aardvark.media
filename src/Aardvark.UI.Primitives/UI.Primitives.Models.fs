@@ -15,12 +15,6 @@ type NumericInput = {
 }
 
 [<DomainType>]
-type Choice = {     
-    choices     : list<string>
-    selected    : string
-}
-
-[<DomainType>]
 type LeafValue = 
     | Number of int 
     | Text of string
