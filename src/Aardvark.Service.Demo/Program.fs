@@ -38,8 +38,9 @@ let kitchenSink argv =
 
     //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
-    //let a = TreeViewApp.start()
-    let a = AnnotationProperties.start()
+    let a = TreeViewApp.start()
+    //let a = AnnotationProperties.start()
+    //let a = SimpleTestApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
@@ -51,7 +52,7 @@ let kitchenSink argv =
     form.Controls.Add ctrl
     ctrl.StartUrl <- "http://localhost:4321/"
 
-    //ctrl.ShowDevTools()
+    ctrl.ShowDevTools()
 
     Application.Run form
     System.Environment.Exit 0
@@ -64,7 +65,7 @@ let modelviewer args =
 let main args =
     
     kitchenSink args
-   // modelviewer args
+    //modelviewer args
 
     0
 

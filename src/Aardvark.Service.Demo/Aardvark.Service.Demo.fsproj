@@ -94,6 +94,8 @@
     <Compile Include="FileSystem.fs" />
     <Compile Include="ViewerModel.fs" />
     <Compile Include="UI.Composed.fs" />
+    <Compile Include="SimpleTestModel.fs" />
+    <Compile Include="SimpleTest.fs" />
     <Compile Include="Viewer.fs" />
     <Compile Include="KitchenSink.fs" />
     <Compile Include="Program.fs" />

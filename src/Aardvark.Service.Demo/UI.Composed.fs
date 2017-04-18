@@ -30,6 +30,7 @@ module AnnotationProperties =
                 { model with visible = (not model.visible)}
 
     let view (model : MAnnotation) =
+        
 
         require Html.semui (
             Html.table [                            

@@ -143,6 +143,13 @@ module Html =
 
     let row k v = tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
 
+
+    type A = { a : IMod<int> }
+    let a = Mod.init { a = Mod.init 10 }
+
+    let test = 
+        a |> Mod.map (fun z -> Mod.map (fun v -> v + 1) z.a)
+
     let semui =
         [ 
             { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
@@ -176,10 +183,10 @@ module Html =
             
             let attributes = 
                 amap {
-                     yield "type" => "text"
-                     let! t = text
-                     yield onChange set
-                     yield "value" => t 
+                    yield "type" => "text"
+                    yield onChange set
+                    let! t = text
+                    yield "value" => t 
                 }
 
             div [clazz "ui input"] [
@@ -301,7 +308,7 @@ module TreeViewApp =
                 { model with
                     data = updateAt p (function | Leaf v ->( match v with 
                                                                 | LeafValue.Number n -> Leaf ( LeafValue.Number (n + 1))
-                                                                | LeafValue.Text t -> Leaf ( LeafValue.Text t))
+                                                                | LeafValue.Text t -> Leaf ( LeafValue.Text (sprintf "%s a" t)))
                                                 | p -> p) model.data
                 }
             | ToggleExpand p -> 
