@@ -90,7 +90,6 @@
     <Compile Include="Model.fs" />
     <Compile Include="PRo3dModels.fs" />
     <Compile Include="CameraController.fs" />
-    <Compile Include="ChromiumStuff.fs" />
     <Compile Include="FileSystem.fs" />
     <Compile Include="ViewerModel.fs" />
     <Compile Include="UI.Composed.fs" />
@@ -101,6 +100,11 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">
+      <Name>Aardvark.Cef.WinForms</Name>
+      <Project>{f20c78dd-06cb-44e8-90db-6de144863078}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj">
       <Name>Aardvark.UI.Primitives</Name>
       <Project>{f0d88aca-53db-492c-88cf-080f67fef6b8}</Project>

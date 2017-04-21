@@ -83,6 +83,7 @@
     <Content Include="boot.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <Compile Include="ChromiumStuff.fs" />
     <Compile Include="Bootstrap.fs" />
     <Compile Include="Server.fs" />
     <Compile Include="Program.fs" />
