@@ -6,6 +6,7 @@ open Aardvark.Base.Incremental
 open Aardvark.UI.Mutable
 open Aardvark.UI
 open FShade.Primitives
+open Demo
 
 type Points = list<V3d>
 type Segment = Points
@@ -25,6 +26,12 @@ type Annotation = {
         visible : bool
         text : string
     }
+
+[<DomainType>]
+type ComposedViewerModel = {
+    camera : TestApp.CameraControllerState
+    singleAnnotation : Annotation
+}
 
 module InitValues = 
     let edge = [ V3d.IOI; V3d.III; V3d.OOI ]

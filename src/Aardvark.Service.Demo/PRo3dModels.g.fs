@@ -112,3 +112,48 @@ module Mutable =
                     override x.Set(r,v) = { r with text = v }
                     override x.Update(r,f) = { r with text = f r.text }
                 }
+    [<StructuredFormatDisplay("{AsString}")>]
+    type MComposedViewerModel private(__initial : PRo3DModels.ComposedViewerModel) =
+        let mutable __current = __initial
+        let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _singleAnnotation = MAnnotation.Create(__initial.singleAnnotation)
+        
+        member x.camera = _camera
+        member x.singleAnnotation = _singleAnnotation
+        
+        member x.Update(__model : PRo3DModels.ComposedViewerModel) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _camera.Update(__model.camera)
+                _singleAnnotation.Update(__model.singleAnnotation)
+        
+        static member Create(initial) = MComposedViewerModel(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MComposedViewerModel =
+        let inline camera (m : MComposedViewerModel) = m.camera
+        let inline singleAnnotation (m : MComposedViewerModel) = m.singleAnnotation
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module ComposedViewerModel =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let camera =
+                { new Lens<PRo3DModels.ComposedViewerModel, Demo.TestApp.CameraControllerState>() with
+                    override x.Get(r) = r.camera
+                    override x.Set(r,v) = { r with camera = v }
+                    override x.Update(r,f) = { r with camera = f r.camera }
+                }
+            let singleAnnotation =
+                { new Lens<PRo3DModels.ComposedViewerModel, PRo3DModels.Annotation>() with
+                    override x.Get(r) = r.singleAnnotation
+                    override x.Set(r,v) = { r with singleAnnotation = v }
+                    override x.Update(r,f) = { r with singleAnnotation = f r.singleAnnotation }
+                }
