@@ -40,8 +40,8 @@ let kitchenSink argv =
     //let a = Aardvark.UI.Numeric.start()
    // let a = TreeViewApp.start()
     //let a = AnnotationProperties.start()
-    //let a = SimpleTestApp.start()
-    let a = SimpleCompositionViewer.start()
+    let a = SimpleTestApp.start()
+    //let a = SimpleCompositionViewer.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
