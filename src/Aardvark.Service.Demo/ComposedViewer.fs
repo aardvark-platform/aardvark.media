@@ -25,7 +25,7 @@ open Aardvark.Rendering.Text
 open Demo.TestApp
 open Demo.TestApp.Mutable
 
-module ComposedViewer = 
+module SimpleCompositionViewer = 
     open PRo3DModels
     open Aardvark.Base
     
@@ -49,29 +49,29 @@ module ComposedViewer =
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
 
-        CameraController.controlledControl model.camera CameraMessage frustum
-            (AttributeMap.ofList [
-                attribute "style" "width:100%; height: 100%"
-                //onRendered (fun _ _ _ -> TimeElapsed)
-            ])
-            (
-                let box' = Mod.constant (Box3d(-V3d.III, V3d.III))
-                let color = Mod.constant(C4b.Red)
-                let box =
-                    Sg.box color box'
-                        |> Sg.shader {
-                            do! DefaultSurfaces.trafo
-                            do! DefaultSurfaces.vertexColor
-                            do! DefaultSurfaces.simpleLighting
-                            }
-                        |> Sg.noEvents
-                        //|> Sg.pickable (PickShape.Box baseBox)        
-                                 
+        require Html.semui (
+            div [clazz "ui"; style "background: #222"] [
+                CameraController.controlledControl model.camera CameraMessage frustum
+                    (AttributeMap.ofList [
+                        attribute "style" "width:60%; height: 100%; float: left;"
+                    ])
+                    (
+                        let box' = Mod.constant (Box3d(-V3d.III, V3d.III))
+                        let color = Mod.constant(C4b.Red)
+                        let box =
+                            Sg.box color box'
+                                |> Sg.shader {
+                                    do! DefaultSurfaces.trafo
+                                    do! DefaultSurfaces.vertexColor
+                                    do! DefaultSurfaces.simpleLighting
+                                    }
+                                |> Sg.noEvents                            
 
-                let sg = 
-                    box |> Sg.noEvents                        
-                sg
-            )
+                        box |> Sg.noEvents                        
+                )
+
+                div [style "width:40%; height: 100%; float:right"] [AnnotationProperties.view model.singleAnnotation |> UI.map AnnotationAction]
+        ])
 
     let initial =
         {

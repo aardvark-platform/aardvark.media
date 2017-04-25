@@ -41,7 +41,7 @@ let kitchenSink argv =
    // let a = TreeViewApp.start()
     //let a = AnnotationProperties.start()
     //let a = SimpleTestApp.start()
-    let a = ComposedViewer.start()
+    let a = SimpleCompositionViewer.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
