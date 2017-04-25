@@ -3,6 +3,7 @@ namespace Aardvark.UI
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.UI
 
 [<AutoOpen>]
 module Mutable =

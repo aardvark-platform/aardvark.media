@@ -258,7 +258,7 @@ module CameraController =
 
 
     let threads (state : CameraControllerState) =
-        let pool = ThreadPool.create()
+        let pool = ThreadPool.empty
        
         let rec time() =
             proclist {

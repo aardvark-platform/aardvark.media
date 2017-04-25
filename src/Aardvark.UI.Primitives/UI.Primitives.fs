@@ -6,10 +6,9 @@ open Suave
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
-module UI = 
-    open Aardvark.Base
-    open Aardvark.UI
+open Aardvark.UI
 
+module UI = 
     let onWheel (f : Aardvark.Base.V2d -> 'msg) =
         let serverClick (args : list<string>) : Aardvark.Base.V2d = 
             let delta = List.head args |> Pickler.unpickleOfJson
@@ -117,7 +116,7 @@ module Numeric =
     let app' inputTypes =
         {
             unpersist = Unpersist.instance
-            threads = fun _ -> ThreadPool.create()
+            threads = fun _ -> ThreadPool.empty
             initial = init
             update = update
             view = view' inputTypes
@@ -374,7 +373,7 @@ module TreeViewApp =
     let app =
         {
             unpersist =  Unpersist.instance
-            threads = fun _ -> ThreadPool.create()
+            threads = fun _ -> ThreadPool.empty
             initial = init
             update = update
             view = view 

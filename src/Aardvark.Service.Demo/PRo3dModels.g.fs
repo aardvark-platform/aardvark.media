@@ -3,6 +3,7 @@ namespace PRo3DModels
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open PRo3DModels
 
 [<AutoOpen>]
 module Mutable =

@@ -3,6 +3,7 @@ namespace Viewer
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Viewer
 
 [<AutoOpen>]
 module Mutable =

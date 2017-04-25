@@ -3,6 +3,7 @@ namespace SimpleTest
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open SimpleTest
 
 [<AutoOpen>]
 module Mutable =

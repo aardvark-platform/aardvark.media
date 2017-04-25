@@ -45,7 +45,7 @@ module AnnotationProperties =
     let app = 
         {
             unpersist = Unpersist.instance
-            threads = fun _ -> ThreadPool.create()
+            threads = fun _ -> ThreadPool.empty
             initial = InitValues.initAnnotation
             update = update
             view = view

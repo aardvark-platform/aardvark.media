@@ -3,6 +3,7 @@ namespace Demo.TestApp
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Demo.TestApp
 
 [<AutoOpen>]
 module Mutable =
