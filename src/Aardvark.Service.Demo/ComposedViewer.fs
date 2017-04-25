@@ -33,7 +33,8 @@ module SimpleCompositionViewer =
         | CameraMessage    of CameraController.Message
         | AnnotationAction of AnnotationProperties.Action
         | RenderingAction  of RenderingProperties.Action
-        | MyOwnAction
+        | Enter of string
+        | Exit      
 
     let update (model : ComposedViewerModel) (act : Action) =
         match act with
@@ -43,7 +44,50 @@ module SimpleCompositionViewer =
                  { model with singleAnnotation = AnnotationProperties.update model.singleAnnotation a }
             | RenderingAction a ->
                  { model with rendering = RenderingProperties.update model.rendering a }
-            | MyOwnAction -> model
+            | Enter id-> { model with boxHovered = Some id }
+            | Exit -> { model with boxHovered = None }
+
+    //let createBox (color: IMod<C4b>) (box : Box3d) =
+    //    let b = Mod.constant box
+    //    Sg.box color b
+    //            |> Sg.shader {
+    //                do! DefaultSurfaces.trafo
+    //                do! DefaultSurfaces.vertexColor
+    //                do! DefaultSurfaces.simpleLighting
+    //                }
+    //            |> Sg.noEvents
+    //            //|> Sg.pickable (PickShape.Box boxM)
+    //            //|> Sg.withEvents [
+    //            //    Sg.onEnter (fun p -> Enter)
+    //            //    Sg.onLeave (fun () -> Exit)]
+        
+    let hoveredColor (model : MComposedViewerModel) (box : VisibleBox) =
+        model.boxHovered |> Mod.map (fun h -> match h with
+                                                | Some i -> if i = box.id then C4b.Green else box.color
+                                                | None -> box.color)
+    
+    let mkVisibleBox (color : C4b) (box : Box3d)= 
+        {
+            id = Guid.NewGuid().ToString()
+            geometry = box
+            color = color
+        }
+
+    let mkISgBox (model : MComposedViewerModel) (box : VisibleBox) =
+        let box' = Mod.constant (box.geometry)
+        let c = hoveredColor model box
+
+        Sg.box c box'
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                    }
+                |> Sg.noEvents
+                |> Sg.pickable (PickShape.Box box.geometry)
+                |> Sg.withEvents [
+                        Sg.onEnter (fun p -> Enter box.id)
+                        Sg.onLeave (fun () -> Exit)]                    
 
     let view (model : MComposedViewerModel) =
         let cam =
@@ -56,26 +100,24 @@ module SimpleCompositionViewer =
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl model.camera CameraMessage frustum
                     (AttributeMap.ofList [
-                        attribute "style" "width:60%; height: 100%; float: left;"
+                        attribute "style" "width:65%; height: 100%; float: left;"
                     ])
                     (
-                        let box' = Mod.constant (Box3d(-V3d.III, V3d.III))
-                        let color = Mod.constant(C4b.Red)
-                        let box =
-                            Sg.box color box'
-                                |> Sg.shader {
-                                    do! DefaultSurfaces.trafo
-                                    do! DefaultSurfaces.vertexColor
-                                    do! DefaultSurfaces.simpleLighting
-                                    }
-                                |> Sg.noEvents                            
-                                |> Sg.fillMode model.rendering.fillMode
-                                |> Sg.cullMode model.rendering.cullMode
-
-                        box |> Sg.noEvents                        
+                        let colors = [C4b.Red; C4b.Blue]
+                        let boxes = [Box3d(-V3d.III, V3d.III); Box3d(-V3d.III + V3d.IOO * 2.5, V3d.III + V3d.IOO * 2.5)]
+                                              
+                        let boxes = boxes 
+                                    |> List.mapi (fun i k -> mkVisibleBox colors.[i] k)
+                                    |> List.map (fun k -> mkISgBox model k)                                                    
+                        boxes
+                            |> Sg.ofList
+                            |> Sg.noEvents     
+                            |> Sg.fillMode model.rendering.fillMode
+                            |> Sg.cullMode model.rendering.cullMode                                                                                           
+                            |> Sg.noEvents                        
                 )
 
-                div [style "width:40%; height: 100%; float:right"] [
+                div [style "width:35%; height: 100%; float:right"] [
                     Html.SemUi.accordion "Rendering" "configure" true [
                         RenderingProperties.view model.rendering |> UI.map RenderingAction 
                     ]
@@ -90,6 +132,9 @@ module SimpleCompositionViewer =
             camera           = CameraController.initial
             singleAnnotation = InitValues.annotation
             rendering        = InitValues.rendering
+
+            boxes = []
+            boxHovered = None
         }
 
     let app =

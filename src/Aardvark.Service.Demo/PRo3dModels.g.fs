@@ -158,15 +158,74 @@ module Mutable =
                     override x.Update(r,f) = { r with cullMode = f r.cullMode }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    type MVisibleBox private(__initial : PRo3DModels.VisibleBox) =
+        let mutable __current = __initial
+        let _id = ResetMod(__initial.id)
+        let _geometry = ResetMod(__initial.geometry)
+        let _color = ResetMod(__initial.color)
+        
+        member x.id = _id :> IMod<_>
+        member x.geometry = _geometry :> IMod<_>
+        member x.color = _color :> IMod<_>
+        
+        member x.Update(__model : PRo3DModels.VisibleBox) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _id.Update(__model.id)
+                _geometry.Update(__model.geometry)
+                _color.Update(__model.color)
+        
+        static member Create(initial) = MVisibleBox(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MVisibleBox =
+        let inline id (m : MVisibleBox) = m.id
+        let inline geometry (m : MVisibleBox) = m.geometry
+        let inline color (m : MVisibleBox) = m.color
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module VisibleBox =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let id =
+                { new Lens<PRo3DModels.VisibleBox, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.id
+                    override x.Set(r,v) = { r with id = v }
+                    override x.Update(r,f) = { r with id = f r.id }
+                }
+            let geometry =
+                { new Lens<PRo3DModels.VisibleBox, Aardvark.Base.Box3d>() with
+                    override x.Get(r) = r.geometry
+                    override x.Set(r,v) = { r with geometry = v }
+                    override x.Update(r,f) = { r with geometry = f r.geometry }
+                }
+            let color =
+                { new Lens<PRo3DModels.VisibleBox, Aardvark.Base.C4b>() with
+                    override x.Get(r) = r.color
+                    override x.Set(r,v) = { r with color = v }
+                    override x.Update(r,f) = { r with color = f r.color }
+                }
+    [<StructuredFormatDisplay("{AsString}")>]
     type MComposedViewerModel private(__initial : PRo3DModels.ComposedViewerModel) =
         let mutable __current = __initial
         let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
         let _singleAnnotation = MAnnotation.Create(__initial.singleAnnotation)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
+        let _boxes = ResetMod(__initial.boxes)
+        let _boxHovered = ResetMod(__initial.boxHovered)
         
         member x.camera = _camera
         member x.singleAnnotation = _singleAnnotation
         member x.rendering = _rendering
+        member x.boxes = _boxes :> IMod<_>
+        member x.boxHovered = _boxHovered :> IMod<_>
         
         member x.Update(__model : PRo3DModels.ComposedViewerModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -174,6 +233,8 @@ module Mutable =
                 _camera.Update(__model.camera)
                 _singleAnnotation.Update(__model.singleAnnotation)
                 _rendering.Update(__model.rendering)
+                _boxes.Update(__model.boxes)
+                _boxHovered.Update(__model.boxHovered)
         
         static member Create(initial) = MComposedViewerModel(initial)
         
@@ -186,6 +247,8 @@ module Mutable =
         let inline camera (m : MComposedViewerModel) = m.camera
         let inline singleAnnotation (m : MComposedViewerModel) = m.singleAnnotation
         let inline rendering (m : MComposedViewerModel) = m.rendering
+        let inline boxes (m : MComposedViewerModel) = m.boxes
+        let inline boxHovered (m : MComposedViewerModel) = m.boxHovered
     
     
     
@@ -211,4 +274,16 @@ module Mutable =
                     override x.Get(r) = r.rendering
                     override x.Set(r,v) = { r with rendering = v }
                     override x.Update(r,f) = { r with rendering = f r.rendering }
+                }
+            let boxes =
+                { new Lens<PRo3DModels.ComposedViewerModel, Microsoft.FSharp.Collections.list<PRo3DModels.VisibleBox>>() with
+                    override x.Get(r) = r.boxes
+                    override x.Set(r,v) = { r with boxes = v }
+                    override x.Update(r,f) = { r with boxes = f r.boxes }
+                }
+            let boxHovered =
+                { new Lens<PRo3DModels.ComposedViewerModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with
+                    override x.Get(r) = r.boxHovered
+                    override x.Set(r,v) = { r with boxHovered = v }
+                    override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
                 }

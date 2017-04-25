@@ -23,8 +23,8 @@ module RenderingProperties =
     let view (model : MRenderingParameters) =        
         require Html.semui (
             Html.table [                            
-                            Html.row "Geometry:" [Html.SemUi.dropDown model.fillMode SetFillMode]
-                            Html.row "Projection:" [Html.SemUi.dropDown model.cullMode SetCullMode]      
+                            Html.row "FillMode:" [Html.SemUi.dropDown model.fillMode SetFillMode]
+                            Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]      
                        ]
         )
 

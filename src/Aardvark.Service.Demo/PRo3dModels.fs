@@ -35,10 +35,20 @@ type RenderingParameters = {
 }
 
 [<DomainType>]
+type VisibleBox = {
+    id       : string
+    geometry : Box3d
+    color    : C4b
+}
+
+[<DomainType>]
 type ComposedViewerModel = {
     camera : TestApp.CameraControllerState
     singleAnnotation : Annotation
     rendering : RenderingParameters
+
+    boxes : list<VisibleBox>
+    boxHovered : option<string>
 }
 
 module InitValues = 
