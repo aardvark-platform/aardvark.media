@@ -164,7 +164,7 @@ module KitchenSinkApp =
                                 do! DefaultSurfaces.simpleLighting
                                }
                             |> Sg.noEvents
-                            |> Sg.pickable (PickShape.Box baseBox)        
+                            |> Sg.pickable (Box baseBox)        
                                  
 
                     let sg = 

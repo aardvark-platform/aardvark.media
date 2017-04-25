@@ -3,9 +3,11 @@
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.Base.Rendering
 open Aardvark.UI.Mutable
 open Aardvark.UI
 open FShade.Primitives
+open Demo
 
 type Points = list<V3d>
 type Segment = Points
@@ -26,10 +28,33 @@ type Annotation = {
         text : string
     }
 
+[<DomainType>]
+type RenderingParameters = {
+    fillMode : FillMode
+    cullMode : CullMode
+}
+
+[<DomainType>]
+type VisibleBox = {
+    id       : string
+    geometry : Box3d
+    color    : C4b
+}
+
+[<DomainType>]
+type ComposedViewerModel = {
+    camera : TestApp.CameraControllerState
+    singleAnnotation : Annotation
+    rendering : RenderingParameters
+
+    boxes : list<VisibleBox>
+    boxHovered : option<string>
+}
+
 module InitValues = 
     let edge = [ V3d.IOI; V3d.III; V3d.OOI ]
 
-    let initAnnotation = 
+    let annotation = 
         {
             geometry = Geometry.Polyline
             points = edge
@@ -39,4 +64,10 @@ module InitValues =
             projection = Projection.Viewpoint
             visible = true
             text = "my favorite annotation"
+        }
+    
+    let rendering =
+        {
+            fillMode = FillMode.Fill
+            cullMode = CullMode.None
         }

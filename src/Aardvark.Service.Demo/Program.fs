@@ -1,5 +1,4 @@
 ﻿open Aardvark.Service
-
 open System
 
 open Aardvark.Base
@@ -39,9 +38,10 @@ let kitchenSink argv =
 
     //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
-    //let a = TreeViewApp.start()
+   // let a = TreeViewApp.start()
     //let a = AnnotationProperties.start()
-    let a = SimpleTestApp.start()
+    //let a = SimpleTestApp.start()
+    let a = SimpleCompositionViewer.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
@@ -67,6 +67,7 @@ let main args =
     
     kitchenSink args
     //modelviewer args
+
 
     0
 
