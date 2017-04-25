@@ -4,9 +4,32 @@ open System
 open Aardvark.UI
 open Aardvark.Base.Incremental
 open Aardvark.SceneGraph.AirState
+open PRo3DModels    
+
+module RenderingProperties = 
+    open Aardvark.Base.Rendering
+
+    type Action =
+        | SetFillMode of FillMode
+        | SetCullMode of CullMode
+
+    let update (model : RenderingParameters) (act : Action) =
+        match act with
+            | SetFillMode mode ->
+                    { model with fillMode = mode }
+            | SetCullMode mode ->
+                    { model with cullMode = mode }
+
+    let view (model : MRenderingParameters) =        
+        require Html.semui (
+            Html.table [                            
+                            Html.row "Geometry:" [Html.SemUi.dropDown model.fillMode SetFillMode]
+                            Html.row "Projection:" [Html.SemUi.dropDown model.cullMode SetCullMode]      
+                       ]
+        )
 
 module AnnotationProperties = 
-    open PRo3DModels    
+    
     open Aardvark.Base
     
     type Action = 
@@ -16,8 +39,8 @@ module AnnotationProperties =
         | SetText         of string
         | ToggleVisible
 
-    let update (model : Annotation) (msg : Action) =
-        match msg with
+    let update (model : Annotation) (act : Action) =
+        match act with
             | SetGeometry mode ->
                 { model with geometry = mode}
             | SetProjection mode ->
@@ -46,7 +69,7 @@ module AnnotationProperties =
         {
             unpersist = Unpersist.instance
             threads = fun _ -> ThreadPool.create()
-            initial = InitValues.initAnnotation
+            initial = InitValues.annotation
             update = update
             view = view
         }

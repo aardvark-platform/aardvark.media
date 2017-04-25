@@ -30,8 +30,9 @@ module SimpleCompositionViewer =
     open Aardvark.Base
     
     type Action =
-        | CameraMessage of CameraController.Message
+        | CameraMessage    of CameraController.Message
         | AnnotationAction of AnnotationProperties.Action
+        | RenderingAction  of RenderingProperties.Action
         | MyOwnAction
 
     let update (model : ComposedViewerModel) (act : Action) =
@@ -40,6 +41,8 @@ module SimpleCompositionViewer =
                  { model with camera = CameraController.update model.camera m }
             | AnnotationAction a ->
                  { model with singleAnnotation = AnnotationProperties.update model.singleAnnotation a }
+            | RenderingAction a ->
+                 { model with rendering = RenderingProperties.update model.rendering a }
             | MyOwnAction -> model
 
     let view (model : MComposedViewerModel) =
@@ -50,7 +53,7 @@ module SimpleCompositionViewer =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
 
         require Html.semui (
-            div [clazz "ui"; style "background: #222"] [
+            div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl model.camera CameraMessage frustum
                     (AttributeMap.ofList [
                         attribute "style" "width:60%; height: 100%; float: left;"
@@ -66,17 +69,27 @@ module SimpleCompositionViewer =
                                     do! DefaultSurfaces.simpleLighting
                                     }
                                 |> Sg.noEvents                            
+                                |> Sg.fillMode model.rendering.fillMode
+                                |> Sg.cullMode model.rendering.cullMode
 
                         box |> Sg.noEvents                        
                 )
 
-                div [style "width:40%; height: 100%; float:right"] [AnnotationProperties.view model.singleAnnotation |> UI.map AnnotationAction]
+                div [style "width:40%; height: 100%; float:right"] [
+                    Html.SemUi.accordion "Rendering" "configure" true [
+                        RenderingProperties.view model.rendering |> UI.map RenderingAction 
+                    ]
+                    Html.SemUi.accordion "Properties" "options" true [
+                        AnnotationProperties.view model.singleAnnotation |> UI.map AnnotationAction
+                    ]
+                ]
         ])
 
     let initial =
         {
-            camera = CameraController.initial
-            singleAnnotation = InitValues.initAnnotation
+            camera           = CameraController.initial
+            singleAnnotation = InitValues.annotation
+            rendering        = InitValues.rendering
         }
 
     let app =

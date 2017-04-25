@@ -3,6 +3,7 @@
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.Base.Rendering
 open Aardvark.UI.Mutable
 open Aardvark.UI
 open FShade.Primitives
@@ -28,15 +29,22 @@ type Annotation = {
     }
 
 [<DomainType>]
+type RenderingParameters = {
+    fillMode : FillMode
+    cullMode : CullMode
+}
+
+[<DomainType>]
 type ComposedViewerModel = {
     camera : TestApp.CameraControllerState
     singleAnnotation : Annotation
+    rendering : RenderingParameters
 }
 
 module InitValues = 
     let edge = [ V3d.IOI; V3d.III; V3d.OOI ]
 
-    let initAnnotation = 
+    let annotation = 
         {
             geometry = Geometry.Polyline
             points = edge
@@ -46,4 +54,10 @@ module InitValues =
             projection = Projection.Viewpoint
             visible = true
             text = "my favorite annotation"
+        }
+    
+    let rendering =
+        {
+            fillMode = FillMode.Fill
+            cullMode = CullMode.None
         }

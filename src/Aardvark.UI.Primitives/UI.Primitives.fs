@@ -160,6 +160,28 @@ module Html =
         open Aardvark.Base.AMD64.Compiler
         open Aardvark.Base.Geometry.RayHit
         
+        //let accordion = 
+
+        let accordion text' icon active content' =
+            let title = if active then "title active inverted" else "title inverted"
+            let content = if active then "content active" else "content"
+            
+            onBoot "$('#__ID__').accordion();" (
+                div [clazz "ui inverted segment"] [
+                    div [clazz "ui inverted accordion fluid"] [
+                        div [clazz title] [
+                                i [clazz (icon + " icon circular")][] 
+                                text text'
+                                //Static.a [clazz "ui label"] [
+                                //    i [clazz (icon + " icon circular inverted")] []
+                                //    text text'
+                                //]
+                        ]
+                        div [clazz content] content'
+                    ]
+                ]
+            )
+
         let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : IMod<'a>) (change : 'a -> 'msg) =
             let names = Enum.GetNames(typeof<'a>)
             let values = Enum.GetValues(typeof<'a>) |> unbox<'a[]>

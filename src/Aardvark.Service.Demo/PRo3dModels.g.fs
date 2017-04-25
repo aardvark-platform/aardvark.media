@@ -113,19 +113,67 @@ module Mutable =
                     override x.Update(r,f) = { r with text = f r.text }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    type MRenderingParameters private(__initial : PRo3DModels.RenderingParameters) =
+        let mutable __current = __initial
+        let _fillMode = ResetMod(__initial.fillMode)
+        let _cullMode = ResetMod(__initial.cullMode)
+        
+        member x.fillMode = _fillMode :> IMod<_>
+        member x.cullMode = _cullMode :> IMod<_>
+        
+        member x.Update(__model : PRo3DModels.RenderingParameters) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _fillMode.Update(__model.fillMode)
+                _cullMode.Update(__model.cullMode)
+        
+        static member Create(initial) = MRenderingParameters(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MRenderingParameters =
+        let inline fillMode (m : MRenderingParameters) = m.fillMode
+        let inline cullMode (m : MRenderingParameters) = m.cullMode
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module RenderingParameters =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let fillMode =
+                { new Lens<PRo3DModels.RenderingParameters, Aardvark.Base.Rendering.FillMode>() with
+                    override x.Get(r) = r.fillMode
+                    override x.Set(r,v) = { r with fillMode = v }
+                    override x.Update(r,f) = { r with fillMode = f r.fillMode }
+                }
+            let cullMode =
+                { new Lens<PRo3DModels.RenderingParameters, Aardvark.Base.Rendering.CullMode>() with
+                    override x.Get(r) = r.cullMode
+                    override x.Set(r,v) = { r with cullMode = v }
+                    override x.Update(r,f) = { r with cullMode = f r.cullMode }
+                }
+    [<StructuredFormatDisplay("{AsString}")>]
     type MComposedViewerModel private(__initial : PRo3DModels.ComposedViewerModel) =
         let mutable __current = __initial
         let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
         let _singleAnnotation = MAnnotation.Create(__initial.singleAnnotation)
+        let _rendering = MRenderingParameters.Create(__initial.rendering)
         
         member x.camera = _camera
         member x.singleAnnotation = _singleAnnotation
+        member x.rendering = _rendering
         
         member x.Update(__model : PRo3DModels.ComposedViewerModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _camera.Update(__model.camera)
                 _singleAnnotation.Update(__model.singleAnnotation)
+                _rendering.Update(__model.rendering)
         
         static member Create(initial) = MComposedViewerModel(initial)
         
@@ -137,6 +185,7 @@ module Mutable =
     module MComposedViewerModel =
         let inline camera (m : MComposedViewerModel) = m.camera
         let inline singleAnnotation (m : MComposedViewerModel) = m.singleAnnotation
+        let inline rendering (m : MComposedViewerModel) = m.rendering
     
     
     
@@ -156,4 +205,10 @@ module Mutable =
                     override x.Get(r) = r.singleAnnotation
                     override x.Set(r,v) = { r with singleAnnotation = v }
                     override x.Update(r,f) = { r with singleAnnotation = f r.singleAnnotation }
+                }
+            let rendering =
+                { new Lens<PRo3DModels.ComposedViewerModel, PRo3DModels.RenderingParameters>() with
+                    override x.Get(r) = r.rendering
+                    override x.Set(r,v) = { r with rendering = v }
+                    override x.Update(r,f) = { r with rendering = f r.rendering }
                 }
