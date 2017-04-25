@@ -197,7 +197,7 @@ module KitchenSinkApp =
             yield! timerThread()
         }
 
-    let pool = ThreadPool.create() |> ThreadPool.add "timer" (timerThread())
+    let pool = ThreadPool.empty |> ThreadPool.add "timer" (timerThread())
 
     let start () =
         App.start {

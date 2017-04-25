@@ -453,7 +453,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let getInfo() =
         match lastInfo with
             | Some lastInfo ->
-                let now = { lastInfo with time = MicroTime.Now }
+                let now = { lastInfo with time = MicroTime.Now; token = AdaptiveToken.Top }
                 match server.getState now with
                     | Some cam -> Some (now, cam)
                     | None -> None
@@ -505,6 +505,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             t <- runtime.ContextLock
             target <- getFramebuffer info.size info.signature
             let innerToken = token.Isolated
+            let token = ()
             try
                 scene.EvaluateAlways innerToken (fun innerToken ->
                     scene.OutOfDate <- true
@@ -515,9 +516,17 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                     renderTime.Stop()
                     innerToken.Release()
                 )
+
+                
+
+
             finally
                 //printfn "race here"
+
+
                 innerToken.Release()
+                if scene.State.viewTrafo.ReaderCount > 0 then
+                    printfn "bad hate"
 //                let real = scene.State.projTrafo |> Mod.force
 //                let should = state.projTrafo
 //                if real <> should then
@@ -633,6 +642,9 @@ type internal Client(createInfo : ClientCreateInfo, getState : ClientInfo -> Cli
                         Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
                     
                 )
+
+                
+
 
     let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)
 

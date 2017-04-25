@@ -38,7 +38,7 @@ module App =
         let mutable running = true
         let messageQueue = List<'msg>(128)
 
-        let mutable currentThreads = ThreadPool.create()
+        let mutable currentThreads = ThreadPool.empty
 
         let update (source : Guid) (msgs : list<'msg>) =
             lock messageQueue (fun () ->

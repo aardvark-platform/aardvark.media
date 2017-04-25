@@ -33,8 +33,9 @@ let threeD (m : MModel) =
 
     let sg =
         Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+        |> Sg.requirePicking
         |> Sg.noEvents
-        |> Sg.pickable (PickShape.Box Box3d.Unit)       
+        //|> Sg.pickable (PickShape.Box Box3d.Unit)       
         |> Sg.trafo t
         |> Sg.withEvents [
                 Sg.onMouseDown (fun _ _ -> Inc)
