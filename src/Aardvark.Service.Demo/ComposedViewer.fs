@@ -45,21 +45,7 @@ module SimpleCompositionViewer =
             | RenderingAction a ->
                  { model with rendering = RenderingProperties.update model.rendering a }
             | Enter id-> { model with boxHovered = Some id }
-            | Exit -> { model with boxHovered = None }
-
-    //let createBox (color: IMod<C4b>) (box : Box3d) =
-    //    let b = Mod.constant box
-    //    Sg.box color b
-    //            |> Sg.shader {
-    //                do! DefaultSurfaces.trafo
-    //                do! DefaultSurfaces.vertexColor
-    //                do! DefaultSurfaces.simpleLighting
-    //                }
-    //            |> Sg.noEvents
-    //            //|> Sg.pickable (PickShape.Box boxM)
-    //            //|> Sg.withEvents [
-    //            //    Sg.onEnter (fun p -> Enter)
-    //            //    Sg.onLeave (fun () -> Exit)]
+            | Exit -> { model with boxHovered = None }    
         
     let hoveredColor (model : MComposedViewerModel) (box : VisibleBox) =
         model.boxHovered |> Mod.map (fun h -> match h with
@@ -89,6 +75,8 @@ module SimpleCompositionViewer =
                         Sg.onEnter (fun p -> Enter box.id)
                         Sg.onLeave (fun () -> Exit)]                    
 
+    let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
+
     let view (model : MComposedViewerModel) =
         let cam =
             model.camera.view 
@@ -96,7 +84,8 @@ module SimpleCompositionViewer =
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
 
-        require Html.semui (
+      //  require (Html.semui @ [myCss]) (
+        require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl model.camera CameraMessage frustum
                     (AttributeMap.ofList [
@@ -125,7 +114,8 @@ module SimpleCompositionViewer =
                         AnnotationProperties.view model.singleAnnotation |> UI.map AnnotationAction
                     ]
                 ]
-        ])
+            ]
+        )
 
     let initial =
         {
@@ -141,6 +131,99 @@ module SimpleCompositionViewer =
         {
             unpersist = Unpersist.instance
             threads = fun model -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
+            initial = initial
+            update = update
+            view = view
+        }
+
+    let start () = App.start app
+
+module OrbitCameraDemo = 
+    open PRo3DModels
+    open Aardvark.Base    
+    open Demo.TestApp.Mutable.MCameraControllerState
+    
+    type Action =
+        | CameraMessage    of CameraController.Message
+        | RenderingAction  of RenderingProperties.Action
+        | Pick             of V3d
+
+    let update (model : OrbitCameraDemoModel) (act : Action) =
+        match act with
+            | CameraMessage m -> 
+                { model with camera2 = CameraController.update model.camera2 m }
+            | RenderingAction a ->
+                { model with rendering = RenderingProperties.update model.rendering a }
+            | Pick p ->
+                { model with camera2 = { model.camera2 with orbitCenter = Some p } }
+
+    let view (model : MOrbitCameraDemoModel) =
+        let cam =
+            model.camera2.view 
+            
+        let frustum =
+            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            
+        require (Html.semui) (
+            div [clazz "ui"; style "background: #1B1C1E"] [
+                CameraController.controlledControl model.camera2 CameraMessage frustum
+                    (AttributeMap.ofList [
+                        attribute "style" "width:65%; height: 100%; float: left;"
+                    ])
+                    (
+                        let color = Mod.constant C4b.Blue
+                        let boxGeometry = Box3d(-V3d.III, V3d.III)
+                        let box = Mod.constant (boxGeometry)                       
+
+                        let trafo = 
+                            model.camera2.orbitCenter 
+                                |> Mod.bind (fun center -> match center with 
+                                                            | Some x -> Mod.constant (Trafo3d.Translation x)
+                                                            | None -> Mod.constant (Trafo3d.Identity))
+
+                        let b = Sg.box color box                            
+                                    |> Sg.shader {
+                                        do! DefaultSurfaces.trafo
+                                        do! DefaultSurfaces.vertexColor
+                                        do! DefaultSurfaces.simpleLighting
+                                        }
+                                    |> Sg.noEvents
+                                    |> Sg.pickable (PickShape.Box boxGeometry)
+                                    |> Sg.withEvents [
+                                            Sg.onDoubleClick (fun p -> Pick p)]
+
+                        let s = Sg.sphere 20 (Mod.constant C4b.Red) (Mod.constant 0.25)                                     
+                                    |> Sg.shader {
+                                        do! DefaultSurfaces.trafo
+                                        do! DefaultSurfaces.vertexColor
+                                        do! DefaultSurfaces.simpleLighting
+                                        }
+                                    |> Sg.noEvents
+                                    |> Sg.trafo trafo
+
+                        [b; s] |> Sg.ofList 
+                               |> Sg.fillMode model.rendering.fillMode
+                               |> Sg.cullMode model.rendering.cullMode    
+                    )
+
+                div [style "width:35%; height: 100%; float:right"] [
+                    Html.SemUi.accordion "Rendering" "configure" true [
+                        RenderingProperties.view model.rendering |> UI.map RenderingAction 
+                    ]
+                ]
+            ]
+        )
+
+    let initial =
+        {
+            camera2 = { CameraController.initial with orbitCenter = Some V3d.Zero }
+            rendering = { InitValues.rendering with cullMode = CullMode.CounterClockwise }
+        }
+
+    let app =
+        {
+            unpersist = Unpersist.instance
+            threads = fun model -> CameraController.threads model.camera2 |> ThreadPool.map CameraMessage
             initial = initial
             update = update
             view = view

@@ -242,6 +242,7 @@ module Viewer =
                     forward = false; backward = false; left = false; right = false
                     moveVec = V3i.Zero
                     lastTime = None
+                    orbitCenter = None
                     stash = None
                 }
         }

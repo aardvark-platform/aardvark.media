@@ -161,6 +161,7 @@ module Mutable =
         let _left = ResetMod(__initial.left)
         let _right = ResetMod(__initial.right)
         let _moveVec = ResetMod(__initial.moveVec)
+        let _orbitCenter = ResetMod(__initial.orbitCenter)
         let _lastTime = ResetMod(__initial.lastTime)
         let _stash = ResetMod(__initial.stash)
         
@@ -174,6 +175,7 @@ module Mutable =
         member x.left = _left :> IMod<_>
         member x.right = _right :> IMod<_>
         member x.moveVec = _moveVec :> IMod<_>
+        member x.orbitCenter = _orbitCenter :> IMod<_>
         member x.lastTime = _lastTime :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
@@ -190,6 +192,7 @@ module Mutable =
                 _left.Update(__model.left)
                 _right.Update(__model.right)
                 _moveVec.Update(__model.moveVec)
+                _orbitCenter.Update(__model.orbitCenter)
                 _lastTime.Update(__model.lastTime)
                 _stash.Update(__model.stash)
         
@@ -211,6 +214,7 @@ module Mutable =
         let inline left (m : MCameraControllerState) = m.left
         let inline right (m : MCameraControllerState) = m.right
         let inline moveVec (m : MCameraControllerState) = m.moveVec
+        let inline orbitCenter (m : MCameraControllerState) = m.orbitCenter
         let inline lastTime (m : MCameraControllerState) = m.lastTime
         let inline stash (m : MCameraControllerState) = m.stash
     
@@ -280,6 +284,12 @@ module Mutable =
                     override x.Get(r) = r.moveVec
                     override x.Set(r,v) = { r with moveVec = v }
                     override x.Update(r,f) = { r with moveVec = f r.moveVec }
+                }
+            let orbitCenter =
+                { new Lens<Demo.TestApp.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.Base.V3d>>() with
+                    override x.Get(r) = r.orbitCenter
+                    override x.Set(r,v) = { r with orbitCenter = v }
+                    override x.Update(r,f) = { r with orbitCenter = f r.orbitCenter }
                 }
             let lastTime =
                 { new Lens<Demo.TestApp.CameraControllerState, Microsoft.FSharp.Core.Option<Microsoft.FSharp.Core.float>>() with

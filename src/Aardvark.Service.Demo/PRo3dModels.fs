@@ -51,6 +51,13 @@ type ComposedViewerModel = {
     boxHovered : option<string>
 }
 
+[<DomainType>]
+type OrbitCameraDemoModel = {
+    camera2 : TestApp.CameraControllerState
+    rendering : RenderingParameters
+}
+
+
 module InitValues = 
     let edge = [ V3d.IOI; V3d.III; V3d.OOI ]
 

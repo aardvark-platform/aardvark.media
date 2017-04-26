@@ -20,7 +20,7 @@ open Demo.TestApp
 open Demo.TestApp.Mutable
 
 
-module CameraController =
+module ArcBallController =
     open Aardvark.Base.Incremental.Operators
 
     type Message = 

@@ -40,8 +40,7 @@ type CameraControllerState =
         left : bool
         right : bool
         moveVec : V3i
-
-
+        orbitCenter : Option<V3d>
         lastTime : Option<float>
 
         [<TreatAsValue>]

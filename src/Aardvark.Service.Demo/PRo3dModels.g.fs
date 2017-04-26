@@ -288,3 +288,48 @@ module Mutable =
                     override x.Set(r,v) = { r with boxHovered = v }
                     override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
                 }
+    [<StructuredFormatDisplay("{AsString}")>]
+    type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =
+        let mutable __current = __initial
+        let _camera2 = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera2)
+        let _rendering = MRenderingParameters.Create(__initial.rendering)
+        
+        member x.camera2 = _camera2
+        member x.rendering = _rendering
+        
+        member x.Update(__model : PRo3DModels.OrbitCameraDemoModel) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _camera2.Update(__model.camera2)
+                _rendering.Update(__model.rendering)
+        
+        static member Create(initial) = MOrbitCameraDemoModel(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MOrbitCameraDemoModel =
+        let inline camera2 (m : MOrbitCameraDemoModel) = m.camera2
+        let inline rendering (m : MOrbitCameraDemoModel) = m.rendering
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module OrbitCameraDemoModel =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let camera2 =
+                { new Lens<PRo3DModels.OrbitCameraDemoModel, Demo.TestApp.CameraControllerState>() with
+                    override x.Get(r) = r.camera2
+                    override x.Set(r,v) = { r with camera2 = v }
+                    override x.Update(r,f) = { r with camera2 = f r.camera2 }
+                }
+            let rendering =
+                { new Lens<PRo3DModels.OrbitCameraDemoModel, PRo3DModels.RenderingParameters>() with
+                    override x.Get(r) = r.rendering
+                    override x.Set(r,v) = { r with rendering = v }
+                    override x.Update(r,f) = { r with rendering = f r.rendering }
+                }
