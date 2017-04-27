@@ -34,6 +34,15 @@ type RenderingParameters = {
     cullMode : CullMode
 }
 
+type NavigationMode =
+        | FreeFly = 0
+        | ArcBall = 1
+
+[<DomainType>]
+type NavigationParameters = {
+    navigationMode : NavigationMode    
+}
+
 [<DomainType>]
 type VisibleBox = {
     id       : string
@@ -47,14 +56,31 @@ type ComposedViewerModel = {
     singleAnnotation : Annotation
     rendering : RenderingParameters
 
+    //boxes : list<VisibleBox>
+    boxHovered : option<string>   
+}
+
+[<DomainType>]
+type BoxSelectionDemoModel = {
+    camera : TestApp.CameraControllerState    
+    rendering : RenderingParameters
+
     boxes : list<VisibleBox>
     boxHovered : option<string>
+    selectedBoxes : list<string>
 }
 
 [<DomainType>]
 type OrbitCameraDemoModel = {
-    camera2 : TestApp.CameraControllerState
+    camera : TestApp.CameraControllerState
+    rendering : RenderingParameters    
+}
+
+[<DomainType>]
+type NavigationModeDemoModel = {
+    camera : TestApp.CameraControllerState
     rendering : RenderingParameters
+    navigation : NavigationParameters
 }
 
 
@@ -77,4 +103,9 @@ module InitValues =
         {
             fillMode = FillMode.Fill
             cullMode = CullMode.None
+        }
+
+    let navigation =
+        {
+            navigationMode = NavigationMode.FreeFly
         }

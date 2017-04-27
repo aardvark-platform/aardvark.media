@@ -31,6 +31,7 @@ module ArcBallController =
         | KeyDown of key : Keys
         | KeyUp of key : Keys
         | Blur
+        | Pick of V3d
 
     let initial =
         {
@@ -46,7 +47,7 @@ module ArcBallController =
             stash = None
         }
 
-    let sw = System.Diagnostics.Stopwatch()
+    let sw = Diagnostics.Stopwatch()
     do sw.Start()
 
     let withTime (model : CameraControllerState) =
@@ -55,8 +56,13 @@ module ArcBallController =
     let update (model : CameraControllerState) (message : Message) =
         match message with
             | Blur ->
-                { initial with view = model.view; lastTime = None }
+                { initial with view = model.view; lastTime = None; orbitCenter = model.orbitCenter }
+            | Pick p -> 
+                let cam = model.view
+                let newForward = p - cam.Location |> Vec.normalize
+                let tempCam = cam.WithForward newForward
 
+                { model with orbitCenter = Some p; view = CameraView.lookAt cam.Location p cam.Up }                
             | StepTime ->
                 let now = sw.Elapsed.TotalSeconds
                 let cam = model.view
@@ -78,7 +84,6 @@ module ArcBallController =
 
                         | None -> 
                             cam
-
 
                 { model with lastTime = Some now; view = cam }
 
@@ -106,8 +111,6 @@ module ArcBallController =
                 else
                     model
 
-
-
             | KeyDown Keys.A ->
                 if not model.left then
                     withTime { model with left = true; moveVec = model.moveVec - V3i.IOO }
@@ -119,7 +122,6 @@ module ArcBallController =
                     withTime { model with left = false; moveVec = model.moveVec + V3i.IOO }
                 else
                     model
-
 
             | KeyDown Keys.D ->
                 if not model.right then
@@ -153,20 +155,28 @@ module ArcBallController =
                     | _ -> model
 
             | Move pos  ->
+                
                 let cam = model.view
                 let delta = pos - model.dragStart
 
                 let cam =
-                    if model.look then
-                        let trafo =
-                            M44d.Rotation(cam.Right, float delta.Y * -0.01) *
-                            M44d.Rotation(cam.Sky, float delta.X * -0.01)
+                    if model.look && model.orbitCenter.IsSome then
+                        let trafo = 
+                            M44d.Rotation (cam.Right, float delta.Y * -0.01) * 
+                            M44d.Rotation (cam.Sky, float delta.X * -0.01)
+                     
+                        let newLocation = trafo.TransformDir (cam.Location)
+                        let tempcam = cam.WithLocation newLocation
+                        
+                        // make cam with up vector
 
-                        let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
-                        cam.WithForward newForward
+                        let newForward = model.orbitCenter.Value - newLocation |> Vec.normalize
+
+                        tempcam.WithForward newForward
                     else
                         cam
 
+                // change zoom and pan !!!!!!
                 let cam =
                     if model.zoom then
                         let step = -0.05 * (cam.Forward * float delta.Y)
@@ -174,14 +184,26 @@ module ArcBallController =
                     else
                         cam
 
-                let cam =
-                    if model.pan then
+                let cam, center =
+                    if model.pan && model.orbitCenter.IsSome then
                         let step = 0.05 * (cam.Down * float delta.Y + cam.Right * float delta.X)
-                        cam.WithLocation(cam.Location + step)
+                        let center = model.orbitCenter.Value + step
+                        cam.WithLocation(cam.Location + step), Some center
                     else
-                        cam
+                        cam, model.orbitCenter            
 
-                { model with view = cam; dragStart = pos }
+                { model with view = cam; dragStart = pos; orbitCenter = center }
+
+
+    let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>)  =
+        AttributeMap.ofListCond [
+            always (onBlur (fun _ -> f Blur))
+            always (onMouseDown (fun b p -> f (Down(b,p))))
+            always (onMouseUp (fun b p -> f (Up b)))
+            always (onKeyDown (KeyDown >> f))
+            always (onKeyUp (KeyUp >> f))
+            onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
+        ] |> AttributeMap.toAMap
 
     let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         let attributes =

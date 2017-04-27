@@ -6,6 +6,24 @@ open Aardvark.Base.Incremental
 open Aardvark.SceneGraph.AirState
 open PRo3DModels    
 
+module NavigationProperties = 
+        
+    type Action =
+        | SetNavigationMode of NavigationMode
+
+    let update (model : NavigationParameters) (act : Action) =
+        match act with
+            | SetNavigationMode mode ->
+                    { model with navigationMode = mode }
+
+    let view (model : MNavigationParameters) =        
+        require Html.semui (
+            Html.table [                            
+               Html.row "Mode:" [Html.SemUi.dropDown model.navigationMode SetNavigationMode]
+            ]
+        )
+
+
 module RenderingProperties = 
     open Aardvark.Base.Rendering
 

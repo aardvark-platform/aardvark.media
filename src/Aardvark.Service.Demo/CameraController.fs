@@ -55,7 +55,7 @@ module CameraController =
     let update (model : CameraControllerState) (message : Message) =
         match message with
             | Blur ->
-                { initial with view = model.view; lastTime = None }
+                { initial with view = model.view; lastTime = None; orbitCenter = model.orbitCenter }
 
             | StepTime ->
                 let now = sw.Elapsed.TotalSeconds
@@ -183,6 +183,19 @@ module CameraController =
 
                 { model with view = cam; dragStart = pos }
 
+
+    let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>)  =
+        AttributeMap.ofListCond [
+            always (onBlur (fun _ -> f Blur))
+            always (onMouseDown (fun b p -> f (Down(b,p))))
+            always (onMouseUp (fun b p -> f (Up b)))
+            always (onKeyDown (KeyDown >> f))
+            always (onKeyUp (KeyUp >> f))
+            onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
+        ] |> AttributeMap.toAMap
+
+
+
     let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         let attributes =
             AttributeMap.ofListCond [
@@ -192,14 +205,10 @@ module CameraController =
                 always (onKeyDown (KeyDown >> f))
                 always (onKeyUp (KeyUp >> f))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
-//                onlyWhen (state.moveVec |> Mod.map (fun v -> v <> V3i.Zero)) (onRendered (fun s c t -> f StepTime))
             ]
 
         let attributes = AttributeMap.union att attributes
 
-
-//        let camSg : ISg<Message> =
-//            failwith ""
 
         let cam = Mod.map2 Camera.create state.view frustum 
         Incremental.renderControl cam attributes sg
