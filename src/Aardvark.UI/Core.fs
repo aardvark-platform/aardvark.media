@@ -520,7 +520,6 @@ type DomNode private() =
         let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : list<'msg> =
             match scene.TryGetClientInfo(sourceSession, sourceId) with
                 | Some (info, state) -> 
-                    let info = { info with token = Unchecked.defaultof<_> }
                     let pp = PixelPosition(pos.X, pos.Y, info.size.X, info.size.Y)
                     let ray = state |> ClientState.pickRay pp |> FastRay3d |> RayPart
 
@@ -561,9 +560,9 @@ type DomNode private() =
                             perform(session, id, kind, button, V2i(x,y))
 
                         | x :: y :: _ -> 
-                            let x = round (float x) |> int
-                            let y = round (float y) |> int
-                            perform(session, id, kind, MouseButtons.None, V2i(x,y))
+                            let vx = round (float x) |> int
+                            let vy = round (float y) |> int
+                            perform(session, id, kind, MouseButtons.None, V2i(vx,vy))
 
                         | _ ->
                             []
