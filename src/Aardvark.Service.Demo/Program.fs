@@ -40,12 +40,12 @@ let kitchenSink argv =
     //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
     //let a = TreeViewApp.start()
-    //let a = AnnotationProperties.start()
+    let a = AnnotationProperties.start()
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
-    //let a = OrbitCameraDemo.start()
+   // let a = OrbitCameraDemo.start()
     //let a = NavigationModeDemo.start()
-    let a = BoxSelectionDemo.start()
+   // let a = BoxSelectionDemo.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a

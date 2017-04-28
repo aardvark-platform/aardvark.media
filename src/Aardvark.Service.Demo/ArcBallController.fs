@@ -62,6 +62,9 @@ module ArcBallController =
                 let newForward = p - cam.Location |> Vec.normalize
                 let tempCam = cam.WithForward newForward
 
+                
+                
+
                 { model with orbitCenter = Some p; view = CameraView.lookAt cam.Location p cam.Up }                
             | StepTime ->
                 let now = sw.Elapsed.TotalSeconds
@@ -162,17 +165,24 @@ module ArcBallController =
                 let cam =
                     if model.look && model.orbitCenter.IsSome then
                         let trafo = 
+                            M44d.Translation (model.orbitCenter.Value) *
                             M44d.Rotation (cam.Right, float delta.Y * -0.01) * 
-                            M44d.Rotation (cam.Sky, float delta.X * -0.01)
+                            M44d.Rotation (cam.Up, float delta.X * -0.01) *
+                            M44d.Translation (-model.orbitCenter.Value)
                      
-                        let newLocation = trafo.TransformDir (cam.Location)
-                        let tempcam = cam.WithLocation newLocation
+                        let newLocation = trafo.TransformPos (cam.Location)
+
+                        let newUp = trafo.TransformDir (cam.Up)
+                        let newRight = trafo.TransformDir (cam.Right)
+
+                        //let tempcam = cam.WithLocation newLocation
                         
                         // make cam with up vector
 
-                        let newForward = model.orbitCenter.Value - newLocation |> Vec.normalize
 
-                        tempcam.WithForward newForward
+                        //tempcam.WithForward newForward
+                        let newForward = model.orbitCenter.Value - newLocation |> Vec.normalize
+                        CameraView(cam.Sky, newLocation, newForward, newUp, newRight)
                     else
                         cam
 
