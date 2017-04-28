@@ -49,56 +49,65 @@ module Numeric =
     open Aardvark.UI
 
     type Action = 
-        | Set of string
-        | Step of float    
+        | SetValue of float
+        | SetMin of float
+        | SetMax of float
+        | SetStep of float
+        | SetFormat of string
 
     let update (model : NumericInput) (action : Action) =
         match action with
-            | Set s     ->
-                let parsed = 0.0
-                match Double.TryParse(s, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
-                    | (true,v) -> { model with value = Fun.Clamp(v, model.min, model.max)  }
-                    | _ -> 
-                        printfn "validation failed: %s" s
-                        model  
-             | Step v -> { model with value = model.value + v }
+        | SetValue v -> { model with value = v }
+        | SetMin v ->   { model with min = v }
+        | SetMax v ->   { model with max = v }
+        | SetStep v ->  { model with step = v }
+        | SetFormat s -> { model with format = s }
 
     let formatNumber (format : string) (value : float) =
         String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-    let numericField (set : string -> Action) (model : MNumericInput) inputType =         
-      
+    let numericField<'msg> ( f : Action -> 'msg ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
+
+        let tryParseAndClamp min max fallback s =
+            let parsed = 0.0
+            match Double.TryParse(s, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+                | (true,v) -> clamp min max v
+                | _ ->  printfn "validation failed: %s" s
+                        fallback
+
         let attributes = 
             amap {
                 yield style "text-align:right"                
-                match inputType with
-                    | Slider ->   
-                        yield "type" => "range"
-                        yield onInput set   // continous updates for slider
-                    | InputBox -> 
-                        yield "type" => "number"
-                        yield onChange set  // batch updates for input box (to let user type)
-
-                let! step = model.step
-                yield UI.onWheel (fun d ->  d.Y * step |> Step)
 
                 let! min = model.min
                 let! max = model.max
+                let! value = model.value
+                match inputType with
+                    | Slider ->   
+                        yield "type" => "range"
+                        yield onInput (tryParseAndClamp min max value >> SetValue >> f)   // continous updates for slider
+                    | InputBox -> 
+                        yield "type" => "number"
+                        yield onChange (tryParseAndClamp min max value >> SetValue >> f)  // batch updates for input box (to let user type)
+
+                let! step = model.step
+                yield UI.onWheel (fun d -> value + d.Y * step |> clamp min max |> SetValue |> f)
+
                 yield "step" => sprintf "%f" step
                 yield "min"  => sprintf "%f" min
                 yield "max"  => sprintf "%f" max
-
-                let! value = model.value
 
                 let! format = model.format
                 yield "value" => formatNumber format value
             } 
 
-        Incremental.input (AttributeMap.ofAMap attributes)
+        Incremental.input (AttributeMap.ofAMap attributes |> AttributeMap.union atts)
+
+    let numericField' = numericField id AttributeMap.empty
 
     let view' (inputTypes : list<NumericInputType>) (model : MNumericInput) : DomNode<Action> =
         inputTypes 
-            |> List.map (numericField Set model) 
+            |> List.map (numericField' model) 
             |> List.intersperse (text " ") 
             |> div []
 
