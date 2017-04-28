@@ -25,6 +25,49 @@ open Aardvark.Rendering.Text
 open Demo.TestApp
 open Demo.TestApp.Mutable
 
+module Primitives =
+    open PRo3DModels
+
+    let hoverColor = C4b.Blue
+    let selectionColor = C4b.Red
+    let colors = [new C4b(166,206,227); new C4b(178,223,138); new C4b(251,154,153); new C4b(253,191,111); new C4b(202,178,214)]
+
+    let mkBoxes number =
+        //let halfone = V3d.One / 2.0
+        let min = -V3d.One
+        let max =  V3d.One
+
+        let offset = 2.5 * (float number)
+        
+
+        [0..number-1] |> List.map (function x -> new Box3d(min + V3d.IOO * 2.5 * (float x) - offset,
+                                                           max + V3d.IOO * 2.5 * (float x) - offset))
+
+    let hoveredColor (model : MComposedViewerModel) (box : VisibleBox) =
+        model.boxHovered |> Mod.map (fun h -> match h with
+                                                | Some i -> if i = box.id then hoverColor else box.color
+                                                | None -> box.color)
+
+    let mkVisibleBox (color : C4b) (box : Box3d) : VisibleBox = 
+        {
+            id = Guid.NewGuid().ToString()
+            geometry = box
+            color = color
+        }
+
+    let mkISgBox (model : MComposedViewerModel) (box : VisibleBox) =
+        let box' = Mod.constant (box.geometry)
+        let c = hoveredColor model box
+
+        Sg.box c box'
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                    }
+                |> Sg.noEvents
+    
+
 module SimpleCompositionViewer = 
     open PRo3DModels
     open Aardvark.Base
@@ -47,33 +90,9 @@ module SimpleCompositionViewer =
             | Enter id-> { model with boxHovered = Some id }
             | Exit -> { model with boxHovered = None }    
         
-    let hoveredColor (model : MComposedViewerModel) (box : VisibleBox) =
-        model.boxHovered |> Mod.map (fun h -> match h with
-                                                | Some i -> if i = box.id then C4b.Green else box.color
-                                                | None -> box.color)
     
-    let mkVisibleBox (color : C4b) (box : Box3d)= 
-        {
-            id = Guid.NewGuid().ToString()
-            geometry = box
-            color = color
-        }
-
-    let mkISgBox (model : MComposedViewerModel) (box : VisibleBox) =
-        let box' = Mod.constant (box.geometry)
-        let c = hoveredColor model box
-
-        Sg.box c box'
-                |> Sg.shader {
-                    do! DefaultSurfaces.trafo
-                    do! DefaultSurfaces.vertexColor
-                    do! DefaultSurfaces.simpleLighting
-                    }
-                |> Sg.noEvents
-                |> Sg.pickable (PickShape.Box box.geometry)
-                |> Sg.withEvents [
-                        Sg.onEnter (fun p -> Enter box.id)
-                        Sg.onLeave (fun () -> Exit)]                    
+    
+    
 
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
@@ -92,12 +111,17 @@ module SimpleCompositionViewer =
                         attribute "style" "width:65%; height: 100%; float: left;"
                     ])
                     (
-                        let colors = [C4b.Red; C4b.Blue]
-                        let boxes = [Box3d(-V3d.III, V3d.III); Box3d(-V3d.III + V3d.IOO * 2.5, V3d.III + V3d.IOO * 2.5)]
+                        
+                        let boxes = Primitives.mkBoxes 5
                                               
                         let boxes = boxes 
-                                    |> List.mapi (fun i k -> mkVisibleBox colors.[i] k)
-                                    |> List.map (fun k -> mkISgBox model k)                                                    
+                                    |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i] k)
+                                    |> List.map (fun k -> Primitives.mkISgBox model k 
+                                                                |> Sg.pickable (PickShape.Box k.geometry)
+                                                                |> Sg.withEvents [
+                                                                        Sg.onEnter (fun p -> Enter k.id)
+                                                                        Sg.onLeave (fun () -> Exit)]
+                                                )
                         boxes
                             |> Sg.ofList
                             |> Sg.noEvents     
@@ -381,35 +405,7 @@ module BoxSelectionDemo =
                  { model with rendering = RenderingProperties.update model.rendering a }
             | Select id-> { model with boxHovered = Some id }           
             | Enter id-> { model with boxHovered = Some id }
-            | Exit -> { model with boxHovered = None }    
-        
-    let selectionColor (model : MComposedViewerModel) (box : VisibleBox) =
-        model.boxHovered |> Mod.map (fun h -> match h with
-                                                | Some i -> if i = box.id then C4b.Green else box.color
-                                                | None -> box.color)
-    
-    let mkVisibleBox (color : C4b) (box : Box3d)= 
-        {
-            id = Guid.NewGuid().ToString()
-            geometry = box
-            color = color
-        }
-
-    let mkISgBox (model : MComposedViewerModel) (box : VisibleBox) =
-        let box' = Mod.constant (box.geometry)
-        let c = selectionColor model box
-
-        Sg.box c box'
-                |> Sg.shader {
-                    do! DefaultSurfaces.trafo
-                    do! DefaultSurfaces.vertexColor
-                    do! DefaultSurfaces.simpleLighting
-                    }
-                |> Sg.noEvents
-                |> Sg.pickable (PickShape.Box box.geometry)
-                |> Sg.withEvents [
-                        Sg.onEnter (fun p -> Enter box.id)
-                        Sg.onLeave (fun () -> Exit)]                    
+            | Exit -> { model with boxHovered = None }                                
 
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
@@ -429,17 +425,17 @@ module BoxSelectionDemo =
                     ])
                     (
                         let color = Mod.constant C4b.Blue
-                        let boxGeometry = Box3d(-V3d.III, V3d.III)
-                        let box = Mod.constant (boxGeometry)              
+                        let boxGeometry = Box3d(V3d.OOO, V3d.III)
+                        let box = Mod.constant (boxGeometry)
                                                                
                         Sg.box color box                            
-                        |> Sg.shader {
-                            do! DefaultSurfaces.trafo
-                            do! DefaultSurfaces.vertexColor
-                            do! DefaultSurfaces.simpleLighting
-                            }
-                        |> Sg.noEvents   
-                )
+                            |> Sg.shader {
+                                do! DefaultSurfaces.trafo
+                                do! DefaultSurfaces.vertexColor
+                                do! DefaultSurfaces.simpleLighting
+                                }
+                            |> Sg.noEvents   
+                    )
 
                 div [style "width:35%; height: 100%; float:right"] [
                     Html.SemUi.accordion "Rendering" "configure" true [
@@ -451,7 +447,7 @@ module BoxSelectionDemo =
 
     let colors = [C4b.Red; C4b.Blue]                  
     
-    let boxess = [Box3d(-V3d.III, V3d.III); Box3d(-V3d.III + V3d.IOO * 2.5, V3d.III + V3d.IOO * 2.5)] 
+    
    
     let initial =
         {
@@ -459,7 +455,7 @@ module BoxSelectionDemo =
             rendering        = InitValues.rendering
             
             boxHovered = None
-            boxes = boxess |> List.mapi (fun i k -> mkVisibleBox colors.[i] k)                  
+            boxes = Primitives.mkBoxes 5 |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i] k)                  
             selectedBoxes = []            
         }
 
