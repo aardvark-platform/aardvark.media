@@ -21,16 +21,9 @@ open Demo.TestApp.Mutable
 
 
 module CameraController =
-    open Aardvark.Base.Incremental.Operators
+    open Aardvark.Base.Incremental.Operators    
 
-    type Message = 
-        | Down of button : MouseButtons * pos : V2i
-        | Up of button : MouseButtons
-        | Move of V2i
-        | StepTime
-        | KeyDown of key : Keys
-        | KeyUp of key : Keys
-        | Blur
+    type Message = CameraControllerMessage
 
     let initial =
         {

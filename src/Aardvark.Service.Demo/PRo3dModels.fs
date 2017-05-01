@@ -8,6 +8,7 @@ open Aardvark.UI.Mutable
 open Aardvark.UI
 open FShade.Primitives
 open Demo
+open Demo.TestApp
 
 type Points = list<V3d>
 type Segment = Points
@@ -27,6 +28,10 @@ type Annotation = {
         visible : bool
         text : string
     }
+
+type RenderingPropertiesAction =
+        | SetFillMode of FillMode
+        | SetCullMode of CullMode
 
 [<DomainType>]
 type RenderingParameters = {
@@ -60,12 +65,22 @@ type ComposedViewerModel = {
     boxHovered : option<string>   
 }
 
+type BoxSelectionDemoAction =
+        | CameraMessage    of CameraControllerMessage     
+        | RenderingAction  of RenderingPropertiesAction
+        | Select of string     
+        | Enter of string
+        | Exit  
+        | AddBox
+        | RemoveBox
+
 [<DomainType>]
 type BoxSelectionDemoModel = {
     camera : TestApp.CameraControllerState    
     rendering : RenderingParameters
 
     boxes : list<VisibleBox>
+    scenes : hset<ISg<BoxSelectionDemoAction>>
     boxHovered : option<string>
     selectedBoxes : list<string>
 }

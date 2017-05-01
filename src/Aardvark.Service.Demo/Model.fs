@@ -6,6 +6,7 @@ open Aardvark.Base.Incremental
 open Aardvark.UI.Mutable
 open Aardvark.UI
 open FShade.Primitives
+open Aardvark.Application
 
 type ClientLocalAttribute() = inherit System.Attribute()
 
@@ -24,6 +25,17 @@ type Model =
         objects         : hmap<string,Urdar>
         lastTime        : MicroTime
     }
+
+
+
+type CameraControllerMessage = 
+        | Down of button : MouseButtons * pos : V2i
+        | Up of button : MouseButtons
+        | Move of V2i
+        | StepTime
+        | KeyDown of key : Keys
+        | KeyUp of key : Keys
+        | Blur
 
 [<DomainType>]
 type CameraControllerState =

@@ -27,9 +27,7 @@ module NavigationProperties =
 module RenderingProperties = 
     open Aardvark.Base.Rendering
 
-    type Action =
-        | SetFillMode of FillMode
-        | SetCullMode of CullMode
+    type Action = RenderingPropertiesAction
 
     let update (model : RenderingParameters) (act : Action) =
         match act with

@@ -319,12 +319,14 @@ module Mutable =
         let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _boxes = ResetMod(__initial.boxes)
+        let _scenes = ResetSet(__initial.scenes)
         let _boxHovered = ResetMod(__initial.boxHovered)
         let _selectedBoxes = ResetMod(__initial.selectedBoxes)
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.boxes = _boxes :> IMod<_>
+        member x.scenes = _scenes :> aset<_>
         member x.boxHovered = _boxHovered :> IMod<_>
         member x.selectedBoxes = _selectedBoxes :> IMod<_>
         
@@ -334,6 +336,7 @@ module Mutable =
                 _camera.Update(__model.camera)
                 _rendering.Update(__model.rendering)
                 _boxes.Update(__model.boxes)
+                _scenes.Update(__model.scenes)
                 _boxHovered.Update(__model.boxHovered)
                 _selectedBoxes.Update(__model.selectedBoxes)
         
@@ -348,6 +351,7 @@ module Mutable =
         let inline camera (m : MBoxSelectionDemoModel) = m.camera
         let inline rendering (m : MBoxSelectionDemoModel) = m.rendering
         let inline boxes (m : MBoxSelectionDemoModel) = m.boxes
+        let inline scenes (m : MBoxSelectionDemoModel) = m.scenes
         let inline boxHovered (m : MBoxSelectionDemoModel) = m.boxHovered
         let inline selectedBoxes (m : MBoxSelectionDemoModel) = m.selectedBoxes
     
@@ -375,6 +379,12 @@ module Mutable =
                     override x.Get(r) = r.boxes
                     override x.Set(r,v) = { r with boxes = v }
                     override x.Update(r,f) = { r with boxes = f r.boxes }
+                }
+            let scenes =
+                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.hset<Aardvark.UI.ISg<PRo3DModels.BoxSelectionDemoAction>>>() with
+                    override x.Get(r) = r.scenes
+                    override x.Set(r,v) = { r with scenes = v }
+                    override x.Update(r,f) = { r with scenes = f r.scenes }
                 }
             let boxHovered =
                 { new Lens<PRo3DModels.BoxSelectionDemoModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with

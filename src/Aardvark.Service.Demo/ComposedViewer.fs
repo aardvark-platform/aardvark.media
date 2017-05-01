@@ -32,16 +32,16 @@ module Primitives =
     let selectionColor = C4b.Red
     let colors = [new C4b(166,206,227); new C4b(178,223,138); new C4b(251,154,153); new C4b(253,191,111); new C4b(202,178,214)]
 
-    let mkBoxes number =
-        //let halfone = V3d.One / 2.0
+    let mkNthBox i n = 
         let min = -V3d.One
         let max =  V3d.One
 
-        let offset = 2.5 * (float number)
-        
+        let offset = 0.0 * (float n) * V3d.IOO
 
-        [0..number-1] |> List.map (function x -> new Box3d(min + V3d.IOO * 2.5 * (float x) - offset,
-                                                           max + V3d.IOO * 2.5 * (float x) - offset))
+        new Box3d(min + V3d.IOO * 2.5 * (float i) - offset, max + V3d.IOO * 2.5 * (float i) - offset)
+
+    let mkBoxes number =        
+        [0..number-1] |> List.map (function x -> mkNthBox x number)
 
     let hoveredColor (model : MComposedViewerModel) (box : VisibleBox) =
         model.boxHovered |> Mod.map (fun h -> match h with
@@ -60,6 +60,18 @@ module Primitives =
         let c = hoveredColor model box
 
         Sg.box c box'
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                    }
+                |> Sg.noEvents
+    
+    let mkISgBox2 (box : VisibleBox) =
+        let box' = Mod.constant (box.geometry)
+        let c = box.color
+
+        Sg.box (Mod.constant c) box'
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -390,12 +402,7 @@ module BoxSelectionDemo =
     open PRo3DModels
     open Aardvark.Base
     
-    type Action =
-        | CameraMessage    of CameraController.Message        
-        | RenderingAction  of RenderingProperties.Action
-        | Select of string     
-        | Enter of string
-        | Exit      
+    type Action = BoxSelectionDemoAction
 
     let update (model : BoxSelectionDemoModel) (act : Action) =
         match act with
@@ -405,8 +412,18 @@ module BoxSelectionDemo =
                  { model with rendering = RenderingProperties.update model.rendering a }
             | Select id-> { model with boxHovered = Some id }           
             | Enter id-> { model with boxHovered = Some id }
-            | Exit -> { model with boxHovered = None }                                
-
+            | Exit -> { model with boxHovered = None }                             
+            | AddBox -> 
+                
+                let i = model.boxes.Length
+                let c = Primitives.colors.[i % 5]
+                let box = Primitives.mkNthBox i (i+1)  |> Primitives.mkVisibleBox c
+                let boxes = box :: model.boxes                
+                
+                let scenes = boxes |> HSet.ofList |> HSet.map (Primitives.mkISgBox2)
+                {model with boxes = boxes; scenes = scenes}
+            | RemoveBox ->  {model with boxes = []; scenes = HSet.empty}
+                        
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
     let view (model : MBoxSelectionDemoModel) =
@@ -424,38 +441,63 @@ module BoxSelectionDemo =
                         attribute "style" "width:65%; height: 100%; float: left;"
                     ])
                     (
-                        let color = Mod.constant C4b.Blue
-                        let boxGeometry = Box3d(V3d.OOO, V3d.III)
-                        let box = Mod.constant (boxGeometry)
+                        //model.scenes
+                        //let scenes = model.boxes |> HSet.ofList |> HSet.map (Primitives.mkISgBox2)
+                    // hset aset
+                        //let color = Mod.constant C4b.Blue
+                        //let boxGeometry = Box3d(V3d.OOO, V3d.III)
+                        //let box = Mod.constant (boxGeometry)
                                                                
-                        Sg.box color box                            
-                            |> Sg.shader {
-                                do! DefaultSurfaces.trafo
-                                do! DefaultSurfaces.vertexColor
-                                do! DefaultSurfaces.simpleLighting
-                                }
-                            |> Sg.noEvents   
+                        //Sg.box color box                            
+                        //    |> Sg.shader {
+                        //        do! DefaultSurfaces.trafo
+                        //        do! DefaultSurfaces.vertexColor
+                        //        do! DefaultSurfaces.simpleLighting
+                        //        }
+                        //    |> Sg.noEvents   
+
+                        model.scenes
+                            |> Sg.set
+                            |> Sg.effect [
+                                toEffect DefaultSurfaces.trafo
+                                toEffect DefaultSurfaces.vertexColor
+                                toEffect DefaultSurfaces.simpleLighting                              
+                                ]
+                            |> Sg.noEvents
                     )
 
                 div [style "width:35%; height: 100%; float:right"] [
                     Html.SemUi.accordion "Rendering" "configure" true [
                         RenderingProperties.view model.rendering |> UI.map RenderingAction 
-                    ]                    
+                    ]  
+                    
+                    button [onMouseClick (fun _ -> AddBox)] [text "Add Box"]
+                    button [onMouseClick (fun _ -> RemoveBox)] [text "Remove Box"]
+
+                    Incremental.div 
+                        (AttributeMap.ofList [clazz "ui divided list"]) (
+                            alist {
+                                let! boxes = model.boxes
+                                for b in boxes do
+                                    let c = Html.ofC4b b.color
+                                    let bgc = sprintf "background: %s" c
+                                    yield div [clazz "item"; style bgc] [
+                                         i [clazz "medium File Outline middle aligned icon"][]
+                                    ]
+                                                        
+                            }
+                    )
                 ]
             ]
         )
-
-    let colors = [C4b.Red; C4b.Blue]                  
-    
-    
-   
+             
     let initial =
         {
             camera           = CameraController.initial            
             rendering        = InitValues.rendering
-            
+            scenes = HSet.empty
             boxHovered = None
-            boxes = Primitives.mkBoxes 5 |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i] k)                  
+            boxes = []                 
             selectedBoxes = []            
         }
 
