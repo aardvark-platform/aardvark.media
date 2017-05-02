@@ -88,11 +88,7 @@ module SimpleCompositionViewer =
                  { model with rendering = RenderingProperties.update model.rendering a }
             | Enter id-> { model with boxHovered = Some id }
             | Exit -> { model with boxHovered = None }    
-        
-    
-    
-    
-
+            
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
     let view (model : MComposedViewerModel) =
@@ -101,8 +97,7 @@ module SimpleCompositionViewer =
             
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
-
-      //  require (Html.semui @ [myCss]) (
+      
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl model.camera CameraMessage frustum
@@ -410,9 +405,13 @@ module BoxSelectionDemo =
                 
                 let i = model.boxes.Count                
                 let box = Primitives.mkNthBox i (i+1) |> Primitives.mkVisibleBox Primitives.colors.[i % 5]
-                                                                  
+                                         
                 { model with boxes = PList.append box model.boxes }
-            | RemoveBox ->  {model with boxes = PList.empty}
+            | RemoveBox ->  
+                let i = model.boxes.Count - 1
+                let boxes = PList.removeAt i model.boxes
+
+                {model with boxes = boxes}
             | ClearSelection -> { model with selectedBoxes = HSet.empty}
                         
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
@@ -455,8 +454,7 @@ module BoxSelectionDemo =
             
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
-
-      //  require (Html.semui @ [myCss]) (
+      
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl model.camera CameraMessage frustum
@@ -464,26 +462,7 @@ module BoxSelectionDemo =
                         attribute "style" "width:65%; height: 100%; float: left;"
                     ])
                     (
-                        //model.scenes
-                        //let scenes = model.boxes |> HSet.ofList |> HSet.map (Primitives.mkISgBox2)
-                    // hset aset
-                        //let color = Mod.constant C4b.Blue
-                        //let boxGeometry = Box3d(V3d.OOO, V3d.III)
-                        //let box = Mod.constant (boxGeometry)
-                                                               
-                        //Sg.box color box                            
-                        //    |> Sg.shader {
-                        //        do! DefaultSurfaces.trafo
-                        //        do! DefaultSurfaces.vertexColor
-                        //        do! DefaultSurfaces.simpleLighting
-                        //        }
-                        //    |> Sg.noEvents   
-
-                        //map alist mkISg ... 
-
-                        //AList.toASet... model.box |> Alist.Toaset |> Aset.map (mkisg) |> Sg.set                                                
-
-                        //model.scenes
+                       
                         model.boxes 
                             |> AList.toASet 
                             |> ASet.map (function b -> mkISg model b)
@@ -500,8 +479,9 @@ module BoxSelectionDemo =
                     //Html.SemUi.accordion "Rendering" "configure" true [
                     //    RenderingProperties.view model.rendering |> UI.map RenderingAction 
                     //]  
-                    div [clazz "ui basic buttons"] [
+                    div [clazz "ui buttons"] [
                         button [clazz "ui button"; onMouseClick (fun _ -> AddBox)] [text "Add Box"]
+                        button [clazz "ui button"; onMouseClick (fun _ -> RemoveBox)] [text "Remove Box"]
                         button [clazz "ui button"; onMouseClick (fun _ -> ClearSelection)] [text "Clear Selection"]
                     ]
 
@@ -535,6 +515,94 @@ module BoxSelectionDemo =
         }
 
     let app : App<BoxSelectionDemoModel,MBoxSelectionDemoModel,Action> =
+        {
+            unpersist = Unpersist.instance
+            threads = fun model -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
+            initial = initial
+            update = update
+            view = view
+        }
+
+    let start () = App.start app
+
+module DrawingApp = 
+    open PRo3DModels
+    open Aardvark.Base
+    
+    type Action =
+        | CameraMessage    of CameraController.Message
+        | AnnotationAction of AnnotationProperties.Action
+        | RenderingAction  of RenderingProperties.Action
+        | Enter of string
+        | Exit      
+
+    let update (model : ComposedViewerModel) (act : Action) =
+        match act with
+            | CameraMessage m -> 
+                 { model with camera = CameraController.update model.camera m }
+            | AnnotationAction a ->
+                 { model with singleAnnotation = AnnotationProperties.update model.singleAnnotation a }
+            | RenderingAction a ->
+                 { model with rendering = RenderingProperties.update model.rendering a }
+            | Enter id-> { model with boxHovered = Some id }
+            | Exit -> { model with boxHovered = None }    
+            
+    let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
+
+    let view (model : MComposedViewerModel) =
+        let cam =
+            model.camera.view 
+            
+        let frustum =
+            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+      
+        require (Html.semui) (
+            div [clazz "ui"; style "background: #1B1C1E"] [
+                CameraController.controlledControl model.camera CameraMessage frustum
+                    (AttributeMap.ofList [
+                        attribute "style" "width:65%; height: 100%; float: left;"
+                    ])
+                    (
+                        
+                        let boxes = Primitives.mkBoxes 5
+                                              
+                        let boxes = boxes 
+                                    |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i] k)
+                                    |> List.map (fun k -> Primitives.mkISgBox model k 
+                                                                |> Sg.pickable (PickShape.Box k.geometry)
+                                                                |> Sg.withEvents [
+                                                                        Sg.onEnter (fun p -> Enter k.id)
+                                                                        Sg.onLeave (fun () -> Exit)]
+                                                )
+                        boxes
+                            |> Sg.ofList
+                            |> Sg.noEvents     
+                            |> Sg.fillMode model.rendering.fillMode
+                            |> Sg.cullMode model.rendering.cullMode                                                                                           
+                            |> Sg.noEvents                        
+                )
+
+                div [style "width:35%; height: 100%; float:right"] [
+                    Html.SemUi.accordion "Rendering" "configure" true [
+                        RenderingProperties.view model.rendering |> UI.map RenderingAction 
+                    ]
+                    Html.SemUi.accordion "Properties" "options" true [
+                        AnnotationProperties.view model.singleAnnotation |> UI.map AnnotationAction
+                    ]
+                ]
+            ]
+        )
+
+    let initial =
+        {
+            camera           = CameraController.initial
+            singleAnnotation = InitValues.annotation
+            rendering        = InitValues.rendering
+            
+            boxHovered = None
+        }
+
+    let app : App<ComposedViewerModel,MComposedViewerModel,Action> =
         {
             unpersist = Unpersist.instance
             threads = fun model -> CameraController.threads model.camera |> ThreadPool.map CameraMessage

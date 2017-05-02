@@ -10,25 +10,6 @@ open FShade.Primitives
 open Demo
 open Demo.TestApp
 
-type Points = list<V3d>
-type Segment = Points
-
-type Projection = Linear = 0 | Viewpoint = 1 | Sky = 2
-type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3
-
-[<DomainType>]
-type Annotation = {
-        //seqNumber : int
-        geometry : Geometry
-        points : Points
-        segments : list<Segment>
-        color : C4b
-        thickness : NumericInput
-        projection : Projection
-        visible : bool
-        text : string
-    }
-
 type BoxPropertiesAction =
     | ChangeColor of int
 
@@ -62,6 +43,25 @@ type VisibleBox = {
     id       : string
 }
 
+type Points = list<V3d>
+type Segment = Points
+
+type Projection = Linear = 0 | Viewpoint = 1 | Sky = 2
+type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3
+
+[<DomainType>]
+type Annotation = {
+    //seqNumber : int
+    geometry : Geometry
+    points : Points
+    segments : list<Segment>
+    color : C4b
+    thickness : NumericInput
+    projection : Projection
+    visible : bool
+    text : string
+}
+
 [<DomainType>]
 type ComposedViewerModel = {
     camera : TestApp.CameraControllerState
@@ -91,6 +91,26 @@ type BoxSelectionDemoModel = {
 
     boxHovered : option<string>
     selectedBoxes : hset<string>
+}
+
+
+
+
+type Style = {
+    color : C4b
+    thickness : NumericInput
+}
+                
+type OpenPolygon = {
+    cursor : Option<V3d>
+    finishedPoints : list<V3d>
+    finishedSegments : list<Segment>
+}
+
+[<DomainType>]
+type DrawingAppModel = {
+    camera : TestApp.CameraControllerState
+
 }
 
 [<DomainType>]
