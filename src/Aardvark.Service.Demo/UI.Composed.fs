@@ -44,6 +44,22 @@ module RenderingProperties =
                        ]
         )
 
+//module BoxProperties = 
+//    open Aardvark.Base.Rendering
+
+//    type Action = BoxPropertiesAction
+
+//    let update (model : VisibleBox) (act : Action) =
+//        match act with
+//            | ChangeColor i -> model
+
+//    let view (model : MVisibleBox) =        
+//        require Html.semui (
+//            Html.table [                            
+//                            Html.row "Color:" [Numeric.view SetFillMode]                           
+//                       ]
+//        )
+
 module AnnotationProperties = 
     
     open Aardvark.Base

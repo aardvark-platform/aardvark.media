@@ -196,20 +196,20 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MVisibleBox private(__initial : PRo3DModels.VisibleBox) =
         let mutable __current = __initial
-        let _id = ResetMod(__initial.id)
         let _geometry = ResetMod(__initial.geometry)
         let _color = ResetMod(__initial.color)
+        let _id = ResetMod(__initial.id)
         
-        member x.id = _id :> IMod<_>
         member x.geometry = _geometry :> IMod<_>
         member x.color = _color :> IMod<_>
+        member x.id = _id :> IMod<_>
         
         member x.Update(__model : PRo3DModels.VisibleBox) =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
-                _id.Update(__model.id)
                 _geometry.Update(__model.geometry)
                 _color.Update(__model.color)
+                _id.Update(__model.id)
         
         static member Create(initial) = MVisibleBox(initial)
         
@@ -219,9 +219,9 @@ module Mutable =
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module MVisibleBox =
-        let inline id (m : MVisibleBox) = m.id
         let inline geometry (m : MVisibleBox) = m.geometry
         let inline color (m : MVisibleBox) = m.color
+        let inline id (m : MVisibleBox) = m.id
     
     
     
@@ -230,12 +230,6 @@ module Mutable =
     module VisibleBox =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
-            let id =
-                { new Lens<PRo3DModels.VisibleBox, Microsoft.FSharp.Core.string>() with
-                    override x.Get(r) = r.id
-                    override x.Set(r,v) = { r with id = v }
-                    override x.Update(r,f) = { r with id = f r.id }
-                }
             let geometry =
                 { new Lens<PRo3DModels.VisibleBox, Aardvark.Base.Box3d>() with
                     override x.Get(r) = r.geometry
@@ -247,6 +241,12 @@ module Mutable =
                     override x.Get(r) = r.color
                     override x.Set(r,v) = { r with color = v }
                     override x.Update(r,f) = { r with color = f r.color }
+                }
+            let id =
+                { new Lens<PRo3DModels.VisibleBox, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.id
+                    override x.Set(r,v) = { r with id = v }
+                    override x.Update(r,f) = { r with id = f r.id }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MComposedViewerModel private(__initial : PRo3DModels.ComposedViewerModel) =
@@ -318,17 +318,15 @@ module Mutable =
         let mutable __current = __initial
         let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _boxes = ResetMod(__initial.boxes)
-        let _scenes = ResetSet(__initial.scenes)
+        let _boxes = ResetMapList(__initial.boxes, (fun _ -> MVisibleBox.Create), fun (m,i) -> m.Update(i))
         let _boxHovered = ResetMod(__initial.boxHovered)
-        let _selectedBoxes = ResetMod(__initial.selectedBoxes)
+        let _selectedBoxes = ResetSet(__initial.selectedBoxes)
         
         member x.camera = _camera
         member x.rendering = _rendering
-        member x.boxes = _boxes :> IMod<_>
-        member x.scenes = _scenes :> aset<_>
+        member x.boxes = _boxes :> alist<_>
         member x.boxHovered = _boxHovered :> IMod<_>
-        member x.selectedBoxes = _selectedBoxes :> IMod<_>
+        member x.selectedBoxes = _selectedBoxes :> aset<_>
         
         member x.Update(__model : PRo3DModels.BoxSelectionDemoModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -336,7 +334,6 @@ module Mutable =
                 _camera.Update(__model.camera)
                 _rendering.Update(__model.rendering)
                 _boxes.Update(__model.boxes)
-                _scenes.Update(__model.scenes)
                 _boxHovered.Update(__model.boxHovered)
                 _selectedBoxes.Update(__model.selectedBoxes)
         
@@ -351,7 +348,6 @@ module Mutable =
         let inline camera (m : MBoxSelectionDemoModel) = m.camera
         let inline rendering (m : MBoxSelectionDemoModel) = m.rendering
         let inline boxes (m : MBoxSelectionDemoModel) = m.boxes
-        let inline scenes (m : MBoxSelectionDemoModel) = m.scenes
         let inline boxHovered (m : MBoxSelectionDemoModel) = m.boxHovered
         let inline selectedBoxes (m : MBoxSelectionDemoModel) = m.selectedBoxes
     
@@ -375,16 +371,10 @@ module Mutable =
                     override x.Update(r,f) = { r with rendering = f r.rendering }
                 }
             let boxes =
-                { new Lens<PRo3DModels.BoxSelectionDemoModel, Microsoft.FSharp.Collections.list<PRo3DModels.VisibleBox>>() with
+                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.plist<PRo3DModels.VisibleBox>>() with
                     override x.Get(r) = r.boxes
                     override x.Set(r,v) = { r with boxes = v }
                     override x.Update(r,f) = { r with boxes = f r.boxes }
-                }
-            let scenes =
-                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.hset<Aardvark.UI.ISg<PRo3DModels.BoxSelectionDemoAction>>>() with
-                    override x.Get(r) = r.scenes
-                    override x.Set(r,v) = { r with scenes = v }
-                    override x.Update(r,f) = { r with scenes = f r.scenes }
                 }
             let boxHovered =
                 { new Lens<PRo3DModels.BoxSelectionDemoModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with
@@ -393,7 +383,7 @@ module Mutable =
                     override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
                 }
             let selectedBoxes =
-                { new Lens<PRo3DModels.BoxSelectionDemoModel, Microsoft.FSharp.Collections.list<Microsoft.FSharp.Core.string>>() with
+                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.hset<Microsoft.FSharp.Core.string>>() with
                     override x.Get(r) = r.selectedBoxes
                     override x.Set(r,v) = { r with selectedBoxes = v }
                     override x.Update(r,f) = { r with selectedBoxes = f r.selectedBoxes }

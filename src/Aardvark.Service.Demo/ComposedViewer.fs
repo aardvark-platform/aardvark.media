@@ -52,7 +52,7 @@ module Primitives =
         {
             id = Guid.NewGuid().ToString()
             geometry = box
-            color = color
+            color = color           
         }
 
     let mkISgBox (model : MComposedViewerModel) (box : VisibleBox) =
@@ -65,21 +65,8 @@ module Primitives =
                     do! DefaultSurfaces.vertexColor
                     do! DefaultSurfaces.simpleLighting
                     }
-                |> Sg.noEvents
+                |> Sg.noEvents    
     
-    let mkISgBox2 (box : VisibleBox) =
-        let box' = Mod.constant (box.geometry)
-        let c = box.color
-
-        Sg.box (Mod.constant c) box'
-                |> Sg.shader {
-                    do! DefaultSurfaces.trafo
-                    do! DefaultSurfaces.vertexColor
-                    do! DefaultSurfaces.simpleLighting
-                    }
-                |> Sg.noEvents
-    
-
 module SimpleCompositionViewer = 
     open PRo3DModels
     open Aardvark.Base
@@ -410,21 +397,57 @@ module BoxSelectionDemo =
                  { model with camera = CameraController.update model.camera m }          
             | RenderingAction a ->
                  { model with rendering = RenderingProperties.update model.rendering a }
-            | Select id-> { model with boxHovered = Some id }           
-            | Enter id-> { model with boxHovered = Some id }
+            | Select id-> 
+                let selection = 
+                    if HSet.contains id model.selectedBoxes 
+                    then HSet.remove id model.selectedBoxes 
+                    else HSet.add id model.selectedBoxes
+
+                { model with selectedBoxes = selection }           
+            | Enter id-> { model with boxHovered = Some id }            
             | Exit -> { model with boxHovered = None }                             
             | AddBox -> 
                 
-                let i = model.boxes.Length
-                let c = Primitives.colors.[i % 5]
-                let box = Primitives.mkNthBox i (i+1)  |> Primitives.mkVisibleBox c
-                let boxes = box :: model.boxes                
-                
-                let scenes = boxes |> HSet.ofList |> HSet.map (Primitives.mkISgBox2)
-                {model with boxes = boxes; scenes = scenes}
-            | RemoveBox ->  {model with boxes = []; scenes = HSet.empty}
+                let i = model.boxes.Count                
+                let box = Primitives.mkNthBox i (i+1) |> Primitives.mkVisibleBox Primitives.colors.[i % 5]
+                                                                  
+                { model with boxes = PList.append box model.boxes }
+            | RemoveBox ->  {model with boxes = PList.empty}
+            | ClearSelection -> { model with selectedBoxes = HSet.empty}
                         
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
+
+    let mkColor (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
+        let id = box.id |> Mod.force
+
+        let color =  
+            model.selectedBoxes 
+                |> ASet.contains id 
+                |> Mod.bind (function x -> if x then Mod.constant Primitives.selectionColor else box.color)
+
+        let color = model.boxHovered |> Mod.bind (function x -> match x with
+                                                                | Some k -> if k = id then Mod.constant Primitives.hoverColor else color
+                                                                | None -> color)
+
+        color
+
+    let mkISg (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
+                
+        let color = mkColor model box
+
+        Sg.box color box.geometry
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                    }                
+                |> Sg.requirePicking
+                |> Sg.noEvents
+                |> Sg.withEvents [
+                    Sg.onClick (fun _ -> Select (box.id |> Mod.force))
+                    Sg.onEnter (fun _ -> Enter (box.id |> Mod.force))
+                    Sg.onLeave (fun () -> Exit)
+                ]
 
     let view (model : MBoxSelectionDemoModel) =
         let cam =
@@ -456,7 +479,14 @@ module BoxSelectionDemo =
                         //        }
                         //    |> Sg.noEvents   
 
-                        model.scenes
+                        //map alist mkISg ... 
+
+                        //AList.toASet... model.box |> Alist.Toaset |> Aset.map (mkisg) |> Sg.set                                                
+
+                        //model.scenes
+                        model.boxes 
+                            |> AList.toASet 
+                            |> ASet.map (function b -> mkISg model b)
                             |> Sg.set
                             |> Sg.effect [
                                 toEffect DefaultSurfaces.trafo
@@ -467,25 +497,29 @@ module BoxSelectionDemo =
                     )
 
                 div [style "width:35%; height: 100%; float:right"] [
-                    Html.SemUi.accordion "Rendering" "configure" true [
-                        RenderingProperties.view model.rendering |> UI.map RenderingAction 
-                    ]  
-                    
-                    button [onMouseClick (fun _ -> AddBox)] [text "Add Box"]
-                    button [onMouseClick (fun _ -> RemoveBox)] [text "Remove Box"]
+                    //Html.SemUi.accordion "Rendering" "configure" true [
+                    //    RenderingProperties.view model.rendering |> UI.map RenderingAction 
+                    //]  
+                    div [clazz "ui basic buttons"] [
+                        button [clazz "ui button"; onMouseClick (fun _ -> AddBox)] [text "Add Box"]
+                        button [clazz "ui button"; onMouseClick (fun _ -> ClearSelection)] [text "Clear Selection"]
+                    ]
 
                     Incremental.div 
                         (AttributeMap.ofList [clazz "ui divided list"]) (
-                            alist {
-                                let! boxes = model.boxes
-                                for b in boxes do
-                                    let c = Html.ofC4b b.color
-                                    let bgc = sprintf "background: %s" c
-                                    yield div [clazz "item"; style bgc] [
+                            alist {                                
+                                for b in model.boxes do
+                                    let! c = mkColor model b
+
+                                    let bgc = sprintf "background: %s" (Html.ofC4b c)
+                                    
+                                    yield div [clazz "item"; style bgc; 
+                                               onClick(fun _ -> Select (b.id |> Mod.force))
+                                               onMouseEnter(fun _ -> Enter (b.id |> Mod.force))
+                                               onMouseLeave(fun _ -> Exit)] [
                                          i [clazz "medium File Outline middle aligned icon"][]
-                                    ]
-                                                        
-                            }
+                                    ]                                                                    
+                            }     
                     )
                 ]
             ]
@@ -494,11 +528,10 @@ module BoxSelectionDemo =
     let initial =
         {
             camera           = CameraController.initial            
-            rendering        = InitValues.rendering
-            scenes = HSet.empty
+            rendering        = InitValues.rendering            
             boxHovered = None
-            boxes = []                 
-            selectedBoxes = []            
+            boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i % 5] k) |> PList.ofList
+            selectedBoxes = HSet.empty            
         }
 
     let app : App<BoxSelectionDemoModel,MBoxSelectionDemoModel,Action> =

@@ -29,6 +29,9 @@ type Annotation = {
         text : string
     }
 
+type BoxPropertiesAction =
+    | ChangeColor of int
+
 type RenderingPropertiesAction =
         | SetFillMode of FillMode
         | SetCullMode of CullMode
@@ -50,9 +53,13 @@ type NavigationParameters = {
 
 [<DomainType>]
 type VisibleBox = {
-    id       : string
+   // [<PrimaryKey>]
+    
     geometry : Box3d
-    color    : C4b
+    color    : C4b    
+
+    [<TreatAsValue>]
+    id       : string
 }
 
 [<DomainType>]
@@ -73,16 +80,17 @@ type BoxSelectionDemoAction =
         | Exit  
         | AddBox
         | RemoveBox
+        | ClearSelection
 
 [<DomainType>]
 type BoxSelectionDemoModel = {
     camera : TestApp.CameraControllerState    
     rendering : RenderingParameters
 
-    boxes : list<VisibleBox>
-    scenes : hset<ISg<BoxSelectionDemoAction>>
+    boxes : plist<VisibleBox>
+
     boxHovered : option<string>
-    selectedBoxes : list<string>
+    selectedBoxes : hset<string>
 }
 
 [<DomainType>]
