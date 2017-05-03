@@ -343,11 +343,15 @@ module ``F# Sg`` =
         let adapter (o : obj) : ISg<'msg> =
             Sg.adapter o |> box
 
+        let map (f : 'a -> 'b) (a : ISg<'a>) : ISg<'b> =
+            Sg.MapApplicator<'a,'b>(f >> List.singleton,a) :> ISg<_>
+
 
 [<AutoOpen>]
 module ``Sg Events`` =
     
     module Sg =
+
         let onClick (f : V3d -> 'msg) =
             SceneEventKind.Click, fun (evt : SceneEvent) -> [f evt.position]
             
@@ -357,6 +361,9 @@ module ``Sg Events`` =
         let onMouseDown (f : MouseButtons -> V3d -> 'msg) =
             SceneEventKind.Down, fun (evt : SceneEvent) -> [f evt.buttons evt.position]
             
+        let onMouseMove (f : V3d -> 'msg) =
+            SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.position]
+
         let onMouseUp (f : V3d -> 'msg) =
             SceneEventKind.Up, fun (evt : SceneEvent) -> [f evt.position]
             
