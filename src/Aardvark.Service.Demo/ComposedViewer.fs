@@ -309,8 +309,9 @@ module NavigationModeDemo =
                             do! DefaultSurfaces.vertexColor
                             do! DefaultSurfaces.simpleLighting
                             }
+                        |> Sg.requirePicking
                         |> Sg.noEvents
-                        |> Sg.pickable (PickShape.Box boxGeometry)
+                        //|> Sg.pickable (PickShape.Box boxGeometry)
                         |> Sg.withEvents [
                                 Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map ArcBallAction                                    
 
