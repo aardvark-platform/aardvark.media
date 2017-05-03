@@ -453,10 +453,7 @@ module BoxSelectionDemo =
     let view (model : MBoxSelectionDemoModel) =
         let cam =
             model.camera.view 
-
-        let a = model.boxesMap |> AMap.toASet
-        
-            
+                           
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
@@ -537,26 +534,44 @@ module DrawingApp =
     open Aardvark.Base
     
     type Action =
-        | CameraMessage    of CameraController.Message
-        | AnnotationAction of AnnotationProperties.Action
+        | CameraMessage    of ArcBallController.Message
+        //| AnnotationAction of AnnotationProperties.Action
         | RenderingAction  of RenderingProperties.Action
-        | Enter of string
+        | Move of V3d
+        | AddPoint of V3d
+        | KeyDown of key : Keys
+        | KeyUp of key : Keys
         | Exit      
 
-    let update (model : ComposedViewerModel) (act : Action) =
-        match act with
-            | CameraMessage m -> 
-                 { model with camera = CameraController.update model.camera m }
-            | AnnotationAction a ->
-                 { model with singleAnnotation = AnnotationProperties.update model.singleAnnotation a }
-            | RenderingAction a ->
+    let update (model : DrawingAppModel) (act : Action) =
+        match act, model.draw with
+            | CameraMessage m, false -> { model with camera = ArcBallController.update model.camera m }
+            //| AnnotationAction a ->
+            //     { model with singleAnnotation = AnnotationProperties.update model.singleAnnotation a }
+            | RenderingAction a, _ ->
                  { model with rendering = RenderingProperties.update model.rendering a }
-            | Enter id-> { model with boxHovered = Some id }
-            | Exit -> { model with boxHovered = None }    
+            | KeyDown Keys.LeftCtrl, _ -> { model with draw = true }
+            | KeyUp Keys.LeftCtrl, _ -> { model with draw = false; hoverPosition = None }
+            | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }                
+            | AddPoint p, true -> { model with points = model.points |> PList.append p}                
+            | Exit, _ -> { model with hoverPosition = None }
+            | _ -> model
+            
             
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
-    let view (model : MComposedViewerModel) =
+    let mkISg color size trafo = 
+        Sg.sphere 5 color size
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                }
+                |> Sg.noEvents
+                |> Sg.trafo(trafo) 
+        
+
+    let view (model : MDrawingAppModel) =
         let cam =
             model.camera.view 
             
@@ -565,54 +580,75 @@ module DrawingApp =
       
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
-                CameraController.controlledControl model.camera CameraMessage frustum
+                ArcBallController.controlledControl model.camera CameraMessage frustum
                     (AttributeMap.ofList [
-                        attribute "style" "width:65%; height: 100%; float: left;"
-                    ])
+                                onKeyDown (KeyDown)
+                                onKeyUp (KeyUp)
+                                attribute "style" "width:65%; height: 100%; float: left;"]
+                    )
                     (
+                        let scene =  
+                            Sg.sphere 8 (Mod.constant Primitives.colors.[0]) (Mod.constant 2.0)
+                                |> Sg.shader {
+                                    do! DefaultSurfaces.trafo
+                                    do! DefaultSurfaces.vertexColor
+                                    do! DefaultSurfaces.simpleLighting
+                                }
+                                |> Sg.requirePicking
+                                |> Sg.noEvents 
+                                    |> Sg.withEvents [
+                                        Sg.onMouseMove (fun p -> Move p)
+                                        Sg.onClick(fun p -> AddPoint p)
+                                        Sg.onLeave (fun _ -> Exit)
+                                    ]
                         
-                        let boxes = Primitives.mkBoxes 5
+                        let bla =
+                            model.points 
+                                |> AList.toASet 
+                                |> ASet.map (function b -> mkISg (Mod.constant Primitives.colors.[2]) (Mod.constant 0.15) (Mod.constant (Trafo3d.Translation(b))))
+                                |> Sg.set
+                                |> Sg.effect [
+                                    toEffect DefaultSurfaces.trafo
+                                    toEffect DefaultSurfaces.vertexColor
+                                    toEffect DefaultSurfaces.simpleLighting                              
+                                    ]
+                                |> Sg.noEvents
                                               
-                        let boxes = boxes 
-                                    |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i] k)
-                                    |> List.map (fun k -> Primitives.mkISgBox model k 
-                                                                |> Sg.pickable (PickShape.Box k.geometry)
-                                                                |> Sg.withEvents [
-                                                                        Sg.onEnter (fun p -> Enter k.id)
-                                                                        Sg.onLeave (fun () -> Exit)]
-                                                )
-                        boxes
+                        let trafo = 
+                            model.hoverPosition 
+                                |> Mod.map (function o -> match o with 
+                                                            | Some t-> t
+                                                            | None -> Trafo3d.Scale(V3d.Zero))
+
+                        let cursor = mkISg (Mod.constant C4b.Red) (Mod.constant 0.15) trafo
+                                                            
+                        [scene; cursor; bla]
                             |> Sg.ofList
-                            |> Sg.noEvents     
                             |> Sg.fillMode model.rendering.fillMode
                             |> Sg.cullMode model.rendering.cullMode                                                                                           
-                            |> Sg.noEvents     
                 )
 
                 div [style "width:35%; height: 100%; float:right"] [
                     Html.SemUi.accordion "Rendering" "configure" true [
                         RenderingProperties.view model.rendering |> UI.map RenderingAction 
                     ]
-                    Html.SemUi.accordion "Properties" "options" true [
-                        AnnotationProperties.view model.singleAnnotation |> UI.map AnnotationAction
                     ]
                 ]
-            ]
         )
 
     let initial =
         {
-            camera           = CameraController.initial
-            singleAnnotation = InitValues.annotation
+            camera           = ArcBallController.initial           
             rendering        = InitValues.rendering
-            
-            boxHovered = None
+            hoverPosition = None
+            draw = false
+            points = PList.empty
         }
 
-    let app : App<ComposedViewerModel,MComposedViewerModel,Action> =
+    let app : App<DrawingAppModel,MDrawingAppModel,Action> =
         {
             unpersist = Unpersist.instance
-            threads = fun model -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
+            threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage
             initial = initial
             update = update
             view = view

@@ -44,8 +44,9 @@ let kitchenSink argv =
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
-    let a = NavigationModeDemo.start()
+    //let a = NavigationModeDemo.start()    
     //let a = BoxSelectionDemo.start()
+    let a = DrawingApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a

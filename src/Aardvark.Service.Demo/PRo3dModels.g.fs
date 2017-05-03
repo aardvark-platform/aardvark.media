@@ -412,13 +412,25 @@ module Mutable =
     type MDrawingAppModel private(__initial : PRo3DModels.DrawingAppModel) =
         let mutable __current = __initial
         let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _rendering = MRenderingParameters.Create(__initial.rendering)
+        let _draw = ResetMod(__initial.draw)
+        let _hoverPosition = ResetMod(__initial.hoverPosition)
+        let _points = ResetList(__initial.points)
         
         member x.camera = _camera
+        member x.rendering = _rendering
+        member x.draw = _draw :> IMod<_>
+        member x.hoverPosition = _hoverPosition :> IMod<_>
+        member x.points = _points :> alist<_>
         
         member x.Update(__model : PRo3DModels.DrawingAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _camera.Update(__model.camera)
+                _rendering.Update(__model.rendering)
+                _draw.Update(__model.draw)
+                _hoverPosition.Update(__model.hoverPosition)
+                _points.Update(__model.points)
         
         static member Create(initial) = MDrawingAppModel(initial)
         
@@ -429,6 +441,10 @@ module Mutable =
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module MDrawingAppModel =
         let inline camera (m : MDrawingAppModel) = m.camera
+        let inline rendering (m : MDrawingAppModel) = m.rendering
+        let inline draw (m : MDrawingAppModel) = m.draw
+        let inline hoverPosition (m : MDrawingAppModel) = m.hoverPosition
+        let inline points (m : MDrawingAppModel) = m.points
     
     
     
@@ -442,6 +458,30 @@ module Mutable =
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
+                }
+            let rendering =
+                { new Lens<PRo3DModels.DrawingAppModel, PRo3DModels.RenderingParameters>() with
+                    override x.Get(r) = r.rendering
+                    override x.Set(r,v) = { r with rendering = v }
+                    override x.Update(r,f) = { r with rendering = f r.rendering }
+                }
+            let draw =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.bool>() with
+                    override x.Get(r) = r.draw
+                    override x.Set(r,v) = { r with draw = v }
+                    override x.Update(r,f) = { r with draw = f r.draw }
+                }
+            let hoverPosition =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.option<Aardvark.Base.Trafo3d>>() with
+                    override x.Get(r) = r.hoverPosition
+                    override x.Set(r,v) = { r with hoverPosition = v }
+                    override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
+                }
+            let points =
+                { new Lens<PRo3DModels.DrawingAppModel, Aardvark.Base.plist<Aardvark.Base.V3d>>() with
+                    override x.Get(r) = r.points
+                    override x.Set(r,v) = { r with points = v }
+                    override x.Update(r,f) = { r with points = f r.points }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =

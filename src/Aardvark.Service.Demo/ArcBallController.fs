@@ -43,7 +43,7 @@ module ArcBallController =
             forward = false; backward = false; left = false; right = false
             moveVec = V3i.Zero
             lastTime = None
-            orbitCenter = None
+            orbitCenter = Some V3d.Zero
             stash = None
         }
 
