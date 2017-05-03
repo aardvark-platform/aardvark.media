@@ -34,12 +34,10 @@ type NavigationParameters = {
 
 [<DomainType>]
 type VisibleBox = {
-   // [<PrimaryKey>]
-    
     geometry : Box3d
     color    : C4b    
 
-    [<TreatAsValue>]
+    [<TreatAsValue;PrimaryKey>]
     id       : string
 }
 
@@ -88,6 +86,8 @@ type BoxSelectionDemoModel = {
     rendering : RenderingParameters
 
     boxes : plist<VisibleBox>
+    boxesSet : hset<VisibleBox>
+    boxesMap : hmap<string,VisibleBox>
 
     boxHovered : option<string>
     selectedBoxes : hset<string>

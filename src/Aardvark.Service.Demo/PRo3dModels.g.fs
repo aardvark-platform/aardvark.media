@@ -319,12 +319,16 @@ module Mutable =
         let _camera = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _boxes = ResetMapList(__initial.boxes, (fun _ -> MVisibleBox.Create), fun (m,i) -> m.Update(i))
+        let _boxesSet = ResetMapSet((fun v -> v.id :> obj), __initial.boxesSet, MVisibleBox.Create, fun (m,i) -> m.Update(i))
+        let _boxesMap = ResetMapMap(__initial.boxesMap, (fun k v -> MVisibleBox.Create(v)), (fun (m,i) -> m.Update(i)))
         let _boxHovered = ResetMod(__initial.boxHovered)
         let _selectedBoxes = ResetSet(__initial.selectedBoxes)
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.boxes = _boxes :> alist<_>
+        member x.boxesSet = _boxesSet :> aset<_>
+        member x.boxesMap = _boxesMap :> amap<_,_>
         member x.boxHovered = _boxHovered :> IMod<_>
         member x.selectedBoxes = _selectedBoxes :> aset<_>
         
@@ -334,6 +338,8 @@ module Mutable =
                 _camera.Update(__model.camera)
                 _rendering.Update(__model.rendering)
                 _boxes.Update(__model.boxes)
+                _boxesSet.Update(__model.boxesSet)
+                _boxesMap.Update(__model.boxesMap)
                 _boxHovered.Update(__model.boxHovered)
                 _selectedBoxes.Update(__model.selectedBoxes)
         
@@ -348,6 +354,8 @@ module Mutable =
         let inline camera (m : MBoxSelectionDemoModel) = m.camera
         let inline rendering (m : MBoxSelectionDemoModel) = m.rendering
         let inline boxes (m : MBoxSelectionDemoModel) = m.boxes
+        let inline boxesSet (m : MBoxSelectionDemoModel) = m.boxesSet
+        let inline boxesMap (m : MBoxSelectionDemoModel) = m.boxesMap
         let inline boxHovered (m : MBoxSelectionDemoModel) = m.boxHovered
         let inline selectedBoxes (m : MBoxSelectionDemoModel) = m.selectedBoxes
     
@@ -375,6 +383,18 @@ module Mutable =
                     override x.Get(r) = r.boxes
                     override x.Set(r,v) = { r with boxes = v }
                     override x.Update(r,f) = { r with boxes = f r.boxes }
+                }
+            let boxesSet =
+                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.hset<PRo3DModels.VisibleBox>>() with
+                    override x.Get(r) = r.boxesSet
+                    override x.Set(r,v) = { r with boxesSet = v }
+                    override x.Update(r,f) = { r with boxesSet = f r.boxesSet }
+                }
+            let boxesMap =
+                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.hmap<Microsoft.FSharp.Core.string, PRo3DModels.VisibleBox>>() with
+                    override x.Get(r) = r.boxesMap
+                    override x.Set(r,v) = { r with boxesMap = v }
+                    override x.Update(r,f) = { r with boxesMap = f r.boxesMap }
                 }
             let boxHovered =
                 { new Lens<PRo3DModels.BoxSelectionDemoModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with

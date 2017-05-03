@@ -346,9 +346,6 @@ module ``F# Sg`` =
         let adapter (o : obj) : ISg<'msg> =
             Sg.adapter o |> box
 
-        let map (f : 'a -> 'b) (a : ISg<'a>) : ISg<'b> =
-            Sg.MapApplicator<'a,'b>(f >> List.singleton,a) :> ISg<_>
-
 
 [<AutoOpen>]
 module ``Sg Events`` =

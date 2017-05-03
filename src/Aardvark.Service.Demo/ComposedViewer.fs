@@ -387,6 +387,7 @@ module BoxSelectionDemo =
     type Action = BoxSelectionDemoAction
 
     let update (model : BoxSelectionDemoModel) (act : Action) =
+        
         match act with
             | CameraMessage m -> 
                  { model with camera = CameraController.update model.camera m }          
@@ -451,6 +452,9 @@ module BoxSelectionDemo =
     let view (model : MBoxSelectionDemoModel) =
         let cam =
             model.camera.view 
+
+        let a = model.boxesMap |> AMap.toASet
+        
             
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
@@ -511,7 +515,9 @@ module BoxSelectionDemo =
             rendering        = InitValues.rendering            
             boxHovered = None
             boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i % 5] k) |> PList.ofList
-            selectedBoxes = HSet.empty            
+            selectedBoxes = HSet.empty         
+            boxesSet = HSet.empty
+            boxesMap = HMap.empty
         }
 
     let app : App<BoxSelectionDemoModel,MBoxSelectionDemoModel,Action> =
@@ -579,7 +585,7 @@ module DrawingApp =
                             |> Sg.noEvents     
                             |> Sg.fillMode model.rendering.fillMode
                             |> Sg.cullMode model.rendering.cullMode                                                                                           
-                            |> Sg.noEvents                        
+                            |> Sg.noEvents     
                 )
 
                 div [style "width:35%; height: 100%; float:right"] [
