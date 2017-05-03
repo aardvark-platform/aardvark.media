@@ -6,12 +6,28 @@ open Aardvark.Base.Incremental
 open Aardvark.SceneGraph.AirState
 open PRo3DModels    
 
+module NavigationProperties = 
+        
+    type Action =
+        | SetNavigationMode of NavigationMode
+
+    let update (model : NavigationParameters) (act : Action) =
+        match act with
+            | SetNavigationMode mode ->
+                    { model with navigationMode = mode }
+
+    let view (model : MNavigationParameters) =        
+        require Html.semui (
+            Html.table [                            
+               Html.row "Mode:" [Html.SemUi.dropDown model.navigationMode SetNavigationMode]
+            ]
+        )
+
+
 module RenderingProperties = 
     open Aardvark.Base.Rendering
 
-    type Action =
-        | SetFillMode of FillMode
-        | SetCullMode of CullMode
+    type Action = RenderingPropertiesAction
 
     let update (model : RenderingParameters) (act : Action) =
         match act with
@@ -27,6 +43,22 @@ module RenderingProperties =
                             Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]      
                        ]
         )
+
+//module BoxProperties = 
+//    open Aardvark.Base.Rendering
+
+//    type Action = BoxPropertiesAction
+
+//    let update (model : VisibleBox) (act : Action) =
+//        match act with
+//            | ChangeColor i -> model
+
+//    let view (model : MVisibleBox) =        
+//        require Html.semui (
+//            Html.table [                            
+//                            Html.row "Color:" [Numeric.view SetFillMode]                           
+//                       ]
+//        )
 
 module AnnotationProperties = 
     

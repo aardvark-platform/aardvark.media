@@ -1,5 +1,5 @@
 type project
-id Aardvark.UI
+id Aardvark.UI.Primitives
 authors VRVis Research Center
 description
-    Aardvark.UI
+    Aardvark.UI.Primitives

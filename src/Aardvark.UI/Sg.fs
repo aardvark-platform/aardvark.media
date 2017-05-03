@@ -215,6 +215,9 @@ module ``F# Sg`` =
         let andAlso (sg : ISg<'msg>) (andSg : ISg<'msg>) = 
             ofList [sg;andSg]
 
+        let map (f : 'a -> 'b) (a : ISg<'a>) : ISg<'b> =
+            Sg.MapApplicator<'a,'b>(f >> List.singleton,a) :> ISg<_>
+
 
         let geometrySet mode attributeTypes (geometries : aset<_>) : ISg<'msg> =
             Sg.GeometrySet(geometries,mode,attributeTypes) |> box

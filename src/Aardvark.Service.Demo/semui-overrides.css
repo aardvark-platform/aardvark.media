@@ -1,4 +1,13 @@
-.segment {
-    margin-top: 100px;
-    margin-bottom: 100px;
+.ui.segment {
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding-top: 8px;
+    padding-bottom: 0px;
+}
+
+div.title {
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
 }

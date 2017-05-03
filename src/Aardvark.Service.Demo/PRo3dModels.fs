@@ -8,6 +8,40 @@ open Aardvark.UI.Mutable
 open Aardvark.UI
 open FShade.Primitives
 open Demo
+open Demo.TestApp
+
+type BoxPropertiesAction =
+    | ChangeColor of int
+
+type RenderingPropertiesAction =
+        | SetFillMode of FillMode
+        | SetCullMode of CullMode
+
+[<DomainType>]
+type RenderingParameters = {
+    fillMode : FillMode
+    cullMode : CullMode
+}
+
+type NavigationMode =
+        | FreeFly = 0
+        | ArcBall = 1
+
+[<DomainType>]
+type NavigationParameters = {
+    navigationMode : NavigationMode    
+}
+
+[<DomainType>]
+type VisibleBox = {
+   // [<PrimaryKey>]
+    
+    geometry : Box3d
+    color    : C4b    
+
+    [<TreatAsValue>]
+    id       : string
+}
 
 type Points = list<V3d>
 type Segment = Points
@@ -17,28 +51,15 @@ type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3
 
 [<DomainType>]
 type Annotation = {
-        //seqNumber : int
-        geometry : Geometry
-        points : Points
-        segments : list<Segment>
-        color : C4b
-        thickness : NumericInput
-        projection : Projection
-        visible : bool
-        text : string
-    }
-
-[<DomainType>]
-type RenderingParameters = {
-    fillMode : FillMode
-    cullMode : CullMode
-}
-
-[<DomainType>]
-type VisibleBox = {
-    id       : string
-    geometry : Box3d
-    color    : C4b
+    //seqNumber : int
+    geometry : Geometry
+    points : Points
+    segments : list<Segment>
+    color : C4b
+    thickness : NumericInput
+    projection : Projection
+    visible : bool
+    text : string
 }
 
 [<DomainType>]
@@ -47,14 +68,62 @@ type ComposedViewerModel = {
     singleAnnotation : Annotation
     rendering : RenderingParameters
 
-    boxes : list<VisibleBox>
+    //boxes : list<VisibleBox>
+    boxHovered : option<string>   
+}
+
+type BoxSelectionDemoAction =
+        | CameraMessage    of CameraControllerMessage     
+        | RenderingAction  of RenderingPropertiesAction
+        | Select of string     
+        | Enter of string
+        | Exit  
+        | AddBox
+        | RemoveBox
+        | ClearSelection
+
+[<DomainType>]
+type BoxSelectionDemoModel = {
+    camera : TestApp.CameraControllerState    
+    rendering : RenderingParameters
+
+    boxes : plist<VisibleBox>
+
     boxHovered : option<string>
+    selectedBoxes : hset<string>
+}
+
+
+
+
+type Style = {
+    color : C4b
+    thickness : NumericInput
+}
+                
+type OpenPolygon = {
+    cursor : Option<V3d>
+    finishedPoints : list<V3d>
+    finishedSegments : list<Segment>
+}
+
+[<DomainType>]
+type DrawingAppModel = {
+    camera : TestApp.CameraControllerState
+
 }
 
 [<DomainType>]
 type OrbitCameraDemoModel = {
-    camera2 : TestApp.CameraControllerState
+    camera : TestApp.CameraControllerState
+    rendering : RenderingParameters    
+}
+
+[<DomainType>]
+type NavigationModeDemoModel = {
+    camera : TestApp.CameraControllerState
     rendering : RenderingParameters
+    navigation : NavigationParameters
 }
 
 
@@ -77,4 +146,9 @@ module InitValues =
         {
             fillMode = FillMode.Fill
             cullMode = CullMode.None
+        }
+
+    let navigation =
+        {
+            navigationMode = NavigationMode.FreeFly
         }

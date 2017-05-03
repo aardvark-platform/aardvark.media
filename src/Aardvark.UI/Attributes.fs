@@ -37,6 +37,9 @@ module Events =
     let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = 
         eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb >> List.singleton))
 
+    let inline onEvent' (eventType : string) (args : list<string>) (cb : list<string> -> list<'msg>) : Attribute<'msg> = 
+        eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb))
+
     let onFocus (cb : unit -> 'msg) =
         onEvent "onfocus" [] (ignore >> cb)
         
@@ -67,6 +70,13 @@ module Events =
     /// for continous updates (e.g. see http://stackoverflow.com/questions/18544890/onchange-event-on-input-type-range-is-not-triggering-in-firefox-while-dragging)
     let onInput (cb : string -> 'msg) = 
         onEvent "oninput" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+            
+    let onChange' (cb : string -> list<'msg>) = 
+        onEvent' "onchange" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
+    /// for continous updates (e.g. see http://stackoverflow.com/questions/18544890/onchange-event-on-input-type-range-is-not-triggering-in-firefox-while-dragging)
+    let onInput' (cb : string -> list<'msg>) = 
+        onEvent' "oninput" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
     let onWheel (f : Aardvark.Base.V2d -> 'msg) =
         let serverClick (args : list<string>) : Aardvark.Base.V2d = 
