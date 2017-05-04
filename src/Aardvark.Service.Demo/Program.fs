@@ -59,10 +59,12 @@ let kitchenSink argv =
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
-    //let a = NavigationModeDemo.start()
+    //let a = NavigationModeDemo.start()    
     //let a = BoxSelectionDemo.start()
-    //let a = DragNDrop.App.start()
-    let a = DragNDrop.TranslateController.start()
+
+    //let a = DragNDrop.TranslateController.start()
+
+    let a = DrawingApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
@@ -87,8 +89,8 @@ let modelviewer args =
 [<EntryPoint; STAThread>]
 let main args =
     
-    //kitchenSink args
-    modelviewer args
+    kitchenSink args
+    //modelviewer args
 
 
     0

@@ -94,8 +94,6 @@ type BoxSelectionDemoModel = {
 }
 
 
-
-
 type Style = {
     color : C4b
     thickness : NumericInput
@@ -110,6 +108,11 @@ type OpenPolygon = {
 [<DomainType>]
 type DrawingAppModel = {
     camera : TestApp.CameraControllerState
+    rendering : RenderingParameters
+
+    draw    : bool 
+    hoverPosition : option<Trafo3d>
+    points : plist<V3d>
 
 }
 
