@@ -347,6 +347,11 @@ module ``F# Sg`` =
             Sg.adapter o |> box
 
 
+        module Incremental =
+            let withEvents (events : amap<SceneEventKind, SceneEvent -> list<'msg>>) (sg : ISg<'msg>) =
+                Sg.EventApplicator(events, sg) :> ISg<'msg>
+
+
 [<AutoOpen>]
 module ``Sg Events`` =
     

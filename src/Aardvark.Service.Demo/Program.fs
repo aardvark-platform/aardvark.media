@@ -28,6 +28,21 @@ open PRo3DModels.Mutable
 
 
 
+// elm intro
+// Composition. how to
+// how to make things composable (reusable components, higher order functions, guidlines model messages)
+// testing (elm debugger)
+// einbinden vong html javascript
+
+(* TODO:
+
+* plane pickshape
+* Sg.shader  for ISg<'msg>
+* multiple picks along pickray
+
+*)
+
+
 let kitchenSink argv =
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
@@ -44,8 +59,9 @@ let kitchenSink argv =
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
-    let a = NavigationModeDemo.start()
+    //let a = NavigationModeDemo.start()
     //let a = BoxSelectionDemo.start()
+    let a = DragNDrop.App.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
