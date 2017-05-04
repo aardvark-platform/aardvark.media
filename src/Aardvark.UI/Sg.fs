@@ -365,6 +365,9 @@ module ``Sg Events`` =
             
         let onMouseDown (f : MouseButtons -> V3d -> 'msg) =
             SceneEventKind.Down, fun (evt : SceneEvent) -> [f evt.buttons evt.position]
+        
+        let onMouseDownEvt (f : SceneEvent -> 'msg) =
+            SceneEventKind.Down, fun (evt : SceneEvent) -> [f evt ]
             
         let onMouseMove (f : V3d -> 'msg) =
             SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.position]
