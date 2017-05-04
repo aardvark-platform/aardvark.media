@@ -8,6 +8,8 @@ open Aardvark.Base.Incremental
 
 open Aardvark.UI
 
+
+
 module UI = 
     let onWheel (f : Aardvark.Base.V2d -> 'msg) =
         let serverClick (args : list<string>) : Aardvark.Base.V2d = 
@@ -175,8 +177,69 @@ module Html =
         open Aardvark.Base.AMD64.Compiler
         open Aardvark.Base.Geometry.RayHit
         
-        //let accordion = 
+        
+        let menu (c : string )(entries : list<string * list<DomNode<'msg>>>) =
+            div [ clazz c ] (
+                entries |> List.map (fun (name, children) ->
+                    div [ clazz "item"] [ 
+                        b [] [text name]
+                        div [ clazz "menu" ] (
+                            children |> List.map (fun c ->
+                                div [clazz "item"] [c]
+                            )
+                        )
+                    ]
+                )
+            )
 
+        let adornerMenu (sectionsAndItems : list<string * list<DomNode<'msg>>>) (rest : DomNode<'msg>) =
+            div [clazz "pushable"] [
+                menu "ui vertical inverted sidebar menu left overlay" sectionsAndItems
+                div [clazz "pusher"] [
+                    div [ clazz "ui big black launch right attached fixed button menubutton"
+                          js "onclick" "$('.ui.sidebar').sidebar('setting', 'transition', 'overlay').sidebar('toggle');"
+                        ] [
+                            i [clazz "content icon"] [] 
+                            span [clazz "text"] [text "MENU"]
+                        ]
+                    div [] [
+                        rest
+                    ]
+                ]
+            ]
+        
+
+        let stuffStack (ls) =
+            div [clazz "ui inverted segment"] [
+                div [clazz "ui inverted relaxed divided list"] [
+                    for l in ls do
+                        yield
+                            div [clazz "item"] [
+                                div [clazz "content"] [
+                                    l
+                                ]
+                            ]
+                ]
+            ]
+        open Microsoft.FSharp.Reflection
+    
+        let private fields r =
+            try 
+                let t = r.GetType()
+                let props = t.GetProperties()
+                let vals = FSharpValue.GetRecordFields(r)
+                [
+                    for i in 0..props.Length-1 do
+                        yield props.[i].Name, if props.[i].PropertyType = typeof<System.Double> then sprintf "%.2f" (vals.[i] :?> System.Double) else string vals.[i]
+                ]
+            with e -> []
+
+        let recordPrint record =
+            div [clazz "ui label"] [
+                for (n,v) in fields record do
+                    yield text (sprintf "%s: %s" n v)
+            ]
+            
         let accordion text' icon active content' =
             let title = if active then "title active inverted" else "title inverted"
             let content = if active then "content active" else "content"
