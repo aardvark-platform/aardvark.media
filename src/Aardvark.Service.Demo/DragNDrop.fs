@@ -210,10 +210,16 @@ module TranslateController =
                 onMouseUp ( fun _ _ -> Release )
              ]) scene
 
+    let semui =
+        [ 
+            { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
+            { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
+        ]  
+
     let view (m : MTranslateModel) =
-        div [] [
-            scene m
-        ]
+        require semui (
+            Aardvark.UI.Html.SemUi.adornerMenu ["urdar", [text "asdfasdf"]] (scene m)
+        )
 
     let app =
         {
