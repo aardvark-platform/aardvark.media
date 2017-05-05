@@ -12,7 +12,7 @@ module Mutable =
     type MModel private(__initial : SimpleTest.Model) =
         let mutable __current = __initial
         let _value = ResetMod(__initial.value)
-        let _cameraModel = Demo.TestApp.Mutable.MCameraControllerState.Create(__initial.cameraModel)
+        let _cameraModel = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.cameraModel)
         
         member x.value = _value :> IMod<_>
         member x.cameraModel = _cameraModel
@@ -48,7 +48,7 @@ module Mutable =
                     override x.Update(r,f) = { r with value = f r.value }
                 }
             let cameraModel =
-                { new Lens<SimpleTest.Model, Demo.TestApp.CameraControllerState>() with
+                { new Lens<SimpleTest.Model, Aardvark.UI.CameraControllerState>() with
                     override x.Get(r) = r.cameraModel
                     override x.Set(r,v) = { r with cameraModel = v }
                     override x.Update(r,f) = { r with cameraModel = f r.cameraModel }

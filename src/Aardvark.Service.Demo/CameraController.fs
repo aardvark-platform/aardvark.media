@@ -1,4 +1,4 @@
-﻿namespace Demo
+﻿namespace Aardvark.UI
 
 open Aardvark.Service
 

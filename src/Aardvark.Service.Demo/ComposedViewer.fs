@@ -158,7 +158,7 @@ module SimpleCompositionViewer =
 module OrbitCameraDemo = 
     open PRo3DModels
     open Aardvark.Base    
-    open Demo.TestApp.Mutable.MCameraControllerState
+    open Aardvark.UI
     
     type Action =
         | CameraMessage    of ArcBallController.Message
@@ -255,7 +255,6 @@ module OrbitCameraDemo =
 module NavigationModeDemo = 
     open PRo3DModels
     open Aardvark.Base    
-    open Demo.TestApp.Mutable.MCameraControllerState
     
     type Action =
         | ArcBallAction     of ArcBallController.Message

@@ -2,6 +2,7 @@
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open Aardvark.UI
 
 type Drag = { PickPoint : V3d; Offset : V3d }
 
@@ -9,7 +10,7 @@ type Drag = { PickPoint : V3d; Offset : V3d }
 type Model = { 
     trafo       : Trafo3d 
     dragging    : Option<Drag>
-    camera      : Demo.TestApp.CameraControllerState
+    camera      : CameraControllerState
 }
 
 type Axis = X | Y | Z
@@ -21,10 +22,16 @@ type PickPoint =
         axis : Axis
     }
 
+
 [<DomainType>]
-type TranslateModel = { 
+type Transformation = { 
     trafo       : Trafo3d 
     hovered     : Option<Axis>
     grabbed     : Option<PickPoint>
-    camera      : Demo.TestApp.CameraControllerState
+}
+
+[<DomainType>]
+type Scene = {
+    transformation : Transformation
+    camera         : CameraControllerState
 }

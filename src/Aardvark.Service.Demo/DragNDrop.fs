@@ -14,14 +14,14 @@ module App =
         | StartDrag of SceneEvent
         | StopDrag
         | MoveRay      of RayPart 
-        | CameraAction of Demo.CameraController.Message
+        | CameraAction of CameraController.Message
 
     let update (m : Model) (a : Action) =
 
         match a with
             | CameraAction a when Option.isNone m.dragging -> 
                 // disable cam on dragging
-                { m with camera = Demo.CameraController.update m.camera a }
+                { m with camera = CameraController.update m.camera a }
             | MoveRay p ->
                 match m.dragging with
                     | Some { PickPoint = worldSpaceStart; Offset = centerOffset } -> 
@@ -60,7 +60,7 @@ module App =
 
             
 
-        Demo.CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+        CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
             (AttributeMap.ofList [ 
                 attribute "style" "width:100%; height: 100%"; RenderControl.onMouseMove (fun r t -> MoveRay r)
              ]) scene
@@ -73,8 +73,8 @@ module App =
     let app =
         {
             unpersist = Unpersist.instance
-            threads = fun (model : Model) -> Demo.CameraController.threads model.camera |> ThreadPool.map CameraAction
-            initial = { trafo = Trafo3d.Identity; dragging = None; camera = Demo.CameraController.initial }
+            threads = fun (model : Model) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
+            initial = { trafo = Trafo3d.Identity; dragging = None; camera = CameraController.initial }
             update = update
             view = view
         }
@@ -102,13 +102,10 @@ module TranslateController =
         | MoveRay of RayPart
         | Grab of V3d * Axis
         | Release
-        | CameraAction of Demo.CameraController.Message
+        | CameraAction of CameraController.Message
 
-    let update (m : TranslateModel) (a : Action) =
-
+    let updateTransformation (m : Transformation) (a : Action) =
         match a with
-            | CameraAction a when m.grabbed.IsNone -> 
-                { m with camera = Demo.CameraController.update m.camera a }
             | Hover axis -> 
                 { m with hovered = Some axis }
             | Unhover -> 
@@ -138,6 +135,12 @@ module TranslateController =
                 | None -> m
             | _ -> m
 
+    let update (m : Scene) (a : Action) =
+        match a with
+            | CameraAction a when m.transformation.grabbed.IsNone -> 
+                { m with camera = CameraController.update m.camera a }
+            | _ -> { m with transformation = updateTransformation m.transformation a }
+
     open FShade
     open Aardvark.Base.Rendering.Effects
 
@@ -147,7 +150,7 @@ module TranslateController =
             return { v with c = c }
         }
 
-    let scene (m : MTranslateModel) =
+    let viewController (m : MTransformation) =
 
         let coneRadius = 0.1
         let cylinderRadius = 0.05
@@ -189,26 +192,26 @@ module TranslateController =
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
         
-        let scene = 
-            let ig =
-                IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
-                    |> Sg.ofIndexedGeometry
-                    |> Sg.effect [
-                        toEffect DefaultSurfaces.trafo
-                        toEffect DefaultSurfaces.vertexColor
-                       ]
-                    |> Sg.noEvents
-            Sg.ofList [arrowX; arrowY; arrowZ ]
-            |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; color |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
-            |> Sg.trafo m.trafo
-            |> Sg.andAlso ig
+        let ig =
+            IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
+                |> Sg.ofIndexedGeometry
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.trafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+                |> Sg.noEvents
+        Sg.ofList [arrowX; arrowY; arrowZ ]
+        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; color |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
+        |> Sg.trafo m.trafo
+        |> Sg.andAlso ig
 
-        Demo.CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+    let viewScene (m : MScene) =
+        CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
             (AttributeMap.ofList [ 
                 attribute "style" "width:100%; height: 100%"; 
                 RenderControl.onMouseMove (fun r t -> MoveRay r)
                 onMouseUp ( fun _ _ -> Release )
-             ]) scene
+             ]) (viewController m.transformation)
 
     let semui =
         [ 
@@ -216,19 +219,22 @@ module TranslateController =
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
         ]  
 
-    let view (m : MTranslateModel) =
+    let view (m : MScene) =
         require semui (
-            Aardvark.UI.Html.SemUi.adornerMenu ["urdar", [text "asdfasdf"]] (scene m)
+            Aardvark.UI.Html.SemUi.adornerMenu ["urdar", [text "asdfasdf"]] (viewScene m)
         )
 
-    let app =
+    let app : App<Scene,MScene,Action>=
         {
             unpersist = Unpersist.instance
-            threads = fun (model : TranslateModel) -> Demo.CameraController.threads model.camera |> ThreadPool.map CameraAction
-            initial = {  camera = Demo.CameraController.initial
-                         hovered = None
-                         grabbed = None
-                         trafo = Trafo3d.Identity
+            threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
+            initial = {  camera = CameraController.initial
+                         transformation = 
+                            {
+                                hovered = None
+                                grabbed = None
+                                trafo = Trafo3d.Identity
+                            }
                       }
             update = update
             view = view
