@@ -133,7 +133,7 @@ module TranslateController =
             | Grab (point, axis) ->
                 let offset = 
                     let center = V3d.OOO |> m.trafo.Forward.TransformPos 
-                    point - center
+                    center - point
                 { m with grabbed = Some { point = point; offset = offset; axis = axis } } 
             | Release ->
                 { m with grabbed = None }
@@ -148,7 +148,7 @@ module TranslateController =
 
                     let nearest = rp.Ray.Ray.GetClosestPointOn other
 
-                    let trafo = Trafo3d.Translation (nearest - offset)
+                    let trafo = Trafo3d.Translation (nearest + offset)
 
                     { m with trafo = trafo }
                 | None -> m
