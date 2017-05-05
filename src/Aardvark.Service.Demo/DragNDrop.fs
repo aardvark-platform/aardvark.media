@@ -199,9 +199,9 @@ module TranslateController =
         |> Sg.andAlso ig
         |> Sg.map liftMessage
 
-    let controlSubscriptions = 
-        [ RenderControl.onMouseMove (fun r t -> ControllerAction (MoveRay r))
-          onMouseUp ( fun _ _ -> ControllerAction Release ) ]
+    let controlSubscriptions lift = 
+        [ RenderControl.onMouseMove (fun r t -> lift (MoveRay r))
+          onMouseUp ( fun _ _ -> lift Release ) ]
 
     let updateScene (m : Scene) (a : SceneAction) =
         match a with
@@ -215,16 +215,18 @@ module TranslateController =
             CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                 (AttributeMap.ofList [ 
                     yield  attribute "style" "width:100%; height: 100%"; 
-                    yield! controlSubscriptions
+                    yield! controlSubscriptions ControllerAction
                  ]) (viewController ControllerAction m.transformation)
         ]
+
+    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
 
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
             initial = {  camera = CameraController.initial
-                         transformation = { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
+                         transformation = initial
                       }
             update = updateScene
             view = viewScene
