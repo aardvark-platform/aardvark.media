@@ -112,7 +112,7 @@ type DrawingAppModel = {
 
     draw    : bool 
     hoverPosition : option<Trafo3d>
-    points : plist<V3d>
+    points : list<V3d>
 
 }
 

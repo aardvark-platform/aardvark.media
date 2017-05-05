@@ -415,13 +415,13 @@ module Mutable =
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
-        let _points = ResetList(__initial.points)
+        let _points = ResetMod(__initial.points)
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.draw = _draw :> IMod<_>
         member x.hoverPosition = _hoverPosition :> IMod<_>
-        member x.points = _points :> alist<_>
+        member x.points = _points :> IMod<_>
         
         member x.Update(__model : PRo3DModels.DrawingAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -478,7 +478,7 @@ module Mutable =
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
             let points =
-                { new Lens<PRo3DModels.DrawingAppModel, Aardvark.Base.plist<Aardvark.Base.V3d>>() with
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Collections.list<Aardvark.Base.V3d>>() with
                     override x.Get(r) = r.points
                     override x.Set(r,v) = { r with points = v }
                     override x.Update(r,f) = { r with points = f r.points }

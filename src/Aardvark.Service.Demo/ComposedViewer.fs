@@ -31,6 +31,7 @@ module Primitives =
     let hoverColor = C4b.Blue
     let selectionColor = C4b.Red
     let colors = [new C4b(166,206,227); new C4b(178,223,138); new C4b(251,154,153); new C4b(253,191,111); new C4b(202,178,214)]
+    let colorsBlue = [new C4b(241,238,246); new C4b(189,201,225); new C4b(116,169,207); new C4b(43,140,190); new C4b(4,90,141)]
 
     let mkNthBox i n = 
         let min = -V3d.One
@@ -552,16 +553,23 @@ module DrawingApp =
                  { model with rendering = RenderingProperties.update model.rendering a }
             | KeyDown Keys.LeftCtrl, _ -> { model with draw = true }
             | KeyUp Keys.LeftCtrl, _ -> { model with draw = false; hoverPosition = None }
-            | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }                
-            | AddPoint p, true -> { model with points = model.points |> PList.append p}                
+            | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
+            | AddPoint p, true -> { model with points = model.points |> List.append [p] }
             | Exit, _ -> { model with hoverPosition = None }
             | _ -> model
             
             
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
-    let mkISg color size trafo = 
-        Sg.sphere 5 color size
+    let computeScale (view : IMod<CameraView>)(p:V3d)(size:float) =        
+        view 
+            |> Mod.map (function v -> 
+                                    let distV = p - v.Location
+                                    let distF = V3d.Dot(v.Forward, distV)
+                                    distF * size / 800.0)
+
+    let mkISg color size trafo =         
+        Sg.sphere 5 color size 
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -570,6 +578,33 @@ module DrawingApp =
                 |> Sg.noEvents
                 |> Sg.trafo(trafo) 
         
+    let canvas =  
+        let b = new Box3d( V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0) )                                               
+        Sg.box (Mod.constant Primitives.colorsBlue.[0]) (Mod.constant b)
+            |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! DefaultSurfaces.vertexColor
+                do! DefaultSurfaces.simpleLighting
+            }
+            |> Sg.requirePicking
+            |> Sg.noEvents 
+                |> Sg.withEvents [
+                    Sg.onMouseMove (fun p -> Move p)
+                    Sg.onClick(fun p -> AddPoint p)
+                    Sg.onLeave (fun _ -> Exit)
+                ]    
+
+    let edgeLines (close : bool)  (points : IMod<list<V3d>>) =        
+        points 
+            |> Mod.map (
+                function k -> 
+                            let head = k |> List.tryHead
+                            match head with
+                                    | Some h -> if close then k @ [h] else k
+                                                    |> List.pairwise
+                                                    |> List.map (fun (a,b) -> new Line3d(a,b)) 
+                                                    |> Array.ofList                                                        
+                                    | None -> [||])
 
     let view (model : MDrawingAppModel) =
         let cam =
@@ -586,33 +621,29 @@ module DrawingApp =
                                 onKeyUp (KeyUp)
                                 attribute "style" "width:65%; height: 100%; float: left;"]
                     )
-                    (
-                        let scene =  
-                            Sg.sphere 8 (Mod.constant Primitives.colors.[0]) (Mod.constant 2.0)
-                                |> Sg.shader {
-                                    do! DefaultSurfaces.trafo
-                                    do! DefaultSurfaces.vertexColor
-                                    do! DefaultSurfaces.simpleLighting
-                                }
-                                |> Sg.requirePicking
-                                |> Sg.noEvents 
-                                    |> Sg.withEvents [
-                                        Sg.onMouseMove (fun p -> Move p)
-                                        Sg.onClick(fun p -> AddPoint p)
-                                        Sg.onLeave (fun _ -> Exit)
-                                    ]
+                    (        
                         
-                        let bla =
-                            model.points 
-                                |> AList.toASet 
-                                |> ASet.map (function b -> mkISg (Mod.constant Primitives.colors.[2]) (Mod.constant 0.15) (Mod.constant (Trafo3d.Translation(b))))
-                                |> Sg.set
+                        let x = 
+                            edgeLines false model.points 
+                                |> Sg.lines (Mod.constant Primitives.colorsBlue.[2])
+                                |> Sg.noEvents
+                                |> Sg.uniform "LineWidth" (Mod.constant 5) 
                                 |> Sg.effect [
                                     toEffect DefaultSurfaces.trafo
                                     toEffect DefaultSurfaces.vertexColor
-                                    toEffect DefaultSurfaces.simpleLighting                              
+                                    toEffect DefaultSurfaces.thickLine
+                                //    toEffect DefaultSurfaces.simpleLighting
                                     ]
-                                |> Sg.noEvents
+
+                                                
+
+                        let spheres =
+                            model.points 
+                                |> Mod.map(function ps -> ps |> List.map (function p -> mkISg (Mod.constant Primitives.colorsBlue.[3])
+                                                                                              (computeScale model.camera.view p 5.0)
+                                                                                              (Mod.constant (Trafo3d.Translation(p)))) 
+                                                             |> Sg.ofList)                                
+                                |> Sg.dynamic                            
                                               
                         let trafo = 
                             model.hoverPosition 
@@ -620,9 +651,9 @@ module DrawingApp =
                                                             | Some t-> t
                                                             | None -> Trafo3d.Scale(V3d.Zero))
 
-                        let cursor = mkISg (Mod.constant C4b.Red) (Mod.constant 0.15) trafo
+                        let brush = mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
                                                             
-                        [scene; cursor; bla]
+                        [canvas; brush; spheres; x]
                             |> Sg.ofList
                             |> Sg.fillMode model.rendering.fillMode
                             |> Sg.cullMode model.rendering.cullMode                                                                                           
@@ -638,11 +669,11 @@ module DrawingApp =
 
     let initial =
         {
-            camera           = ArcBallController.initial           
+            camera           = { ArcBallController.initial with view = CameraView.lookAt (6.0 * V3d.OIO) V3d.Zero V3d.OOI}
             rendering        = InitValues.rendering
             hoverPosition = None
             draw = false
-            points = PList.empty
+            points = []
         }
 
     let app : App<DrawingAppModel,MDrawingAppModel,Action> =
