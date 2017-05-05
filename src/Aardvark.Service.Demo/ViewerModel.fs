@@ -26,7 +26,7 @@ type ViewerModel =
         rotation : float
         scenes : hset<ISg<Message>>
         bounds : Box3d
-        camera : Demo.TestApp.CameraControllerState
+        camera : Aardvark.UI.CameraControllerState
         fillMode : FillMode
         cullMode : CullMode
     }

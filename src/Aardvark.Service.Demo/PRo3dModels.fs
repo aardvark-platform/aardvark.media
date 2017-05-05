@@ -10,6 +10,7 @@ open FShade.Primitives
 open Demo
 open Demo.TestApp
 
+
 type BoxPropertiesAction =
     | ChangeColor of int
 
@@ -62,7 +63,7 @@ type Annotation = {
 
 [<DomainType>]
 type ComposedViewerModel = {
-    camera : TestApp.CameraControllerState
+    camera : CameraControllerState
     singleAnnotation : Annotation
     rendering : RenderingParameters
 
@@ -82,7 +83,7 @@ type BoxSelectionDemoAction =
 
 [<DomainType>]
 type BoxSelectionDemoModel = {
-    camera : TestApp.CameraControllerState    
+    camera : CameraControllerState    
     rendering : RenderingParameters
 
     boxes : plist<VisibleBox>
@@ -107,7 +108,7 @@ type OpenPolygon = {
 
 [<DomainType>]
 type DrawingAppModel = {
-    camera : TestApp.CameraControllerState
+    camera : CameraControllerState
     rendering : RenderingParameters
 
     draw    : bool 
@@ -118,13 +119,13 @@ type DrawingAppModel = {
 
 [<DomainType>]
 type OrbitCameraDemoModel = {
-    camera : TestApp.CameraControllerState
+    camera : CameraControllerState
     rendering : RenderingParameters    
 }
 
 [<DomainType>]
 type NavigationModeDemoModel = {
-    camera : TestApp.CameraControllerState
+    camera : CameraControllerState
     rendering : RenderingParameters
     navigation : NavigationParameters
 }

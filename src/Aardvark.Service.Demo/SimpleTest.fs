@@ -8,13 +8,13 @@ open Aardvark.Base.Incremental
 type Action = 
     | Inc 
     | Dec
-    | CameraAction of Demo.CameraController.Message
+    | CameraAction of Aardvark.UI.CameraController.Message
 
 let update (m : Model) (a : Action) =
     match a with
         | Inc -> { m with value = m.value + 1.0 }
         | Dec -> { m with value = m.value - 1.0 } 
-        | CameraAction a -> { m with cameraModel = Demo.CameraController.update m.cameraModel a }
+        | CameraAction a -> { m with cameraModel = Aardvark.UI.CameraController.update m.cameraModel a }
 
 let cam = 
     Camera.create (CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI) (Frustum.perspective 60.0 0.1 10.0 1.0)
@@ -48,7 +48,7 @@ let threeD (m : MModel) =
             
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
-    Demo.CameraController.controlledControl m.cameraModel CameraAction
+    Aardvark.UI.CameraController.controlledControl m.cameraModel CameraAction
         (Mod.constant frustum) 
         (AttributeMap.ofList [ attribute "style" "width:70%; height: 100%"]) sg
 
@@ -74,8 +74,8 @@ let view (m : MModel) =
 let app =
     {
         unpersist = Unpersist.instance
-        threads = fun (model : Model) -> Demo.CameraController.threads model.cameraModel |> ThreadPool.map CameraAction
-        initial = { value = 1.0; cameraModel = Demo.CameraController.initial }
+        threads = fun (model : Model) -> CameraController.threads model.cameraModel |> ThreadPool.map CameraAction
+        initial = { value = 1.0; cameraModel = CameraController.initial }
         update = update
         view = view
     }

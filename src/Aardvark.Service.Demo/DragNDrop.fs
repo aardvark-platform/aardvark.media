@@ -14,14 +14,14 @@ module App =
         | StartDrag of SceneEvent
         | StopDrag
         | MoveRay      of RayPart 
-        | CameraAction of Demo.CameraController.Message
+        | CameraAction of CameraController.Message
 
     let update (m : Model) (a : Action) =
 
         match a with
             | CameraAction a when Option.isNone m.dragging -> 
                 // disable cam on dragging
-                { m with camera = Demo.CameraController.update m.camera a }
+                { m with camera = CameraController.update m.camera a }
             | MoveRay p ->
                 match m.dragging with
                     | Some { PickPoint = worldSpaceStart; Offset = centerOffset } -> 
@@ -60,7 +60,7 @@ module App =
 
             
 
-        Demo.CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+        CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
             (AttributeMap.ofList [ 
                 attribute "style" "width:100%; height: 100%"; RenderControl.onMouseMove (fun r t -> MoveRay r)
              ]) scene
@@ -73,8 +73,8 @@ module App =
     let app =
         {
             unpersist = Unpersist.instance
-            threads = fun (model : Model) -> Demo.CameraController.threads model.camera |> ThreadPool.map CameraAction
-            initial = { trafo = Trafo3d.Identity; dragging = None; camera = Demo.CameraController.initial }
+            threads = fun (model : Model) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
+            initial = { trafo = Trafo3d.Identity; dragging = None; camera = CameraController.initial }
             update = update
             view = view
         }
@@ -94,30 +94,46 @@ module TranslateController =
     open Aardvark.Base.Geometry
 
     open DragNDrop
-    open Aardvark.Rendering.GL.ContextHandle
 
-    type Action = 
+    module Shader =
+    
+        open FShade
+        open Aardvark.Base.Rendering.Effects
+
+        let hoverColor (v : Vertex) =
+            vertex {
+                let c : V4d = uniform?HoverColor
+                return { v with c = c }
+            }
+
+
+    [<AutoOpen>]
+    module Config =
+        let coneRadius = 0.1
+        let cylinderRadius = 0.05
+        let tessellation = 8
+
+    type ControllerAction = 
         | Hover of Axis
         | Unhover 
         | MoveRay of RayPart
         | Grab of V3d * Axis
         | Release
-        | CameraAction of Demo.CameraController.Message
+    
+    type SceneAction =
+        | ControllerAction of ControllerAction
+        | CameraAction     of CameraController.Message
 
-    let update (m : TranslateModel) (a : Action) =
-
+    let updateController (m : Transformation) (a : ControllerAction) =
         match a with
-            | CameraAction a when m.grabbed.IsNone -> 
-                { m with camera = Demo.CameraController.update m.camera a }
             | Hover axis -> 
                 { m with hovered = Some axis }
             | Unhover -> 
                 { m with hovered = None }
             | Grab (point, axis) ->
-                printfn "%A" point
                 let offset = 
                     let center = V3d.OOO |> m.trafo.Forward.TransformPos 
-                    point - center
+                    center - point
                 { m with grabbed = Some { point = point; offset = offset; axis = axis } } 
             | Release ->
                 { m with grabbed = None }
@@ -132,26 +148,12 @@ module TranslateController =
 
                     let nearest = rp.Ray.Ray.GetClosestPointOn other
 
-                    let trafo = Trafo3d.Translation (nearest - offset)
+                    let trafo = Trafo3d.Translation (nearest + offset)
 
                     { m with trafo = trafo }
                 | None -> m
-            | _ -> m
 
-    open FShade
-    open Aardvark.Base.Rendering.Effects
-
-    let color (v : Vertex) =
-        vertex {
-            let c : V4d = uniform?SuperColor
-            return { v with c = c }
-        }
-
-    let scene (m : MTranslateModel) =
-
-        let coneRadius = 0.1
-        let cylinderRadius = 0.05
-        let tessellation = 8
+    let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) =
         
         let arrow rot axis =
             let col =
@@ -166,72 +168,68 @@ module TranslateController =
             Sg.cylinder tessellation col (Mod.constant cylinderRadius) (Mod.constant 1.0) 
             |> Sg.noEvents
             |> Sg.andAlso (                
-                IndexedGeometryPrimitives.solidCone 
-                    V3d.OOI 
-                    V3d.OOI 
-                    0.1 
-                    coneRadius 
-                    tessellation 
-                    C4b.Red 
+                IndexedGeometryPrimitives.solidCone V3d.OOI V3d.OOI 0.1 coneRadius tessellation C4b.Red 
                  |> Sg.ofIndexedGeometry 
                  |> Sg.noEvents
                 )
             |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI + V3d(0.0,0.0,0.1),cylinderRadius + 0.1) |> PickShape.Cylinder)
             |> Sg.transform rot
-            |> Sg.uniform "SuperColor" col
+            |> Sg.uniform "HoverColor" col
             |> Sg.withEvents [ 
-                                Sg.onEnter (fun _ -> Hover axis)
-                                Sg.onMouseDown (fun _ p -> Grab (p,axis))
-                                Sg.onLeave (fun _ -> Unhover) 
-                             ]
+                    Sg.onEnter     (fun _ ->   Hover axis)
+                    Sg.onMouseDown (fun _ p -> Grab (p,axis))
+                    Sg.onLeave     (fun _ ->   Unhover) 
+              ]
 
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
         
-        let scene = 
-            let ig =
-                IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
-                    |> Sg.ofIndexedGeometry
-                    |> Sg.effect [
-                        toEffect DefaultSurfaces.trafo
-                        toEffect DefaultSurfaces.vertexColor
-                       ]
-                    |> Sg.noEvents
-            Sg.ofList [arrowX; arrowY; arrowZ ]
-            |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; color |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
-            |> Sg.trafo m.trafo
-            |> Sg.andAlso ig
+        let ig =
+            IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
+                |> Sg.ofIndexedGeometry
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.trafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+                |> Sg.noEvents
+        Sg.ofList [arrowX; arrowY; arrowZ ]
+        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
+        |> Sg.trafo m.trafo
+        |> Sg.andAlso ig
+        |> Sg.map liftMessage
 
-        Demo.CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-            (AttributeMap.ofList [ 
-                attribute "style" "width:100%; height: 100%"; 
-                RenderControl.onMouseMove (fun r t -> MoveRay r)
-                onMouseUp ( fun _ _ -> Release )
-             ]) scene
+    let controlSubscriptions lift = 
+        [ RenderControl.onMouseMove (fun r t -> lift (MoveRay r))
+          onMouseUp ( fun _ _ -> lift Release ) ]
 
-    let semui =
-        [ 
-            { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
-            { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
-        ]  
+    let updateScene (m : Scene) (a : SceneAction) =
+        match a with
+            | CameraAction a when m.transformation.grabbed.IsNone -> 
+                { m with camera = CameraController.update m.camera a }
+            | ControllerAction a -> { m with transformation = updateController m.transformation a }
+            | _ -> m
 
-    let view (m : MTranslateModel) =
-        require semui (
-            Aardvark.UI.Html.SemUi.adornerMenu ["urdar", [text "asdfasdf"]] (scene m)
-        )
+    let viewScene (m : MScene) =
+        div [] [
+            CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                (AttributeMap.ofList [ 
+                    yield  attribute "style" "width:100%; height: 100%"; 
+                    yield! controlSubscriptions ControllerAction
+                 ]) (viewController ControllerAction m.transformation)
+        ]
+
+    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
 
     let app =
         {
             unpersist = Unpersist.instance
-            threads = fun (model : TranslateModel) -> Demo.CameraController.threads model.camera |> ThreadPool.map CameraAction
-            initial = {  camera = Demo.CameraController.initial
-                         hovered = None
-                         grabbed = None
-                         trafo = Trafo3d.Identity
+            threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
+            initial = {  camera = CameraController.initial
+                         transformation = initial
                       }
-            update = update
-            view = view
+            update = updateScene
+            view = viewScene
         }
 
     let start() = App.start app

@@ -544,6 +544,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Compile Include="Model.fs" />
+    <Compile Include="CameraModel.fs" />
     <Compile Include="PRo3dModels.fs" />
     <Compile Include="CameraController.fs" />
     <Compile Include="ArcBallController.fs" />
@@ -557,6 +558,8 @@
     <Compile Include="KitchenSink.fs" />
     <Compile Include="DragNDropModel.fs" />
     <Compile Include="DragNDrop.fs" />
+    <Compile Include="PlaceTransformObjectsModel.fs" />
+    <Compile Include="PlaceTransformObjects.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
   </ItemGroup>
