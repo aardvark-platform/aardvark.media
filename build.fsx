@@ -30,13 +30,13 @@ Target "Statistics" (fun () ->
 
 let projInfo =
   [ "page-description", "Fablish meets aardvark"
-    "page-author", "Harald Steinlechner"
+    "page-author", "Aardvark Platform Team"
     "github-link", "https://github.com/vrvis"
-    "project-name", "FablishInterop" ]
+    "project-name", "Aardvark.Gems?" ]
 
 
 Target "Docs" (fun () -> 
-    Fake.FSharpFormatting.CreateDocs "src/FablishInterop/docs" "docs" "src/FablishInterop/docs/template.html" projInfo
+    Fake.FSharpFormatting.CreateDocs "src/Aardvark.Service.Demo/docs" "docs" "src/Aardvark.Service.Demo/docs/template.html" projInfo
     Fake.FileHelper.CopyRecursive "packages/build/FSharp.Formatting.CommandTool/styles" "docs/content" true |> printfn "copied: %A"
 )
 
