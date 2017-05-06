@@ -109,8 +109,9 @@ module TranslateController =
 
     [<AutoOpen>]
     module Config =
-        let coneRadius = 0.1
-        let cylinderRadius = 0.05
+        let coneHeight = 0.1
+        let coneRadius = 0.03
+        let cylinderRadius = 0.015
         let tessellation = 8
 
     type ControllerAction = 
@@ -168,7 +169,7 @@ module TranslateController =
             Sg.cylinder tessellation col (Mod.constant cylinderRadius) (Mod.constant 1.0) 
             |> Sg.noEvents
             |> Sg.andAlso (                
-                IndexedGeometryPrimitives.solidCone V3d.OOI V3d.OOI 0.1 coneRadius tessellation C4b.Red 
+                IndexedGeometryPrimitives.solidCone V3d.OOI V3d.OOI coneHeight coneRadius tessellation C4b.Red 
                  |> Sg.ofIndexedGeometry 
                  |> Sg.noEvents
                 )
