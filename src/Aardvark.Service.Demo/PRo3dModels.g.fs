@@ -147,20 +147,22 @@ module Mutable =
     type MAnnotation private(__initial : PRo3DModels.Annotation) =
         let mutable __current = __initial
         let _geometry = ResetMod(__initial.geometry)
+        let _projection = ResetMod(__initial.projection)
+        let _semantic = ResetMod(__initial.semantic)
         let _points = ResetMod(__initial.points)
         let _segments = ResetMod(__initial.segments)
         let _color = ResetMod(__initial.color)
         let _thickness = Aardvark.UI.Mutable.MNumericInput.Create(__initial.thickness)
-        let _projection = ResetMod(__initial.projection)
         let _visible = ResetMod(__initial.visible)
         let _text = ResetMod(__initial.text)
         
         member x.geometry = _geometry :> IMod<_>
+        member x.projection = _projection :> IMod<_>
+        member x.semantic = _semantic :> IMod<_>
         member x.points = _points :> IMod<_>
         member x.segments = _segments :> IMod<_>
         member x.color = _color :> IMod<_>
         member x.thickness = _thickness
-        member x.projection = _projection :> IMod<_>
         member x.visible = _visible :> IMod<_>
         member x.text = _text :> IMod<_>
         
@@ -168,11 +170,12 @@ module Mutable =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _geometry.Update(__model.geometry)
+                _projection.Update(__model.projection)
+                _semantic.Update(__model.semantic)
                 _points.Update(__model.points)
                 _segments.Update(__model.segments)
                 _color.Update(__model.color)
                 _thickness.Update(__model.thickness)
-                _projection.Update(__model.projection)
                 _visible.Update(__model.visible)
                 _text.Update(__model.text)
         
@@ -185,11 +188,12 @@ module Mutable =
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module MAnnotation =
         let inline geometry (m : MAnnotation) = m.geometry
+        let inline projection (m : MAnnotation) = m.projection
+        let inline semantic (m : MAnnotation) = m.semantic
         let inline points (m : MAnnotation) = m.points
         let inline segments (m : MAnnotation) = m.segments
         let inline color (m : MAnnotation) = m.color
         let inline thickness (m : MAnnotation) = m.thickness
-        let inline projection (m : MAnnotation) = m.projection
         let inline visible (m : MAnnotation) = m.visible
         let inline text (m : MAnnotation) = m.text
     
@@ -205,6 +209,18 @@ module Mutable =
                     override x.Get(r) = r.geometry
                     override x.Set(r,v) = { r with geometry = v }
                     override x.Update(r,f) = { r with geometry = f r.geometry }
+                }
+            let projection =
+                { new Lens<PRo3DModels.Annotation, PRo3DModels.Projection>() with
+                    override x.Get(r) = r.projection
+                    override x.Set(r,v) = { r with projection = v }
+                    override x.Update(r,f) = { r with projection = f r.projection }
+                }
+            let semantic =
+                { new Lens<PRo3DModels.Annotation, PRo3DModels.Semantic>() with
+                    override x.Get(r) = r.semantic
+                    override x.Set(r,v) = { r with semantic = v }
+                    override x.Update(r,f) = { r with semantic = f r.semantic }
                 }
             let points =
                 { new Lens<PRo3DModels.Annotation, PRo3DModels.Points>() with
@@ -229,12 +245,6 @@ module Mutable =
                     override x.Get(r) = r.thickness
                     override x.Set(r,v) = { r with thickness = v }
                     override x.Update(r,f) = { r with thickness = f r.thickness }
-                }
-            let projection =
-                { new Lens<PRo3DModels.Annotation, PRo3DModels.Projection>() with
-                    override x.Get(r) = r.projection
-                    override x.Set(r,v) = { r with projection = v }
-                    override x.Update(r,f) = { r with projection = f r.projection }
                 }
             let visible =
                 { new Lens<PRo3DModels.Annotation, Microsoft.FSharp.Core.bool>() with
@@ -409,7 +419,7 @@ module Mutable =
                     override x.Update(r,f) = { r with selectedBoxes = f r.selectedBoxes }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    type MDrawingAppModel private(__initial : PRo3DModels.DrawingAppModel) =
+    type MSimpleDrawingAppModel private(__initial : PRo3DModels.SimpleDrawingAppModel) =
         let mutable __current = __initial
         let _camera = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
@@ -423,7 +433,7 @@ module Mutable =
         member x.hoverPosition = _hoverPosition :> IMod<_>
         member x.points = _points :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.DrawingAppModel) =
+        member x.Update(__model : PRo3DModels.SimpleDrawingAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _camera.Update(__model.camera)
@@ -431,6 +441,93 @@ module Mutable =
                 _draw.Update(__model.draw)
                 _hoverPosition.Update(__model.hoverPosition)
                 _points.Update(__model.points)
+        
+        static member Create(initial) = MSimpleDrawingAppModel(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MSimpleDrawingAppModel =
+        let inline camera (m : MSimpleDrawingAppModel) = m.camera
+        let inline rendering (m : MSimpleDrawingAppModel) = m.rendering
+        let inline draw (m : MSimpleDrawingAppModel) = m.draw
+        let inline hoverPosition (m : MSimpleDrawingAppModel) = m.hoverPosition
+        let inline points (m : MSimpleDrawingAppModel) = m.points
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module SimpleDrawingAppModel =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let camera =
+                { new Lens<PRo3DModels.SimpleDrawingAppModel, Aardvark.UI.CameraControllerState>() with
+                    override x.Get(r) = r.camera
+                    override x.Set(r,v) = { r with camera = v }
+                    override x.Update(r,f) = { r with camera = f r.camera }
+                }
+            let rendering =
+                { new Lens<PRo3DModels.SimpleDrawingAppModel, PRo3DModels.RenderingParameters>() with
+                    override x.Get(r) = r.rendering
+                    override x.Set(r,v) = { r with rendering = v }
+                    override x.Update(r,f) = { r with rendering = f r.rendering }
+                }
+            let draw =
+                { new Lens<PRo3DModels.SimpleDrawingAppModel, Microsoft.FSharp.Core.bool>() with
+                    override x.Get(r) = r.draw
+                    override x.Set(r,v) = { r with draw = v }
+                    override x.Update(r,f) = { r with draw = f r.draw }
+                }
+            let hoverPosition =
+                { new Lens<PRo3DModels.SimpleDrawingAppModel, Microsoft.FSharp.Core.option<Aardvark.Base.Trafo3d>>() with
+                    override x.Get(r) = r.hoverPosition
+                    override x.Set(r,v) = { r with hoverPosition = v }
+                    override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
+                }
+            let points =
+                { new Lens<PRo3DModels.SimpleDrawingAppModel, Microsoft.FSharp.Collections.list<Aardvark.Base.V3d>>() with
+                    override x.Get(r) = r.points
+                    override x.Set(r,v) = { r with points = v }
+                    override x.Update(r,f) = { r with points = f r.points }
+                }
+    [<StructuredFormatDisplay("{AsString}")>]
+    type MDrawingAppModel private(__initial : PRo3DModels.DrawingAppModel) =
+        let mutable __current = __initial
+        let _camera = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _rendering = MRenderingParameters.Create(__initial.rendering)
+        let _draw = ResetMod(__initial.draw)
+        let _hoverPosition = ResetMod(__initial.hoverPosition)
+        let _working = ResetMod(__initial.working)
+        let _projection = ResetMod(__initial.projection)
+        let _geometry = ResetMod(__initial.geometry)
+        let _semantic = ResetMod(__initial.semantic)
+        let _annotations = ResetMod(__initial.annotations)
+        
+        member x.camera = _camera
+        member x.rendering = _rendering
+        member x.draw = _draw :> IMod<_>
+        member x.hoverPosition = _hoverPosition :> IMod<_>
+        member x.working = _working :> IMod<_>
+        member x.projection = _projection :> IMod<_>
+        member x.geometry = _geometry :> IMod<_>
+        member x.semantic = _semantic :> IMod<_>
+        member x.annotations = _annotations :> IMod<_>
+        
+        member x.Update(__model : PRo3DModels.DrawingAppModel) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _camera.Update(__model.camera)
+                _rendering.Update(__model.rendering)
+                _draw.Update(__model.draw)
+                _hoverPosition.Update(__model.hoverPosition)
+                _working.Update(__model.working)
+                _projection.Update(__model.projection)
+                _geometry.Update(__model.geometry)
+                _semantic.Update(__model.semantic)
+                _annotations.Update(__model.annotations)
         
         static member Create(initial) = MDrawingAppModel(initial)
         
@@ -444,7 +541,11 @@ module Mutable =
         let inline rendering (m : MDrawingAppModel) = m.rendering
         let inline draw (m : MDrawingAppModel) = m.draw
         let inline hoverPosition (m : MDrawingAppModel) = m.hoverPosition
-        let inline points (m : MDrawingAppModel) = m.points
+        let inline working (m : MDrawingAppModel) = m.working
+        let inline projection (m : MDrawingAppModel) = m.projection
+        let inline geometry (m : MDrawingAppModel) = m.geometry
+        let inline semantic (m : MDrawingAppModel) = m.semantic
+        let inline annotations (m : MDrawingAppModel) = m.annotations
     
     
     
@@ -477,11 +578,35 @@ module Mutable =
                     override x.Set(r,v) = { r with hoverPosition = v }
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
-            let points =
-                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Collections.list<Aardvark.Base.V3d>>() with
-                    override x.Get(r) = r.points
-                    override x.Set(r,v) = { r with points = v }
-                    override x.Update(r,f) = { r with points = f r.points }
+            let working =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.option<PRo3DModels.Annotation>>() with
+                    override x.Get(r) = r.working
+                    override x.Set(r,v) = { r with working = v }
+                    override x.Update(r,f) = { r with working = f r.working }
+                }
+            let projection =
+                { new Lens<PRo3DModels.DrawingAppModel, PRo3DModels.Projection>() with
+                    override x.Get(r) = r.projection
+                    override x.Set(r,v) = { r with projection = v }
+                    override x.Update(r,f) = { r with projection = f r.projection }
+                }
+            let geometry =
+                { new Lens<PRo3DModels.DrawingAppModel, PRo3DModels.Geometry>() with
+                    override x.Get(r) = r.geometry
+                    override x.Set(r,v) = { r with geometry = v }
+                    override x.Update(r,f) = { r with geometry = f r.geometry }
+                }
+            let semantic =
+                { new Lens<PRo3DModels.DrawingAppModel, PRo3DModels.Semantic>() with
+                    override x.Get(r) = r.semantic
+                    override x.Set(r,v) = { r with semantic = v }
+                    override x.Update(r,f) = { r with semantic = f r.semantic }
+                }
+            let annotations =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Collections.list<PRo3DModels.Annotation>>() with
+                    override x.Get(r) = r.annotations
+                    override x.Set(r,v) = { r with annotations = v }
+                    override x.Update(r,f) = { r with annotations = f r.annotations }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =

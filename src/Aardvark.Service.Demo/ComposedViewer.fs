@@ -22,12 +22,13 @@ open System.Collections.Concurrent
 open Aardvark.SceneGraph
 open Aardvark.UI
 open Aardvark.Rendering.Text
+
+open PRo3DModels
 open Demo.TestApp
 open Demo.TestApp.Mutable
 
 module Primitives =
-    open PRo3DModels
-
+    
     let hoverColor = C4b.Blue
     let selectionColor = C4b.Red
     let colors = [new C4b(166,206,227); new C4b(178,223,138); new C4b(251,154,153); new C4b(253,191,111); new C4b(202,178,214)]
@@ -68,9 +69,7 @@ module Primitives =
                     }
                 |> Sg.noEvents    
     
-module SimpleCompositionViewer = 
-    open PRo3DModels
-    open Aardvark.Base
+module SimpleCompositionViewer =     
     
     type Action =
         | CameraMessage    of CameraController.Message
@@ -156,10 +155,7 @@ module SimpleCompositionViewer =
 
     let start () = App.start app
 
-module OrbitCameraDemo = 
-    open PRo3DModels
-    open Aardvark.Base    
-    open Aardvark.UI
+module OrbitCameraDemo =     
     
     type Action =
         | CameraMessage    of ArcBallController.Message
@@ -254,8 +250,6 @@ module OrbitCameraDemo =
     let start () = App.start app
 
 module NavigationModeDemo = 
-    open PRo3DModels
-    open Aardvark.Base    
     
     type Action =
         | ArcBallAction     of ArcBallController.Message
@@ -382,8 +376,6 @@ module NavigationModeDemo =
     let start () = App.start app
 
 module BoxSelectionDemo = 
-    open PRo3DModels
-    open Aardvark.Base
     
     type Action = BoxSelectionDemoAction
 
@@ -529,10 +521,8 @@ module BoxSelectionDemo =
 
     let start () = App.start app
 
-module DrawingApp = 
-    open PRo3DModels
-    open Aardvark.Base
-    
+module SimpleDrawingApp = 
+        
     type Action =
         | CameraMessage    of ArcBallController.Message
         //| AnnotationAction of AnnotationProperties.Action
@@ -543,7 +533,7 @@ module DrawingApp =
         | KeyUp of key : Keys
         | Exit      
 
-    let update (model : DrawingAppModel) (act : Action) =
+    let update (model : SimpleDrawingAppModel) (act : Action) =
         match act, model.draw with
             | CameraMessage m, false -> { model with camera = ArcBallController.update model.camera m }
             //| AnnotationAction a ->
@@ -605,7 +595,7 @@ module DrawingApp =
                                                     |> Array.ofList                                                        
                                     | None -> [||])
 
-    let view (model : MDrawingAppModel) =
+    let view (model : MSimpleDrawingAppModel) =
         let cam =
             model.camera.view 
             
@@ -675,7 +665,7 @@ module DrawingApp =
             points = []
         }
 
-    let app : App<DrawingAppModel,MDrawingAppModel,Action> =
+    let app : App<SimpleDrawingAppModel,MSimpleDrawingAppModel,Action> =
         {
             unpersist = Unpersist.instance
             threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage

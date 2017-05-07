@@ -553,6 +553,7 @@
     <Compile Include="UI.Composed.fs" />
     <Compile Include="ComposedViewer.fs" />
     <Compile Include="SimpleTestModel.fs" />
+    <Compile Include="DrawingApp.fs" />
     <Compile Include="SimpleTest.fs" />
     <Compile Include="Viewer.fs" />
     <Compile Include="KitchenSink.fs" />

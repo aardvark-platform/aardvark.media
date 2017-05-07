@@ -47,16 +47,20 @@ type Segment = Points
 
 type Projection = Linear = 0 | Viewpoint = 1 | Sky = 2
 type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3
+type Semantic = Horizon0 = 0 | Horizon1 = 1 | Horizon2 = 2 | Horizon3 = 3 | Horizon4 = 4 | Crossbed = 5 | GrainSize = 6
 
 [<DomainType>]
 type Annotation = {
     //seqNumber : int
     geometry : Geometry
+    projection : Projection
+    semantic : Semantic
+
     points : Points
     segments : list<Segment>
     color : C4b
     thickness : NumericInput
-    projection : Projection
+
     visible : bool
     text : string
 }
@@ -107,7 +111,7 @@ type OpenPolygon = {
 }
 
 [<DomainType>]
-type DrawingAppModel = {
+type SimpleDrawingAppModel = {
     camera : CameraControllerState
     rendering : RenderingParameters
 
@@ -115,6 +119,23 @@ type DrawingAppModel = {
     hoverPosition : option<Trafo3d>
     points : list<V3d>
 
+}
+
+[<DomainType>]
+type DrawingAppModel = {
+    camera : CameraControllerState
+    rendering : RenderingParameters
+
+    draw    : bool 
+    hoverPosition : option<Trafo3d>
+    //points : list<V3d>
+
+    working : option<Annotation>
+    projection : Projection
+    geometry : Geometry
+    semantic : Semantic
+
+    annotations : list<Annotation>
 }
 
 [<DomainType>]
@@ -130,6 +151,22 @@ type NavigationModeDemoModel = {
     navigation : NavigationParameters
 }
 
+module Annotation =
+    let colorsBlue = [new C4b(241,238,246); new C4b(189,201,225); new C4b(116,169,207); new C4b(43,140,190); new C4b(4,90,141)]
+
+    let make (projection) (geometry) (semantic) : Annotation  = 
+        let color = colorsBlue.[int semantic]
+        {
+            geometry = geometry
+            semantic = semantic
+            points = []
+            segments = []
+            color = color
+            thickness = Numeric.init
+            projection = projection
+            visible = true
+            text = ""
+        }
 
 module InitValues = 
     let edge = [ V3d.IOI; V3d.III; V3d.OOI ]
@@ -138,12 +175,26 @@ module InitValues =
         {
             geometry = Geometry.Polyline
             points = edge
+            semantic = Semantic.Horizon0
             segments = [ edge; edge; edge ]
             color = C4b.Red
             thickness = Numeric.init
             projection = Projection.Viewpoint
             visible = true
             text = "my favorite annotation"
+        }
+
+    let annotationEmpty = 
+        {
+            geometry = Geometry.Polyline
+            semantic = Semantic.Horizon0
+            points = []
+            segments = []
+            color = C4b.Red
+            thickness = Numeric.init
+            projection = Projection.Viewpoint
+            visible = true
+            text = "my snd favorite annotation"
         }
     
     let rendering =
