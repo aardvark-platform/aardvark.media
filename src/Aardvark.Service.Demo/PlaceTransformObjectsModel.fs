@@ -15,13 +15,13 @@ type Object =
         name            : string
         objectType      : ObjectType
         transformation  : Transformation
-        selected        : bool
     }
 
 [<DomainType>]
 type World =
     {
-        objects : hmap<string, Object>
+        objects         : hmap<string, Object>
+        selectedObjects : hset<string>
     }
 
 [<DomainType>]
@@ -29,6 +29,5 @@ type Scene =
     {
         world  : World
 
-        selectedObject : Option<Object>
-        camera         : CameraControllerState
+        camera : CameraControllerState
     }

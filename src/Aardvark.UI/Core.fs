@@ -187,7 +187,7 @@ module Event =
 type AttributeValue<'msg> =
     | String of string
     | Event of Event<'msg>
-    | RenderControlEvent of (SceneEvent -> list<'msg>)
+    //| RenderControlEvent of (SceneEvent -> list<'msg>)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AttributeValue =
@@ -638,14 +638,20 @@ type DomNode private() =
             )
 
         let tree = PickTree.ofSg sg
+        let globalPicks = sg.GlobalPicks()
 
         let proc =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = 
                     tree.Needed.Content |> Mod.force |> printfn "needed: %A"
-                    tree.Needed
+                    ASet.union (AMap.keys globalPicks) tree.Needed
                 member x.Process (source : Guid, evt : byref<SceneEvent>) = 
-                    tree.Perform(&evt)
+                    let msgs = tree.Perform(&evt)
+                    match globalPicks.Content |> Mod.force |> HMap.tryFind evt.kind with
+                        | Some cb -> cb evt @ msgs
+                        | None -> 
+                            //if evt.kind = SceneEventKind.Move then printfn "URDAR"
+                            msgs
             }
 
         DomNode.RenderControl(attributes, proc, getState, scene)

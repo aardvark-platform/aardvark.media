@@ -32,26 +32,41 @@ module SgTools =
     
     type IMessageProcessor<'a> =
         abstract member NeededEvents : aset<SceneEventKind>
-        abstract member Map : aset<SceneEventKind> * ('x -> list<'a>) -> IMessageProcessor<'x>
+        abstract member Map : aset<SceneEventKind> * ('x -> Option<list<'a>>) -> IMessageProcessor<'x>
 
     type IMessageProcessor<'a, 'b> =
         inherit IMessageProcessor<'a>
-        abstract member Process : 'a -> list<'b>
+        abstract member Process : 'a -> Option<list<'b>>
 
 
     module MessageProcessor =
         [<AutoOpen>]
         module Implementation =
-            type Processor<'a, 'b>(needed : aset<SceneEventKind>, mapping : 'a -> list<'b>) =
-                member x.Map(newNeeded : aset<SceneEventKind>, f : 'x -> list<'a>) =
-                    Processor<'x, 'b>(ASet.union needed newNeeded, f >> List.collect mapping) :> IMessageProcessor<'x, 'b>
+
+            let rec collectOption (f : 'a -> Option<list<'b>>) (l : list<'a>) =
+                match l with
+                    | [] -> Some []
+                    | h :: t ->
+                        match f h, collectOption f t with
+                            | Some h, Some t -> Some (h @ t)
+                            | Some h, None -> Some h
+                            | None, Some t -> Some t
+                            | None, None -> None
+
+            type Processor<'a, 'b>(needed : aset<SceneEventKind>, mapping : 'a -> Option<list<'b>>) =
+                member x.Map(newNeeded : aset<SceneEventKind>, f : 'x -> Option<list<'a>>) =
+                    let f x =
+                        match f x with  
+                            | None -> None
+                            | Some xs -> xs |> collectOption mapping
+                    Processor<'x, 'b>(ASet.union needed newNeeded, f) :> IMessageProcessor<'x, 'b>
 
                 member x.Process(msg : 'a) =
                     mapping msg
 
                 interface IMessageProcessor<'a> with
                     member x.NeededEvents = needed
-                    member x.Map (newNeeded : aset<SceneEventKind>, f : 'x -> list<'a>) = x.Map(newNeeded, f) :> IMessageProcessor<'x>
+                    member x.Map (newNeeded : aset<SceneEventKind>, f : 'x -> Option<list<'a>>) = x.Map(newNeeded, f) :> IMessageProcessor<'x>
                     
                 interface IMessageProcessor<'a, 'b> with
                     member x.Process msg = x.Process msg
@@ -65,11 +80,11 @@ module SgTools =
                 interface IMessageProcessor<'a, 'a> with
                     member x.NeededEvents = ASet.empty
 
-                    member x.Map(needed : aset<SceneEventKind>, f : 'x -> list<'a>) =
+                    member x.Map(needed : aset<SceneEventKind>, f : 'x -> Option<list<'a>>) =
                         Processor<'x, 'a>(needed, f) :> IMessageProcessor<_>
 
                     member x.Process(msg : 'a) =
-                        [ msg ]
+                        Some [ msg ]
 
             type IgnoreProcessor<'a, 'b> private() =
                 
@@ -80,11 +95,11 @@ module SgTools =
                 interface IMessageProcessor<'a, 'b> with
                     member x.NeededEvents = ASet.empty
 
-                    member x.Map(newNeeded : aset<_>, f : 'x -> list<'a>) =
+                    member x.Map(newNeeded : aset<_>, f : 'x -> Option<list<'a>>) =
                         IgnoreProcessor<'x, 'b>.Instance
 
                     member x.Process(msg : 'a) =
-                        []
+                        Some []
                 
 
         let id<'msg> = IdentityProcessor<'msg>.Instance
@@ -92,13 +107,13 @@ module SgTools =
         let ignore<'a, 'b> = IgnoreProcessor<'a, 'b>.Instance
 
         let map (newNeeded : aset<SceneEventKind>) (mapping : 'x -> 'a) (p : IMessageProcessor<'a>) =
-            p.Map(newNeeded, mapping >> List.singleton)
+            p.Map(newNeeded, mapping >> List.singleton >> Some)
 
         let choose (newNeeded : aset<SceneEventKind>) (mapping : 'x -> Option<'a>) (p : IMessageProcessor<'a>) =
-            p.Map(newNeeded, mapping >> Option.toList)
+            p.Map(newNeeded, mapping >> Option.map List.singleton)
 
         let collect (newNeeded : aset<SceneEventKind>) (mapping : 'x -> list<'a>) (p : IMessageProcessor<'a>) =
-            p.Map(newNeeded, mapping)
+            p.Map(newNeeded, mapping >> Some)
 
 
 type ISg<'msg> =
@@ -124,7 +139,7 @@ module Sg =
 
         member x.Child = child
 
-    type MapApplicator<'inner, 'outer>(mapping : 'inner -> list<'outer>, child : ISg<'inner>) =
+    type MapApplicator<'inner, 'outer>(mapping : 'inner -> Option<list<'outer>>, child : ISg<'inner>) =
         interface Aardvark.SceneGraph.IApplicator with
             member x.Child = child |> unbox |> Mod.constant
 
@@ -134,6 +149,10 @@ module Sg =
         member x.Mapping = mapping
 
     type EventApplicator<'msg>(events : amap<SceneEventKind, SceneEvent -> list<'msg>>, child : ISg<'msg>) =
+        inherit AbstractApplicator<'msg>(child)
+        member x.Events = events
+
+    type GlobalEvent<'msg>(events : amap<SceneEventKind, SceneEvent -> list<'msg>>, child : ISg<'msg>) =
         inherit AbstractApplicator<'msg>(child)
         member x.Events = events
 
@@ -172,6 +191,9 @@ module ``F# Sg`` =
 
         let withEvents (events : list<SceneEventKind * (SceneEvent -> list<'msg>)>) (sg : ISg<'msg>) =
             Sg.EventApplicator(AMap.ofList events, sg) :> ISg<'msg>
+ 
+        let withGlobalEvents (events : list<SceneEventKind * (SceneEvent -> list<'msg>)>) (sg : ISg<'msg>) =
+            Sg.GlobalEvent(AMap.ofList events, sg) :> ISg<'msg>
 
         let uniform (name : string) (value : IMod<'a>) (sg : ISg<'msg>) =
            sg |> unboxed (Sg.uniform name value)
@@ -216,7 +238,7 @@ module ``F# Sg`` =
             ofList [sg;andSg]
 
         let map (f : 'a -> 'b) (a : ISg<'a>) : ISg<'b> =
-            Sg.MapApplicator<'a,'b>(f >> List.singleton,a) :> ISg<_>
+            Sg.MapApplicator<'a,'b>(f >> List.singleton >> Some,a) :> ISg<_>
 
 
         let geometrySet mode attributeTypes (geometries : aset<_>) : ISg<'msg> =
@@ -372,6 +394,9 @@ module ``Sg Events`` =
         let onMouseMove (f : V3d -> 'msg) =
             SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.position]
 
+        let onMouseMoveRay (f : Ray3d -> 'msg) =
+            SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.ray.Ray.Ray]
+
         let onMouseUp (f : V3d -> 'msg) =
             SceneEventKind.Up, fun (evt : SceneEvent) -> [f evt.position]
             
@@ -396,6 +421,9 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                     ASet.empty
         )
 
+   
+    let mutable last = None
+
     static let intersectLeaf (kind : SceneEventKind) (part : RayPart) (p : PickObject) =
         let pickable = p.Pickable |> Mod.force
         match Pickable.intersect part pickable with
@@ -403,56 +431,47 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                 let pt = part.Ray.Ray.GetPointOnRay t
                 match Ag.tryGetInhAttribute p.Scope "PickProcessor" with
                     | Some (:? SgTools.IMessageProcessor<SceneEvent,'msg> as proc) ->
-                        Some (RayHit(t, proc))
+                        Some <| RayHit(t, proc)
                     | _ ->
                         None
             | None -> 
                 None
 
-    let mutable last = None
-    
-    let perform (evt : byref<SceneEvent>) (bvh : BvhTree<PickObject>) =
+    member private x.Perform (evt : byref<SceneEvent>, bvh : BvhTree<PickObject>) =
         match bvh.Intersect(intersectLeaf evt.kind, evt.ray) with
             | Some (hit) ->
                 let proc = hit.Value
                 evt <- { evt with rayT = hit.T }
-
-                let perform (evt : SceneEvent) =
-                    proc.Process evt
-
-                let evt = evt
-                let boot() =
-                    [
-                        yield! perform { evt with kind = SceneEventKind.Enter }
-                        yield! perform evt
-                    ]
-                    
-
-                match last with
-                    | Some lastProc when System.Object.ReferenceEquals(lastProc, proc) ->
-                        perform evt
-
-                    | Some lastProc ->
-                        last <- Some proc
-                        let l = lastProc.Process { evt with kind = SceneEventKind.Leave }
-                        l @ boot()
-  
-                    | None ->
-                        last <- Some proc
-                        boot()              
-            | None ->
-                match last with
-                    | Some lastProc ->
+                match proc.Process evt with
+                    | None -> 
+                        evt <- { evt with ray = RayPart(evt.ray.Ray, hit.T + 0.1, evt.ray.TMax) }
+                        x.Perform(&evt,bvh)
+                    | Some msgs ->  
+                        if Some proc <> last then
+                            let enters = proc.Process { evt with kind = SceneEventKind.Enter } |> Option.defaultValue []
+                            match last with
+                                | Some l -> 
+                                    let leaves = l.Process { evt with kind = SceneEventKind.Leave } |> Option.defaultValue []
+                                    last <- Some proc
+                                    leaves @ enters @ msgs
+                                | None -> 
+                                    last <- Some proc
+                                    enters @ msgs
+                        else msgs
+            | None -> 
+                 match last with
+                    | Some l -> 
+                        let leaves = l.Process { evt with kind = SceneEventKind.Leave } |> Option.defaultValue []
                         last <- None
-                        lastProc.Process { evt with kind = SceneEventKind.Leave }
-                    | _ ->
+                        leaves
+                    | None -> 
                         []
 
     member x.Needed = needed
 
     member x.Perform(evt : byref<SceneEvent>) =
         let bvh = bvh |> Mod.force
-        perform &evt bvh
+        x.Perform(&evt,bvh)
         
     member x.Dispose() =
         bvh.Dispose()
@@ -480,6 +499,7 @@ type private PickObject = Aardvark.SceneGraph.``Sg Picking Extensions``.PickObje
 [<AutoOpen>]
 module ``Message Semantics`` =
     open Aardvark.SceneGraph
+    open Aardvark.UI.Sg
 
     type IRuntime with
         member x.CompileRender(fbo : IFramebufferSignature, config : BackendConfiguration, sg : ISg<'msg>) =
@@ -488,9 +508,12 @@ module ``Message Semantics`` =
         member x.CompileRender(fbo : IFramebufferSignature, sg : ISg<'msg>) =
             x.CompileRender(fbo, unbox<Aardvark.SceneGraph.ISg> sg)
 
+    type GlobalPicks<'msg> = amap<SceneEventKind, SceneEvent -> list<'msg>> 
+
     type ISg<'msg> with
         member x.RenderObjects() : aset<IRenderObject> = x?RenderObjects()
         member x.PickObjects() : aset<PickObject> = x?PickObjects()
+        member x.GlobalPicks() : GlobalPicks<'msg> = x?GlobalPicks();
         member x.GlobalBoundingBox() : IMod<Box3d> = x?GlobalBoundingBox
         member x.LocalBoundingBox() : IMod<Box3d> = x?LocalBoundingBox()
 
@@ -560,6 +583,35 @@ module ``Message Semantics`` =
                 |> ASet.mapM (fun c -> c.LocalBoundingBox()) 
                 |> ASet.foldHalfGroup add trySub Box3d.Invalid
 
+        
+
+        member x.GlobalPicks(g : IGroup<'msg>) : GlobalPicks<'msg> =
+             // usuperfast
+             let set = g.Children |> ASet.map (fun a -> a.GlobalPicks())
+             let combine k l r e =
+                l e @ r e
+             let m = set |> ASet.fold (AMap.unionWith combine) AMap.empty
+             AMap.bind id m
+
+        member x.GlobalPicks(a : IApplicator<'msg>) : GlobalPicks<'msg> =
+            a.Child.GlobalPicks()
+
+        member x.GlobalPicks(g : Sg.GlobalEvent<'msg>) : GlobalPicks<'msg> =
+            amap {
+                yield! g.Events
+                let child = g.Child
+                yield! child.GlobalPicks()
+            }
+
+        member x.GlobalPicks(other : ISg<'msg>) : GlobalPicks<'msg>  =
+            AMap.empty
+
+        member x.GlobalPicks(ma : MapApplicator<'i,'o>) : GlobalPicks<'o> =
+            let c = ma.Child
+            let picks = c.GlobalPicks()
+            picks |> AMap.map (fun k v e -> v e |> List.collect (Option.defaultValue [] << ma.Mapping))
+
+
     [<Semantic>]
     type MessageProcessorSem() =
 
@@ -598,9 +650,15 @@ module ``Message Semantics`` =
 
             let processor (evt : SceneEvent) =
                 let evts = app.Events.Content |> Mod.force
+                let createArtificialMove = 
+                    (HMap.containsKey SceneEventKind.Enter evts || HMap.containsKey SceneEventKind.Leave evts) &&
+                    (not <| HMap.containsKey SceneEventKind.Move evts)
+                let evts =
+                    if createArtificialMove then HMap.add SceneEventKind.Move (fun _ -> []) evts
+                    else evts
                 match HMap.tryFind evt.kind evts with
-                    | Some cb -> cb evt
-                    | None -> []
+                    | Some cb -> Some (cb evt)
+                    | None -> None
                 
             app.Child?PickProcessor <- msg.Map(needed, processor)
 //

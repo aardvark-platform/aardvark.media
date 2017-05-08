@@ -117,7 +117,7 @@ module TranslateController =
     type ControllerAction = 
         | Hover of Axis
         | Unhover 
-        | MoveRay of RayPart
+        | MoveRay of Ray3d
         | Grab of V3d * Axis
         | Release
     
@@ -147,7 +147,7 @@ module TranslateController =
                         | Y -> Ray3d(point, V3d.OIO)
                         | Z -> Ray3d(point, V3d.OOI)
 
-                    let nearest = rp.Ray.Ray.GetClosestPointOn other
+                    let nearest = rp.GetClosestPointOn other
 
                     let trafo = Trafo3d.Translation (nearest + offset)
 
@@ -186,23 +186,15 @@ module TranslateController =
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
         
-        let ig =
-            IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
-                |> Sg.ofIndexedGeometry
-                |> Sg.effect [
-                    toEffect DefaultSurfaces.trafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-                |> Sg.noEvents
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
         |> Sg.trafo m.trafo
-        |> Sg.andAlso ig
+        |> Sg.withGlobalEvents [
+                Sg.onMouseMoveRay MoveRay
+                Sg.onMouseUp (fun _ -> Release)
+           ]
         |> Sg.map liftMessage
 
-    let controlSubscriptions lift = 
-        [ RenderControl.onMouseMove (fun r t -> lift (MoveRay r))
-          onMouseUp ( fun _ _ -> lift Release ) ]
 
     let updateScene (m : Scene) (a : SceneAction) =
         match a with
@@ -211,13 +203,26 @@ module TranslateController =
             | ControllerAction a -> { m with transformation = updateController m.transformation a }
             | _ -> m
 
+    let viewScene' (m : MScene) =
+        let cross =
+             IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
+                |> Sg.ofIndexedGeometry
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.trafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+                |> Sg.noEvents
+
+        //Sg.ofList [viewController ControllerAction m.transformation; cross]
+        viewController ControllerAction m.transformation
+
     let viewScene (m : MScene) =
         div [] [
             CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                 (AttributeMap.ofList [ 
                     yield  attribute "style" "width:100%; height: 100%"; 
-                    yield! controlSubscriptions ControllerAction
-                 ]) (viewController ControllerAction m.transformation)
+                    //yield! controlSubscriptions ControllerAction
+                 ]) (viewScene' m)
         ]
 
     let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
