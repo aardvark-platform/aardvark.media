@@ -213,8 +213,7 @@ module TranslateController =
                     ]
                 |> Sg.noEvents
 
-        //Sg.ofList [viewController ControllerAction m.transformation; cross]
-        viewController ControllerAction m.transformation
+        Sg.ofList [viewController ControllerAction m.transformation; cross]
 
     let viewScene (m : MScene) =
         div [] [

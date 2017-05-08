@@ -39,6 +39,8 @@ open PRo3DModels.Mutable
 * plane pickshape
 * Sg.shader  for ISg<'msg>
 * multiple picks along pickray (e.g. pickthrough for example in when selecting objs etc)
+* click has wrong semantics
+* globalpicks should have firsthit property
 
 *)
 

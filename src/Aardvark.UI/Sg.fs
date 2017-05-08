@@ -23,6 +23,7 @@ type SceneEvent =
         ray     : RayPart
         rayT    : float
         buttons : MouseButtons
+        nearPlanePick : bool
     }
 
     member x.position = x.ray.Ray.Ray.GetPointOnRay x.rayT
@@ -372,6 +373,9 @@ module ``F# Sg`` =
         module Incremental =
             let withEvents (events : amap<SceneEventKind, SceneEvent -> list<'msg>>) (sg : ISg<'msg>) =
                 Sg.EventApplicator(events, sg) :> ISg<'msg>
+ 
+            let withGlobalEvents (events : amap<SceneEventKind, (SceneEvent -> list<'msg>)>) (sg : ISg<'msg>) =
+                Sg.GlobalEvent(events, sg) :> ISg<'msg>
 
 
 [<AutoOpen>]
@@ -399,6 +403,9 @@ module ``Sg Events`` =
 
         let onMouseUp (f : V3d -> 'msg) =
             SceneEventKind.Up, fun (evt : SceneEvent) -> [f evt.position]
+
+        let onMouseUpNoHit (f : Ray3d -> 'msg) =
+            SceneEventKind.Up, fun (evt : SceneEvent) -> if evt.nearPlanePick then [f evt.ray.Ray.Ray] else []
             
         let onEnter (f : V3d -> 'msg) =
             SceneEventKind.Enter, fun (evt : SceneEvent) -> [f evt.position]

@@ -484,9 +484,9 @@ type DomNode private() =
 
     static let button (code : int) =
         match code with
-            | 0 -> MouseButtons.Left
-            | 1 -> MouseButtons.Middle
-            | 2 -> MouseButtons.Right
+            | 1 -> MouseButtons.Left
+            | 2 -> MouseButtons.Middle
+            | 3 -> MouseButtons.Right
             | _ -> MouseButtons.None
 
     static member Text(content : IMod<string>) = 
@@ -529,6 +529,7 @@ type DomNode private() =
                             ray     = ray 
                             rayT    = -1.0
                             buttons = buttons
+                            nearPlanePick = false
                         }
 
                     let procRes = processor.Process(sourceSession, &evt)
@@ -650,6 +651,8 @@ type DomNode private() =
                     ASet.union (AMap.keys globalPicks) tree.Needed
                 member x.Process (source : Guid, evt : byref<SceneEvent>) = 
                     let msgs = tree.Perform(&evt)
+
+                    evt <- { evt with nearPlanePick = (evt.rayT = -1.0) }
 
                     let m = globalPicks.Content |> Mod.force
                     match m |> HMap.tryFind evt.kind with

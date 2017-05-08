@@ -14,7 +14,6 @@ module App =
     open PlaceTransformObjects
 
     type Action = 
-        | MovePlane of V3d   
         | PlaceBox 
         | Select of string
         | Translate of string * TranslateController.ControllerAction
@@ -22,46 +21,41 @@ module App =
         | Unselect
         | Nop
 
+    let isGrabbed (world : World) =
+        world.selectedObjects |> HSet.exists (fun name -> 
+            match HMap.tryFind name world.objects with
+                | Some o -> o.transformation.grabbed.IsSome
+                | None -> false
+        )
 
     let update (m : Scene) (a : Action) =
         match a with
             | CameraMessage a -> 
-                let isGrabbed =
-                    m.world.selectedObjects |> HSet.exists (fun name -> 
-                        match HMap.tryFind name m.world.objects with
-                            | Some o -> o.transformation.grabbed.IsSome
-                            | None -> false
-                    )
-
-                if isGrabbed then m 
+                if isGrabbed m.world then m 
                 else { m with camera = CameraController.update m.camera a }
-            | MovePlane t -> m
             | PlaceBox -> 
                 let name = System.Guid.NewGuid() |> string
                 let newObject = { name = name; objectType = ObjectType.Box; transformation = TranslateController.initial }
                 let world = { m.world with objects = HMap.add name newObject m.world.objects }
                 { m with world = world }
             | Select n -> 
-                let world = { m.world with selectedObjects = HSet.add n m.world.selectedObjects }
+                let world = { m.world with selectedObjects = HSet.add n HSet.empty }
                 { m with world = world }
             | Translate(name,a) -> 
                 let lens = Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
                 lens.Update(m, fun t -> TranslateController.updateController t a)
             | Unselect -> 
-                { m with world = { m.world with selectedObjects = HSet.empty } } 
+                if isGrabbed m.world then m // hack
+                else  { m with world = { m.world with selectedObjects = HSet.empty } } 
             | Nop -> m
 
 
     let viewScene (m : MScene) =
 
-
         let plane = 
             Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.OOO,V3d(10.0,10.0,-0.1)))
-            |> Sg.requirePicking
+            //|> Sg.requirePicking
             |> Sg.noEvents
-            |> Sg.withEvents [
-                    Sg.onMouseMove MovePlane
-               ]
 
         let objects =
             aset {
@@ -79,13 +73,21 @@ module App =
                             amap {
                                 let! selected = selected
                                 if not selected then
-                                    yield Sg.onMouseDown (fun _ _ -> Select name)
+                                    yield Sg.onClick (fun _ -> Select name)
                             } )
                         |> Sg.trafo obj.transformation.trafo 
                         |> Sg.andAlso controller
             } |> Sg.set
 
         Sg.ofSeq [plane; objects; ]
+        |> Sg.Incremental.withGlobalEvents (
+                amap {
+                    let! selected = m.world.selectedObjects |> ASet.count
+                    if selected > 0 then 
+                        yield Sg.onMouseUpNoHit (fun _ -> Unselect) // hack
+                    
+                }
+           )
         |> Sg.effect [
                 toEffect <| DefaultSurfaces.trafo
                 toEffect <| DefaultSurfaces.vertexColor
@@ -97,9 +99,7 @@ module App =
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [
-                        attribute "style" "width:85%; height: 100%; float: left;"
-                    ]) (viewScene m)
+                    (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"]) (viewScene m)
 
                 div [style "width:15%; height: 100%; float:right"] [
                     Html.SemUi.stuffStack [
