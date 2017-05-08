@@ -26,16 +26,15 @@ module App =
     let update (m : Scene) (a : Action) =
         match a with
             | CameraMessage a -> 
-                //let isGrabbed =
-                //    m.world.selectedObjects |> HSet.exists (fun name -> 
-                //        match HMap.tryFind name m.world.objects with
-                //            | Some o -> o.transformation.grabbed.IsSome
-                //            | None -> false
-                //    )
+                let isGrabbed =
+                    m.world.selectedObjects |> HSet.exists (fun name -> 
+                        match HMap.tryFind name m.world.objects with
+                            | Some o -> o.transformation.grabbed.IsSome
+                            | None -> false
+                    )
 
-                //if isGrabbed then m 
-                //else
-                { m with camera = CameraController.update m.camera a }
+                if isGrabbed then m 
+                else { m with camera = CameraController.update m.camera a }
             | MovePlane t -> m
             | PlaceBox -> 
                 let name = System.Guid.NewGuid() |> string
@@ -60,9 +59,9 @@ module App =
             Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.OOO,V3d(10.0,10.0,-0.1)))
             |> Sg.requirePicking
             |> Sg.noEvents
-            //|> Sg.withEvents [
-            //        Sg.onMouseMove MovePlane
-            //   ]
+            |> Sg.withEvents [
+                    Sg.onMouseMove MovePlane
+               ]
 
         let objects =
             aset {
@@ -86,7 +85,7 @@ module App =
                         |> Sg.andAlso controller
             } |> Sg.set
 
-        Sg.ofSeq [plane; objects; ]//selectedObj]
+        Sg.ofSeq [plane; objects; ]
         |> Sg.effect [
                 toEffect <| DefaultSurfaces.trafo
                 toEffect <| DefaultSurfaces.vertexColor
@@ -99,12 +98,7 @@ module App =
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                     (AttributeMap.ofList [
-                        yield attribute "style" "width:85%; height: 100%; float: left;"
-                        //yield! TranslateController.controlSubscriptions (fun a -> 
-                        //    match  m.world.selectedObjects |> ASet.toList with
-                        //        | [] -> Nop
-                        //        | n::_ -> Translate(n,a)
-                        //    )
+                        attribute "style" "width:85%; height: 100%; float: left;"
                     ]) (viewScene m)
 
                 div [style "width:15%; height: 100%; float:right"] [

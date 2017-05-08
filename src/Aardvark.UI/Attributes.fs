@@ -158,7 +158,8 @@ module Events =
         open Aardvark.Base.Geometry
 
         let onMouseMove (cb : RayPart -> Option<float> -> 'msg) =
-            "RenderControl.onmousemove", AttributeValue.RenderControlEvent(fun e -> [cb e.ray (if e.rayT >= 0.0 then Some e.rayT else None)] )
+            failwith ""
+            //"RenderControl.onmousemove", AttributeValue.RenderControlEvent(fun e -> [cb e.ray (if e.rayT >= 0.0 then Some e.rayT else None)] )
             
     
 

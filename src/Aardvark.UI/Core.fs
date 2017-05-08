@@ -197,8 +197,8 @@ module AttributeValue =
             | _, AttributeValue.Event l, AttributeValue.Event r -> 
                 AttributeValue.Event (Event.combine l r)
 
-            | _, AttributeValue.RenderControlEvent l,  AttributeValue.RenderControlEvent r ->
-                 AttributeValue.RenderControlEvent (fun a -> l a @ r a)
+            //| _, AttributeValue.RenderControlEvent l,  AttributeValue.RenderControlEvent r ->
+            //     AttributeValue.RenderControlEvent (fun a -> l a @ r a)
 
             | "class", AttributeValue.String l, AttributeValue.String r -> 
                 AttributeValue.String (l + " " + r)
@@ -212,7 +212,7 @@ module AttributeValue =
         match v with
             | AttributeValue.Event e -> AttributeValue.Event (Event.map f e)
             | AttributeValue.String s -> AttributeValue.String s
-            | AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
+            //| AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
 
 
 type AttributeMap<'msg>(map : amap<string, AttributeValue<'msg>>) =
@@ -502,18 +502,18 @@ type DomNode private() =
     static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState,scene : Aardvark.Service.Scene) =
 
         
-        let controlEvents = 
-            attributes |> AttributeMap.toAMap |> AMap.choose (fun k v -> 
-                if k.StartsWith "RenderControl." then
-                    match v with
-                        | AttributeValue.RenderControlEvent cb -> Some cb
-                        | _ -> None
-                else
-                    None    
-            )
+        //let controlEvents = 
+        //    attributes |> AttributeMap.toAMap |> AMap.choose (fun k v -> 
+        //        if k.StartsWith "RenderControl." then
+        //            match v with
+        //                | AttributeValue.Event cb -> Some cb
+        //                | _ -> None
+        //        else
+        //            None    
+        //    )
 
-        let needed =
-            controlEvents |> AMap.keys |> ASet.choose (fun str -> Map.tryFind (str.Substring(14)) eventKinds )
+        //let needed =
+        //    controlEvents |> AMap.keys |> ASet.choose (fun str -> Map.tryFind (str.Substring(14)) eventKinds )
 
 
 
@@ -532,13 +532,15 @@ type DomNode private() =
                         }
 
                     let procRes = processor.Process(sourceSession, &evt)
+                    procRes
 
-                    let renderControlName = "RenderControl." + eventNames.[kind]
-                    match HMap.tryFind renderControlName (Mod.force controlEvents.Content) with
-                        | Some cb ->
-                            cb evt @ procRes
-                        | None -> 
-                            procRes
+                    //let renderControlName = "RenderControl." + eventNames.[kind]
+                    //match HMap.tryFind renderControlName (Mod.force controlEvents.Content) with
+                    //    | Some cb ->
+                    //        cb.s
+                    //        cb evt @ procRes
+                    //    | None -> 
+                    //        procRes
 
                 | None ->
                     Log.warn "[UI] could not get client info for %A/%s" sourceSession sourceId
@@ -570,22 +572,24 @@ type DomNode private() =
             }
 
         let events =
-            ASet.union needed processor.NeededEvents 
-                |> ASet.choose (fun k -> 
-                    match Map.tryFind k eventNames with
-                        | Some name -> Some name
-                        | None -> 
-                            match k with
-                                | SceneEventKind.Enter | SceneEventKind.Leave -> Some "onmousemove"
-                                | _ -> None
-                ) 
-                |> AMap.mapSet (fun name ->
-                    match Map.tryFind name eventKinds with
-                        | Some kind ->
-                            let button = needsButton kind
-                            AttributeValue.Event(rayEvent button kind)
-                        | _ ->
-                            failwithf "[Scene] unknown event %A" name
+           processor.NeededEvents 
+                |> ASet.map (fun k -> 
+                    let kind = 
+                        match k with
+                            | SceneEventKind.Enter | SceneEventKind.Leave -> SceneEventKind.Move
+                            | _ -> k
+
+                    
+                    let button = needsButton kind
+                    eventNames.[kind], AttributeValue.Event(rayEvent button kind)
+                )
+                |> AMap.ofASet
+                |> AMap.map (fun k vs ->
+                    match HSet.toList vs with
+                        | [] -> AttributeValue.Event Event.empty
+                        | h :: rest ->
+                            rest |> List.fold (AttributeValue.combine "urdar") h
+                            
                 )
                 |> AttributeMap.ofAMap
 
@@ -643,14 +647,16 @@ type DomNode private() =
         let proc =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = 
-                    tree.Needed.Content |> Mod.force |> printfn "needed: %A"
                     ASet.union (AMap.keys globalPicks) tree.Needed
                 member x.Process (source : Guid, evt : byref<SceneEvent>) = 
                     let msgs = tree.Perform(&evt)
-                    match globalPicks.Content |> Mod.force |> HMap.tryFind evt.kind with
-                        | Some cb -> cb evt @ msgs
+
+                    let m = globalPicks.Content |> Mod.force
+                    match m |> HMap.tryFind evt.kind with
+                        | Some cb -> 
+                            let res = cb evt
+                            res @ msgs
                         | None -> 
-                            //if evt.kind = SceneEventKind.Move then printfn "URDAR"
                             msgs
             }
 

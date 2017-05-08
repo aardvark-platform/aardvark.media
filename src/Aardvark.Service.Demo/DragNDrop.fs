@@ -221,7 +221,6 @@ module TranslateController =
             CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                 (AttributeMap.ofList [ 
                     yield  attribute "style" "width:100%; height: 100%"; 
-                    //yield! controlSubscriptions ControllerAction
                  ]) (viewScene' m)
         ]
 

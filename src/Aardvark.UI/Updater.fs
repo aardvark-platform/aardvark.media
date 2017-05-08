@@ -229,8 +229,8 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
                 state.handlers.[(id, name)] <- desc.serverSide
                 Some code
 
-            | AttributeValue.RenderControlEvent _ ->
-                None
+            //| AttributeValue.RenderControlEvent _ ->
+            //    None
 
     static let destroyAttribute (state : UpdateState<'msg>) (id : string) (name : string) =
         state.handlers.Remove (id,name) |> ignore

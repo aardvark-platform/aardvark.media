@@ -520,6 +520,16 @@ module ``Message Semantics`` =
         member x.MessageProcessor : IMessageProcessor<'msg> = x?MessageProcessor
         member x.PickProcessor : IMessageProcessor<SceneEvent> = x?PickProcessor
 
+
+    let rec allMsgSgs (s : ISg) : aset<ISg<'msg>> =
+        match s with
+            | :? ISg<'msg> as s -> ASet.ofList [s]
+            | :? IApplicator as a -> a.Child |> ASet.bind allMsgSgs
+            | :? IGroup as g -> g.Children |> ASet.collect allMsgSgs
+            | _ -> ASet.empty
+                
+        
+
     [<Semantic>]
     type StandardSems() =
 
@@ -587,28 +597,48 @@ module ``Message Semantics`` =
 
         member x.GlobalPicks(g : IGroup<'msg>) : GlobalPicks<'msg> =
              // usuperfast
-             let set = g.Children |> ASet.map (fun a -> a.GlobalPicks())
-             let combine k l r e =
-                l e @ r e
-             let m = set |> ASet.fold (AMap.unionWith combine) AMap.empty
-             AMap.bind id m
+             
+             g.Children 
+                |> ASet.collect (fun g -> g.GlobalPicks() |> AMap.toASet)
+                |> AMap.ofASet
+                |> AMap.map (fun k vs ->
+                    match HSet.toList vs with
+                        | [] -> fun _ -> []
+                        | h :: rest ->
+                            rest |> List.fold (fun l r e -> l e @ r e) h
+                            
+                )
 
         member x.GlobalPicks(a : IApplicator<'msg>) : GlobalPicks<'msg> =
             a.Child.GlobalPicks()
+            
+            
+        member x.GlobalPicks(a : Sg.Adapter<'msg>) : GlobalPicks<'msg> =
+            let children = a.Child |> ASet.bind allMsgSgs
+            
+            children 
+                |> ASet.collect (fun g -> g.GlobalPicks() |> AMap.toASet)
+                |> AMap.ofASet
+                |> AMap.map (fun k vs ->
+                    match HSet.toList vs with
+                        | [] -> fun _ -> []
+                        | h :: rest ->
+                            rest |> List.fold (fun l r e -> l e @ r e) h
+                            
+                )
+
 
         member x.GlobalPicks(g : Sg.GlobalEvent<'msg>) : GlobalPicks<'msg> =
-            amap {
-                yield! g.Events
-                let child = g.Child
-                yield! child.GlobalPicks()
-            }
+            let a = g.Events
+            let b = g.Child.GlobalPicks()
+            AMap.unionWith (fun k l r e -> l e @ r e) a b
 
+            
         member x.GlobalPicks(other : ISg<'msg>) : GlobalPicks<'msg>  =
             AMap.empty
 
         member x.GlobalPicks(ma : MapApplicator<'i,'o>) : GlobalPicks<'o> =
-            let c = ma.Child
-            let picks = c.GlobalPicks()
+            let picks = ma.Child.GlobalPicks()
             picks |> AMap.map (fun k v e -> v e |> List.collect (Option.defaultValue [] << ma.Mapping))
 
 
