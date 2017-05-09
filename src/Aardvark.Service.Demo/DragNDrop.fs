@@ -95,6 +95,10 @@ module TranslateController =
 
     open DragNDrop
 
+    type RayPart with
+        member x.Transformed(t : Trafo3d) =
+            RayPart(FastRay3d(x.Ray.Ray.Transformed(t.Forward)), x.TMin, x.TMax)
+
     module Shader =
     
         open FShade
@@ -117,13 +121,26 @@ module TranslateController =
     type ControllerAction = 
         | Hover of Axis
         | Unhover 
-        | MoveRay of Ray3d
-        | Grab of V3d * Axis
+        | MoveRay of RayPart
+        | Grab of RayPart * Axis
         | Release
     
     type SceneAction =
         | ControllerAction of ControllerAction
         | CameraAction     of CameraController.Message
+
+
+    let closestT (r : RayPart) (axis : Axis) =
+        let other =
+            match axis with
+            | X -> Ray3d(V3d.OOO, V3d.IOO)
+            | Y -> Ray3d(V3d.OOO, V3d.OIO)
+            | Z -> Ray3d(V3d.OOO, V3d.OOI)
+
+        let mutable unused = 0.0
+        let mutable t = 0.0
+        r.Ray.Ray.GetMinimalDistanceTo(other,&unused,&t) |> ignore
+        t
 
     let updateController (m : Transformation) (a : ControllerAction) =
         match a with
@@ -131,27 +148,25 @@ module TranslateController =
                 { m with hovered = Some axis }
             | Unhover -> 
                 { m with hovered = None }
-            | Grab (point, axis) ->
-                let offset = 
-                    let center = V3d.OOO |> m.trafo.Forward.TransformPos 
-                    center - point
-                { m with grabbed = Some { point = point; offset = offset; axis = axis } } 
+            | Grab (rp, axis) ->
+                let offset = closestT (rp.Transformed m.trafo.Inverse) axis
+                { m with grabbed = Some { offset = offset; axis = axis } } 
             | Release ->
                 { m with grabbed = None }
             | MoveRay rp ->
                 match m.grabbed with
-                | Some { point = point; offset = offset; axis = axis } ->
-                    let other =
+                | Some { offset = offset; axis = axis } ->
+     
+                     let other =
                         match axis with
-                        | X -> Ray3d(point, V3d.IOO)
-                        | Y -> Ray3d(point, V3d.OIO)
-                        | Z -> Ray3d(point, V3d.OOI)
+                        | X -> V3d.IOO
+                        | Y -> V3d.OIO
+                        | Z -> V3d.OOI
 
-                    let nearest = rp.GetClosestPointOn other
+                     let closestPoint = closestT (rp.Transformed m.trafo.Inverse) axis
+                     let trafo = m.trafo * Trafo3d.Translation ((closestPoint - offset) * other)
 
-                    let trafo = Trafo3d.Translation (nearest + offset)
-
-                    { m with trafo = trafo }
+                     { m with trafo = trafo; }
                 | None -> m
 
     let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) =
@@ -177,9 +192,9 @@ module TranslateController =
             |> Sg.transform rot
             |> Sg.uniform "HoverColor" col
             |> Sg.withEvents [ 
-                    Sg.onEnter     (fun _ ->   Hover axis)
-                    Sg.onMouseDown (fun _ p -> Grab (p,axis))
-                    Sg.onLeave     (fun _ ->   Unhover) 
+                    Sg.onEnter        (fun _ ->   Hover axis)
+                    Sg.onMouseDownEvt (fun evt -> Grab (evt.ray, axis))
+                    Sg.onLeave        (fun _ ->   Unhover) 
               ]
 
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X

@@ -650,8 +650,8 @@ type DomNode private() =
                 member x.NeededEvents = 
                     ASet.union (AMap.keys globalPicks) tree.Needed
                 member x.Process (source : Guid, evt : byref<SceneEvent>) = 
+                    //evt <- { evt with rayT = -1.0 }
                     let msgs = tree.Perform(&evt)
-
                     evt <- { evt with nearPlanePick = (evt.rayT = -1.0) }
 
                     let m = globalPicks.Content |> Mod.force

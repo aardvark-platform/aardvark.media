@@ -206,7 +206,7 @@ module OrbitCameraDemo =
                                     |> Sg.withEvents [
                                             Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map CameraMessage
 
-                        let s = Sg.sphere 20 (Mod.constant C4b.Red) (Mod.constant 0.15)
+                        let s = Sg.sphere 5 (Mod.constant C4b.Red) (Mod.constant 0.15)
                                     |> Sg.shader {
                                         do! DefaultSurfaces.trafo
                                         do! DefaultSurfaces.vertexColor
@@ -621,8 +621,9 @@ module SimpleDrawingApp =
                                     toEffect DefaultSurfaces.trafo
                                     toEffect DefaultSurfaces.vertexColor
                                     toEffect DefaultSurfaces.thickLine
-                                //    toEffect DefaultSurfaces.simpleLighting
                                     ]
+                                |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
+                                |> Sg.depthTest (Mod.constant DepthTestMode.None)
 
                                                 
 

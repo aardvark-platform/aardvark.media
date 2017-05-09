@@ -77,6 +77,7 @@ module App =
                             } )
                         |> Sg.trafo obj.transformation.trafo 
                         |> Sg.andAlso controller
+                        |> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
             } |> Sg.set
 
         Sg.ofSeq [plane; objects; ]

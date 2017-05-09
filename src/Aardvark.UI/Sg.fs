@@ -398,8 +398,8 @@ module ``Sg Events`` =
         let onMouseMove (f : V3d -> 'msg) =
             SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.position]
 
-        let onMouseMoveRay (f : Ray3d -> 'msg) =
-            SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.ray.Ray.Ray]
+        let onMouseMoveRay (f : RayPart -> 'msg) =
+            SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.ray]
 
         let onMouseUp (f : V3d -> 'msg) =
             SceneEventKind.Up, fun (evt : SceneEvent) -> [f evt.position]
@@ -448,10 +448,11 @@ type PickTree<'msg>(sg : ISg<'msg>) =
         match bvh.Intersect(intersectLeaf evt.kind, evt.ray) with
             | Some (hit) ->
                 let proc = hit.Value
+                let t = evt.rayT
                 evt <- { evt with rayT = hit.T }
                 match proc.Process evt with
                     | None -> 
-                        evt <- { evt with ray = RayPart(evt.ray.Ray, hit.T + 0.1, evt.ray.TMax) }
+                        evt <- { evt with ray = RayPart(evt.ray.Ray, hit.T + 0.1, evt.ray.TMax); rayT = t }
                         x.Perform(&evt,bvh)
                     | Some msgs ->  
                         if Some proc <> last then

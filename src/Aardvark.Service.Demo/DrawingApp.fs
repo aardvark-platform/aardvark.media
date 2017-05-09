@@ -121,7 +121,8 @@ module DrawingApp =
                         Sg.onMouseMove (fun p -> Move p)
                         Sg.onClick(fun p -> AddPoint p)
                         Sg.onLeave (fun _ -> Exit)
-                    ]    
+                    ]  
+                |> Sg.onOff (Mod.constant false)
 
         let edgeLines (close : bool) (points : IMod<list<V3d>>) =        
             points 
@@ -154,14 +155,15 @@ module DrawingApp =
         let lines (points : IMod<Points>) (color : IMod<C4b>) = 
             edgeLines false points
                 |> Sg.lines color
-                |> Sg.noEvents
-                |> Sg.uniform "LineWidth" (Mod.constant 5) 
                 |> Sg.effect [
                     toEffect DefaultSurfaces.trafo
                     toEffect DefaultSurfaces.vertexColor
                     toEffect DefaultSurfaces.thickLine                                
                     ] 
                 |> Sg.noEvents
+                |> Sg.uniform "LineWidth" (Mod.constant 5) 
+                |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
+                |> Sg.depthTest (Mod.constant DepthTestMode.None)
    
         let annotation (anno : IMod<Annotation option>)(view : IMod<CameraView>) = 
             let points = 
