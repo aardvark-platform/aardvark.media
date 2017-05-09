@@ -152,16 +152,7 @@ module Events =
                         | _ ->
                             []
                 )
-        )
-
-    module RenderControl =
-        open Aardvark.Base.Geometry
-
-        let onMouseMove (cb : RayPart -> Option<float> -> 'msg) =
-            failwith ""
-            //"RenderControl.onmousemove", AttributeValue.RenderControlEvent(fun e -> [cb e.ray (if e.rayT >= 0.0 then Some e.rayT else None)] )
-            
-    
+        )    
 
 
     let always (att : Attribute<'msg>) =

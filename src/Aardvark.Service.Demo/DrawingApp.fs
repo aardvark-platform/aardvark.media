@@ -118,8 +118,8 @@ module DrawingApp =
                 |> Sg.requirePicking
                 |> Sg.noEvents 
                     |> Sg.withEvents [
-                        Sg.onMouseMove (fun p -> Move p)
-                        Sg.onClick(fun p -> AddPoint p)
+                        Sg.onMouseMove (fun p -> Move p.GlobalPosition)
+                        Sg.onClick(fun p -> AddPoint p.GlobalPosition)
                         Sg.onLeave (fun _ -> Exit)
                     ]  
                 |> Sg.onOff (Mod.constant false)

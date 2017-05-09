@@ -204,7 +204,7 @@ module OrbitCameraDemo =
                                     |> Sg.noEvents
                                     |> Sg.pickable (PickShape.Box boxGeometry)
                                     |> Sg.withEvents [
-                                            Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map CameraMessage
+                                            Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p.GlobalPosition) ] |> Sg.map CameraMessage
 
                         let s = Sg.sphere 5 (Mod.constant C4b.Red) (Mod.constant 0.15)
                                     |> Sg.shader {
@@ -307,7 +307,7 @@ module NavigationModeDemo =
                         |> Sg.noEvents
                         //|> Sg.pickable (PickShape.Box boxGeometry)
                         |> Sg.withEvents [
-                                Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map ArcBallAction                                    
+                                Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p.GlobalPosition) ] |> Sg.map ArcBallAction                                    
 
             let s = Sg.sphere 20 (Mod.constant C4b.Red) (Mod.constant 0.15)
                         |> Sg.shader {
@@ -578,8 +578,8 @@ module SimpleDrawingApp =
             |> Sg.requirePicking
             |> Sg.noEvents 
                 |> Sg.withEvents [
-                    Sg.onMouseMove (fun p -> Move p)
-                    Sg.onClick(fun p -> AddPoint p)
+                    Sg.onMouseMove (fun p -> Move p.GlobalPosition)
+                    Sg.onClick(fun p -> AddPoint p.GlobalPosition)
                     Sg.onLeave (fun _ -> Exit)
                 ]    
 

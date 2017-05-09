@@ -7,28 +7,9 @@ open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.Application
 open Aardvark.Service
+open Aardvark.SceneGraph
+open Aardvark.UI
 open Aardvark.UI.Semantics
-
-module AMap =
-    let keys (m : amap<'k, 'v>) : aset<'k> =
-        ASet.create (fun scope ->
-            let reader = m.GetReader()
-            { new AbstractReader<hdeltaset<'k>>(scope, HDeltaSet.monoid) with
-                member x.Release() =
-                    reader.Dispose()
-
-                member x.Compute(token) =
-                    let ops = reader.GetOperations token
-
-                    ops |> HMap.map (fun key op ->
-                        match op with
-                            | Set _ -> +1
-                            | Remove -> -1
-                    ) |> HDeltaSet.ofHMap
-            }
-        )
-
-
 
 [<AutoOpen>]
 module private Utils =
@@ -346,7 +327,7 @@ type SceneEventProcessor<'msg>() =
     static member Empty = empty
 
     abstract member NeededEvents : aset<SceneEventKind>
-    abstract member Process : source : Guid * evt : byref<SceneEvent> -> list<'msg>
+    abstract member Process : source : Guid * evt : SceneEvent -> list<'msg>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SceneEventProcessor =
@@ -365,7 +346,7 @@ module SceneEventProcessor =
             override x.Process(sender, e) = 
                 let res = System.Collections.Generic.List()
                 for p in inner do
-                    res.AddRange(p.Process(sender, &e))
+                    res.AddRange(p.Process(sender, e))
                 res |> CSharpList.toList
 
     let empty<'msg> = SceneEventProcessor<'msg>.Empty
@@ -527,12 +508,11 @@ type DomNode private() =
                         {
                             kind    = kind
                             ray     = ray 
-                            rayT    = -1.0
                             buttons = buttons
-                            nearPlanePick = false
+                            trafo   = Trafo3d.Identity
                         }
 
-                    let procRes = processor.Process(sourceSession, &evt)
+                    let procRes = processor.Process(sourceSession, evt)
                     procRes
 
                     //let renderControlName = "RenderControl." + eventNames.[kind]
@@ -633,13 +613,13 @@ type DomNode private() =
 
         let scene =
             Scene.custom (fun values ->
-                let sg =
+                let sg : ISg<'msg> =
                     sg
                         |> Sg.viewTrafo values.viewTrafo
                         |> Sg.projTrafo values.projTrafo
                         |> Sg.uniform "ViewportSize" values.size
 
-                values.runtime.CompileRender(values.signature, sg)
+                values.runtime.CompileRender(values.signature, sg :> ISg)
             )
 
         let tree = PickTree.ofSg sg
@@ -648,16 +628,18 @@ type DomNode private() =
         let proc =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = 
-                    ASet.union (AMap.keys globalPicks) tree.Needed
-                member x.Process (source : Guid, evt : byref<SceneEvent>) = 
+                    let res = ASet.union (AMap.keys globalPicks) tree.Needed
+                    res.Content |> Mod.force |> printfn "NEEDEd: %A"
+                    res
+                member x.Process (source : Guid, evt : SceneEvent) = 
                     //evt <- { evt with rayT = -1.0 }
-                    let msgs = tree.Perform(&evt)
-                    evt <- { evt with nearPlanePick = (evt.rayT = -1.0) }
+                    let mutable foundHit = false
+                    let msgs = tree.Perform(evt,&foundHit)
 
                     let m = globalPicks.Content |> Mod.force
                     match m |> HMap.tryFind evt.kind with
                         | Some cb -> 
-                            let res = cb evt
+                            let res = cb evt foundHit
                             res @ msgs
                         | None -> 
                             msgs

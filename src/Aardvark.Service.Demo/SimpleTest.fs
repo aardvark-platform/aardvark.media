@@ -38,7 +38,7 @@ let threeD (m : MModel) =
         //|> Sg.pickable (PickShape.Box Box3d.Unit)       
         |> Sg.trafo t
         |> Sg.withEvents [
-                Sg.onMouseDown (fun _ _ -> Inc)
+                Sg.onMouseDown (fun _ -> Inc)
           ]
         |> Sg.effect [
                     toEffect DefaultSurfaces.trafo

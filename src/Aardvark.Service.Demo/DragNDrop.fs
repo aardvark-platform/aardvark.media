@@ -11,7 +11,7 @@ module App =
     open Aardvark.Base.Geometry
 
     type Action = 
-        | StartDrag of SceneEvent
+        | StartDrag of SceneHit
         | StopDrag
         | MoveRay      of RayPart 
         | CameraAction of CameraController.Message
@@ -29,7 +29,7 @@ module App =
                         { m with trafo = Trafo3d.Translation (i - centerOffset) }
                     | None -> m
             | StartDrag p -> 
-                { m with dragging = Some { PickPoint = p.position; Offset =  p.position - m.trafo.Forward.TransformPos(V3d.OOO) }}
+                { m with dragging = Some { PickPoint = p.GlobalPosition; Offset = p.LocalPosition }}
             | StopDrag    -> { m with dragging = None   }
             | _ -> m
 
@@ -41,8 +41,11 @@ module App =
             |> Sg.requirePicking
             |> Sg.noEvents    
             |> Sg.withEvents [
-                    Sg.onMouseDownEvt (fun e -> StartDrag e )
+                    Sg.onMouseDown    (fun e -> StartDrag e )
                     Sg.onMouseUp      (fun p -> StopDrag    )
+               ]
+            |> Sg.withGlobalEvents [
+                    Sg.Global.onMouseMove (fun r -> MoveRay r.ray)
                ]
             |> Sg.trafo m.trafo
 
@@ -62,7 +65,7 @@ module App =
 
         CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
             (AttributeMap.ofList [ 
-                attribute "style" "width:100%; height: 100%"; RenderControl.onMouseMove (fun r t -> MoveRay r)
+                attribute "style" "width:100%; height: 100%"; 
              ]) scene
 
     let view (m : MModel) =
@@ -94,10 +97,6 @@ module TranslateController =
     open Aardvark.Base.Geometry
 
     open DragNDrop
-
-    type RayPart with
-        member x.Transformed(t : Trafo3d) =
-            RayPart(FastRay3d(x.Ray.Ray.Transformed(t.Forward)), x.TMin, x.TMax)
 
     module Shader =
     
@@ -193,7 +192,7 @@ module TranslateController =
             |> Sg.uniform "HoverColor" col
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
-                    Sg.onMouseDownEvt (fun evt -> Grab (evt.ray, axis))
+                    Sg.onMouseDown    (fun evt -> Grab (evt.GlobalRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
               ]
 
@@ -205,8 +204,8 @@ module TranslateController =
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
         |> Sg.trafo m.trafo
         |> Sg.withGlobalEvents [
-                Sg.onMouseMoveRay MoveRay
-                Sg.onMouseUp (fun _ -> Release)
+                Sg.Global.onMouseMove (fun p -> MoveRay p.ray)
+                Sg.Global.onMouseUp (fun _ -> Release)
            ]
         |> Sg.map liftMessage
 

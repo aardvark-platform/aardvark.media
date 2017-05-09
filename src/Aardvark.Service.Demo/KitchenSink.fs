@@ -21,6 +21,7 @@ open Demo.TestApp.Mutable
 
 
 module KitchenSinkApp =
+    open Demo.TestApp.Mutable.MModel
 
     type Message =
         | AddButton of Index * string
@@ -145,7 +146,6 @@ module KitchenSinkApp =
                 (
                     AttributeMap.ofListCond [
                         always (style "display: flex; width: 100%; height: 100%")
-                        onlyWhen m.dragging (RenderControl.onMouseMove (fun r t -> MoveRay(t,r)))
                         onlyWhen m.dragging (onMouseUp (fun b r -> StopDrag))
                     ] 
                 )
@@ -173,8 +173,15 @@ module KitchenSinkApp =
                                 Sg.onEnter (fun p -> Enter)
                                 Sg.onLeave (fun () -> Exit)
                                 Sg.onDoubleClick (fun _ -> Scale)
-                                Sg.onMouseDown (fun _ _ -> StartDrag)
+                                Sg.onMouseDown (fun _ -> StartDrag)
                             ]
+                            |> Sg.Incremental.withGlobalEvents (
+                                    amap {
+                                        let! dragging= m.dragging
+                                        if dragging then
+                                            yield Sg.Global.onMouseMove (fun evt -> MoveRay(None,evt.ray))
+                                   }
+                               )
 
                     Sg.ofList [
                         sg
