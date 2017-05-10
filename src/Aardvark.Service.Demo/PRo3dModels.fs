@@ -51,7 +51,7 @@ type Semantic = Horizon0 = 0 | Horizon1 = 1 | Horizon2 = 2 | Horizon3 = 3 | Hori
 
 [<DomainType>]
 type Annotation = {
-    //seqNumber : int
+    
     geometry : Geometry
     projection : Projection
     semantic : Semantic
@@ -136,7 +136,67 @@ type DrawingAppModel = {
     semantic : Semantic
 
     annotations : list<Annotation>
+    exportPath : string
 }
+
+module JsonTypes =
+    type _V3d = {
+        X : double
+        Y : double
+        Z : double
+    }
+
+    type _Points = list<_V3d>
+
+    type _Segment = list<_V3d>
+
+    type _Annotation = {       
+        semantic : string
+        geometry : _Points 
+        segments : list<_Segment>
+        color : string
+        thickness : double        
+        projection : string
+        elevation : double
+        distance : double
+    }
+
+    let ofV3d (v:V3d) : _V3d = { X = v.X; Y = v.Y; Z = v.Z }
+
+    let ofPolygon (p:Points) : _Points = p |> List.map ofV3d
+
+    let ofSegment (s:Segment) : _Segment = s |> List.map ofV3d
+
+    let rec fold f s xs =
+        match xs with
+            | x::xs -> 
+                    let r = fold f s xs
+                    f x r
+            | [] -> s
+
+    let sum = [ 1 .. 10 ] |> List.fold (fun s e -> s * e) 1
+
+    let sumDistance (polyline : Points) : double =
+        polyline |> List.pairwise |> List.fold (fun s (a,b) -> s + (b - a).LengthSquared) 0.0 |> Math.Sqrt
+
+    let ofAnnotation (a:Annotation) : _Annotation =
+        let polygon = ofPolygon a.points
+        let avgHeight = (polygon |> List.map (fun v -> v.Z ) |> List.sum) / double polygon.Length
+        let distance = sumDistance a.points
+        {            
+            semantic = a.semantic.ToString()
+            geometry = polygon
+            segments = a.segments |> List.map (fun x -> ofSegment x)
+            color = a.color.ToString()
+            thickness = a.thickness.value
+            
+            projection = a.projection.ToString()
+            elevation = avgHeight
+            distance = distance
+        }  
+
+    //let ofDrawing (m : Drawing) : list<_Annotation> =
+    //    m.finished.AsList |> List.map ofAnnotation
 
 [<DomainType>]
 type OrbitCameraDemoModel = {
@@ -152,17 +212,28 @@ type NavigationModeDemoModel = {
 }
 
 module Annotation =
-    let colorsBlue = [new C4b(241,238,246); new C4b(189,201,225); new C4b(116,169,207); new C4b(43,140,190); new C4b(4,90,141)]
+    let thickness = [1.0; 2.0; 3.0; 4.0; 5.0; 1.0; 1.0]
+    let color = [new C4b(241,238,246); new C4b(189,201,225); new C4b(116,169,207); new C4b(43,140,190); new C4b(4,90,141); new C4b(241,163,64); new C4b(153,142,195) ]
+
+    let thickn = {
+        value   = 3.0
+        min     = 1.0
+        max     = 8.0
+        step    = 1.0
+        format  = "{0:0}"
+    }
 
     let make (projection) (geometry) (semantic) : Annotation  = 
-        let color = colorsBlue.[int semantic]
+        let thickness = thickness.[int semantic]
+        let color = color.[int semantic]
         {
+            
             geometry = geometry
             semantic = semantic
             points = []
             segments = []
             color = color
-            thickness = Numeric.init
+            thickness = { thickn with value = thickness}
             projection = projection
             visible = true
             text = ""

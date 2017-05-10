@@ -65,8 +65,8 @@ let kitchenSink argv =
     //let a = BoxSelectionDemo.start()
     //let a = DragNDrop.TranslateController.start()
     //let a = SimpleDrawingApp.start()
-    //let a = DrawingApp.start()
-    let a = PlaceTransformObjects.App.start()
+    let a = DrawingApp.start()
+    //let a = PlaceTransformObjects.App.start()
 
 
     WebPart.startServer 4321 [ 

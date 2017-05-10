@@ -272,7 +272,7 @@ module Html =
                 ]
 
             onBoot "$('#__ID__').dropdown();" (
-                select [clazz "ui dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
+                select [clazz "ui selection dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
                     for (name, value) in nv do
                         let att = attributes name value
                         yield Incremental.option att (AList.ofList [text name])

@@ -505,6 +505,7 @@ module Mutable =
         let _geometry = ResetMod(__initial.geometry)
         let _semantic = ResetMod(__initial.semantic)
         let _annotations = ResetMod(__initial.annotations)
+        let _exportPath = ResetMod(__initial.exportPath)
         
         member x.camera = _camera
         member x.rendering = _rendering
@@ -515,6 +516,7 @@ module Mutable =
         member x.geometry = _geometry :> IMod<_>
         member x.semantic = _semantic :> IMod<_>
         member x.annotations = _annotations :> IMod<_>
+        member x.exportPath = _exportPath :> IMod<_>
         
         member x.Update(__model : PRo3DModels.DrawingAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -528,6 +530,7 @@ module Mutable =
                 _geometry.Update(__model.geometry)
                 _semantic.Update(__model.semantic)
                 _annotations.Update(__model.annotations)
+                _exportPath.Update(__model.exportPath)
         
         static member Create(initial) = MDrawingAppModel(initial)
         
@@ -546,6 +549,7 @@ module Mutable =
         let inline geometry (m : MDrawingAppModel) = m.geometry
         let inline semantic (m : MDrawingAppModel) = m.semantic
         let inline annotations (m : MDrawingAppModel) = m.annotations
+        let inline exportPath (m : MDrawingAppModel) = m.exportPath
     
     
     
@@ -607,6 +611,12 @@ module Mutable =
                     override x.Get(r) = r.annotations
                     override x.Set(r,v) = { r with annotations = v }
                     override x.Update(r,f) = { r with annotations = f r.annotations }
+                }
+            let exportPath =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.exportPath
+                    override x.Set(r,v) = { r with exportPath = v }
+                    override x.Update(r,f) = { r with exportPath = f r.exportPath }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =
