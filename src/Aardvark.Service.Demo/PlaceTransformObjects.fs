@@ -85,7 +85,7 @@ module App =
                 amap {
                     let! selected = m.world.selectedObjects |> ASet.count
                     if selected > 0 then 
-                        yield Sg.onMouseUpNoHit (fun _ -> Unselect) // hack
+                        yield Global.onMouseUp (fun _ -> Unselect) // hack
                     
                 }
            )

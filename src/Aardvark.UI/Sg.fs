@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.UI
 
+open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Geometry
 open Aardvark.Base.Rendering
@@ -7,6 +8,28 @@ open Aardvark.Base.Geometry
 open Aardvark.Base.Incremental
 open Aardvark.SceneGraph
 open Aardvark.Application
+open Suave.Logging
+
+
+module AMap =
+    let keys (m : amap<'k, 'v>) : aset<'k> =
+        ASet.create (fun scope ->
+            let reader = m.GetReader()
+            { new AbstractReader<hdeltaset<'k>>(scope, HDeltaSet.monoid) with
+                member x.Release() =
+                    reader.Dispose()
+
+                member x.Compute(token) =
+                    let ops = reader.GetOperations token
+
+                    ops |> HMap.map (fun key op ->
+                        match op with
+                            | Set _ -> +1
+                            | Remove -> -1
+                    ) |> HDeltaSet.ofHMap
+            }
+        )
+
 
 type SceneEventKind =
     | Enter
@@ -17,58 +40,105 @@ type SceneEventKind =
     | Down
     | Up
 
+[<AbstractClass; Sealed; Extension>]
+type RayPartExtensions private() =
+    [<Extension>]
+    static member Transformed(this : RayPart, m : M44d) =
+        RayPart(FastRay3d(this.Ray.Ray.Transformed(m)), this.TMin, this.TMax)
+
 type SceneEvent =
     {
-        kind    : SceneEventKind
-        ray     : RayPart
-        rayT    : float
-        buttons : MouseButtons
-        nearPlanePick : bool
+        evtKind    : SceneEventKind
+        evtRay     : RayPart
+        evtButtons : MouseButtons
+        evtTrafo   : Trafo3d
     }
 
-    member x.position = x.ray.Ray.Ray.GetPointOnRay x.rayT
+    member x.kind = x.evtKind
+    member x.localRay = x.evtRay.Transformed(x.evtTrafo.Backward)
+    member x.globalRay = x.evtRay
+    member x.buttons = x.evtButtons
+
+type SceneHit = 
+    { 
+        event : SceneEvent
+        rayT : float 
+    }
+    member inline x.kind = x.event.kind
+    member inline x.localRay = x.event.localRay
+    member inline x.globalRay = x.event.globalRay
+    member inline x.buttons = x.event.buttons
+
+    member x.globalPosition = x.globalRay.Ray.Ray.GetPointOnRay x.rayT
+    member x.localPosition = x.localRay.Ray.Ray.GetPointOnRay x.rayT
+
+
+    
 
 
 module SgTools =
     
+    type ISceneHitProcessor =
+        abstract member NeededEvents : aset<SceneEventKind>
+
+    type ISceneHitProcessor<'a> =
+        inherit ISceneHitProcessor
+        abstract member Process : SceneHit -> bool * list<'a>
+        
+
     type IMessageProcessor<'a> =
         abstract member NeededEvents : aset<SceneEventKind>
-        abstract member Map : aset<SceneEventKind> * ('x -> Option<list<'a>>) -> IMessageProcessor<'x>
+        abstract member Map : aset<SceneEventKind> * ('x -> list<'a>) -> IMessageProcessor<'x>
+        abstract member MapHit : aset<SceneEventKind> * (SceneHit -> bool * list<'a>) -> ISceneHitProcessor
 
     type IMessageProcessor<'a, 'b> =
         inherit IMessageProcessor<'a>
-        abstract member Process : 'a -> Option<list<'b>>
+        abstract member Process : 'a -> list<'b>
 
 
     module MessageProcessor =
         [<AutoOpen>]
         module Implementation =
 
-            let rec collectOption (f : 'a -> Option<list<'b>>) (l : list<'a>) =
-                match l with
-                    | [] -> Some []
-                    | h :: t ->
-                        match f h, collectOption f t with
-                            | Some h, Some t -> Some (h @ t)
-                            | Some h, None -> Some h
-                            | None, Some t -> Some t
-                            | None, None -> None
+            //let rec collectOption (f : 'a -> Option<list<'b>>) (l : list<'a>) =
+            //    match l with
+            //        | [] -> Some []
+            //        | h :: t ->
+            //            match f h, collectOption f t with
+            //                | Some h, Some t -> Some (h @ t)
+            //                | Some h, None -> Some h
+            //                | None, Some t -> Some t
+            //                | None, None -> None
 
-            type Processor<'a, 'b>(needed : aset<SceneEventKind>, mapping : 'a -> Option<list<'b>>) =
-                member x.Map(newNeeded : aset<SceneEventKind>, f : 'x -> Option<list<'a>>) =
+            type HitProcessor<'a>(needed : aset<SceneEventKind>, mapping : SceneHit -> bool * list<'a>) =
+                member x.Process(msg : SceneHit) =
+                    mapping msg
+
+                interface ISceneHitProcessor with
+                    member x.NeededEvents = needed
+
+                interface ISceneHitProcessor<'a> with
+                    member x.Process hit = x.Process hit
+
+            type Processor<'a, 'b>(needed : aset<SceneEventKind>, mapping : 'a -> list<'b>) =
+                member x.Map(newNeeded : aset<SceneEventKind>, f : 'x -> list<'a>) =
+                    Processor<'x, 'b>(ASet.union needed newNeeded, f >> List.collect mapping) :> IMessageProcessor<'x, 'b>
+                    
+                member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * list<'a>) =
                     let f x =
-                        match f x with  
-                            | None -> None
-                            | Some xs -> xs |> collectOption mapping
-                    Processor<'x, 'b>(ASet.union needed newNeeded, f) :> IMessageProcessor<'x, 'b>
+                        let cont, msgs = f x
+                        cont, List.collect mapping msgs
+
+                    HitProcessor<'b>(ASet.union needed newNeeded, f) :> ISceneHitProcessor<'b>
 
                 member x.Process(msg : 'a) =
                     mapping msg
 
                 interface IMessageProcessor<'a> with
                     member x.NeededEvents = needed
-                    member x.Map (newNeeded : aset<SceneEventKind>, f : 'x -> Option<list<'a>>) = x.Map(newNeeded, f) :> IMessageProcessor<'x>
-                    
+                    member x.Map (newNeeded : aset<SceneEventKind>, f : 'x -> list<'a>) = x.Map(newNeeded, f) :> IMessageProcessor<'x>
+                    member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * list<'a>) = x.MapHit(newNeeded, f) :> ISceneHitProcessor
+                        
                 interface IMessageProcessor<'a, 'b> with
                     member x.Process msg = x.Process msg
 
@@ -81,26 +151,36 @@ module SgTools =
                 interface IMessageProcessor<'a, 'a> with
                     member x.NeededEvents = ASet.empty
 
-                    member x.Map(needed : aset<SceneEventKind>, f : 'x -> Option<list<'a>>) =
+                    member x.Map(needed : aset<SceneEventKind>, f : 'x -> list<'a>) =
                         Processor<'x, 'a>(needed, f) :> IMessageProcessor<_>
+                        
+                    member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * list<'a>) =
+                        HitProcessor<'a>(newNeeded, f) :> ISceneHitProcessor
 
                     member x.Process(msg : 'a) =
-                        Some [ msg ]
+                        [ msg ]
 
             type IgnoreProcessor<'a, 'b> private() =
                 
-                static let instance = IgnoreProcessor<'a, 'b>() :> IMessageProcessor<'a>
+                static let instance = IgnoreProcessor<'a, 'b>() 
 
                 static member Instance = instance
+
+                interface ISceneHitProcessor<'b> with
+                    member x.NeededEvents = ASet.empty
+                    member x.Process hit = true, []
 
                 interface IMessageProcessor<'a, 'b> with
                     member x.NeededEvents = ASet.empty
 
-                    member x.Map(newNeeded : aset<_>, f : 'x -> Option<list<'a>>) =
-                        IgnoreProcessor<'x, 'b>.Instance
+                    member x.Map(newNeeded : aset<_>, f : 'x -> list<'a>) =
+                        IgnoreProcessor<'x, 'b>.Instance :> IMessageProcessor<'x>
+                        
+                    member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * list<'a>) =
+                        IgnoreProcessor<obj, 'b>.Instance :> ISceneHitProcessor
 
                     member x.Process(msg : 'a) =
-                        Some []
+                        []
                 
 
         let id<'msg> = IdentityProcessor<'msg>.Instance
@@ -108,13 +188,13 @@ module SgTools =
         let ignore<'a, 'b> = IgnoreProcessor<'a, 'b>.Instance
 
         let map (newNeeded : aset<SceneEventKind>) (mapping : 'x -> 'a) (p : IMessageProcessor<'a>) =
-            p.Map(newNeeded, mapping >> List.singleton >> Some)
+            p.Map(newNeeded, mapping >> List.singleton)
 
         let choose (newNeeded : aset<SceneEventKind>) (mapping : 'x -> Option<'a>) (p : IMessageProcessor<'a>) =
-            p.Map(newNeeded, mapping >> Option.map List.singleton)
+            p.Map(newNeeded, mapping >> Option.map List.singleton >> Option.defaultValue [])
 
         let collect (newNeeded : aset<SceneEventKind>) (mapping : 'x -> list<'a>) (p : IMessageProcessor<'a>) =
-            p.Map(newNeeded, mapping >> Some)
+            p.Map(newNeeded, mapping)
 
 
 type ISg<'msg> =
@@ -140,7 +220,7 @@ module Sg =
 
         member x.Child = child
 
-    type MapApplicator<'inner, 'outer>(mapping : 'inner -> Option<list<'outer>>, child : ISg<'inner>) =
+    type MapApplicator<'inner, 'outer>(mapping : 'inner -> list<'outer>, child : ISg<'inner>) =
         interface Aardvark.SceneGraph.IApplicator with
             member x.Child = child |> unbox |> Mod.constant
 
@@ -149,7 +229,7 @@ module Sg =
         member x.Child = child
         member x.Mapping = mapping
 
-    type EventApplicator<'msg>(events : amap<SceneEventKind, SceneEvent -> list<'msg>>, child : ISg<'msg>) =
+    type EventApplicator<'msg>(events : amap<SceneEventKind, SceneHit -> bool * list<'msg>>, child : ISg<'msg>) =
         inherit AbstractApplicator<'msg>(child)
         member x.Events = events
 
@@ -190,7 +270,7 @@ module ``F# Sg`` =
 
         let noEvents (sg : ISg) : ISg<'msg> = box sg
 
-        let withEvents (events : list<SceneEventKind * (SceneEvent -> list<'msg>)>) (sg : ISg<'msg>) =
+        let withEvents (events : list<SceneEventKind * (SceneHit -> bool * list<'msg>)>) (sg : ISg<'msg>) =
             Sg.EventApplicator(AMap.ofList events, sg) :> ISg<'msg>
  
         let withGlobalEvents (events : list<SceneEventKind * (SceneEvent -> list<'msg>)>) (sg : ISg<'msg>) =
@@ -239,7 +319,7 @@ module ``F# Sg`` =
             ofList [sg;andSg]
 
         let map (f : 'a -> 'b) (a : ISg<'a>) : ISg<'b> =
-            Sg.MapApplicator<'a,'b>(f >> List.singleton >> Some,a) :> ISg<_>
+            Sg.MapApplicator<'a,'b>(f >> List.singleton,a) :> ISg<_>
 
 
         let geometrySet mode attributeTypes (geometries : aset<_>) : ISg<'msg> =
@@ -371,7 +451,7 @@ module ``F# Sg`` =
 
 
         module Incremental =
-            let withEvents (events : amap<SceneEventKind, SceneEvent -> list<'msg>>) (sg : ISg<'msg>) =
+            let withEvents (events : amap<SceneEventKind, SceneHit -> bool * list<'msg>>) (sg : ISg<'msg>) =
                 Sg.EventApplicator(events, sg) :> ISg<'msg>
  
             let withGlobalEvents (events : amap<SceneEventKind, (SceneEvent -> list<'msg>)>) (sg : ISg<'msg>) =
@@ -382,36 +462,41 @@ module ``F# Sg`` =
 module ``Sg Events`` =
     
     module Sg =
+        let private simple (kind : SceneEventKind) (f : SceneHit -> 'msg) =
+            kind, fun evt -> false, [f evt]
 
         let onClick (f : V3d -> 'msg) =
-            SceneEventKind.Click, fun (evt : SceneEvent) -> [f evt.position]
+            simple SceneEventKind.Click (fun (evt : SceneHit) -> f evt.globalPosition)
             
         let onDoubleClick (f : V3d -> 'msg) =
-            SceneEventKind.DoubleClick, fun (evt : SceneEvent) -> [f evt.position]
+            simple SceneEventKind.DoubleClick (fun (evt : SceneHit) -> f evt.globalPosition)
             
         let onMouseDown (f : MouseButtons -> V3d -> 'msg) =
-            SceneEventKind.Down, fun (evt : SceneEvent) -> [f evt.buttons evt.position]
+            simple SceneEventKind.Down (fun (evt : SceneHit) -> f evt.buttons evt.globalPosition)
         
-        let onMouseDownEvt (f : SceneEvent -> 'msg) =
-            SceneEventKind.Down, fun (evt : SceneEvent) -> [f evt ]
+        let onMouseDownEvt (f : SceneHit -> 'msg) =
+            simple SceneEventKind.Down (fun (evt : SceneHit) -> f evt)
             
         let onMouseMove (f : V3d -> 'msg) =
-            SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.position]
+            simple SceneEventKind.Move (fun (evt : SceneHit) -> f evt.globalPosition)
 
         let onMouseMoveRay (f : RayPart -> 'msg) =
-            SceneEventKind.Move, fun (evt : SceneEvent) -> [f evt.ray]
+            simple SceneEventKind.Move (fun (evt : SceneHit) -> f evt.globalRay)
 
         let onMouseUp (f : V3d -> 'msg) =
-            SceneEventKind.Up, fun (evt : SceneEvent) -> [f evt.position]
+            simple SceneEventKind.Up (fun (evt : SceneHit) -> f evt.globalPosition)
 
-        let onMouseUpNoHit (f : Ray3d -> 'msg) =
-            SceneEventKind.Up, fun (evt : SceneEvent) -> if evt.nearPlanePick then [f evt.ray.Ray.Ray] else []
-            
         let onEnter (f : V3d -> 'msg) =
-            SceneEventKind.Enter, fun (evt : SceneEvent) -> [f evt.position]
+            simple SceneEventKind.Enter (fun (evt : SceneHit) -> f evt.globalPosition)
             
         let onLeave (f : unit -> 'msg) =
-            SceneEventKind.Leave, fun (evt : SceneEvent) -> [f ()]
+            simple SceneEventKind.Leave (fun (evt : SceneHit) -> f ())
+
+    module Global=
+        let onMouseMove (f : SceneEvent -> 'msg) =
+            SceneEventKind.Move, f >> List.singleton
+        let onMouseUp (f : SceneEvent -> 'msg) =
+            SceneEventKind.Up, f >> List.singleton
 
 open Aardvark.Base.Ag
 
@@ -422,7 +507,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
     let needed = //ASet.ofList [ SceneEventKind.Click; SceneEventKind.DoubleClick; SceneEventKind.Down; SceneEventKind.Up; SceneEventKind.Move]
         objects |> ASet.collect (fun o -> 
             match Ag.tryGetInhAttribute o.Scope "PickProcessor" with
-                | Some (:? SgTools.IMessageProcessor<SceneEvent,'msg> as proc) ->
+                | Some (:? SgTools.ISceneHitProcessor<'msg> as proc) ->
                     proc.NeededEvents
                 | _ ->
                     ASet.empty
@@ -437,49 +522,112 @@ type PickTree<'msg>(sg : ISg<'msg>) =
             | Some t -> 
                 let pt = part.Ray.Ray.GetPointOnRay t
                 match Ag.tryGetInhAttribute p.Scope "PickProcessor" with
-                    | Some (:? SgTools.IMessageProcessor<SceneEvent,'msg> as proc) ->
-                        Some <| RayHit(t, proc)
+                    | Some (:? SgTools.ISceneHitProcessor<'msg> as proc) ->
+                        Some <| RayHit(t, (pickable.trafo, proc))
                     | _ ->
                         None
             | None -> 
                 None
 
-    member private x.Perform (evt : byref<SceneEvent>, bvh : BvhTree<PickObject>) =
-        match bvh.Intersect(intersectLeaf evt.kind, evt.ray) with
-            | Some (hit) ->
-                let proc = hit.Value
-                let t = evt.rayT
-                evt <- { evt with rayT = hit.T }
-                match proc.Process evt with
-                    | None -> 
-                        evt <- { evt with ray = RayPart(evt.ray.Ray, hit.T + 0.1, evt.ray.TMax); rayT = t }
-                        x.Perform(&evt,bvh)
-                    | Some msgs ->  
-                        if Some proc <> last then
-                            let enters = proc.Process { evt with kind = SceneEventKind.Enter } |> Option.defaultValue []
+    member private x.Perform (evt : SceneEvent, bvh : BvhTree<PickObject>, seen : hset<SgTools.ISceneHitProcessor<'msg>>) =
+        let intersections = bvh.Intersections(intersectLeaf evt.kind, evt.globalRay)
+        use e = intersections.GetEnumerator()
+
+        let rec run (evt : SceneEvent) (seen : hset<SgTools.ISceneHitProcessor<'msg>>)  =
+            let topLevel = HSet.isEmpty seen
+
+            if e.MoveNext() then
+                let hit = e.Current
+                let trafo, proc = hit.Value
+
+                if HSet.contains proc seen then
+                    run evt seen
+                else
+                    let cont, msgs =
+                        proc.Process { event =  { evt with evtTrafo = trafo }; rayT = hit.T }
+
+                    let msgs =
+                        if Some proc <> last && topLevel then
+                            let _,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T } 
                             match last with
                                 | Some l -> 
-                                    let leaves = l.Process { evt with kind = SceneEventKind.Leave } |> Option.defaultValue []
+                                    let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = hit.T } 
                                     last <- Some proc
                                     leaves @ enters @ msgs
                                 | None -> 
                                     last <- Some proc
                                     enters @ msgs
-                        else msgs
-            | None -> 
+                        else 
+                            msgs
+
+                    
+                    if cont then
+                        let consumed, rest = run evt (HSet.add proc seen)
+                        consumed, msgs @ rest
+                    else
+                        true, msgs
+
+            else
                  match last with
-                    | Some l -> 
-                        let leaves = l.Process { evt with kind = SceneEventKind.Leave } |> Option.defaultValue []
+                    | Some l when topLevel -> 
                         last <- None
-                        leaves
-                    | None -> 
-                        []
+                        let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
+                        false, leaves
+                    | _ -> 
+                        false, []
+                
+
+
+        run evt HSet.empty
+//
+//
+//        match bvh.Intersect(intersectLeaf evt.kind, evt.globalRay) with
+//            | Some (hit) ->
+//                let trafo, proc = hit.Value
+//                let evt = { evt with evtTrafo = trafo }
+//
+//                let cont, msgs =
+//                    if HSet.contains proc seen then
+//                        true, []
+//                    else
+//                        Log.line "hit: %A" hit.T
+//                        proc.Process { event = evt; rayT = hit.T }
+//
+//                let msgs =
+//                    if Some proc <> last && topLevel then
+//                        let _,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T } 
+//                        match last with
+//                            | Some l -> 
+//                                let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = hit.T } 
+//                                last <- Some proc
+//                                leaves @ enters @ msgs
+//                            | None -> 
+//                                last <- Some proc
+//                                enters @ msgs
+//                    else 
+//                        msgs
+//
+//                if cont then
+//                    let evt = { evt with evtRay = RayPart(evt.evtRay.Ray, hit.T + 0.01, evt.evtRay.TMax) }
+//                    let consumed, rest = x.Perform(evt, bvh, HSet.add proc seen)
+//                    consumed, msgs @ rest
+//                else
+//                    true, msgs
+//
+//            | None -> 
+//                 match last with
+//                    | Some l when topLevel -> 
+//                        last <- None
+//                        let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
+//                        false, leaves
+//                    | _ -> 
+//                        false, []
 
     member x.Needed = needed
 
-    member x.Perform(evt : byref<SceneEvent>) =
+    member x.Perform(evt : SceneEvent) =
         let bvh = bvh |> Mod.force
-        x.Perform(&evt,bvh)
+        x.Perform(evt,bvh,HSet.empty)
         
     member x.Dispose() =
         bvh.Dispose()
@@ -489,7 +637,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
 module PickTree =
     let ofSg (sg : ISg<'msg>) = new PickTree<'msg>(sg)
-    let perform (evt : byref<SceneEvent>) (tree : PickTree<'msg>) = tree.Perform(&evt)
+    let perform (evt : SceneEvent) (tree : PickTree<'msg>) = tree.Perform(evt)
 
 
 namespace Aardvark.UI.Semantics
@@ -507,7 +655,9 @@ type private PickObject = Aardvark.SceneGraph.``Sg Picking Extensions``.PickObje
 [<AutoOpen>]
 module ``Message Semantics`` =
     open Aardvark.SceneGraph
+    open Aardvark.SceneGraph.Semantics
     open Aardvark.UI.Sg
+    open Aardvark.UI.SgTools.MessageProcessor.Implementation
 
     type IRuntime with
         member x.CompileRender(fbo : IFramebufferSignature, config : BackendConfiguration, sg : ISg<'msg>) =
@@ -526,17 +676,39 @@ module ``Message Semantics`` =
         member x.LocalBoundingBox() : IMod<Box3d> = x?LocalBoundingBox()
 
         member x.MessageProcessor : IMessageProcessor<'msg> = x?MessageProcessor
-        member x.PickProcessor : IMessageProcessor<SceneEvent> = x?PickProcessor
+        member x.PickProcessor : ISceneHitProcessor = x?PickProcessor
 
 
-    let rec allMsgSgs (s : ISg) : aset<ISg<'msg>> =
-        match s with
-            | :? ISg<'msg> as s -> ASet.ofList [s]
-            | :? IApplicator as a -> a.Child |> ASet.bind allMsgSgs
-            | :? IGroup as g -> g.Children |> ASet.collect allMsgSgs
-            | _ -> ASet.empty
+    //let rec allMsgSgs (s : ISg) : aset<ISg<'msg>> =
+    //    match s with
+    //        | :? ISg<'msg> as s -> ASet.ofList [s]
+    //        | :? IApplicator as a -> 
+    //            a.Child |> ASet.bind (fun c -> 
+    //                let ctx = Ag.getContext()
+    //                Ag.useScope (ctx.GetChildScope a) (fun () ->
+    //                    allMsgSgs c
+    //                )
+    //            )
+    //        | :? IGroup as g -> g.Children |> ASet.collect allMsgSgs
+    //        | _ -> ASet.empty
                 
-        
+    let rec collectMsgSgs (mapping : ISg<'msg> -> aset<'a>) (s : ISg) : aset<'a> =
+        let ctx = Ag.getContext()
+        Ag.useScope (ctx.GetChildScope s) (fun () ->
+            match s with
+                | :? ISg<'msg> as s -> 
+                    mapping s
+
+                | :? IApplicator as a -> 
+                    a.Child |> ASet.bind (collectMsgSgs mapping)
+
+                | :? IGroup as g -> 
+                    g.Children |> ASet.collect (collectMsgSgs mapping)
+
+                | _ -> 
+                    ASet.empty
+        )
+                     
 
     [<Semantic>]
     type StandardSems() =
@@ -622,10 +794,8 @@ module ``Message Semantics`` =
             
             
         member x.GlobalPicks(a : Sg.Adapter<'msg>) : GlobalPicks<'msg> =
-            let children = a.Child |> ASet.bind allMsgSgs
-            
-            children 
-                |> ASet.collect (fun g -> g.GlobalPicks() |> AMap.toASet)
+            a.Child 
+                |> ASet.bind (collectMsgSgs (fun g -> g.GlobalPicks() |> AMap.toASet))
                 |> AMap.ofASet
                 |> AMap.map (fun k vs ->
                     match HSet.toList vs with
@@ -634,12 +804,18 @@ module ``Message Semantics`` =
                             rest |> List.fold (fun l r e -> l e @ r e) h
                             
                 )
-
+          
 
         member x.GlobalPicks(g : Sg.GlobalEvent<'msg>) : GlobalPicks<'msg> =
-            let a = g.Events
             let b = g.Child.GlobalPicks()
-            AMap.unionWith (fun k l r e -> l e @ r e) a b
+            let trafo = g.ModelTrafo
+
+            let withTrafo e =
+                let t = Mod.force trafo
+                { e with evtTrafo = t }
+
+            let own = g.Events |> AMap.map (fun k l e -> l (withTrafo e))
+            AMap.unionWith (fun k l r -> fun e -> l e @ r e) own b
 
             
         member x.GlobalPicks(other : ISg<'msg>) : GlobalPicks<'msg>  =
@@ -647,7 +823,7 @@ module ``Message Semantics`` =
 
         member x.GlobalPicks(ma : MapApplicator<'i,'o>) : GlobalPicks<'o> =
             let picks = ma.Child.GlobalPicks()
-            picks |> AMap.map (fun k v e -> v e |> List.collect (Option.defaultValue [] << ma.Mapping))
+            picks |> AMap.map (fun k v e -> v e |> List.collect ma.Mapping)
 
 
     [<Semantic>]
@@ -661,44 +837,34 @@ module ``Message Semantics`` =
             app.Child?MessageProcessor <- parent.Map(ASet.empty, app.Mapping)
 
         member x.PickProcessor(root : Root<ISg<'msg>>) =
-            root.Child?PickProcessor <- MessageProcessor.ignore<SceneEvent, 'msg>
+            root.Child?PickProcessor <- IgnoreProcessor<obj, 'msg>.Instance :> ISceneHitProcessor
 
         member x.PickProcessor(app : Sg.EventApplicator<'msg>) =
             let msg = app.MessageProcessor
 
     
-            let needed =
-                ASet.create (fun scope ->
-                    let reader = app.Events.GetReader()
-                    { new AbstractReader<hdeltaset<SceneEventKind>>(scope, HDeltaSet.monoid) with
-                        member x.Release() =
-                            reader.Dispose()
-
-                        member x.Compute(token) =
-                            let ops = reader.GetOperations token
-
-                            ops |> HMap.map (fun key op ->
-                                match op with
-                                    | Set _ -> +1
-                                    | Remove -> -1
-                            ) |> HDeltaSet.ofHMap
-                    }
+            let needed = 
+                AMap.keys app.Events |> ASet.map (fun n ->
+                    match n with
+                        | SceneEventKind.Enter | SceneEventKind.Leave -> SceneEventKind.Move
+                        | _ -> n
                 )
  
+            let trafo = app.ModelTrafo
 
-            let processor (evt : SceneEvent) =
+            let processor (hit : SceneHit) =
                 let evts = app.Events.Content |> Mod.force
                 let createArtificialMove = 
                     (HMap.containsKey SceneEventKind.Enter evts || HMap.containsKey SceneEventKind.Leave evts) &&
                     (not <| HMap.containsKey SceneEventKind.Move evts)
                 let evts =
-                    if createArtificialMove then HMap.add SceneEventKind.Move (fun _ -> []) evts
+                    if createArtificialMove then HMap.add SceneEventKind.Move (fun _ -> true, []) evts
                     else evts
-                match HMap.tryFind evt.kind evts with
-                    | Some cb -> Some (cb evt)
-                    | None -> None
+                match HMap.tryFind hit.kind evts with
+                    | Some cb -> cb { hit with event = { hit.event with evtTrafo = Mod.force trafo } }
+                    | None -> true, []
                 
-            app.Child?PickProcessor <- msg.Map(needed, processor)
+            app.Child?PickProcessor <- msg.MapHit(needed, processor)
 //
 //
 //        member x.MsgPickObjects(a : Sg.EventApplicator<'msg>) =

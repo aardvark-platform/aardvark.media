@@ -110,6 +110,7 @@
     <Compile Include="PlaceTransformObjects.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
+    <Content Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">

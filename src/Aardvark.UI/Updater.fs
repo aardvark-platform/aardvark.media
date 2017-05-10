@@ -264,6 +264,7 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
     override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
         let code = List()
 
+
         let attOps = rAtt.GetOperations(token)
         for (name, op) in attOps do
             match op with
@@ -308,8 +309,9 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
 
     new(ui : DomNode<'msg>) = DomUpdater<'msg>(ui, newId())
 
+
 [<AutoOpen>]
 module ``Extensions for Node`` =
     type DomNode<'msg> with
         member x.NewUpdater() =
-            DomUpdater<'msg>(x) :> IUpdater<_>
+            DomUpdater<'msg>(DomNode<'msg>("body", AttributeMap.empty, Children (AList.single x))) :> IUpdater<_>

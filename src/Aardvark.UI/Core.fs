@@ -9,25 +9,6 @@ open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Semantics
 
-module AMap =
-    let keys (m : amap<'k, 'v>) : aset<'k> =
-        ASet.create (fun scope ->
-            let reader = m.GetReader()
-            { new AbstractReader<hdeltaset<'k>>(scope, HDeltaSet.monoid) with
-                member x.Release() =
-                    reader.Dispose()
-
-                member x.Compute(token) =
-                    let ops = reader.GetOperations token
-
-                    ops |> HMap.map (fun key op ->
-                        match op with
-                            | Set _ -> +1
-                            | Remove -> -1
-                    ) |> HDeltaSet.ofHMap
-            }
-        )
-
 
 
 [<AutoOpen>]
@@ -525,11 +506,10 @@ type DomNode private() =
 
                     let mutable evt = 
                         {
-                            kind    = kind
-                            ray     = ray 
-                            rayT    = -1.0
-                            buttons = buttons
-                            nearPlanePick = false
+                            evtKind    = kind
+                            evtRay     = ray 
+                            evtButtons = buttons
+                            evtTrafo   = Trafo3d.Identity
                         }
 
                     let procRes = processor.Process(sourceSession, &evt)
@@ -651,8 +631,8 @@ type DomNode private() =
                     ASet.union (AMap.keys globalPicks) tree.Needed
                 member x.Process (source : Guid, evt : byref<SceneEvent>) = 
                     //evt <- { evt with rayT = -1.0 }
-                    let msgs = tree.Perform(&evt)
-                    evt <- { evt with nearPlanePick = (evt.rayT = -1.0) }
+                    let consumed, msgs = tree.Perform(evt)
+
 
                     let m = globalPicks.Content |> Mod.force
                     match m |> HMap.tryFind evt.kind with

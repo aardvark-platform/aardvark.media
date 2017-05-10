@@ -108,8 +108,11 @@ module MutableApp =
                             while running do
                                 let! cont = MVar.takeAsync update
                                 if cont then
-                                    state.references.Clear()
-                                    let expr = lock state (fun () -> updater.Update(AdaptiveToken.Top, JSExpr.Body, state))
+                                    let expr = 
+                                        lock state (fun () -> 
+                                            state.references.Clear()
+                                            updater.Update(AdaptiveToken.Top, JSExpr.Body, state)
+                                        )
 
                                     for (name, sd) in Dictionary.toSeq state.scenes do
                                         sceneStore.TryAdd(name, sd) |> ignore
@@ -156,7 +159,7 @@ module MutableApp =
                                 | Opcode.Text ->
                                     try
                                         let evt : EventMessage = Pickler.json.UnPickle data
-                                        match state.handlers.TryGetValue((evt.sender, evt.name)) with
+                                        match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
                                             | (true, handler) ->
                                                 let messages = handler sessionId evt.sender (Array.toList evt.args)
                                                 match messages with
