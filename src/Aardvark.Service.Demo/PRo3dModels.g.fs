@@ -180,12 +180,14 @@ module Mutable =
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
+        let _boxHovered = ResetMod(__initial.boxHovered)
         let _bookmarks = ResetMod(__initial.bookmarks)
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.draw = _draw :> IMod<_>
         member x.hoverPosition = _hoverPosition :> IMod<_>
+        member x.boxHovered = _boxHovered :> IMod<_>
         member x.bookmarks = _bookmarks :> IMod<_>
         
         member x.Update(__model : PRo3DModels.BookmarkAppModel) =
@@ -195,6 +197,7 @@ module Mutable =
                 _rendering.Update(__model.rendering)
                 _draw.Update(__model.draw)
                 _hoverPosition.Update(__model.hoverPosition)
+                _boxHovered.Update(__model.boxHovered)
                 _bookmarks.Update(__model.bookmarks)
         
         static member Create(initial) = MBookmarkAppModel(initial)
@@ -209,6 +212,7 @@ module Mutable =
         let inline rendering (m : MBookmarkAppModel) = m.rendering
         let inline draw (m : MBookmarkAppModel) = m.draw
         let inline hoverPosition (m : MBookmarkAppModel) = m.hoverPosition
+        let inline boxHovered (m : MBookmarkAppModel) = m.boxHovered
         let inline bookmarks (m : MBookmarkAppModel) = m.bookmarks
     
     
@@ -241,6 +245,12 @@ module Mutable =
                     override x.Get(r) = r.hoverPosition
                     override x.Set(r,v) = { r with hoverPosition = v }
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
+                }
+            let boxHovered =
+                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with
+                    override x.Get(r) = r.boxHovered
+                    override x.Set(r,v) = { r with boxHovered = v }
+                    override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
                 }
             let bookmarks =
                 { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Collections.list<PRo3DModels.Bookmark>>() with
@@ -665,6 +675,7 @@ module Mutable =
         let _geometry = ResetMod(__initial.geometry)
         let _semantic = ResetMod(__initial.semantic)
         let _annotations = ResetMod(__initial.annotations)
+        let _exportPath = ResetMod(__initial.exportPath)
         
         member x.camera = _camera
         member x.rendering = _rendering
@@ -675,6 +686,7 @@ module Mutable =
         member x.geometry = _geometry :> IMod<_>
         member x.semantic = _semantic :> IMod<_>
         member x.annotations = _annotations :> IMod<_>
+        member x.exportPath = _exportPath :> IMod<_>
         
         member x.Update(__model : PRo3DModels.DrawingAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -688,6 +700,7 @@ module Mutable =
                 _geometry.Update(__model.geometry)
                 _semantic.Update(__model.semantic)
                 _annotations.Update(__model.annotations)
+                _exportPath.Update(__model.exportPath)
         
         static member Create(initial) = MDrawingAppModel(initial)
         
@@ -706,6 +719,7 @@ module Mutable =
         let inline geometry (m : MDrawingAppModel) = m.geometry
         let inline semantic (m : MDrawingAppModel) = m.semantic
         let inline annotations (m : MDrawingAppModel) = m.annotations
+        let inline exportPath (m : MDrawingAppModel) = m.exportPath
     
     
     
@@ -767,6 +781,12 @@ module Mutable =
                     override x.Get(r) = r.annotations
                     override x.Set(r,v) = { r with annotations = v }
                     override x.Update(r,f) = { r with annotations = f r.annotations }
+                }
+            let exportPath =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.exportPath
+                    override x.Set(r,v) = { r with exportPath = v }
+                    override x.Update(r,f) = { r with exportPath = f r.exportPath }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =

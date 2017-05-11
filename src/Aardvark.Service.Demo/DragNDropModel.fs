@@ -17,9 +17,8 @@ type Axis = X | Y | Z
 
 type PickPoint =
     {
-        point : V3d
-        offset : V3d
-        axis : Axis
+        offset : float
+        axis   : Axis
     }
 
 

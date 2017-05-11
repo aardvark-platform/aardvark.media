@@ -26,7 +26,8 @@ module BookmarkApp =
         | UpdateCam of string
         | KeyDown of key : Keys
         | KeyUp of key : Keys
-        | Exit      
+        | Enter of string
+        | Exit       
     
     let getNewBookmark (p:V3d)(m:BookmarkAppModel) = 
         let id = m.bookmarks.Length.ToString()
@@ -61,8 +62,8 @@ module BookmarkApp =
             | UpdateCam id, _ -> 
                     let bm = (findBM id model)
                     { model with camera = bm.camState }            
-            | Exit, _ -> 
-                    { model with hoverPosition = None }
+            | Enter id, _-> { model with boxHovered = Some id }            
+            | Exit, _ -> { model with boxHovered = None }       
             | _ -> model
             
             
@@ -77,7 +78,7 @@ module BookmarkApp =
                                         let distF = V3d.Dot(v.Forward, distV)
                                         distF * size / 800.0) //needs hfov at this point
 
-        let mkISg color size trafo =         
+        let mkISg color size trafo (id:string) =         
             Sg.sphere 5 color size 
                     |> Sg.shader {
                         do! DefaultSurfaces.trafo
@@ -85,6 +86,9 @@ module BookmarkApp =
                         do! DefaultSurfaces.simpleLighting
                     }
                     |> Sg.noEvents
+                        |> Sg.withEvents [
+                           Sg.onEnter (fun _ -> Enter id)
+                        ]    
                     |> Sg.trafo(trafo) 
         
         let canvas =  
@@ -109,22 +113,31 @@ module BookmarkApp =
                                                     | Some t-> t
                                                     | None -> Trafo3d.Scale(V3d.Zero))
 
-            mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
+            mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo ""
 
-        let dots (point : IMod<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
+        let dots (bm : Bookmark) (point : IMod<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
             point
                 |> Mod.map(function ps  -> mkISg color
                                                 (computeScale view ps 5.0)
-                                                (Mod.constant (Trafo3d.Translation(ps))))               
+                                                (Mod.constant (Trafo3d.Translation(ps)))
+                                                bm.id)              
                 |> Sg.dynamic  
     
    
+        let getColor (model : MBookmarkAppModel) (bm : Bookmark) =
+            let c = Mod.constant bm.color
+            let hc = Mod.constant (new C4b(0, 0, 255))
+            let color = model.boxHovered |> Mod.bind (function x -> match x with
+                                                                        | Some k -> if k = bm.id then hc else c
+                                                                        | None -> c)
+            color
+            
 
-        let bookmark' (bm : Bookmark)(view : IMod<CameraView>) = 
+        let bookmark' (model : MBookmarkAppModel)(bm : Bookmark)(view : IMod<CameraView>) = 
             let point = Mod.constant bm.point            
-            let color = Mod.constant bm.color
+            let color = getColor model bm
 
-            [dots point color view]
+            [dots bm point color view]
 
     let view (model : MBookmarkAppModel) =
                     
@@ -144,7 +157,7 @@ module BookmarkApp =
 
                         let bookmarks =
                             model.bookmarks 
-                                |> Mod.map(function xs -> xs |> List.map(function a -> Draw.bookmark' a view) 
+                                |> Mod.map(function xs -> xs |> List.map(function a -> Draw.bookmark' model a view) 
                                                              |> List.concat 
                                                              |> Sg.ofList) 
                                 |> Sg.dynamic
@@ -165,11 +178,13 @@ module BookmarkApp =
                                     let! bookmarks = model.bookmarks
                                 
                                     for b in (bookmarks |> AList.ofList) do                                    
-
-                                        let bgc = sprintf "background: %s" (Html.ofC4b b.color)
+                                        let! c = Draw.getColor model b
+                                        let bgc = sprintf "background: %s" (Html.ofC4b c)
                                         
                                         yield div [clazz "item"; style bgc;
-                                                   onClick(fun _ -> UpdateCam b.id)] [
+                                                   onClick(fun _ -> UpdateCam b.id)
+                                                   onMouseEnter(fun _ -> Enter b.id)
+                                                   onMouseLeave(fun _ -> Exit)] [
                                              i [clazz "medium File Outline middle aligned icon"][]
                                              text (b.id)
                                         ]  
@@ -188,6 +203,7 @@ module BookmarkApp =
         {
             camera           = { ArcBallController.initial with view = CameraView.lookAt (6.0 * V3d.OIO) V3d.Zero V3d.OOI}
             rendering        = InitValues.rendering
+            boxHovered = None
             hoverPosition = None
             draw = false            
             
