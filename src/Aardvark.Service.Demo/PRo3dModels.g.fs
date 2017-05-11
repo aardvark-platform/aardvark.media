@@ -9,6 +9,91 @@ open PRo3DModels
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    type MBookmark private(__initial : PRo3DModels.Bookmark) =
+        let mutable __current = __initial
+        let _id = ResetMod(__initial.id)
+        let _point = ResetMod(__initial.point)
+        let _color = ResetMod(__initial.color)
+        let _camState = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camState)
+        let _visible = ResetMod(__initial.visible)
+        let _text = ResetMod(__initial.text)
+        
+        member x.id = _id :> IMod<_>
+        member x.point = _point :> IMod<_>
+        member x.color = _color :> IMod<_>
+        member x.camState = _camState
+        member x.visible = _visible :> IMod<_>
+        member x.text = _text :> IMod<_>
+        
+        member x.Update(__model : PRo3DModels.Bookmark) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _id.Update(__model.id)
+                _point.Update(__model.point)
+                _color.Update(__model.color)
+                _camState.Update(__model.camState)
+                _visible.Update(__model.visible)
+                _text.Update(__model.text)
+        
+        static member Create(initial) = MBookmark(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MBookmark =
+        let inline id (m : MBookmark) = m.id
+        let inline point (m : MBookmark) = m.point
+        let inline color (m : MBookmark) = m.color
+        let inline camState (m : MBookmark) = m.camState
+        let inline visible (m : MBookmark) = m.visible
+        let inline text (m : MBookmark) = m.text
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module Bookmark =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let id =
+                { new Lens<PRo3DModels.Bookmark, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.id
+                    override x.Set(r,v) = { r with id = v }
+                    override x.Update(r,f) = { r with id = f r.id }
+                }
+            let point =
+                { new Lens<PRo3DModels.Bookmark, Aardvark.Base.V3d>() with
+                    override x.Get(r) = r.point
+                    override x.Set(r,v) = { r with point = v }
+                    override x.Update(r,f) = { r with point = f r.point }
+                }
+            let color =
+                { new Lens<PRo3DModels.Bookmark, Aardvark.Base.C4b>() with
+                    override x.Get(r) = r.color
+                    override x.Set(r,v) = { r with color = v }
+                    override x.Update(r,f) = { r with color = f r.color }
+                }
+            let camState =
+                { new Lens<PRo3DModels.Bookmark, Aardvark.UI.CameraControllerState>() with
+                    override x.Get(r) = r.camState
+                    override x.Set(r,v) = { r with camState = v }
+                    override x.Update(r,f) = { r with camState = f r.camState }
+                }
+            let visible =
+                { new Lens<PRo3DModels.Bookmark, Microsoft.FSharp.Core.bool>() with
+                    override x.Get(r) = r.visible
+                    override x.Set(r,v) = { r with visible = v }
+                    override x.Update(r,f) = { r with visible = f r.visible }
+                }
+            let text =
+                { new Lens<PRo3DModels.Bookmark, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.text
+                    override x.Set(r,v) = { r with text = v }
+                    override x.Update(r,f) = { r with text = f r.text }
+                }
+    [<StructuredFormatDisplay("{AsString}")>]
     type MRenderingParameters private(__initial : PRo3DModels.RenderingParameters) =
         let mutable __current = __initial
         let _fillMode = ResetMod(__initial.fillMode)
@@ -87,6 +172,81 @@ module Mutable =
                     override x.Get(r) = r.navigationMode
                     override x.Set(r,v) = { r with navigationMode = v }
                     override x.Update(r,f) = { r with navigationMode = f r.navigationMode }
+                }
+    [<StructuredFormatDisplay("{AsString}")>]
+    type MBookmarkAppModel private(__initial : PRo3DModels.BookmarkAppModel) =
+        let mutable __current = __initial
+        let _camera = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _rendering = MRenderingParameters.Create(__initial.rendering)
+        let _draw = ResetMod(__initial.draw)
+        let _hoverPosition = ResetMod(__initial.hoverPosition)
+        let _bookmarks = ResetMod(__initial.bookmarks)
+        
+        member x.camera = _camera
+        member x.rendering = _rendering
+        member x.draw = _draw :> IMod<_>
+        member x.hoverPosition = _hoverPosition :> IMod<_>
+        member x.bookmarks = _bookmarks :> IMod<_>
+        
+        member x.Update(__model : PRo3DModels.BookmarkAppModel) =
+            if not (Object.ReferenceEquals(__model, __current)) then
+                __current <- __model
+                _camera.Update(__model.camera)
+                _rendering.Update(__model.rendering)
+                _draw.Update(__model.draw)
+                _hoverPosition.Update(__model.hoverPosition)
+                _bookmarks.Update(__model.bookmarks)
+        
+        static member Create(initial) = MBookmarkAppModel(initial)
+        
+        override x.ToString() = __current.ToString()
+        member private x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module MBookmarkAppModel =
+        let inline camera (m : MBookmarkAppModel) = m.camera
+        let inline rendering (m : MBookmarkAppModel) = m.rendering
+        let inline draw (m : MBookmarkAppModel) = m.draw
+        let inline hoverPosition (m : MBookmarkAppModel) = m.hoverPosition
+        let inline bookmarks (m : MBookmarkAppModel) = m.bookmarks
+    
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module BookmarkAppModel =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let camera =
+                { new Lens<PRo3DModels.BookmarkAppModel, Aardvark.UI.CameraControllerState>() with
+                    override x.Get(r) = r.camera
+                    override x.Set(r,v) = { r with camera = v }
+                    override x.Update(r,f) = { r with camera = f r.camera }
+                }
+            let rendering =
+                { new Lens<PRo3DModels.BookmarkAppModel, PRo3DModels.RenderingParameters>() with
+                    override x.Get(r) = r.rendering
+                    override x.Set(r,v) = { r with rendering = v }
+                    override x.Update(r,f) = { r with rendering = f r.rendering }
+                }
+            let draw =
+                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.bool>() with
+                    override x.Get(r) = r.draw
+                    override x.Set(r,v) = { r with draw = v }
+                    override x.Update(r,f) = { r with draw = f r.draw }
+                }
+            let hoverPosition =
+                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.option<Aardvark.Base.Trafo3d>>() with
+                    override x.Get(r) = r.hoverPosition
+                    override x.Set(r,v) = { r with hoverPosition = v }
+                    override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
+                }
+            let bookmarks =
+                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Collections.list<PRo3DModels.Bookmark>>() with
+                    override x.Get(r) = r.bookmarks
+                    override x.Set(r,v) = { r with bookmarks = v }
+                    override x.Update(r,f) = { r with bookmarks = f r.bookmarks }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MVisibleBox private(__initial : PRo3DModels.VisibleBox) =

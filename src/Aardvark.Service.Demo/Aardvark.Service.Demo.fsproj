@@ -97,6 +97,7 @@
     <Compile Include="ArcBallController.fs" />
     <Compile Include="FileSystem.fs" />
     <Compile Include="ViewerModel.fs" />
+    <Compile Include="BookmarkApp.fs" />
     <Compile Include="UI.Composed.fs" />
     <Compile Include="ComposedViewer.fs" />
     <Compile Include="SimpleTestModel.fs" />

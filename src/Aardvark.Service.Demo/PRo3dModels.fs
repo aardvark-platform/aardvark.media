@@ -10,6 +10,17 @@ open FShade.Primitives
 open Demo
 open Demo.TestApp
 
+[<DomainType>]
+type Bookmark = {
+    id          : string
+    point       : V3d
+    color       : C4b
+    camState    : CameraControllerState
+    visible     : bool
+    text        : string
+}
+
+
 
 type BoxPropertiesAction =
     | ChangeColor of int
@@ -31,6 +42,16 @@ type NavigationMode =
 [<DomainType>]
 type NavigationParameters = {
     navigationMode : NavigationMode    
+}
+
+[<DomainType>]
+type BookmarkAppModel = {
+    camera : CameraControllerState
+    rendering : RenderingParameters
+
+    draw    : bool 
+    hoverPosition : option<Trafo3d>
+    bookmarks : list<Bookmark>
 }
 
 [<DomainType>]
@@ -64,6 +85,7 @@ type Annotation = {
     visible : bool
     text : string
 }
+
 
 [<DomainType>]
 type ComposedViewerModel = {
@@ -110,6 +132,7 @@ type OpenPolygon = {
     finishedSegments : list<Segment>
 }
 
+
 [<DomainType>]
 type SimpleDrawingAppModel = {
     camera : CameraControllerState
@@ -137,6 +160,7 @@ type DrawingAppModel = {
 
     annotations : list<Annotation>
 }
+
 
 [<DomainType>]
 type OrbitCameraDemoModel = {

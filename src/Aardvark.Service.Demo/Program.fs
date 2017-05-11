@@ -1,4 +1,5 @@
-﻿open Aardvark.Service
+﻿
+open Aardvark.Service
 open System
 
 open Aardvark.Base
@@ -66,8 +67,8 @@ let kitchenSink argv =
     //let a = DragNDrop.TranslateController.start()
     //let a = SimpleDrawingApp.start()
     //let a = DrawingApp.start()
-    let a = PlaceTransformObjects.App.start()
-
+    //let a = PlaceTransformObjects.App.start()
+    let a = BookmarkApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
