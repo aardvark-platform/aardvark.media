@@ -90,12 +90,25 @@ let modelviewer args =
     Viewer.Viewer.run args
     System.Environment.Exit 0
 
+open Aardvark.Base.Incremental
+
+type List<'a> = Nil | Cons of 'a * List<'a>
+
 [<EntryPoint; STAThread>]
 let main args =
-    
+
+    let isEmpty (l : List<'a>) = 
+        match l with
+            | Nil -> true
+            | Cons(v,rest) -> false
+
+    let isEmpty =
+        function | Nil          -> true
+                 | Cons(v,rest) -> false
+
+
     kitchenSink args
     //modelviewer args
-
 
     0
 

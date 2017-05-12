@@ -181,14 +181,14 @@ module Mutable =
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
         let _boxHovered = ResetMod(__initial.boxHovered)
-        let _bookmarks = ResetMod(__initial.bookmarks)
+        let _bookmarks = ResetMapList(__initial.bookmarks, (fun _ -> MBookmark.Create), fun (m,i) -> m.Update(i))
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.draw = _draw :> IMod<_>
         member x.hoverPosition = _hoverPosition :> IMod<_>
         member x.boxHovered = _boxHovered :> IMod<_>
-        member x.bookmarks = _bookmarks :> IMod<_>
+        member x.bookmarks = _bookmarks :> alist<_>
         
         member x.Update(__model : PRo3DModels.BookmarkAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -241,19 +241,19 @@ module Mutable =
                     override x.Update(r,f) = { r with draw = f r.draw }
                 }
             let hoverPosition =
-                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.option<Aardvark.Base.Trafo3d>>() with
+                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.Option<Aardvark.Base.Trafo3d>>() with
                     override x.Get(r) = r.hoverPosition
                     override x.Set(r,v) = { r with hoverPosition = v }
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
             let boxHovered =
-                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with
+                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.Option<Microsoft.FSharp.Core.string>>() with
                     override x.Get(r) = r.boxHovered
                     override x.Set(r,v) = { r with boxHovered = v }
                     override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
                 }
             let bookmarks =
-                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Collections.list<PRo3DModels.Bookmark>>() with
+                { new Lens<PRo3DModels.BookmarkAppModel, Aardvark.Base.plist<PRo3DModels.Bookmark>>() with
                     override x.Get(r) = r.bookmarks
                     override x.Set(r,v) = { r with bookmarks = v }
                     override x.Update(r,f) = { r with bookmarks = f r.bookmarks }

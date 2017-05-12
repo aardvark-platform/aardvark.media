@@ -57,6 +57,7 @@ module Incremental =
     // Text content
     let inline dd x = elem "dd" x
     let inline div x = elem "div" x
+    let inline div' x children = elem "div" x (AList.ofList children)
     let inline dl x = elem "dl" x
     let inline dt x = elem "dt" x
     let inline figcaption x = elem "figcaption" x

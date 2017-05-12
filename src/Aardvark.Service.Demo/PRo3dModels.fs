@@ -46,13 +46,13 @@ type NavigationParameters = {
 
 [<DomainType>]
 type BookmarkAppModel = {
-    camera : CameraControllerState
+    camera    : CameraControllerState
     rendering : RenderingParameters
 
-    draw    : bool 
-    hoverPosition : option<Trafo3d>
-    boxHovered : option<string>
-    bookmarks : list<Bookmark>
+    draw          : bool 
+    hoverPosition : Option<Trafo3d>
+    boxHovered    : Option<string>
+    bookmarks     : plist<Bookmark>
 }
 
 [<DomainType>]
