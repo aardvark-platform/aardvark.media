@@ -4,6 +4,6 @@ Aardvark.Base.FSharp
 Aardvark.Base.Rendering
 
 
-
+Aardvark.Application
 
 Aardvark.Compiler.DomainTypes.MSBuild

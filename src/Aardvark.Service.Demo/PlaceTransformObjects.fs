@@ -50,6 +50,8 @@ module App =
             | Nop -> m
 
 
+    
+
     let viewScene (m : MScene) =
 
         let plane = 
@@ -63,8 +65,12 @@ module App =
                     let selected = ASet.contains name m.world.selectedObjects
                     let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
                     let controller =
-                        TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation 
-                        |> Sg.onOff selected 
+                        selected |> Mod.map (
+                            function 
+                            | true ->
+                                TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation
+                            | false -> Sg.ofList []
+                        ) |> Sg.dynamic
                     yield 
                         Sg.box color (Box3d.FromCenterAndSize(V3d.OOO,V3d.III*0.5) |> Mod.constant) 
                         |> Sg.requirePicking 
@@ -77,7 +83,8 @@ module App =
                             } )
                         |> Sg.trafo obj.transformation.trafo 
                         |> Sg.andAlso controller
-                        |> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
+                        //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
+                        //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
             } |> Sg.set
 
         Sg.ofSeq [plane; objects; ]
@@ -111,11 +118,21 @@ module App =
             ]
         )
 
+    let many = 
+        HMap.ofList [
+            for i in 0 .. 2 do 
+                for j in 0 .. 2 do
+                    for z in 0 .. 2 do
+                        let name = System.Guid.NewGuid() |> string
+                        let newObject = { name = name; objectType = ObjectType.Box; transformation = { TranslateController.initial with trafo = Trafo3d.Translation(float i, float j, float z) } }
+                        yield name,newObject
+        ]
+
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = { world = { objects = HMap.empty; selectedObjects = HSet.empty }; camera = CameraController.initial; }
+            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial; }
             update = update
             view = view
         }

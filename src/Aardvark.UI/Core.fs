@@ -26,7 +26,7 @@ module Pickler =
 type Event<'msg> =
     {
         clientSide : (string -> list<string> -> string) -> string -> string
-        serverSide : Guid -> string -> list<string> -> list<'msg>
+        serverSide : Guid -> string -> list<string> -> seq<'msg>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -43,16 +43,16 @@ module Event =
     let empty<'msg> : Event<'msg> =
         {
             clientSide = fun _ _ -> ""
-            serverSide = fun _ _ _ -> []
+            serverSide = fun _ _ _ -> Seq.empty
         }
 
     let ofTrigger (reaction : unit -> 'msg) =
         {
             clientSide = fun send id -> send id []
-            serverSide = fun _ _ _ -> [reaction()]
+            serverSide = fun _ _ _ -> Seq.delay (reaction >> Seq.singleton)
         }
 
-    let ofDynamicArgs (args : list<string>) (reaction : list<string> -> list<'msg>) =
+    let ofDynamicArgs (args : list<string>) (reaction : list<string> -> seq<'msg>) =
         {
             clientSide = fun send id -> send id args
             serverSide = fun session id args -> reaction args
@@ -65,14 +65,14 @@ module Event =
                 match args with
                     | [a] ->
                         try 
-                            [ reaction (Pickler.json.UnPickleOfString a)]
+                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a)))
                         with e ->
                             Log.warn "[UI] expected args (%s) but got (%A)" typename<'a> a
-                            []
+                            Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s) but got %A" typename<'a> args
-                        []
+                        Seq.empty
         }
 
     let create2 (a : string) (b : string) (reaction : 'a -> 'b -> 'msg) =
@@ -82,14 +82,14 @@ module Event =
                 match args with
                     | [a; b] ->
                         try 
-                            [ reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) ]
+                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) ))
                         with e ->
                             Log.warn "[UI] expected args (%s, %s) but got (%A, %A)" typename<'a> typename<'b> a b
-                            []
+                            Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s, %s) but got %A" typename<'a> typename<'b> args
-                        []
+                        Seq.empty
         }
 
     let create3 (a : string) (b : string) (c : string) (reaction : 'a -> 'b -> 'c -> 'msg) =
@@ -99,14 +99,14 @@ module Event =
                 match args with
                     | [a; b; c] ->
                         try 
-                            [ reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) (Pickler.json.UnPickleOfString c) ]
+                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) (Pickler.json.UnPickleOfString c)))
                         with e ->
                             Log.warn "[UI] expected args (%s, %s, %s) but got (%A, %A, %A)" typename<'a> typename<'b> typename<'c> a b c
-                            []
+                            Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s, %s, %s) but got %A" typename<'a> typename<'b> typename<'c> args
-                        []
+                        Seq.empty
         }
 
     let combine (l : Event<'msg>) (r : Event<'msg>) =
@@ -121,7 +121,7 @@ module Event =
                     | "1" :: args -> r.serverSide session id args
                     | _ -> 
                         Log.warn "[UI] expected args ((1|2)::args) but got %A" args
-                        []
+                        Seq.empty
                 
         }
 
@@ -149,10 +149,10 @@ module Event =
 
                                     | _ ->
                                         Log.warn "[UI] unexpected index for dispatcher: %A" index
-                                        []
+                                        Seq.empty
                             | [] ->
                                 Log.warn "[UI] expected at least one arg for dispatcher"
-                                []
+                                Seq.empty
                         
                         
                 
@@ -161,7 +161,7 @@ module Event =
     let map (f : 'a -> 'b) (e : Event<'a>) = 
         {
             clientSide = e.clientSide; 
-            serverSide = fun session id args -> List.map f (e.serverSide session id args) 
+            serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
         }
 
 [<RequireQualifiedAccess>]
@@ -321,13 +321,13 @@ type SceneEventProcessor<'msg>() =
     static let empty =
         { new SceneEventProcessor<'msg>() with
             member x.NeededEvents = ASet.empty
-            member x.Process(_,_) = []
+            member x.Process(_,_) = Seq.empty
         }
 
     static member Empty = empty
 
     abstract member NeededEvents : aset<SceneEventKind>
-    abstract member Process : source : Guid * evt : byref<SceneEvent> -> list<'msg>
+    abstract member Process : source : Guid * evt : SceneEvent -> seq<'msg>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SceneEventProcessor =
@@ -344,10 +344,10 @@ module SceneEventProcessor =
 
             override x.NeededEvents = needed.Value
             override x.Process(sender, e) = 
-                let res = System.Collections.Generic.List()
-                for p in inner do
-                    res.AddRange(p.Process(sender, &e))
-                res |> CSharpList.toList
+                seq {
+                    for p in inner do
+                        yield! p.Process(sender, e)
+                }
 
     let empty<'msg> = SceneEventProcessor<'msg>.Empty
 
@@ -498,21 +498,21 @@ type DomNode private() =
 
 
 
-        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : list<'msg> =
+        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : seq<'msg> =
             match scene.TryGetClientInfo(sourceSession, sourceId) with
                 | Some (info, state) -> 
                     let pp = PixelPosition(pos.X, pos.Y, info.size.X, info.size.Y)
                     let ray = state |> ClientState.pickRay pp |> FastRay3d |> RayPart
 
-                    let mutable evt = 
+                    let evt = 
                         {
                             evtKind    = kind
                             evtRay     = ray 
                             evtButtons = buttons
-                            evtTrafo   = Trafo3d.Identity
+                            evtTrafo   = Mod.constant Trafo3d.Identity
                         }
 
-                    let procRes = processor.Process(sourceSession, &evt)
+                    let procRes = processor.Process(sourceSession, evt)
                     procRes
 
                     //let renderControlName = "RenderControl." + eventNames.[kind]
@@ -525,7 +525,7 @@ type DomNode private() =
 
                 | None ->
                     Log.warn "[UI] could not get client info for %A/%s" sourceSession sourceId
-                    []
+                    Seq.empty
 
         let rayEvent (includeButton : bool) (kind : SceneEventKind) =
             let args =
@@ -548,7 +548,7 @@ type DomNode private() =
                             perform(session, id, kind, MouseButtons.None, V2i(vx,vy))
 
                         | _ ->
-                            []
+                            Seq.empty
                         
             }
 
@@ -629,18 +629,19 @@ type DomNode private() =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = 
                     ASet.union (AMap.keys globalPicks) tree.Needed
-                member x.Process (source : Guid, evt : byref<SceneEvent>) = 
-                    //evt <- { evt with rayT = -1.0 }
-                    let consumed, msgs = tree.Perform(evt)
+                member x.Process (source : Guid, evt : SceneEvent) = 
+                    seq {
+                        //evt <- { evt with rayT = -1.0 }
+                        let consumed, msgs = tree.Perform(evt)
+                        yield! msgs
 
-
-                    let m = globalPicks.Content |> Mod.force
-                    match m |> HMap.tryFind evt.kind with
-                        | Some cb -> 
-                            let res = cb evt
-                            res @ msgs
-                        | None -> 
-                            msgs
+                        let m = globalPicks.Content |> Mod.force
+                        match m |> HMap.tryFind evt.kind with
+                            | Some cb -> 
+                                yield! cb evt
+                            | None -> 
+                                ()
+                    }
             }
 
         DomNode.RenderControl(attributes, proc, getState, scene)

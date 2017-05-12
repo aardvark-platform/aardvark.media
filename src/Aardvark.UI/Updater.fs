@@ -15,7 +15,7 @@ open Aardvark.UI
 type UpdateState<'msg> =
     {
         scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
-        handlers            : Dictionary<string * string, Guid -> string -> list<string> -> list<'msg>>
+        handlers            : Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
         references          : Dictionary<string * ReferenceKind, Reference>
     }
 
@@ -286,7 +286,7 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
             initial <- false
 
             for (name,cb) in Map.toSeq ui.Callbacks do
-                state.handlers.[(id,name)] <- fun _ _ v -> [cb v]
+                state.handlers.[(id,name)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
 
             for r in ui.Required do
                 state.references.[(r.name, r.kind)] <- r

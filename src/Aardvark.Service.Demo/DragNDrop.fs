@@ -196,9 +196,14 @@ module TranslateController =
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
                ]
-            |> Sg.withGlobalEvents [
-                    Global.onMouseMove (fun e -> MoveRay e.localRay)
-               ]
+            |> Sg.Incremental.withGlobalEvents ( 
+                    amap {
+                        let! grabbed = m.grabbed
+                        if grabbed.IsSome then
+                            yield Global.onMouseMove (fun e -> MoveRay e.localRay)
+                            yield Global.onMouseUp   (fun _ -> Release)
+                    }
+                )
 
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
@@ -207,9 +212,6 @@ module TranslateController =
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
         |> Sg.trafo m.trafo
-        |> Sg.withGlobalEvents [
-                Global.onMouseUp (fun _ -> Release)
-           ]
         |> Sg.map liftMessage
         
 

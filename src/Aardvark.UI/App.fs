@@ -36,13 +36,13 @@ module App =
         let node = app.view mstate
 
         let mutable running = true
-        let messageQueue = List<'msg>(128)
+        let messageQueue = List<seq<'msg>>(128)
 
         let mutable currentThreads = ThreadPool.empty
 
-        let update (source : Guid) (msgs : list<'msg>) =
+        let update (source : Guid) (msgs : seq<'msg>) =
             lock messageQueue (fun () ->
-                messageQueue.AddRange msgs
+                messageQueue.Add msgs
                 Monitor.Pulse messageQueue
             )
 
@@ -67,20 +67,30 @@ module App =
             currentThreads <- ThreadPool<'msg>(HMap.choose2 merge currentThreads.store newThreads.store)
 
 
-        and doit(msgs : list<'msg>) =
-            transact (fun () ->
-                lock l (fun () ->
-                    let newState = msgs |> List.fold app.update state.Value
+        and doit(msgs : list<seq<'msg>>) =
+            lock l (fun () ->
+                let flat = Seq.concat msgs
+
+                for msg in flat do
+                    let newState = app.update state.Value msg
                     let newThreads = app.threads newState
                     adjustThreads newThreads
-                    state.Value <- newState
-                    app.unpersist.update mstate newState
-                )
+                    transact (fun () ->
+                        state.Value <- newState
+                        app.unpersist.update mstate newState
+                    )
+
+                //failwith ""
+                //let newState = msgs |> List.fold app.update state.Value
+                //let newThreads = app.threads newState
+                //adjustThreads newThreads
+                //state.Value <- newState
+                //app.unpersist.update mstate newState
             )
 
         and emit (msg : 'msg) =
             lock messageQueue (fun () ->
-                messageQueue.Add msg
+                messageQueue.Add (Seq.singleton msg)
                 Monitor.Pulse messageQueue
             )
 
@@ -104,6 +114,7 @@ module App =
 
 
         {
+            lock = l
             model = state
             ui = node
             update = update
