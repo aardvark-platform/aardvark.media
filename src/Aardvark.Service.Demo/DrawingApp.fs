@@ -114,10 +114,11 @@ module DrawingApp =
             | KeyDown Keys.D4, _ -> 
                     { model with semantic = Semantic.Horizon4 }
             | Export, _ ->
-                    let path = Path.combine([model.exportPath; "drawing.json"]) |> String.replace @"\\" @"\"
+                    let path = Path.combine([model.exportPath; "drawing.json"])
+                    printf "Writing %i annotations to %s" model.annotations.Length path
                     let json = model.annotations |> List.map JsonTypes.ofAnnotation |> JsonConvert.SerializeObject
-                    Serialization.writeToFile json path
-                    printf "Wrote %i annotations to %s" model.annotations.Length path
+                    Serialization.writeToFile path json 
+                    
                     model
             | Save, _ -> 
                     Serialization.save model ".\drawing"
