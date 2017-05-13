@@ -196,6 +196,9 @@ module Static =
     let inline hgroup x = elem "hgroup" x
     let inline nav x = elem "nav" x
 
+    // page content
+    let inline body x = elem "body" x
+
     // Text content
     let inline dd x = elem "dd" x
     let inline div x = elem "div" x

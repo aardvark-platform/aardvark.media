@@ -314,4 +314,7 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
 module ``Extensions for Node`` =
     type DomNode<'msg> with
         member x.NewUpdater() =
-            DomUpdater<'msg>(DomNode<'msg>("body", AttributeMap.empty, Children (AList.single x))) :> IUpdater<_>
+            if x.Tag = "body" then DomUpdater<'msg>(x) :> IUpdater<_>
+            else
+                Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
+                DomUpdater<'msg>(DomNode<'msg>("body", AttributeMap.empty, Children (AList.single x))) :> IUpdater<_>
