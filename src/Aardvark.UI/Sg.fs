@@ -515,6 +515,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
    
     let mutable last = None
+    let entered = System.Collections.Generic.HashSet<_>()
 
     static let intersectLeaf (kind : SceneEventKind) (part : RayPart) (p : PickObject) =
         let pickable = p.Pickable |> Mod.force
@@ -546,13 +547,15 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                     let cont, msgs =
                         proc.Process { event = evt; rayT = hit.T }
 
+                    // rethink this stuff 
 
                     let cc, msgs =
                         if Some proc <> last && contEnter then
                             let l = last
                             let cc,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T } 
+                            entered.Add proc |> ignore
                             if not cc then
-                                last <- Some proc
+                                //last <- Some proc
                                 false, seq {
                                     match l with
                                         | Some l -> 
@@ -565,9 +568,10 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                                     yield! msgs
                                 }
                             else
-                                
+                                //last <- Some proc
                                 true, msgs
                         else 
+                            entered.Add proc |> ignore
                             true, msgs
 
                     
@@ -580,13 +584,16 @@ type PickTree<'msg>(sg : ISg<'msg>) =
             else
                  match last with
                     | Some l when contEnter -> 
-                        last <- None
-                        let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
-                        false, leaves
+                        if entered.Contains l then false, Seq.empty
+                        else
+                            last <- None
+                            let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
+                            false, leaves
                     | _ -> 
                         false, Seq.empty
                 
 
+        entered.Clear()
 
         run evt HSet.empty true
 //
