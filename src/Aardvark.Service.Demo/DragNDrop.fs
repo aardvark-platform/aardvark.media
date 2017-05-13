@@ -12,7 +12,7 @@ module App =
     open Aardvark.Base.Geometry
 
     type Action = 
-        | StartDrag of SceneEvent
+        | StartDrag of SceneHit
         | StopDrag
         | MoveRay      of RayPart 
         | CameraAction of CameraController.Message
@@ -30,7 +30,7 @@ module App =
                         { m with trafo = Trafo3d.Translation (i - centerOffset) }
                     | None -> m
             | StartDrag p -> 
-                { m with dragging = Some { PickPoint = p.position; Offset =  p.position - m.trafo.Forward.TransformPos(V3d.OOO) }}
+                { m with dragging = Some { PickPoint = p.globalPosition; Offset =  p.globalPosition - m.trafo.Forward.TransformPos(V3d.OOO) }}
             | StopDrag    -> { m with dragging = None   }
             | _ -> m
 
@@ -152,7 +152,7 @@ module TranslateController =
             | Unhover -> 
                 { m with hovered = None }
             | Grab (rp, axis) ->
-                let offset = closestT (rp.Transformed m.trafo.Inverse) axis
+                let offset = closestT rp axis
                 { m with grabbed = Some { offset = offset; axis = axis } } 
             | Release ->
                 { m with grabbed = None }
@@ -166,7 +166,7 @@ module TranslateController =
                         | Y -> V3d.OIO
                         | Z -> V3d.OOI
 
-                     let closestPoint = closestT (rp.Transformed m.trafo.Inverse) axis
+                     let closestPoint = closestT rp axis
                      let trafo = m.trafo * Trafo3d.Translation ((closestPoint - offset) * other)
 
                      { m with trafo = trafo; }
@@ -196,9 +196,17 @@ module TranslateController =
             |> Sg.uniform "HoverColor" col
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
-                    Sg.onMouseDownEvt (fun evt -> Grab (evt.ray, axis))
+                    Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
-              ]
+               ]
+            |> Sg.Incremental.withGlobalEvents ( 
+                    amap {
+                        let! grabbed = m.grabbed
+                        if grabbed.IsSome then
+                            yield Global.onMouseMove (fun e -> MoveRay e.localRay)
+                            yield Global.onMouseUp   (fun _ -> Release)
+                    }
+                )
 
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
@@ -207,12 +215,8 @@ module TranslateController =
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
         |> Sg.trafo m.trafo
-        |> Sg.withGlobalEvents [
-                Sg.onMouseMoveRay MoveRay
-                Sg.onMouseUp (fun _ -> Release)
-           ]
         |> Sg.map liftMessage
-
+        
 
     let updateScene (m : Scene) (a : SceneAction) =
         match a with

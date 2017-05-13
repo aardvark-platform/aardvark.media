@@ -172,7 +172,7 @@ module CameraController =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
             always (onMouseDown (fun b p -> f (Down(b,p))))
-            always (onMouseUp (fun b p -> f (Up b)))
+            onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
@@ -185,7 +185,7 @@ module CameraController =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
                 always (onMouseDown (fun b p -> f (Down(b,p))))
-                always (onMouseUp (fun b p -> f (Up b)))
+                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
                 always (onKeyDown (KeyDown >> f))
                 always (onKeyUp (KeyUp >> f))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))

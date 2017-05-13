@@ -574,7 +574,7 @@ type internal ClientCreateInfo =
         getSignature    : int -> IFramebufferSignature
     }
 
-type internal Client(createInfo : ClientCreateInfo, getState : ClientInfo -> ClientState, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
+type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState : ClientInfo -> ClientState, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
     static let mutable currentId = 0
  
     let id = Interlocked.Increment(&currentId)
@@ -624,23 +624,24 @@ type internal Client(createInfo : ClientCreateInfo, getState : ClientInfo -> Cli
         while running do
             let size = MVar.take requestedSize
             if size.AllGreater 0 then
+                lock updateLock (fun () ->
+                    sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                        let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now })
+                        try
+                            let state = getState info
+                            let data = task.Run(token, info, state)
 
-                sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                    let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now })
-                    try
-                        let state = getState info
-                        let data = task.Run(token, info, state)
-
-                        let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
-                        match res with
-                            | Choice1Of2() -> ()
-                            | Choice2Of2 err ->
-                                running <- false
-                                Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
-                    with e ->
-                        running <- false
-                        Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
+                            let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
+                            match res with
+                                | Choice1Of2() -> ()
+                                | Choice2Of2 err ->
+                                    running <- false
+                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                        with e ->
+                            running <- false
+                            Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
                     
+                    )
                 )
 
                 
@@ -845,7 +846,7 @@ module Server =
     let add (name : string) (create : ClientValues -> IRenderTask) (server : Server) =
         addScene name (Scene.custom create) server
 
-    let toWebPart (info : Server) =
+    let toWebPart (updateLock : obj) (info : Server) =
         let clients = Dict<Guid * string, Client>()
 
         let signatures = ConcurrentDictionary<int, IFramebufferSignature>()
@@ -908,7 +909,7 @@ module Server =
                 lock clients (fun () ->
                     clients.GetOrCreate(key, fun (sessionId, targetId) ->
                         Log.line "[Server] created client for (%A/%s)" sessionId targetId
-                        new Client(createInfo, getState, content)
+                        new Client(updateLock, createInfo, getState, content)
                     )
                 )
 
@@ -980,8 +981,8 @@ module Server =
         choose parts
 
     let run (port : int) (server : Server) =
-        server |> toWebPart |> List.singleton |> WebPart.runServer port
+        server |> toWebPart (obj())  |> List.singleton |> WebPart.runServer port
 
     let start (port : int) (server : Server) =
-        server |> toWebPart |> List.singleton |> WebPart.startServer port
+        server |> toWebPart (obj())  |> List.singleton |> WebPart.startServer port
 
