@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI
+﻿namespace Aardvark.UI.Primitives
 
 open System
 
@@ -9,6 +9,7 @@ open Aardvark.Application
 open Aardvark.SceneGraph
 open Aardvark.UI
 
+open Aardvark.UI.Primitives
 
 module CameraController =
     open Aardvark.Base.Incremental.Operators    

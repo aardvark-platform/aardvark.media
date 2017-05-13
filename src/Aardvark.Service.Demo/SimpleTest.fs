@@ -4,24 +4,25 @@ open SimpleTest
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
+open Aardvark.SceneGraph
+open Aardvark.Base.Rendering
+open Aardvark.UI
+open Aardvark.UI.Primitives
 
 type Action = 
     | Inc 
     | Dec
-    | CameraAction of Aardvark.UI.CameraController.Message
+    | CameraAction of CameraController.Message
 
 let update (m : Model) (a : Action) =
     match a with
         | Inc -> { m with value = m.value + 1.0 }
         | Dec -> { m with value = m.value - 1.0 } 
-        | CameraAction a -> { m with cameraModel = Aardvark.UI.CameraController.update m.cameraModel a }
+        | CameraAction a -> { m with cameraModel = CameraController.update m.cameraModel a }
 
 let cam = 
     Camera.create (CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI) (Frustum.perspective 60.0 0.1 10.0 1.0)
 
-open Aardvark.SceneGraph
-open Aardvark.Base.Rendering
-open Aardvark.UI
 
 let threeD (m : MModel) =
 
@@ -48,7 +49,7 @@ let threeD (m : MModel) =
             
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
-    Aardvark.UI.CameraController.controlledControl m.cameraModel CameraAction
+    CameraController.controlledControl m.cameraModel CameraAction
         (Mod.constant frustum) 
         (AttributeMap.ofList [ attribute "style" "width:70%; height: 100%"]) sg
 

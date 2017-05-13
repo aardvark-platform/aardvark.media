@@ -8,6 +8,7 @@ module App =
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
     open Aardvark.UI
+    open Aardvark.UI.Primitives
     open Aardvark.Base.Geometry
 
     type Action = 
@@ -91,6 +92,8 @@ module TranslateController =
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
     open Aardvark.UI
+    open Aardvark.UI.Primitives
+
     open Aardvark.Base.Geometry
 
     open DragNDrop

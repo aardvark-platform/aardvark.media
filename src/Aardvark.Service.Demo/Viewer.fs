@@ -13,6 +13,7 @@ open System.Collections.Generic
 open System.Collections.Concurrent
 open Aardvark.SceneGraph
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Aardvark.Rendering.Text
 open Xilium.CefGlue
 open Xilium.CefGlue.Platform.Windows

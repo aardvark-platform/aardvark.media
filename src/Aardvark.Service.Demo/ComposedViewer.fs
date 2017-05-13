@@ -2,6 +2,7 @@
 
 open System
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Aardvark.Base.Incremental
 open Aardvark.SceneGraph.AirState
 open Demo

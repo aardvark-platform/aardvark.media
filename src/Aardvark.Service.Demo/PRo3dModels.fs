@@ -6,6 +6,7 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Aardvark.UI.Mutable
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open FShade.Primitives
 open Demo
 open Demo.TestApp

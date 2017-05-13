@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI
+﻿namespace Aardvark.UI.Primitives
 
 open Aardvark.Base
 open Aardvark.Base.Incremental

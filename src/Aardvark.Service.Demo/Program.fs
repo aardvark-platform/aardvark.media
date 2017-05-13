@@ -42,6 +42,9 @@ open PRo3DModels.Mutable
 * multiple picks along pickray (e.g. pickthrough for example in when selecting objs etc)
 * click has wrong semantics
 * globalpicks should have firsthit property
+* multiple domain type files with same namespace collide in diffgenerator
+* diffgenerator msbuild<15 compatbility
+* diffgenerator annotation of lambdas for ResetMap creation
 
 *)
 
@@ -90,22 +93,8 @@ let modelviewer args =
     Viewer.Viewer.run args
     System.Environment.Exit 0
 
-open Aardvark.Base.Incremental
-
-type List<'a> = Nil | Cons of 'a * List<'a>
-
 [<EntryPoint; STAThread>]
 let main args =
-
-    let isEmpty (l : List<'a>) = 
-        match l with
-            | Nil -> true
-            | Cons(v,rest) -> false
-
-    let isEmpty =
-        function | Nil          -> true
-                 | Cons(v,rest) -> false
-
 
     kitchenSink args
     //modelviewer args

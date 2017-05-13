@@ -91,9 +91,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Compile Include="Model.fs" />
-    <Compile Include="CameraModel.fs" />
     <Compile Include="PRo3dModels.fs" />
-    <Compile Include="CameraController.fs" />
     <Compile Include="ArcBallController.fs" />
     <Compile Include="FileSystem.fs" />
     <Compile Include="ViewerModel.fs" />
