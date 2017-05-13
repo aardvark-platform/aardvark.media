@@ -96,6 +96,7 @@ module BookmarkApp =
                         do! DefaultSurfaces.simpleLighting
                     }
                     |> Sg.noEvents
+                    |> Sg.pickable (PickShape.Sphere(Sphere3d(V3d.OOO,0.05)))
                         |> Sg.withEvents [
                            Sg.onEnter (fun _ -> Enter id)
                         ]    
