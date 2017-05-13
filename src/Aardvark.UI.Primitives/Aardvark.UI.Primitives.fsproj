@@ -67,6 +67,8 @@
   <ItemGroup>
     <Compile Include="UI.Primitives.Models.fs" />
     <Compile Include="UI.Primitives.fs" />
+    <Compile Include="CameraModel.fs" />
+    <Compile Include="CameraController.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
