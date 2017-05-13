@@ -246,7 +246,7 @@ module DrawingApp =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
         require (Html.semui) (
-            div [clazz "ui"; style "background: #1B1C1E"] [
+            body [clazz "ui"; style "background: #1B1C1E"] [
                 ArcBallController.controlledControl model.camera CameraMessage frustum
                     (AttributeMap.ofList [
                                 onKeyDown (KeyDown)

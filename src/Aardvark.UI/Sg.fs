@@ -592,10 +592,21 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                     | _ -> 
                         false, Seq.empty
                 
-
+        let oldEntered = entered |> HashSet.toList
         entered.Clear()
 
-        run evt HSet.empty true
+        let c, msgs = run evt HSet.empty true
+        
+        let leaves = 
+            seq {
+                for o in oldEntered do
+                    if entered.Contains o then ()
+                    else 
+                        let _,msgs =  o.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
+                        yield! msgs
+            }
+        c, seq { yield! leaves; yield! msgs }
+
 //
 //
 //        match bvh.Intersect(intersectLeaf evt.kind, evt.globalRay) with
