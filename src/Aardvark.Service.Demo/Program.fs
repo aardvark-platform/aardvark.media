@@ -96,8 +96,8 @@ let modelviewer args =
 [<EntryPoint; STAThread>]
 let main args =
 
-    kitchenSink args
-    //modelviewer args
+    //kitchenSink args
+    modelviewer args
 
     0
 

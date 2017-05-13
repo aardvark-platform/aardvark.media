@@ -345,9 +345,21 @@ module Chromium =
                                 match config.mode with
                                     | OpenDialogMode.Folder ->
                                         fun () ->
-
-                                            ()
-                                    | _ -> 
+                                            let dialog = 
+                                                new FolderBrowserDialog(
+                                                    Description = config.title,
+                                                    SelectedPath = getInitialPath config.startPath
+                                                )
+                                            let res = dialog.ShowDialog()
+                                            match res with  
+                                                | DialogResult.OK -> 
+                                                    let path = dialog.SelectedPath
+                                                    use msg = IPC.toProcessMessage (Response.Ok(id, [path]))
+                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                | _ -> 
+                                                    use msg = IPC.toProcessMessage (Response.Abort id)
+                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                    | OpenDialogMode.File -> 
                                         fun () -> 
                                             let dialog = 
                                                 new OpenFileDialog(
@@ -377,6 +389,9 @@ module Chromium =
                                                 | _ -> 
                                                     use msg = IPC.toProcessMessage (Response.Abort id)
                                                     sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                    | _ -> 
+                                        Log.warn "unknown openDialogMode"
+                                        fun () -> ()
 
 
                             browser.BeginInvoke(Action(showDialog)) |> ignore
