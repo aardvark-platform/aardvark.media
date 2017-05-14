@@ -66,6 +66,7 @@ type VisibleBox = {
 }
 
 type Points = list<V3d>
+
 type Segment = Points
 
 type Projection = Linear = 0 | Viewpoint = 1 | Sky = 2
@@ -160,7 +161,7 @@ type DrawingAppModel = {
     geometry : Geometry
     semantic : Semantic
 
-    annotations : list<Annotation>
+    annotations : plist<Annotation>
     exportPath : string
 }
 
@@ -188,9 +189,9 @@ module JsonTypes =
 
     let ofV3d (v:V3d) : _V3d = { X = v.X; Y = v.Y; Z = v.Z }
 
-    let ofPolygon (p:Points) : _Points = p |> List.map ofV3d
+    let ofPolygon (p:Points) : _Points = p  |> List.map ofV3d
 
-    let ofSegment (s:Segment) : _Segment = s |> List.map ofV3d
+    let ofSegment (s:Segment) : _Segment = s  |> List.map ofV3d
 
     let rec fold f s xs =
         match xs with
@@ -202,7 +203,7 @@ module JsonTypes =
     let sum = [ 1 .. 10 ] |> List.fold (fun s e -> s * e) 1
 
     let sumDistance (polyline : Points) : double =
-        polyline |> List.pairwise |> List.fold (fun s (a,b) -> s + (b - a).LengthSquared) 0.0 |> Math.Sqrt
+        polyline  |> List.pairwise |> List.fold (fun s (a,b) -> s + (b - a).LengthSquared) 0.0 |> Math.Sqrt
 
     let ofAnnotation (a:Annotation) : _Annotation =
         let polygon = ofPolygon a.points

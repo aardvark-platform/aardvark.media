@@ -674,7 +674,7 @@ module Mutable =
         let _projection = ResetMod(__initial.projection)
         let _geometry = ResetMod(__initial.geometry)
         let _semantic = ResetMod(__initial.semantic)
-        let _annotations = ResetMod(__initial.annotations)
+        let _annotations = ResetMapList(__initial.annotations, (fun _ -> MAnnotation.Create), fun (m,i) -> m.Update(i))
         let _exportPath = ResetMod(__initial.exportPath)
         
         member x.camera = _camera
@@ -685,7 +685,7 @@ module Mutable =
         member x.projection = _projection :> IMod<_>
         member x.geometry = _geometry :> IMod<_>
         member x.semantic = _semantic :> IMod<_>
-        member x.annotations = _annotations :> IMod<_>
+        member x.annotations = _annotations :> alist<_>
         member x.exportPath = _exportPath :> IMod<_>
         
         member x.Update(__model : PRo3DModels.DrawingAppModel) =
@@ -777,7 +777,7 @@ module Mutable =
                     override x.Update(r,f) = { r with semantic = f r.semantic }
                 }
             let annotations =
-                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Collections.list<PRo3DModels.Annotation>>() with
+                { new Lens<PRo3DModels.DrawingAppModel, Aardvark.Base.plist<PRo3DModels.Annotation>>() with
                     override x.Get(r) = r.annotations
                     override x.Set(r,v) = { r with annotations = v }
                     override x.Update(r,f) = { r with annotations = f r.annotations }
