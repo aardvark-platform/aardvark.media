@@ -77,13 +77,13 @@ module DrawingApp =
                     let working = 
                         match model.working with
                                 | Some w ->                                     
-                                    { w with points = w.points |> List.append [p] }
+                                    { w with points = w.points |> PList.append p }
                                 | None -> 
-                                    { (Annotation.make model.projection model.geometry model.semantic) with points = [p]}//add annotation states
+                                    { (Annotation.make model.projection model.geometry model.semantic) with points = PList.ofList [p]}//add annotation states
 
                     let model = { model with working = Some working }
 
-                    match (working.geometry, (working.points.Length)) with
+                    match (working.geometry, (working.points |> PList.count)) with
                         | Geometry.Point, 1 -> model |> finishAndAppend
                         | Geometry.Line, 2 -> model |> finishAndAppend
                         | _ -> model
@@ -172,18 +172,20 @@ module DrawingApp =
                     ]  
                 |> Sg.onOff (Mod.constant true)
 
-        let edgeLines (close : bool) (points : IMod<list<V3d>>) =        
-            points 
-                |> Mod.map (
-                    function k -> 
-                                let head = k |> List.tryHead
-                                match head with
-                                        | Some h -> if close then k @ [h] else k
-                                                        |> List.pairwise
-                                                        |> List.map (fun (a,b) -> new Line3d(a,b)) 
-                                                        |> Array.ofList                                                        
-                                        | None -> [||])
+        let edgeLines (close : bool) (points : alist<V3d>) =        
+            let arr =
+                    let list = points |> AList.toList
+                    let head = list |> List.tryHead
+                    
+                    match head with
+                        | Some h -> if close then list @ [h] else list
+                                        |> List.pairwise
+                                        |> List.map (fun (a,b) -> new Line3d(a,b))
+                                        |> List.toArray
+                        | None -> [||]                         
 
+            Mod.constant arr
+            
         let brush (hovered : IMod<Trafo3d option>) = 
             let trafo =
                 hovered |> Mod.map (function o -> match o with 
@@ -195,15 +197,24 @@ module DrawingApp =
         //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
         //    points |> List.map (fun p -> mkISg color (computeScale view p 5.0) (Trafo3d.Translation(p)))
 
-        let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
-           points
-                |> Mod.map(function ps -> ps |> List.map (function p -> mkISg color
-                                                                              (computeScale view (Mod.constant p) 5.0)
-                                                                              (Mod.constant (Trafo3d.Translation(p)))) 
-                                             |> Sg.ofList)                                
-                |> Sg.dynamic  
+        //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
+        //   points
+        //        |> Mod.map(function ps -> ps |> List.map (function p -> mkISg color
+        //                                                                      (computeScale view (Mod.constant p) 5.0)
+        //                                                                      (Mod.constant (Trafo3d.Translation(p)))) 
+        //                                     |> Sg.ofList)                                
+        //        |> Sg.dynamic  
 
-        let lines (points : IMod<Points>) (color : IMod<C4b>) (width : IMod<float>) = 
+        let dots (points : alist<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =            
+            
+            aset {
+                for p in points |> ASet.ofAList do
+                    yield mkISg color (computeScale view (Mod.constant p) 5.0) (Mod.constant (Trafo3d.Translation(p)))
+            } 
+            |> Sg.set
+           
+
+        let lines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) = 
             edgeLines false points
                 |> Sg.lines color
                 |> Sg.effect [
@@ -218,9 +229,10 @@ module DrawingApp =
    
         let annotation (anno : IMod<Annotation option>)(view : IMod<CameraView>) = 
             let points = 
-                anno |> Mod.map (function o -> match o with
-                                                | Some a -> a.points
-                                                | None -> [])
+                anno |> Mod.map (fun o -> match o with
+                                            | Some a -> a.points
+                                            | None -> PList.empty) |> AList.ofMod
+                 
             let color = 
                 anno |> Mod.map (function o -> match o with
                                                 | Some a -> a.color

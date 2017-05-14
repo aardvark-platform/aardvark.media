@@ -319,7 +319,7 @@ module Mutable =
         let _geometry = ResetMod(__initial.geometry)
         let _projection = ResetMod(__initial.projection)
         let _semantic = ResetMod(__initial.semantic)
-        let _points = ResetMod(__initial.points)
+        let _points = ResetList(__initial.points)
         let _segments = ResetMod(__initial.segments)
         let _color = ResetMod(__initial.color)
         let _thickness = Aardvark.UI.Mutable.MNumericInput.Create(__initial.thickness)
@@ -329,7 +329,7 @@ module Mutable =
         member x.geometry = _geometry :> IMod<_>
         member x.projection = _projection :> IMod<_>
         member x.semantic = _semantic :> IMod<_>
-        member x.points = _points :> IMod<_>
+        member x.points = _points :> alist<_>
         member x.segments = _segments :> IMod<_>
         member x.color = _color :> IMod<_>
         member x.thickness = _thickness
@@ -393,7 +393,7 @@ module Mutable =
                     override x.Update(r,f) = { r with semantic = f r.semantic }
                 }
             let points =
-                { new Lens<PRo3DModels.Annotation, PRo3DModels.Points>() with
+                { new Lens<PRo3DModels.Annotation, Aardvark.Base.plist<Aardvark.Base.V3d>>() with
                     override x.Get(r) = r.points
                     override x.Set(r,v) = { r with points = v }
                     override x.Update(r,f) = { r with points = f r.points }

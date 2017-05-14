@@ -80,7 +80,7 @@ type Annotation = {
     projection : Projection
     semantic : Semantic
 
-    points : Points
+    points : plist<V3d>
     segments : list<Segment>
     color : C4b
     thickness : NumericInput
@@ -206,9 +206,9 @@ module JsonTypes =
         polyline  |> List.pairwise |> List.fold (fun s (a,b) -> s + (b - a).LengthSquared) 0.0 |> Math.Sqrt
 
     let ofAnnotation (a:Annotation) : _Annotation =
-        let polygon = ofPolygon a.points
+        let polygon = ofPolygon (a.points |> PList.toList)
         let avgHeight = (polygon |> List.map (fun v -> v.Z ) |> List.sum) / double polygon.Length
-        let distance = sumDistance a.points
+        let distance = sumDistance (a.points |> PList.toList)
         {            
             semantic = a.semantic.ToString()
             geometry = polygon
@@ -256,7 +256,7 @@ module Annotation =
             
             geometry = geometry
             semantic = semantic
-            points = []
+            points = plist.Empty
             segments = []
             color = color
             thickness = { thickn with value = thickness}
@@ -271,7 +271,7 @@ module InitValues =
     let annotation = 
         {
             geometry = Geometry.Polyline
-            points = edge
+            points = edge |> PList.ofList
             semantic = Semantic.Horizon0
             segments = [ edge; edge; edge ]
             color = C4b.Red
@@ -285,7 +285,7 @@ module InitValues =
         {
             geometry = Geometry.Polyline
             semantic = Semantic.Horizon0
-            points = []
+            points = PList.empty
             segments = []
             color = C4b.Red
             thickness = Numeric.init
