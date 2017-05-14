@@ -38,7 +38,7 @@ let projInfo n =
       "github-link", "https://github.com/vrvis/aardvark.media"
       "project-github", "https://github.com/vrvis/aardvark.media"
       "project-nuget", sprintf "https://www.nuget.org/packages/%s" n
-      "root", sprintf "https://github.com/vrvis/aardvark.media/tree/master/docs/api/%s" n 
+      "root", sprintf "https://rawgit.com/vrvis/aardvark.media/base31/docs/api/%s" n 
       "project-name", n
     ]
 
