@@ -6,7 +6,7 @@ open Aardvark.Base.Incremental
 module Incremental =
 
     let renderControl (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg)
+        DomNode.RenderControl(attributes, cam, sg, None)
 
     let inline elem (tagName : string) (attrs : AttributeMap<'msg>) (children : alist<DomNode<'msg>>) =
         DomNode.Node(tagName, attrs, children)
@@ -150,7 +150,7 @@ module Incremental =
 module Static =
 
     let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg)
+        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, None)
 
     let inline elem (tagName : string) (attrs : list<string * AttributeValue<'msg>>) (children : list<DomNode<'msg>>) =
         DomNode.Node(tagName, AttributeMap.ofList attrs, AList.ofList children)

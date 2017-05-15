@@ -682,6 +682,11 @@ function setAttribute(id,name,value)
         id.setAttribute(name,value);
         id.value = value;
     }
+    else if (name == "selected")
+    {
+        id.setAttribute(name, value);
+        id.selected = value;
+    }
     else 
     {   
         id.setAttribute(name,value);

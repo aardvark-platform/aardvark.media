@@ -670,7 +670,7 @@ module Mutable =
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
-        let _working = ResetMod(__initial.working)
+        let _working = ResetMapOption(__initial.working, MAnnotation.Create, fun (m,i) -> m.Update(i))
         let _projection = ResetMod(__initial.projection)
         let _geometry = ResetMod(__initial.geometry)
         let _semantic = ResetMod(__initial.semantic)
@@ -753,7 +753,7 @@ module Mutable =
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
             let working =
-                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.option<PRo3DModels.Annotation>>() with
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.Annotation>>() with
                     override x.Get(r) = r.working
                     override x.Set(r,v) = { r with working = v }
                     override x.Update(r,f) = { r with working = f r.working }

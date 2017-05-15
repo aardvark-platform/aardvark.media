@@ -156,7 +156,7 @@ type DrawingAppModel = {
     hoverPosition : option<Trafo3d>
     //points : list<V3d>
 
-    working : option<Annotation>
+    working : Option<Annotation>
     projection : Projection
     geometry : Geometry
     semantic : Semantic
