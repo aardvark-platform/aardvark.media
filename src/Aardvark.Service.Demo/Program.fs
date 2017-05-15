@@ -42,6 +42,9 @@ open PRo3DModels.Mutable
 * multiple picks along pickray (e.g. pickthrough for example in when selecting objs etc)
 * click has wrong semantics
 * globalpicks should have firsthit property
+* multiple domain type files with same namespace collide in diffgenerator
+* diffgenerator msbuild<15 compatbility
+* diffgenerator annotation of lambdas for ResetMap creation
 
 *)
 
@@ -66,9 +69,9 @@ let kitchenSink argv =
     //let a = BoxSelectionDemo.start()
     //let a = DragNDrop.TranslateController.start()
     //let a = SimpleDrawingApp.start()
-    //let a = DrawingApp.start()
+    let a = DrawingApp.start()
     //let a = PlaceTransformObjects.App.start()
-    let a = BookmarkApp.start()
+   // let a = BookmarkApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
@@ -92,10 +95,9 @@ let modelviewer args =
 
 [<EntryPoint; STAThread>]
 let main args =
-    
+
     kitchenSink args
     //modelviewer args
-
 
     0
 

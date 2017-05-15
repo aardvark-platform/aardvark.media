@@ -13,11 +13,11 @@ module Mutable =
         let mutable __current = __initial
         let _trafo = ResetMod(__initial.trafo)
         let _dragging = ResetMod(__initial.dragging)
-        let _camera = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _camera = ResetMod(__initial.camera)
         
         member x.trafo = _trafo :> IMod<_>
         member x.dragging = _dragging :> IMod<_>
-        member x.camera = _camera
+        member x.camera = _camera :> IMod<_>
         
         member x.Update(__model : DragNDrop.Model) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -58,7 +58,7 @@ module Mutable =
                     override x.Update(r,f) = { r with dragging = f r.dragging }
                 }
             let camera =
-                { new Lens<DragNDrop.Model, Aardvark.UI.CameraControllerState>() with
+                { new Lens<DragNDrop.Model, Microsoft.FSharp.Core.obj>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -122,10 +122,10 @@ module Mutable =
     type MScene private(__initial : DragNDrop.Scene) =
         let mutable __current = __initial
         let _transformation = MTransformation.Create(__initial.transformation)
-        let _camera = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _camera = ResetMod(__initial.camera)
         
         member x.transformation = _transformation
-        member x.camera = _camera
+        member x.camera = _camera :> IMod<_>
         
         member x.Update(__model : DragNDrop.Scene) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -158,7 +158,7 @@ module Mutable =
                     override x.Update(r,f) = { r with transformation = f r.transformation }
                 }
             let camera =
-                { new Lens<DragNDrop.Scene, Aardvark.UI.CameraControllerState>() with
+                { new Lens<DragNDrop.Scene, Microsoft.FSharp.Core.obj>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }

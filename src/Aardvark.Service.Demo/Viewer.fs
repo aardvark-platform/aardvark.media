@@ -13,6 +13,7 @@ open System.Collections.Generic
 open System.Collections.Concurrent
 open Aardvark.SceneGraph
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Aardvark.Rendering.Text
 open Xilium.CefGlue
 open Xilium.CefGlue.Platform.Windows
@@ -197,7 +198,7 @@ module Viewer =
                                 button [
                                     clazz "ui button"
                                     onEvent "onchoose" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> OpenFile)
-                                    clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
+                                    clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
                                 ] [ text "browse"]
 
                                 br []

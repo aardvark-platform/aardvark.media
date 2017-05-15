@@ -10,6 +10,7 @@ open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Aardvark.Rendering.Text
 
 open PRo3DModels
@@ -56,7 +57,7 @@ module DrawingApp =
     
     let finishAndAppend (model : DrawingAppModel) = 
         let anns = match model.working with
-                            | Some w -> model.annotations |> List.append [w]
+                            | Some w -> model.annotations |> PList.append w
                             | None -> model.annotations
 
         { model with working = None; annotations = anns }
@@ -76,13 +77,13 @@ module DrawingApp =
                     let working = 
                         match model.working with
                                 | Some w ->                                     
-                                    { w with points = w.points |> List.append [p] }
+                                    { w with points = w.points |> PList.append p }
                                 | None -> 
-                                    { (Annotation.make model.projection model.geometry model.semantic) with points = [p] }//add annotation states
+                                    { (Annotation.make model.projection model.geometry model.semantic) with points = PList.ofList [p]}//add annotation states
 
                     let model = { model with working = Some working }
 
-                    match (working.geometry, working.points.Length) with
+                    match (working.geometry, (working.points |> PList.count)) with
                         | Geometry.Point, 1 -> model |> finishAndAppend
                         | Geometry.Line, 2 -> model |> finishAndAppend
                         | _ -> model
@@ -115,8 +116,8 @@ module DrawingApp =
                     { model with semantic = Semantic.Horizon4 }
             | Export, _ ->
                     let path = Path.combine([model.exportPath; "drawing.json"])
-                    printf "Writing %i annotations to %s" model.annotations.Length path
-                    let json = model.annotations |> List.map JsonTypes.ofAnnotation |> JsonConvert.SerializeObject
+                    printf "Writing %i annotations to %s" (model.annotations |> PList.count) path
+                    let json = model.annotations |> PList.map JsonTypes.ofAnnotation |> JsonConvert.SerializeObject
                     Serialization.writeToFile path json 
                     
                     model
@@ -126,7 +127,7 @@ module DrawingApp =
             | Load, _ -> 
                     Serialization.load ".\drawing"
             | Clear,_ ->
-                    { model with annotations = [] }
+                    { model with annotations = PList.empty }
             | SetExportPath s, _ ->
                     { model with exportPath = s }
             | _ -> model
@@ -136,12 +137,14 @@ module DrawingApp =
     
     module Draw =
 
-        let computeScale (view : IMod<CameraView>)(p:V3d)(size:float) =        
-            view 
-                |> Mod.map (function v -> 
-                                        let distV = p - v.Location
-                                        let distF = V3d.Dot(v.Forward, distV)
-                                        distF * size / 800.0) //needs hfov at this point
+        let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =        
+            adaptive {
+                let! p = p
+                let! v = view
+                let distV = p - v.Location
+                let distF = V3d.Dot(v.Forward, distV)
+                return distF * size / 800.0 //needs hfov at this point
+            }
 
         let mkISg color size trafo =         
             Sg.sphere 5 color size 
@@ -153,16 +156,12 @@ module DrawingApp =
                     |> Sg.noEvents
                     |> Sg.trafo(trafo) 
         
-        let canvas =  
-            let b = new Box3d( V3d(-4.0,-1.0,-4.0), V3d(4.0,1.0,4.0) )          
-            Sg.box (Mod.constant (C4b(252,132,95))) (Mod.constant b)
-            //Sg.sphere' 8 (new C4b(254,217,118)) 2.0
-            //IndexedGeometryPrimitives.quad' V3d.OOO V3d.IOO V3d.IOI V3d.OOI (C4b(254,217,118)) 
-              //  |> Aardvark.SceneGraph.SgFSharp.Sg.ofIndexedGeometry                          
+        let canvas =             
+            Sg.sphere' 8 (new C4b(247,127,90)) 20.0
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
-                  //  do! DefaultSurfaces.simpleLighting
+                    do! DefaultSurfaces.simpleLighting
                 }
                 |> Sg.requirePicking
                 |> Sg.noEvents 
@@ -173,18 +172,20 @@ module DrawingApp =
                     ]  
                 |> Sg.onOff (Mod.constant true)
 
-        let edgeLines (close : bool) (points : IMod<list<V3d>>) =        
-            points 
-                |> Mod.map (
-                    function k -> 
-                                let head = k |> List.tryHead
-                                match head with
-                                        | Some h -> if close then k @ [h] else k
-                                                        |> List.pairwise
-                                                        |> List.map (fun (a,b) -> new Line3d(a,b)) 
-                                                        |> Array.ofList                                                        
-                                        | None -> [||])
+        let edgeLines (close : bool) (points : alist<V3d>) =        
+            let arr =
+                    let list = points |> AList.toList
+                    let head = list |> List.tryHead
+                    
+                    match head with
+                        | Some h -> if close then list @ [h] else list
+                                        |> List.pairwise
+                                        |> List.map (fun (a,b) -> new Line3d(a,b))
+                                        |> List.toArray
+                        | None -> [||]                         
 
+            Mod.constant arr
+            
         let brush (hovered : IMod<Trafo3d option>) = 
             let trafo =
                 hovered |> Mod.map (function o -> match o with 
@@ -193,16 +194,27 @@ module DrawingApp =
 
             mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
 
-        let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
-            points
-                |> Mod.map(function ps -> ps |> List.map (function p -> mkISg color
-                                                                              (computeScale view p 5.0)
-                                                                              (Mod.constant (Trafo3d.Translation(p)))) 
-                                             |> Sg.ofList)                                
-                |> Sg.dynamic  
-               // |> Sg.depthTest (Mod.constant DepthTestMode.None)
-    
-        let lines (points : IMod<Points>) (color : IMod<C4b>) (width : IMod<float>) = 
+        //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
+        //    points |> List.map (fun p -> mkISg color (computeScale view p 5.0) (Trafo3d.Translation(p)))
+
+        //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
+        //   points
+        //        |> Mod.map(function ps -> ps |> List.map (function p -> mkISg color
+        //                                                                      (computeScale view (Mod.constant p) 5.0)
+        //                                                                      (Mod.constant (Trafo3d.Translation(p)))) 
+        //                                     |> Sg.ofList)                                
+        //        |> Sg.dynamic  
+
+        let dots (points : alist<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =            
+            
+            aset {
+                for p in points |> ASet.ofAList do
+                    yield mkISg color (computeScale view (Mod.constant p) 5.0) (Mod.constant (Trafo3d.Translation(p)))
+            } 
+            |> Sg.set
+           
+
+        let lines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) = 
             edgeLines false points
                 |> Sg.lines color
                 |> Sg.effect [
@@ -217,9 +229,10 @@ module DrawingApp =
    
         let annotation (anno : IMod<Annotation option>)(view : IMod<CameraView>) = 
             let points = 
-                anno |> Mod.map (function o -> match o with
-                                                | Some a -> a.points
-                                                | None -> [])
+                anno |> Mod.map (fun o -> match o with
+                                            | Some a -> a.points
+                                            | None -> PList.empty) |> AList.ofMod
+                 
             let color = 
                 anno |> Mod.map (function o -> match o with
                                                 | Some a -> a.color
@@ -232,12 +245,10 @@ module DrawingApp =
 
             [lines points color thickness; dots points color view]
 
-        let annotation' (anno : Annotation)(view : IMod<CameraView>) = 
-            let points = Mod.constant anno.points            
-            let color = Mod.constant anno.color
-            let thickness = Mod.constant anno.thickness.value
-
-            [lines points color thickness; dots points color view]           
+        let annotation' (anno : MAnnotation)(view : IMod<CameraView>) =             
+            [lines anno.points anno.color anno.thickness.value; 
+             dots anno.points anno.color view] 
+            |> ASet.ofList
 
     let view (model : MDrawingAppModel) =
                     
@@ -245,7 +256,7 @@ module DrawingApp =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
         require (Html.semui) (
-            div [clazz "ui"; style "background: #1B1C1E"] [
+            body [clazz "ui"; style "background: #1B1C1E"] [
                 ArcBallController.controlledControl model.camera CameraMessage frustum
                     (AttributeMap.ofList [
                                 onKeyDown (KeyDown)
@@ -254,13 +265,17 @@ module DrawingApp =
                     )
                     (
                         let view = model.camera.view
+                        
+                        // order is irrelevant for rendering. change list to set,
+                        // since set provides more degrees of freedom for the compiler
+                        let annoSet = ASet.ofAList model.annotations 
 
                         let annotations =
-                            model.annotations 
-                                |> Mod.map(function xs -> xs |> List.map(function a -> Draw.annotation' a view) 
-                                                             |> List.concat 
-                                                             |> Sg.ofList) 
-                                |> Sg.dynamic
+                            aset {
+                                for a in annoSet do
+                                    yield! Draw.annotation' a view
+                            } |> Sg.set
+                                
 
                         [Draw.canvas; Draw.brush model.hoverPosition; annotations] @
                          Draw.annotation model.working view
@@ -298,11 +313,11 @@ module DrawingApp =
                         Incremental.div 
                             (AttributeMap.ofList [clazz "ui divided list"]) (
                             
-                                alist {   
-                                    let! annotations = model.annotations
-                                
-                                    for a in (annotations |> AList.ofList) do                                    
-                                        let c = Annotation.color.[int a.semantic]
+                                alist {                                                                     
+                                    for a in model.annotations do 
+                                        
+                                        let! sem = a.semantic
+                                        let c = Annotation.color.[int sem]
 
                                         let bgc = sprintf "background: %s" (Html.ofC4b c)
                                     
@@ -323,7 +338,7 @@ module DrawingApp =
 
     let initial : DrawingAppModel =
         {
-            camera           = { ArcBallController.initial with view = CameraView.lookAt (6.0 * V3d.OIO) V3d.Zero V3d.OOI}
+            camera           = { ArcBallController.initial with view = CameraView.lookAt (23.0 * V3d.OIO) V3d.Zero V3d.OOI}
             rendering        = InitValues.rendering
             hoverPosition = None
             draw = false            
@@ -333,7 +348,7 @@ module DrawingApp =
             geometry = Geometry.Polyline
             semantic = Semantic.Horizon3
 
-            annotations = []
+            annotations = PList.empty
             exportPath = @"."
         }
 

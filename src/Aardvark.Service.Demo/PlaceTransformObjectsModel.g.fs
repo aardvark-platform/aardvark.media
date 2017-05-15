@@ -112,10 +112,10 @@ module Mutable =
     type MScene private(__initial : PlaceTransformObjects.Scene) =
         let mutable __current = __initial
         let _world = MWorld.Create(__initial.world)
-        let _camera = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _camera = ResetMod(__initial.camera)
         
         member x.world = _world
-        member x.camera = _camera
+        member x.camera = _camera :> IMod<_>
         
         member x.Update(__model : PlaceTransformObjects.Scene) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -148,7 +148,7 @@ module Mutable =
                     override x.Update(r,f) = { r with world = f r.world }
                 }
             let camera =
-                { new Lens<PlaceTransformObjects.Scene, Aardvark.UI.CameraControllerState>() with
+                { new Lens<PlaceTransformObjects.Scene, Microsoft.FSharp.Core.obj>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }

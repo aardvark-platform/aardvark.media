@@ -91,9 +91,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Compile Include="Model.fs" />
-    <Compile Include="CameraModel.fs" />
     <Compile Include="PRo3dModels.fs" />
-    <Compile Include="CameraController.fs" />
     <Compile Include="ArcBallController.fs" />
     <Compile Include="FileSystem.fs" />
     <Compile Include="ViewerModel.fs" />
@@ -111,6 +109,7 @@
     <Compile Include="PlaceTransformObjects.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
+    <Content Include="App.config" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">

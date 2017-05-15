@@ -18,7 +18,7 @@ module UI =
 
         onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
 
-    let onWheel' (f : Aardvark.Base.V2d -> list<'msg>) =
+    let onWheel' (f : Aardvark.Base.V2d -> seq<'msg>) =
         let serverClick (args : list<string>) : Aardvark.Base.V2d = 
             let delta = List.head args |> Pickler.unpickleOfJson
             delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
@@ -75,7 +75,7 @@ module Numeric =
     let formatNumber (format : string) (value : float) =
         String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-    let numericField<'msg> ( f : Action -> list<'msg> ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
+    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
 
         let tryParseAndClamp min max fallback s =
             let parsed = 0.0
@@ -112,7 +112,7 @@ module Numeric =
 
         Incremental.input (AttributeMap.ofAMap attributes |> AttributeMap.union atts)
 
-    let numericField' = numericField (List.singleton) AttributeMap.empty
+    let numericField' = numericField (Seq.singleton) AttributeMap.empty
 
     let view' (inputTypes : list<NumericInputType>) (model : MNumericInput) : DomNode<Action> =
         inputTypes 

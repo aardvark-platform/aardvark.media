@@ -1,24 +1,15 @@
-﻿namespace Aardvark.UI
-
-open Aardvark.Service
+﻿namespace Aardvark.UI.Primitives
 
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Geometry
 open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
-open Aardvark.Application.WinForms
-open System.Collections.Generic
-open System.Collections.Concurrent
 open Aardvark.SceneGraph
 open Aardvark.UI
-open Aardvark.Rendering.Text
-open Demo.TestApp
-open Demo.TestApp.Mutable
 
+open Aardvark.UI.Primitives
 
 module CameraController =
     open Aardvark.Base.Incremental.Operators    
@@ -181,7 +172,7 @@ module CameraController =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
             always (onMouseDown (fun b p -> f (Down(b,p))))
-            always (onMouseUp (fun b p -> f (Up b)))
+            onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
@@ -194,7 +185,7 @@ module CameraController =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
                 always (onMouseDown (fun b p -> f (Down(b,p))))
-                always (onMouseUp (fun b p -> f (Up b)))
+                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
                 always (onKeyDown (KeyDown >> f))
                 always (onKeyUp (KeyUp >> f))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
@@ -206,38 +197,6 @@ module CameraController =
         let cam = Mod.map2 Camera.create state.view frustum 
         Incremental.renderControl cam attributes sg
 
-//
-//    type Tool<'model, 'msg> = 
-//        {
-//            initial : 'model
-//            update : 'model -> 'msg -> 'model
-//            view : 'model -> hmap<string, AttributeValue<'msg>>
-//        }
-//
-//    let cameraControllerApp =
-//        {
-//            view = 
-//                fun model ->
-//                    HMap.ofList [
-//                        if model.zoom || model.pan || model.look then
-//                            yield onMouseMove Move
-//
-//                        yield onMouseDown (fun b p -> Down(b,p))
-//                        yield onMouseUp (fun b _ -> Up b)
-//                    ]
-//            update = update
-//            initial = initial
-//        }
-
-//    let run (f : 'model -> 'msg) (app : Tool<'model, 'm>) : amap<string, AttributeValue<'msg>> =
-////        let rec run (m : 'model) =
-////            
-////        failwith ""
-//
-////    let att = cameraControllerApp |> run (fun (cam : CameraControllerState) -> Down (MouseButtons.None, V2i.Zero))
-//
-//    let controlWASD (msg : CameraControllerState -> 'msg) : Attribute<'msg> =
-//        failwith ""
 
     let view (state : MCameraControllerState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
@@ -256,8 +215,6 @@ module CameraController =
                         |> Sg.noEvents
                 )
         ]
-
-
 
 
     let threads (state : CameraControllerState) =

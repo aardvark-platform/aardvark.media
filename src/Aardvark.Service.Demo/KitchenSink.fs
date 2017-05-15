@@ -15,6 +15,7 @@ open System.Collections.Generic
 open System.Collections.Concurrent
 open Aardvark.SceneGraph
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Aardvark.Rendering.Text
 open Demo.TestApp
 open Demo.TestApp.Mutable
