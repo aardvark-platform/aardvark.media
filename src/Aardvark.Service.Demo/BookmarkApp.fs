@@ -86,9 +86,10 @@ module BookmarkApp =
                         do! DefaultSurfaces.simpleLighting
                     }
                     |> Sg.noEvents
-                        |> Sg.withEvents [
-                           Sg.onEnter (fun _ -> Enter id)
-                        ]    
+                    |> Sg.withEvents [
+                        Sg.onEnter (fun _ -> Enter id)
+                        Sg.onLeave (fun () -> Exit)
+                    ]    
                     |> Sg.trafo(trafo) 
         
         let canvas =  
@@ -118,7 +119,7 @@ module BookmarkApp =
         let dots (bm : Bookmark) (point : IMod<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
             point
                 |> Mod.map(function ps  -> mkISg color
-                                                (computeScale view ps 5.0)
+                                                (computeScale view ps 15.0)
                                                 (Mod.constant (Trafo3d.Translation(ps)))
                                                 bm.id)              
                 |> Sg.dynamic  
