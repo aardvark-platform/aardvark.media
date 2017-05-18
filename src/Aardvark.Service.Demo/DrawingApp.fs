@@ -53,6 +53,8 @@ module DrawingApp =
         | Save
         | Load
         | Clear
+        | Undo
+        | Redo
         
     
     let finishAndAppend (model : DrawingAppModel) = 
@@ -62,6 +64,11 @@ module DrawingApp =
 
         { model with working = None; annotations = anns }
         
+    let stash (model : DrawingAppModel) =
+        { model with history = Some model; future = None }
+
+    let clearUndoRedo (model : DrawingAppModel) =
+        { model with history = None; future = None }
 
     let update (model : DrawingAppModel) (act : Action) =
         match act, model.draw with
@@ -83,10 +90,12 @@ module DrawingApp =
 
                     let model = { model with working = Some working }
 
-                    match (working.geometry, (working.points |> PList.count)) with
-                        | Geometry.Point, 1 -> model |> finishAndAppend
-                        | Geometry.Line, 2 -> model |> finishAndAppend
-                        | _ -> model
+                    let model = match (working.geometry, (working.points |> PList.count)) with
+                                    | Geometry.Point, 1 -> model |> finishAndAppend
+                                    | Geometry.Line, 2 -> model |> finishAndAppend
+                                    | _ -> model
+
+                    model |> stash
                     
             | KeyDown Keys.Enter, _ -> 
                     model |> finishAndAppend
@@ -130,6 +139,14 @@ module DrawingApp =
                     { model with annotations = PList.empty }
             | SetExportPath s, _ ->
                     { model with exportPath = s }
+            | Undo, _ -> 
+                match model.history with
+                    | Some h -> { h with future = Some model }
+                    | None -> model
+            | Redo, _ ->
+                match model.future with
+                    | Some f -> f
+                    | None -> model
             | _ -> model
             
             
@@ -193,18 +210,7 @@ module DrawingApp =
                                                     | None -> Trafo3d.Scale(V3d.Zero))
 
             mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
-
-        //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
-        //    points |> List.map (fun p -> mkISg color (computeScale view p 5.0) (Trafo3d.Translation(p)))
-
-        //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
-        //   points
-        //        |> Mod.map(function ps -> ps |> List.map (function p -> mkISg color
-        //                                                                      (computeScale view (Mod.constant p) 5.0)
-        //                                                                      (Mod.constant (Trafo3d.Translation(p)))) 
-        //                                     |> Sg.ofList)                                
-        //        |> Sg.dynamic  
-
+       
         let dots (points : alist<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =            
             
             aset {
@@ -213,7 +219,6 @@ module DrawingApp =
             } 
             |> Sg.set
            
-
         let lines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) = 
             edgeLines false points
                 |> Sg.lines color
@@ -308,9 +313,12 @@ module DrawingApp =
                                     i [clazz "file outline icon"] [] ]
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Export)] [
                                     i [clazz "external icon"] [] ]
+                        button [clazz "ui icon button"; onMouseClick (fun _ -> Undo)] [
+                                    i [clazz "arrow left icon"] [] ]
+                        button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [
+                                    i [clazz "arrow right icon"] [] ]
                     ]
 
-                  
                     Html.SemUi.accordion "Annotation Tools" "Write" true [
                         Html.table [                            
                             Html.row "Text:" [Html.SemUi.textBox model.exportPath SetExportPath ]
@@ -320,7 +328,6 @@ module DrawingApp =
                         ]                    
                     ]
                     
-
                    // div [style "overflow-Y: scroll" ] [
                     Html.SemUi.accordion "Annotations" "File Outline" true [
                         Incremental.div 
@@ -363,6 +370,9 @@ module DrawingApp =
 
             annotations = PList.empty
             exportPath = @"."
+
+            history = None
+            future = None
         }
 
     let app : App<DrawingAppModel,MDrawingAppModel,Action> =

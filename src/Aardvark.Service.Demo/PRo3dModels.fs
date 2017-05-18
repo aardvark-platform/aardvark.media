@@ -163,6 +163,12 @@ type DrawingAppModel = {
 
     annotations : plist<Annotation>
     exportPath : string
+
+    [<TreatAsValue>]
+    history : Option<DrawingAppModel> 
+
+    [<TreatAsValue>]
+    future : Option<DrawingAppModel> 
 }
 
 module JsonTypes =
