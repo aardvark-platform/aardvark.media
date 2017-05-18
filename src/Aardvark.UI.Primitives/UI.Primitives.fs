@@ -202,7 +202,7 @@ module Html =
                             i [clazz "content icon"] [] 
                             span [clazz "text"] [text "MENU"]
                         ]
-                    div [] [
+                    div [clazz "ui inverted segment"] [
                         rest
                     ]
                 ]
