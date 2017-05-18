@@ -65,11 +65,11 @@ let kitchenSink argv =
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
-    //let a = NavigationModeDemo.start()    
+    let a = NavigationModeDemo.start()
     //let a = BoxSelectionDemo.start()
     //let a = DragNDrop.TranslateController.start()
     //let a = SimpleDrawingApp.start()
-    let a = DrawingApp.start()
+    //let a = DrawingApp.start()
     //let a = PlaceTransformObjects.App.start()
    // let a = BookmarkApp.start()
 

@@ -259,8 +259,15 @@ module NavigationModeDemo =
         | NavigationAction  of NavigationProperties.Action
 
     let update (model : NavigationModeDemoModel) (act : Action) =
-        match act with
+        match act with            
             | ArcBallAction a -> 
+                let model = 
+                    match a with 
+                        | ArcBallController.Message.Pick a ->
+                            let navParams = { navigationMode = NavigationMode.ArcBall }
+                            { model with navigation = navParams }
+                        | _ -> model
+                        
                 { model with camera = ArcBallController.update model.camera a }
             | FreeFlyAction a ->
                 { model with camera = CameraController.update model.camera a }
@@ -278,13 +285,13 @@ module NavigationModeDemo =
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
         
-        let controller = 
-            model.navigation.navigationMode 
-                |> Mod.map (function 
-                    | NavigationMode.FreeFly -> CameraController.controlledControl model.camera FreeFlyAction frustum
-                    | NavigationMode.ArcBall -> ArcBallController.controlledControl model.camera ArcBallAction frustum
-                    | _ -> CameraController.controlledControl model.camera FreeFlyAction frustum
-                )
+        //let controller = 
+        //    model.navigation.navigationMode 
+        //        |> Mod.map (function 
+        //            | NavigationMode.FreeFly -> CameraController.controlledControl model.camera FreeFlyAction frustum
+        //            | NavigationMode.ArcBall -> ArcBallController.controlledControl model.camera ArcBallAction frustum
+        //            | _ -> CameraController.controlledControl model.camera FreeFlyAction frustum
+        //        )
 
         let scene =
             let color = Mod.constant C4b.Blue
@@ -310,7 +317,7 @@ module NavigationModeDemo =
                         |> Sg.withEvents [
                                 Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map ArcBallAction                                    
 
-            let s = Sg.sphere 20 (Mod.constant C4b.Red) (Mod.constant 0.15)
+            let s = Sg.sphere 4 (Mod.constant C4b.Red) (Mod.constant 0.15)
                         |> Sg.shader {
                             do! DefaultSurfaces.trafo
                             do! DefaultSurfaces.vertexColor
@@ -324,8 +331,9 @@ module NavigationModeDemo =
             [b; s]  |> Sg.ofList 
                     |> Sg.fillMode model.rendering.fillMode
                     |> Sg.cullMode model.rendering.cullMode      
-
         
+        
+
         let renderControlAttributes =
             amap {
                 let! state = model.navigation.navigationMode 
@@ -337,7 +345,8 @@ module NavigationModeDemo =
         
         require (Html.semui @ [myCss]) ( 
            div [clazz "ui"; style "background: #1B1C1E"] [
-                    Incremental.renderControl 
+                    yield 
+                        Incremental.renderControl 
                             (Mod.map2 Camera.create model.camera.view frustum) 
                             (AttributeMap.unionMany [
                                 renderControlAttributes 
@@ -345,15 +354,21 @@ module NavigationModeDemo =
                             ])
                             scene
 
-                    div [style "width:35%; height: 100%; float:right"] [
+                    let renderingAcc = 
                         Html.SemUi.accordion "Rendering" "configure" true [
                             RenderingProperties.view model.rendering |> UI.map RenderingAction 
                         ]
 
+                    let navigationAcc = 
                         Html.SemUi.accordion "Navigation" "Compass" true [
                             NavigationProperties.view model.navigation |> UI.map NavigationAction 
                         ]
-                    ]
+                                        
+                    yield 
+                        Html.SemUi.tabbed [clazz "ui inverted segment"; style "width:35%; height: 100%; float:right" ] [
+                            ("Rendering", renderingAcc)
+                            ("Navigation", navigationAcc)
+                        ] "Navigation"
                 ]
         )
 
