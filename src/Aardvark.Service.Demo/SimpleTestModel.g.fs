@@ -12,10 +12,10 @@ module Mutable =
     type MModel private(__initial : SimpleTest.Model) =
         let mutable __current = __initial
         let _value = ResetMod(__initial.value)
-        let _cameraModel = ResetMod(__initial.cameraModel)
+        let _cameraModel = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraModel)
         
         member x.value = _value :> IMod<_>
-        member x.cameraModel = _cameraModel :> IMod<_>
+        member x.cameraModel = _cameraModel
         
         member x.Update(__model : SimpleTest.Model) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -48,7 +48,7 @@ module Mutable =
                     override x.Update(r,f) = { r with value = f r.value }
                 }
             let cameraModel =
-                { new Lens<SimpleTest.Model, Microsoft.FSharp.Core.obj>() with
+                { new Lens<SimpleTest.Model, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.cameraModel
                     override x.Set(r,v) = { r with cameraModel = v }
                     override x.Update(r,f) = { r with cameraModel = f r.cameraModel }
