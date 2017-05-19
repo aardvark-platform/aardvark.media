@@ -8,10 +8,11 @@ module App =
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
     open Aardvark.UI
+    open Aardvark.UI.Primitives
     open Aardvark.Base.Geometry
 
     type Action = 
-        | StartDrag of SceneEvent
+        | StartDrag of SceneHit
         | StopDrag
         | MoveRay      of RayPart 
         | CameraAction of CameraController.Message
@@ -29,7 +30,7 @@ module App =
                         { m with trafo = Trafo3d.Translation (i - centerOffset) }
                     | None -> m
             | StartDrag p -> 
-                { m with dragging = Some { PickPoint = p.position; Offset =  p.position - m.trafo.Forward.TransformPos(V3d.OOO) }}
+                { m with dragging = Some { PickPoint = p.globalPosition; Offset =  p.globalPosition - m.trafo.Forward.TransformPos(V3d.OOO) }}
             | StopDrag    -> { m with dragging = None   }
             | _ -> m
 
@@ -91,9 +92,15 @@ module TranslateController =
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
     open Aardvark.UI
+    open Aardvark.UI.Primitives
+
     open Aardvark.Base.Geometry
 
     open DragNDrop
+
+    type RayPart with
+        member x.Transformed(t : Trafo3d) =
+            RayPart(FastRay3d(x.Ray.Ray.Transformed(t.Forward)), x.TMin, x.TMax)
 
     module Shader =
     
@@ -109,20 +116,34 @@ module TranslateController =
 
     [<AutoOpen>]
     module Config =
-        let coneRadius = 0.1
-        let cylinderRadius = 0.05
+        let coneHeight = 0.1
+        let coneRadius = 0.03
+        let cylinderRadius = 0.015
         let tessellation = 8
 
     type ControllerAction = 
         | Hover of Axis
         | Unhover 
         | MoveRay of RayPart
-        | Grab of V3d * Axis
+        | Grab of RayPart * Axis
         | Release
     
     type SceneAction =
         | ControllerAction of ControllerAction
         | CameraAction     of CameraController.Message
+
+
+    let closestT (r : RayPart) (axis : Axis) =
+        let other =
+            match axis with
+            | X -> Ray3d(V3d.OOO, V3d.IOO)
+            | Y -> Ray3d(V3d.OOO, V3d.OIO)
+            | Z -> Ray3d(V3d.OOO, V3d.OOI)
+
+        let mutable unused = 0.0
+        let mutable t = 0.0
+        r.Ray.Ray.GetMinimalDistanceTo(other,&unused,&t) |> ignore
+        t
 
     let updateController (m : Transformation) (a : ControllerAction) =
         match a with
@@ -130,27 +151,25 @@ module TranslateController =
                 { m with hovered = Some axis }
             | Unhover -> 
                 { m with hovered = None }
-            | Grab (point, axis) ->
-                let offset = 
-                    let center = V3d.OOO |> m.trafo.Forward.TransformPos 
-                    point - center
-                { m with grabbed = Some { point = point; offset = offset; axis = axis } } 
+            | Grab (rp, axis) ->
+                let offset = closestT rp axis
+                { m with grabbed = Some { offset = offset; axis = axis } } 
             | Release ->
                 { m with grabbed = None }
             | MoveRay rp ->
                 match m.grabbed with
-                | Some { point = point; offset = offset; axis = axis } ->
-                    let other =
+                | Some { offset = offset; axis = axis } ->
+     
+                     let other =
                         match axis with
-                        | X -> Ray3d(point, V3d.IOO)
-                        | Y -> Ray3d(point, V3d.OIO)
-                        | Z -> Ray3d(point, V3d.OOI)
+                        | X -> V3d.IOO
+                        | Y -> V3d.OIO
+                        | Z -> V3d.OOI
 
-                    let nearest = rp.Ray.Ray.GetClosestPointOn other
+                     let closestPoint = closestT rp axis
+                     let trafo = m.trafo * Trafo3d.Translation ((closestPoint - offset) * other)
 
-                    let trafo = Trafo3d.Translation (nearest - offset)
-
-                    { m with trafo = trafo }
+                     { m with trafo = trafo; }
                 | None -> m
 
     let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) =
@@ -168,7 +187,7 @@ module TranslateController =
             Sg.cylinder tessellation col (Mod.constant cylinderRadius) (Mod.constant 1.0) 
             |> Sg.noEvents
             |> Sg.andAlso (                
-                IndexedGeometryPrimitives.solidCone V3d.OOI V3d.OOI 0.1 coneRadius tessellation C4b.Red 
+                IndexedGeometryPrimitives.solidCone V3d.OOI V3d.OOI coneHeight coneRadius tessellation C4b.Red 
                  |> Sg.ofIndexedGeometry 
                  |> Sg.noEvents
                 )
@@ -176,32 +195,28 @@ module TranslateController =
             |> Sg.transform rot
             |> Sg.uniform "HoverColor" col
             |> Sg.withEvents [ 
-                    Sg.onEnter     (fun _ ->   Hover axis)
-                    Sg.onMouseDown (fun _ p -> Grab (p,axis))
-                    Sg.onLeave     (fun _ ->   Unhover) 
-              ]
+                    Sg.onEnter        (fun _ ->   Hover axis)
+                    Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
+                    Sg.onLeave        (fun _ ->   Unhover) 
+               ]
+            |> Sg.Incremental.withGlobalEvents ( 
+                    amap {
+                        let! grabbed = m.grabbed
+                        if grabbed.IsSome then
+                            yield Global.onMouseMove (fun e -> MoveRay e.localRay)
+                            yield Global.onMouseUp   (fun _ -> Release)
+                    }
+                )
 
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
         
-        let ig =
-            IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
-                |> Sg.ofIndexedGeometry
-                |> Sg.effect [
-                    toEffect DefaultSurfaces.trafo
-                    toEffect DefaultSurfaces.vertexColor
-                    ]
-                |> Sg.noEvents
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
         |> Sg.trafo m.trafo
-        |> Sg.andAlso ig
         |> Sg.map liftMessage
-
-    let controlSubscriptions = 
-        [ RenderControl.onMouseMove (fun r t -> ControllerAction (MoveRay r))
-          onMouseUp ( fun _ _ -> ControllerAction Release ) ]
+        
 
     let updateScene (m : Scene) (a : SceneAction) =
         match a with
@@ -210,21 +225,34 @@ module TranslateController =
             | ControllerAction a -> { m with transformation = updateController m.transformation a }
             | _ -> m
 
+    let viewScene' (m : MScene) =
+        let cross =
+             IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
+                |> Sg.ofIndexedGeometry
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.trafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+                |> Sg.noEvents
+
+        Sg.ofList [viewController ControllerAction m.transformation; cross]
+
     let viewScene (m : MScene) =
         div [] [
             CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                 (AttributeMap.ofList [ 
                     yield  attribute "style" "width:100%; height: 100%"; 
-                    yield! controlSubscriptions
-                 ]) (viewController ControllerAction m.transformation)
+                 ]) (viewScene' m)
         ]
+
+    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
 
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
             initial = {  camera = CameraController.initial
-                         transformation = { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
+                         transformation = initial
                       }
             update = updateScene
             view = viewScene

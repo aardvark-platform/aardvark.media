@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI
+open Aardvark.UI.Primitives
 
 type Drag = { PickPoint : V3d; Offset : V3d }
 
@@ -17,9 +18,8 @@ type Axis = X | Y | Z
 
 type PickPoint =
     {
-        point : V3d
-        offset : V3d
-        axis : Axis
+        offset : float
+        axis   : Axis
     }
 
 

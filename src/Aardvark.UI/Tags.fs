@@ -6,7 +6,7 @@ open Aardvark.Base.Incremental
 module Incremental =
 
     let renderControl (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg)
+        DomNode.RenderControl(attributes, cam, sg, None)
 
     let inline elem (tagName : string) (attrs : AttributeMap<'msg>) (children : alist<DomNode<'msg>>) =
         DomNode.Node(tagName, attrs, children)
@@ -57,6 +57,7 @@ module Incremental =
     // Text content
     let inline dd x = elem "dd" x
     let inline div x = elem "div" x
+    let inline div' x children = elem "div" x (AList.ofList children)
     let inline dl x = elem "dl" x
     let inline dt x = elem "dt" x
     let inline figcaption x = elem "figcaption" x
@@ -149,7 +150,7 @@ module Incremental =
 module Static =
 
     let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg)
+        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, None)
 
     let inline elem (tagName : string) (attrs : list<string * AttributeValue<'msg>>) (children : list<DomNode<'msg>>) =
         DomNode.Node(tagName, AttributeMap.ofList attrs, AList.ofList children)
@@ -195,6 +196,9 @@ module Static =
     let inline h6 x = elem "h6" x
     let inline hgroup x = elem "hgroup" x
     let inline nav x = elem "nav" x
+
+    // page content
+    let inline body x = elem "body" x
 
     // Text content
     let inline dd x = elem "dd" x

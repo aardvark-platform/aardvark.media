@@ -38,9 +38,10 @@ module private Tools =
 
 type MutableApp<'model, 'msg> =
     {
+        lock        : obj
         model       : IMod<'model>
         ui          : DomNode<'msg>
-        update      : Guid -> list<'msg> -> unit
+        update      : Guid -> seq<'msg> -> unit
     }
 
 module MutableApp =
@@ -108,28 +109,33 @@ module MutableApp =
                             while running do
                                 let! cont = MVar.takeAsync update
                                 if cont then
-                                    state.references.Clear()
-                                    let expr = lock state (fun () -> updater.Update(AdaptiveToken.Top, JSExpr.Body, state))
+                                    let code = 
+                                        lock app.lock (fun () ->
+                                            let expr = 
+                                                lock state (fun () -> 
+                                                    state.references.Clear()
+                                                    updater.Update(AdaptiveToken.Top, JSExpr.Body, state)
+                                                )
 
-                                    for (name, sd) in Dictionary.toSeq state.scenes do
-                                        sceneStore.TryAdd(name, sd) |> ignore
+                                            for (name, sd) in Dictionary.toSeq state.scenes do
+                                                sceneStore.TryAdd(name, sd) |> ignore
 
-                                    let newReferences = state.references.Values |> Seq.toArray
+                                            let newReferences = state.references.Values |> Seq.toArray
                             
 
-                                    let code = expr |> JSExpr.toString
-                                    let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
-
-                                    let code = 
-                                        if newReferences.Length > 0 then
-                                            let args = 
-                                                newReferences |> Seq.map (fun r -> 
-                                                    sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" (if r.kind = Script then "script" else "stylesheet") r.name r.url
-                                                ) |> String.concat "," |> sprintf "[%s]" 
-                                            let code = String.indent 1 code
-                                            sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
-                                        else
-                                            code
+                                            let code = expr |> JSExpr.toString
+                                            let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
+                                            
+                                            if newReferences.Length > 0 then
+                                                let args = 
+                                                    newReferences |> Seq.map (fun r -> 
+                                                        sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" (if r.kind = Script then "script" else "stylesheet") r.name r.url
+                                                    ) |> String.concat "," |> sprintf "[%s]" 
+                                                let code = String.indent 1 code
+                                                sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
+                                            else
+                                                code
+                                        )
 
                                     if code <> "" then
                                         let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
@@ -138,13 +144,12 @@ module MutableApp =
                                             for l in lines do Log.line "%s" l
                                             Log.stop()
                                         )
-
-                                        let res = ws.send Opcode.Text (ByteSegment(Text.Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
-                                        match res with
-                                            | Choice1Of2 () ->
-                                                ()
-                                            | Choice2Of2 err ->
-                                                failwithf "[WS] error: %A" err
+                                    let res = ws.send Opcode.Text (ByteSegment(Text.Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
+                                    match res with
+                                        | Choice1Of2 () ->
+                                            ()
+                                        | Choice2Of2 err ->
+                                            failwithf "[WS] error: %A" err
                         }
 
                     Async.Start updateThread
@@ -156,12 +161,10 @@ module MutableApp =
                                 | Opcode.Text ->
                                     try
                                         let evt : EventMessage = Pickler.json.UnPickle data
-                                        match state.handlers.TryGetValue((evt.sender, evt.name)) with
+                                        match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
                                             | (true, handler) ->
                                                 let messages = handler sessionId evt.sender (Array.toList evt.args)
-                                                match messages with
-                                                    | [] -> ()
-                                                    | _ -> app.update sessionId messages
+                                                app.update sessionId messages
                                             | _ ->
                                                 ()
 
@@ -184,7 +187,7 @@ module MutableApp =
         choose [
             path "/events" >=> handShake events
             path "/" >=> OK template
-            prefix "/rendering" >=> Aardvark.Service.Server.toWebPart renderer
+            prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
         ]
 
 

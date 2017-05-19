@@ -18,7 +18,7 @@ module UI =
 
         onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
 
-    let onWheel' (f : Aardvark.Base.V2d -> list<'msg>) =
+    let onWheel' (f : Aardvark.Base.V2d -> seq<'msg>) =
         let serverClick (args : list<string>) : Aardvark.Base.V2d = 
             let delta = List.head args |> Pickler.unpickleOfJson
             delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
@@ -75,7 +75,7 @@ module Numeric =
     let formatNumber (format : string) (value : float) =
         String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-    let numericField<'msg> ( f : Action -> list<'msg> ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
+    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
 
         let tryParseAndClamp min max fallback s =
             let parsed = 0.0
@@ -112,7 +112,7 @@ module Numeric =
 
         Incremental.input (AttributeMap.ofAMap attributes |> AttributeMap.union atts)
 
-    let numericField' = numericField (List.singleton) AttributeMap.empty
+    let numericField' = numericField (Seq.singleton) AttributeMap.empty
 
     let view' (inputTypes : list<NumericInputType>) (model : MNumericInput) : DomNode<Action> =
         inputTypes 
@@ -272,7 +272,7 @@ module Html =
                 ]
 
             onBoot "$('#__ID__').dropdown();" (
-                select [clazz "ui dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
+                select [clazz "ui selection dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
                     for (name, value) in nv do
                         let att = attributes name value
                         yield Incremental.option att (AList.ofList [text name])
@@ -311,6 +311,22 @@ module Html =
             ]
 
         let toggleImage (state : IMod<bool>) (toggle : unit -> 'msg) = 0
+
+        let tabbed attr content active =            
+            onBoot "$('.menu .item').tab();" (
+                div attr [
+                    yield div [clazz "ui inverted segment top attached tabular menu"] [
+                            for (name,ch) in content do
+                                let active = if name = active then "inverted item active" else "inverted item"
+                                yield Static.a [clazz active; attribute "data-tab" name][text name]
+                          ]
+                                        
+                    for (name,ch) in content do
+                        let classAttr = "ui inverted bottom attached tab segment"
+                        let active = if name = active then (sprintf "%s %s" classAttr "active") else classAttr
+                        yield div [clazz active; attribute "data-tab" name] [ch]         
+                ]
+            )
 
 module TreeView = 
     

@@ -15,7 +15,7 @@ open Aardvark.UI
 type UpdateState<'msg> =
     {
         scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
-        handlers            : Dictionary<string * string, Guid -> string -> list<string> -> list<'msg>>
+        handlers            : Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
         references          : Dictionary<string * ReferenceKind, Reference>
     }
 
@@ -229,8 +229,8 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
                 state.handlers.[(id, name)] <- desc.serverSide
                 Some code
 
-            | AttributeValue.RenderControlEvent _ ->
-                None
+            //| AttributeValue.RenderControlEvent _ ->
+            //    None
 
     static let destroyAttribute (state : UpdateState<'msg>) (id : string) (name : string) =
         state.handlers.Remove (id,name) |> ignore
@@ -264,6 +264,7 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
     override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
         let code = List()
 
+
         let attOps = rAtt.GetOperations(token)
         for (name, op) in attOps do
             match op with
@@ -285,7 +286,7 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
             initial <- false
 
             for (name,cb) in Map.toSeq ui.Callbacks do
-                state.handlers.[(id,name)] <- fun _ _ v -> [cb v]
+                state.handlers.[(id,name)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
 
             for r in ui.Required do
                 state.references.[(r.name, r.kind)] <- r
@@ -308,8 +309,12 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
 
     new(ui : DomNode<'msg>) = DomUpdater<'msg>(ui, newId())
 
+
 [<AutoOpen>]
 module ``Extensions for Node`` =
     type DomNode<'msg> with
         member x.NewUpdater() =
-            DomUpdater<'msg>(x) :> IUpdater<_>
+            if x.Tag = "body" then DomUpdater<'msg>(x) :> IUpdater<_>
+            else
+                Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
+                DomUpdater<'msg>(DomNode<'msg>("body", AttributeMap.empty, Children (AList.single x))) :> IUpdater<_>

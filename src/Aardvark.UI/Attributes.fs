@@ -18,7 +18,7 @@ module Attributes =
         name, 
         AttributeValue.Event { 
             clientSide = fun send id -> code.Replace("__ID__", id)
-            serverSide = fun _ _ _ -> []
+            serverSide = fun _ _ _ -> Seq.empty
         }
 
 
@@ -35,9 +35,9 @@ module Events =
             | _ -> MouseButtons.None
 
     let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = 
-        eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb >> List.singleton))
+        eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb >> Seq.singleton))
 
-    let inline onEvent' (eventType : string) (args : list<string>) (cb : list<string> -> list<'msg>) : Attribute<'msg> = 
+    let inline onEvent' (eventType : string) (args : list<string>) (cb : list<string> -> seq<'msg>) : Attribute<'msg> = 
         eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb))
 
     let onFocus (cb : unit -> 'msg) =
@@ -71,11 +71,11 @@ module Events =
     let onInput (cb : string -> 'msg) = 
         onEvent "oninput" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
             
-    let onChange' (cb : string -> list<'msg>) = 
+    let onChange' (cb : string -> seq<'msg>) = 
         onEvent' "onchange" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
     /// for continous updates (e.g. see http://stackoverflow.com/questions/18544890/onchange-event-on-input-type-range-is-not-triggering-in-firefox-while-dragging)
-    let onInput' (cb : string -> list<'msg>) = 
+    let onInput' (cb : string -> seq<'msg>) = 
         onEvent' "oninput" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
     let onWheel (f : Aardvark.Base.V2d -> 'msg) =
@@ -130,11 +130,11 @@ module Events =
                             if rep <> "true" then
                                 let keyCode = int (float keyCode)
                                 let key = KeyConverter.keyFromVirtualKey keyCode
-                                [ cb key ]
+                                Seq.delay (fun () -> Seq.singleton (cb key))
                             else
-                                []
+                                Seq.empty
                         | _ ->
-                            []
+                            Seq.empty
                 )
         )
 
@@ -148,9 +148,9 @@ module Events =
                         | keyCode :: _ ->
                             let keyCode = int (float keyCode)
                             let key = KeyConverter.keyFromVirtualKey keyCode
-                            [cb key]
+                            Seq.delay (fun () -> Seq.singleton (cb key))
                         | _ ->
-                            []
+                            Seq.empty
                 )
         )
 
@@ -158,7 +158,8 @@ module Events =
         open Aardvark.Base.Geometry
 
         let onMouseMove (cb : RayPart -> Option<float> -> 'msg) =
-            "RenderControl.onmousemove", AttributeValue.RenderControlEvent(fun e -> [cb e.ray (if e.rayT >= 0.0 then Some e.rayT else None)] )
+            failwith ""
+            //"RenderControl.onmousemove", AttributeValue.RenderControlEvent(fun e -> [cb e.ray (if e.rayT >= 0.0 then Some e.rayT else None)] )
             
     
 

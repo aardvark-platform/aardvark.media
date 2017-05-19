@@ -5,6 +5,7 @@ open Aardvark.Base.Rendering
 open Aardvark.Base.Incremental
 open Aardvark.SceneGraph
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Demo.TestApp
 open Demo
 
@@ -26,7 +27,7 @@ type ViewerModel =
         rotation : float
         scenes : hset<ISg<Message>>
         bounds : Box3d
-        camera : Aardvark.UI.CameraControllerState
+        camera : CameraControllerState
         fillMode : FillMode
         cullMode : CullMode
     }

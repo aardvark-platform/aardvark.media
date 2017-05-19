@@ -1,4 +1,5 @@
-﻿open Aardvark.Service
+﻿
+open Aardvark.Service
 open System
 
 open Aardvark.Base
@@ -38,7 +39,12 @@ open PRo3DModels.Mutable
 
 * plane pickshape
 * Sg.shader  for ISg<'msg>
-* multiple picks along pickray
+* multiple picks along pickray (e.g. pickthrough for example in when selecting objs etc)
+* click has wrong semantics
+* globalpicks should have firsthit property
+* multiple domain type files with same namespace collide in diffgenerator
+* diffgenerator msbuild<15 compatbility
+* diffgenerator annotation of lambdas for ResetMap creation
 
 *)
 
@@ -55,7 +61,7 @@ let kitchenSink argv =
     //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
     //let a = TreeViewApp.start()
-    //let a = AnnotationProperties.start()
+    let a = AnnotationProperties.start()
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
@@ -88,10 +94,9 @@ let modelviewer args =
 
 [<EntryPoint; STAThread>]
 let main args =
-    
-    kitchenSink args
-    //modelviewer args
 
+    //kitchenSink args
+    modelviewer args
 
     0
 

@@ -15,7 +15,7 @@ module Mutable =
         let _rotation = ResetMod(__initial.rotation)
         let _scenes = ResetSet(__initial.scenes)
         let _bounds = ResetMod(__initial.bounds)
-        let _camera = Aardvark.UI.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _fillMode = ResetMod(__initial.fillMode)
         let _cullMode = ResetMod(__initial.cullMode)
         
@@ -86,7 +86,7 @@ module Mutable =
                     override x.Update(r,f) = { r with bounds = f r.bounds }
                 }
             let camera =
-                { new Lens<Viewer.ViewerModel, Aardvark.UI.CameraControllerState>() with
+                { new Lens<Viewer.ViewerModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }

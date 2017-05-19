@@ -56,6 +56,13 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <PropertyGroup>
+        <__paket__TurboJpegWrapper_targets>TurboJpegWrapper</__paket__TurboJpegWrapper_targets>
+      </PropertyGroup>
+    </When>
+  </Choose>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
@@ -470,5 +477,5 @@
       </ItemGroup>
     </When>
   </Choose>
-  <Import Project="..\..\packages\TurboJpegWrapper\build\TurboJpegWrapper.targets" Condition="Exists('..\..\packages\TurboJpegWrapper\build\TurboJpegWrapper.targets')" Label="Paket" />
+  <Import Project="..\..\packages\TurboJpegWrapper\build\$(__paket__TurboJpegWrapper_targets).targets" Condition="Exists('..\..\packages\TurboJpegWrapper\build\$(__paket__TurboJpegWrapper_targets).targets')" Label="Paket" />
 </Project>

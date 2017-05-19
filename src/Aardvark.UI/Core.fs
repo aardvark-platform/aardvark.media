@@ -9,25 +9,6 @@ open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Semantics
 
-module AMap =
-    let keys (m : amap<'k, 'v>) : aset<'k> =
-        ASet.create (fun scope ->
-            let reader = m.GetReader()
-            { new AbstractReader<hdeltaset<'k>>(scope, HDeltaSet.monoid) with
-                member x.Release() =
-                    reader.Dispose()
-
-                member x.Compute(token) =
-                    let ops = reader.GetOperations token
-
-                    ops |> HMap.map (fun key op ->
-                        match op with
-                            | Set _ -> +1
-                            | Remove -> -1
-                    ) |> HDeltaSet.ofHMap
-            }
-        )
-
 
 
 [<AutoOpen>]
@@ -45,7 +26,7 @@ module Pickler =
 type Event<'msg> =
     {
         clientSide : (string -> list<string> -> string) -> string -> string
-        serverSide : Guid -> string -> list<string> -> list<'msg>
+        serverSide : Guid -> string -> list<string> -> seq<'msg>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -62,16 +43,16 @@ module Event =
     let empty<'msg> : Event<'msg> =
         {
             clientSide = fun _ _ -> ""
-            serverSide = fun _ _ _ -> []
+            serverSide = fun _ _ _ -> Seq.empty
         }
 
     let ofTrigger (reaction : unit -> 'msg) =
         {
             clientSide = fun send id -> send id []
-            serverSide = fun _ _ _ -> [reaction()]
+            serverSide = fun _ _ _ -> Seq.delay (reaction >> Seq.singleton)
         }
 
-    let ofDynamicArgs (args : list<string>) (reaction : list<string> -> list<'msg>) =
+    let ofDynamicArgs (args : list<string>) (reaction : list<string> -> seq<'msg>) =
         {
             clientSide = fun send id -> send id args
             serverSide = fun session id args -> reaction args
@@ -84,14 +65,14 @@ module Event =
                 match args with
                     | [a] ->
                         try 
-                            [ reaction (Pickler.json.UnPickleOfString a)]
+                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a)))
                         with e ->
                             Log.warn "[UI] expected args (%s) but got (%A)" typename<'a> a
-                            []
+                            Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s) but got %A" typename<'a> args
-                        []
+                        Seq.empty
         }
 
     let create2 (a : string) (b : string) (reaction : 'a -> 'b -> 'msg) =
@@ -101,14 +82,14 @@ module Event =
                 match args with
                     | [a; b] ->
                         try 
-                            [ reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) ]
+                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) ))
                         with e ->
                             Log.warn "[UI] expected args (%s, %s) but got (%A, %A)" typename<'a> typename<'b> a b
-                            []
+                            Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s, %s) but got %A" typename<'a> typename<'b> args
-                        []
+                        Seq.empty
         }
 
     let create3 (a : string) (b : string) (c : string) (reaction : 'a -> 'b -> 'c -> 'msg) =
@@ -118,14 +99,14 @@ module Event =
                 match args with
                     | [a; b; c] ->
                         try 
-                            [ reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) (Pickler.json.UnPickleOfString c) ]
+                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) (Pickler.json.UnPickleOfString c)))
                         with e ->
                             Log.warn "[UI] expected args (%s, %s, %s) but got (%A, %A, %A)" typename<'a> typename<'b> typename<'c> a b c
-                            []
+                            Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s, %s, %s) but got %A" typename<'a> typename<'b> typename<'c> args
-                        []
+                        Seq.empty
         }
 
     let combine (l : Event<'msg>) (r : Event<'msg>) =
@@ -140,7 +121,7 @@ module Event =
                     | "1" :: args -> r.serverSide session id args
                     | _ -> 
                         Log.warn "[UI] expected args ((1|2)::args) but got %A" args
-                        []
+                        Seq.empty
                 
         }
 
@@ -168,10 +149,10 @@ module Event =
 
                                     | _ ->
                                         Log.warn "[UI] unexpected index for dispatcher: %A" index
-                                        []
+                                        Seq.empty
                             | [] ->
                                 Log.warn "[UI] expected at least one arg for dispatcher"
-                                []
+                                Seq.empty
                         
                         
                 
@@ -180,14 +161,14 @@ module Event =
     let map (f : 'a -> 'b) (e : Event<'a>) = 
         {
             clientSide = e.clientSide; 
-            serverSide = fun session id args -> List.map f (e.serverSide session id args) 
+            serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
         }
 
 [<RequireQualifiedAccess>]
 type AttributeValue<'msg> =
     | String of string
     | Event of Event<'msg>
-    | RenderControlEvent of (SceneEvent -> list<'msg>)
+    //| RenderControlEvent of (SceneEvent -> list<'msg>)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AttributeValue =
@@ -197,8 +178,8 @@ module AttributeValue =
             | _, AttributeValue.Event l, AttributeValue.Event r -> 
                 AttributeValue.Event (Event.combine l r)
 
-            | _, AttributeValue.RenderControlEvent l,  AttributeValue.RenderControlEvent r ->
-                 AttributeValue.RenderControlEvent (fun a -> l a @ r a)
+            //| _, AttributeValue.RenderControlEvent l,  AttributeValue.RenderControlEvent r ->
+            //     AttributeValue.RenderControlEvent (fun a -> l a @ r a)
 
             | "class", AttributeValue.String l, AttributeValue.String r -> 
                 AttributeValue.String (l + " " + r)
@@ -212,7 +193,7 @@ module AttributeValue =
         match v with
             | AttributeValue.Event e -> AttributeValue.Event (Event.map f e)
             | AttributeValue.String s -> AttributeValue.String s
-            | AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
+            //| AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
 
 
 type AttributeMap<'msg>(map : amap<string, AttributeValue<'msg>>) =
@@ -340,13 +321,13 @@ type SceneEventProcessor<'msg>() =
     static let empty =
         { new SceneEventProcessor<'msg>() with
             member x.NeededEvents = ASet.empty
-            member x.Process(_,_) = []
+            member x.Process(_,_) = Seq.empty
         }
 
     static member Empty = empty
 
     abstract member NeededEvents : aset<SceneEventKind>
-    abstract member Process : source : Guid * evt : byref<SceneEvent> -> list<'msg>
+    abstract member Process : source : Guid * evt : SceneEvent -> seq<'msg>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SceneEventProcessor =
@@ -363,10 +344,10 @@ module SceneEventProcessor =
 
             override x.NeededEvents = needed.Value
             override x.Process(sender, e) = 
-                let res = System.Collections.Generic.List()
-                for p in inner do
-                    res.AddRange(p.Process(sender, &e))
-                res |> CSharpList.toList
+                seq {
+                    for p in inner do
+                        yield! p.Process(sender, e)
+                }
 
     let empty<'msg> = SceneEventProcessor<'msg>.Empty
 
@@ -484,9 +465,9 @@ type DomNode private() =
 
     static let button (code : int) =
         match code with
-            | 0 -> MouseButtons.Left
-            | 1 -> MouseButtons.Middle
-            | 2 -> MouseButtons.Right
+            | 1 -> MouseButtons.Left
+            | 2 -> MouseButtons.Middle
+            | 3 -> MouseButtons.Right
             | _ -> MouseButtons.None
 
     static member Text(content : IMod<string>) = 
@@ -499,50 +480,37 @@ type DomNode private() =
     static member Node(tag : string, attributes : AttributeMap<'msg>, content : alist<DomNode<'msg>>) =
         DomNode<'msg>(tag, attributes, DomContent.Children content)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState,scene : Aardvark.Service.Scene) =
-
-        
-        let controlEvents = 
-            attributes |> AttributeMap.toAMap |> AMap.choose (fun k v -> 
-                if k.StartsWith "RenderControl." then
-                    match v with
-                        | AttributeValue.RenderControlEvent cb -> Some cb
-                        | _ -> None
-                else
-                    None    
-            )
-
-        let needed =
-            controlEvents |> AMap.keys |> ASet.choose (fun str -> Map.tryFind (str.Substring(14)) eventKinds )
+    static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
 
 
-
-        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : list<'msg> =
+        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : seq<'msg> =
             match scene.TryGetClientInfo(sourceSession, sourceId) with
                 | Some (info, state) -> 
                     let pp = PixelPosition(pos.X, pos.Y, info.size.X, info.size.Y)
                     let ray = state |> ClientState.pickRay pp |> FastRay3d |> RayPart
 
-                    let mutable evt = 
+                    let evt = 
                         {
-                            kind    = kind
-                            ray     = ray 
-                            rayT    = -1.0
-                            buttons = buttons
+                            evtKind    = kind
+                            evtRay     = ray 
+                            evtButtons = buttons
+                            evtTrafo   = Mod.constant Trafo3d.Identity
                         }
 
-                    let procRes = processor.Process(sourceSession, &evt)
+                    let procRes = processor.Process(sourceSession, evt)
+                    procRes
 
-                    let renderControlName = "RenderControl." + eventNames.[kind]
-                    match HMap.tryFind renderControlName (Mod.force controlEvents.Content) with
-                        | Some cb ->
-                            cb evt @ procRes
-                        | None -> 
-                            procRes
+                    //let renderControlName = "RenderControl." + eventNames.[kind]
+                    //match HMap.tryFind renderControlName (Mod.force controlEvents.Content) with
+                    //    | Some cb ->
+                    //        cb.s
+                    //        cb evt @ procRes
+                    //    | None -> 
+                    //        procRes
 
                 | None ->
                     Log.warn "[UI] could not get client info for %A/%s" sourceSession sourceId
-                    []
+                    Seq.empty
 
         let rayEvent (includeButton : bool) (kind : SceneEventKind) =
             let args =
@@ -565,27 +533,29 @@ type DomNode private() =
                             perform(session, id, kind, MouseButtons.None, V2i(vx,vy))
 
                         | _ ->
-                            []
+                            Seq.empty
                         
             }
 
         let events =
-            ASet.union needed processor.NeededEvents 
-                |> ASet.choose (fun k -> 
-                    match Map.tryFind k eventNames with
-                        | Some name -> Some name
-                        | None -> 
-                            match k with
-                                | SceneEventKind.Enter | SceneEventKind.Leave -> Some "onmousemove"
-                                | _ -> None
-                ) 
-                |> AMap.mapSet (fun name ->
-                    match Map.tryFind name eventKinds with
-                        | Some kind ->
-                            let button = needsButton kind
-                            AttributeValue.Event(rayEvent button kind)
-                        | _ ->
-                            failwithf "[Scene] unknown event %A" name
+           processor.NeededEvents 
+                |> ASet.map (fun k -> 
+                    let kind = 
+                        match k with
+                            | SceneEventKind.Enter | SceneEventKind.Leave -> SceneEventKind.Move
+                            | _ -> k
+
+                    
+                    let button = needsButton kind
+                    eventNames.[kind], AttributeValue.Event(rayEvent button kind)
+                )
+                |> AMap.ofASet
+                |> AMap.map (fun k vs ->
+                    match HSet.toList vs with
+                        | [] -> AttributeValue.Event Event.empty
+                        | h :: rest ->
+                            rest |> List.fold (AttributeValue.combine "urdar") h
+                            
                 )
                 |> AttributeMap.ofAMap
 
@@ -599,12 +569,20 @@ type DomNode private() =
         let boot (id : string) =
             sprintf "aardvark.getRenderer(\"%s\");" id
 
-        DomNode<'msg>("div", ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, scene : Aardvark.Service.Scene) =
-        DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene)
+        match htmlChildren with
+        | Some htmlChildren -> 
+            printfn "not implemented"
+            DomNode<'msg>("div", ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
+        | None -> 
+            DomNode<'msg>("div", ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
+
+
+
+    static member RenderControl(attributes : AttributeMap<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
+        DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene, htmlChildren)
     
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, scene : Aardvark.Service.Scene) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
             let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
@@ -614,9 +592,9 @@ type DomNode private() =
                 projTrafo = Frustum.projTrafo cam.frustum
             }
 
-        DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene)
+        DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
             let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
@@ -638,20 +616,31 @@ type DomNode private() =
             )
 
         let tree = PickTree.ofSg sg
+        let globalPicks = sg.GlobalPicks()
 
         let proc =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = 
-                    tree.Needed.Content |> Mod.force |> printfn "needed: %A"
-                    tree.Needed
-                member x.Process (source : Guid, evt : byref<SceneEvent>) = 
-                    tree.Perform(&evt)
+                    ASet.union (AMap.keys globalPicks) tree.Needed
+                member x.Process (source : Guid, evt : SceneEvent) = 
+                    seq {
+                        //evt <- { evt with rayT = -1.0 }
+                        let consumed, msgs = tree.Perform(evt)
+                        yield! msgs
+
+                        let m = globalPicks.Content |> Mod.force
+                        match m |> HMap.tryFind evt.kind with
+                            | Some cb -> 
+                                yield! cb evt
+                            | None -> 
+                                ()
+                    }
             }
 
-        DomNode.RenderControl(attributes, proc, getState, scene)
+        DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
-    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>) : DomNode<'msg> =
-        DomNode.RenderControl(AttributeMap.empty, camera, scene)
+    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+        DomNode.RenderControl(AttributeMap.empty, camera, scene, htmlChildren)
 
 
 
