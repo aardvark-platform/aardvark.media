@@ -237,13 +237,14 @@ module OrbitCameraDemo =
         {
             camera = { ArcBallController.initial with orbitCenter = Some V3d.Zero }
             rendering = { InitValues.rendering with cullMode = CullMode.None }            
+            navigation = { navigationMode = NavigationMode.FreeFly }
         }
 
     let app : App<OrbitCameraDemoModel, MOrbitCameraDemoModel, Action> =
         {
             unpersist = Unpersist.instance
             threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = initial
+            initial = Unchecked.defaultof<_>
             update = update
             view = view
         }

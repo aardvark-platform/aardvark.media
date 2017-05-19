@@ -60,18 +60,17 @@ let kitchenSink argv =
 
     //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
-    let a = TreeViewApp.start()
-  //  let a = AnnotationProperties.start()
+    //let a = TreeViewApp.start()
+    let a = AnnotationProperties.start()
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
-    //let a = NavigationModeDemo.start()
+    //let a = NavigationModeDemo.start()    
     //let a = BoxSelectionDemo.start()
+
     //let a = DragNDrop.TranslateController.start()
-    //let a = SimpleDrawingApp.start()
-    //let a = DrawingApp.start()
-    //let a = PlaceTransformObjects.App.start()
-    //let a = BookmarkApp.start()
+
+    let a = DrawingApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
@@ -96,8 +95,8 @@ let modelviewer args =
 [<EntryPoint; STAThread>]
 let main args =
 
-    kitchenSink args
-    //modelviewer args
+    //kitchenSink args
+    modelviewer args
 
     0
 
