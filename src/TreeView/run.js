@@ -1,0 +1,4 @@
+emit(JSON.parse("{\"Case\":\"Add\",\"location\":{\"pointer\":{\"Case\":\"Root\"},\"mode\":{\"Case\":\"LastChild\"}},\"node\":{\"key\":\"1234\",\"title\":\"hi\",\"folder\":true,\"customIcon\":null,\"tooltip\":\"\"}}"));
+emit(JSON.parse("{\"Case\":\"Add\",\"location\":{\"pointer\":{\"Case\":\"Node\",\"key\":\"1234\"},\"mode\":{\"Case\":\"LastChild\"}},\"node\":{\"key\":\"4321\",\"title\":\"hi nested\",\"folder\":false,\"customIcon\":null,\"tooltip\":\"\"}}"));
+emit(JSON.parse("{\"Case\":\"Add\",\"location\":{\"pointer\":{\"Case\":\"Node\",\"key\":\"4321\"},\"mode\":{\"Case\":\"LastChild\"}},\"node\":{\"key\":\"3454\",\"title\":\"hi nested nested\",\"folder\":false,\"customIcon\":null,\"tooltip\":\"\"}}"));
+emit(JSON.parse("{\"Case\":\"Move\",\"source\":{\"Case\":\"Node\",\"key\":\"3454\"},\"target\":{\"pointer\":{\"Case\":\"Node\",\"key\":\"4321\"},\"mode\":{\"Case\":\"Before\"}}}"));

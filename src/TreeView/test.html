@@ -1,0 +1,194 @@
+<html>
+    <head>
+            <title>Aardvark rocks \o/</title>
+            <script src="https://code.jquery.com/jquery-3.1.1.min.js"></script>
+		    <script src="https://code.jquery.com/ui/1.12.0/jquery-ui.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-resize/1.1/jquery.ba-resize.min.js"></script>
+		    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.fancytree/2.22.5/jquery.fancytree-all.min.js"></script>
+		    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery.fancytree/2.22.5/skin-win8/ui.fancytree.min.css" />
+		    <script type="text/javascript">
+			  $(function(){
+			    // using default options
+                  var f = function (evt, data) {
+                      if (!event.shiftKey) {
+                          var nodes = data.tree.getSelectedNodes();
+                          for (var i = 0; i < nodes.length; i++) {
+                              nodes[i].setSelected(false);
+                          }
+                          data.node.setSelected(true);
+                          return true;
+                      } else {
+                          if (data.node.isSelected()) {
+                              data.node.setSelected(false);
+                              data.node.setActive(false, { noEvents: true, noFocus: true });
+                              return false;
+                          }
+                          else {
+                              data.node.setSelected(true);
+                              return true;
+                          }
+                      }
+                  }
+
+
+                  $("#tree").fancytree(
+                      {
+                          // data.node.setActive(false, { noEvents: true, noFocus: true });
+                          //autoCollapse: true, // Automatically collapse all siblings, when a node is expanded
+                          //debugLevel: 2, // 0:quiet, 1:normal, 2:debug
+                          //focusOnSelect: true, // Set focus when node is checked by a mouse click
+                          //quicksearch: true, // Navigate to next node by typing the first letters
+                          //tabindex: "0", // Whole tree behaves as one single control
+
+                          extensions: ["dnd","childcounter"],
+                          dnd: {
+                              preventVoidMoves: true,
+                              preventRecursiveMoves: true,
+                              autoExpandMS: 400,
+                              dragStart: function (node, data) {
+                                  return true;
+                              },
+                              dragEnter: function (node, data) {
+                                  // return ["before", "after"];
+                                  return true;
+                              },
+                              dragDrop: function (node, data) {
+                                  data.otherNode.moveTo(node, data.hitMode);
+                              }
+                          },
+                          childcounter: {
+                              deep: true,
+                              hideZeros: true,
+                              hideExpanded: true
+                          },
+                          click: f,
+                          select: function (event, data) {
+                              console.warn("data is selected " + data.node.key + " " + data.node.isSelected());
+                          }
+                      }
+                  );
+			  });
+		    </script>
+            
+        <script type="text/javascript">
+            //\"location\":{\"pointer\":{\"Case\":\"Root\"},\"mode\":{\"Case\":\"LastChild\"}}
+            function getNode(tree, ptr) {
+                var node = undefined;
+
+                switch (ptr.Case) {
+                    case "Root":
+                        node = tree.fancytree("getRootNode");
+                        break;
+
+                    case "Selected":
+                        var sel = tree.fancytree("getSelectedNodes");
+                        if(sel.length > 0)
+                            node = sel[0];
+                        break;
+                    case "Node":
+                        node = tree.fancytree("getTree").getNodeByKey(ptr.key);
+                        break;
+                        
+                    default:
+                        break;
+                }
+
+                return node;
+            }
+
+            function getMode(mode) {
+                switch (mode.Case) {
+                    case "Before": mode = "before"; break;
+                    case "After": mode = "after"; break;
+                    case "FirstChild": mode = "firstChild"; break;
+                    case "LastChild": mode = "child"; break;
+                    default:
+                        console.warn("bad mode: " + m.Case);
+                        mode = "child";
+                        break;
+                }
+
+                return mode;
+            }
+
+
+            function emit(o) {
+                var tree = $('#tree');
+
+                if (o.Case === "Add") {
+                    o.node.icon = o.node.customIcon || true;
+                    delete o.node.customIcon;
+
+                    var node = getNode(tree, o.location.pointer);
+                    var mode = getMode(o.location.mode);
+
+                    if (node) {
+                        node.addNode(o.node, mode);
+                    }
+                    else {
+                        console.warn("non-existing node " + o.location.pointer);
+                    }
+                }
+                else if (o.Case === "Remove") {
+                    var node = getNode(tree, o.location);
+                    if (node) {
+                        node.remove();
+                    }
+                }
+                else if (o.Case === "Move") {
+                    var src = getNode(tree, o.source);
+                    var dst = getNode(tree, o.target.pointer);
+                    var dstMode = getMode(o.target.mode);
+                    src.moveTo(dst, dstMode);
+                }
+                else if (o.Case === "Select") {
+                    var n = getNode(tree, o.location);
+                    n.setActive(true);
+                }
+                else if (o.Case === "Deselect") {
+                    var n = getNode(tree, o.location);
+                    n.setActive(false);
+                    n.setFocus(false);
+                }
+            }
+
+        </script>
+
+    </head >
+                    <body style="width: 100%; height: 100%; border: 0; padding: 0; margin: 0">
+                        <div id="tree">
+                            <ul id="treeData" style="display: none;">
+                                <li id="id1" title="Look, a tool tip!">item1 with key and tooltip
+		  <li id="id2">item2
+		  <li id="id3" class="folder">Folder <em>with some</em> children
+			<ul>
+                                                <li id="id3.1">Sub-item 3.1
+				<ul>
+                                                        <li id="id3.1.1">Sub-item 3.1.1
+				  <li id="id3.1.2">Sub-item 3.1.2
+				  <li id="id3.1.3">Sub-item 3.1.3
+				</ul>
+                                                                <li id="id3.2">Sub-item 3.2
+				<ul>
+                                                                        <li id="id3.2.1">Sub-item 3.2.1
+				  <li id="id3.2.2">Sub-item 3.2.2
+				</ul>
+			</ul>
+                                                                        <li id="id4" class="expanded">Document with some children (expanded on init)
+			<ul>
+                                                                                <li id="id4.1" class="active focused">Sub-item 4.1 (active and focus on init)
+				<ul>
+                                                                                        <li id="id4.1.1">Sub-item 4.1.1
+				  <li id="id4.1.2">Sub-item 4.1.2
+				</ul>
+                                                                                            <li id="id4.2">Sub-item 4.2
+				<ul>
+                                                                                                    <li id="id4.2.1">Sub-item 4.2.1
+				  <li id="id4.2.2">Sub-item 4.2.2
+				</ul>
+			</ul>
+                                                                                                </ul>
+	  </div>
+
+    </body>
+</html>
