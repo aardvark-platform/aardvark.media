@@ -53,6 +53,8 @@ module DrawingApp =
         | Save
         | Load
         | Clear
+        | Undo
+        | Redo
         
     
     let finishAndAppend (model : DrawingAppModel) = 
@@ -62,6 +64,11 @@ module DrawingApp =
 
         { model with working = None; annotations = anns }
         
+    let stash (model : DrawingAppModel) =
+        { model with history = Some model; future = None }
+
+    let clearUndoRedo (model : DrawingAppModel) =
+        { model with history = None; future = None }
 
     let update (model : DrawingAppModel) (act : Action) =
         match act, model.draw with
@@ -83,10 +90,12 @@ module DrawingApp =
 
                     let model = { model with working = Some working }
 
-                    match (working.geometry, (working.points |> PList.count)) with
-                        | Geometry.Point, 1 -> model |> finishAndAppend
-                        | Geometry.Line, 2 -> model |> finishAndAppend
-                        | _ -> model
+                    let model = match (working.geometry, (working.points |> PList.count)) with
+                                    | Geometry.Point, 1 -> model |> finishAndAppend
+                                    | Geometry.Line, 2 -> model |> finishAndAppend
+                                    | _ -> model
+
+                    model |> stash
                     
             | KeyDown Keys.Enter, _ -> 
                     model |> finishAndAppend
@@ -130,6 +139,14 @@ module DrawingApp =
                     { model with annotations = PList.empty }
             | SetExportPath s, _ ->
                     { model with exportPath = s }
+            | Undo, _ -> 
+                match model.history with
+                    | Some h -> { h with future = Some model }
+                    | None -> model
+            | Redo, _ ->
+                match model.future with
+                    | Some f -> f
+                    | None -> model
             | _ -> model
             
             
@@ -172,19 +189,19 @@ module DrawingApp =
                     ]  
                 |> Sg.onOff (Mod.constant true)
 
-        let edgeLines (close : bool) (points : alist<V3d>) =        
-            let arr =
-                    let list = points |> AList.toList
-                    let head = list |> List.tryHead
+        let edgeLines (close : bool) (points : alist<V3d>) =
+            
+            points |> AList.toMod |> Mod.map (fun l ->
+                let list = PList.toList l
+                let head = list |> List.tryHead
                     
-                    match head with
-                        | Some h -> if close then list @ [h] else list
-                                        |> List.pairwise
-                                        |> List.map (fun (a,b) -> new Line3d(a,b))
-                                        |> List.toArray
-                        | None -> [||]                         
-
-            Mod.constant arr
+                match head with
+                    | Some h -> if close then list @ [h] else list
+                                    |> List.pairwise
+                                    |> List.map (fun (a,b) -> new Line3d(a,b))
+                                    |> List.toArray
+                    | None -> [||]                         
+            )
             
         let brush (hovered : IMod<Trafo3d option>) = 
             let trafo =
@@ -193,18 +210,7 @@ module DrawingApp =
                                                     | None -> Trafo3d.Scale(V3d.Zero))
 
             mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
-
-        //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
-        //    points |> List.map (fun p -> mkISg color (computeScale view p 5.0) (Trafo3d.Translation(p)))
-
-        //let dots (points : IMod<Points>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
-        //   points
-        //        |> Mod.map(function ps -> ps |> List.map (function p -> mkISg color
-        //                                                                      (computeScale view (Mod.constant p) 5.0)
-        //                                                                      (Mod.constant (Trafo3d.Translation(p)))) 
-        //                                     |> Sg.ofList)                                
-        //        |> Sg.dynamic  
-
+       
         let dots (points : alist<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =            
             
             aset {
@@ -213,7 +219,6 @@ module DrawingApp =
             } 
             |> Sg.set
            
-
         let lines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) = 
             edgeLines false points
                 |> Sg.lines color
@@ -227,21 +232,26 @@ module DrawingApp =
                 |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
                 |> Sg.depthTest (Mod.constant DepthTestMode.None)
    
-        let annotation (anno : IMod<Annotation option>)(view : IMod<CameraView>) = 
+        let annotation (anno : IMod<Option<MAnnotation>>)(view : IMod<CameraView>) = 
+            //alist builder?
             let points = 
-                anno |> Mod.map (fun o -> match o with
-                                            | Some a -> a.points
-                                            | None -> PList.empty) |> AList.ofMod
-                 
+                anno |> AList.bind (fun o -> 
+                    match o with
+                        | Some a -> a.points
+                        | None -> AList.empty
+                )    
+                
+            let withDefault (m : IMod<Option<'a>>) (f : 'a -> IMod<'b>) (defaultValue : 'b) = 
+                let defaultValue = defaultValue |> Mod.constant
+                m |> Mod.bind (function | None -> defaultValue | Some v -> f v)
+
             let color = 
-                anno |> Mod.map (function o -> match o with
-                                                | Some a -> a.color
-                                                | None -> C4b.VRVisGreen)
+                withDefault anno (fun a -> a.color) C4b.VRVisGreen
 
             let thickness = 
-                anno |> Mod.map (function o -> match o with
+                anno |> Mod.bind (function o -> match o with
                                                 | Some a -> a.thickness.value
-                                                | None -> 1.0)
+                                                | None -> Mod.constant 1.0)
 
             [lines points color thickness; dots points color view]
 
@@ -255,37 +265,43 @@ module DrawingApp =
         let frustum =
             Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
+        //let body att x =
+        //    body [][ div att x ]
+
         require (Html.semui) (
             body [clazz "ui"; style "background: #1B1C1E"] [
-                ArcBallController.controlledControl model.camera CameraMessage frustum
-                    (AttributeMap.ofList [
-                                onKeyDown (KeyDown)
-                                onKeyUp (KeyUp)
-                                attribute "style" "width:65%; height: 100%; float: left;"]
-                    )
-                    (
-                        let view = model.camera.view
+                div [] [
+                    ArcBallController.controlledControl model.camera CameraMessage frustum
+                        (AttributeMap.ofList [
+                                    onKeyDown (KeyDown)
+                                    onKeyUp (KeyUp)
+                                    attribute "style" "width:65%; height: 100%; float: left;"]
+                        )
+                        (
+                            let view = model.camera.view
                         
-                        // order is irrelevant for rendering. change list to set,
-                        // since set provides more degrees of freedom for the compiler
-                        let annoSet = ASet.ofAList model.annotations 
+                            // order is irrelevant for rendering. change list to set,
+                            // since set provides more degrees of freedom for the compiler
+                            let annoSet = ASet.ofAList model.annotations 
 
-                        let annotations =
-                            aset {
-                                for a in annoSet do
-                                    yield! Draw.annotation' a view
-                            } |> Sg.set
+                            let annotations =
+                                aset {
+                                    for a in annoSet do
+                                        yield! Draw.annotation' a view
+                                } |> Sg.set
                                 
 
-                        [Draw.canvas; Draw.brush model.hoverPosition; annotations] @
-                         Draw.annotation model.working view
-                            |> Sg.ofList
-                            |> Sg.fillMode model.rendering.fillMode
-                            |> Sg.cullMode model.rendering.cullMode                                                                                           
-                )
+                            [Draw.canvas; Draw.brush model.hoverPosition; annotations] @
+                             Draw.annotation model.working view
+                                |> Sg.ofList
+                                |> Sg.fillMode model.rendering.fillMode
+                                |> Sg.cullMode model.rendering.cullMode                                                                                           
+                        )                                        
+                ]
 
                  //Html.Layout.horizontal [
                         //    Html.Layout.boxH [ 
+
                 div [style "width:35%; height: 100%; float:right;"] [
                     
                     div [clazz "ui buttons inverted"] [
@@ -297,6 +313,10 @@ module DrawingApp =
                                     i [clazz "file outline icon"] [] ]
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Export)] [
                                     i [clazz "external icon"] [] ]
+                        button [clazz "ui icon button"; onMouseClick (fun _ -> Undo)] [
+                                    i [clazz "arrow left icon"] [] ]
+                        button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [
+                                    i [clazz "arrow right icon"] [] ]
                     ]
 
                     Html.SemUi.accordion "Annotation Tools" "Write" true [
@@ -307,7 +327,7 @@ module DrawingApp =
                             Html.row "Semantic:" [Html.SemUi.dropDown model.semantic SetSemantic]
                         ]                    
                     ]
-
+                    
                    // div [style "overflow-Y: scroll" ] [
                     Html.SemUi.accordion "Annotations" "File Outline" true [
                         Incremental.div 
@@ -350,6 +370,9 @@ module DrawingApp =
 
             annotations = PList.empty
             exportPath = @"."
+
+            history = None
+            future = None
         }
 
     let app : App<DrawingAppModel,MDrawingAppModel,Action> =

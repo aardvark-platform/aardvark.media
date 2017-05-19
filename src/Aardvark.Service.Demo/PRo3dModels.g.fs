@@ -670,12 +670,14 @@ module Mutable =
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
-        let _working = ResetMod(__initial.working)
+        let _working = ResetMapOption(__initial.working, MAnnotation.Create, fun (m,i) -> m.Update(i))
         let _projection = ResetMod(__initial.projection)
         let _geometry = ResetMod(__initial.geometry)
         let _semantic = ResetMod(__initial.semantic)
         let _annotations = ResetMapList(__initial.annotations, (fun _ -> MAnnotation.Create), fun (m,i) -> m.Update(i))
         let _exportPath = ResetMod(__initial.exportPath)
+        let _history = ResetMod(__initial.history)
+        let _future = ResetMod(__initial.future)
         
         member x.camera = _camera
         member x.rendering = _rendering
@@ -687,6 +689,8 @@ module Mutable =
         member x.semantic = _semantic :> IMod<_>
         member x.annotations = _annotations :> alist<_>
         member x.exportPath = _exportPath :> IMod<_>
+        member x.history = _history :> IMod<_>
+        member x.future = _future :> IMod<_>
         
         member x.Update(__model : PRo3DModels.DrawingAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
@@ -701,6 +705,8 @@ module Mutable =
                 _semantic.Update(__model.semantic)
                 _annotations.Update(__model.annotations)
                 _exportPath.Update(__model.exportPath)
+                _history.Update(__model.history)
+                _future.Update(__model.future)
         
         static member Create(initial) = MDrawingAppModel(initial)
         
@@ -720,6 +726,8 @@ module Mutable =
         let inline semantic (m : MDrawingAppModel) = m.semantic
         let inline annotations (m : MDrawingAppModel) = m.annotations
         let inline exportPath (m : MDrawingAppModel) = m.exportPath
+        let inline history (m : MDrawingAppModel) = m.history
+        let inline future (m : MDrawingAppModel) = m.future
     
     
     
@@ -753,7 +761,7 @@ module Mutable =
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
             let working =
-                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.option<PRo3DModels.Annotation>>() with
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.Annotation>>() with
                     override x.Get(r) = r.working
                     override x.Set(r,v) = { r with working = v }
                     override x.Update(r,f) = { r with working = f r.working }
@@ -787,6 +795,18 @@ module Mutable =
                     override x.Get(r) = r.exportPath
                     override x.Set(r,v) = { r with exportPath = v }
                     override x.Update(r,f) = { r with exportPath = f r.exportPath }
+                }
+            let history =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.DrawingAppModel>>() with
+                    override x.Get(r) = r.history
+                    override x.Set(r,v) = { r with history = v }
+                    override x.Update(r,f) = { r with history = f r.history }
+                }
+            let future =
+                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.DrawingAppModel>>() with
+                    override x.Get(r) = r.future
+                    override x.Set(r,v) = { r with future = v }
+                    override x.Update(r,f) = { r with future = f r.future }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
     type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =

@@ -156,13 +156,19 @@ type DrawingAppModel = {
     hoverPosition : option<Trafo3d>
     //points : list<V3d>
 
-    working : option<Annotation>
+    working : Option<Annotation>
     projection : Projection
     geometry : Geometry
     semantic : Semantic
 
     annotations : plist<Annotation>
     exportPath : string
+
+    [<TreatAsValue>]
+    history : Option<DrawingAppModel> 
+
+    [<TreatAsValue>]
+    future : Option<DrawingAppModel> 
 }
 
 module JsonTypes =

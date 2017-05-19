@@ -92,7 +92,6 @@
     </Content>
     <Compile Include="Model.fs" />
     <Compile Include="PRo3dModels.fs" />
-    <Compile Include="ArcBallController.fs" />
     <Compile Include="FileSystem.fs" />
     <Compile Include="ViewerModel.fs" />
     <Compile Include="BookmarkApp.fs" />

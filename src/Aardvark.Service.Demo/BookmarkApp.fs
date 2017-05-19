@@ -21,7 +21,7 @@ open PRo3DModels
 module BookmarkApp = 
             
     type Action =
-        | CameraMessage    of ArcBallController.Message
+        | CameraMessage of ArcBallController.Message
         | Move of V3d
         | AddBookmark of V3d 
         | UpdateCam of string
