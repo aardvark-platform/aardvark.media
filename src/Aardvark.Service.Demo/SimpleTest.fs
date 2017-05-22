@@ -69,7 +69,8 @@ let view (m : MModel) =
         button [onMouseClick (fun _ -> Inc)] [text "inc"]
         button [onMouseClick (fun _ -> Dec)] [text "dec"]
         br []
-        threeD m
+        //threeD m
+        Aardvark.UI.Primitives.TreeView2.view()
     ]
 
 let app =

@@ -2,7 +2,8 @@ Aardvark.Base
 Aardvark.Base.Incremental
 Aardvark.Base.FSharp
 Aardvark.Base.Rendering
-
+FsPickler
+FsPickler.Json
 
 Aardvark.Application
 
