@@ -13,12 +13,14 @@ type Action =
     | Inc 
     | Dec
     | CameraAction of CameraController.Message
+    | TreeViewAction of TreeViewMessage
 
 let update (m : Model) (a : Action) =
     match a with
         | Inc -> { m with value = m.value + 1.0 }
         | Dec -> { m with value = m.value - 1.0 } 
         | CameraAction a -> { m with cameraModel = CameraController.update m.cameraModel a }
+        | TreeViewAction a -> { m with treeViewModel = TreeViewFancy.update m.treeViewModel a}
 
 let cam = 
     Camera.create (CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI) (Frustum.perspective 60.0 0.1 10.0 1.0)
@@ -70,14 +72,14 @@ let view (m : MModel) =
         button [onMouseClick (fun _ -> Dec)] [text "dec"]
         br []
         //threeD m
-        Aardvark.UI.Primitives.TreeView2.view()
+        Aardvark.UI.Primitives.TreeViewFancy.view m.treeViewModel TreeViewAction
     ]
 
 let app =
     {
         unpersist = Unpersist.instance
         threads = fun (model : Model) -> CameraController.threads model.cameraModel |> ThreadPool.map CameraAction
-        initial = { value = 1.0; cameraModel = CameraController.initial }
+        initial = { value = 1.0; cameraModel = CameraController.initial; treeViewModel = { tree = TreeViewTree.Empty } }
         update = update
         view = view
     }

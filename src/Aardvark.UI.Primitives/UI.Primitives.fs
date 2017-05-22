@@ -374,127 +374,127 @@ module TreeView =
              ]
         ]
 
-module TreeViewApp =
+//module TreeViewApp =
     
-    open TreeView
+//    open TreeView
 
-    type Action =
-        | Click of list<Index>
-        | ToggleExpand of list<Index>
-        | AddChild of list<Index>
-        | RemChild of list<Index>
-        | Nop
+//    type Action =
+//        | Click of list<Index>
+//        | ToggleExpand of list<Index>
+//        | AddChild of list<Index>
+//        | RemChild of list<Index>
+//        | Nop
 
-    let click v () = Click v
-    let toggle v () = ToggleExpand v
-    let addChild v () = AddChild v
-    let remChild v () = RemChild v
+//    let click v () = Click v
+//    let toggle v () = ToggleExpand v
+//    let addChild v () = AddChild v
+//    let remChild v () = RemChild v
 
-    let defaultP = { isExpanded = true; isSelected = false; isActive = false }
+//    let defaultP = { isExpanded = true; isSelected = false; isActive = false }
 
-    let init =
-        { data =
-            Tree.node (LeafValue.Text "0") defaultP <| PList.ofList [ 
-                Leaf (LeafValue.Number 1)
-                Leaf (LeafValue.Text "2" )
-                Tree.node (LeafValue.Number 3) defaultP <| PList.ofList [
-                    yield Leaf (LeafValue.Number 4)
-                    yield Leaf (LeafValue.Number 5) 
-                ]
-            ] 
-        }
+//    let init =
+//        { data =
+//            Tree.node (LeafValue.Text "0") defaultP <| PList.ofList [ 
+//                Leaf (LeafValue.Number 1)
+//                Leaf (LeafValue.Text "2" )
+//                Tree.node (LeafValue.Number 3) defaultP <| PList.ofList [
+//                    yield Leaf (LeafValue.Number 4)
+//                    yield Leaf (LeafValue.Number 5) 
+//                ]
+//            ] 
+//        }
 
-    let updateAt (p : list<Index>) (f : Tree -> Tree) (t : Tree) =
-        let rec go (p : list<Index>) (t : Tree)  =
-            match p with
-                | [] -> f t
-                | x::rest -> 
-                    match t with
-                        | Leaf _ -> t
-                        | Node(l,p,xs) -> 
-                            match PList.tryGet x xs with
-                                | Some c -> Node(l,p, PList.set x (go rest c) xs)
-                                | None   -> t
-        go (List.rev p) t
+//    let updateAt (p : list<Index>) (f : Tree -> Tree) (t : Tree) =
+//        let rec go (p : list<Index>) (t : Tree)  =
+//            match p with
+//                | [] -> f t
+//                | x::rest -> 
+//                    match t with
+//                        | Leaf _ -> t
+//                        | Tree.Node(l,p,xs) -> 
+//                            match PList.tryGet x xs with
+//                                | Some c -> Tree.Node(l,p, PList.set x (go rest c) xs)
+//                                | None   -> t
+//        go (List.rev p) t
 
-    let update (model : TreeModel) action =
-        printfn "action: %A" action
-        match action with
-            | Click p ->                 
-                { model with
-                    data = updateAt p (function | Leaf v ->( match v with 
-                                                                | LeafValue.Number n -> Leaf ( LeafValue.Number (n + 1))
-                                                                | LeafValue.Text t -> Leaf ( LeafValue.Text (sprintf "%s a" t)))
-                                                | p -> p) model.data
-                }
-            | ToggleExpand p -> 
-                { model with
-                    data = 
-                        updateAt p (
-                            function | Leaf v -> Leaf v
-                                     | Node(l,p,xs) -> 
-                                         Node(l, { p with isExpanded = not p.isExpanded}, xs)
-                        ) model.data
-                }
-            | AddChild p -> 
-                { model with
-                    data = updateAt p (
-                             function | Leaf v -> Leaf v
-                                      | Node(l,p,xs) -> 
-                                            let value = match l with
-                                                           | Number n -> Number (PList.count xs + 1)
-                                                           | Text   t -> LeafValue.Text t
-                                            Node(l,p, PList.append (Leaf value) xs)
-                           ) model.data
-                }
-            | RemChild p -> 
-                { model with
-                    data = updateAt p (
-                             function | Leaf v -> Leaf v
-                                      | Node(l,p,xs) -> 
-                                          Node(l,p, if PList.count xs > 0 then PList.removeAt 0 xs else xs)
-                           ) model.data
-                }
-            | Nop -> model
+//    let update (model : TreeModel) action =
+//        printfn "action: %A" action
+//        match action with
+//            | Click p ->                 
+//                { model with
+//                    data = updateAt p (function | Leaf v ->( match v with 
+//                                                                | LeafValue.Number n -> Leaf ( LeafValue.Number (n + 1))
+//                                                                | LeafValue.Text t -> Leaf ( LeafValue.Text (sprintf "%s a" t)))
+//                                                | p -> p) model.data
+//                }
+//            | ToggleExpand p -> 
+//                { model with
+//                    data = 
+//                        updateAt p (
+//                            function | Leaf v -> Leaf v
+//                                     | Tree.Node(l,p,xs) -> 
+//                                         Tree.Node(l, { p with isExpanded = not p.isExpanded}, xs)
+//                        ) model.data
+//                }
+//            | AddChild p -> 
+//                { model with
+//                    data = updateAt p (
+//                             function | Leaf v -> Leaf v
+//                                      | Tree.Node(l,p,xs) -> 
+//                                            let value = match l with
+//                                                           | Number n -> Number (PList.count xs + 1)
+//                                                           | Text   t -> LeafValue.Text t
+//                                            Tree.Node(l,p, PList.append (Leaf value) xs)
+//                           ) model.data
+//                }
+//            | RemChild p -> 
+//                { model with
+//                    data = updateAt p (
+//                             function | Leaf v -> Leaf v
+//                                      | Tree.Node(l,p,xs) -> 
+//                                          Tree.Node(l,p, if PList.count xs > 0 then PList.removeAt 0 xs else xs)
+//                           ) model.data
+//                }
+//            | Nop -> model
     
-    let viewLabel v = 
-        v |> Mod.bind (fun u -> match u with 
-                                    | MNumber n -> n |> Mod.map (fun x -> sprintf "Number %A" (string x))
-                                    | MText t   -> t |> Mod.map (fun x -> sprintf "Text %A" x))
-        |> Incremental.text
+//    let viewLabel v = 
+//        v |> Mod.bind (fun u -> match u with 
+//                                    | MNumber n -> n |> Mod.map (fun x -> sprintf "Number %A" (string x))
+//                                    | MText t   -> t |> Mod.map (fun x -> sprintf "Text %A" x))
+//        |> Incremental.text
                         
 
-    let rec viewTree path (model : IMod<MTree>) =
-        alist {
-            let! model = model
-            match model with
-            | MLeaf v -> 
-                yield TreeView.leaf (click path) (AList.ofList [viewLabel v]) Nop Nop
-            | MNode(s, p, xs) -> 
-                let children = AList.collecti (fun i v -> viewTree (i::path) v) xs
-                let desc =
-                    div [] [
-                         i [ clazz "plus icon";  onClick (addChild path) ] []
-                         i [ clazz "minus icon"; onClick (remChild path) ] []
-                    ]
-                yield TreeView.node p.isExpanded (toggle path) 
-                                    (viewLabel s) desc
-                                    children
-        }
+//    let rec viewTree path (model : IMod<MTree>) =
+//        alist {
+//            let! model = model
+//            match model with
+//            | MLeaf v -> 
+//                yield TreeView.leaf (click path) (AList.ofList [viewLabel v]) Nop Nop
+//            | MNode(s, p, xs) -> 
+//                let children = AList.collecti (fun i v -> viewTree (i::path) v) xs
+//                let desc =
+//                    div [] [
+//                         i [ clazz "plus icon";  onClick (addChild path) ] []
+//                         i [ clazz "minus icon"; onClick (remChild path) ] []
+//                    ]
+//                yield TreeView.node p.isExpanded (toggle path) 
+//                                    (viewLabel s) desc
+//                                    children
+//        }
 
-    let view (model : MTreeModel) =
-        require Html.semui (
-            TreeView.view [] (viewTree [] model.data)
-        )
+//    let view (model : MTreeModel) =
+//        require Html.semui (
+//            TreeView.view [] (viewTree [] model.data)
+//        )
 
-    let app =
-        {
-            unpersist =  Unpersist.instance
-            threads = fun _ -> ThreadPool.empty
-            initial = init
-            update = update
-            view = view 
-        }
+//    let app =
+//        {
+//            unpersist =  Unpersist.instance
+//            threads = fun _ -> ThreadPool.empty
+//            initial = init
+//            update = update
+//            view = view 
+//        }
 
-    let start () =
-        App.start app
+//    let start () =
+//        App.start app

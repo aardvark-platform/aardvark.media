@@ -54,7 +54,10 @@ $(function(){
             },
             click: f,
             select: function (event, data) {
-                 console.warn("data is selected " + data.node.key + " " + data.node.isSelected());
+                var msg = { node : data.node.key, selected : data.node.isSelected() };
+                var event = new CustomEvent("TreeViewSelected", { "detail": msg });
+                var chan = aardvark.getChannel("n97", "tree");
+                return true;
             }
        }
   );

@@ -9,4 +9,5 @@ open Aardvark.UI.Primitives
 type Model = { 
     value : float 
     cameraModel : CameraControllerState
+    treeViewModel : TreeViewModel
 }

@@ -13,15 +13,18 @@ module Mutable =
         let mutable __current = __initial
         let _value = ResetMod(__initial.value)
         let _cameraModel = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraModel)
+        let _treeViewModel = Aardvark.UI.Mutable.MTreeViewModel.Create(__initial.treeViewModel)
         
         member x.value = _value :> IMod<_>
         member x.cameraModel = _cameraModel
+        member x.treeViewModel = _treeViewModel
         
         member x.Update(__model : SimpleTest.Model) =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _value.Update(__model.value)
                 _cameraModel.Update(__model.cameraModel)
+                _treeViewModel.Update(__model.treeViewModel)
         
         static member Create(initial) = MModel(initial)
         
@@ -33,6 +36,7 @@ module Mutable =
     module MModel =
         let inline value (m : MModel) = m.value
         let inline cameraModel (m : MModel) = m.cameraModel
+        let inline treeViewModel (m : MModel) = m.treeViewModel
     
     
     
@@ -52,4 +56,10 @@ module Mutable =
                     override x.Get(r) = r.cameraModel
                     override x.Set(r,v) = { r with cameraModel = v }
                     override x.Update(r,f) = { r with cameraModel = f r.cameraModel }
+                }
+            let treeViewModel =
+                { new Lens<SimpleTest.Model, Aardvark.UI.TreeViewModel>() with
+                    override x.Get(r) = r.treeViewModel
+                    override x.Set(r,v) = { r with treeViewModel = v }
+                    override x.Update(r,f) = { r with treeViewModel = f r.treeViewModel }
                 }
