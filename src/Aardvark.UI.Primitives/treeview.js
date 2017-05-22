@@ -22,7 +22,7 @@ $(function(){
   }
 
 
-  $("#tree").fancytree(
+  $(".fancytreeview").fancytree(
        {
             // data.node.setActive(false, { noEvents: true, noFocus: true });
             //autoCollapse: true, // Automatically collapse all siblings, when a node is expanded
@@ -54,13 +54,19 @@ $(function(){
             },
             click: f,
             select: function (event, data) {
-                var msg = { node : data.node.key, selected : data.node.isSelected() };
-                var event = new CustomEvent("TreeViewSelected", { "detail": msg });
-                var chan = aardvark.getChannel("n97", "tree");
+                event.key = data.node.key;
+                event.selected = data.node.isSelected();
+                console.warn("CLIENTEvenet");
+                aardvark.processEvent($(".fancytreeview")[0].id, "select", event.key, event.selected);
                 return true;
+            },
+            treeviewselect: function (event) {
+                console.warn("asdasdasd");
             }
        }
   );
+
+  
 });
 
 function getNode(tree, ptr) {
@@ -104,7 +110,7 @@ function getMode(mode) {
 
 
 function emit(o) {
-    var tree = $('#tree');
+    var tree = $(".fancytreeview");
 
     if (o.Case === "Add") {
         o.node.icon = o.node.customIcon || true;

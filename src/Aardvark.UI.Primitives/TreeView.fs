@@ -19,7 +19,7 @@ module TreeViewFancy =
             node : string
             selected : bool
         }
-    let msg = TreeViewMessage.Add ({pointer = Root; mode = FirstChild}, NodeData.node "afhasf" false None "asfdg")
+    let msg() = TreeViewMessage.Add ({pointer = Root; mode = FirstChild}, NodeData.node "afhasf" false None "asfdg")
     let view (mmodel : MTreeViewModel) (f : TreeViewMessage -> 'msg) : DomNode<'msg> =
         require [ 
             { kind = Script; name = "jquery"; url = "https://code.jquery.com/jquery-3.1.1.min.js" } 
@@ -39,22 +39,20 @@ module TreeViewFancy =
                     //onMouseClick ( fun _ -> 
                     //    TreeViewMessage.Add ({pointer = Root; mode = FirstChild}, NodeData.node "afhasf" false None "asfdg") |> f
                     //)
-                    yield js "onclick" (emit msg)
+                    yield js "onclick" (emit (msg()))
+                    
                 ] [ text "addasssssssdgg" ]
 
 
 
                 div [
-                    attribute "id" "tree"
-                    onEvent "TreeViewSelected" 
-                            ["{ node: event.detail.node, selected: event.detail.selected }"]
-                            (List.head >> Pickler.json.UnPickleOfString >> ( fun (ns : NodeSelected) ->
-                                Log.warn "nodeselected: %A" ns
-                                f msg
-                            ))
+                    clazz "fancytreeview"
+                    onEvent "select" 
+                            ["{ key : event.key, selected: event.selected }"]
+                            (fun fs -> printfn "%A" fs; msg() |> f)
                 ] [
-                    ul [attribute "id" "treeData"; attribute "style" "display: none;"] [
-                        li [attribute "id" "id1"; attribute "title" "asfas"] [
+                    ul [attribute "style" "display: none;"] [
+                        li [attribute "title" "asfas"] [
                             text "asofuhasofhweuh"
                         ]
                         

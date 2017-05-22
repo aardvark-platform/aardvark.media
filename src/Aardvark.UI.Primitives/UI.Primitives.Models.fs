@@ -55,7 +55,7 @@ module NodeData=
         currentId <- System.Threading.Interlocked.Increment &currentId
         {
             key = string currentId
-            title = title
+            title = string currentId
             folder = folder
             customIcon = customIcon
             tooltip = tooltip
