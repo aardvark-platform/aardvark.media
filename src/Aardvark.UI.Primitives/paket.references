@@ -5,5 +5,5 @@ Aardvark.Base.Rendering
 
 
 Aardvark.Application
-
+Aardvark.SceneGraph
 Aardvark.Compiler.DomainTypes.MSBuild

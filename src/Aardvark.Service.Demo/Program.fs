@@ -73,7 +73,7 @@ let kitchenSink argv =
     //let a = SimpleDrawingApp.start()
     //let a = DrawingApp.start()
     //let a = PlaceTransformObjects.App.start()
-    let a = BookmarkApp.start()
+    //let a = BookmarkApp.start()
     //let a = MeasurementsImporterApp.start(form)
 
     let a = DrawingApp.start()

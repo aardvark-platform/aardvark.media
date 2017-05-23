@@ -14,14 +14,14 @@ module Mutable =
         let _id = ResetMod(__initial.id)
         let _point = ResetMod(__initial.point)
         let _color = ResetMod(__initial.color)
-        let _camState = ResetMod(__initial.camState)
+        let _camState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camState)
         let _visible = ResetMod(__initial.visible)
         let _text = ResetMod(__initial.text)
         
         member x.id = _id :> IMod<_>
         member x.point = _point :> IMod<_>
         member x.color = _color :> IMod<_>
-        member x.camState = _camState :> IMod<_>
+        member x.camState = _camState
         member x.visible = _visible :> IMod<_>
         member x.text = _text :> IMod<_>
         
@@ -76,7 +76,7 @@ module Mutable =
                     override x.Update(r,f) = { r with color = f r.color }
                 }
             let camState =
-                { new Lens<PRo3DModels.Bookmark, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.Bookmark, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camState
                     override x.Set(r,v) = { r with camState = v }
                     override x.Update(r,f) = { r with camState = f r.camState }
@@ -176,14 +176,14 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MBookmarkAppModel private(__initial : PRo3DModels.BookmarkAppModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
         let _boxHovered = ResetMod(__initial.boxHovered)
         let _bookmarks = ResetMapList(__initial.bookmarks, (fun _ -> MBookmark.Create), fun (m,i) -> m.Update(i))
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.rendering = _rendering
         member x.draw = _draw :> IMod<_>
         member x.hoverPosition = _hoverPosition :> IMod<_>
@@ -223,7 +223,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.BookmarkAppModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.BookmarkAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -322,7 +322,7 @@ module Mutable =
         let _points = ResetList(__initial.points)
         let _segments = ResetList(__initial.segments)
         let _color = ResetMod(__initial.color)
-        let _thickness = ResetMod(__initial.thickness)
+        let _thickness = Aardvark.UI.Mutable.MNumericInput.Create(__initial.thickness)
         let _visible = ResetMod(__initial.visible)
         let _text = ResetMod(__initial.text)
         
@@ -332,7 +332,7 @@ module Mutable =
         member x.points = _points :> alist<_>
         member x.segments = _segments :> alist<_>
         member x.color = _color :> IMod<_>
-        member x.thickness = _thickness :> IMod<_>
+        member x.thickness = _thickness
         member x.visible = _visible :> IMod<_>
         member x.text = _text :> IMod<_>
         
@@ -411,7 +411,7 @@ module Mutable =
                     override x.Update(r,f) = { r with color = f r.color }
                 }
             let thickness =
-                { new Lens<PRo3DModels.Annotation, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.Annotation, Aardvark.UI.NumericInput>() with
                     override x.Get(r) = r.thickness
                     override x.Set(r,v) = { r with thickness = v }
                     override x.Update(r,f) = { r with thickness = f r.thickness }
@@ -431,12 +431,12 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MMeasurementsImporterAppModel private(__initial : PRo3DModels.MeasurementsImporterAppModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _scenePath = ResetMod(__initial.scenePath)
         let _annotations = ResetMapList(__initial.annotations, (fun _ -> MAnnotation.Create), fun (m,i) -> m.Update(i))
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.rendering = _rendering
         member x.scenePath = _scenePath :> IMod<_>
         member x.annotations = _annotations :> alist<_>
@@ -470,7 +470,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.MeasurementsImporterAppModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.MeasurementsImporterAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -496,12 +496,12 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MComposedViewerModel private(__initial : PRo3DModels.ComposedViewerModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _singleAnnotation = MAnnotation.Create(__initial.singleAnnotation)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _boxHovered = ResetMod(__initial.boxHovered)
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.singleAnnotation = _singleAnnotation
         member x.rendering = _rendering
         member x.boxHovered = _boxHovered :> IMod<_>
@@ -535,7 +535,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.ComposedViewerModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.ComposedViewerModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -561,15 +561,15 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MBoxSelectionDemoModel private(__initial : PRo3DModels.BoxSelectionDemoModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _boxes = ResetMapList(__initial.boxes, (fun _ -> MVisibleBox.Create), fun (m,i) -> m.Update(i))
-        let _boxesSet = ResetMapSet((fun v -> v.id :> obj), __initial.boxesSet, MVisibleBox.Create, fun (m,i) -> m.Update(i))
+        let _boxesSet = ResetMapSet((fun (v : PRo3DModels.VisibleBox) -> v.id :> obj), __initial.boxesSet, MVisibleBox.Create, fun (m,i) -> m.Update(i))
         let _boxesMap = ResetMapMap(__initial.boxesMap, (fun k v -> MVisibleBox.Create(v)), (fun (m,i) -> m.Update(i)))
         let _boxHovered = ResetMod(__initial.boxHovered)
         let _selectedBoxes = ResetSet(__initial.selectedBoxes)
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.rendering = _rendering
         member x.boxes = _boxes :> alist<_>
         member x.boxesSet = _boxesSet :> aset<_>
@@ -612,7 +612,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.BoxSelectionDemoModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -656,13 +656,13 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MSimpleDrawingAppModel private(__initial : PRo3DModels.SimpleDrawingAppModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
         let _points = ResetMod(__initial.points)
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.rendering = _rendering
         member x.draw = _draw :> IMod<_>
         member x.hoverPosition = _hoverPosition :> IMod<_>
@@ -699,7 +699,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.SimpleDrawingAppModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.SimpleDrawingAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -731,7 +731,7 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MDrawingAppModel private(__initial : PRo3DModels.DrawingAppModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
@@ -744,7 +744,7 @@ module Mutable =
         let _history = ResetMod(__initial.history)
         let _future = ResetMod(__initial.future)
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.rendering = _rendering
         member x.draw = _draw :> IMod<_>
         member x.hoverPosition = _hoverPosition :> IMod<_>
@@ -802,7 +802,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.DrawingAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -876,10 +876,10 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.rendering = _rendering
         
         member x.Update(__model : PRo3DModels.OrbitCameraDemoModel) =
@@ -907,7 +907,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.OrbitCameraDemoModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.OrbitCameraDemoModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
@@ -921,11 +921,11 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MNavigationModeDemoModel private(__initial : PRo3DModels.NavigationModeDemoModel) =
         let mutable __current = __initial
-        let _camera = ResetMod(__initial.camera)
+        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _navigation = MNavigationParameters.Create(__initial.navigation)
         
-        member x.camera = _camera :> IMod<_>
+        member x.camera = _camera
         member x.rendering = _rendering
         member x.navigation = _navigation
         
@@ -956,7 +956,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.NavigationModeDemoModel, Microsoft.FSharp.Core.obj>() with
+                { new Lens<PRo3DModels.NavigationModeDemoModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
