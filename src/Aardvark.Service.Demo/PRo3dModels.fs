@@ -10,6 +10,7 @@ open Aardvark.UI.Primitives
 open FShade.Primitives
 open Demo
 open Demo.TestApp
+open System.Net
 
 [<DomainType>]
 type Bookmark = {
@@ -70,7 +71,7 @@ type Points = list<V3d>
 type Segment = Points
 
 type Projection = Linear = 0 | Viewpoint = 1 | Sky = 2
-type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3
+type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3 | DnS = 4 | Undefined = 5
 type Semantic = Horizon0 = 0 | Horizon1 = 1 | Horizon2 = 2 | Horizon3 = 3 | Horizon4 = 4 | Crossbed = 5 | GrainSize = 6
 
 [<DomainType>]
@@ -89,7 +90,15 @@ type Annotation = {
     text : string
 }
 
+[<DomainType>]
+type MeasurementsImporterAppModel = {
+    camera : CameraControllerState
+    rendering : RenderingParameters
 
+    scenePath : string
+    annotations : plist<Annotation>
+   
+} 
 [<DomainType>]
 type ComposedViewerModel = {
     camera : CameraControllerState

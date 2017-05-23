@@ -91,6 +91,11 @@ NUGET
       System.Collections.Immutable (>= 1.2)
     System.ValueTuple (4.3)
     TurboJpegWrapper (1.4.2.6)
+    WindowsAPICodePack-Core (1.1.2)
+    WindowsAPICodePack-Shell (1.1.1)
+      WindowsAPICodePack-Core (>= 1.1.1)
+    WindowsAPICodePack-ShellExtensions (1.1.1)
+      WindowsAPICodePack-Shell (>= 1.1.1)
   remote: https://vrvis.myget.org/F/aardvark_public
     Aardvark.Base (3.0.15)
       DevILSharp (>= 0.0.11 < 0.1)
