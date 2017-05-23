@@ -172,7 +172,7 @@ module Viewer =
                     
                     CameraController.controlledControl model.camera CameraMessage frustum
                         (AttributeMap.ofList [
-                            attribute "style" "width:100%; height: 100%"
+                            attribute "style" "width:75%; height: 100%; float:left"
                             //onRendered (fun _ _ _ -> TimeElapsed)
                         ])
                         (
@@ -189,6 +189,10 @@ module Viewer =
                                 ]
                                 |> Sg.trafo (model.rotation |> Mod.map Trafo3d.RotationZ)
                         )
+
+                    div[style "height:100%; float:right"][
+                        text "sidebar"
+                    ]
                    
                     onBoot "$('#__ID__').modal({ onApprove: function() { $('.sidebar').sidebar('hide'); } });" (
                         div [clazz "ui modal"; attribute "data-bla" "hugo"] [

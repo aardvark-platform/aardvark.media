@@ -192,21 +192,27 @@ module Html =
                 )
             )
 
-        let adornerMenu (sectionsAndItems : list<string * list<DomNode<'msg>>>) (rest : DomNode<'msg>) =
-            div [clazz "pushable"] [
-                menu "ui vertical inverted sidebar menu left overlay" sectionsAndItems
-                div [clazz "pusher"] [
-                    div [ clazz "ui big black launch right attached fixed button menubutton"
-                          js "onclick" "$('.ui.sidebar').sidebar('setting', 'transition', 'overlay').sidebar('toggle');"
-                        ] [
-                            i [clazz "content icon"] [] 
-                            span [clazz "text"] [text "MENU"]
-                        ]
-                    div [] [
-                        rest
-                    ]
+        
+
+        let adornerMenu (sectionsAndItems : list<string * list<DomNode<'msg>>>) (rest : DomNode<'msg>) =            
+            let pushButton() = 
+                div [
+                    clazz "ui black big launch right attached fixed button menubutton"
+                    js "onclick"        "$('.sidebar').sidebar('toggle');"
+                ] [
+                    i [clazz "content icon"] [] 
+                    span [clazz "text"] [text "Menu"]
                 ]
+            [
+                yield 
+                    menu "ui vertical inverted sidebar menu left overlay" sectionsAndItems
+                yield 
+                    div [clazz "pusher"] [
+                        pushButton()                    
+                        rest                    
+                    ]
             ]
+            
         
 
         let stuffStack (ls) =
