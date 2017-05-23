@@ -57,11 +57,12 @@ let kitchenSink argv =
     Aardvark.Init()
     use app = new OpenGlApplication()
     let runtime = app.Runtime
+    //use form = new Form(Width = 1024, Height = 768)
 
     //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
     //let a = TreeViewApp.start()
-    let a = AnnotationProperties.start()
+    //let a = AnnotationProperties.start()
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
@@ -73,6 +74,7 @@ let kitchenSink argv =
     //let a = DrawingApp.start()
     //let a = PlaceTransformObjects.App.start()
     let a = BookmarkApp.start()
+    //let a = MeasurementsImporterApp.start(form)
 
     let a = DrawingApp.start()
 
@@ -89,8 +91,11 @@ let kitchenSink argv =
 
     ctrl.ShowDevTools()
 
+   
+
     Application.Run form
     System.Environment.Exit 0
+    
 
 let modelviewer args =
     Viewer.Viewer.run args
@@ -99,8 +104,8 @@ let modelviewer args =
 [<EntryPoint; STAThread>]
 let main args =
 
-    //kitchenSink args
-    modelviewer args
+    kitchenSink args
+    //modelviewer args
 
     0
 

@@ -89,6 +89,7 @@
       <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <Reference Include="System.Windows.Forms" />
   </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">

@@ -320,7 +320,7 @@ module Mutable =
         let _projection = ResetMod(__initial.projection)
         let _semantic = ResetMod(__initial.semantic)
         let _points = ResetList(__initial.points)
-        let _segments = ResetMod(__initial.segments)
+        let _segments = ResetList(__initial.segments)
         let _color = ResetMod(__initial.color)
         let _thickness = ResetMod(__initial.thickness)
         let _visible = ResetMod(__initial.visible)
@@ -330,7 +330,7 @@ module Mutable =
         member x.projection = _projection :> IMod<_>
         member x.semantic = _semantic :> IMod<_>
         member x.points = _points :> alist<_>
-        member x.segments = _segments :> IMod<_>
+        member x.segments = _segments :> alist<_>
         member x.color = _color :> IMod<_>
         member x.thickness = _thickness :> IMod<_>
         member x.visible = _visible :> IMod<_>
@@ -399,7 +399,7 @@ module Mutable =
                     override x.Update(r,f) = { r with points = f r.points }
                 }
             let segments =
-                { new Lens<PRo3DModels.Annotation, Microsoft.FSharp.Collections.list<PRo3DModels.Segment>>() with
+                { new Lens<PRo3DModels.Annotation, Aardvark.Base.plist<Aardvark.Base.plist<Aardvark.Base.V3d>>>() with
                     override x.Get(r) = r.segments
                     override x.Set(r,v) = { r with segments = v }
                     override x.Update(r,f) = { r with segments = f r.segments }

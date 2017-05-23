@@ -12,6 +12,7 @@ open Demo
 open Demo.TestApp
 open System.Net
 
+
 [<DomainType>]
 type Bookmark = {
     id          : string
@@ -74,6 +75,7 @@ type Projection = Linear = 0 | Viewpoint = 1 | Sky = 2
 type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3 | DnS = 4 | Undefined = 5
 type Semantic = Horizon0 = 0 | Horizon1 = 1 | Horizon2 = 2 | Horizon3 = 3 | Horizon4 = 4 | Crossbed = 5 | GrainSize = 6
 
+
 [<DomainType>]
 type Annotation = {
     
@@ -82,7 +84,7 @@ type Annotation = {
     semantic : Semantic
 
     points : plist<V3d>
-    segments : list<Segment>
+    segments : plist<plist<V3d>> //list<Segment>
     color : C4b
     thickness : NumericInput
 
@@ -95,10 +97,10 @@ type MeasurementsImporterAppModel = {
     camera : CameraControllerState
     rendering : RenderingParameters
 
-    scenePath : string
+    scenePath     : string
     annotations : plist<Annotation>
-   
-} 
+}
+
 [<DomainType>]
 type ComposedViewerModel = {
     camera : CameraControllerState
@@ -156,6 +158,8 @@ type SimpleDrawingAppModel = {
 
 }
 
+
+
 [<DomainType>]
 type DrawingAppModel = {
     camera : CameraControllerState
@@ -208,6 +212,10 @@ module JsonTypes =
 
     let ofSegment (s:Segment) : _Segment = s  |> List.map ofV3d
 
+    let ofSegment1 (s:plist<V3d>) : _Segment = s  |> PList.map ofV3d
+                                                  |> PList.toList
+
+
     let rec fold f s xs =
         match xs with
             | x::xs -> 
@@ -227,7 +235,7 @@ module JsonTypes =
         {            
             semantic = a.semantic.ToString()
             geometry = polygon
-            segments = a.segments |> List.map (fun x -> ofSegment x)
+            segments = a.segments |> PList.map (fun x -> ofSegment1 x) |> PList.toList //|> List.map (fun x -> ofSegment x)
             color = a.color.ToString()
             thickness = a.thickness.value
             
@@ -272,7 +280,7 @@ module Annotation =
             geometry = geometry
             semantic = semantic
             points = plist.Empty
-            segments = []
+            segments = plist.Empty //[]
             color = color
             thickness = { thickn with value = thickness}
             projection = projection
@@ -282,13 +290,12 @@ module Annotation =
 
 module InitValues = 
     let edge = [ V3d.IOI; V3d.III; V3d.OOI ]
-
     let annotation = 
         {
             geometry = Geometry.Polyline
             points = edge |> PList.ofList
             semantic = Semantic.Horizon0
-            segments = [ edge; edge; edge ]
+            segments = PList.ofList [edge |> PList.ofList; edge |> PList.ofList; edge |> PList.ofList] //[edge; edge; edge]
             color = C4b.Red
             thickness = Numeric.init
             projection = Projection.Viewpoint
@@ -301,7 +308,7 @@ module InitValues =
             geometry = Geometry.Polyline
             semantic = Semantic.Horizon0
             points = PList.empty
-            segments = []
+            segments = PList.empty //[]
             color = C4b.Red
             thickness = Numeric.init
             projection = Projection.Viewpoint
