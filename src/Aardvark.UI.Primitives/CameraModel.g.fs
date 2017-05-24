@@ -9,6 +9,7 @@ open Aardvark.UI.Primitives
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MCameraControllerState private(__initial : Aardvark.UI.Primitives.CameraControllerState) =
         let mutable __current = __initial
         let _view = ResetMod(__initial.view)
@@ -55,6 +56,8 @@ module Mutable =
                 _orbitCenter.Update(__model.orbitCenter)
                 _lastTime.Update(__model.lastTime)
                 _stash.Update(__model.stash)
+        
+        static member Update(__self : MCameraControllerState, __model : Aardvark.UI.Primitives.CameraControllerState) = __self.Update(__model)
         
         static member Create(initial) = MCameraControllerState(initial)
         

@@ -9,6 +9,7 @@ open PlaceTransformObjects
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MObject private(__initial : PlaceTransformObjects.Object) =
         let mutable __current = __initial
         let _name = ResetMod(__initial.name)
@@ -25,6 +26,8 @@ module Mutable =
                 _name.Update(__model.name)
                 _objectType.Update(__model.objectType)
                 _transformation.Update(__model.transformation)
+        
+        static member Update(__self : MObject, __model : PlaceTransformObjects.Object) = __self.Update(__model)
         
         static member Create(initial) = MObject(initial)
         
@@ -64,9 +67,10 @@ module Mutable =
                     override x.Update(r,f) = { r with transformation = f r.transformation }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MWorld private(__initial : PlaceTransformObjects.World) =
         let mutable __current = __initial
-        let _objects = ResetMapMap(__initial.objects, (fun k v -> MObject.Create(v)), (fun (m,i) -> m.Update(i)))
+        let _objects = ResetMapMap(__initial.objects, (fun k v -> MObject.Create(v)), MObject.Update)
         let _selectedObjects = ResetSet(__initial.selectedObjects)
         
         member x.objects = _objects :> amap<_,_>
@@ -77,6 +81,8 @@ module Mutable =
                 __current <- __model
                 _objects.Update(__model.objects)
                 _selectedObjects.Update(__model.selectedObjects)
+        
+        static member Update(__self : MWorld, __model : PlaceTransformObjects.World) = __self.Update(__model)
         
         static member Create(initial) = MWorld(initial)
         
@@ -109,6 +115,7 @@ module Mutable =
                     override x.Update(r,f) = { r with selectedObjects = f r.selectedObjects }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MScene private(__initial : PlaceTransformObjects.Scene) =
         let mutable __current = __initial
         let _world = MWorld.Create(__initial.world)
@@ -122,6 +129,8 @@ module Mutable =
                 __current <- __model
                 _world.Update(__model.world)
                 _camera.Update(__model.camera)
+        
+        static member Update(__self : MScene, __model : PlaceTransformObjects.Scene) = __self.Update(__model)
         
         static member Create(initial) = MScene(initial)
         

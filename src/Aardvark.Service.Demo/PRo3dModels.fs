@@ -260,6 +260,7 @@ type NavigationModeDemoModel = {
     navigation : NavigationParameters
 }
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Annotation =
     let thickness = [1.0; 2.0; 3.0; 4.0; 5.0; 1.0; 1.0]
     let color = [new C4b(241,238,246); new C4b(189,201,225); new C4b(116,169,207); new C4b(43,140,190); new C4b(4,90,141); new C4b(241,163,64); new C4b(153,142,195) ]

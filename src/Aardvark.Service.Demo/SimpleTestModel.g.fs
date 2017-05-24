@@ -9,6 +9,7 @@ open SimpleTest
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MModel private(__initial : SimpleTest.Model) =
         let mutable __current = __initial
         let _value = ResetMod(__initial.value)
@@ -22,6 +23,8 @@ module Mutable =
                 __current <- __model
                 _value.Update(__model.value)
                 _cameraModel.Update(__model.cameraModel)
+        
+        static member Update(__self : MModel, __model : SimpleTest.Model) = __self.Update(__model)
         
         static member Create(initial) = MModel(initial)
         

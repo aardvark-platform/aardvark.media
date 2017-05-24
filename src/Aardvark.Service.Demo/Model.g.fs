@@ -9,6 +9,7 @@ open Demo.TestApp
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MUrdar private(__initial : Demo.TestApp.Urdar) =
         let mutable __current = __initial
         let _urdar = ResetMod(__initial.urdar)
@@ -19,6 +20,8 @@ module Mutable =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _urdar.Update(__model.urdar)
+        
+        static member Update(__self : MUrdar, __model : Demo.TestApp.Urdar) = __self.Update(__model)
         
         static member Create(initial) = MUrdar(initial)
         
@@ -44,6 +47,7 @@ module Mutable =
                     override x.Update(r,f) = { r with urdar = f r.urdar }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MModel private(__initial : Demo.TestApp.Model) =
         let mutable __current = __initial
         let _boxHovered = ResetMod(__initial.boxHovered)
@@ -52,7 +56,7 @@ module Mutable =
         let _elements = ResetList(__initial.elements)
         let _hasD3Hate = ResetMod(__initial.hasD3Hate)
         let _boxScale = ResetMod(__initial.boxScale)
-        let _objects = ResetMapMap(__initial.objects, (fun k v -> MUrdar.Create(v)), (fun (m,i) -> m.Update(i)))
+        let _objects = ResetMapMap(__initial.objects, (fun k v -> MUrdar.Create(v)), MUrdar.Update)
         let _lastTime = ResetMod(__initial.lastTime)
         
         member x.boxHovered = _boxHovered :> IMod<_>
@@ -75,6 +79,8 @@ module Mutable =
                 _boxScale.Update(__model.boxScale)
                 _objects.Update(__model.objects)
                 _lastTime.Update(__model.lastTime)
+        
+        static member Update(__self : MModel, __model : Demo.TestApp.Model) = __self.Update(__model)
         
         static member Create(initial) = MModel(initial)
         

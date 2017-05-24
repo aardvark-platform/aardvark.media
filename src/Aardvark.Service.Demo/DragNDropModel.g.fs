@@ -9,6 +9,7 @@ open DragNDrop
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MModel private(__initial : DragNDrop.Model) =
         let mutable __current = __initial
         let _trafo = ResetMod(__initial.trafo)
@@ -25,6 +26,8 @@ module Mutable =
                 _trafo.Update(__model.trafo)
                 _dragging.Update(__model.dragging)
                 _camera.Update(__model.camera)
+        
+        static member Update(__self : MModel, __model : DragNDrop.Model) = __self.Update(__model)
         
         static member Create(initial) = MModel(initial)
         
@@ -64,6 +67,7 @@ module Mutable =
                     override x.Update(r,f) = { r with camera = f r.camera }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MTransformation private(__initial : DragNDrop.Transformation) =
         let mutable __current = __initial
         let _trafo = ResetMod(__initial.trafo)
@@ -80,6 +84,8 @@ module Mutable =
                 _trafo.Update(__model.trafo)
                 _hovered.Update(__model.hovered)
                 _grabbed.Update(__model.grabbed)
+        
+        static member Update(__self : MTransformation, __model : DragNDrop.Transformation) = __self.Update(__model)
         
         static member Create(initial) = MTransformation(initial)
         
@@ -119,6 +125,7 @@ module Mutable =
                     override x.Update(r,f) = { r with grabbed = f r.grabbed }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MScene private(__initial : DragNDrop.Scene) =
         let mutable __current = __initial
         let _transformation = MTransformation.Create(__initial.transformation)
@@ -132,6 +139,8 @@ module Mutable =
                 __current <- __model
                 _transformation.Update(__model.transformation)
                 _camera.Update(__model.camera)
+        
+        static member Update(__self : MScene, __model : DragNDrop.Scene) = __self.Update(__model)
         
         static member Create(initial) = MScene(initial)
         

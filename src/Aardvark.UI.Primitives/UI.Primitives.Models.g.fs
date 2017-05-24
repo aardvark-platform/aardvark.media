@@ -9,6 +9,7 @@ open Aardvark.UI
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MNumericInput private(__initial : Aardvark.UI.NumericInput) =
         let mutable __current = __initial
         let _value = ResetMod(__initial.value)
@@ -31,6 +32,8 @@ module Mutable =
                 _max.Update(__model.max)
                 _step.Update(__model.step)
                 _format.Update(__model.format)
+        
+        static member Update(__self : MNumericInput, __model : Aardvark.UI.NumericInput) = __self.Update(__model)
         
         static member Create(initial) = MNumericInput(initial)
         
@@ -157,6 +160,7 @@ module Mutable =
     
     
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MProperties private(__initial : Aardvark.UI.Properties) =
         let mutable __current = __initial
         let _isExpanded = ResetMod(__initial.isExpanded)
@@ -173,6 +177,8 @@ module Mutable =
                 _isExpanded.Update(__model.isExpanded)
                 _isSelected.Update(__model.isSelected)
                 _isActive.Update(__model.isActive)
+        
+        static member Update(__self : MProperties, __model : Aardvark.UI.Properties) = __self.Update(__model)
         
         static member Create(initial) = MProperties(initial)
         
@@ -236,7 +242,7 @@ module Mutable =
         let mutable __current = __initial
         let _value = MLeafValue.Create(value)
         let _properties = MProperties.Create(properties)
-        let _children = ResetMapList(children, (fun _ -> MTree.Create), fun (m,i) -> m.Update(i))
+        let _children = ResetMapList(children, (fun _ -> MTree.Create), MTree.Update)
         member x.value = _value
         member x.properties = _properties
         member x.children = _children :> alist<_>
@@ -291,6 +297,7 @@ module Mutable =
     
     
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MTreeModel private(__initial : Aardvark.UI.TreeModel) =
         let mutable __current = __initial
         let _data = MTree.Create(__initial.data)
@@ -301,6 +308,8 @@ module Mutable =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
                 _data.Update(__model.data)
+        
+        static member Update(__self : MTreeModel, __model : Aardvark.UI.TreeModel) = __self.Update(__model)
         
         static member Create(initial) = MTreeModel(initial)
         

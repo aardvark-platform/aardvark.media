@@ -9,6 +9,7 @@ open Viewer
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
+    [<System.Runtime.CompilerServices.Extension>]
     type MViewerModel private(__initial : Viewer.ViewerModel) =
         let mutable __current = __initial
         let _files = ResetMod(__initial.files)
@@ -37,6 +38,8 @@ module Mutable =
                 _camera.Update(__model.camera)
                 _fillMode.Update(__model.fillMode)
                 _cullMode.Update(__model.cullMode)
+        
+        static member Update(__self : MViewerModel, __model : Viewer.ViewerModel) = __self.Update(__model)
         
         static member Create(initial) = MViewerModel(initial)
         
