@@ -19,11 +19,16 @@ open Aardvark.UI.Primitives
 open Aardvark.Rendering.Text
 open Demo.TestApp
 open Demo.TestApp.Mutable
+open System.Threading
 
 
 module KitchenSinkApp =
 
     type Message =
+        | ResetTree
+        | RandomTree
+        | ClearTree
+        | KillNode of list<Index>
         | AddButton of Index * string
         | Hugo of list<string>
         | ToggleD3Hate
@@ -37,6 +42,29 @@ module KitchenSinkApp =
         | MoveRay of Option<float> * RayPart
         | NewTime 
 
+    let mutable currentId = 0
+    let rand = RandomSystem()
+    let rec randomNode(d : int) =
+        let cnt = if d > 1 then rand.UniformInt(6) else 0
+        let id = Interlocked.Increment(&currentId)
+        let children = List.init cnt (fun i -> randomNode (d - 1))
+        
+        {
+            content = id
+            children = PList.ofList children
+        }
+
+    let randomTree (d : int) =
+        currentId <- 0
+        let cnt = 3
+        let children = List.init cnt (fun i -> randomNode (d - 1))
+        
+        {
+            nodes = PList.ofList children
+        }
+
+
+
     let initial =
         {
             lastName = None
@@ -47,10 +75,48 @@ module KitchenSinkApp =
             dragging = false
             lastTime = MicroTime.Now
             objects = HMap.empty
+            tree = randomTree 3
         }
+
+    module Tree = 
+        let remove (index : list<Index>) (tree : Tree<'a>) =
+            let rec remNode (index : list<Index>) (n : TreeNode<'a>) =
+                match index with
+                    | [] -> None
+                    | h :: index ->
+                        match PList.tryGet h n.children with
+                            | Some c -> 
+                                match remNode index c with
+                                    | Some c -> Some { n with children = PList.set h c n.children }
+                                    | None -> Some { n with children = PList.remove h n.children }
+                            | None ->
+                                Some n
+
+            match index with
+                | h :: index ->
+                    match PList.tryGet h tree.nodes with
+                        | Some c -> 
+                            match remNode index c with
+                                | Some c -> { nodes = PList.set h c tree.nodes }
+                                | None -> { nodes = PList.remove h tree.nodes }
+                        | _ ->
+                            tree
+                | _ ->
+                    tree
+
 
     let update (m : Model) (msg : Message) =
         match msg with
+            | RandomTree ->
+                { m with tree = randomTree 3 }
+            | ResetTree ->
+                { m with tree = initial.tree }
+
+            | ClearTree ->
+                { m with tree = { nodes = PList.empty } }
+
+            | KillNode index ->
+                { m with tree = Tree.remove index m.tree }
             | AddButton(before, str) -> 
                 { m with lastName = Some str; elements = PList.remove before m.elements }
             | Hugo l ->
@@ -95,6 +161,18 @@ module KitchenSinkApp =
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
         ]
 
+    let treeView (view : list<Index> -> 'a -> DomNode<'msg>) (t : MTree<'a, _>) =
+
+        let rec nodeView (path : list<Index>) (n : MTreeNode<'a, _>) =
+            li [] [
+                view path n.content
+                Incremental.ul AttributeMap.empty (AList.mapi (fun i n -> nodeView (path @ [i]) n) n.children)
+            ]
+
+        Incremental.ul
+            AttributeMap.empty
+            (AList.mapi (fun i n -> nodeView [i] n) t.nodes)
+
     let view (m : MModel) =
         let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
@@ -136,6 +214,18 @@ module KitchenSinkApp =
                                 span [] [text "current scale: "]
                                 span [attribute "style" "color: red; font-weight: bold"] [ m.boxScale |> Mod.map string |> Incremental.text ]
                             ]
+
+                            div [clazz "item"] [
+                                button [clazz "ui green button mini"; onClick (fun () -> ResetTree)] [text "Reset"]
+                                button [clazz "ui yellow button mini"; onClick (fun () -> RandomTree)] [text "Random"]
+                                button [clazz "ui red button mini"; onClick (fun () -> ClearTree)] [text "Clear"]
+                                br []
+                                m.tree |> treeView (fun i v -> 
+                                    button [clazz "ui black button mini"; onClick (fun () -> KillNode i)] [
+                                        Incremental.text (Mod.map (sprintf "Node%d") v)
+                                    ]
+                                )
+                            ]
                         ]
                     ]
                 ]
@@ -146,8 +236,6 @@ module KitchenSinkApp =
                 (
                     AttributeMap.ofListCond [
                         always (style "display: flex; width: 100%; height: 100%")
-                        onlyWhen m.dragging (RenderControl.onMouseMove (fun r t -> MoveRay(t,r)))
-                        onlyWhen m.dragging (onMouseUp (fun b r -> StopDrag))
                     ] 
                 )
                 (
@@ -185,6 +273,12 @@ module KitchenSinkApp =
                             |> Sg.transform (Trafo3d.FromOrthoNormalBasis(-V3d.IOO, V3d.OOI, V3d.OIO))
                             |> Sg.translate 0.0 0.0 3.0
                     ]
+                    |> Sg.Incremental.withGlobalEvents (
+                        AMap.ofList [
+                            Global.onMouseMove (fun e -> MoveRay(Some 0.0, e.evtRay))
+                            Global.onMouseUp(fun e -> StopDrag)
+                        ]
+                    )
 
 
             )
