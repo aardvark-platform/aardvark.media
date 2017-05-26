@@ -25,6 +25,7 @@ open System.Threading
 module KitchenSinkApp =
 
     type Message =
+        | TreeMsg of list<Index> * int
         | ResetTree
         | RandomTree
         | ClearTree
@@ -104,9 +105,36 @@ module KitchenSinkApp =
                 | _ ->
                     tree
 
+        let update (index : list<Index>) (f : 'a -> 'a) (tree : Tree<'a>) =
+            let rec traverse (index : list<Index>) (n : TreeNode<'a>) =
+                match index with
+                    | [] -> Some { n with content = f n.content }
+                    | h :: index ->
+                        match PList.tryGet h n.children with
+                            | Some c -> 
+                                match traverse index c with
+                                    | Some c -> Some { n with children = PList.set h c n.children }
+                                    | None -> None
+                            | None ->
+                                None
+
+            match index with
+                | h :: index ->
+                    match PList.tryGet h tree.nodes with
+                        | Some c -> 
+                            match traverse index c with
+                                | Some c -> { nodes = PList.set h c tree.nodes }
+                                | None -> tree
+                        | _ ->
+                            tree
+                | _ ->
+                    tree
 
     let update (m : Model) (msg : Message) =
         match msg with
+            | TreeMsg(index, msg) ->
+                { m with tree = Tree.update index (fun v -> v + msg) m.tree }
+
             | RandomTree ->
                 { m with tree = randomTree 3 }
             | ResetTree ->
@@ -221,9 +249,22 @@ module KitchenSinkApp =
                                 button [clazz "ui red button mini"; onClick (fun () -> ClearTree)] [text "Clear"]
                                 br []
                                 m.tree |> treeView (fun i v -> 
-                                    button [clazz "ui black button mini"; onClick (fun () -> KillNode i)] [
-                                        Incremental.text (Mod.map (sprintf "Node%d") v)
-                                    ]
+                                    button 
+                                        [
+                                            clazz "ui black button mini"
+                                            onMouseUp (fun b _ -> 
+                                                match b with
+                                                    | MouseButtons.Left -> TreeMsg(i, 1)
+                                                    | MouseButtons.Middle ->KillNode i
+                                                    | MouseButtons.Right -> TreeMsg(i, -1)
+                                                    | _ -> TreeMsg(i, 0)
+                                            )
+
+                                            js "oncontextmenu" "event.preventDefault();"
+                                        ] 
+                                        [
+                                            Incremental.text (Mod.map (sprintf "Node%d") v)
+                                        ]
                                 )
                             ]
                         ]
