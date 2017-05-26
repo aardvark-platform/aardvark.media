@@ -9,15 +9,14 @@ open PRo3DModels
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MBookmark private(__initial : PRo3DModels.Bookmark) =
+    type MBookmark(__initial : PRo3DModels.Bookmark) = 
         let mutable __current = __initial
-        let _id = ResetMod(__initial.id)
-        let _point = ResetMod(__initial.point)
-        let _color = ResetMod(__initial.color)
+        let _id = ResetMod.Create(__initial.id)
+        let _point = ResetMod.Create(__initial.point)
+        let _color = ResetMod.Create(__initial.color)
         let _camState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camState)
-        let _visible = ResetMod(__initial.visible)
-        let _text = ResetMod(__initial.text)
+        let _visible = ResetMod.Create(__initial.visible)
+        let _text = ResetMod.Create(__initial.text)
         
         member x.id = _id :> IMod<_>
         member x.point = _point :> IMod<_>
@@ -26,34 +25,22 @@ module Mutable =
         member x.visible = _visible :> IMod<_>
         member x.text = _text :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.Bookmark) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _id.Update(__model.id)
-                _point.Update(__model.point)
-                _color.Update(__model.color)
-                _camState.Update(__model.camState)
-                _visible.Update(__model.visible)
-                _text.Update(__model.text)
+        member x.Update(v : PRo3DModels.Bookmark) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_id,v.id)
+                ResetMod.Update(_point,v.point)
+                ResetMod.Update(_color,v.color)
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camState, v.camState)
+                ResetMod.Update(_visible,v.visible)
+                ResetMod.Update(_text,v.text)
         
-        static member Update(__self : MBookmark, __model : PRo3DModels.Bookmark) = __self.Update(__model)
-        
-        static member Create(initial) = MBookmark(initial)
+        static member Create(v : PRo3DModels.Bookmark) = MBookmark(v)
+        static member Update(m : MBookmark, v : PRo3DModels.Bookmark) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MBookmark =
-        let inline id (m : MBookmark) = m.id
-        let inline point (m : MBookmark) = m.point
-        let inline color (m : MBookmark) = m.color
-        let inline camState (m : MBookmark) = m.camState
-        let inline visible (m : MBookmark) = m.visible
-        let inline text (m : MBookmark) = m.text
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -97,35 +84,26 @@ module Mutable =
                     override x.Update(r,f) = { r with text = f r.text }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MRenderingParameters private(__initial : PRo3DModels.RenderingParameters) =
+    type MRenderingParameters(__initial : PRo3DModels.RenderingParameters) = 
         let mutable __current = __initial
-        let _fillMode = ResetMod(__initial.fillMode)
-        let _cullMode = ResetMod(__initial.cullMode)
+        let _fillMode = ResetMod.Create(__initial.fillMode)
+        let _cullMode = ResetMod.Create(__initial.cullMode)
         
         member x.fillMode = _fillMode :> IMod<_>
         member x.cullMode = _cullMode :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.RenderingParameters) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _fillMode.Update(__model.fillMode)
-                _cullMode.Update(__model.cullMode)
+        member x.Update(v : PRo3DModels.RenderingParameters) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_fillMode,v.fillMode)
+                ResetMod.Update(_cullMode,v.cullMode)
         
-        static member Update(__self : MRenderingParameters, __model : PRo3DModels.RenderingParameters) = __self.Update(__model)
-        
-        static member Create(initial) = MRenderingParameters(initial)
+        static member Create(v : PRo3DModels.RenderingParameters) = MRenderingParameters(v)
+        static member Update(m : MRenderingParameters, v : PRo3DModels.RenderingParameters) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MRenderingParameters =
-        let inline fillMode (m : MRenderingParameters) = m.fillMode
-        let inline cullMode (m : MRenderingParameters) = m.cullMode
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -145,31 +123,23 @@ module Mutable =
                     override x.Update(r,f) = { r with cullMode = f r.cullMode }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MNavigationParameters private(__initial : PRo3DModels.NavigationParameters) =
+    type MNavigationParameters(__initial : PRo3DModels.NavigationParameters) = 
         let mutable __current = __initial
-        let _navigationMode = ResetMod(__initial.navigationMode)
+        let _navigationMode = ResetMod.Create(__initial.navigationMode)
         
         member x.navigationMode = _navigationMode :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.NavigationParameters) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _navigationMode.Update(__model.navigationMode)
+        member x.Update(v : PRo3DModels.NavigationParameters) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_navigationMode,v.navigationMode)
         
-        static member Update(__self : MNavigationParameters, __model : PRo3DModels.NavigationParameters) = __self.Update(__model)
-        
-        static member Create(initial) = MNavigationParameters(initial)
+        static member Create(v : PRo3DModels.NavigationParameters) = MNavigationParameters(v)
+        static member Update(m : MNavigationParameters, v : PRo3DModels.NavigationParameters) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MNavigationParameters =
-        let inline navigationMode (m : MNavigationParameters) = m.navigationMode
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -183,15 +153,14 @@ module Mutable =
                     override x.Update(r,f) = { r with navigationMode = f r.navigationMode }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MBookmarkAppModel private(__initial : PRo3DModels.BookmarkAppModel) =
+    type MBookmarkAppModel(__initial : PRo3DModels.BookmarkAppModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _draw = ResetMod(__initial.draw)
-        let _hoverPosition = ResetMod(__initial.hoverPosition)
-        let _boxHovered = ResetMod(__initial.boxHovered)
-        let _bookmarks = ResetMapList(__initial.bookmarks, (fun _ -> MBookmark.Create), MBookmark.Update)
+        let _draw = ResetMod.Create(__initial.draw)
+        let _hoverPosition = MOption.Create(__initial.hoverPosition)
+        let _boxHovered = MOption.Create(__initial.boxHovered)
+        let _bookmarks = MList.Create(__initial.bookmarks, (fun v -> MBookmark.Create(v)), (fun (m,v) -> MBookmark.Update(m, v)), (fun v -> v))
         
         member x.camera = _camera
         member x.rendering = _rendering
@@ -200,34 +169,22 @@ module Mutable =
         member x.boxHovered = _boxHovered :> IMod<_>
         member x.bookmarks = _bookmarks :> alist<_>
         
-        member x.Update(__model : PRo3DModels.BookmarkAppModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _rendering.Update(__model.rendering)
-                _draw.Update(__model.draw)
-                _hoverPosition.Update(__model.hoverPosition)
-                _boxHovered.Update(__model.boxHovered)
-                _bookmarks.Update(__model.bookmarks)
+        member x.Update(v : PRo3DModels.BookmarkAppModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MRenderingParameters.Update(_rendering, v.rendering)
+                ResetMod.Update(_draw,v.draw)
+                MOption.Update(_hoverPosition, v.hoverPosition)
+                MOption.Update(_boxHovered, v.boxHovered)
+                MList.Update(_bookmarks, v.bookmarks)
         
-        static member Update(__self : MBookmarkAppModel, __model : PRo3DModels.BookmarkAppModel) = __self.Update(__model)
-        
-        static member Create(initial) = MBookmarkAppModel(initial)
+        static member Create(v : PRo3DModels.BookmarkAppModel) = MBookmarkAppModel(v)
+        static member Update(m : MBookmarkAppModel, v : PRo3DModels.BookmarkAppModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MBookmarkAppModel =
-        let inline camera (m : MBookmarkAppModel) = m.camera
-        let inline rendering (m : MBookmarkAppModel) = m.rendering
-        let inline draw (m : MBookmarkAppModel) = m.draw
-        let inline hoverPosition (m : MBookmarkAppModel) = m.hoverPosition
-        let inline boxHovered (m : MBookmarkAppModel) = m.boxHovered
-        let inline bookmarks (m : MBookmarkAppModel) = m.bookmarks
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -271,39 +228,29 @@ module Mutable =
                     override x.Update(r,f) = { r with bookmarks = f r.bookmarks }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MVisibleBox private(__initial : PRo3DModels.VisibleBox) =
+    type MVisibleBox(__initial : PRo3DModels.VisibleBox) = 
         let mutable __current = __initial
-        let _geometry = ResetMod(__initial.geometry)
-        let _color = ResetMod(__initial.color)
-        let _id = ResetMod(__initial.id)
+        let _geometry = ResetMod.Create(__initial.geometry)
+        let _color = ResetMod.Create(__initial.color)
+        let _id = ResetMod.Create(__initial.id)
         
         member x.geometry = _geometry :> IMod<_>
         member x.color = _color :> IMod<_>
         member x.id = _id :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.VisibleBox) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _geometry.Update(__model.geometry)
-                _color.Update(__model.color)
-                _id.Update(__model.id)
+        member x.Update(v : PRo3DModels.VisibleBox) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_geometry,v.geometry)
+                ResetMod.Update(_color,v.color)
+                _id.Update(v.id)
         
-        static member Update(__self : MVisibleBox, __model : PRo3DModels.VisibleBox) = __self.Update(__model)
-        
-        static member Create(initial) = MVisibleBox(initial)
+        static member Create(v : PRo3DModels.VisibleBox) = MVisibleBox(v)
+        static member Update(m : MVisibleBox, v : PRo3DModels.VisibleBox) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MVisibleBox =
-        let inline geometry (m : MVisibleBox) = m.geometry
-        let inline color (m : MVisibleBox) = m.color
-        let inline id (m : MVisibleBox) = m.id
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -329,18 +276,17 @@ module Mutable =
                     override x.Update(r,f) = { r with id = f r.id }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MAnnotation private(__initial : PRo3DModels.Annotation) =
+    type MAnnotation(__initial : PRo3DModels.Annotation) = 
         let mutable __current = __initial
-        let _geometry = ResetMod(__initial.geometry)
-        let _projection = ResetMod(__initial.projection)
-        let _semantic = ResetMod(__initial.semantic)
-        let _points = ResetList(__initial.points)
-        let _segments = ResetList(__initial.segments)
-        let _color = ResetMod(__initial.color)
+        let _geometry = ResetMod.Create(__initial.geometry)
+        let _projection = ResetMod.Create(__initial.projection)
+        let _semantic = ResetMod.Create(__initial.semantic)
+        let _points = MList.Create(__initial.points)
+        let _segments = MList.Create(__initial.segments, (fun v -> MList.Create(v)), (fun (m,v) -> MList.Update(m, v)), (fun v -> v :> alist<_>))
+        let _color = ResetMod.Create(__initial.color)
         let _thickness = Aardvark.UI.Mutable.MNumericInput.Create(__initial.thickness)
-        let _visible = ResetMod(__initial.visible)
-        let _text = ResetMod(__initial.text)
+        let _visible = ResetMod.Create(__initial.visible)
+        let _text = ResetMod.Create(__initial.text)
         
         member x.geometry = _geometry :> IMod<_>
         member x.projection = _projection :> IMod<_>
@@ -352,40 +298,25 @@ module Mutable =
         member x.visible = _visible :> IMod<_>
         member x.text = _text :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.Annotation) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _geometry.Update(__model.geometry)
-                _projection.Update(__model.projection)
-                _semantic.Update(__model.semantic)
-                _points.Update(__model.points)
-                _segments.Update(__model.segments)
-                _color.Update(__model.color)
-                _thickness.Update(__model.thickness)
-                _visible.Update(__model.visible)
-                _text.Update(__model.text)
+        member x.Update(v : PRo3DModels.Annotation) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_geometry,v.geometry)
+                ResetMod.Update(_projection,v.projection)
+                ResetMod.Update(_semantic,v.semantic)
+                MList.Update(_points, v.points)
+                MList.Update(_segments, v.segments)
+                ResetMod.Update(_color,v.color)
+                Aardvark.UI.Mutable.MNumericInput.Update(_thickness, v.thickness)
+                ResetMod.Update(_visible,v.visible)
+                ResetMod.Update(_text,v.text)
         
-        static member Update(__self : MAnnotation, __model : PRo3DModels.Annotation) = __self.Update(__model)
-        
-        static member Create(initial) = MAnnotation(initial)
+        static member Create(v : PRo3DModels.Annotation) = MAnnotation(v)
+        static member Update(m : MAnnotation, v : PRo3DModels.Annotation) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MAnnotation =
-        let inline geometry (m : MAnnotation) = m.geometry
-        let inline projection (m : MAnnotation) = m.projection
-        let inline semantic (m : MAnnotation) = m.semantic
-        let inline points (m : MAnnotation) = m.points
-        let inline segments (m : MAnnotation) = m.segments
-        let inline color (m : MAnnotation) = m.color
-        let inline thickness (m : MAnnotation) = m.thickness
-        let inline visible (m : MAnnotation) = m.visible
-        let inline text (m : MAnnotation) = m.text
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -447,43 +378,32 @@ module Mutable =
                     override x.Update(r,f) = { r with text = f r.text }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MMeasurementsImporterAppModel private(__initial : PRo3DModels.MeasurementsImporterAppModel) =
+    type MMeasurementsImporterAppModel(__initial : PRo3DModels.MeasurementsImporterAppModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _scenePath = ResetMod(__initial.scenePath)
-        let _annotations = ResetMapList(__initial.annotations, (fun _ -> MAnnotation.Create), MAnnotation.Update)
+        let _scenePath = ResetMod.Create(__initial.scenePath)
+        let _annotations = MList.Create(__initial.annotations, (fun v -> MAnnotation.Create(v)), (fun (m,v) -> MAnnotation.Update(m, v)), (fun v -> v))
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.scenePath = _scenePath :> IMod<_>
         member x.annotations = _annotations :> alist<_>
         
-        member x.Update(__model : PRo3DModels.MeasurementsImporterAppModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _rendering.Update(__model.rendering)
-                _scenePath.Update(__model.scenePath)
-                _annotations.Update(__model.annotations)
+        member x.Update(v : PRo3DModels.MeasurementsImporterAppModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MRenderingParameters.Update(_rendering, v.rendering)
+                ResetMod.Update(_scenePath,v.scenePath)
+                MList.Update(_annotations, v.annotations)
         
-        static member Update(__self : MMeasurementsImporterAppModel, __model : PRo3DModels.MeasurementsImporterAppModel) = __self.Update(__model)
-        
-        static member Create(initial) = MMeasurementsImporterAppModel(initial)
+        static member Create(v : PRo3DModels.MeasurementsImporterAppModel) = MMeasurementsImporterAppModel(v)
+        static member Update(m : MMeasurementsImporterAppModel, v : PRo3DModels.MeasurementsImporterAppModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MMeasurementsImporterAppModel =
-        let inline camera (m : MMeasurementsImporterAppModel) = m.camera
-        let inline rendering (m : MMeasurementsImporterAppModel) = m.rendering
-        let inline scenePath (m : MMeasurementsImporterAppModel) = m.scenePath
-        let inline annotations (m : MMeasurementsImporterAppModel) = m.annotations
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -515,43 +435,32 @@ module Mutable =
                     override x.Update(r,f) = { r with annotations = f r.annotations }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MComposedViewerModel private(__initial : PRo3DModels.ComposedViewerModel) =
+    type MComposedViewerModel(__initial : PRo3DModels.ComposedViewerModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _singleAnnotation = MAnnotation.Create(__initial.singleAnnotation)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _boxHovered = ResetMod(__initial.boxHovered)
+        let _boxHovered = MOption.Create(__initial.boxHovered)
         
         member x.camera = _camera
         member x.singleAnnotation = _singleAnnotation
         member x.rendering = _rendering
         member x.boxHovered = _boxHovered :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.ComposedViewerModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _singleAnnotation.Update(__model.singleAnnotation)
-                _rendering.Update(__model.rendering)
-                _boxHovered.Update(__model.boxHovered)
+        member x.Update(v : PRo3DModels.ComposedViewerModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MAnnotation.Update(_singleAnnotation, v.singleAnnotation)
+                MRenderingParameters.Update(_rendering, v.rendering)
+                MOption.Update(_boxHovered, v.boxHovered)
         
-        static member Update(__self : MComposedViewerModel, __model : PRo3DModels.ComposedViewerModel) = __self.Update(__model)
-        
-        static member Create(initial) = MComposedViewerModel(initial)
+        static member Create(v : PRo3DModels.ComposedViewerModel) = MComposedViewerModel(v)
+        static member Update(m : MComposedViewerModel, v : PRo3DModels.ComposedViewerModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MComposedViewerModel =
-        let inline camera (m : MComposedViewerModel) = m.camera
-        let inline singleAnnotation (m : MComposedViewerModel) = m.singleAnnotation
-        let inline rendering (m : MComposedViewerModel) = m.rendering
-        let inline boxHovered (m : MComposedViewerModel) = m.boxHovered
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -583,16 +492,15 @@ module Mutable =
                     override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MBoxSelectionDemoModel private(__initial : PRo3DModels.BoxSelectionDemoModel) =
+    type MBoxSelectionDemoModel(__initial : PRo3DModels.BoxSelectionDemoModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _boxes = ResetMapList(__initial.boxes, (fun _ -> MVisibleBox.Create), MVisibleBox.Update)
-        let _boxesSet = ResetMapSet((fun (v : PRo3DModels.VisibleBox) -> v.id :> obj), __initial.boxesSet, MVisibleBox.Create, MVisibleBox.Update)
-        let _boxesMap = ResetMapMap(__initial.boxesMap, (fun k v -> MVisibleBox.Create(v)), MVisibleBox.Update)
-        let _boxHovered = ResetMod(__initial.boxHovered)
-        let _selectedBoxes = ResetSet(__initial.selectedBoxes)
+        let _boxes = MList.Create(__initial.boxes, (fun v -> MVisibleBox.Create(v)), (fun (m,v) -> MVisibleBox.Update(m, v)), (fun v -> v))
+        let _boxesSet = MSet.Create((fun (v : PRo3DModels.VisibleBox) -> v.id :> obj), __initial.boxesSet, (fun v -> MVisibleBox.Create(v)), (fun (m,v) -> MVisibleBox.Update(m, v)), (fun v -> v))
+        let _boxesMap = MMap.Create(__initial.boxesMap, (fun v -> MVisibleBox.Create(v)), (fun (m,v) -> MVisibleBox.Update(m, v)), (fun v -> v))
+        let _boxHovered = MOption.Create(__initial.boxHovered)
+        let _selectedBoxes = MSet.Create(__initial.selectedBoxes)
         
         member x.camera = _camera
         member x.rendering = _rendering
@@ -602,36 +510,23 @@ module Mutable =
         member x.boxHovered = _boxHovered :> IMod<_>
         member x.selectedBoxes = _selectedBoxes :> aset<_>
         
-        member x.Update(__model : PRo3DModels.BoxSelectionDemoModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _rendering.Update(__model.rendering)
-                _boxes.Update(__model.boxes)
-                _boxesSet.Update(__model.boxesSet)
-                _boxesMap.Update(__model.boxesMap)
-                _boxHovered.Update(__model.boxHovered)
-                _selectedBoxes.Update(__model.selectedBoxes)
+        member x.Update(v : PRo3DModels.BoxSelectionDemoModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MRenderingParameters.Update(_rendering, v.rendering)
+                MList.Update(_boxes, v.boxes)
+                MSet.Update(_boxesSet, v.boxesSet)
+                MMap.Update(_boxesMap, v.boxesMap)
+                MOption.Update(_boxHovered, v.boxHovered)
+                MSet.Update(_selectedBoxes, v.selectedBoxes)
         
-        static member Update(__self : MBoxSelectionDemoModel, __model : PRo3DModels.BoxSelectionDemoModel) = __self.Update(__model)
-        
-        static member Create(initial) = MBoxSelectionDemoModel(initial)
+        static member Create(v : PRo3DModels.BoxSelectionDemoModel) = MBoxSelectionDemoModel(v)
+        static member Update(m : MBoxSelectionDemoModel, v : PRo3DModels.BoxSelectionDemoModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MBoxSelectionDemoModel =
-        let inline camera (m : MBoxSelectionDemoModel) = m.camera
-        let inline rendering (m : MBoxSelectionDemoModel) = m.rendering
-        let inline boxes (m : MBoxSelectionDemoModel) = m.boxes
-        let inline boxesSet (m : MBoxSelectionDemoModel) = m.boxesSet
-        let inline boxesMap (m : MBoxSelectionDemoModel) = m.boxesMap
-        let inline boxHovered (m : MBoxSelectionDemoModel) = m.boxHovered
-        let inline selectedBoxes (m : MBoxSelectionDemoModel) = m.selectedBoxes
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -663,7 +558,7 @@ module Mutable =
                     override x.Update(r,f) = { r with boxesSet = f r.boxesSet }
                 }
             let boxesMap =
-                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.hmap<Microsoft.FSharp.Core.string, PRo3DModels.VisibleBox>>() with
+                { new Lens<PRo3DModels.BoxSelectionDemoModel, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,PRo3DModels.VisibleBox>>() with
                     override x.Get(r) = r.boxesMap
                     override x.Set(r,v) = { r with boxesMap = v }
                     override x.Update(r,f) = { r with boxesMap = f r.boxesMap }
@@ -681,14 +576,13 @@ module Mutable =
                     override x.Update(r,f) = { r with selectedBoxes = f r.selectedBoxes }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MSimpleDrawingAppModel private(__initial : PRo3DModels.SimpleDrawingAppModel) =
+    type MSimpleDrawingAppModel(__initial : PRo3DModels.SimpleDrawingAppModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _draw = ResetMod(__initial.draw)
-        let _hoverPosition = ResetMod(__initial.hoverPosition)
-        let _points = ResetMod(__initial.points)
+        let _draw = ResetMod.Create(__initial.draw)
+        let _hoverPosition = MOption.Create(__initial.hoverPosition)
+        let _points = ResetMod.Create(__initial.points)
         
         member x.camera = _camera
         member x.rendering = _rendering
@@ -696,32 +590,21 @@ module Mutable =
         member x.hoverPosition = _hoverPosition :> IMod<_>
         member x.points = _points :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.SimpleDrawingAppModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _rendering.Update(__model.rendering)
-                _draw.Update(__model.draw)
-                _hoverPosition.Update(__model.hoverPosition)
-                _points.Update(__model.points)
+        member x.Update(v : PRo3DModels.SimpleDrawingAppModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MRenderingParameters.Update(_rendering, v.rendering)
+                ResetMod.Update(_draw,v.draw)
+                MOption.Update(_hoverPosition, v.hoverPosition)
+                ResetMod.Update(_points,v.points)
         
-        static member Update(__self : MSimpleDrawingAppModel, __model : PRo3DModels.SimpleDrawingAppModel) = __self.Update(__model)
-        
-        static member Create(initial) = MSimpleDrawingAppModel(initial)
+        static member Create(v : PRo3DModels.SimpleDrawingAppModel) = MSimpleDrawingAppModel(v)
+        static member Update(m : MSimpleDrawingAppModel, v : PRo3DModels.SimpleDrawingAppModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MSimpleDrawingAppModel =
-        let inline camera (m : MSimpleDrawingAppModel) = m.camera
-        let inline rendering (m : MSimpleDrawingAppModel) = m.rendering
-        let inline draw (m : MSimpleDrawingAppModel) = m.draw
-        let inline hoverPosition (m : MSimpleDrawingAppModel) = m.hoverPosition
-        let inline points (m : MSimpleDrawingAppModel) = m.points
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -759,21 +642,20 @@ module Mutable =
                     override x.Update(r,f) = { r with points = f r.points }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MDrawingAppModel private(__initial : PRo3DModels.DrawingAppModel) =
+    type MDrawingAppModel(__initial : PRo3DModels.DrawingAppModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _draw = ResetMod(__initial.draw)
-        let _hoverPosition = ResetMod(__initial.hoverPosition)
-        let _working = ResetMapOption(__initial.working, MAnnotation.Create, MAnnotation.Update)
-        let _projection = ResetMod(__initial.projection)
-        let _geometry = ResetMod(__initial.geometry)
-        let _semantic = ResetMod(__initial.semantic)
-        let _annotations = ResetMapList(__initial.annotations, (fun _ -> MAnnotation.Create), MAnnotation.Update)
-        let _exportPath = ResetMod(__initial.exportPath)
-        let _history = ResetMod(__initial.history)
-        let _future = ResetMod(__initial.future)
+        let _draw = ResetMod.Create(__initial.draw)
+        let _hoverPosition = MOption.Create(__initial.hoverPosition)
+        let _working = MOption.Create(__initial.working, (fun v -> MAnnotation.Create(v)), (fun (m,v) -> MAnnotation.Update(m, v)), (fun v -> v))
+        let _projection = ResetMod.Create(__initial.projection)
+        let _geometry = ResetMod.Create(__initial.geometry)
+        let _semantic = ResetMod.Create(__initial.semantic)
+        let _annotations = MList.Create(__initial.annotations, (fun v -> MAnnotation.Create(v)), (fun (m,v) -> MAnnotation.Update(m, v)), (fun v -> v))
+        let _exportPath = ResetMod.Create(__initial.exportPath)
+        let _history = ResetMod.Create(__initial.history)
+        let _future = ResetMod.Create(__initial.future)
         
         member x.camera = _camera
         member x.rendering = _rendering
@@ -788,46 +670,28 @@ module Mutable =
         member x.history = _history :> IMod<_>
         member x.future = _future :> IMod<_>
         
-        member x.Update(__model : PRo3DModels.DrawingAppModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _rendering.Update(__model.rendering)
-                _draw.Update(__model.draw)
-                _hoverPosition.Update(__model.hoverPosition)
-                _working.Update(__model.working)
-                _projection.Update(__model.projection)
-                _geometry.Update(__model.geometry)
-                _semantic.Update(__model.semantic)
-                _annotations.Update(__model.annotations)
-                _exportPath.Update(__model.exportPath)
-                _history.Update(__model.history)
-                _future.Update(__model.future)
+        member x.Update(v : PRo3DModels.DrawingAppModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MRenderingParameters.Update(_rendering, v.rendering)
+                ResetMod.Update(_draw,v.draw)
+                MOption.Update(_hoverPosition, v.hoverPosition)
+                MOption.Update(_working, v.working)
+                ResetMod.Update(_projection,v.projection)
+                ResetMod.Update(_geometry,v.geometry)
+                ResetMod.Update(_semantic,v.semantic)
+                MList.Update(_annotations, v.annotations)
+                ResetMod.Update(_exportPath,v.exportPath)
+                _history.Update(v.history)
+                _future.Update(v.future)
         
-        static member Update(__self : MDrawingAppModel, __model : PRo3DModels.DrawingAppModel) = __self.Update(__model)
-        
-        static member Create(initial) = MDrawingAppModel(initial)
+        static member Create(v : PRo3DModels.DrawingAppModel) = MDrawingAppModel(v)
+        static member Update(m : MDrawingAppModel, v : PRo3DModels.DrawingAppModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MDrawingAppModel =
-        let inline camera (m : MDrawingAppModel) = m.camera
-        let inline rendering (m : MDrawingAppModel) = m.rendering
-        let inline draw (m : MDrawingAppModel) = m.draw
-        let inline hoverPosition (m : MDrawingAppModel) = m.hoverPosition
-        let inline working (m : MDrawingAppModel) = m.working
-        let inline projection (m : MDrawingAppModel) = m.projection
-        let inline geometry (m : MDrawingAppModel) = m.geometry
-        let inline semantic (m : MDrawingAppModel) = m.semantic
-        let inline annotations (m : MDrawingAppModel) = m.annotations
-        let inline exportPath (m : MDrawingAppModel) = m.exportPath
-        let inline history (m : MDrawingAppModel) = m.history
-        let inline future (m : MDrawingAppModel) = m.future
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -907,8 +771,7 @@ module Mutable =
                     override x.Update(r,f) = { r with future = f r.future }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MOrbitCameraDemoModel private(__initial : PRo3DModels.OrbitCameraDemoModel) =
+    type MOrbitCameraDemoModel(__initial : PRo3DModels.OrbitCameraDemoModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
@@ -916,26 +779,18 @@ module Mutable =
         member x.camera = _camera
         member x.rendering = _rendering
         
-        member x.Update(__model : PRo3DModels.OrbitCameraDemoModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _rendering.Update(__model.rendering)
+        member x.Update(v : PRo3DModels.OrbitCameraDemoModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MRenderingParameters.Update(_rendering, v.rendering)
         
-        static member Update(__self : MOrbitCameraDemoModel, __model : PRo3DModels.OrbitCameraDemoModel) = __self.Update(__model)
-        
-        static member Create(initial) = MOrbitCameraDemoModel(initial)
+        static member Create(v : PRo3DModels.OrbitCameraDemoModel) = MOrbitCameraDemoModel(v)
+        static member Update(m : MOrbitCameraDemoModel, v : PRo3DModels.OrbitCameraDemoModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MOrbitCameraDemoModel =
-        let inline camera (m : MOrbitCameraDemoModel) = m.camera
-        let inline rendering (m : MOrbitCameraDemoModel) = m.rendering
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -955,8 +810,7 @@ module Mutable =
                     override x.Update(r,f) = { r with rendering = f r.rendering }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MNavigationModeDemoModel private(__initial : PRo3DModels.NavigationModeDemoModel) =
+    type MNavigationModeDemoModel(__initial : PRo3DModels.NavigationModeDemoModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
@@ -966,28 +820,19 @@ module Mutable =
         member x.rendering = _rendering
         member x.navigation = _navigation
         
-        member x.Update(__model : PRo3DModels.NavigationModeDemoModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _camera.Update(__model.camera)
-                _rendering.Update(__model.rendering)
-                _navigation.Update(__model.navigation)
+        member x.Update(v : PRo3DModels.NavigationModeDemoModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                MRenderingParameters.Update(_rendering, v.rendering)
+                MNavigationParameters.Update(_navigation, v.navigation)
         
-        static member Update(__self : MNavigationModeDemoModel, __model : PRo3DModels.NavigationModeDemoModel) = __self.Update(__model)
-        
-        static member Create(initial) = MNavigationModeDemoModel(initial)
+        static member Create(v : PRo3DModels.NavigationModeDemoModel) = MNavigationModeDemoModel(v)
+        static member Update(m : MNavigationModeDemoModel, v : PRo3DModels.NavigationModeDemoModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MNavigationModeDemoModel =
-        let inline camera (m : MNavigationModeDemoModel) = m.camera
-        let inline rendering (m : MNavigationModeDemoModel) = m.rendering
-        let inline navigation (m : MNavigationModeDemoModel) = m.navigation
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

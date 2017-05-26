@@ -9,31 +9,23 @@ open Demo.TestApp
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MUrdar private(__initial : Demo.TestApp.Urdar) =
+    type MUrdar(__initial : Demo.TestApp.Urdar) = 
         let mutable __current = __initial
-        let _urdar = ResetMod(__initial.urdar)
+        let _urdar = ResetMod.Create(__initial.urdar)
         
         member x.urdar = _urdar :> IMod<_>
         
-        member x.Update(__model : Demo.TestApp.Urdar) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _urdar.Update(__model.urdar)
+        member x.Update(v : Demo.TestApp.Urdar) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_urdar,v.urdar)
         
-        static member Update(__self : MUrdar, __model : Demo.TestApp.Urdar) = __self.Update(__model)
-        
-        static member Create(initial) = MUrdar(initial)
+        static member Create(v : Demo.TestApp.Urdar) = MUrdar(v)
+        static member Update(m : MUrdar, v : Demo.TestApp.Urdar) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MUrdar =
-        let inline urdar (m : MUrdar) = m.urdar
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -47,17 +39,16 @@ module Mutable =
                     override x.Update(r,f) = { r with urdar = f r.urdar }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MModel private(__initial : Demo.TestApp.Model) =
+    type MModel(__initial : Demo.TestApp.Model) = 
         let mutable __current = __initial
-        let _boxHovered = ResetMod(__initial.boxHovered)
-        let _dragging = ResetMod(__initial.dragging)
-        let _lastName = ResetMod(__initial.lastName)
-        let _elements = ResetList(__initial.elements)
-        let _hasD3Hate = ResetMod(__initial.hasD3Hate)
-        let _boxScale = ResetMod(__initial.boxScale)
-        let _objects = ResetMapMap(__initial.objects, (fun k v -> MUrdar.Create(v)), MUrdar.Update)
-        let _lastTime = ResetMod(__initial.lastTime)
+        let _boxHovered = ResetMod.Create(__initial.boxHovered)
+        let _dragging = ResetMod.Create(__initial.dragging)
+        let _lastName = MOption.Create(__initial.lastName)
+        let _elements = MList.Create(__initial.elements)
+        let _hasD3Hate = ResetMod.Create(__initial.hasD3Hate)
+        let _boxScale = ResetMod.Create(__initial.boxScale)
+        let _objects = MMap.Create(__initial.objects, (fun v -> MUrdar.Create(v)), (fun (m,v) -> MUrdar.Update(m, v)), (fun v -> v))
+        let _lastTime = ResetMod.Create(__initial.lastTime)
         
         member x.boxHovered = _boxHovered :> IMod<_>
         member x.dragging = _dragging :> IMod<_>
@@ -68,38 +59,24 @@ module Mutable =
         member x.objects = _objects :> amap<_,_>
         member x.lastTime = _lastTime :> IMod<_>
         
-        member x.Update(__model : Demo.TestApp.Model) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _boxHovered.Update(__model.boxHovered)
-                _dragging.Update(__model.dragging)
-                _lastName.Update(__model.lastName)
-                _elements.Update(__model.elements)
-                _hasD3Hate.Update(__model.hasD3Hate)
-                _boxScale.Update(__model.boxScale)
-                _objects.Update(__model.objects)
-                _lastTime.Update(__model.lastTime)
+        member x.Update(v : Demo.TestApp.Model) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_boxHovered,v.boxHovered)
+                ResetMod.Update(_dragging,v.dragging)
+                MOption.Update(_lastName, v.lastName)
+                MList.Update(_elements, v.elements)
+                ResetMod.Update(_hasD3Hate,v.hasD3Hate)
+                ResetMod.Update(_boxScale,v.boxScale)
+                MMap.Update(_objects, v.objects)
+                ResetMod.Update(_lastTime,v.lastTime)
         
-        static member Update(__self : MModel, __model : Demo.TestApp.Model) = __self.Update(__model)
-        
-        static member Create(initial) = MModel(initial)
+        static member Create(v : Demo.TestApp.Model) = MModel(v)
+        static member Update(m : MModel, v : Demo.TestApp.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MModel =
-        let inline boxHovered (m : MModel) = m.boxHovered
-        let inline dragging (m : MModel) = m.dragging
-        let inline lastName (m : MModel) = m.lastName
-        let inline elements (m : MModel) = m.elements
-        let inline hasD3Hate (m : MModel) = m.hasD3Hate
-        let inline boxScale (m : MModel) = m.boxScale
-        let inline objects (m : MModel) = m.objects
-        let inline lastTime (m : MModel) = m.lastTime
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -143,7 +120,7 @@ module Mutable =
                     override x.Update(r,f) = { r with boxScale = f r.boxScale }
                 }
             let objects =
-                { new Lens<Demo.TestApp.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string, Demo.TestApp.Urdar>>() with
+                { new Lens<Demo.TestApp.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,Demo.TestApp.Urdar>>() with
                     override x.Get(r) = r.objects
                     override x.Set(r,v) = { r with objects = v }
                     override x.Update(r,f) = { r with objects = f r.objects }

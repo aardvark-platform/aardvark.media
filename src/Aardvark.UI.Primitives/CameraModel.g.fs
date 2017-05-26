@@ -9,22 +9,21 @@ open Aardvark.UI.Primitives
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MCameraControllerState private(__initial : Aardvark.UI.Primitives.CameraControllerState) =
+    type MCameraControllerState(__initial : Aardvark.UI.Primitives.CameraControllerState) = 
         let mutable __current = __initial
-        let _view = ResetMod(__initial.view)
-        let _dragStart = ResetMod(__initial.dragStart)
-        let _look = ResetMod(__initial.look)
-        let _zoom = ResetMod(__initial.zoom)
-        let _pan = ResetMod(__initial.pan)
-        let _forward = ResetMod(__initial.forward)
-        let _backward = ResetMod(__initial.backward)
-        let _left = ResetMod(__initial.left)
-        let _right = ResetMod(__initial.right)
-        let _moveVec = ResetMod(__initial.moveVec)
-        let _orbitCenter = ResetMod(__initial.orbitCenter)
-        let _lastTime = ResetMod(__initial.lastTime)
-        let _stash = ResetMod(__initial.stash)
+        let _view = ResetMod.Create(__initial.view)
+        let _dragStart = ResetMod.Create(__initial.dragStart)
+        let _look = ResetMod.Create(__initial.look)
+        let _zoom = ResetMod.Create(__initial.zoom)
+        let _pan = ResetMod.Create(__initial.pan)
+        let _forward = ResetMod.Create(__initial.forward)
+        let _backward = ResetMod.Create(__initial.backward)
+        let _left = ResetMod.Create(__initial.left)
+        let _right = ResetMod.Create(__initial.right)
+        let _moveVec = ResetMod.Create(__initial.moveVec)
+        let _orbitCenter = MOption.Create(__initial.orbitCenter)
+        let _lastTime = MOption.Create(__initial.lastTime)
+        let _stash = ResetMod.Create(__initial.stash)
         
         member x.view = _view :> IMod<_>
         member x.dragStart = _dragStart :> IMod<_>
@@ -40,48 +39,29 @@ module Mutable =
         member x.lastTime = _lastTime :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
-        member x.Update(__model : Aardvark.UI.Primitives.CameraControllerState) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _view.Update(__model.view)
-                _dragStart.Update(__model.dragStart)
-                _look.Update(__model.look)
-                _zoom.Update(__model.zoom)
-                _pan.Update(__model.pan)
-                _forward.Update(__model.forward)
-                _backward.Update(__model.backward)
-                _left.Update(__model.left)
-                _right.Update(__model.right)
-                _moveVec.Update(__model.moveVec)
-                _orbitCenter.Update(__model.orbitCenter)
-                _lastTime.Update(__model.lastTime)
-                _stash.Update(__model.stash)
+        member x.Update(v : Aardvark.UI.Primitives.CameraControllerState) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_view,v.view)
+                ResetMod.Update(_dragStart,v.dragStart)
+                ResetMod.Update(_look,v.look)
+                ResetMod.Update(_zoom,v.zoom)
+                ResetMod.Update(_pan,v.pan)
+                ResetMod.Update(_forward,v.forward)
+                ResetMod.Update(_backward,v.backward)
+                ResetMod.Update(_left,v.left)
+                ResetMod.Update(_right,v.right)
+                ResetMod.Update(_moveVec,v.moveVec)
+                MOption.Update(_orbitCenter, v.orbitCenter)
+                MOption.Update(_lastTime, v.lastTime)
+                _stash.Update(v.stash)
         
-        static member Update(__self : MCameraControllerState, __model : Aardvark.UI.Primitives.CameraControllerState) = __self.Update(__model)
-        
-        static member Create(initial) = MCameraControllerState(initial)
+        static member Create(v : Aardvark.UI.Primitives.CameraControllerState) = MCameraControllerState(v)
+        static member Update(m : MCameraControllerState, v : Aardvark.UI.Primitives.CameraControllerState) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MCameraControllerState =
-        let inline view (m : MCameraControllerState) = m.view
-        let inline dragStart (m : MCameraControllerState) = m.dragStart
-        let inline look (m : MCameraControllerState) = m.look
-        let inline zoom (m : MCameraControllerState) = m.zoom
-        let inline pan (m : MCameraControllerState) = m.pan
-        let inline forward (m : MCameraControllerState) = m.forward
-        let inline backward (m : MCameraControllerState) = m.backward
-        let inline left (m : MCameraControllerState) = m.left
-        let inline right (m : MCameraControllerState) = m.right
-        let inline moveVec (m : MCameraControllerState) = m.moveVec
-        let inline orbitCenter (m : MCameraControllerState) = m.orbitCenter
-        let inline lastTime (m : MCameraControllerState) = m.lastTime
-        let inline stash (m : MCameraControllerState) = m.stash
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

@@ -9,16 +9,15 @@ open Viewer
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MViewerModel private(__initial : Viewer.ViewerModel) =
+    type MViewerModel(__initial : Viewer.ViewerModel) = 
         let mutable __current = __initial
-        let _files = ResetMod(__initial.files)
-        let _rotation = ResetMod(__initial.rotation)
-        let _scenes = ResetSet(__initial.scenes)
-        let _bounds = ResetMod(__initial.bounds)
+        let _files = ResetMod.Create(__initial.files)
+        let _rotation = ResetMod.Create(__initial.rotation)
+        let _scenes = MSet.Create(__initial.scenes)
+        let _bounds = ResetMod.Create(__initial.bounds)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
-        let _fillMode = ResetMod(__initial.fillMode)
-        let _cullMode = ResetMod(__initial.cullMode)
+        let _fillMode = ResetMod.Create(__initial.fillMode)
+        let _cullMode = ResetMod.Create(__initial.cullMode)
         
         member x.files = _files :> IMod<_>
         member x.rotation = _rotation :> IMod<_>
@@ -28,36 +27,23 @@ module Mutable =
         member x.fillMode = _fillMode :> IMod<_>
         member x.cullMode = _cullMode :> IMod<_>
         
-        member x.Update(__model : Viewer.ViewerModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _files.Update(__model.files)
-                _rotation.Update(__model.rotation)
-                _scenes.Update(__model.scenes)
-                _bounds.Update(__model.bounds)
-                _camera.Update(__model.camera)
-                _fillMode.Update(__model.fillMode)
-                _cullMode.Update(__model.cullMode)
+        member x.Update(v : Viewer.ViewerModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_files,v.files)
+                ResetMod.Update(_rotation,v.rotation)
+                MSet.Update(_scenes, v.scenes)
+                ResetMod.Update(_bounds,v.bounds)
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                ResetMod.Update(_fillMode,v.fillMode)
+                ResetMod.Update(_cullMode,v.cullMode)
         
-        static member Update(__self : MViewerModel, __model : Viewer.ViewerModel) = __self.Update(__model)
-        
-        static member Create(initial) = MViewerModel(initial)
+        static member Create(v : Viewer.ViewerModel) = MViewerModel(v)
+        static member Update(m : MViewerModel, v : Viewer.ViewerModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MViewerModel =
-        let inline files (m : MViewerModel) = m.files
-        let inline rotation (m : MViewerModel) = m.rotation
-        let inline scenes (m : MViewerModel) = m.scenes
-        let inline bounds (m : MViewerModel) = m.bounds
-        let inline camera (m : MViewerModel) = m.camera
-        let inline fillMode (m : MViewerModel) = m.fillMode
-        let inline cullMode (m : MViewerModel) = m.cullMode
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

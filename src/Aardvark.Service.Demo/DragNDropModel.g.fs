@@ -9,39 +9,29 @@ open DragNDrop
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MModel private(__initial : DragNDrop.Model) =
+    type MModel(__initial : DragNDrop.Model) = 
         let mutable __current = __initial
-        let _trafo = ResetMod(__initial.trafo)
-        let _dragging = ResetMod(__initial.dragging)
+        let _trafo = ResetMod.Create(__initial.trafo)
+        let _dragging = MOption.Create(__initial.dragging)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         
         member x.trafo = _trafo :> IMod<_>
         member x.dragging = _dragging :> IMod<_>
         member x.camera = _camera
         
-        member x.Update(__model : DragNDrop.Model) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _trafo.Update(__model.trafo)
-                _dragging.Update(__model.dragging)
-                _camera.Update(__model.camera)
+        member x.Update(v : DragNDrop.Model) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_trafo,v.trafo)
+                MOption.Update(_dragging, v.dragging)
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
         
-        static member Update(__self : MModel, __model : DragNDrop.Model) = __self.Update(__model)
-        
-        static member Create(initial) = MModel(initial)
+        static member Create(v : DragNDrop.Model) = MModel(v)
+        static member Update(m : MModel, v : DragNDrop.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MModel =
-        let inline trafo (m : MModel) = m.trafo
-        let inline dragging (m : MModel) = m.dragging
-        let inline camera (m : MModel) = m.camera
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -67,39 +57,29 @@ module Mutable =
                     override x.Update(r,f) = { r with camera = f r.camera }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MTransformation private(__initial : DragNDrop.Transformation) =
+    type MTransformation(__initial : DragNDrop.Transformation) = 
         let mutable __current = __initial
-        let _trafo = ResetMod(__initial.trafo)
-        let _hovered = ResetMod(__initial.hovered)
-        let _grabbed = ResetMod(__initial.grabbed)
+        let _trafo = ResetMod.Create(__initial.trafo)
+        let _hovered = MOption.Create(__initial.hovered)
+        let _grabbed = MOption.Create(__initial.grabbed)
         
         member x.trafo = _trafo :> IMod<_>
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
         
-        member x.Update(__model : DragNDrop.Transformation) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _trafo.Update(__model.trafo)
-                _hovered.Update(__model.hovered)
-                _grabbed.Update(__model.grabbed)
+        member x.Update(v : DragNDrop.Transformation) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_trafo,v.trafo)
+                MOption.Update(_hovered, v.hovered)
+                MOption.Update(_grabbed, v.grabbed)
         
-        static member Update(__self : MTransformation, __model : DragNDrop.Transformation) = __self.Update(__model)
-        
-        static member Create(initial) = MTransformation(initial)
+        static member Create(v : DragNDrop.Transformation) = MTransformation(v)
+        static member Update(m : MTransformation, v : DragNDrop.Transformation) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MTransformation =
-        let inline trafo (m : MTransformation) = m.trafo
-        let inline hovered (m : MTransformation) = m.hovered
-        let inline grabbed (m : MTransformation) = m.grabbed
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -125,8 +105,7 @@ module Mutable =
                     override x.Update(r,f) = { r with grabbed = f r.grabbed }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    [<System.Runtime.CompilerServices.Extension>]
-    type MScene private(__initial : DragNDrop.Scene) =
+    type MScene(__initial : DragNDrop.Scene) = 
         let mutable __current = __initial
         let _transformation = MTransformation.Create(__initial.transformation)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
@@ -134,26 +113,18 @@ module Mutable =
         member x.transformation = _transformation
         member x.camera = _camera
         
-        member x.Update(__model : DragNDrop.Scene) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _transformation.Update(__model.transformation)
-                _camera.Update(__model.camera)
+        member x.Update(v : DragNDrop.Scene) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                MTransformation.Update(_transformation, v.transformation)
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
         
-        static member Update(__self : MScene, __model : DragNDrop.Scene) = __self.Update(__model)
-        
-        static member Create(initial) = MScene(initial)
+        static member Create(v : DragNDrop.Scene) = MScene(v)
+        static member Update(m : MScene, v : DragNDrop.Scene) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MScene =
-        let inline transformation (m : MScene) = m.transformation
-        let inline camera (m : MScene) = m.camera
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

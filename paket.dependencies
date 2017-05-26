@@ -14,8 +14,8 @@ nuget Aardvark.SceneGraph.IO               ~> 3.1.2
 nuget Aardvark.Rendering.NanoVg            ~> 3.1.2
 nuget Aardvark.Rendering.Text              ~> 3.1.2
 
-nuget Aardvark.Compiler.DomainTypes         ~> 0.1.13
-nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.1.13
+nuget Aardvark.Compiler.DomainTypes         ~> 0.2.1
+nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.1
 
 nuget Another.Unofficial.Xilium.CefGlue ~> 0.0.9
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.9
