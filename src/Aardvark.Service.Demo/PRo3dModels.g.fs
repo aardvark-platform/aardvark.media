@@ -176,14 +176,14 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MBookmarkAppModel private(__initial : PRo3DModels.BookmarkAppModel) =
         let mutable __current = __initial
-        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _bookmarkCamera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.bookmarkCamera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod(__initial.draw)
         let _hoverPosition = ResetMod(__initial.hoverPosition)
         let _boxHovered = ResetMod(__initial.boxHovered)
         let _bookmarks = ResetMapList(__initial.bookmarks, (fun _ -> MBookmark.Create), fun (m,i) -> m.Update(i))
         
-        member x.camera = _camera
+        member x.bookmarkCamera = _bookmarkCamera
         member x.rendering = _rendering
         member x.draw = _draw :> IMod<_>
         member x.hoverPosition = _hoverPosition :> IMod<_>
@@ -193,7 +193,7 @@ module Mutable =
         member x.Update(__model : PRo3DModels.BookmarkAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
-                _camera.Update(__model.camera)
+                _bookmarkCamera.Update(__model.bookmarkCamera)
                 _rendering.Update(__model.rendering)
                 _draw.Update(__model.draw)
                 _hoverPosition.Update(__model.hoverPosition)
@@ -208,7 +208,7 @@ module Mutable =
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module MBookmarkAppModel =
-        let inline camera (m : MBookmarkAppModel) = m.camera
+        let inline bookmarkCamera (m : MBookmarkAppModel) = m.bookmarkCamera
         let inline rendering (m : MBookmarkAppModel) = m.rendering
         let inline draw (m : MBookmarkAppModel) = m.draw
         let inline hoverPosition (m : MBookmarkAppModel) = m.hoverPosition
@@ -222,11 +222,11 @@ module Mutable =
     module BookmarkAppModel =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
-            let camera =
+            let bookmarkCamera =
                 { new Lens<PRo3DModels.BookmarkAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
-                    override x.Get(r) = r.camera
-                    override x.Set(r,v) = { r with camera = v }
-                    override x.Update(r,f) = { r with camera = f r.camera }
+                    override x.Get(r) = r.bookmarkCamera
+                    override x.Set(r,v) = { r with bookmarkCamera = v }
+                    override x.Update(r,f) = { r with bookmarkCamera = f r.bookmarkCamera }
                 }
             let rendering =
                 { new Lens<PRo3DModels.BookmarkAppModel, PRo3DModels.RenderingParameters>() with
@@ -431,12 +431,12 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MMeasurementsImporterAppModel private(__initial : PRo3DModels.MeasurementsImporterAppModel) =
         let mutable __current = __initial
-        let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _measurementsCamera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.measurementsCamera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _scenePath = ResetMod(__initial.scenePath)
         let _annotations = ResetMapList(__initial.annotations, (fun _ -> MAnnotation.Create), fun (m,i) -> m.Update(i))
         
-        member x.camera = _camera
+        member x.measurementsCamera = _measurementsCamera
         member x.rendering = _rendering
         member x.scenePath = _scenePath :> IMod<_>
         member x.annotations = _annotations :> alist<_>
@@ -444,7 +444,7 @@ module Mutable =
         member x.Update(__model : PRo3DModels.MeasurementsImporterAppModel) =
             if not (Object.ReferenceEquals(__model, __current)) then
                 __current <- __model
-                _camera.Update(__model.camera)
+                _measurementsCamera.Update(__model.measurementsCamera)
                 _rendering.Update(__model.rendering)
                 _scenePath.Update(__model.scenePath)
                 _annotations.Update(__model.annotations)
@@ -457,7 +457,7 @@ module Mutable =
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module MMeasurementsImporterAppModel =
-        let inline camera (m : MMeasurementsImporterAppModel) = m.camera
+        let inline measurementsCamera (m : MMeasurementsImporterAppModel) = m.measurementsCamera
         let inline rendering (m : MMeasurementsImporterAppModel) = m.rendering
         let inline scenePath (m : MMeasurementsImporterAppModel) = m.scenePath
         let inline annotations (m : MMeasurementsImporterAppModel) = m.annotations
@@ -469,11 +469,11 @@ module Mutable =
     module MeasurementsImporterAppModel =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
-            let camera =
+            let measurementsCamera =
                 { new Lens<PRo3DModels.MeasurementsImporterAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
-                    override x.Get(r) = r.camera
-                    override x.Set(r,v) = { r with camera = v }
-                    override x.Update(r,f) = { r with camera = f r.camera }
+                    override x.Get(r) = r.measurementsCamera
+                    override x.Set(r,v) = { r with measurementsCamera = v }
+                    override x.Update(r,f) = { r with measurementsCamera = f r.measurementsCamera }
                 }
             let rendering =
                 { new Lens<PRo3DModels.MeasurementsImporterAppModel, PRo3DModels.RenderingParameters>() with

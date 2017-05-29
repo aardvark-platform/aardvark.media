@@ -49,7 +49,7 @@ type NavigationParameters = {
 
 [<DomainType>]
 type BookmarkAppModel = {
-    camera    : CameraControllerState
+    bookmarkCamera    : CameraControllerState
     rendering : RenderingParameters
 
     draw          : bool 
@@ -94,7 +94,7 @@ type Annotation = {
 
 [<DomainType>]
 type MeasurementsImporterAppModel = {
-    camera : CameraControllerState
+    measurementsCamera : CameraControllerState
     rendering : RenderingParameters
 
     scenePath     : string

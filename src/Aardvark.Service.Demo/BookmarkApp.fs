@@ -36,7 +36,7 @@ module BookmarkApp =
             id = id
             point = p
             color = new C4b(255,0,255)
-            camState = m.camera
+            camState = m.bookmarkCamera
             visible = true
             text = ""
         }
@@ -51,7 +51,7 @@ module BookmarkApp =
     let update (model : BookmarkAppModel) (act : Action) =
         match act, model.draw with
             | CameraMessage m, false -> 
-                    { model with camera = ArcBallController.update model.camera m }                    
+                    { model with bookmarkCamera = ArcBallController.update model.bookmarkCamera m }                    
             | KeyDown Keys.LeftCtrl, _ -> 
                     { model with draw = true }
             | KeyUp Keys.LeftCtrl, _ -> 
@@ -62,7 +62,7 @@ module BookmarkApp =
                     { model with bookmarks = model.bookmarks |> PList.append (getNewBookmark p model) }
             | UpdateCam id, _ -> 
                     let bm = (findBM id model)
-                    { model with camera = bm.camState }            
+                    { model with bookmarkCamera = bm.camState }            
             | Enter id, _-> { model with boxHovered = Some id }            
             | Exit, _ -> { model with boxHovered = None }       
             | _ -> model
@@ -155,12 +155,12 @@ module BookmarkApp =
       
         require (Html.semui) (
             body [clazz "ui"; style "background: #1B1C1E"] [
-                ArcBallController.controlledControl model.camera CameraMessage frustum
+                ArcBallController.controlledControl model.bookmarkCamera CameraMessage frustum
                     (AttributeMap.ofList [ onKeyDown KeyDown; onKeyUp KeyUp
                                            attribute "style" "width:65%; height: 100%; float: left;" ]
                     )
                     (
-                        let view = model.camera.view
+                        let view = model.bookmarkCamera.view
 
                         let bookmarkSet = ASet.ofAList model.bookmarks
                         
@@ -212,7 +212,7 @@ module BookmarkApp =
 
     let initial : BookmarkAppModel =
         {
-            camera           = { ArcBallController.initial with view = CameraView.lookAt (6.0 * V3d.OIO) V3d.Zero V3d.OOI}
+            bookmarkCamera           = { ArcBallController.initial with view = CameraView.lookAt (6.0 * V3d.OIO) V3d.Zero V3d.OOI}
             rendering        = InitValues.rendering
             boxHovered = None
             hoverPosition = None
@@ -224,7 +224,7 @@ module BookmarkApp =
     let app : App<BookmarkAppModel,MBookmarkAppModel,Action> =
         {
             unpersist = Unpersist.instance
-            threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage
+            threads = fun model -> ArcBallController.threads model.bookmarkCamera |> ThreadPool.map CameraMessage
             initial = initial
             update = update
             view = view

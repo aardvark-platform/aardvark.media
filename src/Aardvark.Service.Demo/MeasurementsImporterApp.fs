@@ -171,15 +171,15 @@ module MeasurementsImporterApp =
         | CameraMessage    of ArcBallController.Message
         | SetPath   of string
         | Import    of string
-        | OpenFolder
+        //| OpenFolder
         
-    let update (f : System.Windows.Forms.Form) (model : MeasurementsImporterAppModel) (act : Action) =
+    let update (model : MeasurementsImporterAppModel) (act : Action) =
         match act with
             | CameraMessage m -> 
-                    { model with camera = ArcBallController.update model.camera m }       
+                    { model with measurementsCamera = ArcBallController.update model.measurementsCamera m }       
             | SetPath s             -> { model with scenePath =  s }
             | Import s              -> { model with annotations = startImporter s }
-            | OpenFolder            -> { model with scenePath = DialogUtils.openFileDialog f}
+           // | OpenFolder            -> { model with scenePath = DialogUtils.openFileDialog f}
   
 
     let view (model : MMeasurementsImporterAppModel) =
@@ -188,7 +188,7 @@ module MeasurementsImporterApp =
                 // surface path
                 div [clazz "item"] [label [] [text "Scene Path:"]]
                 div [clazz "item"] [Html.SemUi.textBox model.scenePath SetPath]
-                div [clazz "ui button"; onMouseClick (fun _ -> OpenFolder )] [text "..."]
+                //div [clazz "ui button"; onMouseClick (fun _ -> OpenFolder )] [text "..."]
                 div [clazz "ui button"; onMouseClick (fun _ -> Import (Mod.force model.scenePath))] [text "import"]
                     
             ]
@@ -199,7 +199,7 @@ module MeasurementsImporterApp =
 
     let initial : MeasurementsImporterAppModel =
         {
-        camera           = { ArcBallController.initial with view = CameraView.lookAt (23.0 * V3d.OIO) V3d.Zero V3d.OOI}
+        measurementsCamera           = { ArcBallController.initial with view = CameraView.lookAt (23.0 * V3d.OIO) V3d.Zero V3d.OOI}
         rendering        = InitValues.rendering
 
         scenePath = @"."
@@ -209,9 +209,9 @@ module MeasurementsImporterApp =
     let app : App<MeasurementsImporterAppModel,MMeasurementsImporterAppModel,Action> =
         {
             unpersist = Unpersist.instance
-            threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage
+            threads = fun model -> ArcBallController.threads model.measurementsCamera |> ThreadPool.map CameraMessage
             initial = initial
-            update = update (new  Windows.Forms.Form(Width = 1024, Height = 768))
+            update = update //(new  Windows.Forms.Form(Width = 1024, Height = 768))
             view = view
         }
     
