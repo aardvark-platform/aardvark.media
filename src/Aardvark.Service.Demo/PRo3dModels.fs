@@ -160,7 +160,7 @@ type SimpleDrawingAppModel = {
 
 
 [<DomainType>]
-type Drawing = {
+type DrawingModel = {
 
     draw    : bool 
     hoverPosition : option<Trafo3d>
@@ -176,11 +176,11 @@ type Drawing = {
 
 
 [<DomainType>]
-type DrawingAppModel = {
+type AnnotationAppModel = {
     camera : CameraControllerState
     rendering : RenderingParameters
 
-    drawing : Drawing
+    drawing : DrawingModel
     //draw    : bool 
     //hoverPosition : option<Trafo3d>
     ////points : list<V3d>
@@ -193,10 +193,10 @@ type DrawingAppModel = {
     //annotations : plist<Annotation>
 
     [<TreatAsValue>]
-    history : Option<DrawingAppModel> 
+    history : Option<AnnotationAppModel> 
 
     [<TreatAsValue>]
-    future : Option<DrawingAppModel> 
+    future : Option<AnnotationAppModel> 
 }
 
 module JsonTypes =

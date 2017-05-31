@@ -642,7 +642,7 @@ module Mutable =
                     override x.Update(r,f) = { r with points = f r.points }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    type MDrawing(__initial : PRo3DModels.Drawing) = 
+    type MDrawingModel(__initial : PRo3DModels.DrawingModel) = 
         let mutable __current = __initial
         let _draw = ResetMod.Create(__initial.draw)
         let _hoverPosition = MOption.Create(__initial.hoverPosition)
@@ -662,7 +662,7 @@ module Mutable =
         member x.annotations = _annotations :> alist<_>
         member x.exportPath = _exportPath :> IMod<_>
         
-        member x.Update(v : PRo3DModels.Drawing) =
+        member x.Update(v : PRo3DModels.DrawingModel) =
             if not (System.Object.ReferenceEquals(__current, v)) then
                 __current <- v
                 
@@ -675,71 +675,71 @@ module Mutable =
                 MList.Update(_annotations, v.annotations)
                 ResetMod.Update(_exportPath,v.exportPath)
         
-        static member Create(v : PRo3DModels.Drawing) = MDrawing(v)
-        static member Update(m : MDrawing, v : PRo3DModels.Drawing) = m.Update(v)
+        static member Create(v : PRo3DModels.DrawingModel) = MDrawingModel(v)
+        static member Update(m : MDrawingModel, v : PRo3DModels.DrawingModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module Drawing =
+    module DrawingModel =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let draw =
-                { new Lens<PRo3DModels.Drawing, Microsoft.FSharp.Core.bool>() with
+                { new Lens<PRo3DModels.DrawingModel, Microsoft.FSharp.Core.bool>() with
                     override x.Get(r) = r.draw
                     override x.Set(r,v) = { r with draw = v }
                     override x.Update(r,f) = { r with draw = f r.draw }
                 }
             let hoverPosition =
-                { new Lens<PRo3DModels.Drawing, Microsoft.FSharp.Core.option<Aardvark.Base.Trafo3d>>() with
+                { new Lens<PRo3DModels.DrawingModel, Microsoft.FSharp.Core.option<Aardvark.Base.Trafo3d>>() with
                     override x.Get(r) = r.hoverPosition
                     override x.Set(r,v) = { r with hoverPosition = v }
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
             let working =
-                { new Lens<PRo3DModels.Drawing, Microsoft.FSharp.Core.Option<PRo3DModels.Annotation>>() with
+                { new Lens<PRo3DModels.DrawingModel, Microsoft.FSharp.Core.Option<PRo3DModels.Annotation>>() with
                     override x.Get(r) = r.working
                     override x.Set(r,v) = { r with working = v }
                     override x.Update(r,f) = { r with working = f r.working }
                 }
             let projection =
-                { new Lens<PRo3DModels.Drawing, PRo3DModels.Projection>() with
+                { new Lens<PRo3DModels.DrawingModel, PRo3DModels.Projection>() with
                     override x.Get(r) = r.projection
                     override x.Set(r,v) = { r with projection = v }
                     override x.Update(r,f) = { r with projection = f r.projection }
                 }
             let geometry =
-                { new Lens<PRo3DModels.Drawing, PRo3DModels.Geometry>() with
+                { new Lens<PRo3DModels.DrawingModel, PRo3DModels.Geometry>() with
                     override x.Get(r) = r.geometry
                     override x.Set(r,v) = { r with geometry = v }
                     override x.Update(r,f) = { r with geometry = f r.geometry }
                 }
             let semantic =
-                { new Lens<PRo3DModels.Drawing, PRo3DModels.Semantic>() with
+                { new Lens<PRo3DModels.DrawingModel, PRo3DModels.Semantic>() with
                     override x.Get(r) = r.semantic
                     override x.Set(r,v) = { r with semantic = v }
                     override x.Update(r,f) = { r with semantic = f r.semantic }
                 }
             let annotations =
-                { new Lens<PRo3DModels.Drawing, Aardvark.Base.plist<PRo3DModels.Annotation>>() with
+                { new Lens<PRo3DModels.DrawingModel, Aardvark.Base.plist<PRo3DModels.Annotation>>() with
                     override x.Get(r) = r.annotations
                     override x.Set(r,v) = { r with annotations = v }
                     override x.Update(r,f) = { r with annotations = f r.annotations }
                 }
             let exportPath =
-                { new Lens<PRo3DModels.Drawing, Microsoft.FSharp.Core.string>() with
+                { new Lens<PRo3DModels.DrawingModel, Microsoft.FSharp.Core.string>() with
                     override x.Get(r) = r.exportPath
                     override x.Set(r,v) = { r with exportPath = v }
                     override x.Update(r,f) = { r with exportPath = f r.exportPath }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    type MDrawingAppModel(__initial : PRo3DModels.DrawingAppModel) = 
+    type MAnnotationAppModel(__initial : PRo3DModels.AnnotationAppModel) = 
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
-        let _drawing = MDrawing.Create(__initial.drawing)
+        let _drawing = MDrawingModel.Create(__initial.drawing)
         let _history = ResetMod.Create(__initial.history)
         let _future = ResetMod.Create(__initial.future)
         
@@ -749,53 +749,53 @@ module Mutable =
         member x.history = _history :> IMod<_>
         member x.future = _future :> IMod<_>
         
-        member x.Update(v : PRo3DModels.DrawingAppModel) =
+        member x.Update(v : PRo3DModels.AnnotationAppModel) =
             if not (System.Object.ReferenceEquals(__current, v)) then
                 __current <- v
                 
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
                 MRenderingParameters.Update(_rendering, v.rendering)
-                MDrawing.Update(_drawing, v.drawing)
+                MDrawingModel.Update(_drawing, v.drawing)
                 _history.Update(v.history)
                 _future.Update(v.future)
         
-        static member Create(v : PRo3DModels.DrawingAppModel) = MDrawingAppModel(v)
-        static member Update(m : MDrawingAppModel, v : PRo3DModels.DrawingAppModel) = m.Update(v)
+        static member Create(v : PRo3DModels.AnnotationAppModel) = MAnnotationAppModel(v)
+        static member Update(m : MAnnotationAppModel, v : PRo3DModels.AnnotationAppModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module DrawingAppModel =
+    module AnnotationAppModel =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let camera =
-                { new Lens<PRo3DModels.DrawingAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
+                { new Lens<PRo3DModels.AnnotationAppModel, Aardvark.UI.Primitives.CameraControllerState>() with
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
                 }
             let rendering =
-                { new Lens<PRo3DModels.DrawingAppModel, PRo3DModels.RenderingParameters>() with
+                { new Lens<PRo3DModels.AnnotationAppModel, PRo3DModels.RenderingParameters>() with
                     override x.Get(r) = r.rendering
                     override x.Set(r,v) = { r with rendering = v }
                     override x.Update(r,f) = { r with rendering = f r.rendering }
                 }
             let drawing =
-                { new Lens<PRo3DModels.DrawingAppModel, PRo3DModels.Drawing>() with
+                { new Lens<PRo3DModels.AnnotationAppModel, PRo3DModels.DrawingModel>() with
                     override x.Get(r) = r.drawing
                     override x.Set(r,v) = { r with drawing = v }
                     override x.Update(r,f) = { r with drawing = f r.drawing }
                 }
             let history =
-                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.DrawingAppModel>>() with
+                { new Lens<PRo3DModels.AnnotationAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.AnnotationAppModel>>() with
                     override x.Get(r) = r.history
                     override x.Set(r,v) = { r with history = v }
                     override x.Update(r,f) = { r with history = f r.history }
                 }
             let future =
-                { new Lens<PRo3DModels.DrawingAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.DrawingAppModel>>() with
+                { new Lens<PRo3DModels.AnnotationAppModel, Microsoft.FSharp.Core.Option<PRo3DModels.AnnotationAppModel>>() with
                     override x.Get(r) = r.future
                     override x.Set(r,v) = { r with future = v }
                     override x.Update(r,f) = { r with future = f r.future }

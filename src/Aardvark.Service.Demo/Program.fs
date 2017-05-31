@@ -76,7 +76,7 @@ let kitchenSink argv =
     //let a = BookmarkApp.start()
     //let a = MeasurementsImporterApp.start(form)
 
-    let a = DrawingApp.start()
+    let a = AnnotationApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
