@@ -159,15 +159,11 @@ type SimpleDrawingAppModel = {
 }
 
 
-
 [<DomainType>]
-type DrawingAppModel = {
-    camera : CameraControllerState
-    rendering : RenderingParameters
+type Drawing = {
 
     draw    : bool 
     hoverPosition : option<Trafo3d>
-    //points : list<V3d>
 
     working : Option<Annotation>
     projection : Projection
@@ -176,6 +172,25 @@ type DrawingAppModel = {
 
     annotations : plist<Annotation>
     exportPath : string
+}
+
+
+[<DomainType>]
+type DrawingAppModel = {
+    camera : CameraControllerState
+    rendering : RenderingParameters
+
+    drawing : Drawing
+    //draw    : bool 
+    //hoverPosition : option<Trafo3d>
+    ////points : list<V3d>
+
+    //working : Option<Annotation>
+    //projection : Projection
+    //geometry : Geometry
+    //semantic : Semantic
+
+    //annotations : plist<Annotation>
 
     [<TreatAsValue>]
     history : Option<DrawingAppModel> 

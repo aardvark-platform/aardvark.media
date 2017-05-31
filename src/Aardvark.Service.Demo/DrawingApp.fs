@@ -15,10 +15,10 @@ open Aardvark.Rendering.Text
 
 open PRo3DModels
 
- open Aardvark.SceneGraph.SgPrimitives
- open Aardvark.SceneGraph.FShadeSceneGraph
+open Aardvark.SceneGraph.SgPrimitives
+open Aardvark.SceneGraph.FShadeSceneGraph
 
- module Serialization =
+module Serialization =
     open MBrace.FsPickler
     open System.IO
     let binarySerializer = FsPickler.CreateBinarySerializer()
@@ -58,11 +58,11 @@ module DrawingApp =
         
     
     let finishAndAppend (model : DrawingAppModel) = 
-        let anns = match model.working with
-                            | Some w -> model.annotations |> PList.append w
-                            | None -> model.annotations
-
-        { model with working = None; annotations = anns }
+        let anns = match model.drawing.working with
+                            | Some w -> model.drawing.annotations |> PList.append w
+                            | None -> model.drawing.annotations
+        let d = { model.drawing with working = None; annotations = anns }
+        { model with drawing = d}
         
     let stash (model : DrawingAppModel) =
         { model with history = Some model; future = None }
@@ -71,24 +71,25 @@ module DrawingApp =
         { model with history = None; future = None }
 
     let update (model : DrawingAppModel) (act : Action) =
-        match act, model.draw with
+        match act, model.drawing.draw with
             | CameraMessage m, false -> 
                     { model with camera = ArcBallController.update model.camera m }                    
-            | KeyDown Keys.LeftCtrl, _ -> 
-                    { model with draw = true }
+            | KeyDown Keys.LeftCtrl, _ ->                     
+                    { model with drawing = { model.drawing with draw = true }}
             | KeyUp Keys.LeftCtrl, _ -> 
-                    { model with draw = false; hoverPosition = None }
+                    { model with drawing = { model.drawing with draw = false; hoverPosition = None }}                    
             | Move p, true -> 
-                    { model with hoverPosition = Some (Trafo3d.Translation p) }
+                    { model with drawing = { model.drawing with hoverPosition = Some (Trafo3d.Translation p) }}                       
             | AddPoint p, true -> 
                     let working = 
-                        match model.working with
+                        match model.drawing.working with
                                 | Some w ->                                     
                                     { w with points = w.points |> PList.append p }
                                 | None -> 
-                                    { (Annotation.make model.projection model.geometry model.semantic) with points = PList.ofList [p]}//add annotation states
+                                    let d = model.drawing
+                                    { (Annotation.make d.projection d.geometry d.semantic) with points = PList.ofList [p]}//add annotation states
 
-                    let model = { model with working = Some working }
+                    let model = { model with drawing = { model.drawing with working = Some working }}
 
                     let model = match (working.geometry, (working.points |> PList.count)) with
                                     | Geometry.Point, 1 -> model |> finishAndAppend
@@ -100,33 +101,32 @@ module DrawingApp =
             | KeyDown Keys.Enter, _ -> 
                     model |> finishAndAppend
             | Exit, _ -> 
-                    { model with hoverPosition = None }
-
+                    { model with drawing = { model.drawing with hoverPosition = None }}
             | SetSemantic mode, _ ->
                     let model =
                         match mode with
-                            | Semantic.GrainSize -> { model with geometry = Geometry.Line }
+                            | Semantic.GrainSize -> { model with drawing = { model.drawing with geometry = Geometry.Line }}
                             | _ -> model
 
-                    { model with semantic = mode }
+                    {model with drawing = { model.drawing with semantic = mode }}
             | SetGeometry mode, _ ->
-                    { model with geometry = mode }
+                    { model with drawing = { model.drawing with geometry = mode }}                    
             | SetProjection mode, _ ->
-                    { model with projection = mode }
+                    { model with drawing = { model.drawing with projection = mode }}
             | KeyDown Keys.D0, _ -> 
-                    { model with semantic = Semantic.Horizon0 }
+                    {model with drawing = { model.drawing with semantic = Semantic.Horizon0 }}                    
             | KeyDown Keys.D1, _ -> 
-                    { model with semantic = Semantic.Horizon1 }
+                    {model with drawing = { model.drawing with semantic = Semantic.Horizon1 }}
             | KeyDown Keys.D2, _ -> 
-                    { model with semantic = Semantic.Horizon2 }
+                    {model with drawing = { model.drawing with semantic = Semantic.Horizon2 }}
             | KeyDown Keys.D3, _ -> 
-                    { model with semantic = Semantic.Horizon3 }
+                    {model with drawing = { model.drawing with semantic = Semantic.Horizon3 }}
             | KeyDown Keys.D4, _ -> 
-                    { model with semantic = Semantic.Horizon4 }
+                    {model with drawing = { model.drawing with semantic = Semantic.Horizon4 }}
             | Export, _ ->
-                    let path = Path.combine([model.exportPath; "drawing.json"])
-                    printf "Writing %i annotations to %s" (model.annotations |> PList.count) path
-                    let json = model.annotations |> PList.map JsonTypes.ofAnnotation |> JsonConvert.SerializeObject
+                    let path = Path.combine([model.drawing.exportPath; "drawing.json"])
+                    printf "Writing %i annotations to %s" (model.drawing.annotations |> PList.count) path
+                    let json = model.drawing.annotations |> PList.map JsonTypes.ofAnnotation |> JsonConvert.SerializeObject
                     Serialization.writeToFile path json 
                     
                     model
@@ -136,9 +136,9 @@ module DrawingApp =
             | Load, _ -> 
                     Serialization.load ".\drawing"
             | Clear,_ ->
-                    { model with annotations = PList.empty }
+                    { model with drawing = { model.drawing with annotations = PList.empty }}
             | SetExportPath s, _ ->
-                    { model with exportPath = s }
+                    { model with drawing = { model.drawing with exportPath = s }}
             | Undo, _ -> 
                 match model.history with
                     | Some h -> { h with future = Some model }
@@ -259,6 +259,37 @@ module DrawingApp =
             [lines anno.points anno.color anno.thickness.value; 
              dots anno.points anno.color view] 
             |> ASet.ofList
+    
+    let viewAnnotationTools (model:MDrawing)=  
+        Html.SemUi.accordion "Annotation Tools" "Write" true [
+            Html.table [                            
+                Html.row "Text:" [Html.SemUi.textBox model.exportPath SetExportPath ]
+                Html.row "Geometry:" [Html.SemUi.dropDown model.geometry SetGeometry]
+                Html.row "Projections:" [Html.SemUi.dropDown model.projection SetProjection]
+                Html.row "Semantic:" [Html.SemUi.dropDown model.semantic SetSemantic]
+            ]                    
+        ]
+
+    let viewAnnotations (model:MDrawing) = 
+        Html.SemUi.accordion "Annotations" "File Outline" true [
+            Incremental.div 
+                (AttributeMap.ofList [clazz "ui divided list"]) (
+                            
+                    alist {                                                                     
+                        for a in model.annotations do 
+                                        
+                            let! sem = a.semantic
+                            let c = Annotation.color.[int sem]
+
+                            let bgc = sprintf "background: %s" (Html.ofC4b c)
+                                    
+                            yield div [clazz "item"; style bgc] [
+                                    i [clazz "medium File Outline middle aligned icon"][]
+                                    text (a.geometry.ToString())
+                            ]                                                                    
+                    }     
+            )
+        ]
 
     let view (model : MDrawingAppModel) =
                     
@@ -282,7 +313,7 @@ module DrawingApp =
                         
                             // order is irrelevant for rendering. change list to set,
                             // since set provides more degrees of freedom for the compiler
-                            let annoSet = ASet.ofAList model.annotations 
+                            let annoSet = ASet.ofAList model.drawing.annotations 
 
                             let annotations =
                                 aset {
@@ -291,8 +322,8 @@ module DrawingApp =
                                 } |> Sg.set
                                 
 
-                            [Draw.canvas; Draw.brush model.hoverPosition; annotations] @
-                             Draw.annotation model.working view
+                            [Draw.canvas; Draw.brush model.drawing.hoverPosition; annotations] @
+                             Draw.annotation model.drawing.working view
                                 |> Sg.ofList
                                 |> Sg.fillMode model.rendering.fillMode
                                 |> Sg.cullMode model.rendering.cullMode                                                                                           
@@ -319,35 +350,30 @@ module DrawingApp =
                                     i [clazz "arrow right icon"] [] ]
                     ]
 
-                    Html.SemUi.accordion "Annotation Tools" "Write" true [
-                        Html.table [                            
-                            Html.row "Text:" [Html.SemUi.textBox model.exportPath SetExportPath ]
-                            Html.row "Geometry:" [Html.SemUi.dropDown model.geometry SetGeometry]
-                            Html.row "Projections:" [Html.SemUi.dropDown model.projection SetProjection]
-                            Html.row "Semantic:" [Html.SemUi.dropDown model.semantic SetSemantic]
-                        ]                    
-                    ]
+                    viewAnnotationTools model.drawing
                     
-                   // div [style "overflow-Y: scroll" ] [
-                    Html.SemUi.accordion "Annotations" "File Outline" true [
-                        Incremental.div 
-                            (AttributeMap.ofList [clazz "ui divided list"]) (
-                            
-                                alist {                                                                     
-                                    for a in model.annotations do 
-                                        
-                                        let! sem = a.semantic
-                                        let c = Annotation.color.[int sem]
+                    viewAnnotations model.drawing
 
-                                        let bgc = sprintf "background: %s" (Html.ofC4b c)
+                   // div [style "overflow-Y: scroll" ] [
+                    //Html.SemUi.accordion "Annotations" "File Outline" true [
+                    //    Incremental.div 
+                    //        (AttributeMap.ofList [clazz "ui divided list"]) (
+                            
+                    //            alist {                                                                     
+                    //                for a in model.drawing.annotations do 
+                                        
+                    //                    let! sem = a.semantic
+                    //                    let c = Annotation.color.[int sem]
+
+                    //                    let bgc = sprintf "background: %s" (Html.ofC4b c)
                                     
-                                        yield div [clazz "item"; style bgc] [
-                                                i [clazz "medium File Outline middle aligned icon"][]
-                                                text (a.geometry.ToString())
-                                        ]                                                                    
-                                }     
-                        )
-                    ]
+                    //                    yield div [clazz "item"; style bgc] [
+                    //                            i [clazz "medium File Outline middle aligned icon"][]
+                    //                            text (a.geometry.ToString())
+                    //                    ]                                                                    
+                    //            }     
+                    //    )
+                    //]
                    // ]
                 ]
 
@@ -355,21 +381,29 @@ module DrawingApp =
                         
             ]
         )
+   
+    let initialdrawing = {
+        hoverPosition = None
+        draw = false            
+
+        working = None
+        projection = Projection.Viewpoint
+        geometry = Geometry.Polyline
+        semantic = Semantic.Horizon3
+
+        annotations = PList.empty
+
+        exportPath = @"."
+    }
 
     let initial : DrawingAppModel =
         {
             camera           = { ArcBallController.initial with view = CameraView.lookAt (23.0 * V3d.OIO) V3d.Zero V3d.OOI}
             rendering        = InitValues.rendering
-            hoverPosition = None
-            draw = false            
+           
+            drawing = initialdrawing
 
-            working = None
-            projection = Projection.Viewpoint
-            geometry = Geometry.Polyline
-            semantic = Semantic.Horizon3
-
-            annotations = PList.empty
-            exportPath = @"."
+           
 
             history = None
             future = None
