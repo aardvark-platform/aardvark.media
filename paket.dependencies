@@ -17,9 +17,9 @@ nuget Aardvark.Rendering.Text              ~> 3.1.2
 nuget Aardvark.Compiler.DomainTypes         ~> 0.2.1
 nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.1
 
-nuget Another.Unofficial.Xilium.CefGlue ~> 0.0.9
-nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.9
-nuget Another.Unofficial.Xilium.CefGlue.WindowsForms ~> 0.0.9
+nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.0.12
+nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.12
+nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.0.12
 
 nuget FsPickler       ~> 3.2.0
 nuget FsPickler.Json  ~> 3.2.0
@@ -27,7 +27,6 @@ nuget FsPickler.Json  ~> 3.2.0
 nuget WindowsAPICodePack-Core
 nuget WindowsAPICodePack-ShellExtensions
  
-nuget Fablish               ~> 1.7.9
 nuget StackExchange.NetGain ~> 1.0.0
 nuget Fleck                 ~> 0.14.0.59
 nuget TurboJpegWrapper      ~> 1.4.2.6
