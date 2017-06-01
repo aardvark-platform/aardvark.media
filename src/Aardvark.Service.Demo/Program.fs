@@ -67,7 +67,7 @@ let kitchenSink argv =
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
   //  let a = NavigationModeDemo.start()    
-    //let a = BoxSelectionDemo.start()
+    let a = BoxSelectionDemo.start()
 
     //let a = DragNDrop.TranslateController.start()
     //let a = SimpleDrawingApp.start()
@@ -76,7 +76,7 @@ let kitchenSink argv =
     //let a = BookmarkApp.start()
     //let a = MeasurementsImporterApp.start(form)
 
-    let a = AnnotationApp.start()
+    //let a = AnnotationApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
