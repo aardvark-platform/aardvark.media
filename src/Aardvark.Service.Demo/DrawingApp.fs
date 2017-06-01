@@ -200,11 +200,12 @@ module AnnotationApp =
                 |> Sg.requirePicking
                 |> Sg.noEvents 
                     |> Sg.withEvents [
-                        Sg.onMouseMove (fun p -> Drawing.Action.Move p)
+                        Sg.onMouseMove (fun p -> (Drawing.Action.Move p))
                         Sg.onClick(fun p -> Drawing.Action.AddPoint p)
                         Sg.onLeave (fun _ -> Drawing.Action.Exit)
                     ]  
                 |> Sg.onOff (Mod.constant true)
+                |> Sg.map DrawingMessage
 
         let edgeLines (close : bool) (points : alist<V3d>) =
             
