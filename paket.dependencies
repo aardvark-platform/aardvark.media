@@ -2,24 +2,26 @@ framework: net45
 source https://api.nuget.org/v3/index.json
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 
-nuget Aardvark.Base                        ~> 3.0.15
-nuget Aardvark.Base.Incremental            ~> 3.0.15
-nuget Aardvark.Base.FSharp                 ~> 3.0.15
-nuget Aardvark.Base.Essentials             ~> 3.0.15
+nuget FSharp.Core                          ~> 4.0.0.1
 
-nuget Aardvark.Base.Rendering              ~> 3.1.2
-nuget Aardvark.Application.WinForms.GL     ~> 3.1.2
-nuget Aardvark.SceneGraph                  ~> 3.1.2
-nuget Aardvark.SceneGraph.IO               ~> 3.1.2
-nuget Aardvark.Rendering.NanoVg            ~> 3.1.2
-nuget Aardvark.Rendering.Text              ~> 3.1.2
+nuget Aardvark.Base                        ~> 3.0.20
+nuget Aardvark.Base.Incremental            ~> 3.0.20
+nuget Aardvark.Base.FSharp                 ~> 3.0.20
+nuget Aardvark.Base.Essentials             ~> 3.0.20
+
+nuget Aardvark.Base.Rendering              ~> 3.2.1
+nuget Aardvark.Application.WinForms.GL     ~> 3.2.1
+nuget Aardvark.SceneGraph                  ~> 3.2.1
+nuget Aardvark.SceneGraph.IO               ~> 3.2.1
+nuget Aardvark.Rendering.NanoVg            ~> 3.2.1
+nuget Aardvark.Rendering.Text              ~> 3.2.1
 
 nuget Aardvark.Compiler.DomainTypes         ~> 0.2.1
 nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.1
 
-nuget Another.Unofficial.Xilium.CefGlue ~> 0.0.9
-nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.9
-nuget Another.Unofficial.Xilium.CefGlue.WindowsForms ~> 0.0.9
+nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.0.12
+nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.12
+nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.0.12
 
 nuget FsPickler       ~> 3.2.0
 nuget FsPickler.Json  ~> 3.2.0
@@ -27,17 +29,14 @@ nuget FsPickler.Json  ~> 3.2.0
 nuget WindowsAPICodePack-Core
 nuget WindowsAPICodePack-ShellExtensions
  
-nuget Fablish               ~> 1.7.9
-nuget StackExchange.NetGain ~> 1.0.0
-nuget Fleck                 ~> 0.14.0.59
 nuget TurboJpegWrapper      ~> 1.4.2.6
 nuget Suave                 ~> 2.0.2
-nuget FSharp.Compiler.Service   ~> 9.0.1
-nuget FSharp.Compiler.Service.ProjectCracker ~> 9.0.1
+
 group Build
 framework: net45
 content: none
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 source https://api.nuget.org/v3/index.json
+
 nuget FSharp.Formatting.CommandTool
 github vrvis/Aardvark.Fake:standalone

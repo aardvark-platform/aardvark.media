@@ -59,15 +59,15 @@ let kitchenSink argv =
     let runtime = app.Runtime
     use form = new Form(Width = 1024, Height = 768)
 
-    //let a = Viewer.KitchenSinkApp.start()
+   // let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
     //let a = TreeViewApp.start()
     //let a = AnnotationProperties.start()
     //let a = SimpleTestApp.start()
     //let a = SimpleCompositionViewer.start()
     //let a = OrbitCameraDemo.start()
-    //let a = NavigationModeDemo.start()    
-    //let a = BoxSelectionDemo.start()
+  //  let a = NavigationModeDemo.start()    
+    let a = BoxSelectionDemo.start()
 
     //let a = DragNDrop.TranslateController.start()
     //let a = SimpleDrawingApp.start()
@@ -76,7 +76,7 @@ let kitchenSink argv =
     //let a = BookmarkApp.start()
     let a = MeasurementsImporterApp.start(form)
 
-   // let a = DrawingApp.start()
+    //let a = AnnotationApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
