@@ -57,7 +57,7 @@ let kitchenSink argv =
     Aardvark.Init()
     use app = new OpenGlApplication()
     let runtime = app.Runtime
-    //use form = new Form(Width = 1024, Height = 768)
+    use form = new Form(Width = 1024, Height = 768)
 
     //let a = Viewer.KitchenSinkApp.start()
     //let a = Aardvark.UI.Numeric.start()
@@ -74,16 +74,16 @@ let kitchenSink argv =
     //let a = DrawingApp.start()
     //let a = PlaceTransformObjects.App.start()
     //let a = BookmarkApp.start()
-    //let a = MeasurementsImporterApp.start(form)
+    let a = MeasurementsImporterApp.start(form)
 
-    let a = DrawingApp.start()
+   // let a = DrawingApp.start()
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart runtime a
         Suave.Files.browseHome
     ]  
 
-    use form = new Form(Width = 1024, Height = 768)
+    //use form = new Form(Width = 1024, Height = 768)
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl

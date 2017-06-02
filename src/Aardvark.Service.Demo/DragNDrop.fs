@@ -63,7 +63,7 @@ module App =
 
         CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
             (AttributeMap.ofList [ 
-                attribute "style" "width:100%; height: 100%"; RenderControl.onMouseMove (fun r t -> MoveRay r)
+                attribute "style" "width:100%; height: 100%"
              ]) scene
 
     let view (m : MModel) =

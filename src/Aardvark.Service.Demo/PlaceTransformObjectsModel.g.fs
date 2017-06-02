@@ -9,36 +9,29 @@ open PlaceTransformObjects
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    type MObject private(__initial : PlaceTransformObjects.Object) =
+    type MObject(__initial : PlaceTransformObjects.Object) = 
         let mutable __current = __initial
-        let _name = ResetMod(__initial.name)
-        let _objectType = ResetMod(__initial.objectType)
+        let _name = ResetMod.Create(__initial.name)
+        let _objectType = ResetMod.Create(__initial.objectType)
         let _transformation = DragNDrop.Mutable.MTransformation.Create(__initial.transformation)
         
         member x.name = _name :> IMod<_>
         member x.objectType = _objectType :> IMod<_>
         member x.transformation = _transformation
         
-        member x.Update(__model : PlaceTransformObjects.Object) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _name.Update(__model.name)
-                _objectType.Update(__model.objectType)
-                _transformation.Update(__model.transformation)
+        member x.Update(v : PlaceTransformObjects.Object) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_name,v.name)
+                ResetMod.Update(_objectType,v.objectType)
+                DragNDrop.Mutable.MTransformation.Update(_transformation, v.transformation)
         
-        static member Create(initial) = MObject(initial)
+        static member Create(v : PlaceTransformObjects.Object) = MObject(v)
+        static member Update(m : MObject, v : PlaceTransformObjects.Object) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MObject =
-        let inline name (m : MObject) = m.name
-        let inline objectType (m : MObject) = m.objectType
-        let inline transformation (m : MObject) = m.transformation
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -64,32 +57,26 @@ module Mutable =
                     override x.Update(r,f) = { r with transformation = f r.transformation }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    type MWorld private(__initial : PlaceTransformObjects.World) =
+    type MWorld(__initial : PlaceTransformObjects.World) = 
         let mutable __current = __initial
-        let _objects = ResetMapMap(__initial.objects, (fun k v -> MObject.Create(v)), (fun (m,i) -> m.Update(i)))
-        let _selectedObjects = ResetSet(__initial.selectedObjects)
+        let _objects = MMap.Create(__initial.objects, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
+        let _selectedObjects = MSet.Create(__initial.selectedObjects)
         
         member x.objects = _objects :> amap<_,_>
         member x.selectedObjects = _selectedObjects :> aset<_>
         
-        member x.Update(__model : PlaceTransformObjects.World) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _objects.Update(__model.objects)
-                _selectedObjects.Update(__model.selectedObjects)
+        member x.Update(v : PlaceTransformObjects.World) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                MMap.Update(_objects, v.objects)
+                MSet.Update(_selectedObjects, v.selectedObjects)
         
-        static member Create(initial) = MWorld(initial)
+        static member Create(v : PlaceTransformObjects.World) = MWorld(v)
+        static member Update(m : MWorld, v : PlaceTransformObjects.World) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MWorld =
-        let inline objects (m : MWorld) = m.objects
-        let inline selectedObjects (m : MWorld) = m.selectedObjects
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -97,7 +84,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let objects =
-                { new Lens<PlaceTransformObjects.World, Aardvark.Base.hmap<Microsoft.FSharp.Core.string, PlaceTransformObjects.Object>>() with
+                { new Lens<PlaceTransformObjects.World, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,PlaceTransformObjects.Object>>() with
                     override x.Get(r) = r.objects
                     override x.Set(r,v) = { r with objects = v }
                     override x.Update(r,f) = { r with objects = f r.objects }
@@ -109,7 +96,7 @@ module Mutable =
                     override x.Update(r,f) = { r with selectedObjects = f r.selectedObjects }
                 }
     [<StructuredFormatDisplay("{AsString}")>]
-    type MScene private(__initial : PlaceTransformObjects.Scene) =
+    type MScene(__initial : PlaceTransformObjects.Scene) = 
         let mutable __current = __initial
         let _world = MWorld.Create(__initial.world)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
@@ -117,24 +104,18 @@ module Mutable =
         member x.world = _world
         member x.camera = _camera
         
-        member x.Update(__model : PlaceTransformObjects.Scene) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _world.Update(__model.world)
-                _camera.Update(__model.camera)
+        member x.Update(v : PlaceTransformObjects.Scene) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                MWorld.Update(_world, v.world)
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
         
-        static member Create(initial) = MScene(initial)
+        static member Create(v : PlaceTransformObjects.Scene) = MScene(v)
+        static member Update(m : MScene, v : PlaceTransformObjects.Scene) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MScene =
-        let inline world (m : MScene) = m.world
-        let inline camera (m : MScene) = m.camera
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

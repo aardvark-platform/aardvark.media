@@ -14,6 +14,8 @@ type NumericInput = {
     format: string
 }
 
+
+
 [<DomainType>]
 type LeafValue = 
     | Number of int 
@@ -27,7 +29,7 @@ type Tree =
     | Node of value : LeafValue * properties : Properties * children : plist<Tree>
     | Leaf of value : LeafValue
 
-[<AutoOpen>]
+[<AutoOpen; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Tree =
     let node v p c = Node(v, p, c)
 

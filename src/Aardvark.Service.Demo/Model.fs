@@ -13,6 +13,21 @@ type ClientLocalAttribute() = inherit System.Attribute()
 [<DomainType>]
 type Urdar = { urdar : int }
 
+
+[<DomainType>]
+type TreeNode<'a> =
+    {
+        content : 'a
+        children : plist<TreeNode<'a>>
+    }
+
+[<DomainType>]
+type Tree<'a> =
+    {
+        nodes : plist<TreeNode<'a>>
+    }
+
+
 [<DomainType>]
 type Model =
     {
@@ -24,7 +39,7 @@ type Model =
         boxScale        : float
         objects         : hmap<string,Urdar>
         lastTime        : MicroTime
+        tree            : Tree<int>
     }
-
 
 

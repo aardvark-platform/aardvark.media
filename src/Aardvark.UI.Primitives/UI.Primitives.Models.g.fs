@@ -9,13 +9,13 @@ open Aardvark.UI
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    type MNumericInput private(__initial : Aardvark.UI.NumericInput) =
+    type MNumericInput(__initial : Aardvark.UI.NumericInput) = 
         let mutable __current = __initial
-        let _value = ResetMod(__initial.value)
-        let _min = ResetMod(__initial.min)
-        let _max = ResetMod(__initial.max)
-        let _step = ResetMod(__initial.step)
-        let _format = ResetMod(__initial.format)
+        let _value = ResetMod.Create(__initial.value)
+        let _min = ResetMod.Create(__initial.min)
+        let _max = ResetMod.Create(__initial.max)
+        let _step = ResetMod.Create(__initial.step)
+        let _format = ResetMod.Create(__initial.format)
         
         member x.value = _value :> IMod<_>
         member x.min = _min :> IMod<_>
@@ -23,30 +23,21 @@ module Mutable =
         member x.step = _step :> IMod<_>
         member x.format = _format :> IMod<_>
         
-        member x.Update(__model : Aardvark.UI.NumericInput) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _value.Update(__model.value)
-                _min.Update(__model.min)
-                _max.Update(__model.max)
-                _step.Update(__model.step)
-                _format.Update(__model.format)
+        member x.Update(v : Aardvark.UI.NumericInput) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_value,v.value)
+                ResetMod.Update(_min,v.min)
+                ResetMod.Update(_max,v.max)
+                ResetMod.Update(_step,v.step)
+                ResetMod.Update(_format,v.format)
         
-        static member Create(initial) = MNumericInput(initial)
+        static member Create(v : Aardvark.UI.NumericInput) = MNumericInput(v)
+        static member Update(m : MNumericInput, v : Aardvark.UI.NumericInput) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MNumericInput =
-        let inline value (m : MNumericInput) = m.value
-        let inline min (m : MNumericInput) = m.min
-        let inline max (m : MNumericInput) = m.max
-        let inline step (m : MNumericInput) = m.step
-        let inline format (m : MNumericInput) = m.format
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -94,7 +85,7 @@ module Mutable =
                 | Text(item) -> MText(__model, item) :> MLeafValue
         
         static member Create(v : Aardvark.UI.LeafValue) =
-            ResetMod(MLeafValue.CreateValue v) :> IMod<_>
+            ResetMod.Create(MLeafValue.CreateValue v) :> IMod<_>
         
         [<System.Runtime.CompilerServices.Extension>]
         static member Update(m : IMod<MLeafValue>, v : Aardvark.UI.LeafValue) =
@@ -106,7 +97,7 @@ module Mutable =
         inherit MLeafValue()
         
         let mutable __current = __initial
-        let _item = ResetMod(item)
+        let _item = ResetMod.Create(item)
         member x.item = _item :> IMod<_>
         
         override x.ToString() = __current.ToString()
@@ -127,7 +118,7 @@ module Mutable =
         inherit MLeafValue()
         
         let mutable __current = __initial
-        let _item = ResetMod(item)
+        let _item = ResetMod.Create(item)
         member x.item = _item :> IMod<_>
         
         override x.ToString() = __current.ToString()
@@ -157,36 +148,29 @@ module Mutable =
     
     
     [<StructuredFormatDisplay("{AsString}")>]
-    type MProperties private(__initial : Aardvark.UI.Properties) =
+    type MProperties(__initial : Aardvark.UI.Properties) = 
         let mutable __current = __initial
-        let _isExpanded = ResetMod(__initial.isExpanded)
-        let _isSelected = ResetMod(__initial.isSelected)
-        let _isActive = ResetMod(__initial.isActive)
+        let _isExpanded = ResetMod.Create(__initial.isExpanded)
+        let _isSelected = ResetMod.Create(__initial.isSelected)
+        let _isActive = ResetMod.Create(__initial.isActive)
         
         member x.isExpanded = _isExpanded :> IMod<_>
         member x.isSelected = _isSelected :> IMod<_>
         member x.isActive = _isActive :> IMod<_>
         
-        member x.Update(__model : Aardvark.UI.Properties) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _isExpanded.Update(__model.isExpanded)
-                _isSelected.Update(__model.isSelected)
-                _isActive.Update(__model.isActive)
+        member x.Update(v : Aardvark.UI.Properties) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_isExpanded,v.isExpanded)
+                ResetMod.Update(_isSelected,v.isSelected)
+                ResetMod.Update(_isActive,v.isActive)
         
-        static member Create(initial) = MProperties(initial)
+        static member Create(v : Aardvark.UI.Properties) = MProperties(v)
+        static member Update(m : MProperties, v : Aardvark.UI.Properties) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MProperties =
-        let inline isExpanded (m : MProperties) = m.isExpanded
-        let inline isSelected (m : MProperties) = m.isSelected
-        let inline isActive (m : MProperties) = m.isActive
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -222,7 +206,7 @@ module Mutable =
                 | Leaf(value) -> MLeaf(__model, value) :> MTree
         
         static member Create(v : Aardvark.UI.Tree) =
-            ResetMod(MTree.CreateValue v) :> IMod<_>
+            ResetMod.Create(MTree.CreateValue v) :> IMod<_>
         
         [<System.Runtime.CompilerServices.Extension>]
         static member Update(m : IMod<MTree>, v : Aardvark.UI.Tree) =
@@ -236,7 +220,7 @@ module Mutable =
         let mutable __current = __initial
         let _value = MLeafValue.Create(value)
         let _properties = MProperties.Create(properties)
-        let _children = ResetMapList(children, (fun _ -> MTree.Create), fun (m,i) -> m.Update(i))
+        let _children = ResetMapList(children, (fun _ e -> MTree.Create(e)), (fun (m,e) -> MTree.Update(m, e)))
         member x.value = _value
         member x.properties = _properties
         member x.children = _children :> alist<_>
@@ -291,28 +275,23 @@ module Mutable =
     
     
     [<StructuredFormatDisplay("{AsString}")>]
-    type MTreeModel private(__initial : Aardvark.UI.TreeModel) =
+    type MTreeModel(__initial : Aardvark.UI.TreeModel) = 
         let mutable __current = __initial
         let _data = MTree.Create(__initial.data)
         
         member x.data = _data
         
-        member x.Update(__model : Aardvark.UI.TreeModel) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _data.Update(__model.data)
+        member x.Update(v : Aardvark.UI.TreeModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                MTree.Update(_data, v.data)
         
-        static member Create(initial) = MTreeModel(initial)
+        static member Create(v : Aardvark.UI.TreeModel) = MTreeModel(v)
+        static member Update(m : MTreeModel, v : Aardvark.UI.TreeModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MTreeModel =
-        let inline data (m : MTreeModel) = m.data
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

@@ -23,18 +23,6 @@ module DialogUtils =
     open Microsoft.WindowsAPICodePack.Dialogs
   
 
-    //let openFolderDialog (w : Form) =
-    //    let mutable r = Unchecked.defaultof<_>
-    //    w.Invoke(Action(fun _ -> 
-    //        let dialog = new CommonOpenFileDialog()
-    //      //  dialog.InitialDirectory <- "C:\\Users"
-    //        dialog.IsFolderPicker <- true
-    //        if dialog.ShowDialog() = CommonFileDialogResult.Ok then
-    //            r <- dialog.FileName
-    //        else r <- ""
-    //    )) |> ignore
-    //    r
-
     let openFileDialog (w : Form) =
         let mutable r = Unchecked.defaultof<_>
         w.Invoke(Action(fun _ -> 
@@ -48,6 +36,7 @@ module DialogUtils =
 module MeasurementsImporterApp =
     open System.Xml.Linq
     open System.Xml
+    open PRo3DModels.Mutable.MeasurementsImporterAppModel.Lens
     
     let xname s = XName.Get(s)
 
@@ -64,19 +53,15 @@ module MeasurementsImporterApp =
         thickness = thickness a
         }
 
-    let parsePointsLevelOne (points:XElement) =
-        let l = PList.empty
-        let s = points.Value.NestedBracketSplitLevelOne()
-        for p in s do
-            l |> PList.append (V3d.Parse(p)) |> ignore
-        l
+    let parsePointsLevelOne (points:XElement) = points.Value.NestedBracketSplitLevelOne()
+                                                    |> Seq.map (fun x -> V3d.Parse(x))
+                                                    |> PList.ofSeq
+      
 
-    let parsePointsLevelZero (points:XElement) =   
-        let l = PList.empty
-        let s = points.Value.NestedBracketSplit(0)
-        for p in s do
-             l |> PList.append (V3d.Parse(p)) |> ignore
-        l 
+    let parsePointsLevelZero (points:XElement) = points.Value.NestedBracketSplit(0) 
+                                                    |> Seq.map (fun x -> V3d.Parse(x))
+                                                    |> PList.ofSeq  
+       
     
     let getPoints (points:XElement, aType:string) =
         let l = match points with
@@ -88,13 +73,9 @@ module MeasurementsImporterApp =
         l
       
                         
-    let parseSegments (segments:XElement) =
-        let segs = segments.Elements(xname "V3d_Array")
-        let segments = PList.empty //new List<List<V3d>>()
-        for s in segs do
-            let p = parsePointsLevelZero s
-            segments|> PList.append p |> ignore
-        segments
+    let parseSegments (segments:XElement) = segments.Elements(xname "V3d_Array")
+                                                |> Seq.map (fun x -> parsePointsLevelZero x)
+                                                |> PList.ofSeq
 
     let parseSegment (seg:XElement) =  PList.ofList [parsePointsLevelZero seg]
         
@@ -160,59 +141,256 @@ module MeasurementsImporterApp =
     let startImporter (path:string) =
         let reader = XmlReader.Create path
         let measurements = reader.StreamElements("Measurements").Elements(xname "object")
-        let annotations = PList.empty
-        for m in measurements do
-            annotations |> PList.append (getAnnotation m)
-            |> ignore
+        let annotations = measurements 
+                            |> Seq.map (fun x -> getAnnotation x)
+                            |> PList.ofSeq  
         annotations
 
 
     type Action =
         | CameraMessage    of ArcBallController.Message
+        | Move of V3d
+        | Exit      
         | SetPath   of string
         | Import    of string
-        //| OpenFolder
+        | OpenFolder
         
-    let update (model : MeasurementsImporterAppModel) (act : Action) =
+    let update (f : System.Windows.Forms.Form) (model : MeasurementsImporterAppModel) (act : Action) =
         match act with
-            | CameraMessage m -> 
-                    { model with measurementsCamera = ArcBallController.update model.measurementsCamera m }       
-            | SetPath s             -> { model with scenePath =  s }
-            | Import s              -> { model with annotations = startImporter s }
-           // | OpenFolder            -> { model with scenePath = DialogUtils.openFileDialog f}
+            | CameraMessage m  -> { model with measurementsCamera = ArcBallController.update model.measurementsCamera m }  
+            | Move p           -> { model with measurementsHoverPosition = Some (Trafo3d.Translation p) }
+            | SetPath s        -> { model with scenePath =  s }
+            | Import s         -> { model with annotations = startImporter s }
+            | OpenFolder       -> { model with scenePath = DialogUtils.openFileDialog f}
+            | Exit             -> { model with measurementsHoverPosition = None }
   
 
-    let view (model : MMeasurementsImporterAppModel) =
-        div [clazz "ui container"] [
-            div [clazz "ui list"] [
-                // surface path
-                div [clazz "item"] [label [] [text "Scene Path:"]]
-                div [clazz "item"] [Html.SemUi.textBox model.scenePath SetPath]
-                //div [clazz "ui button"; onMouseClick (fun _ -> OpenFolder )] [text "..."]
-                div [clazz "ui button"; onMouseClick (fun _ -> Import (Mod.force model.scenePath))] [text "import"]
+    module Draw =
+
+        let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =        
+            adaptive {
+                let! p = p
+                let! v = view
+                let distV = p - v.Location
+                let distF = V3d.Dot(v.Forward, distV)
+                return distF * size / 800.0 //needs hfov at this point
+            }
+
+        let mkISg color size trafo =         
+            Sg.sphere 5 color size 
+                    |> Sg.shader {
+                        do! DefaultSurfaces.trafo
+                        do! DefaultSurfaces.vertexColor
+                        do! DefaultSurfaces.simpleLighting
+                    }
+                    |> Sg.noEvents
+                    |> Sg.trafo(trafo) 
+        
+        let sphereCanvas =             
+            Sg.sphere' 8 (new C4b(247,127,90)) 20.0
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                }
+                |> Sg.requirePicking
+                |> Sg.noEvents 
+                    |> Sg.withEvents [
+                        Sg.onMouseMove (fun p -> Move p)
+                        Sg.onLeave (fun _ -> Exit)
+                    ]  
+                |> Sg.onOff (Mod.constant true)
+
+        let boxCanvas =  
+            let b = new Box3d( V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0) )                                               
+            Sg.box (Mod.constant C4b.White) (Mod.constant b)
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                }
+                |> Sg.requirePicking
+                |> Sg.noEvents 
+                    |> Sg.withEvents [
+                        Sg.onMouseMove (fun p -> Move p)
+                        Sg.onLeave (fun _ -> Exit)
+                    ]    
+
+
+        let edgeLines (close : bool) (points : alist<V3d>) =
+            
+            points |> AList.toMod |> Mod.map (fun l ->
+                let list = PList.toList l
+                let head = list |> List.tryHead
                     
+                match head with
+                    | Some h -> if close then list @ [h] else list
+                                    |> List.pairwise
+                                    |> List.map (fun (a,b) -> new Line3d(a,b))
+                                    |> List.toArray
+                    | None -> [||]                         
+            )
+            
+        //let brush (hovered : IMod<Trafo3d option>) = 
+        //    let trafo =
+        //        hovered |> Mod.map (function o -> match o with 
+        //                                            | Some t-> t
+        //                                            | None -> Trafo3d.Scale(V3d.Zero))
+
+        //    mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
+       
+        let dots (points : alist<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =            
+            
+            aset {
+                for p in points |> ASet.ofAList do
+                    yield mkISg color (computeScale view (Mod.constant p) 5.0) (Mod.constant (Trafo3d.Translation(p)))
+            } 
+            |> Sg.set
+           
+        let lines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) = 
+            edgeLines false points
+                |> Sg.lines color
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.trafo
+                    toEffect DefaultSurfaces.vertexColor
+                    toEffect DefaultSurfaces.thickLine                                
+                    ] 
+                |> Sg.noEvents
+                |> Sg.uniform "LineWidth" width
+                |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
+                |> Sg.depthTest (Mod.constant DepthTestMode.None)
+   
+        //let annotation (anno : IMod<Option<MAnnotation>>)(view : IMod<CameraView>) = 
+        //    //alist builder?
+        //    let points = 
+        //        anno |> AList.bind (fun o -> 
+        //            match o with
+        //                | Some a -> a.points
+        //                | None -> AList.empty
+        //        )    
+                
+            //let withDefault (m : IMod<Option<'a>>) (f : 'a -> IMod<'b>) (defaultValue : 'b) = 
+            //    let defaultValue = defaultValue |> Mod.constant
+            //    m |> Mod.bind (function | None -> defaultValue | Some v -> f v)
+
+            //let color = 
+            //    withDefault anno (fun a -> a.color) C4b.VRVisGreen
+
+            //let thickness = 
+            //    anno |> Mod.bind (function o -> match o with
+            //                                    | Some a -> a.thickness.value
+            //                                    | None -> Mod.constant 1.0)
+
+            //[lines points color thickness; dots points color view]
+
+        let isEmpty l = l |> AList.toMod |> Mod.map (fun a -> (PList.count a) = 0)
+        let IModTrue = Mod.constant true
+        let IModFalse = Mod.constant false
+
+        let annotation' (anno : MAnnotation)(view : IMod<CameraView>) = 
+            let count = anno.segments |> AList.toMod |> (Mod.map PList.count)
+            let c = Mod.force count
+            let points = match c with       
+                            | 0 -> anno.points
+                            | _ -> anno.segments |> AList.concat
+                               
+            [lines points anno.color anno.thickness.value; 
+                dots anno.points anno.color view] 
+            |> ASet.ofList
+            
+
+    let view (model : MMeasurementsImporterAppModel) =
+                    
+        let frustum =
+            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+      
+        require (Html.semui) (
+            body [clazz "ui"; style "background: #1B1C1E"] [
+                div [] [
+                    ArcBallController.controlledControl model.measurementsCamera CameraMessage frustum
+                        (AttributeMap.ofList [
+                                    attribute "style" "width:65%; height: 100%; float: left;"]
+                        )
+                        (
+                            let view = model.measurementsCamera.view
+                        
+                            // order is irrelevant for rendering. change list to set,
+                            // since set provides more degrees of freedom for the compiler
+                            let annoSet = ASet.ofAList model.annotations 
+
+                            let annotations =
+                                aset {
+                                    for a in annoSet do
+                                        yield! Draw.annotation' a view
+                                } |> Sg.set
+                                
+
+                            [Draw.boxCanvas; annotations] //@ DrawingApp.Draw.annotation model.working view
+                                |> Sg.ofList
+                                |> Sg.fillMode model.measurementsRendering.fillMode
+                                |> Sg.cullMode model.measurementsRendering.cullMode                                                                                           
+                        )                                        
+                ]
+
+                 //Html.Layout.horizontal [
+                        //    Html.Layout.boxH [ 
+
+                div [style "width:35%; height: 100%; float:right;"] [
+
+                    div [clazz "ui list"] [
+                        // surface path
+                        div [clazz "item"] [label [] [text "Scene Path:"]]
+                        div [clazz "item"] [Html.SemUi.textBox model.scenePath SetPath]
+                        div [clazz "ui button"; onMouseClick (fun _ -> OpenFolder )] [text "..."]
+                        div [clazz "ui button"; onMouseClick (fun _ -> Import (Mod.force model.scenePath))] [text "import"]
+                    
+                    ]
+                    
+                   // div [style "overflow-Y: scroll" ] [
+                    Html.SemUi.accordion "Annotations" "File Outline" true [
+                        Incremental.div 
+                            (AttributeMap.ofList [clazz "ui divided list"]) (
+                            
+                                alist {                                                                     
+                                    for a in model.annotations do 
+                                        
+                                        let c = a.color // Annotation.color.[int sem]
+
+                                        let bgc = sprintf "background: %s" (Html.ofC4b (Mod.force c))
+                                    
+                                        yield div [clazz "item"; style bgc] [
+                                                i [clazz "medium File Outline middle aligned icon"][]
+                                                text (a.geometry.ToString())
+                                        ]                                                                    
+                                }     
+                        )
+                    ]
+                   // ]
+                ]
+
+                
+                        
             ]
-            
-          
-            
-        ]
+        )
 
     let initial : MeasurementsImporterAppModel =
         {
         measurementsCamera           = { ArcBallController.initial with view = CameraView.lookAt (23.0 * V3d.OIO) V3d.Zero V3d.OOI}
-        rendering        = InitValues.rendering
+        measurementsRendering        = InitValues.rendering
+
+        measurementsHoverPosition = None
 
         scenePath = @"."
         annotations = PList.empty
         }
     
-    let app : App<MeasurementsImporterAppModel,MMeasurementsImporterAppModel,Action> =
+    let app (f : System.Windows.Forms.Form) : App<MeasurementsImporterAppModel,MMeasurementsImporterAppModel,Action> =
         {
             unpersist = Unpersist.instance
             threads = fun model -> ArcBallController.threads model.measurementsCamera |> ThreadPool.map CameraMessage
             initial = initial
-            update = update //(new  Windows.Forms.Form(Width = 1024, Height = 768))
+            update = update f
             view = view
         }
     
-    let start () = App.start app
+    let start (f : System.Windows.Forms.Form) = App.start (app f)

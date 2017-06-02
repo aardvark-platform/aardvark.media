@@ -9,32 +9,26 @@ open SimpleTest
 module Mutable =
 
     [<StructuredFormatDisplay("{AsString}")>]
-    type MModel private(__initial : SimpleTest.Model) =
+    type MModel(__initial : SimpleTest.Model) = 
         let mutable __current = __initial
-        let _value = ResetMod(__initial.value)
+        let _value = ResetMod.Create(__initial.value)
         let _cameraModel = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraModel)
         
         member x.value = _value :> IMod<_>
         member x.cameraModel = _cameraModel
         
-        member x.Update(__model : SimpleTest.Model) =
-            if not (Object.ReferenceEquals(__model, __current)) then
-                __current <- __model
-                _value.Update(__model.value)
-                _cameraModel.Update(__model.cameraModel)
+        member x.Update(v : SimpleTest.Model) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_value,v.value)
+                Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraModel, v.cameraModel)
         
-        static member Create(initial) = MModel(initial)
+        static member Create(v : SimpleTest.Model) = MModel(v)
+        static member Update(m : MModel, v : SimpleTest.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
-        member private x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module MModel =
-        let inline value (m : MModel) = m.value
-        let inline cameraModel (m : MModel) = m.cameraModel
-    
-    
+        member x.AsString = sprintf "%A" __current
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

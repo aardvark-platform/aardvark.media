@@ -189,6 +189,7 @@ module DrawingApp =
                     ]  
                 |> Sg.onOff (Mod.constant true)
 
+
         let edgeLines (close : bool) (points : alist<V3d>) =
             
             points |> AList.toMod |> Mod.map (fun l ->
