@@ -192,9 +192,7 @@ module Html =
                 )
             )
 
-        
-
-        let adornerMenu (sectionsAndItems : list<string * list<DomNode<'msg>>>) (rest : DomNode<'msg>) =            
+        let adornerMenu (sectionsAndItems : list<string * list<DomNode<'msg>>>) (rest : list<DomNode<'msg>>) =
             let pushButton() = 
                 div [
                     clazz "ui black big launch right attached fixed button menubutton"
@@ -205,15 +203,13 @@ module Html =
                 ]
             [
                 yield 
-                    menu "ui vertical inverted sidebar menu left overlay" sectionsAndItems
+                    menu "ui vertical inverted sidebar menu" sectionsAndItems
                 yield 
                     div [clazz "pusher"] [
-                        pushButton()                    
-                        rest                    
+                        yield pushButton()                    
+                        yield! rest                    
                     ]
-            ]
-            
-        
+            ]                    
 
         let stuffStack (ls) =
             div [clazz "ui inverted segment"] [
