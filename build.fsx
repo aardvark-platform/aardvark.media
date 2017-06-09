@@ -77,7 +77,7 @@ Target "API" (fun () ->
 )
 
 Target "Docs" (fun () -> 
-    Fake.FSharpFormatting.CreateDocs "docs" "docs" "docs/template.html" (projInfo "Aardvark.Base")
+    Fake.FSharpFormatting.CreateDocs "src/Aardvark.Service.Demo/docs" "docs" "docs/template.html" (projInfo "Aardvark.Base")
     Fake.FileHelper.CopyRecursive "packages/build/FSharp.Formatting.CommandTool/styles" "docs/content" true |> printfn "copied: %A"
 )
 

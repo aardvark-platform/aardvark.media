@@ -11,7 +11,7 @@ module Mutable =
     [<StructuredFormatDisplay("{AsString}")>]
     type MModel private(__initial : SimpleTest.Model) =
         let mutable __current = __initial
-        let _value = ResetMod(__initial.value)
+        let _value = ResetMod<_>(__initial.value)
         let _cameraModel = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraModel)
         
         member x.value = _value :> IMod<_>
