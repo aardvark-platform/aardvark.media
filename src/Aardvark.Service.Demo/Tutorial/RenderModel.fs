@@ -16,13 +16,23 @@ open Aardvark.UI.Primitives
 type Action = 
     | SetObject of Object 
     | LoadModel of string
+    | SetShading of ShadingMode
     | CameraAction of CameraController.Message
+
+
+let restrictMode (m : Option<Object>) (mode : ShadingMode) =
+    match m with
+        | Some(SphereModel(_,_)) | Some(BoxModel(_)) -> 
+            if mode = ShadingMode.Textured then ShadingMode.Lighted else mode
+        | Some(FileModel _) -> ShadingMode.Textured
+        | None -> mode
 
 let update (m : Model) (a : Action) =
     match a with
-        | SetObject object -> { m with currentModel = Some object }
-        | CameraAction a ->   { m with cameraState = CameraController.update m.cameraState a }
-        | LoadModel file ->   { m with currentModel = Some (FileModel file) }
+        | SetObject object ->   { m with currentModel = Some object; shadingMode = restrictMode (Some object) m.shadingMode }
+        | CameraAction a ->     { m with cameraState = CameraController.update m.cameraState a }
+        | LoadModel file ->     { m with currentModel = Some (FileModel file) }
+        | SetShading shading -> { m with shadingMode = restrictMode m.currentModel shading }
 
 
 let renderModel (model : IMod<MObject>) =
@@ -52,15 +62,22 @@ let view3D (m : MModel) =
                     return! renderModel model // render the model
         }
 
-    let sg : ISg<Action> =
+    let sg =
         model
-        |> Sg.dynamic
-        |> Sg.trafo m.trafo
-        |> Sg.shader {
+         |> Sg.dynamic
+         |> Sg.trafo m.trafo
+         |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.constantColor C4f.White
-                do! DefaultSurfaces.simpleLighting
-           }
+                let! mode = m.shadingMode
+                match mode with
+                    | ShadingMode.Lighted -> 
+                        do! DefaultSurfaces.simpleLighting
+                    | ShadingMode.Textured ->
+                        do! DefaultSurfaces.simpleLighting
+                        do! DefaultSurfaces.diffuseTexture
+                    | _ -> ()
+            }
             
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant
@@ -76,15 +93,14 @@ let view (m : MModel) =
         div [] (
             Html.SemUi.adornerMenu [ 
                 "Set Scene", [ 
-                    button [clazz "ui icon button"; onClick (fun _ -> SetObject eigi)] [text "The famous eigi model"]
-                    button [clazz "ui icon button"; onClick (fun _ -> SetObject defaultSphere)] [text "Sphere"] 
-                    button [clazz "ui icon button"; onClick (fun _ -> SetObject defaultBox)] [text "Box"] 
-                    button [ 
-                             clazz "ui button";
-                             onEvent "onchoose" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> LoadModel)
-                             clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
-                           ] [ text "Load from File"]
+                    button [clazz "ui button"; onClick (fun _ -> SetObject eigi)] [text "The famous eigi model"]
+                    button [clazz "ui button"; onClick (fun _ -> SetObject defaultSphere)] [text "Sphere"] 
+                    button [clazz "ui button"; onClick (fun _ -> SetObject defaultBox)] [text "Box"] 
+                    button (clazz "ui button" :: Html.IO.fileDialog LoadModel) [text "Load from File"]
                 ] 
+                "Appearance", [
+                    Html.SemUi.dropDown m.shadingMode SetShading 
+                ]
             ] [view3D m]
         )
     )
@@ -96,8 +112,9 @@ let app =
         threads = fun (model : Model) -> CameraController.threads model.cameraState |> ThreadPool.map CameraAction
         initial = { 
                     currentModel = None; 
-                    cameraState = CameraController.initial; 
-                    trafo = Trafo3d.Identity 
+                    cameraState  = CameraController.initial; 
+                    trafo        = Trafo3d.Identity 
+                    shadingMode  = ShadingMode.Lighted
                   }
         update = update
         view = view
