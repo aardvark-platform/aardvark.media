@@ -15,12 +15,14 @@ open Aardvark.UI.Primitives
 
 type Action = 
     | SetObject of Object 
+    | LoadModel of string
     | CameraAction of CameraController.Message
 
 let update (m : Model) (a : Action) =
     match a with
         | SetObject object -> { m with currentModel = Some object }
-        | CameraAction a -> { m with cameraState = CameraController.update m.cameraState a }
+        | CameraAction a ->   { m with cameraState = CameraController.update m.cameraState a }
+        | LoadModel file ->   { m with currentModel = Some (FileModel file) }
 
 
 let renderModel (model : IMod<MObject>) =
@@ -29,12 +31,12 @@ let renderModel (model : IMod<MObject>) =
         match currentModel with
             | MFileModel fileName -> 
                 let! file = fileName // read current filename
-                return Sg.Assimp.loadFromFile file // create scenegraph
-            | MSphere(center,radius) ->
+                return Sg.Assimp.loadFromFile file |> Sg.normalize // create scenegraph
+            | MSphereModel(center,radius) ->
                 let sphere = Sg.sphere 3 (Mod.constant C4b.White) radius 
                 // create unit sphere of given mod radius and translate adaptively
                 return Sg.translate' center sphere
-            | MBox b -> 
+            | MBoxModel b -> 
                 return Sg.box (Mod.constant C4b.White) b //adaptively create box
     }
 
@@ -56,7 +58,7 @@ let view3D (m : MModel) =
         |> Sg.trafo m.trafo
         |> Sg.shader {
                 do! DefaultSurfaces.trafo
-                do! DefaultSurfaces.vertexColor
+                do! DefaultSurfaces.constantColor C4f.White
                 do! DefaultSurfaces.simpleLighting
            }
             
@@ -65,15 +67,23 @@ let view3D (m : MModel) =
     let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"]
     CameraController.controlledControl m.cameraState CameraAction frustum attributes sg
 
+let eigi = FileModel @"C:\Development\aardvark.rendering\data\eigi\eigi.dae"
+let defaultSphere = SphereModel(V3d.OOO,1.0)
+let defaultBox = BoxModel Box3d.Unit
+
 let view (m : MModel) =
     require Html.semui (
         div [] (
             Html.SemUi.adornerMenu [ 
                 "Set Scene", [ 
-                    button [clazz "ui icon button"] [text "Eigi"] 
-                    button [clazz "ui icon button"] [text "Sphere"] 
-                    button [clazz "ui icon button"] [text "Box"] 
-                    button [clazz "ui icon button"] [text "File"] 
+                    button [clazz "ui icon button"; onClick (fun _ -> SetObject eigi)] [text "The famous eigi model"]
+                    button [clazz "ui icon button"; onClick (fun _ -> SetObject defaultSphere)] [text "Sphere"] 
+                    button [clazz "ui icon button"; onClick (fun _ -> SetObject defaultBox)] [text "Box"] 
+                    button [ 
+                             clazz "ui button";
+                             onEvent "onchoose" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> LoadModel)
+                             clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
+                           ] [ text "Load from File"]
                 ] 
             ] [view3D m]
         )

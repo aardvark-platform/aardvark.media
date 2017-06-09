@@ -6,9 +6,9 @@ open Aardvark.UI.Primitives
 
 [<DomainType>]
 type Object =
-    | FileModel of string
-    | Sphere    of center : V3d * radius : float
-    | Box       of Box3d
+    | FileModel   of string
+    | SphereModel of center : V3d * radius : float
+    | BoxModel    of Box3d
 
 [<DomainType>]
 type Model = { 

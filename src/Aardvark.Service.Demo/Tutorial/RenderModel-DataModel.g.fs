@@ -16,8 +16,8 @@ module Mutable =
         static member private CreateValue(__model : RenderModel.Object) = 
             match __model with
                 | FileModel(item) -> MFileModel(__model, item) :> MObject
-                | Sphere(center, radius) -> MSphere(__model, center, radius) :> MObject
-                | Box(item) -> MBox(__model, item) :> MObject
+                | SphereModel(center, radius) -> MSphereModel(__model, center, radius) :> MObject
+                | BoxModel(item) -> MBoxModel(__model, item) :> MObject
         
         static member Create(v : RenderModel.Object) =
             ResetMod.Create(MObject.CreateValue v) :> IMod<_>
@@ -49,7 +49,7 @@ module Mutable =
                         true
                     | _ -> false
     
-    and private MSphere(__initial : RenderModel.Object, center : Aardvark.Base.V3d, radius : Microsoft.FSharp.Core.float) =
+    and private MSphereModel(__initial : RenderModel.Object, center : Aardvark.Base.V3d, radius : Microsoft.FSharp.Core.float) =
         inherit MObject()
         
         let mutable __current = __initial
@@ -66,14 +66,14 @@ module Mutable =
                 true
             else
                 match __model with
-                    | Sphere(center,radius) -> 
+                    | SphereModel(center,radius) -> 
                         __current <- __model
                         _center.Update(center)
                         _radius.Update(radius)
                         true
                     | _ -> false
     
-    and private MBox(__initial : RenderModel.Object, item : Aardvark.Base.Box3d) =
+    and private MBoxModel(__initial : RenderModel.Object, item : Aardvark.Base.Box3d) =
         inherit MObject()
         
         let mutable __current = __initial
@@ -88,7 +88,7 @@ module Mutable =
                 true
             else
                 match __model with
-                    | Box(item) -> 
+                    | BoxModel(item) -> 
                         __current <- __model
                         _item.Update(item)
                         true
@@ -97,11 +97,11 @@ module Mutable =
     
     [<AutoOpen>]
     module MObjectPatterns =
-        let (|MFileModel|MSphere|MBox|) (m : MObject) =
+        let (|MFileModel|MSphereModel|MBoxModel|) (m : MObject) =
             match m with
             | :? MFileModel as v -> MFileModel(v.item)
-            | :? MSphere as v -> MSphere(v.center,v.radius)
-            | :? MBox as v -> MBox(v.item)
+            | :? MSphereModel as v -> MSphereModel(v.center,v.radius)
+            | :? MBoxModel as v -> MBoxModel(v.item)
             | _ -> failwith "impossible"
     
     
