@@ -207,12 +207,12 @@ module CameraController =
                 (AttributeMap.empty)
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
+                        |> Sg.noEvents
                         |> Sg.shader {
                             do! DefaultSurfaces.trafo
                             do! DefaultSurfaces.vertexColor
                             do! DefaultSurfaces.simpleLighting
                         }
-                        |> Sg.noEvents
                 )
         ]
 
@@ -464,12 +464,12 @@ module ArcBallController =
                 (AttributeMap.empty)
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
+                        |> Sg.noEvents
                         |> Sg.shader {
                             do! DefaultSurfaces.trafo
                             do! DefaultSurfaces.vertexColor
                             do! DefaultSurfaces.simpleLighting
                         }
-                        |> Sg.noEvents
                 )
         ]
 
