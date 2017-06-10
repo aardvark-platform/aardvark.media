@@ -108,16 +108,46 @@ module Mutable =
     
     
     [<StructuredFormatDisplay("{AsString}")>]
+    type MAppearance(__initial : RenderModel.Appearance) = 
+        let mutable __current = __initial
+        let _cullMode = ResetMod.Create(__initial.cullMode)
+        
+        member x.cullMode = _cullMode :> IMod<_>
+        
+        member x.Update(v : RenderModel.Appearance) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_cullMode,v.cullMode)
+        
+        static member Create(v : RenderModel.Appearance) = MAppearance(v)
+        static member Update(m : MAppearance, v : RenderModel.Appearance) = m.Update(v)
+        
+        override x.ToString() = __current.ToString()
+        member x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module Appearance =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let cullMode =
+                { new Lens<RenderModel.Appearance, Aardvark.Base.Rendering.CullMode>() with
+                    override x.Get(r) = r.cullMode
+                    override x.Set(r,v) = { r with cullMode = v }
+                    override x.Update(r,f) = { r with cullMode = f r.cullMode }
+                }
+    [<StructuredFormatDisplay("{AsString}")>]
     type MModel(__initial : RenderModel.Model) = 
         let mutable __current = __initial
         let _trafo = ResetMod.Create(__initial.trafo)
         let _currentModel = MOption.Create(__initial.currentModel, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
-        let _shadingMode = ResetMod.Create(__initial.shadingMode)
+        let _appearance = MAppearance.Create(__initial.appearance)
         let _cameraState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraState)
         
         member x.trafo = _trafo :> IMod<_>
         member x.currentModel = _currentModel :> IMod<_>
-        member x.shadingMode = _shadingMode :> IMod<_>
+        member x.appearance = _appearance
         member x.cameraState = _cameraState
         
         member x.Update(v : RenderModel.Model) =
@@ -126,7 +156,7 @@ module Mutable =
                 
                 ResetMod.Update(_trafo,v.trafo)
                 MOption.Update(_currentModel, v.currentModel)
-                ResetMod.Update(_shadingMode,v.shadingMode)
+                MAppearance.Update(_appearance, v.appearance)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraState, v.cameraState)
         
         static member Create(v : RenderModel.Model) = MModel(v)
@@ -152,11 +182,11 @@ module Mutable =
                     override x.Set(r,v) = { r with currentModel = v }
                     override x.Update(r,f) = { r with currentModel = f r.currentModel }
                 }
-            let shadingMode =
-                { new Lens<RenderModel.Model, RenderModel.ShadingMode>() with
-                    override x.Get(r) = r.shadingMode
-                    override x.Set(r,v) = { r with shadingMode = v }
-                    override x.Update(r,f) = { r with shadingMode = f r.shadingMode }
+            let appearance =
+                { new Lens<RenderModel.Model, RenderModel.Appearance>() with
+                    override x.Get(r) = r.appearance
+                    override x.Set(r,v) = { r with appearance = v }
+                    override x.Update(r,f) = { r with appearance = f r.appearance }
                 }
             let cameraState =
                 { new Lens<RenderModel.Model, Aardvark.UI.Primitives.CameraControllerState>() with

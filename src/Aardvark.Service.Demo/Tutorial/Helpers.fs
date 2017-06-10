@@ -10,5 +10,8 @@ open Aardvark.UI
 module Sg =
 
    module Assimp =
-        let loadFromFile f =  
-            f |> Aardvark.SceneGraph.IO.Loader.Assimp.load |> Sg.adapter |> Sg.noEvents
+        let loadFromFile zUp f =  
+            f |> Aardvark.SceneGraph.IO.Loader.Assimp.load 
+              |> Sg.adapter 
+              |> Sg.noEvents
+              |> Sg.transform (if zUp then Trafo3d.FromOrthoNormalBasis(V3d.IOO, V3d.OOI, -V3d.OIO) else Trafo3d.Identity)
