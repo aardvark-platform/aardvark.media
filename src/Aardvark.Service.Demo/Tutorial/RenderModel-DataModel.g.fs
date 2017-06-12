@@ -8,6 +8,36 @@ open RenderModel
 [<AutoOpen>]
 module Mutable =
 
+    [<StructuredFormatDisplay("{AsString}")>]
+    type MAppearance(__initial : RenderModel.Appearance) = 
+        let mutable __current = __initial
+        let _cullMode = ResetMod.Create(__initial.cullMode)
+        
+        member x.cullMode = _cullMode :> IMod<_>
+        
+        member x.Update(v : RenderModel.Appearance) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_cullMode,v.cullMode)
+        
+        static member Create(v : RenderModel.Appearance) = MAppearance(v)
+        static member Update(m : MAppearance, v : RenderModel.Appearance) = m.Update(v)
+        
+        override x.ToString() = __current.ToString()
+        member x.AsString = sprintf "%A" __current
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module Appearance =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let cullMode =
+                { new Lens<RenderModel.Appearance, Aardvark.Base.Rendering.CullMode>() with
+                    override x.Get(r) = r.cullMode
+                    override x.Set(r,v) = { r with cullMode = v }
+                    override x.Update(r,f) = { r with cullMode = f r.cullMode }
+                }
     [<AbstractClass; System.Runtime.CompilerServices.Extension; StructuredFormatDisplay("{AsString}")>]
     type MObject() =
         abstract member TryUpdate : RenderModel.Object -> bool
@@ -107,36 +137,6 @@ module Mutable =
     
     
     
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MAppearance(__initial : RenderModel.Appearance) = 
-        let mutable __current = __initial
-        let _cullMode = ResetMod.Create(__initial.cullMode)
-        
-        member x.cullMode = _cullMode :> IMod<_>
-        
-        member x.Update(v : RenderModel.Appearance) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
-                
-                ResetMod.Update(_cullMode,v.cullMode)
-        
-        static member Create(v : RenderModel.Appearance) = MAppearance(v)
-        static member Update(m : MAppearance, v : RenderModel.Appearance) = m.Update(v)
-        
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
-    
-    
-    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module Appearance =
-        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-        module Lens =
-            let cullMode =
-                { new Lens<RenderModel.Appearance, Aardvark.Base.Rendering.CullMode>() with
-                    override x.Get(r) = r.cullMode
-                    override x.Set(r,v) = { r with cullMode = v }
-                    override x.Update(r,f) = { r with cullMode = f r.cullMode }
-                }
     [<StructuredFormatDisplay("{AsString}")>]
     type MModel(__initial : RenderModel.Model) = 
         let mutable __current = __initial

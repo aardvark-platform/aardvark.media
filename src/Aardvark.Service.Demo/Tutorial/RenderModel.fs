@@ -83,7 +83,7 @@ let initialView = CameraView.lookAt (V3d.III * 2.0) V3d.OOO V3d.OOI
 
 let view (m : MModel) =
     require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-        div [] (
+        body [] (
             Html.SemUi.adornerMenu [ 
                 "Set Scene", [ 
                     button [clazz "ui button"; onClick (fun _ -> SetObject eigi)] [text "The famous eigi model"]
@@ -98,7 +98,7 @@ let view (m : MModel) =
         )
     )
 
-// in order to provide camera animations, we need to compute a set of 
+// in order to provide camera animations, we need to compute a set of  
 // background operations (we call threads). The app maintains (just like each other state)
 // a set of threads which will be executed as long as they exist (no manual subscription stuff required).
 let threads (model : Model) = 
@@ -112,7 +112,7 @@ let app =
                     currentModel = None; 
                     cameraState  = { CameraController.initial with view = initialView }
                     trafo        = Trafo3d.Identity 
-                    appearance   = { cullMode = CullMode.CounterClockwise }
+                    appearance   = { cullMode = CullMode.Clockwise }
                   }
         update = update
         view = view
