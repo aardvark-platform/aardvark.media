@@ -19,7 +19,7 @@ type Action =
 // given the current immutable state and an action, compute a new immutable model
 let update (m : Model) (a : Action) =
     match a with
-        | SetObject object   -> { m with currentModel = Some object }
+        | SetObject obj      -> { m with currentModel = Some obj }
         | CameraAction a     -> // compute a new state by reusing camera update logic implemented in CameraController app.
             { m with cameraState = CameraController.update m.cameraState a }
         | LoadModel file     -> { m with currentModel = Some (FileModel file) }
@@ -83,13 +83,13 @@ let initialView = CameraView.lookAt (V3d.III * 2.0) V3d.OOO V3d.OOI
 
 let view (m : MModel) =
     require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-        body [] (
+        body [] (        // explit html body for our app (adorner menus need to be immediate children of body). if there is no explicit body the we would automatically generate a body for you.
             Html.SemUi.adornerMenu [ 
                 "Set Scene", [ 
-                    button [clazz "ui button"; onClick (fun _ -> SetObject eigi)] [text "The famous eigi model"]
+                    button [clazz "ui button"; onClick (fun _ -> SetObject eigi)]          [text "The famous eigi model"]
                     button [clazz "ui button"; onClick (fun _ -> SetObject defaultSphere)] [text "Sphere"] 
-                    button [clazz "ui button"; onClick (fun _ -> SetObject defaultBox)] [text "Box"] 
-                    button (clazz "ui button" :: Html.IO.fileDialog LoadModel) [text "Load from File"]
+                    button [clazz "ui button"; onClick (fun _ -> SetObject defaultBox)]    [text "Box"] 
+                    button (clazz "ui button" :: Html.IO.fileDialog LoadModel)             [text "Load from File"]
                 ] 
                 "Appearance", [
                     Html.SemUi.dropDown m.appearance.cullMode SetCullMode 

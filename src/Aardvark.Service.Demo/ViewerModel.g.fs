@@ -8,8 +8,10 @@ open Viewer
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MViewerModel(__initial : Viewer.ViewerModel) = 
+    
+    
+    type MViewerModel(__initial : Viewer.ViewerModel) =
+        inherit obj()
         let mutable __current = __initial
         let _files = ResetMod.Create(__initial.files)
         let _rotation = ResetMod.Create(__initial.rotation)
@@ -38,12 +40,16 @@ module Mutable =
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
                 ResetMod.Update(_fillMode,v.fillMode)
                 ResetMod.Update(_cullMode,v.cullMode)
+                
         
-        static member Create(v : Viewer.ViewerModel) = MViewerModel(v)
+        static member Create(__initial : Viewer.ViewerModel) : MViewerModel = MViewerModel(__initial)
         static member Update(m : MViewerModel, v : Viewer.ViewerModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Viewer.ViewerModel> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

@@ -8,8 +8,10 @@ open RenderModel
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MAppearance(__initial : RenderModel.Appearance) = 
+    
+    
+    type MAppearance(__initial : RenderModel.Appearance) =
+        inherit obj()
         let mutable __current = __initial
         let _cullMode = ResetMod.Create(__initial.cullMode)
         
@@ -20,12 +22,16 @@ module Mutable =
                 __current <- v
                 
                 ResetMod.Update(_cullMode,v.cullMode)
+                
         
-        static member Create(v : RenderModel.Appearance) = MAppearance(v)
+        static member Create(__initial : RenderModel.Appearance) : MAppearance = MAppearance(__initial)
         static member Update(m : MAppearance, v : RenderModel.Appearance) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<RenderModel.Appearance> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -137,8 +143,10 @@ module Mutable =
     
     
     
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MModel(__initial : RenderModel.Model) = 
+    
+    
+    type MModel(__initial : RenderModel.Model) =
+        inherit obj()
         let mutable __current = __initial
         let _trafo = ResetMod.Create(__initial.trafo)
         let _currentModel = MOption.Create(__initial.currentModel, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
@@ -158,12 +166,16 @@ module Mutable =
                 MOption.Update(_currentModel, v.currentModel)
                 MAppearance.Update(_appearance, v.appearance)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraState, v.cameraState)
+                
         
-        static member Create(v : RenderModel.Model) = MModel(v)
+        static member Create(__initial : RenderModel.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : RenderModel.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<RenderModel.Model> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

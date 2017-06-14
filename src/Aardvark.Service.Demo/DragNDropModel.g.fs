@@ -8,8 +8,10 @@ open DragNDrop
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MModel(__initial : DragNDrop.Model) = 
+    
+    
+    type MModel(__initial : DragNDrop.Model) =
+        inherit obj()
         let mutable __current = __initial
         let _trafo = ResetMod.Create(__initial.trafo)
         let _dragging = MOption.Create(__initial.dragging)
@@ -26,12 +28,16 @@ module Mutable =
                 ResetMod.Update(_trafo,v.trafo)
                 MOption.Update(_dragging, v.dragging)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                
         
-        static member Create(v : DragNDrop.Model) = MModel(v)
+        static member Create(__initial : DragNDrop.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : DragNDrop.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<DragNDrop.Model> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -56,8 +62,10 @@ module Mutable =
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
                 }
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MTransformation(__initial : DragNDrop.Transformation) = 
+    
+    
+    type MTransformation(__initial : DragNDrop.Transformation) =
+        inherit obj()
         let mutable __current = __initial
         let _trafo = ResetMod.Create(__initial.trafo)
         let _hovered = MOption.Create(__initial.hovered)
@@ -74,12 +82,16 @@ module Mutable =
                 ResetMod.Update(_trafo,v.trafo)
                 MOption.Update(_hovered, v.hovered)
                 MOption.Update(_grabbed, v.grabbed)
+                
         
-        static member Create(v : DragNDrop.Transformation) = MTransformation(v)
+        static member Create(__initial : DragNDrop.Transformation) : MTransformation = MTransformation(__initial)
         static member Update(m : MTransformation, v : DragNDrop.Transformation) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<DragNDrop.Transformation> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -104,8 +116,10 @@ module Mutable =
                     override x.Set(r,v) = { r with grabbed = v }
                     override x.Update(r,f) = { r with grabbed = f r.grabbed }
                 }
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MScene(__initial : DragNDrop.Scene) = 
+    
+    
+    type MScene(__initial : DragNDrop.Scene) =
+        inherit obj()
         let mutable __current = __initial
         let _transformation = MTransformation.Create(__initial.transformation)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
@@ -119,12 +133,16 @@ module Mutable =
                 
                 MTransformation.Update(_transformation, v.transformation)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                
         
-        static member Create(v : DragNDrop.Scene) = MScene(v)
+        static member Create(__initial : DragNDrop.Scene) : MScene = MScene(__initial)
         static member Update(m : MScene, v : DragNDrop.Scene) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<DragNDrop.Scene> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

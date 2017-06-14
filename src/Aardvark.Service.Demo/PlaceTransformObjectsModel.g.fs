@@ -8,8 +8,10 @@ open PlaceTransformObjects
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MObject(__initial : PlaceTransformObjects.Object) = 
+    
+    
+    type MObject(__initial : PlaceTransformObjects.Object) =
+        inherit obj()
         let mutable __current = __initial
         let _name = ResetMod.Create(__initial.name)
         let _objectType = ResetMod.Create(__initial.objectType)
@@ -26,12 +28,16 @@ module Mutable =
                 ResetMod.Update(_name,v.name)
                 ResetMod.Update(_objectType,v.objectType)
                 DragNDrop.Mutable.MTransformation.Update(_transformation, v.transformation)
+                
         
-        static member Create(v : PlaceTransformObjects.Object) = MObject(v)
+        static member Create(__initial : PlaceTransformObjects.Object) : MObject = MObject(__initial)
         static member Update(m : MObject, v : PlaceTransformObjects.Object) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<PlaceTransformObjects.Object> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -56,8 +62,10 @@ module Mutable =
                     override x.Set(r,v) = { r with transformation = v }
                     override x.Update(r,f) = { r with transformation = f r.transformation }
                 }
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MWorld(__initial : PlaceTransformObjects.World) = 
+    
+    
+    type MWorld(__initial : PlaceTransformObjects.World) =
+        inherit obj()
         let mutable __current = __initial
         let _objects = MMap.Create(__initial.objects, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
         let _selectedObjects = MSet.Create(__initial.selectedObjects)
@@ -71,12 +79,16 @@ module Mutable =
                 
                 MMap.Update(_objects, v.objects)
                 MSet.Update(_selectedObjects, v.selectedObjects)
+                
         
-        static member Create(v : PlaceTransformObjects.World) = MWorld(v)
+        static member Create(__initial : PlaceTransformObjects.World) : MWorld = MWorld(__initial)
         static member Update(m : MWorld, v : PlaceTransformObjects.World) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<PlaceTransformObjects.World> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -95,8 +107,10 @@ module Mutable =
                     override x.Set(r,v) = { r with selectedObjects = v }
                     override x.Update(r,f) = { r with selectedObjects = f r.selectedObjects }
                 }
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MScene(__initial : PlaceTransformObjects.Scene) = 
+    
+    
+    type MScene(__initial : PlaceTransformObjects.Scene) =
+        inherit obj()
         let mutable __current = __initial
         let _world = MWorld.Create(__initial.world)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
@@ -110,12 +124,16 @@ module Mutable =
                 
                 MWorld.Update(_world, v.world)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                
         
-        static member Create(v : PlaceTransformObjects.Scene) = MScene(v)
+        static member Create(__initial : PlaceTransformObjects.Scene) : MScene = MScene(__initial)
         static member Update(m : MScene, v : PlaceTransformObjects.Scene) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<PlaceTransformObjects.Scene> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

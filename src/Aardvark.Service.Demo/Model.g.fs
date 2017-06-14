@@ -8,8 +8,10 @@ open Demo.TestApp
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MUrdar(__initial : Demo.TestApp.Urdar) = 
+    
+    
+    type MUrdar(__initial : Demo.TestApp.Urdar) =
+        inherit obj()
         let mutable __current = __initial
         let _urdar = ResetMod.Create(__initial.urdar)
         
@@ -20,12 +22,16 @@ module Mutable =
                 __current <- v
                 
                 ResetMod.Update(_urdar,v.urdar)
+                
         
-        static member Create(v : Demo.TestApp.Urdar) = MUrdar(v)
+        static member Create(__initial : Demo.TestApp.Urdar) : MUrdar = MUrdar(__initial)
         static member Update(m : MUrdar, v : Demo.TestApp.Urdar) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Demo.TestApp.Urdar> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -185,8 +191,10 @@ module Mutable =
                     override x.Set(r,v) = { r with nodes = v }
                     override x.Update(r,f) = { r with nodes = f r.nodes }
                 }
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MModel(__initial : Demo.TestApp.Model) = 
+    
+    
+    type MModel(__initial : Demo.TestApp.Model) =
+        inherit obj()
         let mutable __current = __initial
         let _boxHovered = ResetMod.Create(__initial.boxHovered)
         let _dragging = ResetMod.Create(__initial.dragging)
@@ -221,12 +229,16 @@ module Mutable =
                 MMap.Update(_objects, v.objects)
                 ResetMod.Update(_lastTime,v.lastTime)
                 MTree.Update(_tree, v.tree)
+                
         
-        static member Create(v : Demo.TestApp.Model) = MModel(v)
+        static member Create(__initial : Demo.TestApp.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : Demo.TestApp.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Demo.TestApp.Model> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
