@@ -36,16 +36,11 @@ open PRo3DModels.Mutable
 // einbinden vong html javascript
 
 (* TODO:
-
 * plane pickshape
 * Sg.shader  for ISg<'msg>
 * multiple picks along pickray (e.g. pickthrough for example in when selecting objs etc)
 * click has wrong semantics
 * globalpicks should have firsthit property
-* multiple domain type files with same namespace collide in diffgenerator
-* diffgenerator msbuild<15 compatbility
-* diffgenerator annotation of lambdas for ResetMap creation
-
 *)
 
 
@@ -59,40 +54,38 @@ let kitchenSink argv =
     let runtime = app.Runtime
     use form = new Form(Width = 1024, Height = 768)
 
-   // let a = Viewer.KitchenSinkApp.start()
-    //let a = Aardvark.UI.Numeric.start()
-    //let a = TreeViewApp.start()
-    //let a = AnnotationProperties.start()
-    //let a = SimpleTestApp.start()
-    //let a = SimpleCompositionViewer.start()
-    //let a = OrbitCameraDemo.start()
-    //let a = NavigationModeDemo.start()    
-    //let a = BoxSelectionDemo.start()
+    let app = Viewer.KitchenSinkApp.app
+    let app = Aardvark.UI.Numeric.app
+    let app = TreeViewApp.app
+    let app = AnnotationProperties.app
+    let app = SimpleTestApp.app
+    let app = SimpleCompositionViewer.app
+    let app = OrbitCameraDemo.app
+    let app = NavigationModeDemo.app  
+    let app = BoxSelectionDemo.app
 
-    //let a = DragNDrop.TranslateController.start()
-    //let a = SimpleDrawingApp.start()
-    //let a = DrawingApp.start()
-    //let a = PlaceTransformObjects.App.start()
-    //let a = BookmarkApp.start()
-    //let a = MeasurementsImporterApp.start(form)
-    let a = RenderModelApp.start()
+    let app = DragNDrop.TranslateController.app
+    let app = SimpleDrawingApp.app
+    let app = PlaceTransformObjects.App.app
+    let app = BookmarkApp.app
+    let app = MeasurementsImporterApp.app form
+    let app = RenderModelApp.app 
+    let app = AnnotationApp.app
 
-    //let a = AnnotationApp.start()
+
+    let instance = 
+        app |> App.start
 
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart runtime a
+        MutableApp.toWebPart runtime instance
         Suave.Files.browseHome
     ]  
 
-    //use form = new Form(Width = 1024, Height = 768)
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
     ctrl.StartUrl <- "http://localhost:4321/"
-
     ctrl.ShowDevTools()
-
-   
 
     Application.Run form
     System.Environment.Exit 0

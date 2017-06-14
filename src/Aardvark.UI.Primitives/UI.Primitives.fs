@@ -140,10 +140,10 @@ module Numeric =
             view = view' inputTypes
         }
 
-    let app = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
+    let app () = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
 
     let start () =
-        App.start app
+        app () |> App.start 
 
 module Html =
 
@@ -506,4 +506,4 @@ module TreeViewApp =
         }
 
     let start () =
-        App.start app
+        app |> App.start 
