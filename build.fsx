@@ -85,6 +85,20 @@ Target "Docs" (fun () ->
 "Compile" ==> "Docs"
 "Compile" ==> "Docs" ==> "API"
 
+let toolPath = "packages/Aardvark.Compiler.DomainTypeTool/tools/Aardvark.Compiler.DomainTypeTool.exe"
+let projectPath = "src/Aardvark.Service.Demo/Aardvark.Service.Demo.fsproj"
+
+Target "GenTypes" (fun () -> 
+
+    let error m = 
+        traceError m
+    let message m = 
+        trace m
+
+    let ok = Fake.ProcessHelper.ExecProcessWithLambdas (fun s -> s.FileName <- toolPath; s.Arguments <- projectPath ) TimeSpan.MaxValue false error message 
+    printfn "Aardvark.Compiler.DomainTypeTool.exe returned: %d" ok
+
+)
 
 
 entry()
