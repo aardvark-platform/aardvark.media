@@ -71,6 +71,7 @@ let kitchenSink argv =
     let app = MeasurementsImporterApp.app form
     let app = RenderModelApp.app 
     let app = AnnotationApp.app
+    let app = PerformanceApp.app
 
 
     let instance = 
