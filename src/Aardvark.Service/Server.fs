@@ -601,8 +601,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let subscribe() =
         sender.AddMarkingCallback(fun () ->
-            send Invalidate
             invalidateTime.Start()
+            send Invalidate
         )
 
     let mutable info =
