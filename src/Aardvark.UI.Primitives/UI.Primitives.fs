@@ -273,13 +273,13 @@ module Html =
                     onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
                 ]
 
-            onBoot "$('#__ID__').dropdown();" (
-                select [clazz "ui selection dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
-                    for (name, value) in nv do
-                        let att = attributes name value
-                        yield Incremental.option att (AList.ofList [text name])
-                ]
-            )
+       //     onBoot "$('#__ID__').dropdown();" (
+            select [clazz "basic"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change); style "color:black"] [
+                for (name, value) in nv do
+                    let att = attributes name value
+                    yield Incremental.option att (AList.ofList [text name])
+            ]
+         //   )
 
         let textBox (text : IMod<string>) (set : string -> 'msg) =          
             
