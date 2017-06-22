@@ -273,11 +273,16 @@ module Html =
                     onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
                 ]
 
-            onBoot "$('#__ID__').dropdown();" (
-                select [clazz "ui selection dropdown"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change)] [
+            
+            //js "onclick"        "$('.sidebar').sidebar('toggle');"
+            
+            onBoot "$('#__ID__').dropdown();" (                
+                select [clazz "ui selection dropdown"; 
+                    onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change);               
+                    ] [
                     for (name, value) in nv do
                         let att = attributes name value
-                        yield Incremental.option att (AList.ofList [text name])
+                        yield Incremental.option att (AList.ofList [text name])                              
                 ]
             )
 

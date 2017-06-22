@@ -301,3 +301,9 @@ module HigherOrderTags =
         match node.Boot with
             | None -> node.WithBoot (Some boot)
             | Some o -> node.WithBoot (Some (fun id -> boot id + "; " + o id))
+
+    let onSet (code : string) (node : DomNode<'msg>) =
+        let set id = code.Replace("__ID__", id)
+        match node.Set with
+            | None -> node.WithSet (Some set)
+            | Some o -> node.WithSet (Some (fun id -> set id + "; " + o id))

@@ -363,6 +363,7 @@ module SceneEventProcessor =
 type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomContent<'msg>) =
     let mutable required : list<Reference> = []
     let mutable boot : Option<string -> string> = None
+    let mutable set : Option<string -> string> = None
     let mutable shutdown : Option<string -> string> = None
     let mutable callbacks : Map<string, (list<string> -> 'msg)> = Map.empty
 
@@ -381,6 +382,10 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
         with get() = boot
         and private set code = boot <- code
 
+    member x.Set
+        with get() = set
+        and private set code = set <- code
+
     member x.Shutdown
         with get() = shutdown
         and private set code = shutdown <- code
@@ -396,6 +401,7 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
             x.Content,
             Required = x.Required,
             Boot = x.Boot,
+            Set = x.Set,
             Shutdown = x.Shutdown,
             Callbacks = x.Callbacks
         )
@@ -407,6 +413,7 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
             DomContent.Map(x.Content, f),
             Required = x.Required,
             Boot = x.Boot,
+            Set = x.Set,
             Shutdown = x.Shutdown,
             Callbacks = (x.Callbacks |> Map.map (fun k v -> fun xs -> f (v xs)))
         )
@@ -417,7 +424,12 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
 
     member x.WithBoot (boot : Option<string -> string>) =
         let res = x.Copy()
-        res.Boot <- boot
+        res.Boot <- boot        
+        res
+
+    member x.WithSet (set : Option<string -> string>) =
+        let res = x.Copy()
+        res.Set <- set
         res
 
     member x.WithShutdown (shutdown : Option<string -> string>) =
