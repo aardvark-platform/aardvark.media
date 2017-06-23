@@ -86,6 +86,7 @@ module Numeric =
 
         let attributes = 
             amap {
+                yield style "color : black"
                 yield style "text-align:right"                
 
                 let! min = model.min
@@ -274,7 +275,7 @@ module Html =
                 ]
 
        //     onBoot "$('#__ID__').dropdown();" (
-            select [clazz "basic"; onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change); style "color:black"] [
+            select [onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change); style "color:black"] [
                 for (name, value) in nv do
                     let att = attributes name value
                     yield Incremental.option att (AList.ofList [text name])
@@ -291,9 +292,9 @@ module Html =
                     yield "value" => t 
                 }
 
-            div [clazz "ui input"] [
-                Incremental.input (AttributeMap.ofAMap attributes)
-            ]
+          //  div [clazz "ui input"] [
+            Incremental.input (AttributeMap.ofAMap attributes)
+            //]
 
         let toggleBox (state : IMod<bool>) (toggle : 'msg) =
 
@@ -307,10 +308,10 @@ module Html =
                      yield "checked" => checkText
                 }
 
-            div [clazz "ui toggle checkbox"] [
-                Incremental.input (AttributeMap.ofAMap attributes)
-                label [] [text ""]
-            ]
+      //      div [clazz "ui toggle checkbox"] [
+            Incremental.input (AttributeMap.ofAMap attributes)
+        //        label [] [text ""]
+            //]
 
         let toggleImage (state : IMod<bool>) (toggle : unit -> 'msg) = 0
 

@@ -16,6 +16,6 @@ div.title {
     padding-bottom: 0px;
 }
 
-select {
+select, input {
     color: black
 }
