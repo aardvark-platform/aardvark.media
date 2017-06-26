@@ -69,6 +69,7 @@
     <Compile Include="Tags.fs" />
     <Compile Include="Attributes.fs" />
     <None Include="paket.references" />
+    <Compile Include="SgFSharpExtensions.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

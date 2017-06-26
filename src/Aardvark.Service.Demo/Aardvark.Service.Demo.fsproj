@@ -101,6 +101,17 @@
     <Compile Include="PlaceTransformObjectsModel.fs" />
     <Compile Include="PlaceTransformObjects.fs" />
     <Compile Include="MeasurementsImporterApp.fs" />
+    <Compile Include="Tutorial\Helpers.fs" />
+    <Compile Include="Tutorial\RenderModel-DataModel.fs" />
+    <Compile Include="Tutorial\RenderModel.fs" />
+    <Compile Include="Tutorial\PlaceObjects-DataModel.fs" />
+    <Compile Include="Tutorial\PlaceObjects.fs" />
+    <Compile Include="Tutorial\TransformObjects-DataModel.fs" />
+    <Compile Include="Tutorial\TransformObjects.fs" />
+    <Compile Include="Tutorial\Editor-DataModel.fs" />
+    <Compile Include="Tutorial\Editor.fs" />
+    <Compile Include="Performance-DataModel.fs" />
+    <Compile Include="Performance.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />

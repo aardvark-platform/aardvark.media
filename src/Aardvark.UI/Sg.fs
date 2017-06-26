@@ -457,6 +457,32 @@ module ``F# Sg`` =
             let withGlobalEvents (events : amap<SceneEventKind, (SceneEvent -> seq<'msg>)>) (sg : ISg<'msg>) =
                 Sg.GlobalEvent(events, sg) :> ISg<'msg>
 
+                
+[<AutoOpen>]
+module FShadeSceneGraph =
+
+    open Aardvark.SceneGraph
+    open Aardvark.Base
+    open Aardvark.Base.Incremental
+    open Aardvark.Base.Rendering
+
+
+    type SgEffectBuilder<'a>() =
+        inherit EffectBuilder()
+
+        member x.Run(f : unit -> IMod<list<FShadeEffect>>) =
+            let surface = 
+                f() |> Mod.map (fun effects ->
+                    effects
+                        |> FShade.Effect.compose
+                        |> FShadeSurface
+                        :> ISurface
+                )
+
+            fun (sg : ISg<'a>) -> ``F# Sg``.Sg.surface surface sg
+
+    module Sg =
+        let shader<'a> = SgEffectBuilder<'a>()
 
 [<AutoOpen>]
 module ``Sg Events`` =

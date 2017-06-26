@@ -8,8 +8,10 @@ open Aardvark.UI.Primitives
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MCameraControllerState(__initial : Aardvark.UI.Primitives.CameraControllerState) = 
+    
+    
+    type MCameraControllerState(__initial : Aardvark.UI.Primitives.CameraControllerState) =
+        inherit obj()
         let mutable __current = __initial
         let _view = ResetMod.Create(__initial.view)
         let _dragStart = ResetMod.Create(__initial.dragStart)
@@ -56,12 +58,16 @@ module Mutable =
                 MOption.Update(_orbitCenter, v.orbitCenter)
                 MOption.Update(_lastTime, v.lastTime)
                 _stash.Update(v.stash)
+                
         
-        static member Create(v : Aardvark.UI.Primitives.CameraControllerState) = MCameraControllerState(v)
+        static member Create(__initial : Aardvark.UI.Primitives.CameraControllerState) : MCameraControllerState = MCameraControllerState(__initial)
         static member Update(m : MCameraControllerState, v : Aardvark.UI.Primitives.CameraControllerState) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Aardvark.UI.Primitives.CameraControllerState> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

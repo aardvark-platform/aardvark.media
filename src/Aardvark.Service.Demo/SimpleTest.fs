@@ -14,6 +14,7 @@ type Action =
     | Dec
     | CameraAction of CameraController.Message
 
+
 let update (m : Model) (a : Action) =
     match a with
         | Inc -> { m with value = m.value + 1.0 }

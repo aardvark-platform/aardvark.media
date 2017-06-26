@@ -270,16 +270,8 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
             match op with
                 | ElementOperation.Set v -> 
                     match toAttributeValue state id name v with
-                        | Some value -> 
-                            Log.error "%A" self
-                            Log.error "%A" name
-                            Log.error "%A" value
-                            Log.error "%A" ui
-                            Log.error "%A" ui.Set
-                            
+                        | Some value ->                                                         
                             code.Add(SetAttribute(self, name, value))
-                           
-                           
                         | None ->
                             ()
 
@@ -287,18 +279,16 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
                     if destroyAttribute state id name then
                         code.Add(RemoveAttribute(self, name))
         
-        match ui.Set with
-                                | Some setCode ->
-                                    let prefix = ""
-                                    let set = setCode id
-                                    Log.warn "added %A" set
-                                    code.Add(Raw (prefix + set))
-                                | None ->
-                                    ()
-        
-        
+        //match ui.Set with
+        //        | Some setCode ->
+        //            let prefix = ""
+        //            let set = setCode id
+        //            Log.warn "added %A" set
+        //            code.Add(Raw (prefix + set))
+        //        | None ->
+        //            ()
+                
         code.Add (rContent.Update(token, self, state))
-
                 
         if initial then
             initial <- false
@@ -319,9 +309,7 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
                     code.Add(Raw (prefix + boot))
                 | None ->
                     ()       
-
         
-
         JSExpr.Sequential (CSharpList.toList code)
 
 

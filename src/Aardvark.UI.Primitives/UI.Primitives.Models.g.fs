@@ -8,8 +8,10 @@ open Aardvark.UI
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MNumericInput(__initial : Aardvark.UI.NumericInput) = 
+    
+    
+    type MNumericInput(__initial : Aardvark.UI.NumericInput) =
+        inherit obj()
         let mutable __current = __initial
         let _value = ResetMod.Create(__initial.value)
         let _min = ResetMod.Create(__initial.min)
@@ -32,12 +34,16 @@ module Mutable =
                 ResetMod.Update(_max,v.max)
                 ResetMod.Update(_step,v.step)
                 ResetMod.Update(_format,v.format)
+                
         
-        static member Create(v : Aardvark.UI.NumericInput) = MNumericInput(v)
+        static member Create(__initial : Aardvark.UI.NumericInput) : MNumericInput = MNumericInput(__initial)
         static member Update(m : MNumericInput, v : Aardvark.UI.NumericInput) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Aardvark.UI.NumericInput> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -147,8 +153,10 @@ module Mutable =
     
     
     
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MProperties(__initial : Aardvark.UI.Properties) = 
+    
+    
+    type MProperties(__initial : Aardvark.UI.Properties) =
+        inherit obj()
         let mutable __current = __initial
         let _isExpanded = ResetMod.Create(__initial.isExpanded)
         let _isSelected = ResetMod.Create(__initial.isSelected)
@@ -165,12 +173,16 @@ module Mutable =
                 ResetMod.Update(_isExpanded,v.isExpanded)
                 ResetMod.Update(_isSelected,v.isSelected)
                 ResetMod.Update(_isActive,v.isActive)
+                
         
-        static member Create(v : Aardvark.UI.Properties) = MProperties(v)
+        static member Create(__initial : Aardvark.UI.Properties) : MProperties = MProperties(__initial)
         static member Update(m : MProperties, v : Aardvark.UI.Properties) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Aardvark.UI.Properties> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -274,8 +286,10 @@ module Mutable =
     
     
     
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MTreeModel(__initial : Aardvark.UI.TreeModel) = 
+    
+    
+    type MTreeModel(__initial : Aardvark.UI.TreeModel) =
+        inherit obj()
         let mutable __current = __initial
         let _data = MTree.Create(__initial.data)
         
@@ -286,12 +300,16 @@ module Mutable =
                 __current <- v
                 
                 MTree.Update(_data, v.data)
+                
         
-        static member Create(v : Aardvark.UI.TreeModel) = MTreeModel(v)
+        static member Create(__initial : Aardvark.UI.TreeModel) : MTreeModel = MTreeModel(__initial)
         static member Update(m : MTreeModel, v : Aardvark.UI.TreeModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Aardvark.UI.TreeModel> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

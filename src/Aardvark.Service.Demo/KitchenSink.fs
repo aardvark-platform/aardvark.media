@@ -335,11 +335,14 @@ module KitchenSinkApp =
 
     let pool = ThreadPool.empty |> ThreadPool.add "timer" (timerThread())
 
-    let start () =
-        App.start {
+    let app =
+        {
             unpersist = Unpersist.instance
             threads = fun _ -> pool
             view = view
             update = update
             initial = initial
         }
+
+    let start () =
+        app |> App.start

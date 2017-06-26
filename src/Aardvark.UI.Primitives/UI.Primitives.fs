@@ -86,6 +86,7 @@ module Numeric =
 
         let attributes = 
             amap {
+                yield style "color : black"
                 yield style "text-align:right"                
 
                 let! min = model.min
@@ -140,10 +141,10 @@ module Numeric =
             view = view' inputTypes
         }
 
-    let app = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
+    let app () = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
 
     let start () =
-        App.start app
+        app () |> App.start 
 
 module Html =
 
@@ -273,18 +274,13 @@ module Html =
                     onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
                 ]
 
-            
-            //js "onclick"        "$('.sidebar').sidebar('toggle');"
-            
-            onBoot "$('#__ID__').dropdown();" (                
-                select [clazz "ui selection dropdown"; 
-                    onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change);               
-                    ] [
+       //     onBoot "$('#__ID__').dropdown();" (
+            select [onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change); style "color:black"] [
                     for (name, value) in nv do
                         let att = attributes name value
                         yield Incremental.option att (AList.ofList [text name])                              
                 ]
-            )
+         //   )
 
         let textBox (text : IMod<string>) (set : string -> 'msg) =          
             
@@ -296,9 +292,9 @@ module Html =
                     yield "value" => t 
                 }
 
-            div [clazz "ui input"] [
-                Incremental.input (AttributeMap.ofAMap attributes)
-            ]
+          //  div [clazz "ui input"] [
+            Incremental.input (AttributeMap.ofAMap attributes)
+            //]
 
         let toggleBox (state : IMod<bool>) (toggle : 'msg) =
 
@@ -312,10 +308,10 @@ module Html =
                      yield "checked" => checkText
                 }
 
-            div [clazz "ui toggle checkbox"] [
-                Incremental.input (AttributeMap.ofAMap attributes)
-                label [] [text ""]
-            ]
+      //      div [clazz "ui toggle checkbox"] [
+            Incremental.input (AttributeMap.ofAMap attributes)
+        //        label [] [text ""]
+            //]
 
         let toggleImage (state : IMod<bool>) (toggle : unit -> 'msg) = 0
 
@@ -334,6 +330,13 @@ module Html =
                         yield div [clazz active; attribute "data-tab" name] [ch]         
                 ]
             )
+
+    module IO =
+        let fileDialog action =
+            [ 
+                onEvent "onchoose" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> action)
+                clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
+            ] 
 
 module TreeView = 
     
@@ -504,4 +507,4 @@ module TreeViewApp =
         }
 
     let start () =
-        App.start app
+        app |> App.start 

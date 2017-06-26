@@ -8,8 +8,10 @@ open SimpleTest
 [<AutoOpen>]
 module Mutable =
 
-    [<StructuredFormatDisplay("{AsString}")>]
-    type MModel(__initial : SimpleTest.Model) = 
+    
+    
+    type MModel(__initial : SimpleTest.Model) =
+        inherit obj()
         let mutable __current = __initial
         let _value = ResetMod.Create(__initial.value)
         let _cameraModel = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraModel)
@@ -23,12 +25,16 @@ module Mutable =
                 
                 ResetMod.Update(_value,v.value)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraModel, v.cameraModel)
+                
         
-        static member Create(v : SimpleTest.Model) = MModel(v)
+        static member Create(__initial : SimpleTest.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : SimpleTest.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
+        interface IUpdatable<SimpleTest.Model> with
+            member x.Update v = x.Update v
+    
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
