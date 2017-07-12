@@ -7,6 +7,7 @@ open Aardvark.UI.Primitives
 
 [<DomainType>]
 type Model = { 
+    sphereFirst : bool
     value : float 
     cameraModel : CameraControllerState
 }

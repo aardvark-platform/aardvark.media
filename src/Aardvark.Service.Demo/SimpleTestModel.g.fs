@@ -13,9 +13,11 @@ module Mutable =
     type MModel(__initial : SimpleTest.Model) =
         inherit obj()
         let mutable __current = __initial
+        let _sphereFirst = ResetMod.Create(__initial.sphereFirst)
         let _value = ResetMod.Create(__initial.value)
         let _cameraModel = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraModel)
         
+        member x.sphereFirst = _sphereFirst :> IMod<_>
         member x.value = _value :> IMod<_>
         member x.cameraModel = _cameraModel
         
@@ -23,6 +25,7 @@ module Mutable =
             if not (System.Object.ReferenceEquals(__current, v)) then
                 __current <- v
                 
+                ResetMod.Update(_sphereFirst,v.sphereFirst)
                 ResetMod.Update(_value,v.value)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraModel, v.cameraModel)
                 
@@ -41,6 +44,12 @@ module Mutable =
     module Model =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
+            let sphereFirst =
+                { new Lens<SimpleTest.Model, Microsoft.FSharp.Core.bool>() with
+                    override x.Get(r) = r.sphereFirst
+                    override x.Set(r,v) = { r with sphereFirst = v }
+                    override x.Update(r,f) = { r with sphereFirst = f r.sphereFirst }
+                }
             let value =
                 { new Lens<SimpleTest.Model, Microsoft.FSharp.Core.float>() with
                     override x.Get(r) = r.value

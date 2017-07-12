@@ -58,7 +58,7 @@ let kitchenSink argv =
     //let app = Aardvark.UI.Numeric.app
     //let app = TreeViewApp.app
     //let app = AnnotationProperties.app
-    //let app = SimpleTestApp.app
+    let app = SimpleTestApp.app
     //let app = SimpleCompositionViewer.app
     //let app = OrbitCameraDemo.app
     //let app = NavigationModeDemo.app  
@@ -70,7 +70,7 @@ let kitchenSink argv =
     //let app = BookmarkApp.app
     //let app = MeasurementsImporterApp.app form
     //let app = RenderModelApp.app 
-    let app = AnnotationApp.app
+    //let app = AnnotationApp.app
     //let app = PerformanceApp.app
 
 

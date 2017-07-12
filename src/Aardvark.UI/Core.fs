@@ -430,6 +430,28 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
         res.Callbacks <- callbacks
         res
 
+    member x.WithAttributes(att : AttributeMap<'msg>) =
+        DomNode<'msg>(
+            x.Tag,
+            att,
+            x.Content,
+            Required = x.Required,
+            Boot = x.Boot,
+            Shutdown = x.Shutdown,
+            Callbacks = x.Callbacks
+        )
+
+    member x.WithContent(content : DomContent<'msg>) =
+        DomNode<'msg>(
+            x.Tag,
+            x.Attributes,
+            content,
+            Required = x.Required,
+            Boot = x.Boot,
+            Shutdown = x.Shutdown,
+            Callbacks = x.Callbacks
+        )
+
 and DomContent<'msg> =
     | Empty
     | Children of alist<DomNode<'msg>>
@@ -445,6 +467,11 @@ and DomContent<'msg> =
                 | Text t      -> Text t
             
 open Aardvark.Service
+
+type RenderCommand<'msg> =
+    | Clear of color : Option<IMod<C4f>> * depth : Option<IMod<float>>
+    | SceneGraph of sg : ISg<'msg>
+
 
 type DomNode private() =
     static let eventNames =
@@ -624,7 +651,6 @@ type DomNode private() =
                     ASet.union (AMap.keys globalPicks) tree.Needed
                 member x.Process (source : Guid, evt : SceneEvent) = 
                     seq {
-                        //evt <- { evt with rayT = -1.0 }
                         let consumed, msgs = tree.Perform(evt)
                         yield! msgs
 
@@ -638,6 +664,103 @@ type DomNode private() =
             }
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
+
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sgs : alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
+        let getState(c : Aardvark.Service.ClientInfo) =
+            let cam = camera.GetValue(c.token)
+            let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+
+            {
+                viewTrafo = CameraView.viewTrafo cam.cameraView
+                projTrafo = Frustum.projTrafo cam.frustum
+            }
+
+
+        let scene =
+            Scene.custom (fun values ->
+                
+                let invoke pass =   
+                    match pass with
+                        | RenderCommand.Clear(color,depth) -> 
+                            match color,depth with
+                                | Some c, Some d -> values.runtime.CompileClear(values.signature,c,d) 
+                                | None, Some d ->  values.runtime.CompileClear(values.signature,d) 
+                                | Some c, None -> values.runtime.CompileClear(values.signature,c)
+                                | None, None -> RenderTask.empty
+                        | RenderCommand.SceneGraph sg -> 
+                            let sg =
+                                sg
+                                    |> Sg.viewTrafo values.viewTrafo
+                                    |> Sg.projTrafo values.projTrafo
+                                    |> Sg.uniform "ViewportSize" values.size
+                            values.runtime.CompileRender(values.signature, sg)
+
+                let reader = new AList.Readers.MapUseReader<_,_>(Ag.getContext(), sgs,invoke, (fun d -> d.Dispose()))
+                let mutable state = PList.empty
+
+                let update (t : AdaptiveToken) =
+                    let ops = reader.GetOperations t
+                    let s, _ = PList.applyDelta state ops
+                    state <- s
+
+                { new AbstractRenderTask() with
+                    override x.PerformUpdate(t,rt) = 
+                        update t
+                    override x.Perform(t,rt,o) = 
+                        update t
+                        for task in state do
+                            task.Run(t,rt,o)
+                    override x.Dispose() = 
+                        reader.Dispose()
+                        state <- PList.empty
+
+                    override x.Use f = f ()
+                    override x.FramebufferSignature = Some values.signature
+                    override x.Runtime = Some values.runtime
+                } :> IRenderTask
+                
+            )
+
+        let trees = sgs |> AList.choose (function Clear _ -> None | SceneGraph sg -> PickTree.ofSg sg |> Some)
+        let globalPicks = sgs |> AList.toASet |> ASet.choose (function Clear _ -> None | SceneGraph sg -> sg.GlobalPicks() |> Some)
+
+        let globalNeeded = globalPicks |> ASet.collect AMap.keys
+        let treeNeeded = trees |> AList.toASet |> ASet.collect (fun t -> t.Needed)
+        let needed = ASet.union globalNeeded treeNeeded
+
+
+        let rec pickTrees (trees : list<PickTree<'msg>>) (evt) =
+            match trees with
+                | [] -> false, Seq.empty
+                | x::xs -> 
+                    let consumed,msgs = pickTrees xs evt
+                    if consumed then true,msgs
+                    else
+                        let consumed, other = x.Perform evt
+                        consumed, Seq.append msgs other
+
+        let proc =
+            { new SceneEventProcessor<'msg>() with
+                member x.NeededEvents = needed
+                member x.Process (source : Guid, evt : SceneEvent) = 
+                    seq {
+                        let trees = trees.Content |> Mod.force |> PList.toList
+
+                        let consumed, msgs = pickTrees trees evt
+                        yield! msgs
+
+                        for perScene in globalPicks.Content |> Mod.force do
+                            let picks = perScene.Content |> Mod.force
+                            match picks |> HMap.tryFind evt.kind with
+                                | Some cb -> 
+                                    yield! cb evt
+                                | None -> 
+                                    ()
+                    }
+            }
+
+        DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
+
 
     static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
         DomNode.RenderControl(AttributeMap.empty, camera, scene, htmlChildren)

@@ -12,6 +12,7 @@ open Aardvark.UI.Primitives
 type Action = 
     | Inc 
     | Dec
+    | Toggle
     | CameraAction of CameraController.Message
 
 
@@ -19,6 +20,7 @@ let update (m : Model) (a : Action) =
     match a with
         | Inc -> { m with value = m.value + 1.0 }
         | Dec -> { m with value = m.value - 1.0 } 
+        | Toggle -> { m with sphereFirst = not m.sphereFirst}
         | CameraAction a -> { m with cameraModel = CameraController.update m.cameraModel a }
 
 let cam = 
@@ -45,14 +47,35 @@ let threeD (m : MModel) =
         |> Sg.effect [
                     toEffect DefaultSurfaces.trafo
                     //toEffect DefaultSurfaces.diffuseTexture
-                    toEffect <| DefaultSurfaces.constantColor C4f.Red 
+                    toEffect <| DefaultSurfaces.vertexColor
                 ]
+
+    let other = 
+        Sg.sphere' 5 C4b.Red 1.0 |> Sg.noEvents |> Sg.effect [ toEffect DefaultSurfaces.trafo; toEffect DefaultSurfaces.vertexColor]
             
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
-    CameraController.controlledControl m.cameraModel CameraAction
-        (Mod.constant frustum) 
-        (AttributeMap.ofList [ attribute "style" "width:70%; height: 100%"]) sg
+
+    let att = AttributeMap.ofList [ attribute "style" "width:70%; height: 70%"]
+    let control = Incremental.renderControl (Mod.constant Unchecked.defaultof<_>) att sg
+
+    let cmds = 
+        alist {
+            let! sphereFirst = m.sphereFirst
+            if not sphereFirst then
+                yield RenderCommand.SceneGraph sg
+                yield RenderCommand.Clear(None,Some (Mod.constant 1.0))
+                yield RenderCommand.SceneGraph other
+            else
+                yield RenderCommand.SceneGraph other
+                yield RenderCommand.Clear(None,Some (Mod.constant 1.0))
+                yield RenderCommand.SceneGraph sg
+        }
+
+    let control = DomNode.RenderControl(att,(Mod.constant Unchecked.defaultof<_>),cmds,None)
+
+    CameraController.withControls m.cameraModel CameraAction (Mod.constant frustum) control
+
 
 let view (m : MModel) =
     let s =
@@ -69,6 +92,7 @@ let view (m : MModel) =
         br []
         button [onMouseClick (fun _ -> Inc)] [text "inc"]
         button [onMouseClick (fun _ -> Dec)] [text "dec"]
+        div [] [text "sphereFirst: ";  Html.SemUi.toggleBox m.sphereFirst Toggle]
         br []
         threeD m
     ]
@@ -77,7 +101,7 @@ let app =
     {
         unpersist = Unpersist.instance
         threads = fun (model : Model) -> CameraController.threads model.cameraModel |> ThreadPool.map CameraAction
-        initial = { value = 1.0; cameraModel = CameraController.initial }
+        initial = { value = 1.0; cameraModel = CameraController.initial; sphereFirst = true }
         update = update
         view = view
     }

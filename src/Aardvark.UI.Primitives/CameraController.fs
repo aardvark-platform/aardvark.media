@@ -8,6 +8,7 @@ open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
 open Aardvark.UI
+open Aardvark.Service
 
 open Aardvark.UI.Primitives
 
@@ -196,6 +197,35 @@ module CameraController =
 
         let cam = Mod.map2 Camera.create state.view frustum 
         Incremental.renderControl cam attributes sg
+
+    let withControls (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (node : DomNode<'msg>) =
+        let cam = Mod.map2 Camera.create state.view frustum 
+        let content =
+            match node.Content with
+                | DomContent.Scene(scene,_) ->
+                    let getState(c : Aardvark.Service.ClientInfo) =
+                        let cam = cam.GetValue(c.token)
+                        let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+
+                        {
+                            viewTrafo = CameraView.viewTrafo cam.cameraView
+                            projTrafo = Frustum.projTrafo cam.frustum
+                        }
+                    DomContent.Scene(scene,getState)
+                | _ -> failwith "[Aardvark.UI] cannot added controls to none scene node"
+        let attributes =
+            AttributeMap.ofListCond [
+                always (onBlur (fun _ -> f Blur))
+                always (onMouseDown (fun b p -> f (Down(b,p))))
+                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
+                always (onKeyDown (KeyDown >> f))
+                always (onKeyUp (KeyUp >> f))
+                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
+            ]
+
+        node.WithAttributes(AttributeMap.union node.Attributes attributes)
+            .WithContent(content)
+
 
 
     let view (state : MCameraControllerState) =
