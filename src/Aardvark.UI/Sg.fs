@@ -475,7 +475,7 @@ module FShadeSceneGraph =
                 f() |> Mod.map (fun effects ->
                     effects
                         |> FShade.Effect.compose
-                        |> FShadeSurface
+                        |> FShadeSurface.Get
                         :> ISurface
                 )
 
