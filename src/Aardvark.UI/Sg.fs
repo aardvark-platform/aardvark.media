@@ -565,6 +565,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
             if e.MoveNext() then
                 let hit = e.Current
+                printfn "hit: %A" hit.T
                 let proc = hit.Value
 
                 if HSet.contains proc seen then
@@ -601,7 +602,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                             true, msgs
 
                     
-                    if cont then
+                    if cc then
                         let consumed, rest = run evt (HSet.add proc seen) cc
                         consumed, Seq.append msgs rest
                     else
@@ -621,7 +622,9 @@ type PickTree<'msg>(sg : ISg<'msg>) =
         let oldEntered = entered |> HashSet.toList
         entered.Clear()
 
+        printfn "doint it"
         let c, msgs = run evt HSet.empty true
+        printfn "dit it"
         
         let leaves = 
             seq {
