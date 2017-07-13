@@ -276,9 +276,8 @@ module Numeric =
                         fallback
 
         let attributes = 
-            amap {
-                yield style "color : black"
-                yield style "text-align:right"                
+            amap {                
+                yield style "text-align:right; color : black"                
 
                 let! min = model.min
                 let! max = model.max
@@ -316,10 +315,10 @@ module Numeric =
         view' [InputBox] model
 
     let init = {
-        value   = 3.0
+        value   = 0.0
         min     = 0.0
-        max     = 15.0
-        step    = 1.5
+        max     = 10.0
+        step    = 0.20
         format  = "{0:0.00}"
     }
 
@@ -374,10 +373,7 @@ module ColorPicker =
             let attributes = 
                 amap {
                     yield "class" => "jscolor"
-                    yield onChange (
-                        fun d -> Log.warn "%A" (colorFromHex d); 
-                                 { c = colorFromHex d }|> SetColor
-                        )
+                    yield onChange (fun d -> { c = colorFromHex d }|> SetColor)
 
                     let! color = model.c
                     yield "value" => colorToHex color
@@ -405,13 +401,43 @@ module Vector3d =
         | SetX of Numeric.Action
         | SetY of Numeric.Action
         | SetZ of Numeric.Action
-
+        | SetXYZ of Numeric.Action * Numeric.Action * Numeric.Action
+   
     let update (model : V3dInput) (action : Action) =
         match action with
-            | SetX a -> { model with x = Numeric.update model.x a }
-            | SetY a -> { model with y = Numeric.update model.y a }
-            | SetZ a -> { model with z = Numeric.update model.z a }
-
+            | SetX a -> 
+                let x = Numeric.update model.x a                
+                {                     
+                    model with 
+                        x = x
+                        value = V3d(x.value, model.value.Y, model.value.Z)
+                }
+            | SetY a -> 
+                let y = Numeric.update model.y a                
+                {                     
+                    model with 
+                        y = y
+                        value = V3d(model.value.X, y.value, model.value.Z)
+                }
+            | SetZ a -> 
+                let z = Numeric.update model.z a                
+                {                     
+                    model with 
+                        z = z
+                        value = V3d(model.value.X, model.value.Y, z.value)
+                }
+            | SetXYZ (a,b,c) -> 
+                let x = Numeric.update model.x a
+                let y = Numeric.update model.y b
+                let z = Numeric.update model.z c
+                {                     
+                    model with 
+                        x = x
+                        y = y
+                        z = z
+                        value = V3d(x.value, y.value, z.value)
+                }
+                
     let view (model : MV3dInput) =  
         
         Html.table [                            
@@ -420,11 +446,43 @@ module Vector3d =
             Html.row "Z" [Numeric.view' [InputBox] model.z |> UI.map SetZ]
         ]                    
 
-    let init = {
-        x = Numeric.init
-        y = Numeric.init
-        z = Numeric.init
-    }        
+    let init = 
+        let x = Numeric.init
+        let y = Numeric.init
+        let z = Numeric.init
+    
+        {
+            x = x
+            y = y
+            z = z
+            value = V3d(x.value,y.value,z.value)
+        }        
+
+    let initV3d (v : V3d) = {
+        x = { Numeric.init with value = v.X } 
+        y = { Numeric.init with value = v.Y }
+        z = { Numeric.init with value = v.Z }
+        value = v
+    }
+
+    let updateV3d (model : V3dInput) (v : V3d) = {
+        x = { model.x with value = v.X } 
+        y = { model.y with value = v.Y }
+        z = { model.z with value = v.Z }
+        value = v
+    }
+
+    let app : App<V3dInput, MV3dInput, Action> =
+        {
+            unpersist = Unpersist.instance
+            threads = fun _ -> ThreadPool.empty
+            initial = init
+            update = update
+            view = view
+        }
+
+    let start () =
+        app |> App.start 
 
 module TreeView = 
     

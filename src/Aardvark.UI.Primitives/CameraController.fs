@@ -314,11 +314,8 @@ module ArcBallController =
                 let cam = model.view
                 let newForward = p - cam.Location |> Vec.normalize
                 let tempCam = cam.WithForward newForward
-
-                
-                
-
-                { model with orbitCenter = Some p; view = CameraView.lookAt cam.Location p cam.Up }                
+                                
+                { model with orbitCenter = Some p; view = CameraView.lookAt cam.Location p cam.Up }
             | StepTime ->
                 let now = sw.Elapsed.TotalSeconds
                 let cam = model.view

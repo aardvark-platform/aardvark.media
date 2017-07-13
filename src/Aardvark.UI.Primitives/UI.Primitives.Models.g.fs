@@ -88,10 +88,12 @@ module Mutable =
         let _x = MNumericInput.Create(__initial.x)
         let _y = MNumericInput.Create(__initial.y)
         let _z = MNumericInput.Create(__initial.z)
+        let _value = ResetMod.Create(__initial.value)
         
         member x.x = _x
         member x.y = _y
         member x.z = _z
+        member x.value = _value :> IMod<_>
         
         member x.Update(v : Aardvark.UI.V3dInput) =
             if not (System.Object.ReferenceEquals(__current, v)) then
@@ -100,6 +102,7 @@ module Mutable =
                 MNumericInput.Update(_x, v.x)
                 MNumericInput.Update(_y, v.y)
                 MNumericInput.Update(_z, v.z)
+                ResetMod.Update(_value,v.value)
                 
         
         static member Create(__initial : Aardvark.UI.V3dInput) : MV3dInput = MV3dInput(__initial)
@@ -133,6 +136,12 @@ module Mutable =
                     override x.Get(r) = r.z
                     override x.Set(r,v) = { r with z = v }
                     override x.Update(r,f) = { r with z = f r.z }
+                }
+            let value =
+                { new Lens<Aardvark.UI.V3dInput, Aardvark.Base.V3d>() with
+                    override x.Get(r) = r.value
+                    override x.Set(r,v) = { r with value = v }
+                    override x.Update(r,f) = { r with value = f r.value }
                 }
     
     
