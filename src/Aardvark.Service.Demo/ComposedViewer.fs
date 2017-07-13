@@ -28,6 +28,12 @@ open PRo3DModels
 open Demo.TestApp
 open Demo.TestApp.Mutable
 
+module Mod =    
+
+    let bindOption (m : IMod<Option<'a>>) (defaultValue : 'b) (project : 'a -> IMod<'b>)  : IMod<'b> =
+        m |> Mod.bind (function | None   -> Mod.constant defaultValue       
+                                | Some v -> project v)
+
 module Primitives =
     
     let hoverColor = C4b.Blue
@@ -167,11 +173,25 @@ module OrbitCameraDemo =
     let update (model : OrbitCameraDemoModel) (act : Action) =
         match act with
             | CameraMessage a -> 
-                { model with camera = ArcBallController.update model.camera a }
+                let model = 
+                    { model with camera = ArcBallController.update model.camera a}
+
+                match model.camera.orbitCenter with
+                    | Some c -> { model with orbitCenter = Vector3d.updateV3d model.orbitCenter c}
+                    | None -> model
+                
             | RenderingAction a ->
-                { model with rendering = RenderingProperties.update model.rendering a }               
+                { model with rendering = RenderingProperties.update model.rendering a }
             | V3dMessage a ->
-                { model with orbitCenter = Vector3d.update model.orbitCenter a}
+                let orbitCenter = Vector3d.update model.orbitCenter a
+                
+                let cam = { 
+                    model.camera with 
+                            orbitCenter = Some orbitCenter.value
+                            view = CameraView.lookAt model.camera.view.Location orbitCenter.value model.camera.view.Up
+                }
+
+                { model with orbitCenter = orbitCenter; camera = cam}
             | ColorMessage a ->
                 { model with color = ColorPicker.update model.color a}
 
@@ -189,17 +209,19 @@ module OrbitCameraDemo =
                         attribute "style" "width:65%; height: 100%; float: left;"
                     ])
                     (
-                        let color = Mod.constant C4b.Blue
+                      
                         let boxGeometry = Box3d(-V3d.III, V3d.III)
                         let box = Mod.constant (boxGeometry)   
                         
-                        let trafo = 
-                            model.camera.orbitCenter 
-                                |> Mod.bind (fun center -> match center with 
-                                                            | Some x -> Mod.constant (Trafo3d.Translation x)
-                                                            | None -> Mod.constant (Trafo3d.Identity))
+                        //let trafo = 
+                        //    model.camera.orbitCenter 
+                        //        |> Mod.bind (fun center -> match center with 
+                        //                                    | Some x -> Mod.constant (Trafo3d.Translation x)
+                        //                                    | None -> Mod.constant (Trafo3d.Identity))
 
-                        let b = Sg.box color box                            
+                        let trafo = model.orbitCenter.value |> Mod.map(fun d -> Trafo3d.Translation d)
+
+                        let b = Sg.box model.color.c box
                                     |> Sg.shader {
                                         do! DefaultSurfaces.trafo
                                         do! DefaultSurfaces.vertexColor
@@ -230,8 +252,22 @@ module OrbitCameraDemo =
                     ]
 
                     Html.SemUi.accordion "ExploreCenter" "Compass" true [
-                        Incremental.div AttributeMap.empty (AList.ofList [Vector3d.view model.orbitCenter |> UI.map V3dMessage]);
-                        ColorPicker.view model.color |> UI.map ColorMessage
+                        //let attributes =
+                        //    amap {
+                        //        let! center = model.camera.orbitCenter
+                        //        let center =
+                        //            match center with
+                        //                | Some c -> c
+                        //                | None   -> V3d.NaN
+
+                        //        let input = Vector3d.initV3d center
+                        //    }
+                        //Mod.bindOption model.dnsResults Double.NaN (fun a -> a.dipAngle)                       
+
+                        yield Incremental.div AttributeMap.empty (
+                            AList.ofList [Vector3d.view model.orbitCenter |> UI.map V3dMessage]
+                        );
+                        yield ColorPicker.view model.color |> UI.map ColorMessage
                     ]
                 ]
             ]

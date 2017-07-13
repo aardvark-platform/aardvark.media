@@ -19,6 +19,7 @@ type V3dInput = {
     x : NumericInput
     y : NumericInput
     z : NumericInput
+    value : V3d
 }
 
 [<DomainType>]
