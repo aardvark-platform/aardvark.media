@@ -268,6 +268,8 @@ module JsonTypes =
 type OrbitCameraDemoModel = {
     camera : CameraControllerState
     rendering : RenderingParameters    
+    orbitCenter : V3dInput
+    color : ColorInput
 }
 
 [<DomainType>]

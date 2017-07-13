@@ -160,17 +160,20 @@ module OrbitCameraDemo =
     
     type Action =
         | CameraMessage    of ArcBallController.Message
-        | RenderingAction  of RenderingProperties.Action        
-        //| NavigationAction  of NavigationProperties.Action
+        | RenderingAction  of RenderingProperties.Action                
+        | V3dMessage       of Vector3d.Action
+        | ColorMessage     of ColorPicker.Action
 
     let update (model : OrbitCameraDemoModel) (act : Action) =
         match act with
-            | CameraMessage m -> 
-                { model with camera = ArcBallController.update model.camera m }
+            | CameraMessage a -> 
+                { model with camera = ArcBallController.update model.camera a }
             | RenderingAction a ->
-                { model with rendering = RenderingProperties.update model.rendering a }       
-            //| NavigationAction a ->
-            //    { model with navigation = NavigationProperties.update model.navigation a }
+                { model with rendering = RenderingProperties.update model.rendering a }               
+            | V3dMessage a ->
+                { model with orbitCenter = Vector3d.update model.orbitCenter a}
+            | ColorMessage a ->
+                { model with color = ColorPicker.update model.color a}
 
     let view (model : MOrbitCameraDemoModel) =
         let cam =
@@ -188,7 +191,7 @@ module OrbitCameraDemo =
                     (
                         let color = Mod.constant C4b.Blue
                         let boxGeometry = Box3d(-V3d.III, V3d.III)
-                        let box = Mod.constant (boxGeometry)                       
+                        let box = Mod.constant (boxGeometry)   
                         
                         let trafo = 
                             model.camera.orbitCenter 
@@ -226,9 +229,10 @@ module OrbitCameraDemo =
                         RenderingProperties.view model.rendering |> UI.map RenderingAction 
                     ]
 
-                    //Html.SemUi.accordion "Navigation" "Compass" true [
-                    //    NavigationProperties.view model.navigation |> UI.map NavigationAction 
-                    //]
+                    Html.SemUi.accordion "ExploreCenter" "Compass" true [
+                        Incremental.div AttributeMap.empty (AList.ofList [Vector3d.view model.orbitCenter |> UI.map V3dMessage]);
+                        ColorPicker.view model.color |> UI.map ColorMessage
+                    ]
                 ]
             ]
         )
@@ -236,15 +240,17 @@ module OrbitCameraDemo =
     let initial =
         {
             camera = { ArcBallController.initial with orbitCenter = Some V3d.Zero }
-            rendering = { InitValues.rendering with cullMode = CullMode.None }            
-            navigation = { navigationMode = NavigationMode.FreeFly }
+            rendering = { InitValues.rendering with cullMode = CullMode.None }    
+            orbitCenter = Vector3d.init
+            color = { c = C4b.VRVisGreen}
+          //  navigation = { navigationMode = NavigationMode.FreeFly }
         }
 
     let app : App<OrbitCameraDemoModel, MOrbitCameraDemoModel, Action> =
         {
             unpersist = Unpersist.instance
             threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = Unchecked.defaultof<_>
+            initial = initial
             update = update
             view = view
         }
