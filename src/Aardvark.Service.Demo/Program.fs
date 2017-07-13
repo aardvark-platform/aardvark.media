@@ -58,9 +58,10 @@ let kitchenSink argv =
     //let app = Aardvark.UI.Numeric.app
     //let app = TreeViewApp.app
     //let app = AnnotationProperties.app
-    let app = SimpleTestApp.app
+    //let app = SimpleTestApp.app
     //let app = SimpleCompositionViewer.app
     //let app = OrbitCameraDemo.app
+    let app = ColorPicker.app
     //let app = NavigationModeDemo.app  
     //let app = BoxSelectionDemo.app
 
@@ -72,8 +73,7 @@ let kitchenSink argv =
     //let app = RenderModelApp.app 
     //let app = AnnotationApp.app
     //let app = PerformanceApp.app
-
-
+    
     let instance = 
         app |> App.start
 

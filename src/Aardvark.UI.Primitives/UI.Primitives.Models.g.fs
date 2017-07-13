@@ -80,6 +80,96 @@ module Mutable =
                     override x.Set(r,v) = { r with format = v }
                     override x.Update(r,f) = { r with format = f r.format }
                 }
+    
+    
+    type MV3dInput(__initial : Aardvark.UI.V3dInput) =
+        inherit obj()
+        let mutable __current = __initial
+        let _x = MNumericInput.Create(__initial.x)
+        let _y = MNumericInput.Create(__initial.y)
+        let _z = MNumericInput.Create(__initial.z)
+        
+        member x.x = _x
+        member x.y = _y
+        member x.z = _z
+        
+        member x.Update(v : Aardvark.UI.V3dInput) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                MNumericInput.Update(_x, v.x)
+                MNumericInput.Update(_y, v.y)
+                MNumericInput.Update(_z, v.z)
+                
+        
+        static member Create(__initial : Aardvark.UI.V3dInput) : MV3dInput = MV3dInput(__initial)
+        static member Update(m : MV3dInput, v : Aardvark.UI.V3dInput) = m.Update(v)
+        
+        override x.ToString() = __current.ToString()
+        member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Aardvark.UI.V3dInput> with
+            member x.Update v = x.Update v
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module V3dInput =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let x =
+                { new Lens<Aardvark.UI.V3dInput, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.x
+                    override x.Set(r,v) = { r with x = v }
+                    override x.Update(r,f) = { r with x = f r.x }
+                }
+            let y =
+                { new Lens<Aardvark.UI.V3dInput, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.y
+                    override x.Set(r,v) = { r with y = v }
+                    override x.Update(r,f) = { r with y = f r.y }
+                }
+            let z =
+                { new Lens<Aardvark.UI.V3dInput, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.z
+                    override x.Set(r,v) = { r with z = v }
+                    override x.Update(r,f) = { r with z = f r.z }
+                }
+    
+    
+    type MColorInput(__initial : Aardvark.UI.ColorInput) =
+        inherit obj()
+        let mutable __current = __initial
+        let _c = ResetMod.Create(__initial.c)
+        
+        member x.c = _c :> IMod<_>
+        
+        member x.Update(v : Aardvark.UI.ColorInput) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                ResetMod.Update(_c,v.c)
+                
+        
+        static member Create(__initial : Aardvark.UI.ColorInput) : MColorInput = MColorInput(__initial)
+        static member Update(m : MColorInput, v : Aardvark.UI.ColorInput) = m.Update(v)
+        
+        override x.ToString() = __current.ToString()
+        member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Aardvark.UI.ColorInput> with
+            member x.Update v = x.Update v
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module ColorInput =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let c =
+                { new Lens<Aardvark.UI.ColorInput, Aardvark.Base.C4b>() with
+                    override x.Get(r) = r.c
+                    override x.Set(r,v) = { r with c = v }
+                    override x.Update(r,f) = { r with c = f r.c }
+                }
     [<AbstractClass; System.Runtime.CompilerServices.Extension; StructuredFormatDisplay("{AsString}")>]
     type MLeafValue() =
         abstract member TryUpdate : Aardvark.UI.LeafValue -> bool

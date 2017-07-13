@@ -43,109 +43,6 @@ module List =
             | [] -> [x]
             | xs -> x::sep::xs) ls []
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Choice =
-    open Aardvark.Base
-    open Aardvark.UI
-
-    type Model = Red=0 | Yellow=1 | Blue=2 
-
-    type Action = Select of Model
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Numeric = 
-    open Aardvark.Base
-    open Aardvark.UI
-
-    type Action = 
-        | SetValue of float
-        | SetMin of float
-        | SetMax of float
-        | SetStep of float
-        | SetFormat of string
-
-    let update (model : NumericInput) (action : Action) =
-        match action with
-        | SetValue v -> { model with value = v }
-        | SetMin v ->   { model with min = v }
-        | SetMax v ->   { model with max = v }
-        | SetStep v ->  { model with step = v }
-        | SetFormat s -> { model with format = s }
-
-    let formatNumber (format : string) (value : float) =
-        String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
-
-    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
-
-        let tryParseAndClamp min max fallback s =
-            let parsed = 0.0
-            match Double.TryParse(s, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
-                | (true,v) -> clamp min max v
-                | _ ->  printfn "validation failed: %s" s
-                        fallback
-
-        let attributes = 
-            amap {
-                yield style "color : black"
-                yield style "text-align:right"                
-
-                let! min = model.min
-                let! max = model.max
-                let! value = model.value
-                match inputType with
-                    | Slider ->   
-                        yield "type" => "range"
-                        yield onInput' (tryParseAndClamp min max value >> SetValue >> f)   // continous updates for slider
-                    | InputBox -> 
-                        yield "type" => "number"
-                        yield onChange' (tryParseAndClamp min max value >> SetValue >> f)  // batch updates for input box (to let user type)
-
-                let! step = model.step
-                yield UI.onWheel' (fun d -> value + d.Y * step |> clamp min max |> SetValue |> f)
-
-                yield "step" => sprintf "%f" step
-                yield "min"  => sprintf "%f" min
-                yield "max"  => sprintf "%f" max
-
-                let! format = model.format
-                yield "value" => formatNumber format value
-            } 
-
-        Incremental.input (AttributeMap.ofAMap attributes |> AttributeMap.union atts)
-
-    let numericField' = numericField (Seq.singleton) AttributeMap.empty
-
-    let view' (inputTypes : list<NumericInputType>) (model : MNumericInput) : DomNode<Action> =
-        inputTypes 
-            |> List.map (numericField' model) 
-            |> List.intersperse (text " ") 
-            |> div []
-
-    let view (model : MNumericInput) =
-        view' [InputBox]
-
-    let init = {
-        value   = 3.0
-        min     = 0.0
-        max     = 15.0
-        step    = 1.5
-        format  = "{0:0.00}"
-    }
-
-    let app' inputTypes =
-        {
-            unpersist = Unpersist.instance
-            threads = fun _ -> ThreadPool.empty
-            initial = init
-            update = update
-            view = view' inputTypes
-        }
-
-    let app () = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
-
-    let start () =
-        app () |> App.start 
-
 module Html =
 
     module Layout =
@@ -160,7 +57,6 @@ module Html =
     let table rows = table [clazz "ui celled striped inverted table unstackable"] [ tbody [] rows ]
 
     let row k v = tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
-
 
     type A = { a : IMod<int> }
     let a = Mod.init { a = Mod.init 10 }
@@ -337,6 +233,198 @@ module Html =
                 onEvent "onchoose" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> action)
                 clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
             ] 
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Choice =
+    open Aardvark.Base
+    open Aardvark.UI
+
+    type Model = Red=0 | Yellow=1 | Blue=2 
+
+    type Action = Select of Model
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Numeric = 
+    open Aardvark.Base
+    open Aardvark.UI
+
+    type Action = 
+        | SetValue of float
+        | SetMin of float
+        | SetMax of float
+        | SetStep of float
+        | SetFormat of string
+
+    let update (model : NumericInput) (action : Action) =
+        match action with
+        | SetValue v -> { model with value = v }
+        | SetMin v ->   { model with min = v }
+        | SetMax v ->   { model with max = v }
+        | SetStep v ->  { model with step = v }
+        | SetFormat s -> { model with format = s }
+
+    let formatNumber (format : string) (value : float) =
+        String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
+
+    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
+
+        let tryParseAndClamp min max fallback s =
+            let parsed = 0.0
+            match Double.TryParse(s, Globalization.NumberStyles.Float, Globalization.CultureInfo.InvariantCulture) with
+                | (true,v) -> clamp min max v
+                | _ ->  printfn "validation failed: %s" s
+                        fallback
+
+        let attributes = 
+            amap {
+                yield style "color : black"
+                yield style "text-align:right"                
+
+                let! min = model.min
+                let! max = model.max
+                let! value = model.value
+                match inputType with
+                    | Slider ->   
+                        yield "type" => "range"
+                        yield onInput' (tryParseAndClamp min max value >> SetValue >> f)   // continous updates for slider
+                    | InputBox -> 
+                        yield "type" => "number"
+                        yield onChange' (tryParseAndClamp min max value >> SetValue >> f)  // batch updates for input box (to let user type)
+
+                let! step = model.step
+                yield UI.onWheel' (fun d -> value + d.Y * step |> clamp min max |> SetValue |> f)
+
+                yield "step" => sprintf "%f" step
+                yield "min"  => sprintf "%f" min
+                yield "max"  => sprintf "%f" max
+
+                let! format = model.format
+                yield "value" => formatNumber format value
+            } 
+
+        Incremental.input (AttributeMap.ofAMap attributes |> AttributeMap.union atts)
+
+    let numericField' = numericField (Seq.singleton) AttributeMap.empty
+
+    let view' (inputTypes : list<NumericInputType>) (model : MNumericInput) : DomNode<Action> =
+        inputTypes 
+            |> List.map (numericField' model) 
+            |> List.intersperse (text " ") 
+            |> div []
+
+    let view (model : MNumericInput) =
+        view' [InputBox] model
+
+    let init = {
+        value   = 3.0
+        min     = 0.0
+        max     = 15.0
+        step    = 1.5
+        format  = "{0:0.00}"
+    }
+
+    let app' inputTypes =
+        {
+            unpersist = Unpersist.instance
+            threads = fun _ -> ThreadPool.empty
+            initial = init
+            update = update
+            view = view' inputTypes
+        }
+
+    let app () = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
+
+    let start () =
+        app () |> App.start 
+
+module ColorPicker =
+    type Action =
+        | SetColor of ColorInput
+
+    let jsColor =
+        [             
+            { kind = Script; name = "jsColor"; url = "jscolor.min.js" }
+        ]    
+
+    let update (model : ColorInput) (action : Action) =
+        match action with
+            | SetColor c -> c
+
+    let init = { c = C4b.VRVisGreen }
+
+    let colorFromHex (hex:string) =
+        let arr =
+            hex
+                |> Seq.windowed 2
+                |> Seq.mapi   (fun i j -> (i,j))
+                |> Seq.filter (fun (i,j) -> i % 2=0)
+                |> Seq.map    (fun (_,j) -> Byte.Parse(new System.String(j),System.Globalization.NumberStyles.AllowHexSpecifier))
+                |> Array.ofSeq
+
+        C4b(arr.[0], arr.[1], arr.[2], 255uy)
+
+    let colorToHex (color : C4b) = 
+        let bytes = [| color.R; color.G; color.B |]
+        bytes 
+            |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x))
+            |> String.concat System.String.Empty
+
+    let view (model : MColorInput) =
+        require jsColor (
+            let attributes = 
+                amap {
+                    yield "class" => "jscolor"
+                    yield onChange (
+                        fun d -> Log.warn "%A" (colorFromHex d); 
+                                 { c = colorFromHex d }|> SetColor
+                        )
+
+                    let! color = model.c
+                    yield "value" => colorToHex color
+                }         
+
+            Incremental.input (AttributeMap.ofAMap attributes)
+        )
+
+    let app : App<ColorInput, MColorInput, Action> =
+        {
+            unpersist = Unpersist.instance
+            threads = fun _ -> ThreadPool.empty
+            initial = init
+            update = update
+            view = view
+        }
+
+    let start () =
+        app |> App.start 
+
+module Vector3d = 
+    open Aardvark.UI
+
+    type Action = 
+        | SetX of Numeric.Action
+        | SetY of Numeric.Action
+        | SetZ of Numeric.Action
+
+    let update (model : V3dInput) (action : Action) =
+        match action with
+            | SetX a -> { model with x = Numeric.update model.x a }
+            | SetY a -> { model with y = Numeric.update model.y a }
+            | SetZ a -> { model with z = Numeric.update model.z a }
+
+    let view (model : MV3dInput) =  
+        
+        Html.table [                            
+            Html.row "X" [Numeric.view' [InputBox] model.x |> UI.map SetX]
+            Html.row "Y" [Numeric.view' [InputBox] model.y |> UI.map SetY]
+            Html.row "Z" [Numeric.view' [InputBox] model.z |> UI.map SetZ]
+        ]                    
+
+    let init = {
+        x = Numeric.init
+        y = Numeric.init
+        z = Numeric.init
+    }        
 
 module TreeView = 
     

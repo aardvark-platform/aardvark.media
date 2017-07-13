@@ -14,6 +14,17 @@ type NumericInput = {
     format: string
 }
 
+[<DomainType>]
+type V3dInput = {
+    x : NumericInput
+    y : NumericInput
+    z : NumericInput
+}
+
+[<DomainType>]
+type ColorInput = {
+    c : C4b
+}
 
 
 [<DomainType>]

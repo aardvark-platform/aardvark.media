@@ -888,9 +888,13 @@ module Mutable =
         let mutable __current = __initial
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
+        let _orbitCenter = Aardvark.UI.Mutable.MV3dInput.Create(__initial.orbitCenter)
+        let _color = Aardvark.UI.Mutable.MColorInput.Create(__initial.color)
         
         member x.camera = _camera
         member x.rendering = _rendering
+        member x.orbitCenter = _orbitCenter
+        member x.color = _color
         
         member x.Update(v : PRo3DModels.OrbitCameraDemoModel) =
             if not (System.Object.ReferenceEquals(__current, v)) then
@@ -898,6 +902,8 @@ module Mutable =
                 
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
                 MRenderingParameters.Update(_rendering, v.rendering)
+                Aardvark.UI.Mutable.MV3dInput.Update(_orbitCenter, v.orbitCenter)
+                Aardvark.UI.Mutable.MColorInput.Update(_color, v.color)
                 
         
         static member Create(__initial : PRo3DModels.OrbitCameraDemoModel) : MOrbitCameraDemoModel = MOrbitCameraDemoModel(__initial)
@@ -925,6 +931,18 @@ module Mutable =
                     override x.Get(r) = r.rendering
                     override x.Set(r,v) = { r with rendering = v }
                     override x.Update(r,f) = { r with rendering = f r.rendering }
+                }
+            let orbitCenter =
+                { new Lens<PRo3DModels.OrbitCameraDemoModel, Aardvark.UI.V3dInput>() with
+                    override x.Get(r) = r.orbitCenter
+                    override x.Set(r,v) = { r with orbitCenter = v }
+                    override x.Update(r,f) = { r with orbitCenter = f r.orbitCenter }
+                }
+            let color =
+                { new Lens<PRo3DModels.OrbitCameraDemoModel, Aardvark.UI.ColorInput>() with
+                    override x.Get(r) = r.color
+                    override x.Set(r,v) = { r with color = v }
+                    override x.Update(r,f) = { r with color = f r.color }
                 }
     
     

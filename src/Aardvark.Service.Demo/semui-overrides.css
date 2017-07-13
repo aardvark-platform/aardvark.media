@@ -1,3 +1,14 @@
+* {
+    -webkit-touch-callout: none; /* iOS Safari */
+    -webkit-user-select: none; /* Safari */
+    -khtml-user-select: none; /* Konqueror HTML */
+    -moz-user-select: none; /* Firefox */
+    -ms-user-select: none; /* Internet Explorer/Edge */
+    user-select: none; /* Non-prefixed version, currently
+                                  supported by Chrome and Opera */
+    cursor: default
+}
+
 .ui.segment {
     margin-top: 0px;
     margin-bottom: 0px;
@@ -16,6 +27,24 @@ div.title {
     padding-bottom: 0px;
 }
 
-select, input {
-    color: black
+.ui.menu .item.topmenu {
+    margin-top: 0px;
+    margin-bottom: 0px;
+    padding-top: 0px;
+    padding-bottom: 0px;
+    padding-left: 4px;
+    padding-right: 4px;
 }
+
+button, input, optgroup, select, textarea {
+    color: black;
+}
+
+.ui.table {
+    border: 0px
+}
+
+/*div.content.active {
+    overflow-y : auto;    
+    max-height: 30%    
+}*/
