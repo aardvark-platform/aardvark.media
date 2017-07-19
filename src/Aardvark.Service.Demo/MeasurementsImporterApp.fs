@@ -48,8 +48,8 @@ module MeasurementsImporterApp =
         format = ""
         }
 
-    let getStyle (a:XElement) = {
-        color = C4b.Parse(a.Element(xname "object").Element(xname "Color").Value)
+    let getStyle (a:XElement) : Style = {
+        color = C4b.White
         thickness = thickness a
         }
 
@@ -116,7 +116,7 @@ module MeasurementsImporterApp =
                 semantic = Semantic.Horizon0
                 points = (getPoints (m.Element(xname "Points"), anType))
                 segments = (getSegments (m, anType))
-                color = style.color
+                color = C4b.White ///style.color
                 thickness = style.thickness
                 visible = true 
                 text = ""
