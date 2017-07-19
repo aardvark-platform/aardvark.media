@@ -249,6 +249,7 @@ module Viewer =
                     lastTime = None
                     orbitCenter = None
                     stash = None
+                    sensitivity = 1.0
                 }
         }
 
