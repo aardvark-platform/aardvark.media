@@ -84,20 +84,9 @@ module AnnotationApp =
                     let d = Drawing.update model.drawing (Drawing.Action.KeyUp k)
                     { model with drawing = d }
             | _ -> model
-            
-            
+                       
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
     
-    
-
-        
-    
-    
-
-    
-
-    
-
     let view (model : MAnnotationAppModel) =
                     
         let frustum =
@@ -116,7 +105,6 @@ module AnnotationApp =
                                     attribute "style" "width:65%; height: 100%; float: left;"]
                         )
                         (
-                            
                             Drawing.Sg.view model.drawing model.camera.view
                                 |> Sg.map DrawingMessage
                                 |> Sg.fillMode model.rendering.fillMode

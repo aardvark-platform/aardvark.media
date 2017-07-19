@@ -29,6 +29,7 @@ module CameraController =
             lastTime = None
             orbitCenter = None
             stash = None
+            sensitivity = 1.0
         }
 
     let sw = System.Diagnostics.Stopwatch()
@@ -59,7 +60,7 @@ module CameraController =
                             if model.moveVec = V3i.Zero then
                                 printfn "useless time %A" now
 
-                            cam.WithLocation(model.view.Location + dir * 1.5 * dt)
+                            cam.WithLocation(model.view.Location + dir * model.sensitivity * dt)
 
                         | None -> 
                             cam
@@ -69,25 +70,25 @@ module CameraController =
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI }
+                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI }
+                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI }
+                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI }
+                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
@@ -95,26 +96,26 @@ module CameraController =
 
             | KeyDown Keys.A ->
                 if not model.left then
-                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO }
+                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO }
+                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO * model.sensitivity.ToInt() }
                 else
                     model
 
 
             | KeyDown Keys.D ->
                 if not model.right then
-                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO }
+                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyUp Keys.D ->
                 if model.right then
-                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO }
+                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO * model.sensitivity.ToInt() }
                 else
                     model
 
@@ -154,14 +155,14 @@ module CameraController =
 
                 let cam =
                     if model.zoom then
-                        let step = -0.05 * (cam.Forward * float delta.Y)
+                        let step = -0.05 * (cam.Forward * float delta.Y) * model.sensitivity
                         cam.WithLocation(cam.Location + step)
                     else
                         cam
 
                 let cam =
                     if model.pan then
-                        let step = 0.05 * (cam.Down * float delta.Y + cam.Right * float delta.X)
+                        let step = 0.05 * (cam.Down * float delta.Y + cam.Right * float delta.X) * model.sensitivity
                         cam.WithLocation(cam.Location + step)
                     else
                         cam
@@ -298,6 +299,7 @@ module ArcBallController =
             lastTime = None
             orbitCenter = Some V3d.Zero
             stash = None
+            sensitivity = 1.0
         }
 
     let sw = Diagnostics.Stopwatch()
@@ -333,7 +335,7 @@ module ArcBallController =
                             if model.moveVec = V3i.Zero then
                                 printfn "useless time %A" now
 
-                            cam.WithLocation(model.view.Location + dir * 1.5 * dt)
+                            cam.WithLocation(model.view.Location + dir * model.sensitivity * dt)
 
                         | None -> 
                             cam
@@ -342,49 +344,49 @@ module ArcBallController =
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI }
+                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI }
+                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI }
+                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI }
+                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyDown Keys.A ->
                 if not model.left then
-                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO }
+                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO * model.sensitivity.ToInt() }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO }
+                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO * model.sensitivity.ToInt()}
                 else
                     model
 
             | KeyDown Keys.D ->
                 if not model.right then
-                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO }
+                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO  * model.sensitivity.ToInt()}
                 else
                     model
 
             | KeyUp Keys.D ->
                 if model.right then
-                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO }
+                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO * model.sensitivity.ToInt() }
                 else
                     model
 
@@ -416,8 +418,8 @@ module ArcBallController =
                     if model.look && model.orbitCenter.IsSome then
                         let trafo = 
                             M44d.Translation (model.orbitCenter.Value) *
-                            M44d.Rotation (cam.Right, float delta.Y * -0.01) * 
-                            M44d.Rotation (cam.Up, float delta.X * -0.01) *
+                            M44d.Rotation (cam.Right, float delta.Y * -0.01 ) * 
+                            M44d.Rotation (cam.Up, float delta.X * -0.01 ) *
                             M44d.Translation (-model.orbitCenter.Value)
                      
                         let newLocation = trafo.TransformPos (cam.Location)
@@ -439,14 +441,14 @@ module ArcBallController =
                 // change zoom and pan !!!!!!
                 let cam =
                     if model.zoom then
-                        let step = -0.05 * (cam.Forward * float delta.Y)
+                        let step = -0.05 *  model.sensitivity * (cam.Forward * float delta.Y)
                         cam.WithLocation(cam.Location + step)
                     else
                         cam
 
                 let cam, center =
                     if model.pan && model.orbitCenter.IsSome then
-                        let step = 0.05 * (cam.Down * float delta.Y + cam.Right * float delta.X)
+                        let step = 0.05 * model.sensitivity * (cam.Down * float delta.Y + cam.Right * float delta.X)
                         let center = model.orbitCenter.Value + step
                         cam.WithLocation(cam.Location + step), Some center
                     else
