@@ -11,7 +11,7 @@ type JSVar = { name : string }
 
 type JSExpr =
     | Body
-    | CreateElement of tag : string
+    | CreateElement of tag : string * ns : Option<string>
     | SetAttribute of target : JSExpr * name : string * value : string
     | RemoveAttribute of target : JSExpr * name : string
 
@@ -126,8 +126,12 @@ module JSExpr =
             | Nop ->
                 ""
 
-            | CreateElement(tag) ->
-                sprintf "document.createElement(\"%s\")" tag
+            | CreateElement(tag,ns) ->
+                match ns with
+                    | None -> 
+                        sprintf "document.createElement(\"%s\")" tag
+                    | Some ns -> 
+                        sprintf "document.createElementNS(\"%s\", \"%s\")" ns tag 
 
             | SetAttribute(t, name, value) ->
                 let t = toStringInternal t

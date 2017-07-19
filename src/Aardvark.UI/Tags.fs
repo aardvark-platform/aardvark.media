@@ -13,6 +13,12 @@ module Incremental =
 
     let inline voidElem (tagName : string) (attrs : AttributeMap<'msg>) = 
         DomNode.Void(tagName, attrs)
+
+    let inline elemNS (tagName : string) (ns : string) (attrs : AttributeMap<'msg>) (children : alist<DomNode<'msg>>) =
+        DomNode.Node(tagName, ns, attrs, children)
+
+    let inline voidElemNS (tagName : string) (ns : string) (attrs : AttributeMap<'msg>) = 
+        DomNode.Void(tagName, ns, attrs)
    
     let inline text (content : IMod<string>) =
         DomNode.Text(content)
@@ -145,6 +151,27 @@ module Incremental =
     let inline menuitem x = elem "menuitem" x
     let inline summary x = elem "summary" x
 
+    module Svg =
+        [<Literal>]
+        let svgNS = "http://www.w3.org/2000/svg"
+        let inline attribute k v = k,v
+
+        let inline svg x = elemNS "svg" svgNS x
+        let inline circle x = voidElemNS "circle" svgNS x 
+        let inline rect x = voidElemNS "rect" svgNS x 
+        let inline line x = voidElemNS "line" svgNS x
+        let inline path x = voidElemNS "path" svgNS x
+
+        let inline width x = attribute "width" x
+        let inline height x = attribute "height" x
+        let inline viewBox x = attribute "viewBox" x
+        let inline cx x = attribute "cx" x
+        let inline cy x = attribute "cy" x
+        let inline r x = attribute "r" x
+        let inline stroke x = attribute "stroke" x
+        let inline strokeWidth x = attribute "stroke-width" x
+        let inline fill x = attribute "fill" x
+
 
 [<AutoOpen>]
 module Static =
@@ -157,6 +184,12 @@ module Static =
 
     let inline voidElem (tagName : string) (attrs : list<string * AttributeValue<'msg>>) = 
         DomNode.Void(tagName, AttributeMap.ofList attrs)
+
+    let inline elemNS (tagName : string) (ns : string) (attrs : list<string * AttributeValue<'msg>>) (children : list<DomNode<'msg>>) =
+        DomNode.Node(tagName, ns, AttributeMap.ofList attrs, AList.ofList children)
+
+    let inline voidElemNS (tagName : string) (ns : string) (attrs : list<string * AttributeValue<'msg>>) = 
+        DomNode.Void(tagName, ns, AttributeMap.ofList attrs)
    
     let inline text (content : string) =
         DomNode.Text(Mod.constant content)
@@ -289,6 +322,27 @@ module Static =
     let inline menu x = elem "menu" x
     let inline menuitem x = elem "menuitem" x
     let inline summary x = elem "summary" x
+
+    module Svg =
+        [<Literal>]
+        let svgNS = "http://www.w3.org/2000/svg"
+        let inline attribute k v = k,v
+
+        let inline svg x = elemNS "svg" svgNS x
+        let inline circle x = voidElemNS "circle" svgNS x 
+        let inline rect x = voidElemNS "rect" svgNS x 
+        let inline line x = voidElemNS "line" svgNS x
+        let inline path x = voidElemNS "path" svgNS x
+
+        let inline width x = attribute "width" x
+        let inline height x = attribute "height" x
+        let inline viewBox x = attribute "viewBox" x
+        let inline cx x = attribute "cx" x
+        let inline cy x = attribute "cy" x
+        let inline r x = attribute "r" x
+        let inline stroke x = attribute "stroke" x
+        let inline strokeWidth x = attribute "stroke-width" x
+        let inline fill x = attribute "fill" x
 
 [<AutoOpen>]
 module HigherOrderTags =
