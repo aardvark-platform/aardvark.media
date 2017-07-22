@@ -103,7 +103,10 @@
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />
-    <Content Include="jscolor.min.js">
+    <Content Include="spectrum.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="spectrum.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
