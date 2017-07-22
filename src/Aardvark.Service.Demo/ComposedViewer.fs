@@ -284,11 +284,11 @@ module OrbitCameraDemo =
 
     let app : App<OrbitCameraDemoModel, MOrbitCameraDemoModel, Action> =
         {
-            unpersist = Unpersist.instance
-            threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = initial
-            update = update
-            view = view
+            unpersist   = Unpersist.instance
+            threads     = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage
+            initial     = initial
+            update      = update
+            view        = view
         }
 
     let start () = App.start app

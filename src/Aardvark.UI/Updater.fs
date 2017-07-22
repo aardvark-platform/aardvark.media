@@ -100,7 +100,7 @@ type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
     static let create (ui : DomUpdater<'msg>) (inner : JSExpr -> list<JSExpr>) =
         let v = { name = ui.Id }
         JSExpr.Let(
-            v, JSExpr.CreateElement(ui.Tag),
+            v, JSExpr.CreateElement(ui.Tag, ui.Namespace),
             JSExpr.Sequential (
                 JSExpr.SetAttribute(JSExpr.Var v, "id", ui.Id) :: inner (JSExpr.Var v)
             )
@@ -237,8 +237,9 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
         true
 
 
-    member x.Tag = ui.Tag
-    member x.Id = id
+    member x.Tag : string = ui.Tag
+    member x.Namespace : Option<string> = ui.Namespace
+    member x.Id : string = id
 
     override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
         for (name, v) in rAtt.State do
@@ -317,4 +318,4 @@ module ``Extensions for Node`` =
             if x.Tag = "body" then DomUpdater<'msg>(x) :> IUpdater<_>
             else
                 Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
-                DomUpdater<'msg>(DomNode<'msg>("body", AttributeMap.empty, Children (AList.single x))) :> IUpdater<_>
+                DomUpdater<'msg>(DomNode<'msg>("body", None, AttributeMap.empty, Children (AList.single x))) :> IUpdater<_>

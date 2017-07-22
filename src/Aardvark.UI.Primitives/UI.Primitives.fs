@@ -342,7 +342,7 @@ module ColorPicker =
 
     let jsColor =
         [             
-            { kind = Script; name = "jsColor"; url = "jscolor.min.js" }
+            //{ kind = Script; name = "jsColor"; url = "jscolor.min.js" }
         ]    
 
     let update (model : ColorInput) (action : Action) =

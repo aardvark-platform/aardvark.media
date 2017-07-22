@@ -31,6 +31,8 @@ type CameraControllerState =
         orbitCenter : Option<V3d>
         lastTime : Option<float>
 
+        sensitivity : float
+
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 
     }

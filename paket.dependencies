@@ -24,8 +24,8 @@ nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.0.12
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.12
 nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.0.12
 
-nuget FsPickler       ~> 3.2.0
-nuget FsPickler.Json  ~> 3.2.0
+nuget FsPickler       ~> 3.3.0
+nuget FsPickler.Json  ~> 3.3.0
 
 nuget WindowsAPICodePack-Core
 nuget WindowsAPICodePack-ShellExtensions

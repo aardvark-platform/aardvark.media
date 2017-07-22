@@ -360,11 +360,13 @@ module SceneEventProcessor =
 
 
 [<Sealed>]
-type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomContent<'msg>) =
+type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, content : DomContent<'msg>) =
     let mutable required : list<Reference> = []
     let mutable boot : Option<string -> string> = None
     let mutable shutdown : Option<string -> string> = None
     let mutable callbacks : Map<string, (list<string> -> 'msg)> = Map.empty
+
+    let mutable ns : Option<string> = ns
 
     member x.Tag = tag
     member x.Content = content
@@ -372,6 +374,9 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
     abstract member Attributes : AttributeMap<'msg>
     default x.Attributes = attributes
 
+    member x.Namespace 
+        with get () = ns
+        and private set n = ns <- n
     
     member x.Required
         with get() = required
@@ -392,6 +397,7 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
     member private x.Copy() =
         DomNode<'msg>(
             x.Tag,
+            x.Namespace,
             x.Attributes,
             x.Content,
             Required = x.Required,
@@ -403,6 +409,7 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
     member x.Map(f : 'msg -> 'b) = 
         DomNode<'b>(
             x.Tag,
+            x.Namespace,
             x.Attributes |> AttributeMap.mapAttributes (AttributeValue.map f),
             DomContent.Map(x.Content, f),
             Required = x.Required,
@@ -420,6 +427,11 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
         res.Boot <- boot
         res
 
+    member x.WithNamespace (ns : string) =
+        let res = x.Copy()
+        res.Namespace <- Some ns
+        res
+
     member x.WithShutdown (shutdown : Option<string -> string>) =
         let res = x.Copy()
         res.Shutdown <- shutdown
@@ -433,6 +445,7 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
     member x.WithAttributes(att : AttributeMap<'msg>) =
         DomNode<'msg>(
             x.Tag,
+            x.Namespace,
             att,
             x.Content,
             Required = x.Required,
@@ -444,6 +457,7 @@ type DomNode<'msg>(tag : string, attributes : AttributeMap<'msg>, content : DomC
     member x.WithContent(content : DomContent<'msg>) =
         DomNode<'msg>(
             x.Tag,
+            x.Namespace,
             x.Attributes,
             content,
             Required = x.Required,
@@ -498,14 +512,19 @@ type DomNode private() =
             | _ -> MouseButtons.None
 
     static member Text(content : IMod<string>) = 
-        DomNode<'msg>("span", AttributeMap.empty, DomContent.Text content)
+        DomNode<'msg>("span", None, AttributeMap.empty, DomContent.Text content)
 
     static member Void(tag : string, attributes : AttributeMap<'msg>) =
-        DomNode<'msg>(tag, attributes, DomContent.Empty)
-        
+        DomNode<'msg>(tag, None, attributes, DomContent.Empty)     
 
     static member Node(tag : string, attributes : AttributeMap<'msg>, content : alist<DomNode<'msg>>) =
-        DomNode<'msg>(tag, attributes, DomContent.Children content)
+        DomNode<'msg>(tag, None, attributes, DomContent.Children content)
+
+    static member Void(tag : string, ns : string, attributes : AttributeMap<'msg>) =
+        DomNode<'msg>(tag, Some ns, attributes, DomContent.Empty)     
+
+    static member Node(tag : string, ns : string, attributes : AttributeMap<'msg>, content : alist<DomNode<'msg>>) =
+        DomNode<'msg>(tag, Some ns, attributes, DomContent.Children content)
 
     static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
 
@@ -600,9 +619,9 @@ type DomNode private() =
         match htmlChildren with
         | Some htmlChildren -> 
             printfn "not implemented"
-            DomNode<'msg>("div", ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
+            DomNode<'msg>("div", None, ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
         | None -> 
-            DomNode<'msg>("div", ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
+            DomNode<'msg>("div", None, ownAttributes, DomContent.Scene(scene, getState)).WithBoot(Some boot)
 
 
 

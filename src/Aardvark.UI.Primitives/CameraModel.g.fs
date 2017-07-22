@@ -25,6 +25,7 @@ module Mutable =
         let _moveVec = ResetMod.Create(__initial.moveVec)
         let _orbitCenter = MOption.Create(__initial.orbitCenter)
         let _lastTime = MOption.Create(__initial.lastTime)
+        let _sensitivity = ResetMod.Create(__initial.sensitivity)
         let _stash = ResetMod.Create(__initial.stash)
         
         member x.view = _view :> IMod<_>
@@ -39,6 +40,7 @@ module Mutable =
         member x.moveVec = _moveVec :> IMod<_>
         member x.orbitCenter = _orbitCenter :> IMod<_>
         member x.lastTime = _lastTime :> IMod<_>
+        member x.sensitivity = _sensitivity :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
         member x.Update(v : Aardvark.UI.Primitives.CameraControllerState) =
@@ -57,6 +59,7 @@ module Mutable =
                 ResetMod.Update(_moveVec,v.moveVec)
                 MOption.Update(_orbitCenter, v.orbitCenter)
                 MOption.Update(_lastTime, v.lastTime)
+                ResetMod.Update(_sensitivity,v.sensitivity)
                 _stash.Update(v.stash)
                 
         
@@ -145,6 +148,12 @@ module Mutable =
                     override x.Get(r) = r.lastTime
                     override x.Set(r,v) = { r with lastTime = v }
                     override x.Update(r,f) = { r with lastTime = f r.lastTime }
+                }
+            let sensitivity =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.sensitivity
+                    override x.Set(r,v) = { r with sensitivity = v }
+                    override x.Update(r,f) = { r with sensitivity = f r.sensitivity }
                 }
             let stash =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.UI.Primitives.CameraControllerState>>() with
