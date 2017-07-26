@@ -890,11 +890,13 @@ module Mutable =
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _orbitCenter = Aardvark.UI.Mutable.MV3dInput.Create(__initial.orbitCenter)
         let _color = Aardvark.UI.Mutable.MColorInput.Create(__initial.color)
+        let _navsensitivity = Aardvark.UI.Mutable.MNumericInput.Create(__initial.navsensitivity)
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.orbitCenter = _orbitCenter
         member x.color = _color
+        member x.navsensitivity = _navsensitivity
         
         member x.Update(v : PRo3DModels.OrbitCameraDemoModel) =
             if not (System.Object.ReferenceEquals(__current, v)) then
@@ -904,6 +906,7 @@ module Mutable =
                 MRenderingParameters.Update(_rendering, v.rendering)
                 Aardvark.UI.Mutable.MV3dInput.Update(_orbitCenter, v.orbitCenter)
                 Aardvark.UI.Mutable.MColorInput.Update(_color, v.color)
+                Aardvark.UI.Mutable.MNumericInput.Update(_navsensitivity, v.navsensitivity)
                 
         
         static member Create(__initial : PRo3DModels.OrbitCameraDemoModel) : MOrbitCameraDemoModel = MOrbitCameraDemoModel(__initial)
@@ -944,6 +947,12 @@ module Mutable =
                     override x.Set(r,v) = { r with color = v }
                     override x.Update(r,f) = { r with color = f r.color }
                 }
+            let navsensitivity =
+                { new Lens<PRo3DModels.OrbitCameraDemoModel, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.navsensitivity
+                    override x.Set(r,v) = { r with navsensitivity = v }
+                    override x.Update(r,f) = { r with navsensitivity = f r.navsensitivity }
+                }
     
     
     type MNavigationModeDemoModel(__initial : PRo3DModels.NavigationModeDemoModel) =
@@ -952,10 +961,12 @@ module Mutable =
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _navigation = MNavigationParameters.Create(__initial.navigation)
+        let _navsensitivity = Aardvark.UI.Mutable.MNumericInput.Create(__initial.navsensitivity)
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.navigation = _navigation
+        member x.navsensitivity = _navsensitivity
         
         member x.Update(v : PRo3DModels.NavigationModeDemoModel) =
             if not (System.Object.ReferenceEquals(__current, v)) then
@@ -964,6 +975,7 @@ module Mutable =
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
                 MRenderingParameters.Update(_rendering, v.rendering)
                 MNavigationParameters.Update(_navigation, v.navigation)
+                Aardvark.UI.Mutable.MNumericInput.Update(_navsensitivity, v.navsensitivity)
                 
         
         static member Create(__initial : PRo3DModels.NavigationModeDemoModel) : MNavigationModeDemoModel = MNavigationModeDemoModel(__initial)
@@ -997,4 +1009,10 @@ module Mutable =
                     override x.Get(r) = r.navigation
                     override x.Set(r,v) = { r with navigation = v }
                     override x.Update(r,f) = { r with navigation = f r.navigation }
+                }
+            let navsensitivity =
+                { new Lens<PRo3DModels.NavigationModeDemoModel, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.navsensitivity
+                    override x.Set(r,v) = { r with navsensitivity = v }
+                    override x.Update(r,f) = { r with navsensitivity = f r.navsensitivity }
                 }

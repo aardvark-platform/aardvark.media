@@ -169,6 +169,7 @@ module OrbitCameraDemo =
         | RenderingAction  of RenderingProperties.Action                
         | V3dMessage       of Vector3d.Action
         | ColorMessage     of ColorPicker.Action
+        | ChangeSensitivity of Numeric.Action
 
     let update (model : OrbitCameraDemoModel) (act : Action) =
         match act with
@@ -194,6 +195,9 @@ module OrbitCameraDemo =
                 { model with orbitCenter = orbitCenter; camera = cam}
             | ColorMessage a ->
                 { model with color = ColorPicker.update model.color a}
+            | ChangeSensitivity a ->               
+                let sense = Numeric.update model.navsensitivity a
+                { model with navsensitivity = sense; camera = { model.camera with sensitivity = sense.value } }
 
     let view (model : MOrbitCameraDemoModel) =
         let cam =
@@ -268,10 +272,20 @@ module OrbitCameraDemo =
                             AList.ofList [Vector3d.view model.orbitCenter |> UI.map V3dMessage]
                         );
                         yield ColorPicker.view model.color |> UI.map ColorMessage
+
+                        yield Numeric.view model.navsensitivity |> UI.map ChangeSensitivity
                     ]
                 ]
             ]
         )
+
+    let initNavSens = {
+        value   = 0.0
+        min     = -5.0
+        max     = +5.0
+        step    = 0.25
+        format  = "{0:0.00}"
+    }
 
     let initial =
         {
@@ -279,6 +293,7 @@ module OrbitCameraDemo =
             rendering = { InitValues.rendering with cullMode = CullMode.None }    
             orbitCenter = Vector3d.init
             color = { c = C4b.VRVisGreen}
+            navsensitivity = initNavSens
           //  navigation = { navigationMode = NavigationMode.FreeFly }
         }
 
@@ -300,6 +315,7 @@ module NavigationModeDemo =
         | FreeFlyAction     of CameraController.Message
         | RenderingAction   of RenderingProperties.Action        
         | NavigationAction  of NavigationProperties.Action
+        | ChangeSensitivity of Numeric.Action
 
     let update (model : NavigationModeDemoModel) (act : Action) =
         match act with            
@@ -318,6 +334,9 @@ module NavigationModeDemo =
                 { model with rendering = RenderingProperties.update model.rendering a }       
             | NavigationAction a ->
                 { model with navigation = NavigationProperties.update model.navigation a }
+            | ChangeSensitivity a ->               
+                let sense = Numeric.update model.navsensitivity a
+                { model with navsensitivity = sense; camera = { model.camera with sensitivity = sense.value } }
 
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
@@ -414,13 +433,21 @@ module NavigationModeDemo =
                         ] "Navigation"
                 ]
         )
+    
+    let initNavSens = {
+        value   = 0.0
+        min     = -5.0
+        max     = +5.0
+        step    = 0.25
+        format  = "{0:0.00}"
+    }
 
-
-    let initial =
+    let initial : NavigationModeDemoModel =
         {
-            camera = { ArcBallController.initial with orbitCenter = Some V3d.Zero }
-            rendering = { InitValues.rendering with cullMode = CullMode.None }
-            navigation = InitValues.navigation
+            camera          = { ArcBallController.initial with orbitCenter = Some V3d.Zero }
+            rendering       = { InitValues.rendering with cullMode = CullMode.None }
+            navigation      = InitValues.navigation
+            navsensitivity  = initNavSens
         }
 
     let app : App<NavigationModeDemoModel, MNavigationModeDemoModel,Action> =

@@ -266,10 +266,11 @@ module JsonTypes =
 
 [<DomainType>]
 type OrbitCameraDemoModel = {
-    camera : CameraControllerState
-    rendering : RenderingParameters    
-    orbitCenter : V3dInput
-    color : ColorInput
+    camera          : CameraControllerState
+    rendering       : RenderingParameters    
+    orbitCenter     : V3dInput
+    color           : ColorInput
+    navsensitivity  : NumericInput
 }
 
 [<DomainType>]
@@ -277,6 +278,7 @@ type NavigationModeDemoModel = {
     camera : CameraControllerState
     rendering : RenderingParameters
     navigation : NavigationParameters
+    navsensitivity : NumericInput
 }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
