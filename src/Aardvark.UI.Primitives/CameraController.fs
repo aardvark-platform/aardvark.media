@@ -14,7 +14,7 @@ open Aardvark.UI.Primitives
 
 module CameraController =
     open Aardvark.Base.Incremental.Operators    
-
+    
     type Message = CameraControllerMessage
 
     let initial =
@@ -30,6 +30,9 @@ module CameraController =
             orbitCenter = None
             stash = None
             sensitivity = 1.0
+            panFactor  = 0.01
+            zoomFactor = 0.01
+            rotationFactor = 0.01
         }
 
     let sw = System.Diagnostics.Stopwatch()
@@ -148,8 +151,8 @@ module CameraController =
                 let cam =
                     if model.look then
                         let trafo =
-                            M44d.Rotation(cam.Right, float delta.Y * -0.01) *
-                            M44d.Rotation(cam.Sky, float delta.X * -0.01)
+                            M44d.Rotation(cam.Right, float delta.Y * -model.rotationFactor) *
+                            M44d.Rotation(cam.Sky,   float delta.X * -model.rotationFactor)
 
                         let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
                         cam.WithForward newForward
@@ -158,14 +161,14 @@ module CameraController =
 
                 let cam =
                     if model.zoom then
-                        let step = -0.05 * (cam.Forward * float delta.Y) * (exp model.sensitivity)
+                        let step = -model.zoomFactor * (cam.Forward * float delta.Y) * (exp model.sensitivity)
                         cam.WithLocation(cam.Location + step)
                     else
                         cam
 
                 let cam =
                     if model.pan then
-                        let step = 0.05 * (cam.Down * float delta.Y + cam.Right * float delta.X) * (exp model.sensitivity)
+                        let step = model.panFactor * (cam.Down * float delta.Y + cam.Right * float delta.X) * (exp model.sensitivity)
                         cam.WithLocation(cam.Location + step)
                     else
                         cam
@@ -292,17 +295,20 @@ module ArcBallController =
 
     let initial =
         {
-            view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
-            dragStart = V2i.Zero
-            look = false
-            zoom = false
-            pan = false
+            view        = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
+            dragStart   = V2i.Zero
+            look        = false
+            zoom        = false
+            pan         = false
             forward = false; backward = false; left = false; right = false
-            moveVec = V3i.Zero
-            lastTime = None
-            orbitCenter = Some V3d.Zero
-            stash = None
-            sensitivity = 1.0
+            moveVec         = V3i.Zero
+            lastTime        = None
+            orbitCenter     = Some V3d.Zero
+            stash           = None
+            sensitivity     = 1.0
+            zoomFactor      = 0.01
+            panFactor       = 0.01
+            rotationFactor  = 0.01
         }
 
     let sw = Diagnostics.Stopwatch()
@@ -447,14 +453,14 @@ module ArcBallController =
                 // change zoom and pan !!!!!!
                 let cam =
                     if model.zoom then
-                        let step = -0.05 * (exp model.sensitivity) * (cam.Forward * float delta.Y)
+                        let step = -model.zoomFactor * (exp model.sensitivity) * (cam.Forward * float delta.Y)
                         cam.WithLocation(cam.Location + step)
                     else
                         cam
 
                 let cam, center =
                     if model.pan && model.orbitCenter.IsSome then
-                        let step = 0.05 * (exp model.sensitivity) * (cam.Down * float delta.Y + cam.Right * float delta.X)
+                        let step = model.panFactor * (exp model.sensitivity) * (cam.Down * float delta.Y + cam.Right * float delta.X)
                         let center = model.orbitCenter.Value + step
                         cam.WithLocation(cam.Location + step), Some center
                     else

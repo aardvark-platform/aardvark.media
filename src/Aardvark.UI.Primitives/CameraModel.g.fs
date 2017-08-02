@@ -26,6 +26,9 @@ module Mutable =
         let _orbitCenter = MOption.Create(__initial.orbitCenter)
         let _lastTime = MOption.Create(__initial.lastTime)
         let _sensitivity = ResetMod.Create(__initial.sensitivity)
+        let _zoomFactor = ResetMod.Create(__initial.zoomFactor)
+        let _panFactor = ResetMod.Create(__initial.panFactor)
+        let _rotationFactor = ResetMod.Create(__initial.rotationFactor)
         let _stash = ResetMod.Create(__initial.stash)
         
         member x.view = _view :> IMod<_>
@@ -41,6 +44,9 @@ module Mutable =
         member x.orbitCenter = _orbitCenter :> IMod<_>
         member x.lastTime = _lastTime :> IMod<_>
         member x.sensitivity = _sensitivity :> IMod<_>
+        member x.zoomFactor = _zoomFactor :> IMod<_>
+        member x.panFactor = _panFactor :> IMod<_>
+        member x.rotationFactor = _rotationFactor :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
         member x.Update(v : Aardvark.UI.Primitives.CameraControllerState) =
@@ -60,6 +66,9 @@ module Mutable =
                 MOption.Update(_orbitCenter, v.orbitCenter)
                 MOption.Update(_lastTime, v.lastTime)
                 ResetMod.Update(_sensitivity,v.sensitivity)
+                ResetMod.Update(_zoomFactor,v.zoomFactor)
+                ResetMod.Update(_panFactor,v.panFactor)
+                ResetMod.Update(_rotationFactor,v.rotationFactor)
                 _stash.Update(v.stash)
                 
         
@@ -154,6 +163,24 @@ module Mutable =
                     override x.Get(r) = r.sensitivity
                     override x.Set(r,v) = { r with sensitivity = v }
                     override x.Update(r,f) = { r with sensitivity = f r.sensitivity }
+                }
+            let zoomFactor =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.zoomFactor
+                    override x.Set(r,v) = { r with zoomFactor = v }
+                    override x.Update(r,f) = { r with zoomFactor = f r.zoomFactor }
+                }
+            let panFactor =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.panFactor
+                    override x.Set(r,v) = { r with panFactor = v }
+                    override x.Update(r,f) = { r with panFactor = f r.panFactor }
+                }
+            let rotationFactor =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.rotationFactor
+                    override x.Set(r,v) = { r with rotationFactor = v }
+                    override x.Update(r,f) = { r with rotationFactor = f r.rotationFactor }
                 }
             let stash =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.UI.Primitives.CameraControllerState>>() with

@@ -19,19 +19,22 @@ type CameraControllerState =
         view : CameraView
 
         dragStart : V2i
-        look : bool
-        zoom : bool
-        pan : bool
+        look      : bool
+        zoom      : bool
+        pan       : bool
 
-        forward : bool
-        backward : bool
-        left : bool
-        right : bool
-        moveVec : V3i
+        forward     : bool
+        backward    : bool
+        left        : bool
+        right       : bool
+        moveVec     : V3i
         orbitCenter : Option<V3d>
-        lastTime : Option<float>
+        lastTime    : Option<float>
 
-        sensitivity : float
+        sensitivity     : float
+        zoomFactor      : float
+        panFactor       : float
+        rotationFactor  : float
 
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 

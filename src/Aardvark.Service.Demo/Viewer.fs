@@ -241,15 +241,18 @@ module Viewer =
             cullMode = CullMode.None
             camera =
                 {
-                    view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
-                    dragStart = V2i.Zero
+                    view            = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
+                    dragStart       = V2i.Zero
                     look = false; zoom = false; pan = false
                     forward = false; backward = false; left = false; right = false
-                    moveVec = V3i.Zero
-                    lastTime = None
-                    orbitCenter = None
-                    stash = None
-                    sensitivity = 1.0
+                    moveVec         = V3i.Zero
+                    lastTime        = None
+                    orbitCenter     = None
+                    stash           = None
+                    sensitivity     = 1.0
+                    rotationFactor  = 0.01
+                    panFactor       = 0.01
+                    zoomFactor      = 0.01
                 }
         }
 
