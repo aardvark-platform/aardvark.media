@@ -140,9 +140,10 @@ module MutableApp =
                                     if code <> "" then
                                         let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
                                         lock app (fun () -> 
-                                            Log.start "update"
-                                           // for l in lines do Log.line "%s" l
-                                            Log.stop()
+                                            if shouldPrintDOMUpdates then
+                                                Log.start "update"
+                                                for l in lines do Log.line "%s" l
+                                                Log.stop()
                                         )
                                     let res = ws.send Opcode.Text (ByteSegment(Text.Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
                                     match res with
