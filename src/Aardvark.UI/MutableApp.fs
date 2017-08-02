@@ -140,7 +140,7 @@ module MutableApp =
                                     if code <> "" then
                                         let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
                                         lock app (fun () -> 
-                                            if shouldPrintDOMUpdates then
+                                            if Config.shouldPrintDOMUpdates then
                                                 Log.start "update"
                                                 for l in lines do Log.line "%s" l
                                                 Log.stop()
