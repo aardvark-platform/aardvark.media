@@ -34,9 +34,7 @@ type CameraControllerState =
         sensitivity     : float
         zoomFactor      : float
         panFactor       : float
-        rotationFactor  : float
-
-        text            : string
+        rotationFactor  : float        
 
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 

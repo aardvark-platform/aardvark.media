@@ -20,20 +20,19 @@ module CameraController =
     let initial =
         {
             view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
-            dragStart = V2i.Zero
-            look = false
-            zoom = false
-            pan = false
-            forward = false; backward = false; left = false; right = false
-            moveVec = V3i.Zero
-            lastTime = None
+                                    
             orbitCenter = None
             stash = None
             sensitivity = 1.0
             panFactor  = 0.01
             zoomFactor = 0.01
-            rotationFactor = 0.01
-            text = "initial2"
+            rotationFactor = 0.01            
+
+            lastTime = None
+            moveVec = V3i.Zero
+            dragStart = V2i.Zero
+            look = false; zoom = false; pan = false                    
+            forward = false; backward = false; left = false; right = false
         }
 
     let sw = System.Diagnostics.Stopwatch()
@@ -48,7 +47,13 @@ module CameraController =
     let update (model : CameraControllerState) (message : Message) =
         match message with
             | Blur ->
-                { initial with view = model.view; lastTime = None; orbitCenter = model.orbitCenter }
+                { model with 
+                    lastTime = None
+                    moveVec = V3i.Zero
+                    dragStart = V2i.Zero
+                    look = false; zoom = false; pan = false                    
+                    forward = false; backward = false; left = false; right = false
+                }
 
             | StepTime ->
                 let now = sw.Elapsed.TotalSeconds
@@ -309,8 +314,7 @@ module ArcBallController =
             sensitivity     = 1.0
             zoomFactor      = 0.01
             panFactor       = 0.01
-            rotationFactor  = 0.01
-            text = "initial"
+            rotationFactor  = 0.01            
         }
 
     let sw = Diagnostics.Stopwatch()

@@ -437,8 +437,7 @@ module NavigationModeDemo =
                         Html.table [  
                             Html.row "Sensitivity:" [Incremental.text (ccs.sensitivity |> Mod.map (fun x -> sprintf "%f" x))]
                             Html.row "ZoomFactor:"  [Incremental.text (ccs.zoomFactor  |> Mod.map (fun x -> sprintf "%f" x))]
-                            Html.row "PanFactor:"   [Incremental.text (ccs.panFactor   |> Mod.map (fun x -> sprintf "%f" x))]
-                            Html.row "Debug:"   [Incremental.text (ccs.text   |> Mod.map (fun x -> sprintf "%s" x))]
+                            Html.row "PanFactor:"   [Incremental.text (ccs.panFactor   |> Mod.map (fun x -> sprintf "%f" x))]                            
                         ]
 
                     let navigationAcc = 
@@ -447,8 +446,7 @@ module NavigationModeDemo =
                             Html.table [  
                                 Html.row "Sensitivity:" [Numeric.view' [InputBox; Slider] model.navsensitivity |> UI.map ChangeSensitivity]
                                 Html.row "ZoomFactor:"  [Numeric.view' [InputBox; Slider] model.zoomFactor     |> UI.map ChangeZoomFactor]
-                                Html.row "PanFactor:"   [Numeric.view' [InputBox; Slider] model.panFactor      |> UI.map ChangePanFactor]
-                                Html.row "Text:" [Html.SemUi.textBox model.camera.text ChangeText ]
+                                Html.row "PanFactor:"   [Numeric.view' [InputBox; Slider] model.panFactor      |> UI.map ChangePanFactor]                                
                             ]
                             cameracontroller model.camera
                         ]

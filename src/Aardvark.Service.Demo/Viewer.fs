@@ -252,8 +252,7 @@ module Viewer =
                     sensitivity     = 1.0
                     rotationFactor  = 0.01
                     panFactor       = 0.01
-                    zoomFactor      = 0.01
-                    text            = "initial"
+                    zoomFactor      = 0.01                    
                 }
         }
 
