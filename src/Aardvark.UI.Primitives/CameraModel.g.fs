@@ -141,7 +141,7 @@ module Mutable =
                     override x.Update(r,f) = { r with right = f r.right }
                 }
             let moveVec =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Aardvark.Base.V3i>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Aardvark.Base.V3d>() with
                     override x.Get(r) = r.moveVec
                     override x.Set(r,v) = { r with moveVec = v }
                     override x.Update(r,f) = { r with moveVec = f r.moveVec }

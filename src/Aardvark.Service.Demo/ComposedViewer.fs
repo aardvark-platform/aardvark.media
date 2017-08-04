@@ -443,9 +443,9 @@ module NavigationModeDemo =
                         Html.SemUi.accordion "Navigation" "Compass" true [
                             NavigationProperties.view model.navigation |> UI.map NavigationAction 
                             Html.table [  
-                                Html.row "Sensitivity:" [Numeric.view' [InputBox; Slider] model.navsensitivity |> UI.map ChangeSensitivity]
-                                Html.row "ZoomFactor:"  [Numeric.view' [InputBox; Slider] model.zoomFactor     |> UI.map ChangeZoomFactor]
-                                Html.row "PanFactor:"   [Numeric.view' [InputBox; Slider] model.panFactor      |> UI.map ChangePanFactor]                                
+                                Html.row "Sensitivity:" [Numeric.view' [InputBox;] model.navsensitivity |> UI.map ChangeSensitivity]
+                                Html.row "ZoomFactor:"  [Numeric.view' [InputBox;] model.zoomFactor     |> UI.map ChangeZoomFactor]
+                                Html.row "PanFactor:"   [Numeric.view' [InputBox;] model.panFactor      |> UI.map ChangePanFactor]                                
                             ]
                             cameracontroller model.camera
                         ]

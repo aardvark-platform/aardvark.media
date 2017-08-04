@@ -27,7 +27,7 @@ type CameraControllerState =
         backward    : bool
         left        : bool
         right       : bool
-        moveVec     : V3i
+        moveVec     : V3d
         orbitCenter : Option<V3d>
         lastTime    : Option<float>
 
