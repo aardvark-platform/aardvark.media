@@ -317,8 +317,7 @@ module NavigationModeDemo =
         | NavigationAction  of NavigationProperties.Action
         | ChangeSensitivity of Numeric.Action
         | ChangePanFactor   of Numeric.Action
-        | ChangeZoomFactor  of Numeric.Action
-        | ChangeText        of string
+        | ChangeZoomFactor  of Numeric.Action       
 
     let update (model : NavigationModeDemoModel) (act : Action) =
         match act with            
