@@ -36,6 +36,8 @@ type CameraControllerState =
         panFactor       : float
         rotationFactor  : float
 
+        text            : string
+
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 
     }

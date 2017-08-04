@@ -29,6 +29,7 @@ module Mutable =
         let _zoomFactor = ResetMod.Create(__initial.zoomFactor)
         let _panFactor = ResetMod.Create(__initial.panFactor)
         let _rotationFactor = ResetMod.Create(__initial.rotationFactor)
+        let _text = ResetMod.Create(__initial.text)
         let _stash = ResetMod.Create(__initial.stash)
         
         member x.view = _view :> IMod<_>
@@ -47,6 +48,7 @@ module Mutable =
         member x.zoomFactor = _zoomFactor :> IMod<_>
         member x.panFactor = _panFactor :> IMod<_>
         member x.rotationFactor = _rotationFactor :> IMod<_>
+        member x.text = _text :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
         member x.Update(v : Aardvark.UI.Primitives.CameraControllerState) =
@@ -69,6 +71,7 @@ module Mutable =
                 ResetMod.Update(_zoomFactor,v.zoomFactor)
                 ResetMod.Update(_panFactor,v.panFactor)
                 ResetMod.Update(_rotationFactor,v.rotationFactor)
+                ResetMod.Update(_text,v.text)
                 _stash.Update(v.stash)
                 
         
@@ -181,6 +184,12 @@ module Mutable =
                     override x.Get(r) = r.rotationFactor
                     override x.Set(r,v) = { r with rotationFactor = v }
                     override x.Update(r,f) = { r with rotationFactor = f r.rotationFactor }
+                }
+            let text =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.string>() with
+                    override x.Get(r) = r.text
+                    override x.Set(r,v) = { r with text = v }
+                    override x.Update(r,f) = { r with text = f r.text }
                 }
             let stash =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.UI.Primitives.CameraControllerState>>() with

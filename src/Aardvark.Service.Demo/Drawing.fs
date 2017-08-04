@@ -109,10 +109,10 @@ module Drawing =
         let viewAnnotationTools (model:MDrawingModel)=  
             Html.SemUi.accordion "Annotation Tools" "Write" true [
                 Html.table [                            
-                    Html.row "Text:" [Html.SemUi.textBox model.exportPath SetExportPath ]
-                    Html.row "Geometry:" [Html.SemUi.dropDown model.geometry SetGeometry]
+                    Html.row "Text:"        [Html.SemUi.textBox  model.exportPath SetExportPath ]
+                    Html.row "Geometry:"    [Html.SemUi.dropDown model.geometry   SetGeometry]
                     Html.row "Projections:" [Html.SemUi.dropDown model.projection SetProjection]
-                    Html.row "Semantic:" [Html.SemUi.dropDown model.semantic SetSemantic]
+                    Html.row "Semantic:"    [Html.SemUi.dropDown model.semantic   SetSemantic]
                 ]                    
             ]
 

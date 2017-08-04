@@ -33,6 +33,7 @@ module CameraController =
             panFactor  = 0.01
             zoomFactor = 0.01
             rotationFactor = 0.01
+            text = "initial2"
         }
 
     let sw = System.Diagnostics.Stopwatch()
@@ -309,6 +310,7 @@ module ArcBallController =
             zoomFactor      = 0.01
             panFactor       = 0.01
             rotationFactor  = 0.01
+            text = "initial"
         }
 
     let sw = Diagnostics.Stopwatch()

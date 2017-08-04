@@ -962,11 +962,15 @@ module Mutable =
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _navigation = MNavigationParameters.Create(__initial.navigation)
         let _navsensitivity = Aardvark.UI.Mutable.MNumericInput.Create(__initial.navsensitivity)
+        let _zoomFactor = Aardvark.UI.Mutable.MNumericInput.Create(__initial.zoomFactor)
+        let _panFactor = Aardvark.UI.Mutable.MNumericInput.Create(__initial.panFactor)
         
         member x.camera = _camera
         member x.rendering = _rendering
         member x.navigation = _navigation
         member x.navsensitivity = _navsensitivity
+        member x.zoomFactor = _zoomFactor
+        member x.panFactor = _panFactor
         
         member x.Update(v : PRo3DModels.NavigationModeDemoModel) =
             if not (System.Object.ReferenceEquals(__current, v)) then
@@ -976,6 +980,8 @@ module Mutable =
                 MRenderingParameters.Update(_rendering, v.rendering)
                 MNavigationParameters.Update(_navigation, v.navigation)
                 Aardvark.UI.Mutable.MNumericInput.Update(_navsensitivity, v.navsensitivity)
+                Aardvark.UI.Mutable.MNumericInput.Update(_zoomFactor, v.zoomFactor)
+                Aardvark.UI.Mutable.MNumericInput.Update(_panFactor, v.panFactor)
                 
         
         static member Create(__initial : PRo3DModels.NavigationModeDemoModel) : MNavigationModeDemoModel = MNavigationModeDemoModel(__initial)
@@ -1015,4 +1021,16 @@ module Mutable =
                     override x.Get(r) = r.navsensitivity
                     override x.Set(r,v) = { r with navsensitivity = v }
                     override x.Update(r,f) = { r with navsensitivity = f r.navsensitivity }
+                }
+            let zoomFactor =
+                { new Lens<PRo3DModels.NavigationModeDemoModel, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.zoomFactor
+                    override x.Set(r,v) = { r with zoomFactor = v }
+                    override x.Update(r,f) = { r with zoomFactor = f r.zoomFactor }
+                }
+            let panFactor =
+                { new Lens<PRo3DModels.NavigationModeDemoModel, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.panFactor
+                    override x.Set(r,v) = { r with panFactor = v }
+                    override x.Update(r,f) = { r with panFactor = f r.panFactor }
                 }

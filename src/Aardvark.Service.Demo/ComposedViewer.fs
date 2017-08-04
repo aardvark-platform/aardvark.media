@@ -316,6 +316,9 @@ module NavigationModeDemo =
         | RenderingAction   of RenderingProperties.Action        
         | NavigationAction  of NavigationProperties.Action
         | ChangeSensitivity of Numeric.Action
+        | ChangePanFactor   of Numeric.Action
+        | ChangeZoomFactor  of Numeric.Action
+        | ChangeText        of string
 
     let update (model : NavigationModeDemoModel) (act : Action) =
         match act with            
@@ -337,6 +340,12 @@ module NavigationModeDemo =
             | ChangeSensitivity a ->               
                 let sense = Numeric.update model.navsensitivity a
                 { model with navsensitivity = sense; camera = { model.camera with sensitivity = sense.value } }
+            | ChangeZoomFactor a ->               
+                let zoom = Numeric.update model.zoomFactor a
+                { model with zoomFactor = zoom; camera = { model.camera with zoomFactor = zoom.value } }
+            | ChangePanFactor a ->               
+                let pan = Numeric.update model.panFactor a
+                { model with panFactor = pan; camera = { model.camera with panFactor = pan.value } }
 
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
@@ -421,15 +430,36 @@ module NavigationModeDemo =
                             RenderingProperties.view model.rendering |> UI.map RenderingAction 
                         ]
 
+            //         Html.table [                            
+            //   Html.row "Mode:" [Html.SemUi.dropDown model.navigationMode SetNavigationMode]
+            //]
+                    let cameracontroller (ccs : MCameraControllerState) = 
+                        Html.table [  
+                            Html.row "Sensitivity:" [Incremental.text (ccs.sensitivity |> Mod.map (fun x -> sprintf "%f" x))]
+                            Html.row "ZoomFactor:"  [Incremental.text (ccs.zoomFactor  |> Mod.map (fun x -> sprintf "%f" x))]
+                            Html.row "PanFactor:"   [Incremental.text (ccs.panFactor   |> Mod.map (fun x -> sprintf "%f" x))]
+                            Html.row "Debug:"   [Incremental.text (ccs.text   |> Mod.map (fun x -> sprintf "%s" x))]
+                        ]
+
                     let navigationAcc = 
                         Html.SemUi.accordion "Navigation" "Compass" true [
                             NavigationProperties.view model.navigation |> UI.map NavigationAction 
+                            Html.table [  
+                                Html.row "Sensitivity:" [Numeric.view' [InputBox; Slider] model.navsensitivity |> UI.map ChangeSensitivity]
+                                Html.row "ZoomFactor:"  [Numeric.view' [InputBox; Slider] model.zoomFactor     |> UI.map ChangeZoomFactor]
+                                Html.row "PanFactor:"   [Numeric.view' [InputBox; Slider] model.panFactor      |> UI.map ChangePanFactor]
+                                Html.row "Text:" [Html.SemUi.textBox model.camera.text ChangeText ]
+                            ]
+                            cameracontroller model.camera
                         ]
+
+                   
                                         
                     yield 
                         Html.SemUi.tabbed [clazz "ui inverted segment"; style "width:35%; height: 100%; float:right" ] [
                             ("Rendering", renderingAcc)
                             ("Navigation", navigationAcc)
+                           // ("Debug", cameracontroller model.camera)
                         ] "Navigation"
                 ]
         )
@@ -442,11 +472,21 @@ module NavigationModeDemo =
         format  = "{0:0.00}"
     }
 
+    let initFactors = {
+        value   = 0.01
+        min     = 0.000000001
+        max     = 1000000.0
+        step    = 0.1
+        format  = "{0:0.00000000}"
+    }
+
     let initial : NavigationModeDemoModel =
         {
             camera          = { ArcBallController.initial with orbitCenter = Some V3d.Zero }
             rendering       = { InitValues.rendering with cullMode = CullMode.None }
-            navigation      = InitValues.navigation
+            navigation      = InitValues.navigation        
+            zoomFactor      = initFactors
+            panFactor       = initFactors
             navsensitivity  = initNavSens
         }
 

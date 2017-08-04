@@ -279,6 +279,8 @@ type NavigationModeDemoModel = {
     rendering : RenderingParameters
     navigation : NavigationParameters
     navsensitivity : NumericInput
+    zoomFactor : NumericInput
+    panFactor : NumericInput
 }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
