@@ -318,6 +318,8 @@ module NavigationModeDemo =
         | ChangeSensitivity of Numeric.Action
         | ChangePanFactor   of Numeric.Action
         | ChangeZoomFactor  of Numeric.Action       
+        | KeyDown                   of key : Aardvark.Application.Keys
+        | KeyUp                     of key : Aardvark.Application.Keys      
 
     let update (model : NavigationModeDemoModel) (act : Action) =
         match act with            
@@ -345,6 +347,16 @@ module NavigationModeDemo =
             | ChangePanFactor a ->               
                 let pan = Numeric.update model.panFactor a
                 { model with panFactor = pan; camera = { model.camera with panFactor = pan.value } }
+            | KeyDown k -> 
+                let (a : Numeric.Action) =
+                    match k with 
+                        | Aardvark.Application.Keys.PageUp -> Numeric.Action.SetValue (model.camera.sensitivity + 0.5)
+                        | Aardvark.Application.Keys.PageDown -> Numeric.Action.SetValue (model.camera.sensitivity - 0.5)
+                        | _ -> Numeric.Action.SetValue (model.camera.sensitivity)
+
+                let sense = Numeric.update model.navsensitivity a
+                { model with navsensitivity = sense; camera = { model.camera with sensitivity = sense.value } }
+            | KeyUp k -> model
 
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
@@ -420,7 +432,11 @@ module NavigationModeDemo =
                             (Mod.map2 Camera.create model.camera.view frustum) 
                             (AttributeMap.unionMany [
                                 renderControlAttributes 
-                                [attribute "style" "width:65%; height: 100%; float: left;"] |> AttributeMap.ofList
+                                
+                                [
+                                    attribute "style" "width:65%; height: 100%; float: left;"
+                                    onKeyDown (KeyDown)
+                                    onKeyUp (KeyUp) ] |> AttributeMap.ofList
                             ])
                             scene
 
@@ -470,7 +486,7 @@ module NavigationModeDemo =
     }
 
     let initFactors = {
-        value   = 0.01
+        value   = 0.001
         min     = 0.000000001
         max     = 1000000.0
         step    = 0.1

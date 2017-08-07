@@ -245,7 +245,7 @@ module Viewer =
                     dragStart       = V2i.Zero
                     look = false; zoom = false; pan = false
                     forward = false; backward = false; left = false; right = false
-                    moveVec         = V3d.Zero
+                    moveVec         = V3i.Zero
                     lastTime        = None
                     orbitCenter     = None
                     stash           = None

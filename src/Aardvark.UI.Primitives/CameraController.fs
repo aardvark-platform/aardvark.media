@@ -29,7 +29,7 @@ module CameraController =
             rotationFactor = 0.01            
 
             lastTime = None
-            moveVec = V3d.Zero
+            moveVec = V3i.Zero
             dragStart = V2i.Zero
             look = false; zoom = false; pan = false                    
             forward = false; backward = false; left = false; right = false
@@ -49,7 +49,7 @@ module CameraController =
             | Blur ->
                 { model with 
                     lastTime = None
-                    moveVec = V3d.Zero
+                    moveVec = V3i.Zero
                     dragStart = V2i.Zero
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
@@ -69,7 +69,7 @@ module CameraController =
                                 cam.Right * float model.moveVec.X +
                                 cam.Sky * float model.moveVec.Y
 
-                            if model.moveVec = V3d.Zero then
+                            if model.moveVec = V3i.Zero then
                                 printfn "useless time %A" now
 
                             cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
@@ -82,25 +82,25 @@ module CameraController =
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    withTime { model with forward = true; moveVec = model.moveVec + V3d.OOI * exp model.sensitivity }
+                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    withTime { model with forward = false; moveVec = model.moveVec - V3d.OOI * exp model.sensitivity }
+                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    withTime { model with backward = true; moveVec = model.moveVec - V3d.OOI * exp model.sensitivity }
+                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    withTime { model with backward = false; moveVec = model.moveVec + V3d.OOI * exp model.sensitivity }
+                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
 
@@ -108,26 +108,26 @@ module CameraController =
 
             | KeyDown Keys.A ->
                 if not model.left then
-                    withTime { model with left = true; moveVec = model.moveVec - V3d.IOO * exp model.sensitivity }
+                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO  }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    withTime { model with left = false; moveVec = model.moveVec + V3d.IOO * exp model.sensitivity }
+                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO  }
                 else
                     model
 
 
             | KeyDown Keys.D ->
                 if not model.right then
-                    withTime { model with right = true; moveVec = model.moveVec + V3d.IOO * exp model.sensitivity }
+                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO}
                 else
                     model
 
             | KeyUp Keys.D ->
                 if model.right then
-                    withTime { model with right = false; moveVec = model.moveVec - V3d.IOO * exp model.sensitivity }
+                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO }
                 else
                     model
 
@@ -270,7 +270,7 @@ module CameraController =
                 yield! time()
             }
 
-        if state.moveVec <> V3d.Zero then
+        if state.moveVec <> V3i.Zero then
             ThreadPool.add "timer" (time()) pool
 
         else
@@ -307,7 +307,7 @@ module ArcBallController =
             zoom        = false
             pan         = false
             forward = false; backward = false; left = false; right = false
-            moveVec         = V3d.Zero
+            moveVec         = V3i.Zero
             lastTime        = None
             orbitCenter     = Some V3d.Zero
             stash           = None
@@ -352,7 +352,7 @@ module ArcBallController =
                                 cam.Right * float model.moveVec.X +
                                 cam.Sky * float model.moveVec.Y
 
-                            if model.moveVec = V3d.Zero then
+                            if model.moveVec = V3i.Zero then
                                 printfn "useless time %A" now
 
                             cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
@@ -364,49 +364,49 @@ module ArcBallController =
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    withTime { model with forward = true; moveVec = model.moveVec + V3d.OOI * exp model.sensitivity }
+                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    withTime { model with forward = false; moveVec = model.moveVec - V3d.OOI * exp model.sensitivity }
+                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    withTime { model with backward = true; moveVec = model.moveVec - V3d.OOI * exp model.sensitivity }
+                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    withTime { model with backward = false; moveVec = model.moveVec + V3d.OOI * exp model.sensitivity }
+                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
 
             | KeyDown Keys.A ->
                 if not model.left then
-                    withTime { model with left = true; moveVec = model.moveVec - V3d.IOO * exp model.sensitivity }
+                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO  }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    withTime { model with left = false; moveVec = model.moveVec + V3d.IOO * exp model.sensitivity}
+                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO }
                 else
                     model
 
             | KeyDown Keys.D ->
                 if not model.right then
-                    withTime { model with right = true; moveVec = model.moveVec + V3d.IOO  * exp model.sensitivity}
+                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO  }
                 else
                     model
 
             | KeyUp Keys.D ->
                 if model.right then
-                    withTime { model with right = false; moveVec = model.moveVec - V3d.IOO * exp model.sensitivity}
+                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO}
                 else
                     model
 
@@ -532,7 +532,7 @@ module ArcBallController =
                 yield! time()
             }
 
-        if state.moveVec <> V3d.Zero then
+        if state.moveVec <> V3i.Zero then
             ThreadPool.add "timer" (time()) pool
 
         else
