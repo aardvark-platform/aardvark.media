@@ -324,8 +324,7 @@ module ArcBallController =
         { model with lastTime = Some sw.Elapsed.TotalSeconds }
 
     let exp x =
-        let v = Math.Pow(Math.E, x)
-        Log.line "actual value %f" v
+        let v = Math.Pow(Math.E, x)        
         v
    
     let update (model : CameraControllerState) (message : Message) =
