@@ -640,7 +640,7 @@ type DomNode private() =
 
         DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ClientValues -> ISg<'msg>, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
             let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
@@ -650,19 +650,23 @@ type DomNode private() =
                 projTrafo = Frustum.projTrafo cam.frustum
             }
 
+        let mutable tree = PickTree.ofSg (Sg.ofList [])
+        let mutable globalPicks = AMap.empty
+
         let scene =
             Scene.custom (fun values ->
                 let sg =
-                    sg
+                    sg values
                         |> Sg.viewTrafo values.viewTrafo
                         |> Sg.projTrafo values.projTrafo
                         |> Sg.uniform "ViewportSize" values.size
 
+                tree <- PickTree.ofSg sg
+                globalPicks <- sg.GlobalPicks()
+
                 values.runtime.CompileRender(values.signature, sg)
             )
 
-        let tree = PickTree.ofSg sg
-        let globalPicks = sg.GlobalPicks()
 
         let proc =
             { new SceneEventProcessor<'msg>() with
@@ -683,6 +687,9 @@ type DomNode private() =
             }
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
+
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, htmlChildren : Option<DomNode<_>>) =
+        DomNode.RenderControl(attributes, camera, constF sg, htmlChildren)
 
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sgs : alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
@@ -782,9 +789,10 @@ type DomNode private() =
 
 
     static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+        DomNode.RenderControl(AttributeMap.empty, camera, constF scene, htmlChildren)
+
+    static member RenderControl(camera : IMod<Camera>, scene : ClientValues -> ISg<'msg>, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
         DomNode.RenderControl(AttributeMap.empty, camera, scene, htmlChildren)
-
-
 
 
 

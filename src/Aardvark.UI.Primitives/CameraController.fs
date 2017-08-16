@@ -194,7 +194,7 @@ module CameraController =
 
 
 
-    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
@@ -209,7 +209,10 @@ module CameraController =
 
 
         let cam = Mod.map2 Camera.create state.view frustum 
-        Incremental.renderControl cam attributes sg
+        Incremental.renderControlWithClientValues cam attributes sg
+
+    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+        controlledControlWithClientValues state f frustum att (constF sg)
 
     let withControls (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (node : DomNode<'msg>) =
         let cam = Mod.map2 Camera.create state.view frustum 
@@ -486,7 +489,7 @@ module ArcBallController =
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
         ] |> AttributeMap.toAMap
 
-    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
@@ -501,7 +504,10 @@ module ArcBallController =
         let attributes = AttributeMap.union att attributes
 
         let cam = Mod.map2 Camera.create state.view frustum 
-        Incremental.renderControl cam attributes sg
+        Incremental.renderControlWithClientValues cam attributes sg
+
+    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+        controlledControlWithClientValues state f frustum att (constF sg)
 
     let view (state : MCameraControllerState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0

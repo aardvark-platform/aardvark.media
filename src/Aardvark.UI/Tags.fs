@@ -8,6 +8,9 @@ module Incremental =
     let renderControl (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
         DomNode.RenderControl(attributes, cam, sg, None)
 
+    let renderControlWithClientValues (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+        DomNode.RenderControl(attributes, cam, sg, None)
+
     let inline elem (tagName : string) (attrs : AttributeMap<'msg>) (children : alist<DomNode<'msg>>) =
         DomNode.Node(tagName, attrs, children)
 
