@@ -344,7 +344,7 @@ module ArcBallController =
                 let now = sw.Elapsed.TotalSeconds
                 let cam = model.view
 
-                let cam = 
+                let cam, center = 
                     match model.lastTime with
                         | Some last ->
                             let dt = now - last
@@ -357,14 +357,17 @@ module ArcBallController =
                             if model.moveVec = V3i.Zero then
                                 printfn "useless time %A" now
 
-                            cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+                            let step = dir * (exp model.sensitivity) * dt
+                            let center = model.orbitCenter.Value + step
+                            
+                            cam.WithLocation(cam.Location + step), Some center
 
                         | None -> 
-                            cam
+                            cam, model.orbitCenter
 
-                { model with lastTime = Some now; view = cam }
+                { model with lastTime = Some now; view = cam; orbitCenter = center }
 
-            | KeyDown Keys.W ->
+            | KeyDown Keys.W ->                
                 if not model.forward then
                     withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
                 else
@@ -460,7 +463,7 @@ module ArcBallController =
                     else
                         cam
 
-                // change zoom and pan !!!!!!
+                // zoom and pan
                 let cam =
                     if model.zoom then
                         let step = -model.zoomFactor * (exp model.sensitivity) * (cam.Forward * float delta.Y)
