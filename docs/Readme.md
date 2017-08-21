@@ -10,5 +10,5 @@
          * [UI Tags](https://rawgit.com/vrvis/aardvark.media/docs/docs/api/Aardvark.UI/aardvark-ui-static.html)
     * [Aardvark.UI.Primitives](https://rawgit.com/vrvis/aardvark.media/docs/docs/api/Aardvark.UI.Primitives/index.html)
     * Aardvark.Compiler.DomainTypes
-         * [The compilation sheme](https://raw.githubusercontent.com/vrvis/aardvark.media/base31/docs/DomainTypeGeneration.html)
+         * [The compilation sheme](https://rawgit.com/vrvis/aardvark.media/base31/docs/DomainTypeGeneration.html)
 * An early technical report explaining backgrounds of the library can be found here: [Technical Report](https://github.com/vrvis/aardvark.media/raw/base31/docs/Elmish.pdf)
