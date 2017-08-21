@@ -82,8 +82,7 @@ Target "Docs" (fun () ->
 )
 
 
-"Compile" ==> "Docs"
-"Compile" ==> "Docs" ==> "API"
+"Compile" ==> "API"
 
 let toolPath = "packages/Aardvark.Compiler.DomainTypeTool/tools/Aardvark.Compiler.DomainTypeTool.exe"
 let projectPath = "src/Aardvark.Service.Demo/Aardvark.Service.Demo.fsproj"
