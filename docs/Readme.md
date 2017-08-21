@@ -9,4 +9,6 @@
          * [Incremental UI tags](https://rawgit.com/vrvis/aardvark.media/docs/docs/api/Aardvark.UI/aardvark-ui-incremental.html)
          * [UI Tags](https://rawgit.com/vrvis/aardvark.media/docs/docs/api/Aardvark.UI/aardvark-ui-static.html)
     * [Aardvark.UI.Primitives](https://rawgit.com/vrvis/aardvark.media/docs/docs/api/Aardvark.UI.Primitives/index.html)
+    * Aardvark.Compiler.DomainTypes
+         * [The compilation sheme](https://rawgit.com/vrvis/aardvark.media/docs/DomainTypeGeneration.html)
 * An early technical report explaining backgrounds of the library can be found here: [Technical Report](https://github.com/vrvis/aardvark.media/raw/base31/docs/Elmish.pdf)
