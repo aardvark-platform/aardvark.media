@@ -2,23 +2,23 @@ framework: net45
 source https://api.nuget.org/v3/index.json
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 
-nuget FSharp.Core                          ~> 4.0.0.1
+nuget FSharp.Core                          ~> 4.0.0
 
-nuget Aardvark.Base                        ~> 3.0.28
-nuget Aardvark.Base.Incremental            ~> 3.0.28
-nuget Aardvark.Base.FSharp                 ~> 3.0.28
-nuget Aardvark.Base.Essentials             ~> 3.0.28
+nuget Aardvark.Base                        ~> 3.0.35
+nuget Aardvark.Base.Incremental            ~> 3.0.35
+nuget Aardvark.Base.FSharp                 ~> 3.0.35
+nuget Aardvark.Base.Essentials             ~> 3.0.35
 
-nuget Aardvark.Base.Rendering              ~> 3.2.1
-nuget Aardvark.Application.WinForms.GL     ~> 3.2.1
-nuget Aardvark.SceneGraph                  ~> 3.2.1
-nuget Aardvark.SceneGraph.IO               ~> 3.2.1
-nuget Aardvark.Rendering.NanoVg            ~> 3.2.1
-nuget Aardvark.Rendering.Text              ~> 3.2.1
+nuget Aardvark.Base.Rendering              ~> 3.3.1
+nuget Aardvark.Application.WinForms.GL     ~> 3.3.1
+nuget Aardvark.SceneGraph                  ~> 3.3.1
+nuget Aardvark.SceneGraph.IO               ~> 3.3.1
+nuget Aardvark.Rendering.NanoVg            ~> 3.3.1
+nuget Aardvark.Rendering.Text              ~> 3.3.1
 
-nuget Aardvark.Compiler.DomainTypes         ~> 0.2.4
-nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.4
-nuget Aardvark.Compiler.DomainTypeTool      ~> 0.2.4
+nuget Aardvark.Compiler.DomainTypes         ~> 0.2.6
+nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.6
+nuget Aardvark.Compiler.DomainTypeTool      ~> 0.2.6
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.0.12
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.12

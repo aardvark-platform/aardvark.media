@@ -10,3 +10,5 @@ Aardvark.Compiler.DomainTypes
 FsPickler
 FsPickler.Json
 Suave
+
+FSharp.Core

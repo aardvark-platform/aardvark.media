@@ -13,3 +13,5 @@ Aardvark.SceneGraph
 
 FsPickler
 FsPickler.Json
+
+FSharp.Core

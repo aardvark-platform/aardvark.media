@@ -9,3 +9,5 @@ Aardvark.Rendering.NanoVg
 
 FsPickler
 FsPickler.Json
+
+FSharp.Core

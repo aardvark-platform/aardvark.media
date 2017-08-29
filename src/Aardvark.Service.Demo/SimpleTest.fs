@@ -63,13 +63,13 @@ let threeD (m : MModel) =
         alist {
             let! sphereFirst = m.sphereFirst
             if not sphereFirst then
-                yield RenderCommand.SceneGraph sg
-                yield RenderCommand.Clear(None,Some (Mod.constant 1.0))
-                yield RenderCommand.SceneGraph other
+                yield SceneGraph sg
+                yield Clear(None,Some (Mod.constant 1.0))
+                yield SceneGraph other
             else
-                yield RenderCommand.SceneGraph other
-                yield RenderCommand.Clear(None,Some (Mod.constant 1.0))
-                yield RenderCommand.SceneGraph sg
+                yield SceneGraph other
+                yield Clear(None,Some (Mod.constant 1.0))
+                yield SceneGraph sg
         }
 
     let control = DomNode.RenderControl(att,(Mod.constant Unchecked.defaultof<_>),cmds,None)

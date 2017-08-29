@@ -363,17 +363,6 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
-        <Reference Include="AssimpNet">
-          <HintPath>..\..\packages\AssimpNet\lib\net45\AssimpNet.dll</HintPath>
-          <Private>True</Private>
-          <Paket>True</Paket>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Choose>
-    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
-      <ItemGroup>
         <Reference Include="CommonMark">
           <HintPath>..\..\packages\CommonMark.NET\lib\net45\CommonMark.dll</HintPath>
           <Private>True</Private>
@@ -386,7 +375,7 @@
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
         <Reference Include="DevILSharp">
-          <HintPath>..\..\packages\DevILSharp\lib\net45\DevILSharp.dll</HintPath>
+          <HintPath>..\..\packages\DevilSharp\lib\net45\DevILSharp.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>
@@ -567,6 +556,28 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="System.Runtime.InteropServices.RuntimeInformation">
+          <HintPath>..\..\packages\System.Runtime.InteropServices.RuntimeInformation\lib\net45\System.Runtime.InteropServices.RuntimeInformation.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="AssimpNet">
+          <HintPath>..\..\packages\Unofficial.AssimpNet\lib\net45\AssimpNet.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="LibTessDotNet">
           <HintPath>..\..\packages\Unofficial.LibTessDotNet\lib\net45\LibTessDotNet.dll</HintPath>
           <Private>True</Private>
@@ -576,5 +587,5 @@
     </When>
   </Choose>
   <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes.MSBuild\build\Aardvark.Compiler.DomainTypes.MSBuild.targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes.MSBuild\build\Aardvark.Compiler.DomainTypes.MSBuild.targets')" Label="Paket" />
-  <Import Project="..\..\packages\AssimpNet\build\AssimpNet.targets" Condition="Exists('..\..\packages\AssimpNet\build\AssimpNet.targets')" Label="Paket" />
+  <Import Project="..\..\packages\NETStandard.Library\build\NETStandard.Library.targets" Condition="Exists('..\..\packages\NETStandard.Library\build\NETStandard.Library.targets')" Label="Paket" />
 </Project>

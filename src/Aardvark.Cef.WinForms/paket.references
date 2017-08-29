@@ -12,3 +12,5 @@ Aardvark.Application.WinForms.GL
 
 FsPickler
 FsPickler.Json
+
+FSharp.Core

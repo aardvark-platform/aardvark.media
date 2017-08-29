@@ -8,3 +8,5 @@ Aardvark.Application
 FsPickler
 FsPickler.Json
 Suave
+
+FSharp.Core
