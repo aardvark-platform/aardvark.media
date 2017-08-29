@@ -650,9 +650,10 @@ type DomNode private() =
                 projTrafo = Frustum.projTrafo cam.frustum
             }
 
-        let mutable tree = PickTree.ofSg (Sg.ofList [])
-        let mutable globalPicks = AMap.empty
+        let tree = Mod.init <| PickTree.ofSg (Sg.ofList [])
 
+        let globalPicks = Mod.init AMap.empty
+        
         let scene =
             Scene.custom (fun values ->
                 let sg =
@@ -661,23 +662,28 @@ type DomNode private() =
                         |> Sg.projTrafo values.projTrafo
                         |> Sg.uniform "ViewportSize" values.size
 
-                tree <- PickTree.ofSg sg
-                globalPicks <- sg.GlobalPicks()
-
+                transact ( fun _ -> tree.Value <- PickTree.ofSg sg )
+                
+                transact ( fun _ -> globalPicks.Value <- sg.GlobalPicks() ) 
+                
                 values.runtime.CompileRender(values.signature, sg)
             )
-
 
         let proc =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = 
-                    ASet.union (AMap.keys globalPicks) tree.Needed
+                    aset {
+                        let! tree = tree
+                        let! globalPicks = globalPicks
+                        yield! ASet.union (AMap.keys globalPicks) tree.Needed
+                    }
+
                 member x.Process (source : Guid, evt : SceneEvent) = 
                     seq {
-                        let consumed, msgs = tree.Perform(evt)
+                        let consumed, msgs = tree.GetValue().Perform(evt)
                         yield! msgs
 
-                        let m = globalPicks.Content |> Mod.force
+                        let m = globalPicks.GetValue().Content |> Mod.force
                         match m |> HMap.tryFind evt.kind with
                             | Some cb -> 
                                 yield! cb evt
