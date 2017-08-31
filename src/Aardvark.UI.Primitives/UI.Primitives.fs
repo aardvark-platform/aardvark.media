@@ -228,9 +228,10 @@ module Html =
             )
 
     module IO =
+
         let fileDialog action =
             [ 
-                onEvent "onchoose" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> action)
+                onEvent "onchoose" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> List.head >> action)
                 clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
             ] 
 
