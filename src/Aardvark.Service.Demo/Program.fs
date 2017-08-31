@@ -63,7 +63,7 @@ let kitchenSink argv =
     //let app = OrbitCameraDemo.app
     //let app = ColorPicker.app
     //let app = Vector3d.app
-    let app = NavigationModeDemo.app
+    //let app = NavigationModeDemo.app
     //let app = BoxSelectionDemo.app
 
     //let app = DragNDrop.TranslateController.app
@@ -71,7 +71,7 @@ let kitchenSink argv =
     //let app = PlaceTransformObjects.App.app
     //let app = BookmarkApp.app
     //let app = MeasurementsImporterApp.app form
-    //let app = RenderModelApp.app 
+    let app = RenderModelApp.app 
     //let app = AnnotationApp.app
     //let app = PerformanceApp.app
     
