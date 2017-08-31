@@ -191,6 +191,17 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
+        <Reference Include="Aardvark.Rendering.Vulkan">
+          <HintPath>..\..\packages\Aardvark.Rendering.Vulkan\lib\net45\Aardvark.Rendering.Vulkan.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
         <Reference Include="DevILSharp">
           <HintPath>..\..\packages\DevilSharp\lib\net45\DevILSharp.dll</HintPath>
           <Private>True</Private>
@@ -287,6 +298,17 @@
       <ItemGroup>
         <Reference Include="FsPickler.Json">
           <HintPath>..\..\packages\FsPickler.Json\lib\net45\FsPickler.Json.dll</HintPath>
+          <Private>True</Private>
+          <Paket>True</Paket>
+        </Reference>
+      </ItemGroup>
+    </When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
+      <ItemGroup>
+        <Reference Include="GLSLangSharp">
+          <HintPath>..\..\packages\GLSLangSharp\lib\net45\GLSLangSharp.dll</HintPath>
           <Private>True</Private>
           <Paket>True</Paket>
         </Reference>

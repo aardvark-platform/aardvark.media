@@ -15,6 +15,7 @@ nuget Aardvark.SceneGraph                  ~> 3.3.1
 nuget Aardvark.SceneGraph.IO               ~> 3.3.1
 nuget Aardvark.Rendering.NanoVg            ~> 3.3.1
 nuget Aardvark.Rendering.Text              ~> 3.3.1
+nuget Aardvark.Rendering.Vulkan            ~> 3.3.1
 
 nuget Aardvark.Compiler.DomainTypes         ~> 0.2.6
 nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.6

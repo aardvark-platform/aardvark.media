@@ -50,8 +50,11 @@ let kitchenSink argv =
 
     Ag.initialize()
     Aardvark.Init()
-    use app = new OpenGlApplication()
+    //use app = new OpenGlApplication()
+    //let runtime = app.Runtime
+    use app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true)
     let runtime = app.Runtime
+    
     use form = new Form(Width = 1024, Height = 768)
 
     //let app = Viewer.KitchenSinkApp.app

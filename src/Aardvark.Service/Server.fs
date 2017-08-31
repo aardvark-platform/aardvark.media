@@ -43,45 +43,13 @@ module Pickler =
 
 [<AutoOpen>]
 module private Tools = 
-    open OpenTK.Graphics
-    open OpenTK.Graphics.OpenGL4
-    open Aardvark.Rendering.GL
     //open TurboJpegWrapper
     open System.Diagnostics
     open System.Runtime.CompilerServices
     open System.Runtime.InteropServices
     open System.Security
     open Microsoft.FSharp.NativeInterop
-
-    let private downloadFBO (jpeg : TJCompressor) (size : V2i) (ctx : Context) =
-        let pbo = GL.GenBuffer()
-
-        let rowSize = 3 * size.X
-        let align = ctx.PackAlignment
-        let alignedRowSize = (rowSize + (align - 1)) &&& ~~~(align - 1)
-        let sizeInBytes = alignedRowSize * size.Y
-        try
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-            GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
-
-            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgb, PixelType.UnsignedByte, 0n)
-
-            let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
-
-            jpeg.Compress(
-                ptr, alignedRowSize, size.X, size.Y, 
-                TJPixelFormat.RGB, 
-                TJSubsampling.S420, 
-                90, 
-                TJFlags.BottomUp ||| TJFlags.ForceSSE3
-            )
-
-        finally
-            GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
-            GL.DeleteBuffer(pbo)
-            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
-
+    
     type private Compressor =
         class
             [<DefaultValue; ThreadStatic>]
@@ -94,53 +62,130 @@ module private Tools =
                 Compressor.instance
 
         end
+        
+    [<AutoOpen>]
+    module Vulkan = 
+        open Aardvark.Rendering.Vulkan
 
-    type Framebuffer with
-        member x.DownloadJpegColor() =
-            let jpeg = Compressor.Instance
-            let ctx = x.Context
-            use __ = ctx.ResourceLock
+        let downloadFBO (jpeg : TJCompressor) (size : V2i) (fbo : Framebuffer) =
+            let device = fbo.Device
+            let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
 
-            let color = x.Attachments.[DefaultSemantic.Colors] |> unbox<Renderbuffer>
+            let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA)
+            let oldLayout = color.Image.Layout
+            device.perform {
+                do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
+                do! Command.Copy(color, tmp)
+                do! Command.TransformLayout(color.Image, oldLayout)
+            }
+            
+            let rowSize = 4 * size.X
+            let alignedRowSize = rowSize
 
-            let size = color.Size
-            if color.Samples > 1 then
-                let resolved = GL.GenRenderbuffer()
-                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, resolved)
-                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, color.Size.X, color.Size.Y)
-                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
-
-                let fbo = GL.GenFramebuffer()
-                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, fbo)
-                GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, resolved)
-
-                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-
-                GL.BlitFramebuffer(
-                    0, 0, size.X - 1, size.Y - 1, 
-                    0, 0, size.X - 1, size.Y - 1,
-                    ClearBufferMask.ColorBufferBit,
-                    BlitFramebufferFilter.Nearest
+            let result = 
+                tmp.Volume.Mapped (fun src ->
+                    jpeg.Compress(
+                        NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y, 
+                        TJPixelFormat.RGBX, 
+                        TJSubsampling.S420, 
+                        90, 
+                        TJFlags.BottomUp ||| TJFlags.ForceSSE3
+                    )
                 )
 
-                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
-                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
-                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
-                    
-                try
-                    ctx |> downloadFBO jpeg size
-                finally
-                    GL.DeleteFramebuffer(fbo)
-                    GL.DeleteRenderbuffer(resolved)
+            device.Delete tmp
+            result
 
-            else
-                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-                ctx |> downloadFBO jpeg size
+        type Framebuffer with
+            member x.DownloadJpegColor() =
+                let jpeg = Compressor.Instance
+                if x.Attachments.[DefaultSemantic.Colors].Image.Samples <> 1 then
+                    failwith "MS not implemented"
+
+                downloadFBO jpeg x.Size x
+
+    [<AutoOpen>]
+    module GL = 
+        open OpenTK.Graphics
+        open OpenTK.Graphics.OpenGL4
+        open Aardvark.Rendering.GL
+
+        let private downloadFBO (jpeg : TJCompressor) (size : V2i) (ctx : Context) =
+            let pbo = GL.GenBuffer()
+
+            let rowSize = 3 * size.X
+            let align = ctx.PackAlignment
+            let alignedRowSize = (rowSize + (align - 1)) &&& ~~~(align - 1)
+            let sizeInBytes = alignedRowSize * size.Y
+            try
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgb, PixelType.UnsignedByte, 0n)
+
+                let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
+
+                jpeg.Compress(
+                    ptr, alignedRowSize, size.X, size.Y, 
+                    TJPixelFormat.RGB, 
+                    TJSubsampling.S420, 
+                    90, 
+                    TJFlags.BottomUp ||| TJFlags.ForceSSE3
+                )
+
+            finally
+                GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+                GL.DeleteBuffer(pbo)
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
+
+        type Framebuffer with
+            member x.DownloadJpegColor() =
+                let jpeg = Compressor.Instance
+                let ctx = x.Context
+                use __ = ctx.ResourceLock
+
+                let color = x.Attachments.[DefaultSemantic.Colors] |> unbox<Renderbuffer>
+
+                let size = color.Size
+                if color.Samples > 1 then
+                    let resolved = GL.GenRenderbuffer()
+                    GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, resolved)
+                    GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, color.Size.X, color.Size.Y)
+                    GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
+
+                    let fbo = GL.GenFramebuffer()
+                    GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, fbo)
+                    GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, resolved)
+
+                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
+
+                    GL.BlitFramebuffer(
+                        0, 0, size.X - 1, size.Y - 1, 
+                        0, 0, size.X - 1, size.Y - 1,
+                        ClearBufferMask.ColorBufferBit,
+                        BlitFramebufferFilter.Nearest
+                    )
+
+                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
+                    GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
+                    
+                    try
+                        ctx |> downloadFBO jpeg size
+                    finally
+                        GL.DeleteFramebuffer(fbo)
+                        GL.DeleteRenderbuffer(resolved)
+
+                else
+                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
+                    ctx |> downloadFBO jpeg size
 
     type IFramebuffer with
         member x.DownloadJpegColor() =
             match x with
-                | :? Framebuffer as fbo -> fbo.DownloadJpegColor()
+                | :? Aardvark.Rendering.GL.Framebuffer as fbo -> fbo.DownloadJpegColor()
+                | :? Aardvark.Rendering.Vulkan.Framebuffer as fbo -> fbo.DownloadJpegColor()
                 | _ -> failwith "not implemented"
  
     type WebSocket with
