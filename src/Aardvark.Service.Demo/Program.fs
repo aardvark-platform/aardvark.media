@@ -48,12 +48,19 @@ let kitchenSink argv =
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
 
+    let useVulkan = true
+
     Ag.initialize()
     Aardvark.Init()
-    //use app = new OpenGlApplication()
-    //let runtime = app.Runtime
-    use app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true)
-    let runtime = app.Runtime
+
+    let app, runtime = 
+        if useVulkan then
+             let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true) 
+             app :> IDisposable, app.Runtime :> IRuntime
+         else 
+             let app = new OpenGlApplication()
+             app :> IDisposable, app.Runtime :> IRuntime
+    use app = app
     
     use form = new Form(Width = 1024, Height = 768)
 
@@ -93,6 +100,7 @@ let kitchenSink argv =
     ctrl.ShowDevTools()
 
     Application.Run form
+   
     System.Environment.Exit 0
     
 
