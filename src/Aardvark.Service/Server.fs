@@ -1,4 +1,5 @@
-﻿namespace Aardvark.Service
+﻿#nowarn "9"
+namespace Aardvark.Service
 
 open System
 open System.Text
