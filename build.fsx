@@ -1,4 +1,4 @@
-#load @"paket-files/build/vrvis/Aardvark.Fake/DefaultSetup.fsx"
+#load @"paket-files/build/aardvark-platform/aardvark.fake/DefaultSetup.fsx"
 
 open Fake
 open System
@@ -35,8 +35,8 @@ let projInfo n =
     [ "page-description", "Aardvark.Gems"
       "page-author",  "The Aardvark Platform Team" 
       "project-author",  "The Aardvark Platform Team" 
-      "github-link", "https://github.com/vrvis/aardvark.media"
-      "project-github", "https://github.com/vrvis/aardvark.media"
+      "github-link", "https://github.com/aardvark-platform/aardvark.media"
+      "project-github", "https://github.com/aardvark-platform/aardvark.media"
       "project-nuget", sprintf "https://www.nuget.org/packages/%s" n
       "root", sprintf "https://rawgit.com/vrvis/aardvark.media/base31/docs/api/%s" n 
       "project-name", n
@@ -70,7 +70,7 @@ Target "API" (fun () ->
         let target = sprintf "docs/api/%s" p
         if Directory.Exists target then ()
         else Directory.CreateDirectory target |> ignore
-        MyFake.CreateDocsForDlls target ["docs/templates/"; "docs/templates/reference/"] (projInfo p @ libDirs) "https://github.com/vrvis/aardvark.media/tree/base31" [sprintf "bin/Release/%s.dll" p]
+        MyFake.CreateDocsForDlls target ["docs/templates/"; "docs/templates/reference/"] (projInfo p @ libDirs) "https://github.com/aardvark-platform/aardvark.media/tree/base31" [sprintf "bin/Release/%s.dll" p]
         let logo = Path.Combine(target, "logo.png")
         if File.Exists logo |> not then File.Copy("docs/logo.png", logo) |> ignore
 
