@@ -87,6 +87,8 @@
     <Compile Include="PlaceTransformObjectsModel.fs" />
     <Compile Include="PlaceTransformObjects.fs" />
     <Compile Include="MeasurementsImporterApp.fs" />
+	<Compile Include="SimpleDrawing-DataModel.fs" />
+    <Compile Include="SimpleDrawing.fs" />
     <Compile Include="Tutorial\Helpers.fs" />
     <Compile Include="Tutorial\RenderModel-DataModel.fs" />
     <Compile Include="Tutorial\RenderModel.fs" />
