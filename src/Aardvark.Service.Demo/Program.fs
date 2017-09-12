@@ -45,8 +45,8 @@ open PRo3DModels.Mutable
 
 
 let kitchenSink argv =
-    //Xilium.CefGlue.ChromiumUtilities.unpackCef()
-    //Chromium.init argv
+    Xilium.CefGlue.ChromiumUtilities.unpackCef()
+    Chromium.init argv
 
     let useVulkan = true
 
@@ -62,7 +62,7 @@ let kitchenSink argv =
              app :> IDisposable, app.Runtime :> IRuntime
     use app = app
     
-    //use form = new Form(Width = 1024, Height = 768)
+    use form = new Form(Width = 1024, Height = 768)
 
     //let app = Viewer.KitchenSinkApp.app
     //let app = Aardvark.UI.Numeric.app
@@ -75,6 +75,7 @@ let kitchenSink argv =
     //let app = Vector3d.app
     //let app = NavigationModeDemo.app
     let app = BoxSelectionDemo.app
+    let app = Simple2DDrawingApp.app
 
     //let app = DragNDrop.TranslateController.app
     //let app = SimpleDrawingApp.app
@@ -93,14 +94,14 @@ let kitchenSink argv =
         Suave.Files.browseHome
     ]  
 
-    Console.ReadLine() |> ignore
-//    use ctrl = new AardvarkCefBrowser()
-//    ctrl.Dock <- DockStyle.Fill
-//    form.Controls.Add ctrl
-//    ctrl.StartUrl <- "http://localhost:4321/"
-//    ctrl.ShowDevTools()
+    //Console.ReadLine() |> ignore
+    use ctrl = new AardvarkCefBrowser()
+    ctrl.Dock <- DockStyle.Fill
+    form.Controls.Add ctrl
+    ctrl.StartUrl <- "http://localhost:4321/"
+    ctrl.ShowDevTools()
 //
-//    Application.Run form
+    Application.Run form
    
     System.Environment.Exit 0
     

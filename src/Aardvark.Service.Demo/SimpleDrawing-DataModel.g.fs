@@ -1,35 +1,35 @@
-namespace SimpleDrawing
+namespace Simple2DDrawing
 
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
-open SimpleDrawing
+open Simple2DDrawing
 
 [<AutoOpen>]
 module Mutable =
 
     
     
-    type MPolygon(__initial : SimpleDrawing.Polygon) =
+    type MPolygon(__initial : Simple2DDrawing.Polygon) =
         inherit obj()
         let mutable __current = __initial
-        let _points = MList.Create(__initial.points, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
+        let _points = ResetMod.Create(__initial.points)
         
-        member x.points = _points :> alist<_>
+        member x.points = _points :> IMod<_>
         
-        member x.Update(v : SimpleDrawing.Polygon) =
+        member x.Update(v : Simple2DDrawing.Polygon) =
             if not (System.Object.ReferenceEquals(__current, v)) then
                 __current <- v
                 
-                MList.Update(_points, v.points)
+                ResetMod.Update(_points,v.points)
                 
         
-        static member Create(__initial : SimpleDrawing.Polygon) : MPolygon = MPolygon(__initial)
-        static member Update(m : MPolygon, v : SimpleDrawing.Polygon) = m.Update(v)
+        static member Create(__initial : Simple2DDrawing.Polygon) : MPolygon = MPolygon(__initial)
+        static member Update(m : MPolygon, v : Simple2DDrawing.Polygon) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
-        interface IUpdatable<SimpleDrawing.Polygon> with
+        interface IUpdatable<Simple2DDrawing.Polygon> with
             member x.Update v = x.Update v
     
     
@@ -39,33 +39,36 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let points =
-                { new Lens<SimpleDrawing.Polygon, Aardvark.Base.plist<SimpleDrawing.Polygon>>() with
+                { new Lens<Simple2DDrawing.Polygon, Microsoft.FSharp.Collections.list<Aardvark.Base.V2d>>() with
                     override x.Get(r) = r.points
                     override x.Set(r,v) = { r with points = v }
                     override x.Update(r,f) = { r with points = f r.points }
                 }
     
     
-    type MModel(__initial : SimpleDrawing.Model) =
+    type MModel(__initial : Simple2DDrawing.Model) =
         inherit obj()
         let mutable __current = __initial
-        let _polygons = MList.Create(__initial.polygons, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
+        let _finishedPolygons = MList.Create(__initial.finishedPolygons, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
+        let _workingPolygon = MOption.Create(__initial.workingPolygon, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
         
-        member x.polygons = _polygons :> alist<_>
+        member x.finishedPolygons = _finishedPolygons :> alist<_>
+        member x.workingPolygon = _workingPolygon :> IMod<_>
         
-        member x.Update(v : SimpleDrawing.Model) =
+        member x.Update(v : Simple2DDrawing.Model) =
             if not (System.Object.ReferenceEquals(__current, v)) then
                 __current <- v
                 
-                MList.Update(_polygons, v.polygons)
+                MList.Update(_finishedPolygons, v.finishedPolygons)
+                MOption.Update(_workingPolygon, v.workingPolygon)
                 
         
-        static member Create(__initial : SimpleDrawing.Model) : MModel = MModel(__initial)
-        static member Update(m : MModel, v : SimpleDrawing.Model) = m.Update(v)
+        static member Create(__initial : Simple2DDrawing.Model) : MModel = MModel(__initial)
+        static member Update(m : MModel, v : Simple2DDrawing.Model) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
-        interface IUpdatable<SimpleDrawing.Model> with
+        interface IUpdatable<Simple2DDrawing.Model> with
             member x.Update v = x.Update v
     
     
@@ -74,9 +77,15 @@ module Mutable =
     module Model =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
-            let polygons =
-                { new Lens<SimpleDrawing.Model, Aardvark.Base.plist<SimpleDrawing.Polygon>>() with
-                    override x.Get(r) = r.polygons
-                    override x.Set(r,v) = { r with polygons = v }
-                    override x.Update(r,f) = { r with polygons = f r.polygons }
+            let finishedPolygons =
+                { new Lens<Simple2DDrawing.Model, Aardvark.Base.plist<Simple2DDrawing.Polygon>>() with
+                    override x.Get(r) = r.finishedPolygons
+                    override x.Set(r,v) = { r with finishedPolygons = v }
+                    override x.Update(r,f) = { r with finishedPolygons = f r.finishedPolygons }
+                }
+            let workingPolygon =
+                { new Lens<Simple2DDrawing.Model, Microsoft.FSharp.Core.Option<Simple2DDrawing.Polygon>>() with
+                    override x.Get(r) = r.workingPolygon
+                    override x.Set(r,v) = { r with workingPolygon = v }
+                    override x.Update(r,f) = { r with workingPolygon = f r.workingPolygon }
                 }

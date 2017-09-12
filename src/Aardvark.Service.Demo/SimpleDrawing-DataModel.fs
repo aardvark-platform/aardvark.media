@@ -1,13 +1,19 @@
-﻿namespace SimpleDrawing
+﻿namespace Simple2DDrawing
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
 [<DomainType>]
-type Polygon = { points : plist<Polygon> }
+type Polygon = { points : list<V2d> }
 
 [<DomainType>]
 type Model =
     {
-        polygons : plist<Polygon>
+        finishedPolygons : plist<Polygon>
+
+        workingPolygon : Option<Polygon>
     }
+
+type Message = 
+    | AddPoint of V2d
+    | ClosePolygon
