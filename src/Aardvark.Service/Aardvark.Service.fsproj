@@ -62,6 +62,7 @@
   -->
   <ItemGroup>
     <EmbeddedResource Include="aardvark.js" />
+    <EmbeddedResource Include="utilities.js" />
     <EmbeddedResource Include="aardvark.css" />
     <EmbeddedResource Include="index.html" />
     <EmbeddedResource Include="stats.html" />

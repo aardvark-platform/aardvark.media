@@ -162,3 +162,8 @@ module Events =
         let (k,v) = att
         k, m |> Mod.map (function true -> Some v | false -> None)
 
+
+
+module Operators =
+    
+    let inline (==>) a b = Attributes.attribute a b

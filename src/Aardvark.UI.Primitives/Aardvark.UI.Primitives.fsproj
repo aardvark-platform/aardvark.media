@@ -260,9 +260,6 @@
     <Compile Include="CameraModel.fs" />
     <Compile Include="CameraController.fs" />
     <None Include="paket.references" />
-    <Content Include="utilities.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     
   </ItemGroup>
   <ItemGroup>
