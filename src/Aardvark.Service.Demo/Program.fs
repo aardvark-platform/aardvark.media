@@ -55,7 +55,7 @@ let kitchenSink argv =
 
     let app, runtime = 
         if useVulkan then
-             let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true)
+             let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true) 
              app :> IDisposable, app.Runtime :> IRuntime
          else 
              let app = new OpenGlApplication()
@@ -75,7 +75,7 @@ let kitchenSink argv =
     //let app = Vector3d.app
     //let app = NavigationModeDemo.app
     let app = BoxSelectionDemo.app
-    //let app = QuickTestApp.app
+    let app = Simple2DDrawingApp.app
 
     //let app = DragNDrop.TranslateController.app
     //let app = SimpleDrawingApp.app
@@ -94,12 +94,13 @@ let kitchenSink argv =
         Suave.Files.browseHome
     ]  
 
+    //Console.ReadLine() |> ignore
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
     ctrl.StartUrl <- "http://localhost:4321/"
     ctrl.ShowDevTools()
-
+//
     Application.Run form
    
     System.Environment.Exit 0
