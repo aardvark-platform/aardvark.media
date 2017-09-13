@@ -57,30 +57,6 @@
   <Target Name="AfterBuild">
   </Target>
   -->
-  <ItemGroup>
-    <Compile Include="UI.Primitives.Models.fs" />
-    <Compile Include="UI.Primitives.fs" />
-    <Compile Include="CameraModel.fs" />
-    <Compile Include="CameraController.fs" />
-    <None Include="paket.references" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="mscorlib" />
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-    <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj">
-      <Name>Aardvark.Service</Name>
-      <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj">
-      <Name>Aardvark.UI</Name>
-      <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <Reference Include="System.Windows.Forms" />
-  </ItemGroup>
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework' And $(TargetFrameworkVersion) == 'v4.5'">
       <ItemGroup>
@@ -278,4 +254,32 @@
   </Choose>
   <Import Project="..\..\packages\Aardvark.Compiler.DomainTypes.MSBuild\build\Aardvark.Compiler.DomainTypes.MSBuild.targets" Condition="Exists('..\..\packages\Aardvark.Compiler.DomainTypes.MSBuild\build\Aardvark.Compiler.DomainTypes.MSBuild.targets')" Label="Paket" />
   <Import Project="..\..\packages\NETStandard.Library\build\NETStandard.Library.targets" Condition="Exists('..\..\packages\NETStandard.Library\build\NETStandard.Library.targets')" Label="Paket" />
+  <ItemGroup>
+    <Compile Include="UI.Primitives.Models.fs" />
+    <Compile Include="UI.Primitives.fs" />
+    <Compile Include="CameraModel.fs" />
+    <Compile Include="CameraController.fs" />
+    <None Include="paket.references" />
+    <Content Include="utilities.js">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="mscorlib" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+    <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj">
+      <Name>Aardvark.Service</Name>
+      <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj">
+      <Name>Aardvark.UI</Name>
+      <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
 </Project>
