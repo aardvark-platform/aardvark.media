@@ -169,15 +169,30 @@ module Html =
                     always (attribute "value" name)
                     onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
                 ]
-
-       //     onBoot "$('#__ID__').dropdown();" (
+       
             select [onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change); style "color:black"] [
                 for (name, value) in nv do
                     let att = attributes name value
                     yield Incremental.option att (AList.ofList [text name])
-            ]
-         //   )
+            ]         
+        //Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]
+        let dropDown' (values : alist<string>) (selected : IMod<string>) (change : string -> 'msg) =
 
+            let attributes (value : string) =
+                AttributeMap.ofListCond [
+                    always (attribute "value" value)
+                    onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
+                ]
+
+            Incremental.select (AttributeMap.ofList [onChange (fun str -> change str);style "color:black"]) 
+                (values 
+                    |> AList.map(
+                        fun x ->
+                            let att = attributes x                            
+                            Incremental.option att (AList.ofList [text x]) 
+                    )
+                )
+                    
         let textBox (text : IMod<string>) (set : string -> 'msg) =          
             
             let attributes = 

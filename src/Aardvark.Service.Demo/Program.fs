@@ -55,7 +55,7 @@ let kitchenSink argv =
 
     let app, runtime = 
         if useVulkan then
-             let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true) 
+             let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true)
              app :> IDisposable, app.Runtime :> IRuntime
          else 
              let app = new OpenGlApplication()
@@ -75,6 +75,7 @@ let kitchenSink argv =
     //let app = Vector3d.app
     //let app = NavigationModeDemo.app
     let app = BoxSelectionDemo.app
+    //let app = QuickTestApp.app
 
     //let app = DragNDrop.TranslateController.app
     //let app = SimpleDrawingApp.app

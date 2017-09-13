@@ -80,6 +80,8 @@
     <Compile Include="Drawing.fs" />
     <Compile Include="DrawingApp.fs" />
     <Compile Include="SimpleTest.fs" />
+    <Compile Include="Quicktest-Models.fs" />
+    <Compile Include="QuickTest.fs" />
     <Compile Include="Viewer.fs" />
     <Compile Include="KitchenSink.fs" />
     <Compile Include="DragNDropModel.fs" />
@@ -108,7 +110,7 @@
     </Content>
     <Content Include="spectrum.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    </Content>    
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">
