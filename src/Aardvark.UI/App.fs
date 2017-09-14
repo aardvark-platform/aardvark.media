@@ -71,6 +71,7 @@ module App =
             lock l (fun () ->
                 let flat = Seq.concat msgs
 
+                if Config.shouldTimeUnpersistCalls then Log.startTimed "[Aardvark.UI] update/adjustThreads/unpersist"
                 for msg in flat do
                     let newState = app.update state.Value msg
                     let newThreads = app.threads newState
@@ -79,13 +80,7 @@ module App =
                         state.Value <- newState
                         app.unpersist.update mstate newState
                     )
-
-                //failwith ""
-                //let newState = msgs |> List.fold app.update state.Value
-                //let newThreads = app.threads newState
-                //adjustThreads newThreads
-                //state.Value <- newState
-                //app.unpersist.update mstate newState
+                if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
 
         and emit (msg : 'msg) =

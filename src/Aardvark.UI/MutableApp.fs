@@ -109,12 +109,17 @@ module MutableApp =
                             while running do
                                 let! cont = MVar.takeAsync update
                                 if cont then
+
+                                    if Config.shouldTimeJsCodeGeneration then Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
                                     let code = 
                                         lock app.lock (fun () ->
                                             let expr = 
                                                 lock state (fun () -> 
                                                     state.references.Clear()
-                                                    updater.Update(AdaptiveToken.Top, JSExpr.Body, state)
+                                                    if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
+                                                    let r = updater.Update(AdaptiveToken.Top, JSExpr.Body, state)
+                                                    if Config.shouldTimeUIUpdate then Log.stop ()
+                                                    r
                                                 )
 
                                             for (name, sd) in Dictionary.toSeq state.scenes do
@@ -145,6 +150,8 @@ module MutableApp =
                                                 for l in lines do Log.line "%s" l
                                                 Log.stop()
                                         )
+                                    if Config.shouldTimeJsCodeGeneration then Log.line "[Aardvark.UI] code lenght: %d" (code.Length); Log.stop()
+
                                     let res = ws.send Opcode.Text (ByteSegment(Text.Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
                                     match res with
                                         | Choice1Of2 () ->
