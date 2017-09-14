@@ -89,7 +89,7 @@
     <Compile Include="PlaceTransformObjectsModel.fs" />
     <Compile Include="PlaceTransformObjects.fs" />
     <Compile Include="MeasurementsImporterApp.fs" />
-	<Compile Include="SimpleDrawing-DataModel.fs" />
+    <Compile Include="SimpleDrawing-DataModel.fs" />
     <Compile Include="SimpleDrawing.fs" />
     <Compile Include="Tutorial\Helpers.fs" />
     <Compile Include="Tutorial\RenderModel-DataModel.fs" />
@@ -104,6 +104,8 @@
     <Compile Include="Performance.fs" />
     <Compile Include="SvgDrawing.fs" />
     <Compile Include="SvgDrawingApp.fs" />
+    <Compile Include="SimpleScaleModel.fs" />
+    <Compile Include="SimpleScaleApp.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />
@@ -112,12 +114,11 @@
     </Content>
     <Content Include="spectrum.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>  
-    
+    </Content>
     <Content Include="..\Aardvark.Service\utilities.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <Link>utilities.js</Link>
     </Content>
-    
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">

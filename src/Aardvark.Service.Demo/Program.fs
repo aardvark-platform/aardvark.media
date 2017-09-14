@@ -74,10 +74,12 @@ let kitchenSink argv =
     //let app = ColorPicker.app
     //let app = Vector3d.app
     //let app = NavigationModeDemo.app
-    let app = BoxSelectionDemo.app
-    let app = Simple2DDrawingApp.app
+    //let app = BoxSelectionDemo.app
+    //let app = Simple2DDrawingApp.app
+    //let app = SimpleScaleApp.app
 
     //let app = DragNDrop.TranslateController.app
+    let app = DragNDrop.RotationController.app
     //let app = SimpleDrawingApp.app
     //let app = PlaceTransformObjects.App.app
     //let app = BookmarkApp.app

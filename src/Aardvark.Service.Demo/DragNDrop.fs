@@ -259,3 +259,204 @@ module TranslateController =
         }
 
     let start() = App.start app
+
+module RotationController =
+    
+    open Aardvark.Base
+    open Aardvark.Base.Incremental
+    
+    open Aardvark.Base.Rendering
+    open Aardvark.Base.Geometry
+   
+    open Aardvark.UI
+    open Aardvark.UI.Primitives
+
+    open Aardvark.SceneGraph
+
+    type RayPart with
+        member x.Transformed(t : Trafo3d) =
+            RayPart(FastRay3d(x.Ray.Ray.Transformed(t.Forward)), x.TMin, x.TMax)
+
+    module Shader =
+        open FShade
+        open Aardvark.Base.Rendering.Effects
+
+        let hoverColor (v : Vertex) =
+            vertex {
+                let c : V4d = uniform?HoverColor
+                return { v with c = c }
+            }
+    
+    module RotationHandle = 
+        let cylinderRadius = 0.0005
+        let tessellation = 5
+          
+        let circlePoint (c:V3d) r ang axis =
+            let x = c.X + r * cos ang
+            let y = c.Y + r * sin ang
+            match axis with
+            | X -> V3d(0.0, x, y)
+            | Y -> V3d(x, 0.0, y)
+            | Z -> V3d(x, y, 0.0)
+        
+        let PI2 = System.Math.PI * 2.0
+
+        let circle c r tess axis =
+            let step = PI2 / tess
+            //[0.0 .. 1.0 .. 1.0] |> List.map (fun x -> circlePoint c r x axis) |> List.toSeq
+            [0.0 .. step .. (PI2)] |> List.map (fun x -> circlePoint c r x axis) |> List.toSeq
+
+        let sg axis =
+            [
+                let points = (circle V3d.Zero 1.0 32.0 axis)
+
+                for p in points do
+                    yield IndexedGeometryPrimitives.solidSubdivisionSphere (Sphere3d(p, 0.1)) 5 C4b.Red |> Sg.ofIndexedGeometry
+
+                for edge in Polygon3d(points).EdgeLines do
+                    let orientationAxis = (edge.P1 - edge.P0).Normalized
+                    let center = ((edge.P0+edge.P1)/2.0)
+                    let length  = (edge.P1-edge.P0).Length
+                    let cylinder = IndexedGeometryPrimitives.wireframeCylinder center orientationAxis length cylinderRadius cylinderRadius tessellation C4b.Red
+                    yield Sg.ofIndexedGeometry cylinder
+
+            ] |> Sg.group
+
+    module Config =
+        let cylinderRadius = 0.015
+        let tessellation = 8
+
+    type ControllerAction = 
+        | Hover of Axis
+        | Unhover 
+        | RotateRay of RayPart
+        | Grab of RayPart * Axis
+        | Release
+    
+    type SceneAction =
+        | ControllerAction of ControllerAction
+        | CameraAction     of CameraController.Message
+
+    let closestT (r : RayPart) (axis : Axis) =
+        let other =
+            match axis with
+            | X -> Ray3d(V3d.OOO, V3d.IOO)
+            | Y -> Ray3d(V3d.OOO, V3d.OIO)
+            | Z -> Ray3d(V3d.OOO, V3d.OOI)
+
+        let mutable unused = 0.0
+        let mutable t = 0.0
+        r.Ray.Ray.GetMinimalDistanceTo(other,&unused,&t) |> ignore
+        t
+
+    let updateController (m : Transformation) (a : ControllerAction) =
+        match a with
+            | Hover axis -> 
+                { m with hovered = Some axis }
+            | Unhover -> 
+                { m with hovered = None }
+            | Grab (rp, axis) ->
+                let offset = closestT rp axis
+                { m with grabbed = Some { offset = offset; axis = axis } } 
+            | Release ->
+                { m with grabbed = None }
+            | RotateRay rp ->
+                match m.grabbed with
+                | Some { offset = offset; axis = axis } ->
+     
+                     let other =
+                        match axis with
+                        | X -> V3d.IOO
+                        | Y -> V3d.OIO
+                        | Z -> V3d.OOI
+
+                     let closestPoint = closestT rp axis
+                     let trafo = m.trafo * Trafo3d.Rotation ((closestPoint - offset) * other)
+
+                     { m with trafo = trafo; }
+                | None -> m
+
+    let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) : ISg<'msg> =
+        
+        let circle axis =
+            let col =
+                m.hovered |> Mod.map2 ( fun g h ->
+                 match h, g, axis with
+                 | _,      Some g, p when g = p -> C4b.Yellow
+                 | Some h, None,   p when h = p -> C4b.White
+                 | _,      _,      X -> C4b.Red
+                 | _,      _,      Y -> C4b.Green
+                 | _,      _,      Z -> C4b.Blue
+                ) (m.grabbed |> Mod.map (Option.map ( fun p -> p.axis )))
+            RotationHandle.sg axis
+            |> Sg.requirePicking 
+            //|> Sg.transform rot
+            |> Sg.uniform "HoverColor" col
+            |> Sg.noEvents
+            |> Aardvark.UI.``F# Sg``.Sg.withEvents [ 
+                    Sg.onEnter        (fun _ ->   Hover axis)
+                    Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
+                    Sg.onLeave        (fun _ ->   Unhover) 
+               ]
+            |> Sg.Incremental.withGlobalEvents ( 
+                    amap {
+                        let! grabbed = m.grabbed
+                        if grabbed.IsSome then
+                            yield Global.onMouseMove (fun e -> RotateRay e.localRay)
+                            yield Global.onMouseUp   (fun _ -> Release)
+                    }
+                )
+
+        let circleX = circle Axis.X //(Trafo3d.RotationY Constant.PiHalf) Axis.X
+        let circleY = circle Axis.Y //(Trafo3d.RotationX -Constant.PiHalf) Axis.Y
+        let circleZ = circle Axis.Z //(Trafo3d.RotationY 0.0) Axis.Z
+        
+        Sg.ofList [circleX; circleY; circleZ ]
+        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
+        |> Sg.trafo m.trafo
+        |> Sg.noEvents
+        |> Aardvark.UI.``F# Sg``.Sg.map liftMessage
+        
+    let updateScene (m : Scene) (a : SceneAction) =
+        match a with
+            | CameraAction a when m.transformation.grabbed.IsNone -> 
+                { m with camera = CameraController.update m.camera a }
+            | ControllerAction a -> { m with transformation = updateController m.transformation a }
+            | _ -> m
+
+    let viewScene' (m : MScene) : ISg<SceneAction> =
+        let cross =
+             IndexedGeometryPrimitives.coordinateCross (V3d(10.0, 10.0, 10.0))
+                |> Sg.ofIndexedGeometry
+                |> Sg.effect [
+                    toEffect DefaultSurfaces.trafo
+                    toEffect DefaultSurfaces.vertexColor
+                    ]
+                |> Sg.noEvents
+
+        let first = viewController ControllerAction m.transformation |> Sg.noEvents
+
+        Aardvark.UI.``F# Sg``.Sg.ofList [first; cross]
+
+    let viewScene (m : MScene) : DomNode<SceneAction> =
+        div [] [
+            CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                (AttributeMap.ofList [ 
+                    yield  attribute "style" "width:100%; height: 100%"; 
+                 ]) (viewScene' m)
+        ]
+
+    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
+
+    let app =
+        {
+            unpersist = Unpersist.instance
+            threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
+            initial = {  camera = CameraController.initial
+                         transformation = initial
+                      }
+            update = updateScene
+            view = viewScene
+        }
+
+    let start() = App.start app
