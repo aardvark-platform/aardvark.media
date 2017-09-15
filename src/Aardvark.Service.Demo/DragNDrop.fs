@@ -262,6 +262,9 @@ module TranslateController =
 
 module RotationController =
     
+    // old version ...https://github.com/aardvark-platform/aardvark.media/blob/base2/src/Aardvark.ImmutableSceneGraph/TrafoApps.fs 
+
+
     open Aardvark.Base
     open Aardvark.Base.Incremental
     
@@ -277,6 +280,10 @@ module RotationController =
         member x.Transformed(t : Trafo3d) =
             RayPart(FastRay3d(x.Ray.Ray.Transformed(t.Forward)), x.TMin, x.TMax)
 
+    [<AutoOpen>]
+    module Config =
+        let cylinderRadius = 0.015
+
     module Shader =
         open FShade
         open Aardvark.Base.Rendering.Effects
@@ -288,8 +295,6 @@ module RotationController =
             }
     
     module RotationHandle = 
-        let cylinderRadius = 0.0005
-        let tessellation = 5
           
         let circlePoint (c:V3d) r ang axis =
             let x = c.X + r * cos ang
@@ -310,21 +315,34 @@ module RotationController =
             [
                 let points = (circle V3d.Zero 1.0 32.0 axis)
 
-                for p in points do
-                    yield IndexedGeometryPrimitives.solidSubdivisionSphere (Sphere3d(p, 0.1)) 5 C4b.Red |> Sg.ofIndexedGeometry
+                //for p in points do
+                //    yield IndexedGeometryPrimitives.solidSubdivisionSphere (Sphere3d(p, 0.1)) 5 C4b.Red |> Sg.ofIndexedGeometry
 
-                for edge in Polygon3d(points).EdgeLines do
-                    let orientationAxis = (edge.P1 - edge.P0).Normalized
-                    let center = ((edge.P0+edge.P1)/2.0)
-                    let length  = (edge.P1-edge.P0).Length
-                    let cylinder = IndexedGeometryPrimitives.wireframeCylinder center orientationAxis length cylinderRadius cylinderRadius tessellation C4b.Red
-                    yield Sg.ofIndexedGeometry cylinder
+                //for edge in Polygon3d(points).EdgeLines do
+                //    let orientationAxis = (edge.P1 - edge.P0).Normalized
+                //    let center = ((edge.P0+edge.P1)/2.0)
+                //    let length  = (edge.P1-edge.P0).Length
+                //    let cylinder = IndexedGeometryPrimitives.wireframeCylinder center orientationAxis length cylinderRadius cylinderRadius tessellation C4b.Red
+                //    yield Sg.ofIndexedGeometry cylinder
 
+                let linesSegments = 
+                    [|
+                        for edge in Polygon3d(points).EdgeLines do
+                            yield Line3d(edge.P0, edge.P1)    
+                    |]
+                yield Sg.lines (Mod.constant(C4b.Red)) (Mod.constant(linesSegments))
             ] |> Sg.group
 
-    module Config =
-        let cylinderRadius = 0.015
-        let tessellation = 8
+        let pick axis = 
+            [|
+                //let rotationPlane = Plane3d(axis, V3d.Zero)
+
+                //TODO!!!
+                
+                let points = (circle V3d.Zero 1.0 32.0 axis)
+                for edge in Polygon3d(points).EdgeLines do
+                    yield (Cylinder3d(edge.P0, edge.P1, cylinderRadius) |> PickShape.Cylinder) // should be done analytical
+            |]
 
     type ControllerAction = 
         | Hover of Axis
@@ -388,10 +406,13 @@ module RotationController =
                  | _,      _,      Y -> C4b.Green
                  | _,      _,      Z -> C4b.Blue
                 ) (m.grabbed |> Mod.map (Option.map ( fun p -> p.axis )))
+            
             RotationHandle.sg axis
-            |> Sg.requirePicking 
+            //|> Sg.requirePicking 
+            //|> Sg.pickable (RotationHandle.pick axis (RotationHandle.sg axis)) // TODO..or analytic
             //|> Sg.transform rot
             |> Sg.uniform "HoverColor" col
+            |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
             |> Sg.noEvents
             |> Aardvark.UI.``F# Sg``.Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
@@ -412,7 +433,7 @@ module RotationController =
         let circleZ = circle Axis.Z //(Trafo3d.RotationY 0.0) Axis.Z
         
         Sg.ofList [circleX; circleY; circleZ ]
-        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
+        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect
         |> Sg.trafo m.trafo
         |> Sg.noEvents
         |> Aardvark.UI.``F# Sg``.Sg.map liftMessage
