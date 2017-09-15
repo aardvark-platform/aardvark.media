@@ -79,14 +79,16 @@ let kitchenSink argv =
     //let app = SimpleScaleApp.app
 
     //let app = DragNDrop.TranslateController.app
-    let app = DragNDrop.RotationController.app
+   // let app = DragNDrop.RotationController.app
     //let app = SimpleDrawingApp.app
     //let app = PlaceTransformObjects.App.app
-    //let app = BookmarkApp.app
+   // let app = BookmarkApp.app
     //let app = MeasurementsImporterApp.app form
     //let app = RenderModelApp.app 
     //let app = AnnotationApp.app
     //let app = PerformanceApp.app
+
+    let app = QuickTestApp.app
     
     let instance = 
         app |> App.start

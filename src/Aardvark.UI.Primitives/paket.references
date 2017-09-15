@@ -8,3 +8,6 @@ Aardvark.SceneGraph
 Aardvark.Compiler.DomainTypes.MSBuild
 
 FSharp.Core
+
+FsPickler
+FsPickler.Json

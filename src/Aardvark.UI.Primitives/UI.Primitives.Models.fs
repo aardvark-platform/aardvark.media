@@ -27,6 +27,11 @@ type ColorInput = {
     c : C4b
 }
 
+[<DomainType>]
+type DropDownModel = {
+    values   : hmap<int,string>
+    selected : int    
+}
 
 [<DomainType>]
 type LeafValue = 

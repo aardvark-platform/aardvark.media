@@ -8,9 +8,14 @@ open Aardvark.Base.Rendering
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
+type Person = {
+    firstName : string
+    secondName : string
+}
+
 [<DomainType>]
-type DropDownModel = {
-    values   : plist<string>
+type QuickTestModel = {
+    values : plist<Person>
     selected : string
-    newValue : string
+    newValue : Person
 }

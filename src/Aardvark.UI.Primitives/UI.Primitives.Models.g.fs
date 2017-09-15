@@ -179,6 +179,51 @@ module Mutable =
                     override x.Set(r,v) = { r with c = v }
                     override x.Update(r,f) = { r with c = f r.c }
                 }
+    
+    
+    type MDropDownModel(__initial : Aardvark.UI.DropDownModel) =
+        inherit obj()
+        let mutable __current = __initial
+        let _values = MMap.Create(__initial.values)
+        let _selected = ResetMod.Create(__initial.selected)
+        
+        member x.values = _values :> amap<_,_>
+        member x.selected = _selected :> IMod<_>
+        
+        member x.Update(v : Aardvark.UI.DropDownModel) =
+            if not (System.Object.ReferenceEquals(__current, v)) then
+                __current <- v
+                
+                MMap.Update(_values, v.values)
+                ResetMod.Update(_selected,v.selected)
+                
+        
+        static member Create(__initial : Aardvark.UI.DropDownModel) : MDropDownModel = MDropDownModel(__initial)
+        static member Update(m : MDropDownModel, v : Aardvark.UI.DropDownModel) = m.Update(v)
+        
+        override x.ToString() = __current.ToString()
+        member x.AsString = sprintf "%A" __current
+        interface IUpdatable<Aardvark.UI.DropDownModel> with
+            member x.Update v = x.Update v
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module DropDownModel =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let values =
+                { new Lens<Aardvark.UI.DropDownModel, Aardvark.Base.hmap<Microsoft.FSharp.Core.int,Microsoft.FSharp.Core.string>>() with
+                    override x.Get(r) = r.values
+                    override x.Set(r,v) = { r with values = v }
+                    override x.Update(r,f) = { r with values = f r.values }
+                }
+            let selected =
+                { new Lens<Aardvark.UI.DropDownModel, Microsoft.FSharp.Core.int>() with
+                    override x.Get(r) = r.selected
+                    override x.Set(r,v) = { r with selected = v }
+                    override x.Update(r,f) = { r with selected = f r.selected }
+                }
     [<AbstractClass; System.Runtime.CompilerServices.Extension; StructuredFormatDisplay("{AsString}")>]
     type MLeafValue() =
         abstract member TryUpdate : Aardvark.UI.LeafValue -> bool

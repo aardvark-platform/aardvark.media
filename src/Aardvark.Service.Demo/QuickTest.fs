@@ -11,29 +11,45 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 
 type Action = 
-    | SetValue of string
-    | AddValue of string
-    | ChangeValue of string
+    | Select      of Person
+    //| AddValue    of Person
+    //| ChangeValue of Person
 
-let update (m : DropDownModel) (a : Action) =
+let update (m : QuickTestModel) (a : Action) =
     match a with
-        | SetValue s ->    { m with selected = s }
-        | ChangeValue s -> { m with newValue = s }
-        | AddValue s ->    { m with values = m.values |> PList.append s }
+        | Select p ->  { m with selected = p.secondName }
+        //| ChangeValue s -> { m with newValue = s }
+        //| AddValue s -> { m with values = m.values |> PList.append s }
+            
+            
 
-let view (m : MDropDownModel) =
-    div [] [
-        Html.SemUi.textBox m.newValue ChangeValue
-        button [onClick(fun _ -> AddValue (m.newValue |> Mod.force))] [text "add"]
-        br[]
-        Html.SemUi.dropDown' m.values m.selected SetValue
+let view (m : MQuickTestModel) =
+    body[][
+        div [] [
+         //   Html.SemUi.textBox m.newValue. ChangeValue
+          //  button [onClick(fun _ -> AddValue (m.newValue |> Mod.force))] [text "add"]
+          //  br[]
+            Html.SemUi.dropDown' m.values m.selected (fun a -> Select a) (fun a -> a.secondName)
+        ]
     ]
+
+let dropDownINit = 
+    { 
+        values = (["Horst";"Hinz"; "Kunz"] |> List.mapi(fun i v -> (i,v)) |> HMap.ofList)
+        selected = 0 
+    }
 
 let app =
     {
         unpersist = Unpersist.instance
         threads = fun _ -> ThreadPool.Empty
-        initial = { values = ["Horst";"Hinz"; "Kunz"] |> PList.ofList; selected = "Kunz"; newValue = "" }
+        initial = 
+            { 
+                newValue = { firstName = ""; secondName = "" };
+                values = [{ firstName = "horst"; secondName = "hinioadfs" }; { firstName = "adfadsf"; secondName = "adfdasdf" }]|> PList.ofList
+                selected= "Horst"
+                //dropdown = dropDownINit                    
+            }
         update = update
         view = view
     }

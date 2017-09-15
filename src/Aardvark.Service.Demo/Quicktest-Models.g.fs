@@ -10,7 +10,7 @@ module Mutable =
 
     
     
-    type MDropDownModel(__initial : QuickTest.DropDownModel) =
+    type MQuickTestModel(__initial : QuickTest.QuickTestModel) =
         inherit obj()
         let mutable __current = __initial
         let _values = MList.Create(__initial.values)
@@ -21,7 +21,7 @@ module Mutable =
         member x.selected = _selected :> IMod<_>
         member x.newValue = _newValue :> IMod<_>
         
-        member x.Update(v : QuickTest.DropDownModel) =
+        member x.Update(v : QuickTest.QuickTestModel) =
             if not (System.Object.ReferenceEquals(__current, v)) then
                 __current <- v
                 
@@ -30,34 +30,34 @@ module Mutable =
                 ResetMod.Update(_newValue,v.newValue)
                 
         
-        static member Create(__initial : QuickTest.DropDownModel) : MDropDownModel = MDropDownModel(__initial)
-        static member Update(m : MDropDownModel, v : QuickTest.DropDownModel) = m.Update(v)
+        static member Create(__initial : QuickTest.QuickTestModel) : MQuickTestModel = MQuickTestModel(__initial)
+        static member Update(m : MQuickTestModel, v : QuickTest.QuickTestModel) = m.Update(v)
         
         override x.ToString() = __current.ToString()
         member x.AsString = sprintf "%A" __current
-        interface IUpdatable<QuickTest.DropDownModel> with
+        interface IUpdatable<QuickTest.QuickTestModel> with
             member x.Update v = x.Update v
     
     
     
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-    module DropDownModel =
+    module QuickTestModel =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let values =
-                { new Lens<QuickTest.DropDownModel, Aardvark.Base.plist<Microsoft.FSharp.Core.string>>() with
+                { new Lens<QuickTest.QuickTestModel, Aardvark.Base.plist<QuickTest.Person>>() with
                     override x.Get(r) = r.values
                     override x.Set(r,v) = { r with values = v }
                     override x.Update(r,f) = { r with values = f r.values }
                 }
             let selected =
-                { new Lens<QuickTest.DropDownModel, Microsoft.FSharp.Core.string>() with
+                { new Lens<QuickTest.QuickTestModel, Microsoft.FSharp.Core.string>() with
                     override x.Get(r) = r.selected
                     override x.Set(r,v) = { r with selected = v }
                     override x.Update(r,f) = { r with selected = f r.selected }
                 }
             let newValue =
-                { new Lens<QuickTest.DropDownModel, Microsoft.FSharp.Core.string>() with
+                { new Lens<QuickTest.QuickTestModel, QuickTest.Person>() with
                     override x.Get(r) = r.newValue
                     override x.Set(r,v) = { r with newValue = v }
                     override x.Update(r,f) = { r with newValue = f r.newValue }

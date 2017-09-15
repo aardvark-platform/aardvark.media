@@ -175,24 +175,29 @@ module Html =
                     let att = attributes name value
                     yield Incremental.option att (AList.ofList [text name])
             ]         
-        //Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]
-        let dropDown' (values : alist<string>) (selected : IMod<string>) (change : string -> 'msg) =
 
-            let attributes (value : string) =
+        //Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]
+        let dropDown' (values : alist<'a>)(selected : IMod<string>) (change : 'a -> 'msg) (f : 'a ->string)  =
+
+            let attributes (name : string) =
                 AttributeMap.ofListCond [
-                    always (attribute "value" value)
-                    onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
+                    always (attribute "value" (name))
+                    onlyWhen (selected |> Mod.map (fun x -> x = name)) (attribute "selected" "selected")
                 ]
 
-            Incremental.select (AttributeMap.ofList [onChange (fun str -> change str);style "color:black"]) 
-                (values 
-                    |> AList.map(
-                        fun x ->
-                            let att = attributes x                            
-                            Incremental.option att (AList.ofList [text x]) 
-                    )
+            let ortisOnChange  = 
+                let cb (i : int) =                    
+                    let currentState = values.Content |> Mod.force
+                    match PList.tryAt i currentState with
+                        | None -> failwith ""
+                        | Some a -> change a 
+                onEvent "onchange" ["event.target.selectedIndex"] (fun x -> x |> List.head |> Int32.Parse |> cb)
+
+            Incremental.select (AttributeMap.ofList [ortisOnChange; style "color:black"]) 
+                (values
+                    |> AList.mapi(fun i x -> Incremental.option (attributes (f x)) (AList.ofList [text (f x)]))
                 )
-                    
+                                                
         let textBox (text : IMod<string>) (set : string -> 'msg) =          
             
             let attributes = 
