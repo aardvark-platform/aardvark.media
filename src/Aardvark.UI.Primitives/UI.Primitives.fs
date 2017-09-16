@@ -177,12 +177,17 @@ module Html =
             ]         
 
         //Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]
-        let dropDown' (values : alist<'a>)(selected : IMod<string>) (change : 'a -> 'msg) (f : 'a ->string)  =
+        let dropDown' (values : alist<'a>)(selected : IMod<'a>) (change : 'a -> 'msg) (f : 'a ->string)  =
 
             let attributes (name : string) =
                 AttributeMap.ofListCond [
                     always (attribute "value" (name))
-                    onlyWhen (selected |> Mod.map (fun x -> x = name)) (attribute "selected" "selected")
+                    onlyWhen (selected |> Mod.map (fun x -> f x = name)
+                                            //fun x -> 
+                                            //    match x with
+                                            //        | Some s -> (f s) = name
+                                            //        | None -> false)
+                             ) (attribute "selected" "selected")
                 ]
 
             let ortisOnChange  = 

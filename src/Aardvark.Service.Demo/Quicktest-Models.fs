@@ -16,6 +16,6 @@ type Person = {
 [<DomainType>]
 type QuickTestModel = {
     values : plist<Person>
-    selected : string
-    newValue : Person
+    selected : Person
+    newValue : option<Person>
 }

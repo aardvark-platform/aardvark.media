@@ -17,11 +17,17 @@ type Action =
 
 let update (m : QuickTestModel) (a : Action) =
     match a with
-        | Select p ->  { m with selected = p.secondName }
+        | Select p ->  { m with selected =  p }
         //| ChangeValue s -> { m with newValue = s }
         //| AddValue s -> { m with values = m.values |> PList.append s }
             
             
+let personToText (p:IMod<option<Person>>) : IMod<string> =
+    p |> Mod.map(
+        fun x ->
+            match x with
+                | Some s -> sprintf "person selected: %s %s" s.firstName s.secondName
+                | None -> "no person selected")    
 
 let view (m : MQuickTestModel) =
     body[][
@@ -30,14 +36,18 @@ let view (m : MQuickTestModel) =
           //  button [onClick(fun _ -> AddValue (m.newValue |> Mod.force))] [text "add"]
           //  br[]
             Html.SemUi.dropDown' m.values m.selected (fun a -> Select a) (fun a -> a.secondName)
+            br[]
+            Incremental.text (m.selected |> Mod.map(fun x -> sprintf "person selected: %s %s" x.firstName x.secondName ))
         ]
     ]
 
-let dropDownINit = 
-    { 
-        values = (["Horst";"Hinz"; "Kunz"] |> List.mapi(fun i v -> (i,v)) |> HMap.ofList)
-        selected = 0 
-    }
+let persons = [
+
+    { firstName = "Harry"; secondName = "Stonelicker" }
+    { firstName = "Mitschgi"; secondName = "Blackler" }
+    { firstName = "Atti"; secondName = "Szaborider" }
+
+]
 
 let app =
     {
@@ -45,9 +55,9 @@ let app =
         threads = fun _ -> ThreadPool.Empty
         initial = 
             { 
-                newValue = { firstName = ""; secondName = "" };
-                values = [{ firstName = "horst"; secondName = "hinioadfs" }; { firstName = "adfadsf"; secondName = "adfdasdf" }]|> PList.ofList
-                selected= "Horst"
+                newValue = None
+                values = persons|> PList.ofList
+                selected= { firstName = "Atti"; secondName = "Szaborider" }
                 //dropdown = dropDownINit                    
             }
         update = update

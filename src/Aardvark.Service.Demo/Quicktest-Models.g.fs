@@ -15,7 +15,7 @@ module Mutable =
         let mutable __current = __initial
         let _values = MList.Create(__initial.values)
         let _selected = ResetMod.Create(__initial.selected)
-        let _newValue = ResetMod.Create(__initial.newValue)
+        let _newValue = MOption.Create(__initial.newValue)
         
         member x.values = _values :> alist<_>
         member x.selected = _selected :> IMod<_>
@@ -27,7 +27,7 @@ module Mutable =
                 
                 MList.Update(_values, v.values)
                 ResetMod.Update(_selected,v.selected)
-                ResetMod.Update(_newValue,v.newValue)
+                MOption.Update(_newValue, v.newValue)
                 
         
         static member Create(__initial : QuickTest.QuickTestModel) : MQuickTestModel = MQuickTestModel(__initial)
@@ -51,13 +51,13 @@ module Mutable =
                     override x.Update(r,f) = { r with values = f r.values }
                 }
             let selected =
-                { new Lens<QuickTest.QuickTestModel, Microsoft.FSharp.Core.string>() with
+                { new Lens<QuickTest.QuickTestModel, QuickTest.Person>() with
                     override x.Get(r) = r.selected
                     override x.Set(r,v) = { r with selected = v }
                     override x.Update(r,f) = { r with selected = f r.selected }
                 }
             let newValue =
-                { new Lens<QuickTest.QuickTestModel, QuickTest.Person>() with
+                { new Lens<QuickTest.QuickTestModel, Microsoft.FSharp.Core.option<QuickTest.Person>>() with
                     override x.Get(r) = r.newValue
                     override x.Set(r,v) = { r with newValue = v }
                     override x.Update(r,f) = { r with newValue = f r.newValue }
