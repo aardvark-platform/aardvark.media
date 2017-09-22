@@ -181,6 +181,7 @@ module CameraController =
 
                 { model with view = cam; dragStart = pos }
 
+    let update' = flip update
 
     let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>)  =
         AttributeMap.ofListCond [
