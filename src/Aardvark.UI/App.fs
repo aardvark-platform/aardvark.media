@@ -29,6 +29,9 @@ type App<'model, 'mmodel, 'msg> =
     }
 
 module App =
+
+    type private Message<'msg> = { msgs : seq<'msg>; processed : Option<System.Threading.ManualResetEventSlim> }
+
     let start (app : App<'model, 'mmodel, 'msg>) =
         let l = obj()
         let state = Mod.init app.initial
@@ -36,15 +39,17 @@ module App =
         let node = app.view mstate
 
         let mutable running = true
-        let messageQueue = List<seq<'msg>>(128)
+        let messageQueue = List<Message<'msg>>(128)
 
         let mutable currentThreads = ThreadPool.empty
 
         let update (source : Guid) (msgs : seq<'msg>) =
+            use mri = new System.Threading.ManualResetEventSlim()
             lock messageQueue (fun () ->
-                messageQueue.Add msgs
+                messageQueue.Add { msgs = msgs; processed = Some mri }
                 Monitor.Pulse messageQueue
             )
+            mri.Wait()
 
         let rec adjustThreads (newThreads : ThreadPool<'msg>) =
             let merge (id : string) (oldThread : Option<Command<'msg>>) (newThread : Option<Command<'msg>>) : Option<Command<'msg>> =
@@ -57,42 +62,38 @@ module App =
                         newThread
                     | Some o, Some n ->
                         oldThread
-//                        if o <> n then
-//                            o.Stop()
-//                            n.Start(emit)
-
                     | None, None -> 
                         None
             
             currentThreads <- ThreadPool<'msg>(HMap.choose2 merge currentThreads.store newThreads.store)
 
 
-        and doit(msgs : list<seq<'msg>>) =
+        and doit(msgs : list<Message<'msg>>) =
             lock l (fun () ->
-                let flat = Seq.concat msgs
-
                 if Config.shouldTimeUnpersistCalls then Log.startTimed "[Aardvark.UI] update/adjustThreads/unpersist"
-                for msg in flat do
-                    let newState = app.update state.Value msg
-                    let newThreads = app.threads newState
-                    adjustThreads newThreads
-                    transact (fun () ->
-                        state.Value <- newState
-                        app.unpersist.update mstate newState
-                    )
+                for msg in msgs do
+                    for msg in msg.msgs do
+                        let newState = app.update state.Value msg
+                        let newThreads = app.threads newState
+                        adjustThreads newThreads
+                        transact (fun () ->
+                            state.Value <- newState
+                            app.unpersist.update mstate newState
+                        )
+                    // if somebody awaits message processing, trigger it
+                    msg.processed |> Option.iter (fun mri -> mri.Set())
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
 
         and emit (msg : 'msg) =
             lock messageQueue (fun () ->
-                messageQueue.Add (Seq.singleton msg)
+                messageQueue.Add { msgs = Seq.singleton msg; processed = None }
                 Monitor.Pulse messageQueue
             )
 
 
         let updateThread =
-            async {
-                do! Async.SwitchToNewThread()
+            let update () = 
                 while running do
                     Monitor.Enter(messageQueue)
                     while running && messageQueue.Count = 0 do
@@ -103,9 +104,11 @@ module App =
                     Monitor.Exit(messageQueue)
 
                     doit messages
-            }
+            Thread(ThreadStart update)
 
-        Async.Start updateThread
+        updateThread.Name <- "[Aardvark.Media.App] updateThread"
+        updateThread.IsBackground <- true
+        updateThread.Start()
 
 
         {

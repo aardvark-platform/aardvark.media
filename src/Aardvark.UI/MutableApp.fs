@@ -183,7 +183,7 @@ module MutableApp =
                                     running <- false
 
                                 | _ ->
-                                    Log.warn "asdasdsad"
+                                    Log.warn "[MutableApp] unknown message: %A" (code,data)
                         
                         MVar.put update false
                         updater.Destroy(state, JSExpr.Body) |> ignore
@@ -191,7 +191,7 @@ module MutableApp =
                     }
                 | _ ->
                     SocketOp.abort(Error.InputDataError(None, "no session id")) 
-
+        
         choose [
             path "/events" >=> handShake events
             path "/" >=> OK template
