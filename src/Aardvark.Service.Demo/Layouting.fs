@@ -32,7 +32,7 @@ let app rootUrl =
             { 
                tabs = 
                 PList.ofList [
-                    for i in 0 .. 4 do
+                    for i in 0 .. 5 do
                         yield {name="3D"; url = sprintf "%s/threeD/" rootUrl }
                         yield {name="2D"; url = sprintf "%s/twoD/" rootUrl }
                ]

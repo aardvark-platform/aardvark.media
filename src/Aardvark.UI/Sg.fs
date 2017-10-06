@@ -300,7 +300,7 @@ module ``F# Sg`` =
         let camera (cam : IMod<Camera>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.camera cam)
 
-        let surface (m : IMod<ISurface>) (sg : ISg<'msg>) =
+        let surface (m : ISurface) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.surface m)
 
         let set (set : aset<ISg<'msg>>) =
@@ -470,9 +470,9 @@ module FShadeSceneGraph =
     type SgEffectBuilder<'a>() =
         inherit EffectBuilder()
 
-        member x.Run(f : unit -> IMod<list<FShadeEffect>>) =
+        member x.Run(f : unit -> list<FShadeEffect>) =
             let surface = 
-                f() |> Mod.map (fun effects ->
+                f() |> (fun effects ->
                     effects
                         |> FShade.Effect.compose
                         |> FShadeSurface.Get
