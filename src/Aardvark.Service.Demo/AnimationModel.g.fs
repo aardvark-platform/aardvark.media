@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : AnimationModel.Model) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<AnimationModel.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _animation = ResetMod.Create(__initial.animation)
         let _cameraState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraState)
         let _animations = MList.Create(__initial.animations)
@@ -21,9 +21,10 @@ module Mutable =
         member x.cameraState = _cameraState
         member x.animations = _animations :> alist<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : AnimationModel.Model) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_animation,v.animation)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraState, v.cameraState)
@@ -33,8 +34,8 @@ module Mutable =
         static member Create(__initial : AnimationModel.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : AnimationModel.Model) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<AnimationModel.Model> with
             member x.Update v = x.Update v
     

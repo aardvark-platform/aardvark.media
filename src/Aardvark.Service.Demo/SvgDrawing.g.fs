@@ -12,14 +12,15 @@ module Mutable =
     
     type MModel(__initial : SvgDrawing.Model) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<SvgDrawing.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _nixi = ResetMod.Create(__initial.nixi)
         
         member x.nixi = _nixi :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : SvgDrawing.Model) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_nixi,v.nixi)
                 
@@ -27,8 +28,8 @@ module Mutable =
         static member Create(__initial : SvgDrawing.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : SvgDrawing.Model) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<SvgDrawing.Model> with
             member x.Update v = x.Update v
     

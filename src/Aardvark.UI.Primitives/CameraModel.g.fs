@@ -12,7 +12,7 @@ module Mutable =
     
     type MCameraControllerState(__initial : Aardvark.UI.Primitives.CameraControllerState) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.Primitives.CameraControllerState> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _view = ResetMod.Create(__initial.view)
         let _dragStart = ResetMod.Create(__initial.dragStart)
         let _look = ResetMod.Create(__initial.look)
@@ -49,9 +49,10 @@ module Mutable =
         member x.rotationFactor = _rotationFactor :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Aardvark.UI.Primitives.CameraControllerState) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_view,v.view)
                 ResetMod.Update(_dragStart,v.dragStart)
@@ -75,8 +76,8 @@ module Mutable =
         static member Create(__initial : Aardvark.UI.Primitives.CameraControllerState) : MCameraControllerState = MCameraControllerState(__initial)
         static member Update(m : MCameraControllerState, v : Aardvark.UI.Primitives.CameraControllerState) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Aardvark.UI.Primitives.CameraControllerState> with
             member x.Update v = x.Update v
     

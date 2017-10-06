@@ -48,7 +48,7 @@ let kitchenSink argv =
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
 
-    let useVulkan = true
+    let useVulkan = false
 
     Ag.initialize()
     Aardvark.Init()
@@ -74,29 +74,37 @@ let kitchenSink argv =
     //let app = ColorPicker.app
     //let app = Vector3d.app
     //let app = NavigationModeDemo.app
-    //let app = BoxSelectionDemo.app
     //let app = Simple2DDrawingApp.app
     //let app = SimpleScaleApp.app
 
     //let app = DragNDrop.TranslateController.app
-   // let app = DragNDrop.RotationController.app
+    //let app = DragNDrop.RotationController.app
     //let app = SimpleDrawingApp.app
     //let app = PlaceTransformObjects.App.app
-   // let app = BookmarkApp.app
+    //let app = BookmarkApp.app
     //let app = MeasurementsImporterApp.app form
     //let app = RenderModelApp.app 
     //let app = AnnotationApp.app
     //let app = PerformanceApp.app
+    let app = BoxSelectionDemo.app
 
-    let app = QuickTestApp.app
-    
-    let instance = 
-        app |> App.start
+//    let app = QuickTestApp.app
+//    
+//    let instance = 
+//        app |> App.start
+
+//
+//    WebPart.startServer 4321 [ 
+//        prefix "/twoD" >=> MutableApp.toWebPart runtime (QuickTestApp.app |> App.start)
+//        prefix "/threeD" >=> MutableApp.toWebPart runtime (BoxSelectionDemo.app |> App.start)
+//        MutableApp.toWebPart runtime (LayoutingApp.app "http://localhost:4321" |> App.start)
+//        Suave.Files.browseHome
+//    ]  
 
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart runtime instance
+        MutableApp.toWebPart runtime (app |> App.start)
         Suave.Files.browseHome
-    ]  
+    ] 
 
     //Console.ReadLine() |> ignore
     use ctrl = new AardvarkCefBrowser()
@@ -104,7 +112,7 @@ let kitchenSink argv =
     form.Controls.Add ctrl
     ctrl.StartUrl <- "http://localhost:4321/"
     ctrl.ShowDevTools()
-//
+
     Application.Run form
    
     System.Environment.Exit 0

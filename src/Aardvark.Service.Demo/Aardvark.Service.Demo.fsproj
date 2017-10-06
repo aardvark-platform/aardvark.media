@@ -108,6 +108,8 @@
     <Compile Include="SvgDrawingApp.fs" />
     <Compile Include="SimpleScaleModel.fs" />
     <Compile Include="SimpleScaleApp.fs" />
+    <Compile Include="Layouting-DataModel.fs" />
+    <Compile Include="Layouting.fs" />
     <Compile Include="Program.fs" />
     <None Include="paket.references" />
     <Content Include="App.config" />

@@ -12,7 +12,7 @@ module Mutable =
     
     type MObject(__initial : PlaceTransformObjects.Object) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<PlaceTransformObjects.Object> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _name = ResetMod.Create(__initial.name)
         let _objectType = ResetMod.Create(__initial.objectType)
         let _transformation = DragNDrop.Mutable.MTransformation.Create(__initial.transformation)
@@ -21,9 +21,10 @@ module Mutable =
         member x.objectType = _objectType :> IMod<_>
         member x.transformation = _transformation
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : PlaceTransformObjects.Object) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_name,v.name)
                 ResetMod.Update(_objectType,v.objectType)
@@ -33,8 +34,8 @@ module Mutable =
         static member Create(__initial : PlaceTransformObjects.Object) : MObject = MObject(__initial)
         static member Update(m : MObject, v : PlaceTransformObjects.Object) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<PlaceTransformObjects.Object> with
             member x.Update v = x.Update v
     
@@ -66,16 +67,17 @@ module Mutable =
     
     type MWorld(__initial : PlaceTransformObjects.World) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<PlaceTransformObjects.World> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _objects = MMap.Create(__initial.objects, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
         let _selectedObjects = MSet.Create(__initial.selectedObjects)
         
         member x.objects = _objects :> amap<_,_>
         member x.selectedObjects = _selectedObjects :> aset<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : PlaceTransformObjects.World) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MMap.Update(_objects, v.objects)
                 MSet.Update(_selectedObjects, v.selectedObjects)
@@ -84,8 +86,8 @@ module Mutable =
         static member Create(__initial : PlaceTransformObjects.World) : MWorld = MWorld(__initial)
         static member Update(m : MWorld, v : PlaceTransformObjects.World) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<PlaceTransformObjects.World> with
             member x.Update v = x.Update v
     
@@ -111,16 +113,17 @@ module Mutable =
     
     type MScene(__initial : PlaceTransformObjects.Scene) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<PlaceTransformObjects.Scene> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _world = MWorld.Create(__initial.world)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         
         member x.world = _world
         member x.camera = _camera
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : PlaceTransformObjects.Scene) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MWorld.Update(_world, v.world)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
@@ -129,8 +132,8 @@ module Mutable =
         static member Create(__initial : PlaceTransformObjects.Scene) : MScene = MScene(__initial)
         static member Update(m : MScene, v : PlaceTransformObjects.Scene) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<PlaceTransformObjects.Scene> with
             member x.Update v = x.Update v
     

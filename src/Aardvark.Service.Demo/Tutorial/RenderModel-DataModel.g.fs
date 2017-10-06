@@ -12,14 +12,15 @@ module Mutable =
     
     type MAppearance(__initial : RenderModel.Appearance) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<RenderModel.Appearance> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _cullMode = ResetMod.Create(__initial.cullMode)
         
         member x.cullMode = _cullMode :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : RenderModel.Appearance) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_cullMode,v.cullMode)
                 
@@ -27,8 +28,8 @@ module Mutable =
         static member Create(__initial : RenderModel.Appearance) : MAppearance = MAppearance(__initial)
         static member Update(m : MAppearance, v : RenderModel.Appearance) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<RenderModel.Appearance> with
             member x.Update v = x.Update v
     
@@ -147,7 +148,7 @@ module Mutable =
     
     type MModel(__initial : RenderModel.Model) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<RenderModel.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _trafo = ResetMod.Create(__initial.trafo)
         let _currentModel = MOption.Create(__initial.currentModel, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
         let _appearance = MAppearance.Create(__initial.appearance)
@@ -158,9 +159,10 @@ module Mutable =
         member x.appearance = _appearance
         member x.cameraState = _cameraState
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : RenderModel.Model) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_trafo,v.trafo)
                 MOption.Update(_currentModel, v.currentModel)
@@ -171,8 +173,8 @@ module Mutable =
         static member Create(__initial : RenderModel.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : RenderModel.Model) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<RenderModel.Model> with
             member x.Update v = x.Update v
     

@@ -12,14 +12,15 @@ module Mutable =
     
     type MUrdar(__initial : Demo.TestApp.Urdar) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Urdar> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _urdar = ResetMod.Create(__initial.urdar)
         
         member x.urdar = _urdar :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Demo.TestApp.Urdar) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_urdar,v.urdar)
                 
@@ -27,8 +28,8 @@ module Mutable =
         static member Create(__initial : Demo.TestApp.Urdar) : MUrdar = MUrdar(__initial)
         static member Update(m : MUrdar, v : Demo.TestApp.Urdar) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Demo.TestApp.Urdar> with
             member x.Update v = x.Update v
     
@@ -53,16 +54,17 @@ module Mutable =
     
     and private MTreeNodeD<'a,'ma,'va>(__initial : Demo.TestApp.TreeNode<'a>, __ainit : 'a -> 'ma, __aupdate : 'ma * 'a -> unit, __aview : 'ma -> 'va) =
         inherit MTreeNode<'va,'va>()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.TreeNode<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _content = __ainit(__initial.content)
         let _children = MList.Create(__initial.children, (fun v -> MTreeNode.Create(v, (fun v -> __ainit(v)), (fun (m,v) -> __aupdate(m, v)), (fun v -> __aview(v)))), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
         override x.content = __aview(_content)
         override x.children = _children :> alist<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Demo.TestApp.TreeNode<'a>) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 __aupdate(_content, v.content)
                 MList.Update(_children, v.children)
@@ -70,23 +72,24 @@ module Mutable =
         
         static member Update(m : MTreeNodeD<'a,'ma,'va>, v : Demo.TestApp.TreeNode<'a>) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        override x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        override x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Demo.TestApp.TreeNode<'a>> with
             member x.Update v = x.Update v
     
     and private MTreeNodeV<'a>(__initial : Demo.TestApp.TreeNode<'a>) =
         inherit MTreeNode<IMod<'a>,'a>()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.TreeNode<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _content = ResetMod.Create(__initial.content)
         let _children = MList.Create(__initial.children, (fun v -> MTreeNode.Create(v)), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
         override x.content = _content :> IMod<_>
         override x.children = _children :> alist<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Demo.TestApp.TreeNode<'a>) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_content,v.content)
                 MList.Update(_children, v.children)
@@ -94,8 +97,8 @@ module Mutable =
         
         static member Update(m : MTreeNodeV<'a>, v : Demo.TestApp.TreeNode<'a>) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        override x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        override x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Demo.TestApp.TreeNode<'a>> with
             member x.Update v = x.Update v
     
@@ -132,43 +135,45 @@ module Mutable =
     
     and private MTreeD<'a,'ma,'va>(__initial : Demo.TestApp.Tree<'a>, __ainit : 'a -> 'ma, __aupdate : 'ma * 'a -> unit, __aview : 'ma -> 'va) =
         inherit MTree<'va,'va>()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Tree<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _nodes = MList.Create(__initial.nodes, (fun v -> MTreeNode.Create(v, (fun v -> __ainit(v)), (fun (m,v) -> __aupdate(m, v)), (fun v -> __aview(v)))), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
         override x.nodes = _nodes :> alist<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Demo.TestApp.Tree<'a>) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MList.Update(_nodes, v.nodes)
                 
         
         static member Update(m : MTreeD<'a,'ma,'va>, v : Demo.TestApp.Tree<'a>) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        override x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        override x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Demo.TestApp.Tree<'a>> with
             member x.Update v = x.Update v
     
     and private MTreeV<'a>(__initial : Demo.TestApp.Tree<'a>) =
         inherit MTree<IMod<'a>,'a>()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Tree<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _nodes = MList.Create(__initial.nodes, (fun v -> MTreeNode.Create(v)), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
         override x.nodes = _nodes :> alist<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Demo.TestApp.Tree<'a>) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MList.Update(_nodes, v.nodes)
                 
         
         static member Update(m : MTreeV<'a>, v : Demo.TestApp.Tree<'a>) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        override x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        override x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Demo.TestApp.Tree<'a>> with
             member x.Update v = x.Update v
     
@@ -195,7 +200,7 @@ module Mutable =
     
     type MModel(__initial : Demo.TestApp.Model) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _boxHovered = ResetMod.Create(__initial.boxHovered)
         let _dragging = ResetMod.Create(__initial.dragging)
         let _lastName = MOption.Create(__initial.lastName)
@@ -216,9 +221,10 @@ module Mutable =
         member x.lastTime = _lastTime :> IMod<_>
         member x.tree = _tree
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Demo.TestApp.Model) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_boxHovered,v.boxHovered)
                 ResetMod.Update(_dragging,v.dragging)
@@ -234,8 +240,8 @@ module Mutable =
         static member Create(__initial : Demo.TestApp.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : Demo.TestApp.Model) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Demo.TestApp.Model> with
             member x.Update v = x.Update v
     

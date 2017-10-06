@@ -12,7 +12,7 @@ module Mutable =
     
     type MNumericInput(__initial : Aardvark.UI.NumericInput) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.NumericInput> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _value = ResetMod.Create(__initial.value)
         let _min = ResetMod.Create(__initial.min)
         let _max = ResetMod.Create(__initial.max)
@@ -25,9 +25,10 @@ module Mutable =
         member x.step = _step :> IMod<_>
         member x.format = _format :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Aardvark.UI.NumericInput) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_value,v.value)
                 ResetMod.Update(_min,v.min)
@@ -39,8 +40,8 @@ module Mutable =
         static member Create(__initial : Aardvark.UI.NumericInput) : MNumericInput = MNumericInput(__initial)
         static member Update(m : MNumericInput, v : Aardvark.UI.NumericInput) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Aardvark.UI.NumericInput> with
             member x.Update v = x.Update v
     
@@ -84,7 +85,7 @@ module Mutable =
     
     type MV3dInput(__initial : Aardvark.UI.V3dInput) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.V3dInput> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _x = MNumericInput.Create(__initial.x)
         let _y = MNumericInput.Create(__initial.y)
         let _z = MNumericInput.Create(__initial.z)
@@ -95,9 +96,10 @@ module Mutable =
         member x.z = _z
         member x.value = _value :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Aardvark.UI.V3dInput) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MNumericInput.Update(_x, v.x)
                 MNumericInput.Update(_y, v.y)
@@ -108,8 +110,8 @@ module Mutable =
         static member Create(__initial : Aardvark.UI.V3dInput) : MV3dInput = MV3dInput(__initial)
         static member Update(m : MV3dInput, v : Aardvark.UI.V3dInput) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Aardvark.UI.V3dInput> with
             member x.Update v = x.Update v
     
@@ -147,14 +149,15 @@ module Mutable =
     
     type MColorInput(__initial : Aardvark.UI.ColorInput) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.ColorInput> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _c = ResetMod.Create(__initial.c)
         
         member x.c = _c :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Aardvark.UI.ColorInput) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_c,v.c)
                 
@@ -162,8 +165,8 @@ module Mutable =
         static member Create(__initial : Aardvark.UI.ColorInput) : MColorInput = MColorInput(__initial)
         static member Update(m : MColorInput, v : Aardvark.UI.ColorInput) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Aardvark.UI.ColorInput> with
             member x.Update v = x.Update v
     
@@ -183,16 +186,17 @@ module Mutable =
     
     type MDropDownModel(__initial : Aardvark.UI.DropDownModel) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.DropDownModel> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _values = MMap.Create(__initial.values)
         let _selected = ResetMod.Create(__initial.selected)
         
         member x.values = _values :> amap<_,_>
         member x.selected = _selected :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Aardvark.UI.DropDownModel) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MMap.Update(_values, v.values)
                 ResetMod.Update(_selected,v.selected)
@@ -201,8 +205,8 @@ module Mutable =
         static member Create(__initial : Aardvark.UI.DropDownModel) : MDropDownModel = MDropDownModel(__initial)
         static member Update(m : MDropDownModel, v : Aardvark.UI.DropDownModel) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Aardvark.UI.DropDownModel> with
             member x.Update v = x.Update v
     
@@ -301,7 +305,7 @@ module Mutable =
     
     type MProperties(__initial : Aardvark.UI.Properties) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.Properties> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _isExpanded = ResetMod.Create(__initial.isExpanded)
         let _isSelected = ResetMod.Create(__initial.isSelected)
         let _isActive = ResetMod.Create(__initial.isActive)
@@ -310,9 +314,10 @@ module Mutable =
         member x.isSelected = _isSelected :> IMod<_>
         member x.isActive = _isActive :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Aardvark.UI.Properties) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_isExpanded,v.isExpanded)
                 ResetMod.Update(_isSelected,v.isSelected)
@@ -322,8 +327,8 @@ module Mutable =
         static member Create(__initial : Aardvark.UI.Properties) : MProperties = MProperties(__initial)
         static member Update(m : MProperties, v : Aardvark.UI.Properties) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Aardvark.UI.Properties> with
             member x.Update v = x.Update v
     
@@ -391,8 +396,8 @@ module Mutable =
                 match __model with
                     | Node(value,properties,children) -> 
                         __current <- __model
-                        _value.Update(value)
-                        _properties.Update(properties)
+                        MLeafValue.Update(_value,value)
+                        MProperties.Update(_properties,properties)
                         _children.Update(children)
                         true
                     | _ -> false
@@ -414,7 +419,7 @@ module Mutable =
                 match __model with
                     | Leaf(value) -> 
                         __current <- __model
-                        _value.Update(value)
+                        MLeafValue.Update(_value,value)
                         true
                     | _ -> false
     
@@ -434,14 +439,15 @@ module Mutable =
     
     type MTreeModel(__initial : Aardvark.UI.TreeModel) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.TreeModel> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _data = MTree.Create(__initial.data)
         
         member x.data = _data
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Aardvark.UI.TreeModel) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MTree.Update(_data, v.data)
                 
@@ -449,8 +455,8 @@ module Mutable =
         static member Create(__initial : Aardvark.UI.TreeModel) : MTreeModel = MTreeModel(__initial)
         static member Update(m : MTreeModel, v : Aardvark.UI.TreeModel) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Aardvark.UI.TreeModel> with
             member x.Update v = x.Update v
     

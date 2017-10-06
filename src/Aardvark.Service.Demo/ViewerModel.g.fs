@@ -12,7 +12,7 @@ module Mutable =
     
     type MViewerModel(__initial : Viewer.ViewerModel) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Viewer.ViewerModel> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _files = ResetMod.Create(__initial.files)
         let _rotation = ResetMod.Create(__initial.rotation)
         let _scenes = MSet.Create(__initial.scenes)
@@ -29,9 +29,10 @@ module Mutable =
         member x.fillMode = _fillMode :> IMod<_>
         member x.cullMode = _cullMode :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Viewer.ViewerModel) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_files,v.files)
                 ResetMod.Update(_rotation,v.rotation)
@@ -45,8 +46,8 @@ module Mutable =
         static member Create(__initial : Viewer.ViewerModel) : MViewerModel = MViewerModel(__initial)
         static member Update(m : MViewerModel, v : Viewer.ViewerModel) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Viewer.ViewerModel> with
             member x.Update v = x.Update v
     

@@ -13,3 +13,5 @@ bin/Debug
 /.paket/paket.exe
 /Aardvark.log
 /src/FablishInterop/Models.g.fs
+/.paket/Paket.Restore.targets
+/src/Aardvark.Service.Demo/*.TMP

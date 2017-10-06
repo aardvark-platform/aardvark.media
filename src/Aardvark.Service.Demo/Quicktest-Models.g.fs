@@ -12,7 +12,7 @@ module Mutable =
     
     type MQuickTestModel(__initial : QuickTest.QuickTestModel) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<QuickTest.QuickTestModel> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _values = MList.Create(__initial.values)
         let _selected = ResetMod.Create(__initial.selected)
         let _newValue = MOption.Create(__initial.newValue)
@@ -21,9 +21,10 @@ module Mutable =
         member x.selected = _selected :> IMod<_>
         member x.newValue = _newValue :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : QuickTest.QuickTestModel) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MList.Update(_values, v.values)
                 ResetMod.Update(_selected,v.selected)
@@ -33,8 +34,8 @@ module Mutable =
         static member Create(__initial : QuickTest.QuickTestModel) : MQuickTestModel = MQuickTestModel(__initial)
         static member Update(m : MQuickTestModel, v : QuickTest.QuickTestModel) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<QuickTest.QuickTestModel> with
             member x.Update v = x.Update v
     

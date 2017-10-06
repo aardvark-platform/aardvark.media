@@ -17,9 +17,9 @@ nuget Aardvark.Rendering.NanoVg            ~> 3.3.9
 nuget Aardvark.Rendering.Text              ~> 3.3.9
 nuget Aardvark.Rendering.Vulkan            ~> 3.3.9
 
-nuget Aardvark.Compiler.DomainTypes         ~> 0.2.6
-nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.6
-nuget Aardvark.Compiler.DomainTypeTool      ~> 0.2.6
+nuget Aardvark.Compiler.DomainTypes         ~> 0.2.7
+nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.7
+nuget Aardvark.Compiler.DomainTypeTool      ~> 0.2.7
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.0.13
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.13

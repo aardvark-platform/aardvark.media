@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : Performance.Model) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Performance.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _visible = MList.Create(__initial.visible)
         let _objects = MList.Create(__initial.objects)
         let _cameraState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraState)
@@ -21,9 +21,10 @@ module Mutable =
         member x.objects = _objects :> alist<_>
         member x.cameraState = _cameraState
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Performance.Model) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MList.Update(_visible, v.visible)
                 MList.Update(_objects, v.objects)
@@ -33,8 +34,8 @@ module Mutable =
         static member Create(__initial : Performance.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : Performance.Model) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Performance.Model> with
             member x.Update v = x.Update v
     

@@ -12,14 +12,15 @@ module Mutable =
     
     type MPolygon(__initial : Simple2DDrawing.Polygon) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Simple2DDrawing.Polygon> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _points = ResetMod.Create(__initial.points)
         
         member x.points = _points :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Simple2DDrawing.Polygon) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_points,v.points)
                 
@@ -27,8 +28,8 @@ module Mutable =
         static member Create(__initial : Simple2DDrawing.Polygon) : MPolygon = MPolygon(__initial)
         static member Update(m : MPolygon, v : Simple2DDrawing.Polygon) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Simple2DDrawing.Polygon> with
             member x.Update v = x.Update v
     
@@ -48,7 +49,7 @@ module Mutable =
     
     type MModel(__initial : Simple2DDrawing.Model) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<Simple2DDrawing.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _finishedPolygons = MList.Create(__initial.finishedPolygons, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
         let _workingPolygon = MOption.Create(__initial.workingPolygon, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
         let _cursor = MOption.Create(__initial.cursor)
@@ -61,9 +62,10 @@ module Mutable =
         member x.past = _past :> IMod<_>
         member x.future = _future :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : Simple2DDrawing.Model) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MList.Update(_finishedPolygons, v.finishedPolygons)
                 MOption.Update(_workingPolygon, v.workingPolygon)
@@ -75,8 +77,8 @@ module Mutable =
         static member Create(__initial : Simple2DDrawing.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : Simple2DDrawing.Model) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<Simple2DDrawing.Model> with
             member x.Update v = x.Update v
     

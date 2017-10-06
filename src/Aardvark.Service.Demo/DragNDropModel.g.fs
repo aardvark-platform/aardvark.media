@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : DragNDrop.Model) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<DragNDrop.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _trafo = ResetMod.Create(__initial.trafo)
         let _dragging = MOption.Create(__initial.dragging)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
@@ -21,9 +21,10 @@ module Mutable =
         member x.dragging = _dragging :> IMod<_>
         member x.camera = _camera
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : DragNDrop.Model) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_trafo,v.trafo)
                 MOption.Update(_dragging, v.dragging)
@@ -33,8 +34,8 @@ module Mutable =
         static member Create(__initial : DragNDrop.Model) : MModel = MModel(__initial)
         static member Update(m : MModel, v : DragNDrop.Model) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<DragNDrop.Model> with
             member x.Update v = x.Update v
     
@@ -66,7 +67,7 @@ module Mutable =
     
     type MTransformation(__initial : DragNDrop.Transformation) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<DragNDrop.Transformation> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _trafo = ResetMod.Create(__initial.trafo)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
@@ -75,9 +76,10 @@ module Mutable =
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : DragNDrop.Transformation) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 ResetMod.Update(_trafo,v.trafo)
                 MOption.Update(_hovered, v.hovered)
@@ -87,8 +89,8 @@ module Mutable =
         static member Create(__initial : DragNDrop.Transformation) : MTransformation = MTransformation(__initial)
         static member Update(m : MTransformation, v : DragNDrop.Transformation) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<DragNDrop.Transformation> with
             member x.Update v = x.Update v
     
@@ -120,16 +122,17 @@ module Mutable =
     
     type MScene(__initial : DragNDrop.Scene) =
         inherit obj()
-        let mutable __current = __initial
+        let mutable __current : Aardvark.Base.Incremental.ModRef<DragNDrop.Scene> = Aardvark.Base.Incremental.Mod.init(__initial)
         let _transformation = MTransformation.Create(__initial.transformation)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         
         member x.transformation = _transformation
         member x.camera = _camera
         
+        member x.Current = __current :> IMod<_>
         member x.Update(v : DragNDrop.Scene) =
-            if not (System.Object.ReferenceEquals(__current, v)) then
-                __current <- v
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
                 
                 MTransformation.Update(_transformation, v.transformation)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
@@ -138,8 +141,8 @@ module Mutable =
         static member Create(__initial : DragNDrop.Scene) : MScene = MScene(__initial)
         static member Update(m : MScene, v : DragNDrop.Scene) = m.Update(v)
         
-        override x.ToString() = __current.ToString()
-        member x.AsString = sprintf "%A" __current
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
         interface IUpdatable<DragNDrop.Scene> with
             member x.Update v = x.Update v
     
