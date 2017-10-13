@@ -12,7 +12,7 @@ module Mutable =
     
     type MNumericInput(__initial : Aardvark.UI.NumericInput) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.NumericInput> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.NumericInput> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.NumericInput>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.NumericInput>
         let _value = ResetMod.Create(__initial.value)
         let _min = ResetMod.Create(__initial.min)
         let _max = ResetMod.Create(__initial.max)
@@ -85,7 +85,7 @@ module Mutable =
     
     type MV3dInput(__initial : Aardvark.UI.V3dInput) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.V3dInput> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.V3dInput> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.V3dInput>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.V3dInput>
         let _x = MNumericInput.Create(__initial.x)
         let _y = MNumericInput.Create(__initial.y)
         let _z = MNumericInput.Create(__initial.z)
@@ -149,7 +149,7 @@ module Mutable =
     
     type MColorInput(__initial : Aardvark.UI.ColorInput) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.ColorInput> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.ColorInput> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.ColorInput>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.ColorInput>
         let _c = ResetMod.Create(__initial.c)
         
         member x.c = _c :> IMod<_>
@@ -186,7 +186,7 @@ module Mutable =
     
     type MDropDownModel(__initial : Aardvark.UI.DropDownModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.DropDownModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.DropDownModel> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.DropDownModel>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.DropDownModel>
         let _values = MMap.Create(__initial.values)
         let _selected = ResetMod.Create(__initial.selected)
         
@@ -305,7 +305,7 @@ module Mutable =
     
     type MProperties(__initial : Aardvark.UI.Properties) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.Properties> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.Properties> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.Properties>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.Properties>
         let _isExpanded = ResetMod.Create(__initial.isExpanded)
         let _isSelected = ResetMod.Create(__initial.isSelected)
         let _isActive = ResetMod.Create(__initial.isActive)
@@ -439,7 +439,7 @@ module Mutable =
     
     type MTreeModel(__initial : Aardvark.UI.TreeModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.TreeModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.TreeModel> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.TreeModel>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.TreeModel>
         let _data = MTree.Create(__initial.data)
         
         member x.data = _data

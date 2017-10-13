@@ -12,7 +12,7 @@ module Mutable =
     
     type MCameraControllerState(__initial : Aardvark.UI.Primitives.CameraControllerState) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Aardvark.UI.Primitives.CameraControllerState> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.Primitives.CameraControllerState> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.Primitives.CameraControllerState>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.Primitives.CameraControllerState>
         let _view = ResetMod.Create(__initial.view)
         let _dragStart = ResetMod.Create(__initial.dragStart)
         let _look = ResetMod.Create(__initial.look)

@@ -12,7 +12,7 @@ module Mutable =
     
     type MBookmark(__initial : PRo3DModels.Bookmark) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.Bookmark> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.Bookmark> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.Bookmark>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.Bookmark>
         let _id = ResetMod.Create(__initial.id)
         let _point = ResetMod.Create(__initial.point)
         let _color = ResetMod.Create(__initial.color)
@@ -94,7 +94,7 @@ module Mutable =
     
     type MRenderingParameters(__initial : PRo3DModels.RenderingParameters) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.RenderingParameters> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.RenderingParameters> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.RenderingParameters>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.RenderingParameters>
         let _fillMode = ResetMod.Create(__initial.fillMode)
         let _cullMode = ResetMod.Create(__initial.cullMode)
         
@@ -140,7 +140,7 @@ module Mutable =
     
     type MNavigationParameters(__initial : PRo3DModels.NavigationParameters) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.NavigationParameters> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.NavigationParameters> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.NavigationParameters>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.NavigationParameters>
         let _navigationMode = ResetMod.Create(__initial.navigationMode)
         
         member x.navigationMode = _navigationMode :> IMod<_>
@@ -177,7 +177,7 @@ module Mutable =
     
     type MBookmarkAppModel(__initial : PRo3DModels.BookmarkAppModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.BookmarkAppModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.BookmarkAppModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.BookmarkAppModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.BookmarkAppModel>
         let _bookmarkCamera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.bookmarkCamera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod.Create(__initial.draw)
@@ -259,7 +259,7 @@ module Mutable =
     
     type MVisibleBox(__initial : PRo3DModels.VisibleBox) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.VisibleBox> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.VisibleBox> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.VisibleBox>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.VisibleBox>
         let _geometry = ResetMod.Create(__initial.geometry)
         let _color = ResetMod.Create(__initial.color)
         let _id = ResetMod.Create(__initial.id)
@@ -314,7 +314,7 @@ module Mutable =
     
     type MAnnotation(__initial : PRo3DModels.Annotation) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.Annotation> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.Annotation> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.Annotation>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.Annotation>
         let _geometry = ResetMod.Create(__initial.geometry)
         let _projection = ResetMod.Create(__initial.projection)
         let _semantic = ResetMod.Create(__initial.semantic)
@@ -423,7 +423,7 @@ module Mutable =
     
     type MMeasurementsImporterAppModel(__initial : PRo3DModels.MeasurementsImporterAppModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.MeasurementsImporterAppModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.MeasurementsImporterAppModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.MeasurementsImporterAppModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.MeasurementsImporterAppModel>
         let _measurementsCamera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.measurementsCamera)
         let _measurementsRendering = MRenderingParameters.Create(__initial.measurementsRendering)
         let _measurementsHoverPosition = MOption.Create(__initial.measurementsHoverPosition)
@@ -496,7 +496,7 @@ module Mutable =
     
     type MComposedViewerModel(__initial : PRo3DModels.ComposedViewerModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.ComposedViewerModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.ComposedViewerModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.ComposedViewerModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.ComposedViewerModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _singleAnnotation = MAnnotation.Create(__initial.singleAnnotation)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
@@ -560,7 +560,7 @@ module Mutable =
     
     type MBoxSelectionDemoModel(__initial : PRo3DModels.BoxSelectionDemoModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.BoxSelectionDemoModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.BoxSelectionDemoModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.BoxSelectionDemoModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.BoxSelectionDemoModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _boxes = MList.Create(__initial.boxes, (fun v -> MVisibleBox.Create(v)), (fun (m,v) -> MVisibleBox.Update(m, v)), (fun v -> v))
@@ -651,7 +651,7 @@ module Mutable =
     
     type MSimpleDrawingAppModel(__initial : PRo3DModels.SimpleDrawingAppModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.SimpleDrawingAppModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.SimpleDrawingAppModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.SimpleDrawingAppModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.SimpleDrawingAppModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod.Create(__initial.draw)
@@ -724,7 +724,7 @@ module Mutable =
     
     type MDrawingModel(__initial : PRo3DModels.DrawingModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.DrawingModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.DrawingModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.DrawingModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.DrawingModel>
         let _draw = ResetMod.Create(__initial.draw)
         let _hoverPosition = MOption.Create(__initial.hoverPosition)
         let _working = MOption.Create(__initial.working, (fun v -> MAnnotation.Create(v)), (fun (m,v) -> MAnnotation.Update(m, v)), (fun v -> v))
@@ -824,7 +824,7 @@ module Mutable =
     
     type MAnnotationAppModel(__initial : PRo3DModels.AnnotationAppModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.AnnotationAppModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.AnnotationAppModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.AnnotationAppModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.AnnotationAppModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _drawing = MDrawingModel.Create(__initial.drawing)
@@ -897,7 +897,7 @@ module Mutable =
     
     type MOrbitCameraDemoModel(__initial : PRo3DModels.OrbitCameraDemoModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.OrbitCameraDemoModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.OrbitCameraDemoModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.OrbitCameraDemoModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.OrbitCameraDemoModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _orbitCenter = Aardvark.UI.Mutable.MV3dInput.Create(__initial.orbitCenter)
@@ -970,7 +970,7 @@ module Mutable =
     
     type MNavigationModeDemoModel(__initial : PRo3DModels.NavigationModeDemoModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PRo3DModels.NavigationModeDemoModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PRo3DModels.NavigationModeDemoModel> = Aardvark.Base.Incremental.EqModRef<PRo3DModels.NavigationModeDemoModel>(__initial) :> Aardvark.Base.Incremental.IModRef<PRo3DModels.NavigationModeDemoModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _rendering = MRenderingParameters.Create(__initial.rendering)
         let _navigation = MNavigationParameters.Create(__initial.navigation)

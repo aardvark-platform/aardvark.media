@@ -12,7 +12,7 @@ module Mutable =
     
     type MQuickTestModel(__initial : QuickTest.QuickTestModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<QuickTest.QuickTestModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<QuickTest.QuickTestModel> = Aardvark.Base.Incremental.EqModRef<QuickTest.QuickTestModel>(__initial) :> Aardvark.Base.Incremental.IModRef<QuickTest.QuickTestModel>
         let _values = MList.Create(__initial.values)
         let _selected = ResetMod.Create(__initial.selected)
         let _newValue = MOption.Create(__initial.newValue)

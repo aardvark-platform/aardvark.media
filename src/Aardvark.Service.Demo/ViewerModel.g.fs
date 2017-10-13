@@ -12,7 +12,7 @@ module Mutable =
     
     type MViewerModel(__initial : Viewer.ViewerModel) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Viewer.ViewerModel> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Viewer.ViewerModel> = Aardvark.Base.Incremental.EqModRef<Viewer.ViewerModel>(__initial) :> Aardvark.Base.Incremental.IModRef<Viewer.ViewerModel>
         let _files = ResetMod.Create(__initial.files)
         let _rotation = ResetMod.Create(__initial.rotation)
         let _scenes = MSet.Create(__initial.scenes)
