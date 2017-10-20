@@ -74,6 +74,7 @@ module Redirection =
                 | _ ->
                     Redirection.redirect path ctx
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module WebPart =
     let runServer (port : int) (content : list<WebPart>) =
         let config =
