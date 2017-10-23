@@ -12,7 +12,7 @@ module Mutable =
     
     type MPolygon(__initial : Simple2DDrawing.Polygon) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Simple2DDrawing.Polygon> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Simple2DDrawing.Polygon> = Aardvark.Base.Incremental.EqModRef<Simple2DDrawing.Polygon>(__initial) :> Aardvark.Base.Incremental.IModRef<Simple2DDrawing.Polygon>
         let _points = ResetMod.Create(__initial.points)
         
         member x.points = _points :> IMod<_>
@@ -49,7 +49,7 @@ module Mutable =
     
     type MModel(__initial : Simple2DDrawing.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Simple2DDrawing.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Simple2DDrawing.Model> = Aardvark.Base.Incremental.EqModRef<Simple2DDrawing.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<Simple2DDrawing.Model>
         let _finishedPolygons = MList.Create(__initial.finishedPolygons, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
         let _workingPolygon = MOption.Create(__initial.workingPolygon, (fun v -> MPolygon.Create(v)), (fun (m,v) -> MPolygon.Update(m, v)), (fun v -> v))
         let _cursor = MOption.Create(__initial.cursor)

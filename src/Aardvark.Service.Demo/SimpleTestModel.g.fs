@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : SimpleTest.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<SimpleTest.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<SimpleTest.Model> = Aardvark.Base.Incremental.EqModRef<SimpleTest.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<SimpleTest.Model>
         let _sphereFirst = ResetMod.Create(__initial.sphereFirst)
         let _value = ResetMod.Create(__initial.value)
         let _cameraModel = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraModel)

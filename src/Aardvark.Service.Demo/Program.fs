@@ -47,8 +47,9 @@ open PRo3DModels.Mutable
 let kitchenSink argv =
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
+    //Aardvark.Cef.Internal.Cef.init' false
 
-    let useVulkan = true
+    let useVulkan = false
 
     Ag.initialize()
     Aardvark.Init()
@@ -85,21 +86,27 @@ let kitchenSink argv =
     //let app = MeasurementsImporterApp.app form
     //let app = RenderModelApp.app 
     //let app = AnnotationApp.app
-    //let app = PerformanceApp.app
-    let app = BoxSelectionDemo.app
+
+    Config.shouldTimeUIUpdate <- true
+    Config.shouldTimeJsCodeGeneration <- true
+    Config.shouldTimeUnpersistCalls <- true
+
+
+    let app = PerformanceApp.app
+    //let app = BoxSelectionDemo.app
     //let app = QuickTestApp.app
 
-    WebPart.startServer 4321 [ 
-        prefix "/twoD" >=> MutableApp.toWebPart runtime (QuickTestApp.app |> App.start)
-        prefix "/threeD" >=> MutableApp.toWebPart runtime (BoxSelectionDemo.app |> App.start)
-        MutableApp.toWebPart runtime (LayoutingApp.app "http://localhost:4321" |> App.start)
-        Suave.Files.browseHome
-    ]  
-
 //    WebPart.startServer 4321 [ 
-//        MutableApp.toWebPart runtime (app |> App.start)
+//        prefix "/twoD" >=> MutableApp.toWebPart runtime (QuickTestApp.app |> App.start)
+//        prefix "/threeD" >=> MutableApp.toWebPart runtime (BoxSelectionDemo.app |> App.start)
+//        MutableApp.toWebPart runtime (LayoutingApp.app "http://localhost:4321" |> App.start)
 //        Suave.Files.browseHome
-//    ] 
+//    ]  
+
+    WebPart.startServer 4321 [ 
+        MutableApp.toWebPart runtime (app |> App.start)
+        Suave.Files.browseHome
+    ] 
 
     //Console.ReadLine() |> ignore
     use ctrl = new AardvarkCefBrowser()

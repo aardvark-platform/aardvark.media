@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : SvgDrawing.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<SvgDrawing.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<SvgDrawing.Model> = Aardvark.Base.Incremental.EqModRef<SvgDrawing.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<SvgDrawing.Model>
         let _nixi = ResetMod.Create(__initial.nixi)
         
         member x.nixi = _nixi :> IMod<_>

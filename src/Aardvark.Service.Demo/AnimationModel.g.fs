@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : AnimationModel.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<AnimationModel.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<AnimationModel.Model> = Aardvark.Base.Incremental.EqModRef<AnimationModel.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<AnimationModel.Model>
         let _animation = ResetMod.Create(__initial.animation)
         let _cameraState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraState)
         let _animations = MList.Create(__initial.animations)

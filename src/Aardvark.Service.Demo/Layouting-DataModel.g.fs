@@ -12,7 +12,7 @@ module Mutable =
     
     type MTab(__initial : LayoutingModel.Tab) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<LayoutingModel.Tab> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<LayoutingModel.Tab> = Aardvark.Base.Incremental.EqModRef<LayoutingModel.Tab>(__initial) :> Aardvark.Base.Incremental.IModRef<LayoutingModel.Tab>
         let _name = ResetMod.Create(__initial.name)
         let _url = ResetMod.Create(__initial.url)
         
@@ -160,7 +160,7 @@ module Mutable =
     
     type MModel(__initial : LayoutingModel.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<LayoutingModel.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<LayoutingModel.Model> = Aardvark.Base.Incremental.EqModRef<LayoutingModel.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<LayoutingModel.Model>
         let _tabs = MList.Create(__initial.tabs, (fun v -> MTab.Create(v)), (fun (m,v) -> MTab.Update(m, v)), (fun v -> v))
         
         member x.tabs = _tabs :> alist<_>

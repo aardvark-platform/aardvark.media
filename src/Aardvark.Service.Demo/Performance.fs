@@ -24,7 +24,7 @@ let update (m : Model) (a : Action) =
     match a with
         | Inc ->
             let mutable m = m
-            for i in 0 .. 50 do
+            for i in 0 .. 500 do
                 m <- addObj m
             m
         | CameraAction a -> { m with cameraState = CameraController.update m.cameraState a }
@@ -82,7 +82,7 @@ let app =
         threads = 
             fun m -> ThreadPool.empty 
             //fun (model : Model) -> CameraController.threads model.cameraState |> ThreadPool.map CameraAction
-        initial = { visible = PList.empty; objects = objects; cameraState = CameraController.initial }
+        initial = { visible = PList.empty ; objects = objects; cameraState = CameraController.initial }
         update = update
         view = view
     }

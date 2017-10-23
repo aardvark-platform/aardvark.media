@@ -12,7 +12,7 @@ module Mutable =
     
     type MObject(__initial : PlaceTransformObjects.Object) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PlaceTransformObjects.Object> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Object> = Aardvark.Base.Incremental.EqModRef<PlaceTransformObjects.Object>(__initial) :> Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Object>
         let _name = ResetMod.Create(__initial.name)
         let _objectType = ResetMod.Create(__initial.objectType)
         let _transformation = DragNDrop.Mutable.MTransformation.Create(__initial.transformation)
@@ -67,7 +67,7 @@ module Mutable =
     
     type MWorld(__initial : PlaceTransformObjects.World) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PlaceTransformObjects.World> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.World> = Aardvark.Base.Incremental.EqModRef<PlaceTransformObjects.World>(__initial) :> Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.World>
         let _objects = MMap.Create(__initial.objects, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
         let _selectedObjects = MSet.Create(__initial.selectedObjects)
         
@@ -113,7 +113,7 @@ module Mutable =
     
     type MScene(__initial : PlaceTransformObjects.Scene) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<PlaceTransformObjects.Scene> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Scene> = Aardvark.Base.Incremental.EqModRef<PlaceTransformObjects.Scene>(__initial) :> Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Scene>
         let _world = MWorld.Create(__initial.world)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         

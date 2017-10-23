@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : DragNDrop.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<DragNDrop.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<DragNDrop.Model> = Aardvark.Base.Incremental.EqModRef<DragNDrop.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<DragNDrop.Model>
         let _trafo = ResetMod.Create(__initial.trafo)
         let _dragging = MOption.Create(__initial.dragging)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
@@ -67,7 +67,7 @@ module Mutable =
     
     type MTransformation(__initial : DragNDrop.Transformation) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<DragNDrop.Transformation> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation> = Aardvark.Base.Incremental.EqModRef<DragNDrop.Transformation>(__initial) :> Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation>
         let _trafo = ResetMod.Create(__initial.trafo)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
@@ -122,7 +122,7 @@ module Mutable =
     
     type MScene(__initial : DragNDrop.Scene) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<DragNDrop.Scene> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<DragNDrop.Scene> = Aardvark.Base.Incremental.EqModRef<DragNDrop.Scene>(__initial) :> Aardvark.Base.Incremental.IModRef<DragNDrop.Scene>
         let _transformation = MTransformation.Create(__initial.transformation)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         

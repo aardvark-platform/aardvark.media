@@ -12,7 +12,7 @@ module Mutable =
     
     type MModel(__initial : Performance.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Performance.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Performance.Model> = Aardvark.Base.Incremental.EqModRef<Performance.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<Performance.Model>
         let _visible = MList.Create(__initial.visible)
         let _objects = MList.Create(__initial.objects)
         let _cameraState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraState)

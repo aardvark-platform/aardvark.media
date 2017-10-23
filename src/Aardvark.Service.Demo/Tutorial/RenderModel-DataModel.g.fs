@@ -12,7 +12,7 @@ module Mutable =
     
     type MAppearance(__initial : RenderModel.Appearance) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<RenderModel.Appearance> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<RenderModel.Appearance> = Aardvark.Base.Incremental.EqModRef<RenderModel.Appearance>(__initial) :> Aardvark.Base.Incremental.IModRef<RenderModel.Appearance>
         let _cullMode = ResetMod.Create(__initial.cullMode)
         
         member x.cullMode = _cullMode :> IMod<_>
@@ -148,7 +148,7 @@ module Mutable =
     
     type MModel(__initial : RenderModel.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<RenderModel.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<RenderModel.Model> = Aardvark.Base.Incremental.EqModRef<RenderModel.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<RenderModel.Model>
         let _trafo = ResetMod.Create(__initial.trafo)
         let _currentModel = MOption.Create(__initial.currentModel, (fun v -> MObject.Create(v)), (fun (m,v) -> MObject.Update(m, v)), (fun v -> v))
         let _appearance = MAppearance.Create(__initial.appearance)

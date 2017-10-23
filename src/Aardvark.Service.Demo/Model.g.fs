@@ -12,7 +12,7 @@ module Mutable =
     
     type MUrdar(__initial : Demo.TestApp.Urdar) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Urdar> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Demo.TestApp.Urdar> = Aardvark.Base.Incremental.EqModRef<Demo.TestApp.Urdar>(__initial) :> Aardvark.Base.Incremental.IModRef<Demo.TestApp.Urdar>
         let _urdar = ResetMod.Create(__initial.urdar)
         
         member x.urdar = _urdar :> IMod<_>
@@ -54,7 +54,7 @@ module Mutable =
     
     and private MTreeNodeD<'a,'ma,'va>(__initial : Demo.TestApp.TreeNode<'a>, __ainit : 'a -> 'ma, __aupdate : 'ma * 'a -> unit, __aview : 'ma -> 'va) =
         inherit MTreeNode<'va,'va>()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.TreeNode<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Demo.TestApp.TreeNode<'a>> = Aardvark.Base.Incremental.EqModRef<Demo.TestApp.TreeNode<'a>>(__initial) :> Aardvark.Base.Incremental.IModRef<Demo.TestApp.TreeNode<'a>>
         let _content = __ainit(__initial.content)
         let _children = MList.Create(__initial.children, (fun v -> MTreeNode.Create(v, (fun v -> __ainit(v)), (fun (m,v) -> __aupdate(m, v)), (fun v -> __aview(v)))), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
@@ -79,7 +79,7 @@ module Mutable =
     
     and private MTreeNodeV<'a>(__initial : Demo.TestApp.TreeNode<'a>) =
         inherit MTreeNode<IMod<'a>,'a>()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.TreeNode<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Demo.TestApp.TreeNode<'a>> = Aardvark.Base.Incremental.EqModRef<Demo.TestApp.TreeNode<'a>>(__initial) :> Aardvark.Base.Incremental.IModRef<Demo.TestApp.TreeNode<'a>>
         let _content = ResetMod.Create(__initial.content)
         let _children = MList.Create(__initial.children, (fun v -> MTreeNode.Create(v)), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
@@ -135,7 +135,7 @@ module Mutable =
     
     and private MTreeD<'a,'ma,'va>(__initial : Demo.TestApp.Tree<'a>, __ainit : 'a -> 'ma, __aupdate : 'ma * 'a -> unit, __aview : 'ma -> 'va) =
         inherit MTree<'va,'va>()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Tree<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Demo.TestApp.Tree<'a>> = Aardvark.Base.Incremental.EqModRef<Demo.TestApp.Tree<'a>>(__initial) :> Aardvark.Base.Incremental.IModRef<Demo.TestApp.Tree<'a>>
         let _nodes = MList.Create(__initial.nodes, (fun v -> MTreeNode.Create(v, (fun v -> __ainit(v)), (fun (m,v) -> __aupdate(m, v)), (fun v -> __aview(v)))), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
         override x.nodes = _nodes :> alist<_>
@@ -157,7 +157,7 @@ module Mutable =
     
     and private MTreeV<'a>(__initial : Demo.TestApp.Tree<'a>) =
         inherit MTree<IMod<'a>,'a>()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Tree<'a>> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Demo.TestApp.Tree<'a>> = Aardvark.Base.Incremental.EqModRef<Demo.TestApp.Tree<'a>>(__initial) :> Aardvark.Base.Incremental.IModRef<Demo.TestApp.Tree<'a>>
         let _nodes = MList.Create(__initial.nodes, (fun v -> MTreeNode.Create(v)), (fun (m,v) -> MTreeNode.Update(m, v)), (fun v -> v))
         
         override x.nodes = _nodes :> alist<_>
@@ -200,7 +200,7 @@ module Mutable =
     
     type MModel(__initial : Demo.TestApp.Model) =
         inherit obj()
-        let mutable __current : Aardvark.Base.Incremental.ModRef<Demo.TestApp.Model> = Aardvark.Base.Incremental.Mod.init(__initial)
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Demo.TestApp.Model> = Aardvark.Base.Incremental.EqModRef<Demo.TestApp.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<Demo.TestApp.Model>
         let _boxHovered = ResetMod.Create(__initial.boxHovered)
         let _dragging = ResetMod.Create(__initial.dragging)
         let _lastName = MOption.Create(__initial.lastName)
