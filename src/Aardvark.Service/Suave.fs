@@ -74,7 +74,7 @@ module Redirection =
                 | _ ->
                     Redirection.redirect path ctx
 
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+//[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module WebPart =
     let runServer (port : int) (content : list<WebPart>) =
         let config =
@@ -92,4 +92,3 @@ module WebPart =
         let index = choose content
         let (_,s) = startWebServerAsync config index
         Async.Start s
-

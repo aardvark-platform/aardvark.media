@@ -1031,4 +1031,7 @@ module Server =
 
     let start (port : int) (server : Server) =
         server |> toWebPart (obj())  |> List.singleton |> WebPart.startServer port
-
+    
+    // c# friendly to start app directly
+    let StartWebPart (port:int) (webPart:WebPart) =
+        webPart |> List.singleton |> WebPart.startServer port
