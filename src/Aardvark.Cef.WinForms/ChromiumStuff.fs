@@ -419,7 +419,6 @@ module Chromium =
 
                 let settings = CefSettings()
                 settings.MultiThreadedMessageLoop <- CefRuntime.Platform = CefRuntimePlatform.Windows;
-                settings.SingleProcess <- false;
                 settings.LogSeverity <- CefLogSeverity.Default;
                 settings.LogFile <- "cef.log";
                 settings.ResourcesDirPath <- System.IO.Path.GetDirectoryName(Uri(System.Reflection.Assembly.GetEntryAssembly().CodeBase).LocalPath);
