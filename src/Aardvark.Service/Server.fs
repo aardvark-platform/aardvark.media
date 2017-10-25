@@ -72,7 +72,7 @@ module private Tools =
             let device = fbo.Device
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
 
-            let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA)
+            let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
             let oldLayout = color.Image.Layout
             device.perform {
                 do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
@@ -373,7 +373,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
                 member x.PerformUpdate(t,rt) = task.Update(t, rt)
                 member x.Perform(t,rt,o) = task.Run(t, rt, o)
                 
-                member x.Dispose() = 
+                member x.Release() = 
                     lock x (fun () ->
                         release()
                     )

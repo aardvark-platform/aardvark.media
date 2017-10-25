@@ -742,7 +742,7 @@ type DomNode private() =
                         update t
                         for task in state do
                             task.Run(t,rt,o)
-                    override x.Dispose() = 
+                    override x.Release() = 
                         reader.Dispose()
                         state <- PList.empty
 
