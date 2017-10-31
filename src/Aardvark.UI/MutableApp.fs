@@ -42,6 +42,7 @@ type MutableApp<'model, 'msg> =
         model       : IMod<'model>
         ui          : DomNode<'msg>
         update      : Guid -> seq<'msg> -> unit
+        updateSynchronously : seq<'msg> -> unit
     }
 
 module MutableApp =

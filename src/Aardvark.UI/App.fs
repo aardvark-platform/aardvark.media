@@ -44,6 +44,12 @@ module App =
         let mutable currentThreads = ThreadPool.empty
 
         let update (source : Guid) (msgs : seq<'msg>) =
+            lock messageQueue (fun () ->
+                messageQueue.Add { msgs = msgs; processed = None }
+                Monitor.Pulse messageQueue
+            )
+
+        let updateSynchronously (msgs : seq<'msg>) =
             use mri = new System.Threading.ManualResetEventSlim()
             lock messageQueue (fun () ->
                 messageQueue.Add { msgs = msgs; processed = Some mri }
@@ -76,11 +82,12 @@ module App =
                         let newState = app.update state.Value msg
                         let newThreads = app.threads newState
                         adjustThreads newThreads
-                        transact (fun () ->
-                            state.Value <- newState
-                            app.unpersist.update mstate newState
-                        )
-                    // if somebody awaits message processing, trigger it
+                        state.Value <- newState
+                transact (fun () ->
+                    app.unpersist.update mstate state.Value
+                )
+                // if somebody awaits message processing, trigger it
+                for msg in msgs do
                     msg.processed |> Option.iter (fun mri -> mri.Set())
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
@@ -116,6 +123,7 @@ module App =
             model = state
             ui = node
             update = update
+            updateSynchronously = updateSynchronously
         }
 
     let toWebPart (runtime : IRuntime) (app : App<'model, 'mmodel, 'msg>) =
