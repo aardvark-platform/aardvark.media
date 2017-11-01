@@ -519,6 +519,8 @@ module ``Sg Events`` =
             simple SceneEventKind.Leave (fun (evt : SceneHit) -> f ())
 
     module Global=
+        let onMouseDown (f : SceneEvent -> 'msg) =
+            SceneEventKind.Down, f >> Seq.singleton
         let onMouseMove (f : SceneEvent -> 'msg) =
             SceneEventKind.Move, f >> Seq.singleton
         let onMouseUp (f : SceneEvent -> 'msg) =

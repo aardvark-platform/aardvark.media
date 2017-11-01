@@ -35,6 +35,9 @@ module CameraController =
             forward = false; backward = false; left = false; right = false
         }
 
+    let initial' (dist:float) =
+        { initial with view = CameraView.lookAt (dist * V3d.III) V3d.Zero V3d.OOI }
+
     let sw = System.Diagnostics.Stopwatch()
     do sw.Start()
 

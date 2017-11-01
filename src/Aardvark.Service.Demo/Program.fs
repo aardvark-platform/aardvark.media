@@ -81,18 +81,18 @@ let kitchenSink argv =
     //let app = DragNDrop.TranslateController.app
     //let app = DragNDrop.RotationController.app
     //let app = SimpleDrawingApp.app
-    //let app = PlaceTransformObjects.App.app
+    let app = PlaceTransformObjects.App.app
     //let app = BookmarkApp.app
     //let app = MeasurementsImporterApp.app form
     //let app = RenderModelApp.app 
     //let app = AnnotationApp.app
 
-    Config.shouldTimeUIUpdate <- true
-    Config.shouldTimeJsCodeGeneration <- true
-    Config.shouldTimeUnpersistCalls <- true
+    //Config.shouldTimeUIUpdate <- true
+    //Config.shouldTimeJsCodeGeneration <- true
+    //Config.shouldTimeUnpersistCalls <- true
 
 
-    let app = PerformanceApp.app
+    //let app = PerformanceApp.app
     //let app = BoxSelectionDemo.app
     //let app = QuickTestApp.app
 

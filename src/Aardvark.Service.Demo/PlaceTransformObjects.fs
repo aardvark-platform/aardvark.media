@@ -18,6 +18,7 @@ module App =
         | PlaceBox 
         | Select of string
         | Translate of string * TranslateController.ControllerAction
+        | Rotate of string * RotationController.ControllerAction
         | CameraMessage of CameraController.Message
         | Unselect
         | Nop
@@ -45,6 +46,9 @@ module App =
             | Translate(name,a) -> 
                 let lens = Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
                 lens.Update(m, fun t -> TranslateController.updateController t a)
+            | Rotate(name,a) -> 
+                let lens = Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
+                lens.Update(m, fun t -> RotationController.updateController t a)
             | Unselect -> 
                 if isGrabbed m.world then m // hack
                 else  { m with world = { m.world with selectedObjects = HSet.empty } } 
@@ -60,6 +64,8 @@ module App =
             //|> Sg.requirePicking
             |> Sg.noEvents
 
+        let rot = false
+
         let objects =
             aset {
                 for (name,obj) in m.world.objects |> AMap.toASet do
@@ -69,7 +75,10 @@ module App =
                         selected |> Mod.map (
                             function 
                             | true ->
-                                TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation
+                                if rot then
+                                    RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) obj.transformation
+                                else
+                                    TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation
                             | false -> Sg.ofList []
                         ) |> Sg.dynamic
                     yield 
@@ -88,11 +97,11 @@ module App =
                         //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
             } |> Sg.set
 
-        Sg.ofSeq [plane; objects; ]
+        Sg.ofSeq [ objects; ]
         |> Sg.Incremental.withGlobalEvents (
                 amap {
                     let! selected = m.world.selectedObjects |> ASet.count
-                    if selected > 0 then 
+                    if selected > 1 then 
                         yield Global.onMouseUp (fun _ -> Unselect) // hack
                     
                 }
@@ -109,7 +118,7 @@ module App =
             require (Html.semui) (
                 div [clazz "ui"; style "background: #1B1C1E"] [
                     CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                        (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"]) (viewScene m)
+                        (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"; attribute "data-samples" "8"]) (viewScene m)
 
                     div [style "width:15%; height: 100%; float:right"] [
                         Html.SemUi.stuffStack [
@@ -131,11 +140,18 @@ module App =
                         yield name,newObject
         ]
 
+    let singleGuid = System.Guid.NewGuid() |> string
+
+    let one =
+        let name = singleGuid
+        let newObject = { name = name; objectType = ObjectType.Box; transformation = { TranslateController.initial with trafo = Trafo3d.Translation(V3d.Zero) } }
+        [ name, newObject ] |>  HMap.ofList
+
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial; }
+            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial' 2.0; }
             update = update
             view = view
         }

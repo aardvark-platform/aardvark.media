@@ -153,13 +153,13 @@ module TranslateController =
                 { m with hovered = None }
             | Grab (rp, axis) ->
                 let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis } } 
+                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN } } 
             | Release ->
                 { m with grabbed = None }
             | MoveRay rp ->
                 match m.grabbed with
                 | Some { offset = offset; axis = axis } ->
-     
+
                      let other =
                         match axis with
                         | X -> V3d.IOO
@@ -283,6 +283,8 @@ module RotationController =
     [<AutoOpen>]
     module Config =
         let cylinderRadius = 0.015
+        let radius    = 1.0
+        let tesselation = 32.0
 
     module Shader =
         open FShade
@@ -293,16 +295,29 @@ module RotationController =
                 let c : V4d = uniform?HoverColor
                 return { v with c = c }
             }
+
+    type ControllerAction = 
+      | Hover of Axis
+      | Unhover 
+      | RotateRay of RayPart
+      | Grab of RayPart * Axis
+      | Release
+      | Nop
+    
+    type SceneAction =
+      | ControllerAction of ControllerAction
+      | CameraAction     of CameraController.Message
+
     
     module RotationHandle = 
-          
+        
         let circlePoint (c:V3d) r ang axis =
             let x = c.X + r * cos ang
             let y = c.Y + r * sin ang
             match axis with
-            | X -> V3d(0.0, x, y)
-            | Y -> V3d(x, 0.0, y)
-            | Z -> V3d(x, y, 0.0)
+              | X -> V3d(0.0, x, y)
+              | Y -> V3d(x, 0.0, y)
+              | Z -> V3d(x, y, 0.0)
         
         let PI2 = System.Math.PI * 2.0
 
@@ -313,7 +328,7 @@ module RotationController =
 
         let sg axis =
             [
-                let points = (circle V3d.Zero 1.0 32.0 axis)
+                let points = (circle V3d.Zero radius tesselation axis)
 
                 //for p in points do
                 //    yield IndexedGeometryPrimitives.solidSubdivisionSphere (Sphere3d(p, 0.1)) 5 C4b.Red |> Sg.ofIndexedGeometry
@@ -332,35 +347,30 @@ module RotationController =
                     |]
                 yield Sg.lines (Mod.constant(C4b.Red)) (Mod.constant(linesSegments))
             ] |> Sg.group
+     
+    let axisToV3d axis = 
+        match axis with 
+          | X -> V3d.XAxis
+          | Y -> V3d.YAxis
+          | Z -> V3d.ZAxis
 
-        let pick axis = 
-            [|
-                //let rotationPlane = Plane3d(axis, V3d.Zero)
-
-                //TODO!!!
-                
-                let points = (circle V3d.Zero 1.0 32.0 axis)
-                for edge in Polygon3d(points).EdgeLines do
-                    yield (Cylinder3d(edge.P0, edge.P1, cylinderRadius) |> PickShape.Cylinder) // should be done analytical
-            |]
-
-    type ControllerAction = 
-        | Hover of Axis
-        | Unhover 
-        | RotateRay of RayPart
-        | Grab of RayPart * Axis
-        | Release
-    
-    type SceneAction =
-        | ControllerAction of ControllerAction
-        | CameraAction     of CameraController.Message
+    let toCircle axis = 
+        let v = axis |> axisToV3d        
+        Circle3d(V3d.Zero, v, radius)
+        
+          
+    let intersect (ray : RayPart) (circle:Circle3d) =
+        let mutable p = V3d.NaN
+        let mutable t = 0.0  
+            
+        ray.Ray.Ray.Intersects(circle.Plane, &t, &p), p
 
     let closestT (r : RayPart) (axis : Axis) =
         let other =
             match axis with
-            | X -> Ray3d(V3d.OOO, V3d.IOO)
-            | Y -> Ray3d(V3d.OOO, V3d.OIO)
-            | Z -> Ray3d(V3d.OOO, V3d.OOI)
+            | X -> Ray3d(-V3d.IOO, V3d.IOO)
+            | Y -> Ray3d(-V3d.OIO, V3d.OIO)
+            | Z -> Ray3d(-V3d.OOI, V3d.OOI)
 
         let mutable unused = 0.0
         let mutable t = 0.0
@@ -374,63 +384,102 @@ module RotationController =
             | Unhover -> 
                 { m with hovered = None }
             | Grab (rp, axis) ->
-                let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis } } 
+                Log.warn "grabbing %A" axis
+
+                let h, p = intersect rp (axis |> toCircle)
+
+                //let offset = closestT rp axis
+                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p } } 
             | Release ->
                 { m with grabbed = None }
             | RotateRay rp ->
                 match m.grabbed with
-                | Some { offset = offset; axis = axis } ->
+                | Some { offset = offset; axis = axis; hit = hit } ->
      
-                     let other =
-                        match axis with
-                        | X -> V3d.IOO
-                        | Y -> V3d.OIO
-                        | Z -> V3d.OOI
+                     let h, p = intersect rp (axis |> toCircle)
 
-                     let closestPoint = closestT rp axis
-                     let trafo = m.trafo * Trafo3d.Rotation ((closestPoint - offset) * other)
+                     if h && (not hit.IsNaN) then
+                         let angle = acos (V3d.Dot(hit.Normalized, p.Normalized))
+                         let other = axis |> axisToV3d
 
-                     { m with trafo = trafo; }
+                         Log.warn "%f" (angle.DegreesFromRadians())
+
+                         //let closestPoint = closestT rp axis
+                         //let amnt = closestPoint - offset
+
+                         if (System.Double.IsNaN(angle)) then
+                            Log.warn "%A %A" (V3d.Dot(hit.Normalized, p.Normalized)) (angle)
+                            m
+                         else
+                            //let trafo = Trafo3d.Rotation(other, angle) * m.trafo
+                            //{ m with trafo = trafo; }
+                            m
+                     else 
+                        m
                 | None -> m
+            | Nop -> m
 
     let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) : ISg<'msg> =
-        
-        let circle axis =
+            
+        let circle dir axis =
             let col =
                 m.hovered |> Mod.map2 ( fun g h ->
+                 
                  match h, g, axis with
                  | _,      Some g, p when g = p -> C4b.Yellow
                  | Some h, None,   p when h = p -> C4b.White
                  | _,      _,      X -> C4b.Red
                  | _,      _,      Y -> C4b.Green
                  | _,      _,      Z -> C4b.Blue
-                ) (m.grabbed |> Mod.map (Option.map ( fun p -> p.axis )))
+                ) (m.grabbed |> Mod.map (Option.map ( fun p -> p.axis )))                                                
             
-            RotationHandle.sg axis
-            //|> Sg.requirePicking 
-            //|> Sg.pickable (RotationHandle.pick axis (RotationHandle.sg axis)) // TODO..or analytic
-            //|> Sg.transform rot
+            let circle = Circle3d(V3d.Zero, dir, radius)
+               
+            RotationHandle.sg axis            
             |> Sg.uniform "HoverColor" col
             |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
-            |> Sg.noEvents
-            |> Aardvark.UI.``F# Sg``.Sg.withEvents [ 
-                    Sg.onEnter        (fun _ ->   Hover axis)
-                    Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
-                    Sg.onLeave        (fun _ ->   Unhover) 
-               ]
+            |> Sg.noEvents            
             |> Sg.Incremental.withGlobalEvents ( 
-                    amap {
+                    amap {                        
                         let! grabbed = m.grabbed
                         if grabbed.IsSome then
                             yield Global.onMouseMove (fun e -> RotateRay e.localRay)
                             yield Global.onMouseUp   (fun _ -> Release)
+                        else
+                            yield Global.onMouseMove (
+                                fun e -> 
+                                    let hit, p = intersect e.localRay circle
+                                    if hit then
+                                        let dist = (V3d.Distance(V3d.Zero, p))                                        
+                                        if (dist > radius - 0.1 && dist < radius + 0.1) then                                            
+                                            Hover axis
+                                        else                                            
+                                            m.hovered |> Mod.map(fun x ->
+                                                match x with
+                                                    | Some h when h = axis -> 
+                                                        Unhover
+                                                    | _ -> Nop) |> Mod.force
+                                    else
+                                        Nop)
+                            yield Global.onMouseDown (
+                                fun e ->
+                                    m.hovered |> Mod.map(fun x ->
+                                        match x with
+                                          | Some h when h = axis -> 
+                                                Grab (e.localRay, axis)
+                                          | _ -> Nop
+                                    ) |> Mod.force
+
+                                    //torus.GetMinimalDistance
+                                    //check enter -> hover or unhover
+                                    //on click -> grab
+                                    )
                     }
                 )
 
-        let circleX = circle Axis.X //(Trafo3d.RotationY Constant.PiHalf) Axis.X
-        let circleY = circle Axis.Y //(Trafo3d.RotationX -Constant.PiHalf) Axis.Y
-        let circleZ = circle Axis.Z //(Trafo3d.RotationY 0.0) Axis.Z
+        let circleX = circle V3d.XAxis Axis.X
+        let circleY = circle V3d.YAxis Axis.Y
+        let circleZ = circle V3d.ZAxis Axis.Z
         
         Sg.ofList [circleX; circleY; circleZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect

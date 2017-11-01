@@ -20,6 +20,7 @@ type PickPoint =
     {
         offset : float
         axis   : Axis
+        hit : V3d
     }
 
 

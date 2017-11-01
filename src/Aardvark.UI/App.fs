@@ -44,12 +44,12 @@ module App =
         let mutable currentThreads = ThreadPool.empty
 
         let update (source : Guid) (msgs : seq<'msg>) =
-            use mri = new System.Threading.ManualResetEventSlim()
+            //use mri = new System.Threading.ManualResetEventSlim()
             lock messageQueue (fun () ->
-                messageQueue.Add { msgs = msgs; processed = Some mri }
+                messageQueue.Add { msgs = msgs; processed = None }
                 Monitor.Pulse messageQueue
             )
-            mri.Wait()
+          //  mri.Wait()
 
         let rec adjustThreads (newThreads : ThreadPool<'msg>) =
             let merge (id : string) (oldThread : Option<Command<'msg>>) (newThread : Option<Command<'msg>>) : Option<Command<'msg>> =
