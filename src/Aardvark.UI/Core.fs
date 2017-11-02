@@ -514,6 +514,9 @@ type DomNode private() =
     static member Text(content : IMod<string>) = 
         DomNode<'msg>("span", None, AttributeMap.empty, DomContent.Text content)
 
+    static member SvgText(content : IMod<string>) = 
+        DomNode<'msg>("tspan", Some "http://www.w3.org/2000/svg", AttributeMap.empty, DomContent.Text content)
+
     static member Void(tag : string, attributes : AttributeMap<'msg>) =
         DomNode<'msg>(tag, None, attributes, DomContent.Empty)     
 
@@ -742,7 +745,7 @@ type DomNode private() =
                         update t
                         for task in state do
                             task.Run(t,rt,o)
-                    override x.Release() = 
+                    override x.Dispose() = 
                         reader.Dispose()
                         state <- PList.empty
 

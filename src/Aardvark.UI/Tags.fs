@@ -25,7 +25,7 @@ module Incremental =
    
     let inline text (content : IMod<string>) =
         DomNode.Text(content)
-
+        
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
     // Void elements
     let inline br x = voidElem "br" x
@@ -160,10 +160,46 @@ module Incremental =
         let inline attribute k v = k,v
 
         let inline svg x = elemNS "svg" svgNS x
+        let inline defs x = elemNS "defs" svgNS x
+        let inline linearGradient  x = elemNS "linearGradient" svgNS x
+        let inline radialGradient  x = elemNS "radialGradient" svgNS x
+        let inline text x c = elemNS "text" svgNS x (AList.ofList [DomNode.SvgText(c)])
+        let inline filter x = elemNS "filter" svgNS x
+
+        let inline feBlend x = voidElemNS "feBlend" svgNS x
+        let inline feColorMatrix x = voidElemNS "feColorMatrix" svgNS x
+        let inline feComponentTransfer x = voidElemNS "feComponentTransfer" svgNS x
+        let inline feComposite x = voidElemNS "feComposite" svgNS x
+        let inline feConvolveMatrix x = voidElemNS "feConvolveMatrix" svgNS x
+        let inline feDiffuseLighting x = voidElemNS "feDiffuseLighting" svgNS x
+        let inline feDisplacementMap x = voidElemNS "feDisplacementMap" svgNS x
+        let inline feDistantLight x = voidElemNS "feDistantLight" svgNS x
+        let inline feFlood x = voidElemNS "feFlood" svgNS x
+        let inline feFuncA x = voidElemNS "feFuncA" svgNS x
+        let inline feFuncB x = voidElemNS "feFuncB" svgNS x
+        let inline feFuncG x = voidElemNS "feFuncG" svgNS x
+        let inline feFuncR x = voidElemNS "feFuncR" svgNS x
+        let inline feGaussianBlur x = voidElemNS "feGaussianBlur" svgNS x
+        let inline feImage x = voidElemNS "feImage" svgNS x
+        let inline feMerge x = voidElemNS "feMerge" svgNS x
+        let inline feMergeNode x = voidElemNS "feMergeNode" svgNS x
+        let inline feMorphology x = voidElemNS "feMorphology" svgNS x
+        let inline feOffset x = voidElemNS "feOffset" svgNS x
+        let inline fePointLight x = voidElemNS "fePointLight" svgNS x
+        let inline feSpecularLighting x = voidElemNS "feSpecularLighting" svgNS x
+        let inline feSpotLight x = voidElemNS "feSpotLight" svgNS x
+        let inline feTile x = voidElemNS "feTile" svgNS x
+        let inline feTurbulence x = voidElemNS "feTurbulence" svgNS x
+
+        let inline stop x = voidElemNS "stop" svgNS x
         let inline circle x = voidElemNS "circle" svgNS x 
+        let inline ellipse x = voidElemNS "ellipse" svgNS x 
         let inline rect x = voidElemNS "rect" svgNS x 
         let inline line x = voidElemNS "line" svgNS x
         let inline path x = voidElemNS "path" svgNS x
+        let inline polygon x = voidElemNS "polygon" svgNS x
+        let inline polyline x = voidElemNS "polyline" svgNS x
+        let inline tspan x = voidElemNS "tspan" svgNS x
 
         let inline width x = attribute "width" x
         let inline height x = attribute "height" x
@@ -173,8 +209,9 @@ module Incremental =
         let inline r x = attribute "r" x
         let inline stroke x = attribute "stroke" x
         let inline strokeWidth x = attribute "stroke-width" x
+        let inline strokeLinecap x = attribute "stroke-linecap" x
+        let inline strokeDasharray x = attribute "stroke-dasharray" x
         let inline fill x = attribute "fill" x
-
 
 [<AutoOpen>]
 module Static =
@@ -332,10 +369,46 @@ module Static =
         let inline attribute k v = k,v
 
         let inline svg x = elemNS "svg" svgNS x
+        let inline defs x = elemNS "defs" svgNS x
+        let inline linearGradient  x = elemNS "linearGradient" svgNS x
+        let inline radialGradient  x = elemNS "radialGradient" svgNS x
+        let inline text x c = elemNS "text" svgNS x [DomNode.SvgText(Mod.constant c)]
+        let inline filter x = elemNS "filter" svgNS x
+
+        let inline feBlend x = voidElemNS "feBlend" svgNS x
+        let inline feColorMatrix x = voidElemNS "feColorMatrix" svgNS x
+        let inline feComponentTransfer x = voidElemNS "feComponentTransfer" svgNS x
+        let inline feComposite x = voidElemNS "feComposite" svgNS x
+        let inline feConvolveMatrix x = voidElemNS "feConvolveMatrix" svgNS x
+        let inline feDiffuseLighting x = voidElemNS "feDiffuseLighting" svgNS x
+        let inline feDisplacementMap x = voidElemNS "feDisplacementMap" svgNS x
+        let inline feDistantLight x = voidElemNS "feDistantLight" svgNS x
+        let inline feFlood x = voidElemNS "feFlood" svgNS x
+        let inline feFuncA x = voidElemNS "feFuncA" svgNS x
+        let inline feFuncB x = voidElemNS "feFuncB" svgNS x
+        let inline feFuncG x = voidElemNS "feFuncG" svgNS x
+        let inline feFuncR x = voidElemNS "feFuncR" svgNS x
+        let inline feGaussianBlur x = voidElemNS "feGaussianBlur" svgNS x
+        let inline feImage x = voidElemNS "feImage" svgNS x
+        let inline feMerge x = voidElemNS "feMerge" svgNS x
+        let inline feMergeNode x = voidElemNS "feMergeNode" svgNS x
+        let inline feMorphology x = voidElemNS "feMorphology" svgNS x
+        let inline feOffset x = voidElemNS "feOffset" svgNS x
+        let inline fePointLight x = voidElemNS "fePointLight" svgNS x
+        let inline feSpecularLighting x = voidElemNS "feSpecularLighting" svgNS x
+        let inline feSpotLight x = voidElemNS "feSpotLight" svgNS x
+        let inline feTile x = voidElemNS "feTile" svgNS x
+        let inline feTurbulence x = voidElemNS "feTurbulence" svgNS x
+
+        let inline stop x = voidElemNS "stop" svgNS x
         let inline circle x = voidElemNS "circle" svgNS x 
+        let inline ellipse x = voidElemNS "ellipse" svgNS x 
         let inline rect x = voidElemNS "rect" svgNS x 
         let inline line x = voidElemNS "line" svgNS x
         let inline path x = voidElemNS "path" svgNS x
+        let inline polygon x = voidElemNS "polygon" svgNS x
+        let inline polyline x = voidElemNS "polyline" svgNS x
+        let inline tspan x = voidElemNS "tspan" svgNS x
 
         let inline width x = attribute "width" x
         let inline height x = attribute "height" x
@@ -345,7 +418,10 @@ module Static =
         let inline r x = attribute "r" x
         let inline stroke x = attribute "stroke" x
         let inline strokeWidth x = attribute "stroke-width" x
+        let inline strokeLinecap x = attribute "stroke-linecap" x
+        let inline strokeDasharray x = attribute "stroke-dasharray" x
         let inline fill x = attribute "fill" x
+
 
 [<AutoOpen>]
 module HigherOrderTags =

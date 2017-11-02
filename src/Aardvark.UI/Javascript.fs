@@ -155,7 +155,7 @@ module JSExpr =
                     | l -> l |> String.concat "\r\n"
 
             | InnerText(target,text) -> 
-                sprintf "%s.innerText = \"%s\";" (toStringInternal target) (escape text)
+                sprintf "%s.textContent = \"%s\";" (toStringInternal target) (escape text)
 
             | AppendChild(parent,inner) -> 
                 let parent = toStringInternal parent
