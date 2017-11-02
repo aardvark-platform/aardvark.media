@@ -26,9 +26,10 @@ type PickPoint =
 
 [<DomainType>]
 type Transformation = { 
-    trafo       : Trafo3d 
-    hovered     : Option<Axis>
-    grabbed     : Option<PickPoint>
+    trafo         : Trafo3d 
+    workingTrafo  : Trafo3d
+    hovered       : Option<Axis>
+    grabbed       : Option<PickPoint>
 }
 
 [<DomainType>]

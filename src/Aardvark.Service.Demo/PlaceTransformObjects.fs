@@ -17,6 +17,7 @@ module App =
     type Action = 
         | PlaceBox 
         | Select of string
+        | SetMode of TrafoMode
         | Translate of string * TranslateController.ControllerAction
         | Rotate of string * RotationController.ControllerAction
         | CameraMessage of CameraController.Message
@@ -48,10 +49,14 @@ module App =
                 lens.Update(m, fun t -> TranslateController.updateController t a)
             | Rotate(name,a) -> 
                 let lens = Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
-                lens.Update(m, fun t -> RotationController.updateController t a)
+                
+                let r = lens.Update(m, fun t -> RotationController.updateController t a)
+                r
             | Unselect -> 
                 if isGrabbed m.world then m // hack
                 else  { m with world = { m.world with selectedObjects = HSet.empty } } 
+            | SetMode s ->
+                { m with mode = s}
             | Nop -> m
 
 
@@ -62,9 +67,7 @@ module App =
         let plane = 
             Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.OOO,V3d(10.0,10.0,-0.1)))
             //|> Sg.requirePicking
-            |> Sg.noEvents
-
-        let rot = false
+            |> Sg.noEvents        
 
         let objects =
             aset {
@@ -72,15 +75,17 @@ module App =
                     let selected = ASet.contains name m.world.selectedObjects
                     let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
                     let controller =
-                        selected |> Mod.map (
-                            function 
-                            | true ->
-                                if rot then
-                                    RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) obj.transformation
-                                else
-                                    TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation
-                            | false -> Sg.ofList []
-                        ) |> Sg.dynamic
+                        selected |> Mod.map2 (
+                            fun m s -> 
+                                match s with 
+                                    | true ->
+                                        match m with
+                                          | TrafoMode.Rotate    -> RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) obj.transformation
+                                          | TrafoMode.Translate -> TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation                                
+                                          | _ -> Sg.empty
+                                    
+                                    | false -> Sg.ofList []
+                        ) m.mode  |> Sg.dynamic
                     yield 
                         Sg.box color (Box3d.FromCenterAndSize(V3d.OOO,V3d.III*0.5) |> Mod.constant) 
                         |> Sg.requirePicking 
@@ -89,8 +94,9 @@ module App =
                             amap {
                                 let! selected = selected
                                 if not selected then
-                                    yield Sg.onClick (fun _ -> Select name)
+                                    yield Sg.onDoubleClick (fun _ -> Select name)
                             } )
+                        |> Sg.trafo obj.transformation.workingTrafo
                         |> Sg.trafo obj.transformation.trafo 
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
@@ -124,6 +130,7 @@ module App =
                         Html.SemUi.stuffStack [
                             button [clazz "ui button"; onClick (fun _ ->  PlaceBox )] [text "Add Box"]
                             button [clazz "ui button"; onClick (fun _ ->  Unselect )] [text "Unselect"]
+                            Html.SemUi.dropDown m.mode SetMode
                         ]
                     ]
                 ]
@@ -144,14 +151,14 @@ module App =
 
     let one =
         let name = singleGuid
-        let newObject = { name = name; objectType = ObjectType.Box; transformation = { TranslateController.initial with trafo = Trafo3d.Translation(V3d.Zero) } }
+        let newObject = { name = name; objectType = ObjectType.Box; transformation = { TranslateController.initial with trafo = Trafo3d.Rotation(V3d.IIO, (0.0).RadiansFromDegrees()) } }
         [ name, newObject ] |>  HMap.ofList
 
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial' 2.0; }
+            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial' 2.0; mode = TrafoMode.Translate }
             update = update
             view = view
         }

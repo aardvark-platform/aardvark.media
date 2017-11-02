@@ -69,10 +69,12 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation> = Aardvark.Base.Incremental.EqModRef<DragNDrop.Transformation>(__initial) :> Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation>
         let _trafo = ResetMod.Create(__initial.trafo)
+        let _workingTrafo = ResetMod.Create(__initial.workingTrafo)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
         
         member x.trafo = _trafo :> IMod<_>
+        member x.workingTrafo = _workingTrafo :> IMod<_>
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
         
@@ -82,6 +84,7 @@ module Mutable =
                 __current.Value <- v
                 
                 ResetMod.Update(_trafo,v.trafo)
+                ResetMod.Update(_workingTrafo,v.workingTrafo)
                 MOption.Update(_hovered, v.hovered)
                 MOption.Update(_grabbed, v.grabbed)
                 
@@ -105,6 +108,12 @@ module Mutable =
                     override x.Get(r) = r.trafo
                     override x.Set(r,v) = { r with trafo = v }
                     override x.Update(r,f) = { r with trafo = f r.trafo }
+                }
+            let workingTrafo =
+                { new Lens<DragNDrop.Transformation, Aardvark.Base.Trafo3d>() with
+                    override x.Get(r) = r.workingTrafo
+                    override x.Set(r,v) = { r with workingTrafo = v }
+                    override x.Update(r,f) = { r with workingTrafo = f r.workingTrafo }
                 }
             let hovered =
                 { new Lens<DragNDrop.Transformation, Microsoft.FSharp.Core.Option<DragNDrop.Axis>>() with

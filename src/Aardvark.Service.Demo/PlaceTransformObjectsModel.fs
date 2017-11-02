@@ -25,10 +25,14 @@ type World =
         selectedObjects : hset<string>
     }
 
+type TrafoMode =
+  | Translate = 0
+  | Rotate    = 1
+
 [<DomainType>]
 type Scene =
     {
         world  : World
-
+        mode   : TrafoMode
         camera : CameraControllerState
     }

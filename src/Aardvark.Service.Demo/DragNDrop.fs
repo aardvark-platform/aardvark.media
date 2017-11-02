@@ -167,7 +167,7 @@ module TranslateController =
                         | Z -> V3d.OOI
 
                      let closestPoint = closestT rp axis
-                     let trafo = m.trafo * Trafo3d.Translation ((closestPoint - offset) * other)
+                     let trafo = Trafo3d.Translation ((closestPoint - offset) * other) * m.trafo
 
                      { m with trafo = trafo; }
                 | None -> m
@@ -211,6 +211,14 @@ module TranslateController =
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
+
+        let t2 =
+            adaptive {
+                let! t = m.trafo
+                let pos = t.Forward.C3
+                printfn "%A" pos
+                return Trafo3d.Translation pos.XYZ
+            }
         
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
@@ -245,7 +253,7 @@ module TranslateController =
                  ]) (viewScene' m)
         ]
 
-    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
+    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity; workingTrafo = Trafo3d.Identity }
 
     let app =
         {
@@ -389,31 +397,32 @@ module RotationController =
                 let h, p = intersect rp (axis |> toCircle)
 
                 //let offset = closestT rp axis
-                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p } } 
+                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p } }
             | Release ->
-                { m with grabbed = None }
+                match m.grabbed with
+                    | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity}
+                    | _ -> m
             | RotateRay rp ->
                 match m.grabbed with
                 | Some { offset = offset; axis = axis; hit = hit } ->
      
+                     //let rp = rp.Transformed m.workingTrafo
+
                      let h, p = intersect rp (axis |> toCircle)
 
                      if h && (not hit.IsNaN) then
-                         let angle = acos (V3d.Dot(hit.Normalized, p.Normalized))
-                         let other = axis |> axisToV3d
+                         //let angle = acos (V3d.Dot(hit.Normalized, p.Normalized))
+                         //let other = axis |> axisToV3d
 
-                         Log.warn "%f" (angle.DegreesFromRadians())
+                         //Log.warn "%f" (angle.DegreesFromRadians())
 
-                         //let closestPoint = closestT rp axis
-                         //let amnt = closestPoint - offset
-
-                         if (System.Double.IsNaN(angle)) then
-                            Log.warn "%A %A" (V3d.Dot(hit.Normalized, p.Normalized)) (angle)
-                            m
-                         else
-                            //let trafo = Trafo3d.Rotation(other, angle) * m.trafo
-                            //{ m with trafo = trafo; }
-                            m
+                         let trafo = Trafo3d.RotateInto(hit.Normalized, p.Normalized)
+                         
+                         //if (System.Double.IsNaN(angle)) then
+                         //   Log.warn "%A %A" (V3d.Dot(hit.Normalized, p.Normalized)) (angle)
+                         //   m
+                         //else                            
+                         { m with workingTrafo = trafo  } //Trafo3d.Rotation(other, angle) }
                      else 
                         m
                 | None -> m
@@ -436,6 +445,7 @@ module RotationController =
             let circle = Circle3d(V3d.Zero, dir, radius)
                
             RotationHandle.sg axis            
+            |> Sg.trafo m.workingTrafo
             |> Sg.uniform "HoverColor" col
             |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
             |> Sg.noEvents            
@@ -482,7 +492,7 @@ module RotationController =
         let circleZ = circle V3d.ZAxis Axis.Z
         
         Sg.ofList [circleX; circleY; circleZ ]
-        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect
+        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
         |> Sg.trafo m.trafo
         |> Sg.noEvents
         |> Aardvark.UI.``F# Sg``.Sg.map liftMessage
@@ -516,7 +526,7 @@ module RotationController =
                  ]) (viewScene' m)
         ]
 
-    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity }
+    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity; workingTrafo = Trafo3d.Identity }
 
     let app =
         {

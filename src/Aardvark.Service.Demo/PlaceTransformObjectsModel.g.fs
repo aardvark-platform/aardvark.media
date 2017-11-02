@@ -115,9 +115,11 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Scene> = Aardvark.Base.Incremental.EqModRef<PlaceTransformObjects.Scene>(__initial) :> Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Scene>
         let _world = MWorld.Create(__initial.world)
+        let _mode = ResetMod.Create(__initial.mode)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         
         member x.world = _world
+        member x.mode = _mode :> IMod<_>
         member x.camera = _camera
         
         member x.Current = __current :> IMod<_>
@@ -126,6 +128,7 @@ module Mutable =
                 __current.Value <- v
                 
                 MWorld.Update(_world, v.world)
+                ResetMod.Update(_mode,v.mode)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
                 
         
@@ -148,6 +151,12 @@ module Mutable =
                     override x.Get(r) = r.world
                     override x.Set(r,v) = { r with world = v }
                     override x.Update(r,f) = { r with world = f r.world }
+                }
+            let mode =
+                { new Lens<PlaceTransformObjects.Scene, PlaceTransformObjects.TrafoMode>() with
+                    override x.Get(r) = r.mode
+                    override x.Set(r,v) = { r with mode = v }
+                    override x.Update(r,f) = { r with mode = f r.mode }
                 }
             let camera =
                 { new Lens<PlaceTransformObjects.Scene, Aardvark.UI.Primitives.CameraControllerState>() with
