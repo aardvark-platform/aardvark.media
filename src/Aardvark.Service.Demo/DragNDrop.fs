@@ -166,8 +166,11 @@ module TranslateController =
                         | Y -> V3d.OIO
                         | Z -> V3d.OOI
 
+                     // implement mode switch here (t2)
+                     let trafo = m.trafo //Trafo3d.Translation m.trafo.Forward.C3.XYZ
+
                      let closestPoint = closestT rp axis
-                     let trafo = Trafo3d.Translation ((closestPoint - offset) * other) * m.trafo
+                     let trafo = Trafo3d.Translation ((closestPoint - offset) * other) * trafo
 
                      { m with trafo = trafo; }
                 | None -> m
@@ -222,7 +225,7 @@ module TranslateController =
         
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]
-        |> Sg.trafo m.trafo
+        |> Sg.trafo m.trafo // implement mode switch here (t2)
         |> Sg.map liftMessage
         
 
@@ -336,24 +339,14 @@ module RotationController =
 
         let sg axis =
             [
-                let points = (circle V3d.Zero radius tesselation axis)
-
-                //for p in points do
-                //    yield IndexedGeometryPrimitives.solidSubdivisionSphere (Sphere3d(p, 0.1)) 5 C4b.Red |> Sg.ofIndexedGeometry
-
-                //for edge in Polygon3d(points).EdgeLines do
-                //    let orientationAxis = (edge.P1 - edge.P0).Normalized
-                //    let center = ((edge.P0+edge.P1)/2.0)
-                //    let length  = (edge.P1-edge.P0).Length
-                //    let cylinder = IndexedGeometryPrimitives.wireframeCylinder center orientationAxis length cylinderRadius cylinderRadius tessellation C4b.Red
-                //    yield Sg.ofIndexedGeometry cylinder
-
-                let linesSegments = 
-                    [|
-                        for edge in Polygon3d(points).EdgeLines do
-                            yield Line3d(edge.P0, edge.P1)    
-                    |]
-                yield Sg.lines (Mod.constant(C4b.Red)) (Mod.constant(linesSegments))
+                let poly = (circle V3d.Zero radius tesselation axis) |> Polygon3d
+                
+                let segments = 
+                    poly.EdgeLines 
+                      |> Seq.map(fun edge -> Line3d(edge.P0, edge.P1)) 
+                      |> Seq.toArray                      
+                
+                yield Sg.lines (Mod.constant(C4b.Red)) (Mod.constant(segments))
             ] |> Sg.group
      
     let axisToV3d axis = 
@@ -405,24 +398,10 @@ module RotationController =
             | RotateRay rp ->
                 match m.grabbed with
                 | Some { offset = offset; axis = axis; hit = hit } ->
-     
-                     //let rp = rp.Transformed m.workingTrafo
-
                      let h, p = intersect rp (axis |> toCircle)
-
                      if h && (not hit.IsNaN) then
-                         //let angle = acos (V3d.Dot(hit.Normalized, p.Normalized))
-                         //let other = axis |> axisToV3d
-
-                         //Log.warn "%f" (angle.DegreesFromRadians())
-
                          let trafo = Trafo3d.RotateInto(hit.Normalized, p.Normalized)
-                         
-                         //if (System.Double.IsNaN(angle)) then
-                         //   Log.warn "%A %A" (V3d.Dot(hit.Normalized, p.Normalized)) (angle)
-                         //   m
-                         //else                            
-                         { m with workingTrafo = trafo  } //Trafo3d.Rotation(other, angle) }
+                         { m with workingTrafo = trafo  } 
                      else 
                         m
                 | None -> m
