@@ -25,7 +25,7 @@ module Incremental =
    
     let inline text (content : IMod<string>) =
         DomNode.Text(content)
-
+        
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
     // Void elements
     let inline br x = voidElem "br" x
@@ -163,9 +163,9 @@ module Incremental =
         let inline defs x = elemNS "defs" svgNS x
         let inline linearGradient  x = elemNS "linearGradient" svgNS x
         let inline radialGradient  x = elemNS "radialGradient" svgNS x
-        let inline text x = elemNS "text" svgNS x
-
+        let inline text x c = elemNS "text" svgNS x (AList.ofList [DomNode.SvgText(c)])
         let inline filter x = elemNS "filter" svgNS x
+
         let inline feBlend x = voidElemNS "feBlend" svgNS x
         let inline feColorMatrix x = voidElemNS "feColorMatrix" svgNS x
         let inline feComponentTransfer x = voidElemNS "feComponentTransfer" svgNS x
@@ -372,9 +372,9 @@ module Static =
         let inline defs x = elemNS "defs" svgNS x
         let inline linearGradient  x = elemNS "linearGradient" svgNS x
         let inline radialGradient  x = elemNS "radialGradient" svgNS x
-        let inline text x = elemNS "text" svgNS x
-
+        let inline text x c = elemNS "text" svgNS x [DomNode.SvgText(Mod.constant c)]
         let inline filter x = elemNS "filter" svgNS x
+
         let inline feBlend x = voidElemNS "feBlend" svgNS x
         let inline feColorMatrix x = voidElemNS "feColorMatrix" svgNS x
         let inline feComponentTransfer x = voidElemNS "feComponentTransfer" svgNS x
