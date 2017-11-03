@@ -16,11 +16,13 @@ module App =
 
     type Action = 
         | PlaceBox 
-        | Select of string
-        | SetMode of TrafoMode
-        | Translate of string * TranslateController.ControllerAction
-        | Rotate of string * RotationController.ControllerAction
+        | Select        of string
+        | SetMode       of TrafoMode
+        | Translate     of string * TranslateController.ControllerAction
+        | Rotate        of string * RotationController.ControllerAction
+        | Scale         of string * ScaleController.ControllerAction
         | CameraMessage of CameraController.Message
+        | KeyDown       of key : Aardvark.Application.Keys
         | Unselect
         | Nop
 
@@ -30,6 +32,9 @@ module App =
                 | Some o -> o.transformation.grabbed.IsSome
                 | None -> false
         )
+
+    let _selected name = 
+        Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
 
     let update (m : Scene) (a : Action) =
         match a with
@@ -44,19 +49,23 @@ module App =
             | Select n -> 
                 let world = { m.world with selectedObjects = HSet.add n HSet.empty }
                 { m with world = world }
-            | Translate(name,a) -> 
-                let lens = Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
-                lens.Update(m, fun t -> TranslateController.updateController t a)
-            | Rotate(name,a) -> 
-                let lens = Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
-                
-                let r = lens.Update(m, fun t -> RotationController.updateController t a)
-                r
+            | Translate(name,a) ->
+                _selected(name).Update(m, fun t -> TranslateController.updateController t a)
+            | Rotate(name,a) ->                 
+                _selected(name).Update(m, fun t -> RotationController.updateController t a)
+            | Scale(name,a) ->                 
+                _selected(name).Update(m, fun t -> ScaleController.updateController t a)
             | Unselect -> 
                 if isGrabbed m.world then m // hack
                 else  { m with world = { m.world with selectedObjects = HSet.empty } } 
             | SetMode s ->
                 { m with mode = s}
+            | KeyDown k ->
+                match k with 
+                  | Aardvark.Application.Keys.D1 -> { m with mode = TrafoMode.Translate}
+                  | Aardvark.Application.Keys.D2 -> { m with mode = TrafoMode.Rotate}
+                  | Aardvark.Application.Keys.D3 -> { m with mode = TrafoMode.Scale}
+                  | _ -> m                
             | Nop -> m
 
 
@@ -82,6 +91,7 @@ module App =
                                         match m with
                                           | TrafoMode.Rotate    -> RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) obj.transformation
                                           | TrafoMode.Translate -> TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation                                
+                                          | TrafoMode.Scale     -> ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) obj.transformation                                
                                           | _ -> Sg.empty
                                     
                                     | false -> Sg.ofList []
@@ -95,9 +105,9 @@ module App =
                                 let! selected = selected
                                 if not selected then
                                     yield Sg.onDoubleClick (fun _ -> Select name)
-                            } )
+                            } )                        
                         |> Sg.trafo obj.transformation.workingTrafo
-                        |> Sg.trafo obj.transformation.trafo 
+                        |> Sg.trafo obj.transformation.trafo
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
                         //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
@@ -124,7 +134,7 @@ module App =
             require (Html.semui) (
                 div [clazz "ui"; style "background: #1B1C1E"] [
                     CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                        (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"; attribute "data-samples" "8"]) (viewScene m)
+                        (AttributeMap.ofList [onKeyDown KeyDown; attribute "style" "width:85%; height: 100%; float: left;"; attribute "data-samples" "8"]) (viewScene m)
 
                     div [style "width:15%; height: 100%; float:right"] [
                         Html.SemUi.stuffStack [
@@ -158,7 +168,7 @@ module App =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial' 2.0; mode = TrafoMode.Translate }
+            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial' 5.0; mode = TrafoMode.Translate }
             update = update
             view = view
         }

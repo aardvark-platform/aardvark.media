@@ -28,6 +28,7 @@ type World =
 type TrafoMode =
   | Translate = 0
   | Rotate    = 1
+  | Scale     = 2
 
 [<DomainType>]
 type Scene =
