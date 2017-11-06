@@ -25,7 +25,7 @@ type World =
         selectedObjects : hset<string>
     }
 
-type TrafoMode =
+type TrafoKind =
   | Translate = 0
   | Rotate    = 1
   | Scale     = 2
@@ -34,6 +34,7 @@ type TrafoMode =
 type Scene =
     {
         world  : World
+        kind   : TrafoKind
         mode   : TrafoMode
         camera : CameraControllerState
     }

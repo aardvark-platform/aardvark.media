@@ -17,8 +17,9 @@ module App =
     type Action = 
         | PlaceBox 
         | Select        of string
+        | SetKind       of TrafoKind
         | SetMode       of TrafoMode
-        | Translate     of string * TranslateController.ControllerAction
+        | Translate     of string * TrafoController.Action
         | Rotate        of string * RotationController.ControllerAction
         | Scale         of string * ScaleController.ControllerAction
         | CameraMessage of CameraController.Message
@@ -33,6 +34,13 @@ module App =
                 | None -> false
         )
 
+    let updateMode mode m = 
+        let objs = 
+            m.world.objects 
+                |> HMap.map(fun _ x -> {x with transformation = { x.transformation with mode = mode }})
+
+        { m with mode = mode; world = { m.world with objects = objs;}}
+
     let _selected name = 
         Scene.Lens.world |. World.Lens.objects |. HMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
 
@@ -43,7 +51,7 @@ module App =
                 else { m with camera = CameraController.update m.camera a }
             | PlaceBox -> 
                 let name = System.Guid.NewGuid() |> string
-                let newObject = { name = name; objectType = ObjectType.Box; transformation = TranslateController.initial }
+                let newObject = { name = name; objectType = ObjectType.Box; transformation = TrafoController.initial }
                 let world = { m.world with objects = HMap.add name newObject m.world.objects }
                 { m with world = world }
             | Select n -> 
@@ -53,23 +61,31 @@ module App =
 
                 //_selected(n).Update(m, fun t -> { t with pivotTrafo = t.trafo })
                 
-            | Translate(name,a) ->
+            | Translate(name, a) ->
                 _selected(name).Update(m, fun t -> TranslateController.updateController t a)
-            | Rotate(name,a) ->                 
+            | Rotate(name, a) ->                 
                 _selected(name).Update(m, fun t -> RotationController.updateController t a)
             | Scale(name,a) ->                 
                 _selected(name).Update(m, fun t -> ScaleController.updateController t a)
             | Unselect -> 
                 if isGrabbed m.world then m // hack
-                else  { m with world = { m.world with selectedObjects = HSet.empty } } 
-            | SetMode s ->
-                { m with mode = s}
+                else  { m with world = { m.world with selectedObjects = HSet.empty } }
             | KeyDown k ->
                 match k with 
-                  | Aardvark.Application.Keys.D1 -> { m with mode = TrafoMode.Translate}
-                  | Aardvark.Application.Keys.D2 -> { m with mode = TrafoMode.Rotate}
-                  | Aardvark.Application.Keys.D3 -> { m with mode = TrafoMode.Scale}
+                  | Aardvark.Application.Keys.D1    -> { m with kind = TrafoKind.Translate }
+                  | Aardvark.Application.Keys.D2    -> { m with kind = TrafoKind.Rotate }
+                  | Aardvark.Application.Keys.D3    -> { m with kind = TrafoKind.Scale }
+                  | Aardvark.Application.Keys.Space ->
+                    let mode = 
+                        match m.mode with
+                          | TrafoMode.Global -> TrafoMode.Local
+                          | TrafoMode.Local  -> TrafoMode.Global
+                          | _ -> m.mode
+
+                    m |> updateMode mode
                   | _ -> m                
+            | SetKind k -> { m with kind = k}
+            | SetMode mode -> m |> updateMode mode
             | Nop -> m
 
 
@@ -87,21 +103,32 @@ module App =
                 for (name,obj) in m.world.objects |> AMap.toASet do
                     let selected = ASet.contains name m.world.selectedObjects
                     let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
+
                     let controller =
-                        selected |> Mod.map2 (
-                            fun m s -> 
-                                match s with 
+                        adaptive {
+
+                            let! sel  = selected
+                            let! kind = m.kind                            
+
+                            let sg =
+                                match sel with 
                                     | true ->
-                                        match m with
-                                          | TrafoMode.Rotate    -> RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) obj.transformation
-                                          | TrafoMode.Translate -> TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation                                
-                                          | TrafoMode.Scale     -> ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) obj.transformation                                
+                                        match kind with
+                                          | TrafoKind.Translate -> 
+                                                TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation
+                                          | TrafoKind.Rotate    -> 
+                                                RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) obj.transformation
+                                          | TrafoKind.Scale     -> 
+                                                ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) obj.transformation
                                           | _ -> Sg.empty
                                     
                                     | false -> Sg.ofList []
-                        ) m.mode  |> Sg.dynamic
+
+                            return sg
+                        } |> Sg.dynamic
+
                     yield 
-                        Sg.box color (Box3d.FromCenterAndSize(V3d.OOO,V3d.III*0.5) |> Mod.constant) 
+                        Sg.box color (Box3d.FromCenterAndSize(V3d.OOO,V3d.III*0.5) |> Mod.constant)
                         |> Sg.requirePicking 
                         |> Sg.noEvents
                         |> Sg.Incremental.withEvents (
@@ -144,6 +171,7 @@ module App =
                         Html.SemUi.stuffStack [
                             button [clazz "ui button"; onClick (fun _ ->  PlaceBox )] [text "Add Box"]
                             button [clazz "ui button"; onClick (fun _ ->  Unselect )] [text "Unselect"]
+                            Html.SemUi.dropDown m.kind SetKind
                             Html.SemUi.dropDown m.mode SetMode
                         ]
                     ]
@@ -158,18 +186,12 @@ module App =
                     for z in 0 .. 2 do
                         let name = System.Guid.NewGuid() |> string
                         let pos = V3d(float i, float j, float z)
-                        let newObject = { 
-                            name = name; 
-                            objectType = ObjectType.Box; 
-                            transformation = 
+                        let newObject = 
                             { 
-                                TranslateController.initial with
-                                    trafo = Trafo3d.Translation(pos)                                    
-
-                                    //pivotLocation = pos
-                            } 
-
-                        }
+                                name           = name
+                                objectType     = ObjectType.Box 
+                                transformation = { TrafoController.initial with trafo = Trafo3d.Translation(pos) } 
+                            }
                         yield name,newObject
         ]
 
@@ -177,14 +199,27 @@ module App =
 
     let one =
         let name = singleGuid
-        let newObject = { name = name; objectType = ObjectType.Box; transformation = { TranslateController.initial with trafo = Trafo3d.Rotation(V3d.IIO, (0.0).RadiansFromDegrees()) } }
+        let newObject = { 
+            name = name
+            objectType = ObjectType.Box
+            transformation = 
+            { 
+                TrafoController.initial with trafo = Trafo3d.Rotation(V3d.IIO, (0.0).RadiansFromDegrees()) 
+            } 
+        }
         [ name, newObject ] |>  HMap.ofList
 
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
-            initial = { world = { objects = many; selectedObjects = HSet.empty }; camera = CameraController.initial' 5.0; mode = TrafoMode.Translate }
+            initial = 
+                { 
+                    world = { objects = many; selectedObjects = HSet.empty }
+                    camera = CameraController.initial' 5.0
+                    kind = TrafoKind.Translate 
+                    mode = TrafoMode.Global
+                }
             update = update
             view = view
         }

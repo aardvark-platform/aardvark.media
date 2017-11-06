@@ -24,11 +24,16 @@ type PickPoint =
     }
 
 
+type TrafoMode =
+    | Local  = 0
+    | Global = 1
+
 [<DomainType>]
 type Transformation = { 
     trafo         : Trafo3d 
     workingTrafo  : Trafo3d
     pivotTrafo    : Trafo3d
+    mode          : TrafoMode
     //pivotLocation    : V3d
     hovered       : Option<Axis>
     grabbed       : Option<PickPoint>

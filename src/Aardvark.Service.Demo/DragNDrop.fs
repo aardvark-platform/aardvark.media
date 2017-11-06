@@ -120,13 +120,48 @@ module Matrix =
                        
         s, Trafo3d(a, b), t
 
-    let filterTrafo (trafo : IMod<Trafo3d>) =
+    let filterTrafo (mode : IMod<TrafoMode>) (trafo : IMod<Trafo3d>)=
         adaptive {
             let! tr = trafo
-            let _,_,t = decomp' tr                
-            return t
+            let! m = mode
+            let t = 
+                match m with
+                  | TrafoMode.Global -> Trafo3d.Translation(tr.Forward.C3.XYZ)
+                  | TrafoMode.Local | _ -> tr
+                 
+            return  t
         }
 
+module TrafoController = 
+    open Aardvark.Base
+    open Aardvark.Base.Geometry
+
+    let initial =
+        { 
+            hovered      = None
+            grabbed      = None
+            trafo        = Trafo3d.Identity
+            mode         = TrafoMode.Global
+            workingTrafo = Trafo3d.Identity
+            pivotTrafo   = Trafo3d.Identity         
+        }
+
+    type Action = 
+        | Hover   of Axis
+        | Unhover 
+        | MoveRay of RayPart
+        | Grab    of RayPart * Axis
+        | Release
+        | SetMode of TrafoMode
+
+    let colorMatch axis = 
+        fun g h ->
+            match h, g, axis with
+            | _,      Some g, p when g = p -> C4b.Yellow
+            | Some h, None,   p when h = p -> C4b.White
+            | _,      _,      X -> C4b.Red
+            | _,      _,      Y -> C4b.Green
+            | _,      _,      Z -> C4b.Blue
 
 module TranslateController =
 
@@ -139,6 +174,7 @@ module TranslateController =
     open Aardvark.UI.Primitives
 
     open Aardvark.Base.Geometry
+    open TrafoController
 
     open DragNDrop
 
@@ -163,17 +199,10 @@ module TranslateController =
         let coneHeight     = 0.1
         let coneRadius     = 0.03
         let cylinderRadius = 0.015
-        let tessellation   = 8
-
-    type ControllerAction = 
-        | Hover   of Axis
-        | Unhover 
-        | MoveRay of RayPart
-        | Grab    of RayPart * Axis
-        | Release
+        let tessellation   = 8    
     
     type SceneAction =
-        | ControllerAction of ControllerAction
+        | ControllerAction of TrafoController.Action
         | CameraAction     of CameraController.Message
 
 
@@ -189,15 +218,21 @@ module TranslateController =
         r.Ray.Ray.GetMinimalDistanceTo(other,&unused,&t) |> ignore
         t
 
-    let updateController (m : Transformation) (a : ControllerAction) =
+    let updateController (m : Transformation) (a : TrafoController.Action) =
         match a with
             | Hover axis -> 
                 { m with hovered = Some axis }
             | Unhover -> 
                 { m with hovered = None }
             | Grab (rp, axis) ->
+
+                let pivot = 
+                    match m.mode with
+                      | TrafoMode.Global -> m.trafo
+                      | TrafoMode.Local | _ -> Trafo3d.Identity
+
                 let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN }; pivotTrafo = m.trafo }
+                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN }; pivotTrafo = pivot }
             | Release ->
                 match m.grabbed with
                 | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity }
@@ -215,21 +250,14 @@ module TranslateController =
                      // implement mode switch here (t2)
                      
                      let closestPoint = closestT rp axis
-                     let trafo = Trafo3d.Translation ((closestPoint - offset) * other) //* trafo
+                     let trafo = Trafo3d.Translation ((closestPoint - offset) * other)
 
                      { m with workingTrafo = m.pivotTrafo * trafo * m.pivotTrafo.Inverse; }
                 | None -> m
+            | SetMode a->
+                m    
 
-    let colorMatch axis = 
-        fun g h ->
-                 match h, g, axis with
-                 | _,      Some g, p when g = p -> C4b.Yellow
-                 | Some h, None,   p when h = p -> C4b.White
-                 | _,      _,      X -> C4b.Red
-                 | _,      _,      Y -> C4b.Green
-                 | _,      _,      Z -> C4b.Blue
-
-    let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (m : MTransformation) =
         
         let arrow rot axis =
             let col =
@@ -269,7 +297,7 @@ module TranslateController =
         
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-        |> Sg.trafo (m.trafo |> Matrix.filterTrafo)
+        |> Sg.trafo (Matrix.filterTrafo m.mode m.trafo)
         |> Sg.map liftMessage
         
 
@@ -298,16 +326,14 @@ module TranslateController =
                 (AttributeMap.ofList [ 
                     yield  attribute "style" "width:100%; height: 100%"; 
                  ]) (viewScene' m)
-        ]
-
-    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity; }
+        ]   
 
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
             initial = {  camera = CameraController.initial
-                         transformation = initial
+                         transformation = TrafoController.initial
                       }
             update = updateScene
             view = viewScene
@@ -416,11 +442,18 @@ module RotationController =
                 { m with hovered = None }
             | Grab (rp, axis) ->
                 Log.warn "grabbing %A" axis
-                let _, p = intersect rp (axis |> toCircle)               
-                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p } }
+                let _, p = intersect rp (axis |> toCircle)                
+
+                let pivot = 
+                    match m.mode with
+                      | TrafoMode.Global -> m.trafo
+                      | TrafoMode.Local | _ -> Trafo3d.Identity
+                
+                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p }; pivotTrafo = pivot }
+
             | Release ->
                 match m.grabbed with
-                    | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity}
+                    | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity}
                     | _ -> m
             | RotateRay rp ->
                 match m.grabbed with
@@ -430,7 +463,7 @@ module RotationController =
 
 
                          let trafo = Trafo3d.RotateInto(hit.Normalized, p.Normalized)
-                         { m with workingTrafo = trafo }
+                         { m with workingTrafo = m.pivotTrafo * trafo * m.pivotTrafo.Inverse; }
                      else 
                         m
                 | None -> m
@@ -452,7 +485,7 @@ module RotationController =
             
             let circle = Circle3d(V3d.Zero, dir, radius)
                
-            RotationHandle.sg axis            
+            RotationHandle.sg axis                                              
             |> Sg.trafo m.workingTrafo            
             |> Sg.uniform "HoverColor" col
             |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
@@ -501,7 +534,7 @@ module RotationController =
         
         Sg.ofList [circleX; circleY; circleZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
-        |> Sg.trafo (m.trafo)
+        |> Sg.trafo (Matrix.filterTrafo m.mode m.trafo)
         |> Sg.noEvents        
         |> Aardvark.UI.``F# Sg``.Sg.map liftMessage
         
@@ -533,19 +566,19 @@ module RotationController =
                 (AttributeMap.ofList [ 
                     yield  attribute "style" "width:100%; height: 100%"; 
                  ]) (viewScene' m)
-        ]
-
-    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity; }
+        ]   
 
     let app =
         {
             unpersist = Unpersist.instance
-            threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
-            initial = {  camera = CameraController.initial
-                         transformation = initial
-                      }
-            update = updateScene
-            view = viewScene
+            threads   = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
+            initial   = 
+                {  
+                    camera = CameraController.initial
+                    transformation = TrafoController.initial
+                }
+            update    = updateScene
+            view      = viewScene
         }
 
     let start() = App.start app
@@ -629,7 +662,7 @@ module ScaleController =
                 | Some { offset = offset; axis = axis } ->
 
                     let closestPoint = closestT rp axis 
-                    let drag = (closestPoint - (offset)).Clamp(-1.0,System.Double.MaxValue)
+                    let drag = (closestPoint - (offset)).Clamp(-1.0, System.Double.MaxValue)
 
                     let scale =
                         match axis with
@@ -637,7 +670,7 @@ module ScaleController =
                         | Y -> V3d.OIO * drag + V3d.One
                         | Z -> V3d.OOI * drag + V3d.One                    
 
-                    let trafo = Trafo3d.Scale (scale)                    
+                    let trafo = Trafo3d.Scale (scale)
 
                     { m with workingTrafo = trafo; }
                 | None -> m
@@ -682,7 +715,7 @@ module ScaleController =
                 
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-        |> Sg.trafo (Matrix.filterTrafo m.trafo)
+        |> Sg.trafo (Matrix.filterTrafo m.mode m.trafo)
         |> Sg.map liftMessage
         
 
@@ -713,15 +746,17 @@ module ScaleController =
                  ]) (viewScene' m)
         ]
 
-    let initial =  { hovered = None; grabbed = None; trafo = Trafo3d.Identity; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity; }
+    
 
     let app =
         {
             unpersist = Unpersist.instance
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraAction
-            initial = {  camera = CameraController.initial
-                         transformation = initial
-                      }
+            initial = 
+                {  
+                    camera         = CameraController.initial
+                    transformation = TrafoController.initial
+                }
             update = updateScene
             view = viewScene
         }

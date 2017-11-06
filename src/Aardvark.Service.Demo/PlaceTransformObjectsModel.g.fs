@@ -115,10 +115,12 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Scene> = Aardvark.Base.Incremental.EqModRef<PlaceTransformObjects.Scene>(__initial) :> Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Scene>
         let _world = MWorld.Create(__initial.world)
+        let _kind = ResetMod.Create(__initial.kind)
         let _mode = ResetMod.Create(__initial.mode)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         
         member x.world = _world
+        member x.kind = _kind :> IMod<_>
         member x.mode = _mode :> IMod<_>
         member x.camera = _camera
         
@@ -128,6 +130,7 @@ module Mutable =
                 __current.Value <- v
                 
                 MWorld.Update(_world, v.world)
+                ResetMod.Update(_kind,v.kind)
                 ResetMod.Update(_mode,v.mode)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
                 
@@ -152,8 +155,14 @@ module Mutable =
                     override x.Set(r,v) = { r with world = v }
                     override x.Update(r,f) = { r with world = f r.world }
                 }
+            let kind =
+                { new Lens<PlaceTransformObjects.Scene, PlaceTransformObjects.TrafoKind>() with
+                    override x.Get(r) = r.kind
+                    override x.Set(r,v) = { r with kind = v }
+                    override x.Update(r,f) = { r with kind = f r.kind }
+                }
             let mode =
-                { new Lens<PlaceTransformObjects.Scene, PlaceTransformObjects.TrafoMode>() with
+                { new Lens<PlaceTransformObjects.Scene, DragNDrop.TrafoMode>() with
                     override x.Get(r) = r.mode
                     override x.Set(r,v) = { r with mode = v }
                     override x.Update(r,f) = { r with mode = f r.mode }

@@ -71,12 +71,14 @@ module Mutable =
         let _trafo = ResetMod.Create(__initial.trafo)
         let _workingTrafo = ResetMod.Create(__initial.workingTrafo)
         let _pivotTrafo = ResetMod.Create(__initial.pivotTrafo)
+        let _mode = ResetMod.Create(__initial.mode)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
         
         member x.trafo = _trafo :> IMod<_>
         member x.workingTrafo = _workingTrafo :> IMod<_>
         member x.pivotTrafo = _pivotTrafo :> IMod<_>
+        member x.mode = _mode :> IMod<_>
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
         
@@ -88,6 +90,7 @@ module Mutable =
                 ResetMod.Update(_trafo,v.trafo)
                 ResetMod.Update(_workingTrafo,v.workingTrafo)
                 ResetMod.Update(_pivotTrafo,v.pivotTrafo)
+                ResetMod.Update(_mode,v.mode)
                 MOption.Update(_hovered, v.hovered)
                 MOption.Update(_grabbed, v.grabbed)
                 
@@ -123,6 +126,12 @@ module Mutable =
                     override x.Get(r) = r.pivotTrafo
                     override x.Set(r,v) = { r with pivotTrafo = v }
                     override x.Update(r,f) = { r with pivotTrafo = f r.pivotTrafo }
+                }
+            let mode =
+                { new Lens<DragNDrop.Transformation, DragNDrop.TrafoMode>() with
+                    override x.Get(r) = r.mode
+                    override x.Set(r,v) = { r with mode = v }
+                    override x.Update(r,f) = { r with mode = f r.mode }
                 }
             let hovered =
                 { new Lens<DragNDrop.Transformation, Microsoft.FSharp.Core.Option<DragNDrop.Axis>>() with
