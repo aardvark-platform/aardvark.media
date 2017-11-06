@@ -28,6 +28,8 @@ type PickPoint =
 type Transformation = { 
     trafo         : Trafo3d 
     workingTrafo  : Trafo3d
+    pivotTrafo    : Trafo3d
+    //pivotLocation    : V3d
     hovered       : Option<Axis>
     grabbed       : Option<PickPoint>
 }

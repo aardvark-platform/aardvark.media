@@ -48,7 +48,11 @@ module App =
                 { m with world = world }
             | Select n -> 
                 let world = { m.world with selectedObjects = HSet.add n HSet.empty }
+
                 { m with world = world }
+
+                //_selected(n).Update(m, fun t -> { t with pivotTrafo = t.trafo })
+                
             | Translate(name,a) ->
                 _selected(name).Update(m, fun t -> TranslateController.updateController t a)
             | Rotate(name,a) ->                 
@@ -105,8 +109,8 @@ module App =
                                 let! selected = selected
                                 if not selected then
                                     yield Sg.onDoubleClick (fun _ -> Select name)
-                            } )                        
-                        |> Sg.trafo obj.transformation.workingTrafo
+                            } )                                                
+                        |> Sg.trafo obj.transformation.workingTrafo                        
                         |> Sg.trafo obj.transformation.trafo
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
@@ -153,7 +157,19 @@ module App =
                 for j in 0 .. 2 do
                     for z in 0 .. 2 do
                         let name = System.Guid.NewGuid() |> string
-                        let newObject = { name = name; objectType = ObjectType.Box; transformation = { TranslateController.initial with trafo = Trafo3d.Translation(float i, float j, float z) } }
+                        let pos = V3d(float i, float j, float z)
+                        let newObject = { 
+                            name = name; 
+                            objectType = ObjectType.Box; 
+                            transformation = 
+                            { 
+                                TranslateController.initial with
+                                    trafo = Trafo3d.Translation(pos)                                    
+
+                                    //pivotLocation = pos
+                            } 
+
+                        }
                         yield name,newObject
         ]
 
