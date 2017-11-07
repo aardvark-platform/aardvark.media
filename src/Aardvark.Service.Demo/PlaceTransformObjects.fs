@@ -137,7 +137,9 @@ module App =
                                 if not selected then
                                     yield Sg.onDoubleClick (fun _ -> Select name)
                             } )                                                
-                        |> Sg.trafo obj.transformation.workingTrafo                        
+                        |> Sg.trafo (obj.transformation.pivotTrafo |> Mod.map(fun x -> x.Inverse))
+                        |> Sg.trafo obj.transformation.workingTrafo    
+                        |> Sg.trafo (obj.transformation.pivotTrafo)
                         |> Sg.trafo obj.transformation.trafo
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))

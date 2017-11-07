@@ -452,8 +452,11 @@ module RotationController =
                 { m with grabbed = Some { offset = 0.0; axis = axis; hit = p }; pivotTrafo = pivot }
 
             | Release ->
+
+                let superTrafo = m.trafo * m.pivotTrafo * m.workingTrafo * m.pivotTrafo.Inverse
+
                 match m.grabbed with
-                    | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity}
+                    | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo ; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity}
                     | _ -> m
             | RotateRay rp ->
                 match m.grabbed with
@@ -463,7 +466,9 @@ module RotationController =
 
 
                          let trafo = Trafo3d.RotateInto(hit.Normalized, p.Normalized)
-                         { m with workingTrafo = m.pivotTrafo * trafo * m.pivotTrafo.Inverse; }
+                         let r = m.pivotTrafo * trafo * m.pivotTrafo.Inverse
+                         Log.line "%A" r
+                         { m with workingTrafo = r ; }
                      else 
                         m
                 | None -> m
@@ -485,8 +490,10 @@ module RotationController =
             
             let circle = Circle3d(V3d.Zero, dir, radius)
                
-            RotationHandle.sg axis                                              
-            |> Sg.trafo m.workingTrafo            
+            RotationHandle.sg axis
+            |> Sg.trafo (m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
+            |> Sg.trafo m.workingTrafo
+            |> Sg.trafo (m.pivotTrafo)
             |> Sg.uniform "HoverColor" col
             |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
             |> Sg.noEvents            
@@ -537,8 +544,7 @@ module RotationController =
         |> Sg.trafo (Matrix.filterTrafo m.mode m.trafo)
         |> Sg.noEvents        
         |> Aardvark.UI.``F# Sg``.Sg.map liftMessage
-        
-        
+                
     let updateScene (m : Scene) (a : SceneAction) =
         match a with
             | CameraAction a when m.transformation.grabbed.IsNone -> 
