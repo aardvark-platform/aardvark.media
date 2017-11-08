@@ -140,11 +140,12 @@ module TrafoController =
         { 
             hovered      = None
             grabbed      = None
-            trafo        = Trafo3d.Identity
             mode         = TrafoMode.Global
-            workingTrafo = Trafo3d.Identity
-            pivotTrafo   = Trafo3d.Identity         
+            workingTrafo = Pose.identity
+            pose = Pose.identity
+            currentTrafo = Trafo3d.Identity
         }
+
 
     type Action = 
         | Hover   of Axis
@@ -228,14 +229,14 @@ module TranslateController =
 
                 let pivot = 
                     match m.mode with
-                      | TrafoMode.Global -> m.trafo
+                      | TrafoMode.Global -> m.currentTrafo
                       | TrafoMode.Local | _ -> Trafo3d.Identity
 
                 let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN }; pivotTrafo = pivot }
+                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN }; }
             | Release ->
                 match m.grabbed with
-                | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity }
+                | Some _ -> { m with grabbed = None; currentTrafo =failwith ""; workingTrafo = Pose.identity }
                 | None   -> m
             | MoveRay rp ->
                 match m.grabbed with
@@ -250,9 +251,19 @@ module TranslateController =
                      // implement mode switch here (t2)
                      
                      let closestPoint = closestT rp axis
-                     let trafo = Trafo3d.Translation ((closestPoint - offset) * other)
+                     let shift = (closestPoint - offset) * other
+                     //let trafo = Trafo3d.Translation ((closestPoint - offset) * other)
 
-                     { m with workingTrafo = m.pivotTrafo * trafo * m.pivotTrafo.Inverse; }
+                     let working = 
+                        match m.mode with
+                            | TrafoMode.Global -> 
+                                { m.workingTrafo with position = shift }
+                            | TrafoMode.Local -> 
+                                failwith ""
+                                //{ m.workingTrafo with position = (m.trafo.Forward.TransformDir shift).Normalized * Vec.length shift }
+                            | _ -> failwith ""
+
+                     { m with workingTrafo = working }
                 | None -> m
             | SetMode a->
                 m    
@@ -271,10 +282,7 @@ module TranslateController =
                  |> Sg.noEvents
                 )
             |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI + V3d(0.0,0.0,0.1),cylinderRadius + 0.1) |> PickShape.Cylinder)
-            |> Sg.transform rot
-            |> Sg.trafo (m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
-            |> Sg.trafo m.workingTrafo            
-            |> Sg.trafo (m.pivotTrafo)
+            |> Sg.transform rot       
             |> Sg.uniform "HoverColor" col
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
@@ -297,7 +305,7 @@ module TranslateController =
         
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-        |> Sg.trafo (Matrix.filterTrafo m.mode m.trafo)
+        |> Sg.trafo (Matrix.filterTrafo m.mode m.currentTrafo)
         |> Sg.map liftMessage
         
 
@@ -444,19 +452,29 @@ module RotationController =
                 Log.warn "grabbing %A" axis
                 let _, p = intersect rp (axis |> toCircle)                
 
-                let pivot = 
-                    match m.mode with
-                      | TrafoMode.Global -> m.trafo
-                      | TrafoMode.Local | _ -> Trafo3d.Identity
-                
-                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p }; pivotTrafo = pivot }
+                //let pivot = 
+                //    match m.mode with
+                //      | TrafoMode.Global -> m.trafo
+                //      | TrafoMode.Local | _ -> Trafo3d.Identity
+                //
+                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p }; }
 
             | Release ->
 
-                let superTrafo = m.trafo * m.pivotTrafo * m.workingTrafo * m.pivotTrafo.Inverse
-
                 match m.grabbed with
-                    | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo ; workingTrafo = Trafo3d.Identity; pivotTrafo = Trafo3d.Identity}
+                    | Some _ -> 
+                        //let trafo =
+                        //    match m.mode with
+                        //        | TrafoMode.Global -> m.workingTrafo.Trafo * m.trafo
+                        //        | TrafoMode.Local -> m.trafo * m.workingTrafo.Trafo
+                        //        | _ -> failwith ""
+                        let pose = 
+                            match m.mode with
+                                | TrafoMode.Local -> { m.pose with rotation = m.pose.rotation * m.workingTrafo.rotation }
+                                | TrafoMode.Global -> { m.pose with rotation = m.workingTrafo.rotation * m.pose.rotation }
+                                | _ -> failwith ""
+                            
+                        { m with grabbed = None; workingTrafo = Pose.identity; pose = pose; currentTrafo = pose.Trafo }
                     | _ -> m
             | RotateRay rp ->
                 match m.grabbed with
@@ -464,11 +482,20 @@ module RotationController =
                      let h, p = intersect rp (axis |> toCircle)
                      if h && (not hit.IsNaN) then
 
+                         //let trafo = Trafo3d.RotateInto(hit.Normalized, p.Normalized)
+                         //let r = m.pivotTrafo * trafo * m.pivotTrafo.Inverse
+                         //Log.line "%A" r
 
-                         let trafo = Trafo3d.RotateInto(hit.Normalized, p.Normalized)
-                         let r = m.pivotTrafo * trafo * m.pivotTrafo.Inverse
-                         Log.line "%A" r
-                         { m with workingTrafo = r ; }
+                         let rotation = Rot3d(hit.Normalized, p.Normalized)
+
+                         let wp = { m.workingTrafo with rotation = rotation } 
+                         let trafo = 
+                            match m.mode with
+                                | TrafoMode.Local -> { m.pose with rotation = m.pose.rotation * rotation }
+                                | TrafoMode.Global -> { m.pose with rotation = rotation * m.pose.rotation }
+                                | _ -> failwith ""
+
+                         { m with workingTrafo = wp; currentTrafo = trafo.Trafo }
                      else 
                         m
                 | None -> m
@@ -491,11 +518,9 @@ module RotationController =
             let circle = Circle3d(V3d.Zero, dir, radius)
                
             RotationHandle.sg axis
-            |> Sg.trafo (m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
-            |> Sg.trafo m.workingTrafo
-            |> Sg.trafo (m.pivotTrafo)
             |> Sg.uniform "HoverColor" col
             |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
+            |> Sg.trafo m.currentTrafo // scale hate
             |> Sg.noEvents            
             |> Sg.Incremental.withGlobalEvents ( 
                     amap {                        
@@ -541,7 +566,6 @@ module RotationController =
         
         Sg.ofList [circleX; circleY; circleZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
-        |> Sg.trafo (Matrix.filterTrafo m.mode m.trafo)
         |> Sg.noEvents        
         |> Aardvark.UI.``F# Sg``.Sg.map liftMessage
                 
@@ -660,9 +684,10 @@ module ScaleController =
                 let offset = closestT rp axis
                 { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN } } 
             | Release ->
-                match m.grabbed with
-                | Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity }
-                | None   -> m
+                failwith ""
+                //match m.grabbed with
+                //| Some _ -> { m with grabbed = None; trafo = m.workingTrafo * m.trafo; workingTrafo = Trafo3d.Identity }
+                //| None   -> m
             | MoveRay rp ->
                 match m.grabbed with
                 | Some { offset = offset; axis = axis } ->
@@ -678,7 +703,8 @@ module ScaleController =
 
                     let trafo = Trafo3d.Scale (scale)
 
-                    { m with workingTrafo = trafo; }
+                    failwith ""
+                    //{ m with workingTrafo = trafo; }
                 | None -> m
 
     let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) =
@@ -721,7 +747,7 @@ module ScaleController =
                 
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-        |> Sg.trafo (Matrix.filterTrafo m.mode m.trafo)
+        |> Sg.trafo (Matrix.filterTrafo m.mode m.currentTrafo)
         |> Sg.map liftMessage
         
 

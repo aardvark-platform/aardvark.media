@@ -137,10 +137,7 @@ module App =
                                 if not selected then
                                     yield Sg.onDoubleClick (fun _ -> Select name)
                             } )                                                
-                        |> Sg.trafo (obj.transformation.pivotTrafo |> Mod.map(fun x -> x.Inverse))
-                        |> Sg.trafo obj.transformation.workingTrafo    
-                        |> Sg.trafo (obj.transformation.pivotTrafo)
-                        |> Sg.trafo obj.transformation.trafo
+                        |> Sg.trafo obj.transformation.currentTrafo
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
                         //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
@@ -188,11 +185,12 @@ module App =
                     for z in 0 .. 2 do
                         let name = System.Guid.NewGuid() |> string
                         let pos = V3d(float i, float j, float z)
+                        let pose = Pose.translate pos
                         let newObject = 
                             { 
                                 name           = name
                                 objectType     = ObjectType.Box 
-                                transformation = { TrafoController.initial with trafo = Trafo3d.Translation(pos) } 
+                                transformation = { TrafoController.initial with pose = pose; currentTrafo = pose.Trafo } 
                             }
                         yield name,newObject
         ]
@@ -206,7 +204,7 @@ module App =
             objectType = ObjectType.Box
             transformation = 
             { 
-                TrafoController.initial with trafo = Trafo3d.Rotation(V3d.IIO, (0.0).RadiansFromDegrees()) 
+                TrafoController.initial with currentTrafo = Trafo3d.Identity; pose = Pose.identity 
             } 
         }
         [ name, newObject ] |>  HMap.ofList

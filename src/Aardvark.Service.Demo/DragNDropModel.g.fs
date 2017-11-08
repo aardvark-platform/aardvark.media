@@ -68,16 +68,16 @@ module Mutable =
     type MTransformation(__initial : DragNDrop.Transformation) =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation> = Aardvark.Base.Incremental.EqModRef<DragNDrop.Transformation>(__initial) :> Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation>
-        let _trafo = ResetMod.Create(__initial.trafo)
+        let _pose = ResetMod.Create(__initial.pose)
         let _workingTrafo = ResetMod.Create(__initial.workingTrafo)
-        let _pivotTrafo = ResetMod.Create(__initial.pivotTrafo)
+        let _currentTrafo = ResetMod.Create(__initial.currentTrafo)
         let _mode = ResetMod.Create(__initial.mode)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
         
-        member x.trafo = _trafo :> IMod<_>
+        member x.pose = _pose :> IMod<_>
         member x.workingTrafo = _workingTrafo :> IMod<_>
-        member x.pivotTrafo = _pivotTrafo :> IMod<_>
+        member x.currentTrafo = _currentTrafo :> IMod<_>
         member x.mode = _mode :> IMod<_>
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
@@ -87,9 +87,9 @@ module Mutable =
             if not (System.Object.ReferenceEquals(__current.Value, v)) then
                 __current.Value <- v
                 
-                ResetMod.Update(_trafo,v.trafo)
+                ResetMod.Update(_pose,v.pose)
                 ResetMod.Update(_workingTrafo,v.workingTrafo)
-                ResetMod.Update(_pivotTrafo,v.pivotTrafo)
+                ResetMod.Update(_currentTrafo,v.currentTrafo)
                 ResetMod.Update(_mode,v.mode)
                 MOption.Update(_hovered, v.hovered)
                 MOption.Update(_grabbed, v.grabbed)
@@ -109,23 +109,23 @@ module Mutable =
     module Transformation =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
-            let trafo =
-                { new Lens<DragNDrop.Transformation, Aardvark.Base.Trafo3d>() with
-                    override x.Get(r) = r.trafo
-                    override x.Set(r,v) = { r with trafo = v }
-                    override x.Update(r,f) = { r with trafo = f r.trafo }
+            let pose =
+                { new Lens<DragNDrop.Transformation, DragNDrop.Pose>() with
+                    override x.Get(r) = r.pose
+                    override x.Set(r,v) = { r with pose = v }
+                    override x.Update(r,f) = { r with pose = f r.pose }
                 }
             let workingTrafo =
-                { new Lens<DragNDrop.Transformation, Aardvark.Base.Trafo3d>() with
+                { new Lens<DragNDrop.Transformation, DragNDrop.Pose>() with
                     override x.Get(r) = r.workingTrafo
                     override x.Set(r,v) = { r with workingTrafo = v }
                     override x.Update(r,f) = { r with workingTrafo = f r.workingTrafo }
                 }
-            let pivotTrafo =
+            let currentTrafo =
                 { new Lens<DragNDrop.Transformation, Aardvark.Base.Trafo3d>() with
-                    override x.Get(r) = r.pivotTrafo
-                    override x.Set(r,v) = { r with pivotTrafo = v }
-                    override x.Update(r,f) = { r with pivotTrafo = f r.pivotTrafo }
+                    override x.Get(r) = r.currentTrafo
+                    override x.Set(r,v) = { r with currentTrafo = v }
+                    override x.Update(r,f) = { r with currentTrafo = f r.currentTrafo }
                 }
             let mode =
                 { new Lens<DragNDrop.Transformation, DragNDrop.TrafoMode>() with
