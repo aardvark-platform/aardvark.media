@@ -53,3 +53,18 @@ module Tree =
 
 [<DomainType>]
 type TreeModel = { data: Tree }
+
+[<DomainType>]
+type D3TestInput = 
+    {
+        t1 : int
+        t2 : int
+    }
+
+[<DomainType>]
+type D3AxisInput = 
+    {
+        min : float
+        max : float
+        tickCount : float
+    }

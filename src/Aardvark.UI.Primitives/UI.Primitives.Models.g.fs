@@ -472,3 +472,104 @@ module Mutable =
                     override x.Set(r,v) = { r with data = v }
                     override x.Update(r,f) = { r with data = f r.data }
                 }
+    
+    
+    type MD3TestInput(__initial : Aardvark.UI.D3TestInput) =
+        inherit obj()
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.D3TestInput> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.D3TestInput>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.D3TestInput>
+        let _t1 = ResetMod.Create(__initial.t1)
+        let _t2 = ResetMod.Create(__initial.t2)
+        
+        member x.t1 = _t1 :> IMod<_>
+        member x.t2 = _t2 :> IMod<_>
+        
+        member x.Current = __current :> IMod<_>
+        member x.Update(v : Aardvark.UI.D3TestInput) =
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
+                
+                ResetMod.Update(_t1,v.t1)
+                ResetMod.Update(_t2,v.t2)
+                
+        
+        static member Create(__initial : Aardvark.UI.D3TestInput) : MD3TestInput = MD3TestInput(__initial)
+        static member Update(m : MD3TestInput, v : Aardvark.UI.D3TestInput) = m.Update(v)
+        
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
+        interface IUpdatable<Aardvark.UI.D3TestInput> with
+            member x.Update v = x.Update v
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module D3TestInput =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let t1 =
+                { new Lens<Aardvark.UI.D3TestInput, Microsoft.FSharp.Core.int>() with
+                    override x.Get(r) = r.t1
+                    override x.Set(r,v) = { r with t1 = v }
+                    override x.Update(r,f) = { r with t1 = f r.t1 }
+                }
+            let t2 =
+                { new Lens<Aardvark.UI.D3TestInput, Microsoft.FSharp.Core.int>() with
+                    override x.Get(r) = r.t2
+                    override x.Set(r,v) = { r with t2 = v }
+                    override x.Update(r,f) = { r with t2 = f r.t2 }
+                }
+    
+    
+    type MD3AxisInput(__initial : Aardvark.UI.D3AxisInput) =
+        inherit obj()
+        let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.D3AxisInput> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.D3AxisInput>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.D3AxisInput>
+        let _min = ResetMod.Create(__initial.min)
+        let _max = ResetMod.Create(__initial.max)
+        let _tickCount = ResetMod.Create(__initial.tickCount)
+        
+        member x.min = _min :> IMod<_>
+        member x.max = _max :> IMod<_>
+        member x.tickCount = _tickCount :> IMod<_>
+        
+        member x.Current = __current :> IMod<_>
+        member x.Update(v : Aardvark.UI.D3AxisInput) =
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
+                
+                ResetMod.Update(_min,v.min)
+                ResetMod.Update(_max,v.max)
+                ResetMod.Update(_tickCount,v.tickCount)
+                
+        
+        static member Create(__initial : Aardvark.UI.D3AxisInput) : MD3AxisInput = MD3AxisInput(__initial)
+        static member Update(m : MD3AxisInput, v : Aardvark.UI.D3AxisInput) = m.Update(v)
+        
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
+        interface IUpdatable<Aardvark.UI.D3AxisInput> with
+            member x.Update v = x.Update v
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module D3AxisInput =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let min =
+                { new Lens<Aardvark.UI.D3AxisInput, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.min
+                    override x.Set(r,v) = { r with min = v }
+                    override x.Update(r,f) = { r with min = f r.min }
+                }
+            let max =
+                { new Lens<Aardvark.UI.D3AxisInput, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.max
+                    override x.Set(r,v) = { r with max = v }
+                    override x.Update(r,f) = { r with max = f r.max }
+                }
+            let tickCount =
+                { new Lens<Aardvark.UI.D3AxisInput, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.tickCount
+                    override x.Set(r,v) = { r with tickCount = v }
+                    override x.Update(r,f) = { r with tickCount = f r.tickCount }
+                }
