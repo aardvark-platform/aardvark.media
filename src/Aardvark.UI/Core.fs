@@ -9,8 +9,6 @@ open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Semantics
 
-
-
 [<AutoOpen>]
 module private Utils =
     open Aardvark.Base.TypeInfo
@@ -745,7 +743,7 @@ type DomNode private() =
                         update t
                         for task in state do
                             task.Run(t,rt,o)
-                    override x.Dispose() = 
+                    override x.Release() = 
                         reader.Dispose()
                         state <- PList.empty
 
