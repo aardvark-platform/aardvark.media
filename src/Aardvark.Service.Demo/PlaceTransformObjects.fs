@@ -136,8 +136,15 @@ module App =
                                 let! selected = selected
                                 if not selected then
                                     yield Sg.onDoubleClick (fun _ -> Select name)
-                            } )                                                
-                        |> Sg.trafo obj.transformation.currentTrafo
+                            } )                                
+                        //|> Sg.trafo (obj.transformation.workingPose 
+                        //                |> Mod.map2(fun k x -> 
+                        //                    match k with 
+                        //                      | TrafoKind.Scale -> Pose.toTrafo x
+                        //                      | _ -> Pose.trafoWoScale x                                            
+                        //                )m.kind)
+                        |> Sg.trafo (obj.transformation.workingPose |> Mod.map Pose.toTrafo)
+                        |> Sg.trafo (obj.transformation.fullTrafo)
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
                         //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
@@ -190,7 +197,7 @@ module App =
                             { 
                                 name           = name
                                 objectType     = ObjectType.Box 
-                                transformation = { TrafoController.initial with pose = pose; currentTrafo = pose.Trafo } 
+                                transformation = { TrafoController.initial with pose = pose; fullPose = pose; fullTrafo = (Trafo3d.Translation pos) } 
                             }
                         yield name,newObject
         ]
@@ -198,13 +205,17 @@ module App =
     let singleGuid = System.Guid.NewGuid() |> string
 
     let one =
+        let pos = V3d.OII * 0.5
         let name = singleGuid
         let newObject = { 
-            name = name
-            objectType = ObjectType.Box
+            name           = name
+            objectType     = ObjectType.Box
             transformation = 
             { 
-                TrafoController.initial with currentTrafo = Trafo3d.Identity; pose = Pose.identity 
+                TrafoController.initial with 
+                    fullPose  = { Pose.identity with position = pos }
+                    fullTrafo = (Trafo3d.Translation pos)
+                    pose      = Pose.identity 
             } 
         }
         [ name, newObject ] |>  HMap.ofList
@@ -215,10 +226,10 @@ module App =
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
             initial = 
                 { 
-                    world = { objects = many; selectedObjects = HSet.empty }
-                    camera = CameraController.initial' 5.0
-                    kind = TrafoKind.Translate 
-                    mode = TrafoMode.Global
+                    world = { objects = one; selectedObjects = HSet.empty |> HSet.add singleGuid }
+                    camera = CameraController.initial' 2.0
+                    kind = TrafoKind.Rotate 
+                    mode = TrafoMode.Local
                 }
             update = update
             view = view
