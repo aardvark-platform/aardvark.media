@@ -57,6 +57,7 @@ type Transformation = {
     workingPose   : Pose
     fullPose      : Pose
     fullTrafo     : Trafo3d
+    pivotTrafo    : Trafo3d
 
 
     mode          : TrafoMode

@@ -35,9 +35,15 @@ module App =
         )
 
     let updateMode mode m = 
+
+        let pivot fullPose = 
+            match m.mode with
+                | TrafoMode.Global -> fullPose |> Pose.toTrafo
+                | TrafoMode.Local | _ -> Trafo3d.Identity
+
         let objs = 
             m.world.objects 
-                |> HMap.map(fun _ x -> {x with transformation = { x.transformation with mode = mode }})
+                |> HMap.map(fun _ x -> {x with transformation = { x.transformation with mode = mode; pivotTrafo = pivot x.transformation.fullPose }})
 
         { m with mode = mode; world = { m.world with objects = objs;}}
 
@@ -143,7 +149,10 @@ module App =
                         //                      | TrafoKind.Scale -> Pose.toTrafo x
                         //                      | _ -> Pose.trafoWoScale x                                            
                         //                )m.kind)
+                        
+                        |> Sg.trafo (obj.transformation.pivotTrafo)
                         |> Sg.trafo (obj.transformation.workingPose |> Mod.map Pose.toTrafo)
+                        |> Sg.trafo (obj.transformation.pivotTrafo |> Mod.map(fun x -> x.Inverse))
                         |> Sg.trafo (obj.transformation.fullTrafo)
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))

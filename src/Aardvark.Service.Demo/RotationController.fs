@@ -46,8 +46,7 @@ module RotationController =
         let PI2 = System.Math.PI * 2.0
 
         let circle c r tess axis =
-            let step = PI2 / tess
-            //[0.0 .. 1.0 .. 1.0] |> List.map (fun x -> circlePoint c r x axis) |> List.toSeq
+            let step = PI2 / tess            
             [0.0 .. step .. (PI2)] |> List.map (fun x -> circlePoint c r x axis) |> List.toSeq
 
         let sg axis =

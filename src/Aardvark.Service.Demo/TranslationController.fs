@@ -48,11 +48,11 @@ module TranslateController =
 
                 //let pivot = 
                 //    match m.mode with
-                //      | TrafoMode.Global -> m.currentTrafo
+                //      | TrafoMode.Global -> m.fullPose |> Pose.toTrafo
                 //      | TrafoMode.Local | _ -> Trafo3d.Identity
 
                 let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN }; }
+                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }}
             | Release ->
                 match m.grabbed with
                 | Some _ ->                     
@@ -76,12 +76,19 @@ module TranslateController =
                         | Z -> V3d.OOI
 
                      // implement mode switch here (t2)
-                     
+
+                     let rot = Rot3d.Identity
+                        //match m.mode with
+                        //  | TrafoMode.Global    -> -m.fullPose.rotation
+                        //  | TrafoMode.Local | _ -> Rot3d.Identity
+
                      let closestPoint = closestT rp axis
                      let shift = (closestPoint - offset) * other
                      //let trafo = Trafo3d.Translation ((closestPoint - offset) * other)
 
-                     { m with workingPose = { m.workingPose with position = shift } }
+
+
+                     { m with workingPose = { m.workingPose with position = shift; rotation = rot } }
                 | None -> m
             | SetMode a->
                 m    
@@ -102,7 +109,9 @@ module TranslateController =
             |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI + V3d(0.0,0.0,0.1),cylinderRadius + 0.1) |> PickShape.Cylinder)
             |> Sg.transform rot       
             |> Sg.uniform "HoverColor" col
+            |> Sg.trafo(m.pivotTrafo)
             |> Sg.trafo (m.workingPose |> Mod.map Pose.trafoWoScale)
+            |> Sg.trafo(m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
