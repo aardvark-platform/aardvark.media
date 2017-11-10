@@ -86,6 +86,9 @@
     <Compile Include="KitchenSink.fs" />
     <Compile Include="DragNDropModel.fs" />
     <Compile Include="DragNDrop.fs" />
+    <Compile Include="TranslationController.fs" />
+    <Compile Include="RotationController.fs" />
+    <Compile Include="ScaleController.fs" />
     <Compile Include="PlaceTransformObjectsModel.fs" />
     <Compile Include="PlaceTransformObjects.fs" />
     <Compile Include="MeasurementsImporterApp.fs" />
