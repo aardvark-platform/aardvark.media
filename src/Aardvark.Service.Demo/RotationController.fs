@@ -92,17 +92,11 @@ module RotationController =
                 { m with grabbed = Some { offset = 0.0; axis = axis; hit = p } }
             | Release ->
                 match m.grabbed with
-                    | Some _ -> 
-                                            
+                    | Some _ ->   
                        let rot = m.workingPose |> Pose.toRotTrafo
-                       let p = { m.fullPose with rotation = m.fullPose.rotation * m.workingPose.rotation }
+                       let p = { m.pose with rotation = m.pose.rotation * m.workingPose.rotation }
 
-                       let t1 = p |> Pose.toTrafo
-                       let t2 = rot * m.fullTrafo
-
-                       Log.line "\n%A\n%A\n" t1.Forward t2.Forward
-
-                       { m with grabbed = None; workingPose = Pose.identity; fullTrafo = rot * m.fullTrafo; fullPose = p }
+                       { m with grabbed = None; workingPose = Pose.identity; pose = p }
                     | _ -> m
             | RotateRay rp ->
                 match m.grabbed with
@@ -181,6 +175,6 @@ module RotationController =
         
         Sg.ofList [circleX; circleY; circleZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
-        |> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale) //(m.fullTrafo)//
+        |> Sg.trafo (m.pose |> Mod.map Pose.trafoWoScale) //(m.fullTrafo)//
         |> Sg.noEvents        
         |> Aardvark.UI.``F# Sg``.Sg.map liftMessage                               

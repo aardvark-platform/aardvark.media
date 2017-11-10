@@ -38,7 +38,8 @@ type Pose =
             let rot = Trafo3d(Rot3d.op_Explicit x.rotation, Rot3d.op_Explicit x.rotation.Inverse)
             Trafo3d.Scale x.scale * rot *  Trafo3d.Translation x.position
 
-           
+     
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]      
 module Pose =
     let identity = { position = V3d.Zero; rotation = Rot3d.Identity; scale = V3d.III }
     let inline trafo (p : Pose) = p.Trafo
@@ -50,15 +51,13 @@ module Pose =
         Trafo3d.Scale x.scale * rot * Trafo3d.Translation x.position
     let trafoWoScale x = 
         (x |> toRotTrafo) * Trafo3d.Translation x.position
+    let toTranslateTrafo x =
+        Trafo3d.Translation x.position
 
 [<DomainType>]
 type Transformation = { 
-    pose          : Pose 
     workingPose   : Pose
-    fullPose      : Pose
-    fullTrafo     : Trafo3d
-    pivotTrafo    : Trafo3d
-
+    pose          : Pose
 
     mode          : TrafoMode
     //pivotLocation    : V3d

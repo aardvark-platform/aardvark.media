@@ -58,12 +58,12 @@ module TranslateController =
                 | Some _ ->                     
                     let trans = Trafo3d.Translation m.workingPose.position
 
-                    let rot = m.fullPose |> Pose.toRotTrafo
+                    let rot = m.pose |> Pose.toRotTrafo
                     let newPos = rot.Forward.TransformPos m.workingPose.position
 
-                    let pose = { m.fullPose with position = m.fullPose.position + newPos }
+                    let pose = { m.pose with position = m.pose.position + newPos }
 
-                    { m with grabbed = None; fullTrafo = trans * m.fullTrafo; workingPose = Pose.identity; fullPose = pose }
+                    { m with grabbed = None; workingPose = Pose.identity; pose = pose }
                 | None   -> m
             | MoveRay rp ->
                 match m.grabbed with
@@ -77,18 +77,11 @@ module TranslateController =
 
                      // implement mode switch here (t2)
 
-                     let rot = Rot3d.Identity
-                        //match m.mode with
-                        //  | TrafoMode.Global    -> -m.fullPose.rotation
-                        //  | TrafoMode.Local | _ -> Rot3d.Identity
-
                      let closestPoint = closestT rp axis
                      let shift = (closestPoint - offset) * other
                      //let trafo = Trafo3d.Translation ((closestPoint - offset) * other)
 
-
-
-                     { m with workingPose = { m.workingPose with position = shift; rotation = rot } }
+                     { m with workingPose = { m.workingPose with position = shift } }
                 | None -> m
             | SetMode a->
                 m    
@@ -109,9 +102,9 @@ module TranslateController =
             |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI + V3d(0.0,0.0,0.1),cylinderRadius + 0.1) |> PickShape.Cylinder)
             |> Sg.transform rot       
             |> Sg.uniform "HoverColor" col
-            |> Sg.trafo(m.pivotTrafo)
+            //|> Sg.trafo(m.pivotTrafo)
             |> Sg.trafo (m.workingPose |> Mod.map Pose.trafoWoScale)
-            |> Sg.trafo(m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
+            //|> Sg.trafo(m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
@@ -132,5 +125,6 @@ module TranslateController =
                 
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-        |> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale)//|> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale) //(m.fullPose |> Mod.map Pose.toTrafo)
+        //|> Sg.trafo (m.fullPose |> Mod.map Pose.toRotTrafo)
+        |> Sg.trafo (m.pose |> Mod.map Pose.toTranslateTrafo)//|> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale) //(m.fullPose |> Mod.map Pose.toTrafo)
         |> Sg.map liftMessage            

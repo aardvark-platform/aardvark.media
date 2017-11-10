@@ -58,10 +58,10 @@ module ScaleController =
                   | Some _ -> 
                     
                     let scale = Trafo3d.Scale m.workingPose.scale
-                    let p = { m.fullPose with scale = m.workingPose.scale }
+                    let p = { m.pose with scale = m.workingPose.scale }
                     
                     
-                    { m with grabbed = None; fullTrafo = scale * m.fullTrafo; fullPose = p; workingPose = Pose.identity }
+                    { m with grabbed = None; pose = p; workingPose = Pose.identity }
                   | None   -> m
             | MoveRay rp ->
                 match m.grabbed with
@@ -125,5 +125,5 @@ module ScaleController =
                 
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-        |> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale)
+        |> Sg.trafo (m.pose |> Mod.map Pose.trafoWoScale)
         |> Sg.map liftMessage               

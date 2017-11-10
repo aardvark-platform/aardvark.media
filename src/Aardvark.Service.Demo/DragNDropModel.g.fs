@@ -68,20 +68,14 @@ module Mutable =
     type MTransformation(__initial : DragNDrop.Transformation) =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation> = Aardvark.Base.Incremental.EqModRef<DragNDrop.Transformation>(__initial) :> Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation>
-        let _pose = ResetMod.Create(__initial.pose)
         let _workingPose = ResetMod.Create(__initial.workingPose)
-        let _fullPose = ResetMod.Create(__initial.fullPose)
-        let _fullTrafo = ResetMod.Create(__initial.fullTrafo)
-        let _pivotTrafo = ResetMod.Create(__initial.pivotTrafo)
+        let _pose = ResetMod.Create(__initial.pose)
         let _mode = ResetMod.Create(__initial.mode)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
         
-        member x.pose = _pose :> IMod<_>
         member x.workingPose = _workingPose :> IMod<_>
-        member x.fullPose = _fullPose :> IMod<_>
-        member x.fullTrafo = _fullTrafo :> IMod<_>
-        member x.pivotTrafo = _pivotTrafo :> IMod<_>
+        member x.pose = _pose :> IMod<_>
         member x.mode = _mode :> IMod<_>
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
@@ -91,11 +85,8 @@ module Mutable =
             if not (System.Object.ReferenceEquals(__current.Value, v)) then
                 __current.Value <- v
                 
-                ResetMod.Update(_pose,v.pose)
                 ResetMod.Update(_workingPose,v.workingPose)
-                ResetMod.Update(_fullPose,v.fullPose)
-                ResetMod.Update(_fullTrafo,v.fullTrafo)
-                ResetMod.Update(_pivotTrafo,v.pivotTrafo)
+                ResetMod.Update(_pose,v.pose)
                 ResetMod.Update(_mode,v.mode)
                 MOption.Update(_hovered, v.hovered)
                 MOption.Update(_grabbed, v.grabbed)
@@ -115,35 +106,17 @@ module Mutable =
     module Transformation =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
-            let pose =
-                { new Lens<DragNDrop.Transformation, DragNDrop.Pose>() with
-                    override x.Get(r) = r.pose
-                    override x.Set(r,v) = { r with pose = v }
-                    override x.Update(r,f) = { r with pose = f r.pose }
-                }
             let workingPose =
                 { new Lens<DragNDrop.Transformation, DragNDrop.Pose>() with
                     override x.Get(r) = r.workingPose
                     override x.Set(r,v) = { r with workingPose = v }
                     override x.Update(r,f) = { r with workingPose = f r.workingPose }
                 }
-            let fullPose =
+            let pose =
                 { new Lens<DragNDrop.Transformation, DragNDrop.Pose>() with
-                    override x.Get(r) = r.fullPose
-                    override x.Set(r,v) = { r with fullPose = v }
-                    override x.Update(r,f) = { r with fullPose = f r.fullPose }
-                }
-            let fullTrafo =
-                { new Lens<DragNDrop.Transformation, Aardvark.Base.Trafo3d>() with
-                    override x.Get(r) = r.fullTrafo
-                    override x.Set(r,v) = { r with fullTrafo = v }
-                    override x.Update(r,f) = { r with fullTrafo = f r.fullTrafo }
-                }
-            let pivotTrafo =
-                { new Lens<DragNDrop.Transformation, Aardvark.Base.Trafo3d>() with
-                    override x.Get(r) = r.pivotTrafo
-                    override x.Set(r,v) = { r with pivotTrafo = v }
-                    override x.Update(r,f) = { r with pivotTrafo = f r.pivotTrafo }
+                    override x.Get(r) = r.pose
+                    override x.Set(r,v) = { r with pose = v }
+                    override x.Update(r,f) = { r with pose = f r.pose }
                 }
             let mode =
                 { new Lens<DragNDrop.Transformation, DragNDrop.TrafoMode>() with

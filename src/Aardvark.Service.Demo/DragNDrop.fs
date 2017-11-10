@@ -143,9 +143,6 @@ module TrafoController =
             mode         = TrafoMode.Global
             workingPose  = Pose.identity
             pose         = Pose.identity
-            fullPose     = Pose.identity
-            fullTrafo    = Trafo3d.Identity
-            pivotTrafo   = Trafo3d.Identity
         }
 
 

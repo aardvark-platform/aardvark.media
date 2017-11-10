@@ -43,7 +43,7 @@ module App =
 
         let objs = 
             m.world.objects 
-                |> HMap.map(fun _ x -> {x with transformation = { x.transformation with mode = mode; pivotTrafo = pivot x.transformation.fullPose }})
+                |> HMap.map(fun _ x -> {x with transformation = { x.transformation with mode = mode;}})
 
         { m with mode = mode; world = { m.world with objects = objs;}}
 
@@ -150,10 +150,8 @@ module App =
                         //                      | _ -> Pose.trafoWoScale x                                            
                         //                )m.kind)
                         
-                        |> Sg.trafo (obj.transformation.pivotTrafo)
-                        |> Sg.trafo (obj.transformation.workingPose |> Mod.map Pose.toTrafo)
-                        |> Sg.trafo (obj.transformation.pivotTrafo |> Mod.map(fun x -> x.Inverse))
-                        |> Sg.trafo (obj.transformation.fullTrafo)
+                        |> Sg.trafo (obj.transformation.pose |> Mod.map Pose.toTrafo)
+                        |> Sg.trafo (obj.transformation.workingPose |> Mod.map Pose.toTranslateTrafo)
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
                         //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
@@ -206,7 +204,7 @@ module App =
                             { 
                                 name           = name
                                 objectType     = ObjectType.Box 
-                                transformation = { TrafoController.initial with pose = pose; fullPose = pose; fullTrafo = (Trafo3d.Translation pos) } 
+                                transformation = { TrafoController.initial with pose = pose; } 
                             }
                         yield name,newObject
         ]
@@ -222,9 +220,7 @@ module App =
             transformation = 
             { 
                 TrafoController.initial with 
-                    fullPose  = { Pose.identity with position = pos }
-                    fullTrafo = (Trafo3d.Translation pos)
-                    pose      = Pose.identity 
+                    pose      = { Pose.identity with position = pos }
             } 
         }
         [ name, newObject ] |>  HMap.ofList
