@@ -150,8 +150,9 @@ module App =
                         //                      | _ -> Pose.trafoWoScale x                                            
                         //                )m.kind)
                         
-                        |> Sg.trafo (obj.transformation.pose |> Mod.map Pose.toTrafo)
-                        |> Sg.trafo (obj.transformation.workingPose |> Mod.map Pose.toTranslateTrafo)
+//                        |> Sg.trafo (obj.transformation.pose |> Mod.map Pose.toTrafo)
+//                        |> Sg.trafo (obj.transformation.workingPose |> Mod.map Pose.toTranslateTrafo)
+                        |> Sg.trafo obj.transformation.previewTrafo
                         |> Sg.andAlso controller
                         //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
                         //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
@@ -214,13 +215,15 @@ module App =
     let one =
         let pos = V3d.OII * 0.5
         let name = singleGuid
+        let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
         let newObject = { 
             name           = name
             objectType     = ObjectType.Box
             transformation = 
             { 
                 TrafoController.initial with 
-                    pose      = { Pose.identity with position = pos }
+                    pose         = pose
+                    previewTrafo = Pose.toTrafo pose
             } 
         }
         [ name, newObject ] |>  HMap.ofList

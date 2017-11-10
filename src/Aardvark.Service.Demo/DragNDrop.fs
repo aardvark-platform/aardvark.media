@@ -143,6 +143,7 @@ module TrafoController =
             mode         = TrafoMode.Global
             workingPose  = Pose.identity
             pose         = Pose.identity
+            previewTrafo = Trafo3d.Identity
         }
 
 

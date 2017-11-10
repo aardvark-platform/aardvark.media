@@ -70,12 +70,14 @@ module Mutable =
         let mutable __current : Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation> = Aardvark.Base.Incremental.EqModRef<DragNDrop.Transformation>(__initial) :> Aardvark.Base.Incremental.IModRef<DragNDrop.Transformation>
         let _workingPose = ResetMod.Create(__initial.workingPose)
         let _pose = ResetMod.Create(__initial.pose)
+        let _previewTrafo = ResetMod.Create(__initial.previewTrafo)
         let _mode = ResetMod.Create(__initial.mode)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
         
         member x.workingPose = _workingPose :> IMod<_>
         member x.pose = _pose :> IMod<_>
+        member x.previewTrafo = _previewTrafo :> IMod<_>
         member x.mode = _mode :> IMod<_>
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
@@ -87,6 +89,7 @@ module Mutable =
                 
                 ResetMod.Update(_workingPose,v.workingPose)
                 ResetMod.Update(_pose,v.pose)
+                ResetMod.Update(_previewTrafo,v.previewTrafo)
                 ResetMod.Update(_mode,v.mode)
                 MOption.Update(_hovered, v.hovered)
                 MOption.Update(_grabbed, v.grabbed)
@@ -117,6 +120,12 @@ module Mutable =
                     override x.Get(r) = r.pose
                     override x.Set(r,v) = { r with pose = v }
                     override x.Update(r,f) = { r with pose = f r.pose }
+                }
+            let previewTrafo =
+                { new Lens<DragNDrop.Transformation, Aardvark.Base.Trafo3d>() with
+                    override x.Get(r) = r.previewTrafo
+                    override x.Set(r,v) = { r with previewTrafo = v }
+                    override x.Update(r,f) = { r with previewTrafo = f r.previewTrafo }
                 }
             let mode =
                 { new Lens<DragNDrop.Transformation, DragNDrop.TrafoMode>() with

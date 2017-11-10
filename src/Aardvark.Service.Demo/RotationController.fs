@@ -10,10 +10,11 @@ module RotationController =
     open Aardvark.Base.Rendering
     open Aardvark.Base.Geometry
    
+    open Aardvark.SceneGraph    
+
     open Aardvark.UI
     open Aardvark.UI.Primitives
 
-    open Aardvark.SceneGraph    
 
     type RayPart with
         member x.Transformed(t : Trafo3d) =
@@ -89,14 +90,25 @@ module RotationController =
 
                 //set pivot
                 
-                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p } }
+                { m with grabbed = Some { offset = 0.0; axis = axis; hit = p }; workingPose = Pose.identity }
             | Release ->
                 match m.grabbed with
                     | Some _ ->   
-                       let rot = m.workingPose |> Pose.toRotTrafo
-                       let p = { m.pose with rotation = m.pose.rotation * m.workingPose.rotation }
+//                       let rot = m.workingPose |> Pose.toRotTrafo
+//                       let p = { m.pose with rotation = m.pose.rotation * m.workingPose.rotation }
+//
+//                       { m with grabbed = None; workingPose = Pose.identity; pose = p 
+                         let pose,preview =
+                            match m.mode with
+                                | TrafoMode.Global ->
+                                     let result = { m.pose with rotation =  m.workingPose.rotation * m.pose.rotation  }
+                                     result, Pose.trafo result
+                                | TrafoMode.Local -> 
+                                    let result = { m.pose with rotation = m.pose.rotation * m.workingPose.rotation } 
+                                    result, Pose.toTrafo result
+                                | _ -> failwith ""
 
-                       { m with grabbed = None; workingPose = Pose.identity; pose = p }
+                         { m with pose = pose;  previewTrafo = preview; grabbed = None; workingPose = Pose.identity }
                     | _ -> m
             | RotateRay rp ->
                 match m.grabbed with
@@ -104,7 +116,17 @@ module RotationController =
                      let h, p = intersect rp (axis |> toCircle)
                      if h && (not hit.IsNaN) then                         
                          let rotation = Rot3d(hit.Normalized, p.Normalized)
-                         { m with workingPose = { m.workingPose with rotation = rotation } }
+                         let workingPose = { m.workingPose with rotation = rotation } 
+                         let _,preview =
+                            match m.mode with
+                                | TrafoMode.Global ->
+                                     let result = { m.pose with rotation =  workingPose.rotation * m.pose.rotation  }
+                                     result, Pose.trafo result
+                                | TrafoMode.Local -> 
+                                    let result = { m.pose with rotation = m.pose.rotation * workingPose.rotation } 
+                                    result, Pose.toTrafo result
+                                | _ -> failwith ""
+                         { m with workingPose = workingPose; previewTrafo = preview }
                      else 
                         m
                 | None -> m
@@ -127,54 +149,89 @@ module RotationController =
             let circle = Circle3d(V3d.Zero, dir, radius)
                
             RotationHandle.sg axis
+            |> Sg.noEvents
             |> Sg.uniform "HoverColor" col
             |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
-            |> Sg.trafo (m.workingPose |> Mod.map Pose.trafoWoScale) // scale hate
-            |> Sg.noEvents            
-            |> Sg.Incremental.withGlobalEvents ( 
+            
+
+            
+        let pickOnCircle dir axis =
+            let circle = Circle3d(V3d.Zero, dir, radius)        
+            Sg.empty 
+                |> Sg.Incremental.withGlobalEvents ( 
                     amap {                        
                         let! grabbed = m.grabbed
                         if grabbed.IsSome then
                             yield Global.onMouseMove (fun e -> RotateRay e.localRay)
                             yield Global.onMouseUp   (fun _ -> Release)
-                        else
-                            yield Global.onMouseMove (
-                                fun e -> 
-                                    let hit, p = intersect e.localRay circle
-                                    if hit then
-                                        let dist = (V3d.Distance(V3d.Zero, p))
-                                        if (dist > radius - 0.1 && dist < radius + 0.1) then
-                                            Hover axis
-                                        else                                            
-                                            m.hovered 
-                                              |> Mod.map(fun x ->
-                                                match x with
-                                                    | Some h when h = axis -> Unhover
-                                                    | _ -> Nop) |> Mod.force
-                                    else
-                                        Nop)
-                            yield Global.onMouseDown (
-                                fun e ->
-                                    m.hovered |> Mod.map(fun x ->
-                                        match x with
-                                          | Some h when h = axis -> 
-                                                Grab (e.localRay, axis)
-                                          | _ -> Nop
-                                    ) |> Mod.force
-
-                                    //torus.GetMinimalDistance
-                                    //check enter -> hover or unhover
-                                    //on click -> grab
-                                    )
                     }
-                )
+                   )
+                |> Sg.map liftMessage
 
-        let circleX = circle V3d.XAxis Axis.X
-        let circleY = circle V3d.YAxis Axis.Y
-        let circleZ = circle V3d.ZAxis Axis.Z
+        let hovering dir axis  =
+            let circle = Circle3d(V3d.Zero, dir, radius)   
+            Sg.empty 
+            |> Sg.withGlobalEvents [
+                    Global.onMouseMove (fun e -> 
+                            let hit, p = intersect e.localRay circle
+                            if hit then
+                                let dist = (V3d.Distance(V3d.Zero, p))
+                                if (dist > radius - 0.1 && dist < radius + 0.1) then
+                                    Hover axis
+                                else                                            
+                                    m.hovered 
+                                        |> Mod.map(fun x ->
+                                        match x with
+                                            | Some h when h = axis -> Unhover
+                                            | _ -> Nop) |> Mod.force
+                            else
+                                Nop
+                        );
+                    Global.onMouseDown (fun e ->
+                        m.hovered |> Mod.map(fun x ->
+                            match x with
+                                | Some h when h = axis -> 
+                                    Grab (e.localRay, axis)
+                                | _ -> Nop
+                        ) |> Mod.force
+                    )
+                ]
+            |> Sg.map liftMessage
+
+        let currentTrafo : IMod<Trafo3d> =
+            adaptive {
+                let! mode = m.mode
+                match mode with
+                    | TrafoMode.Local -> 
+                        return! m.previewTrafo
+                    | TrafoMode.Global -> 
+                        let! a = m.previewTrafo
+                        return Trafo3d.Translation(a.Forward.TransformPos(V3d.Zero))
+            }
+
+        let controller2 : IMod<Trafo3d> =
+            adaptive {
+                let! mode = m.mode
+                match mode with
+                    | TrafoMode.Local -> 
+                        return! m.pose |> Mod.map Pose.toTrafo
+                    | TrafoMode.Global -> 
+                        let! a = m.pose
+                        return Trafo3d.Translation(a.position)
+            }
+
+        let pickGraphs =
+            [
+                for (v,a) in [V3d.XAxis, Axis.X; V3d.YAxis, Axis.Y; V3d.ZAxis, Axis.Z] do
+                    yield pickOnCircle v a  |> Sg.trafo controller2
+                    yield hovering v a |> Sg.trafo currentTrafo
+            ] |> Sg.ofSeq 
         
-        Sg.ofList [circleX; circleY; circleZ ]
-        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
-        |> Sg.trafo (m.pose |> Mod.map Pose.trafoWoScale) //(m.fullTrafo)//
-        |> Sg.noEvents        
-        |> Aardvark.UI.``F# Sg``.Sg.map liftMessage                               
+        let scene =
+            Sg.ofList [circle V3d.XAxis Axis.X; circle V3d.YAxis Axis.Y; circle V3d.ZAxis Axis.Z ]
+            |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
+            |> Sg.trafo currentTrafo
+            |> Sg.noEvents        
+            |> Sg.map liftMessage   
+        
+        Sg.ofSeq [pickGraphs; scene]                            

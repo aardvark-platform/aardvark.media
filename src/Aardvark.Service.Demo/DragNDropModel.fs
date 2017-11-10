@@ -54,10 +54,17 @@ module Pose =
     let toTranslateTrafo x =
         Trafo3d.Translation x.position
 
+    let transform (p : Pose) (t : Trafo3d) = 
+        let newRot = Rot3d.FromFrame(t.Forward.C0.XYZ,t.Forward.C1.XYZ,t.Forward.C2.XYZ)
+        { position = t.Forward.TransformPosProj p.position; rotation = newRot; scale = t.Forward.TransformPos V3d.III } // wrong
+
+
+
 [<DomainType>]
 type Transformation = { 
     workingPose   : Pose
     pose          : Pose
+    previewTrafo  : Trafo3d
 
     mode          : TrafoMode
     //pivotLocation    : V3d

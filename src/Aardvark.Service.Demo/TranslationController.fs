@@ -52,18 +52,23 @@ module TranslateController =
                 //      | TrafoMode.Local | _ -> Trafo3d.Identity
 
                 let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }}
+                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }; workingPose = Pose.identity }
             | Release ->
                 match m.grabbed with
                 | Some _ ->                     
-                    let trans = Trafo3d.Translation m.workingPose.position
+                    let resultPose,preview =
+                        match m.mode with
+                            | TrafoMode.Global ->
+                                 let result = { m.pose with position = m.pose.position + m.workingPose.position }
+                                 result, Pose.trafo result
+                            | TrafoMode.Local -> 
+                                let rot = m.pose |> Pose.toRotTrafo
+                                let newPos = rot.Forward.TransformPos m.workingPose.position
+                                let result = { m.pose with position = m.pose.position + newPos } 
+                                result, Pose.toTrafo result
+                            | _ -> failwith ""
 
-                    let rot = m.pose |> Pose.toRotTrafo
-                    let newPos = rot.Forward.TransformPos m.workingPose.position
-
-                    let pose = { m.pose with position = m.pose.position + newPos }
-
-                    { m with grabbed = None; workingPose = Pose.identity; pose = pose }
+                    { m with grabbed = None; workingPose = Pose.identity; pose = resultPose; previewTrafo = preview }
                 | None   -> m
             | MoveRay rp ->
                 match m.grabbed with
@@ -81,7 +86,17 @@ module TranslateController =
                      let shift = (closestPoint - offset) * other
                      //let trafo = Trafo3d.Translation ((closestPoint - offset) * other)
 
-                     { m with workingPose = { m.workingPose with position = shift } }
+                     let workingPose = { m.workingPose with position = shift }
+
+                     let preview =
+                        match m.mode with
+                            | TrafoMode.Local -> 
+                                Pose.toTrafo workingPose * Pose.toTrafo m.pose
+                            | TrafoMode.Global -> 
+                                Pose.toTrafo m.pose * Pose.toTrafo workingPose // bug?
+                            | _ -> failwith ""
+
+                     { m with workingPose = workingPose; previewTrafo = preview }
                 | None -> m
             | SetMode a->
                 m    
@@ -103,28 +118,60 @@ module TranslateController =
             |> Sg.transform rot       
             |> Sg.uniform "HoverColor" col
             //|> Sg.trafo(m.pivotTrafo)
-            |> Sg.trafo (m.workingPose |> Mod.map Pose.trafoWoScale)
+            //|> Sg.trafo (m.workingPose |> Mod.map Pose.trafoWoScale)
             //|> Sg.trafo(m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
                ]
-            |> Sg.Incremental.withGlobalEvents ( 
-                    amap {
-                        let! grabbed = m.grabbed
-                        if grabbed.IsSome then
-                            yield Global.onMouseMove (fun e -> MoveRay e.localRay)
-                            yield Global.onMouseUp   (fun _ -> Release)
-                    }
-                )
+
+          
+        let controller2 : IMod<Trafo3d> =
+            adaptive {
+                let! mode = m.mode
+                match mode with
+                    | TrafoMode.Local -> 
+                        return! m.pose |> Mod.map Pose.toTrafo
+                    | TrafoMode.Global -> 
+                        let! a = m.pose
+                        return Trafo3d.Translation(a.position)
+            }
+
+        let pickGraph =
+            Sg.empty 
+                |> Sg.Incremental.withGlobalEvents ( 
+                        amap {
+                            let! grabbed = m.grabbed
+                            if grabbed.IsSome then
+                                yield Global.onMouseMove (fun e -> MoveRay e.localRay)
+                                yield Global.onMouseUp   (fun _ -> Release)
+                        }
+                    )
+                |> Sg.trafo controller2
+                |> Sg.map liftMessage
 
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
-                
-        Sg.ofList [arrowX; arrowY; arrowZ ]
-        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-        //|> Sg.trafo (m.fullPose |> Mod.map Pose.toRotTrafo)
-        |> Sg.trafo (m.pose |> Mod.map Pose.toTranslateTrafo)//|> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale) //(m.fullPose |> Mod.map Pose.toTrafo)
-        |> Sg.map liftMessage            
+          
+        let controller : IMod<Trafo3d> =
+            adaptive {
+                let! mode = m.mode
+                match mode with
+                    | TrafoMode.Local -> 
+                        return! m.previewTrafo
+                    | TrafoMode.Global -> 
+                        let! a = m.previewTrafo
+                        return Trafo3d.Translation(a.Forward.TransformPos(V3d.Zero))
+            }
+
+        let scene =      
+            Sg.ofList [arrowX; arrowY; arrowZ ]
+            |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
+            |> Sg.trafo controller
+            //|> Sg.trafo (m.fullPose |> Mod.map Pose.toRotTrafo)
+            //|> Sg.trafo (m.pose |> Mod.map Pose.toTrafo)//|> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale) //(m.fullPose |> Mod.map Pose.toTrafo)
+            |> Sg.map liftMessage   
+        
+        Sg.ofList [pickGraph; scene]         
