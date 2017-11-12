@@ -59,17 +59,7 @@ module RotationController =
                       |> Seq.toArray                      
                 
                 yield Sg.lines (Mod.constant(C4b.Red)) (Mod.constant(segments))
-            ] |> Sg.group
-     
-    let axisToV3d axis = 
-        match axis with 
-          | X -> V3d.XAxis
-          | Y -> V3d.YAxis
-          | Z -> V3d.ZAxis
-
-    let toCircle axis = 
-        let v = axis |> axisToV3d        
-        Circle3d(V3d.Zero, v, radius)        
+            ] |> Sg.group             
           
     let intersect (ray : RayPart) (circle:Circle3d) =
         let mutable p = V3d.NaN
@@ -94,7 +84,7 @@ module RotationController =
             | Unhover -> 
                 { m with hovered = None }
             | Grab (rp, axis) ->                
-                let _, p = intersect rp (axis |> toCircle)                
+                let _, p = intersect rp (axis |> Axis.toCircle Config.radius)                
                 { m with grabbed = Some { offset = 0.0; axis = axis; hit = p }; workingPose = Pose.identity }
             | Release ->
                 match m.grabbed with
@@ -106,7 +96,7 @@ module RotationController =
             | RotateRay rp ->
                 match m.grabbed with
                   | Some { offset = _; axis = axis; hit = hit } ->
-                    let h, p = intersect rp (axis |> toCircle)
+                    let h, p = intersect rp (axis |> Axis.toCircle Config.radius)
                     if h && (not hit.IsNaN) then                         
                         let rotation = Rot3d(hit.Normalized, p.Normalized)
                         let workingPose = { m.workingPose with rotation = rotation } 

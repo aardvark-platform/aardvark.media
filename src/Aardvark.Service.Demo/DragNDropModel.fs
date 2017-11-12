@@ -16,6 +16,17 @@ type Model = {
 
 type Axis = X | Y | Z
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Axis = 
+    let toV3d axis =
+      match axis with 
+        | X -> V3d.XAxis
+        | Y -> V3d.YAxis
+        | Z -> V3d.ZAxis
+
+    let toCircle r axis =        
+        Circle3d(V3d.Zero, (axis |> toV3d), r)
+
 type PickPoint =
     {
         offset : float
