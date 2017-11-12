@@ -135,6 +135,7 @@ module Matrix =
 module TrafoController = 
     open Aardvark.Base
     open Aardvark.Base.Geometry
+    open Aardvark.Base.Incremental
 
     let initial =
         { 
@@ -163,6 +164,20 @@ module TrafoController =
             | _,      _,      X -> C4b.Red
             | _,      _,      Y -> C4b.Green
             | _,      _,      Z -> C4b.Blue
+
+    let pickingTrafo (m:MTransformation) : IMod<Trafo3d> =
+        adaptive {
+            let! mode = m.mode
+            match mode with
+                | TrafoMode.Local -> 
+                    return! m.pose |> Mod.map Pose.toTrafo
+                | TrafoMode.Global -> 
+                    let! a = m.pose
+                    return Trafo3d.Translation(a.position)
+                | _ -> 
+                    return failwith ""
+        }
+
 
 module Shader =
     

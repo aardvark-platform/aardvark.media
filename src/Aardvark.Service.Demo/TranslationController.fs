@@ -78,13 +78,10 @@ module TranslateController =
                         match axis with
                         | X -> V3d.IOO
                         | Y -> V3d.OIO
-                        | Z -> V3d.OOI
-
-                     // implement mode switch here (t2)
+                        | Z -> V3d.OOI                     
 
                      let closestPoint = closestT rp axis
-                     let shift = (closestPoint - offset) * other
-                     //let trafo = Trafo3d.Translation ((closestPoint - offset) * other)
+                     let shift = (closestPoint - offset) * other                     
 
                      let workingPose = { m.workingPose with position = shift }
 
@@ -116,16 +113,12 @@ module TranslateController =
                 )
             |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI + V3d(0.0,0.0,0.1),cylinderRadius + 0.1) |> PickShape.Cylinder)
             |> Sg.transform rot       
-            |> Sg.uniform "HoverColor" col
-            //|> Sg.trafo(m.pivotTrafo)
-            //|> Sg.trafo (m.workingPose |> Mod.map Pose.trafoWoScale)
-            //|> Sg.trafo(m.pivotTrafo |> Mod.map(fun x -> x.Inverse))
+            |> Sg.uniform "HoverColor" col           
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
                ]
-
           
         let controller2 : IMod<Trafo3d> =
             adaptive {
@@ -136,6 +129,8 @@ module TranslateController =
                     | TrafoMode.Global -> 
                         let! a = m.pose
                         return Trafo3d.Translation(a.position)
+                    | _ -> 
+                        return failwith ""
             }
 
         let pickGraph =
@@ -148,7 +143,7 @@ module TranslateController =
                                 yield Global.onMouseUp   (fun _ -> Release)
                         }
                     )
-                |> Sg.trafo controller2
+                |> Sg.trafo (TrafoController.pickingTrafo m)
                 |> Sg.map liftMessage
 
         let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
@@ -164,14 +159,14 @@ module TranslateController =
                     | TrafoMode.Global -> 
                         let! a = m.previewTrafo
                         return Trafo3d.Translation(a.Forward.TransformPos(V3d.Zero))
+                    | _ -> 
+                        return failwith ""
             }
 
         let scene =      
             Sg.ofList [arrowX; arrowY; arrowZ ]
             |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-            |> Sg.trafo controller
-            //|> Sg.trafo (m.fullPose |> Mod.map Pose.toRotTrafo)
-            //|> Sg.trafo (m.pose |> Mod.map Pose.toTrafo)//|> Sg.trafo (m.fullPose |> Mod.map Pose.trafoWoScale) //(m.fullPose |> Mod.map Pose.toTrafo)
+            |> Sg.trafo controller            
             |> Sg.map liftMessage   
         
         Sg.ofList [pickGraph; scene]         

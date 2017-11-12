@@ -34,12 +34,7 @@ module App =
                 | None -> false
         )
 
-    let updateMode mode m = 
-
-        let pivot fullPose = 
-            match m.mode with
-                | TrafoMode.Global -> fullPose |> Pose.toTrafo
-                | TrafoMode.Local | _ -> Trafo3d.Identity
+    let updateMode mode m =        
 
         let objs = 
             m.world.objects 
@@ -98,12 +93,7 @@ module App =
     
 
     let viewScene (m : MScene) =
-
-        let plane = 
-            Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.OOO,V3d(10.0,10.0,-0.1)))
-            //|> Sg.requirePicking
-            |> Sg.noEvents        
-
+        
         let objects =
             aset {
                 for (name,obj) in m.world.objects |> AMap.toASet do
@@ -142,20 +132,9 @@ module App =
                                 let! selected = selected
                                 if not selected then
                                     yield Sg.onDoubleClick (fun _ -> Select name)
-                            } )                                
-                        //|> Sg.trafo (obj.transformation.workingPose 
-                        //                |> Mod.map2(fun k x -> 
-                        //                    match k with 
-                        //                      | TrafoKind.Scale -> Pose.toTrafo x
-                        //                      | _ -> Pose.trafoWoScale x                                            
-                        //                )m.kind)
-                        
-//                        |> Sg.trafo (obj.transformation.pose |> Mod.map Pose.toTrafo)
-//                        |> Sg.trafo (obj.transformation.workingPose |> Mod.map Pose.toTranslateTrafo)
+                            } )                                                       
                         |> Sg.trafo obj.transformation.previewTrafo
-                        |> Sg.andAlso controller
-                        //|> Sg.trafo (Mod.time |> Mod.map (fun t -> Trafo3d.RotationX(float t.Ticks / float System.TimeSpan.TicksPerSecond)))
-                        //|> Sg.transform (Trafo3d.RotationX(Constant.PiHalf))
+                        |> Sg.andAlso controller                        
             } |> Sg.set
 
         Sg.ofSeq [ objects; ]
@@ -238,7 +217,7 @@ module App =
                     camera = CameraController.initial' 2.0
                     kind = TrafoKind.Rotate 
                     mode = TrafoMode.Local
-                }
+                } |> updateMode TrafoMode.Local
             update = update
             view = view
         }
