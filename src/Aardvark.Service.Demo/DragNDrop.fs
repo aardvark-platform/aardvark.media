@@ -155,6 +155,7 @@ module TrafoController =
         | Grab    of RayPart * Axis
         | Release
         | SetMode of TrafoMode
+        | Nop
 
     let colorMatch axis = 
         fun g h ->

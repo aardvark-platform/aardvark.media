@@ -14,6 +14,8 @@ module ScaleController =
 
     open DragNDrop
 
+    open TrafoController
+
     type RayPart with
         member x.Transformed(t : Trafo3d) =
             RayPart(FastRay3d(x.Ray.Ray.Transformed(t.Forward)), x.TMin, x.TMax)
@@ -24,14 +26,7 @@ module ScaleController =
         let coneRadius     = 0.03
         let cylinderRadius = 0.015
         let tessellation   = 8
-
-    type ControllerAction = 
-        | Hover   of Axis
-        | Unhover 
-        | MoveRay of RayPart
-        | Grab    of RayPart * Axis
-        | Release
-        
+    
     let closestT (r : RayPart) (axis : Axis) =
         let other =
             match axis with
@@ -44,7 +39,7 @@ module ScaleController =
         r.Ray.Ray.GetMinimalDistanceTo(other,&unused,&t) |> ignore
         t
 
-    let updateController (m : Transformation) (a : ControllerAction) =
+    let updateController (m : Transformation) (a : TrafoController.Action) =
         match a with
             | Hover axis -> 
                 { m with hovered = Some axis }
@@ -55,12 +50,9 @@ module ScaleController =
                 { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN } } 
             | Release ->                
                 match m.grabbed with
-                  | Some _ -> 
-                    
+                  | Some _ ->                     
                     let scale = Trafo3d.Scale m.workingPose.scale
-                    let p = { m.pose with scale = m.workingPose.scale }
-                    
-                    
+                    let p = { m.pose with scale = m.workingPose.scale }                                        
                     { m with grabbed = None; pose = p; workingPose = Pose.identity }
                   | None   -> m
             | MoveRay rp ->
@@ -76,15 +68,14 @@ module ScaleController =
                         | Y -> V3d.OIO * drag + V3d.One
                         | Z -> V3d.OOI * drag + V3d.One                    
 
-                    //let trafo = Trafo3d.Scale (scale)
-
-                    
                     { m with workingPose = { m.workingPose with scale = scale }}
                 | None -> m
+            | Nop -> m
+            | SetMode _ -> m
 
     
 
-    let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (m : MTransformation) =
                 
         let box = Sg.box' C4b.Red (Box3d.FromCenterAndSize(V3d.OOI, V3d(coneHeight)))
 

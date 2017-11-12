@@ -95,8 +95,8 @@ module TranslateController =
 
                      { m with workingPose = workingPose; previewTrafo = preview }
                 | None -> m
-            | SetMode a->
-                m    
+            | SetMode a-> m 
+            | Nop -> m
 
     let viewController (liftMessage : TrafoController.Action -> 'msg) (m : MTransformation) =
         
@@ -118,20 +118,7 @@ module TranslateController =
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
-               ]
-          
-        let controller2 : IMod<Trafo3d> =
-            adaptive {
-                let! mode = m.mode
-                match mode with
-                    | TrafoMode.Local -> 
-                        return! m.pose |> Mod.map Pose.toTrafo
-                    | TrafoMode.Global -> 
-                        let! a = m.pose
-                        return Trafo3d.Translation(a.position)
-                    | _ -> 
-                        return failwith ""
-            }
+               ]                  
 
         let pickGraph =
             Sg.empty 

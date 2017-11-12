@@ -20,8 +20,8 @@ module App =
         | SetKind       of TrafoKind
         | SetMode       of TrafoMode
         | Translate     of string * TrafoController.Action
-        | Rotate        of string * RotationController.ControllerAction
-        | Scale         of string * ScaleController.ControllerAction
+        | Rotate        of string * TrafoController.Action
+        | Scale         of string * TrafoController.Action
         | CameraMessage of CameraController.Message
         | KeyDown       of key : Aardvark.Application.Keys
         | Unselect

@@ -15,6 +15,8 @@ module RotationController =
     open Aardvark.UI
     open Aardvark.UI.Primitives
 
+    open TrafoController
+
 
     type RayPart with
         member x.Transformed(t : Trafo3d) =
@@ -26,13 +28,13 @@ module RotationController =
         let radius    = 1.0
         let tesselation = 32.0    
 
-    type ControllerAction = 
-      | Hover of Axis
-      | Unhover 
-      | RotateRay of RayPart
-      | Grab of RayPart * Axis
-      | Release
-      | Nop
+    //type ControllerAction = 
+    //  | Hover of Axis
+    //  | Unhover 
+    //  | RotateRay of RayPart
+    //  | Grab of RayPart * Axis
+    //  | Release
+    //  | Nop
     
     module RotationHandle = 
         
@@ -77,7 +79,7 @@ module RotationController =
                 result, Pose.toTrafo result
             | _ -> failwith ""
 
-    let updateController (m : Transformation) (a : ControllerAction) =
+    let updateController (m : Transformation) (a : TrafoController.Action) =
         match a with
             | Hover axis -> 
                 { m with hovered = Some axis }
@@ -93,7 +95,7 @@ module RotationController =
 
                     { m with pose = pose;  previewTrafo = preview; grabbed = None; workingPose = Pose.identity }
                   | _ -> m
-            | RotateRay rp ->
+            | MoveRay rp ->
                 match m.grabbed with
                   | Some { offset = _; axis = axis; hit = hit } ->
                     let h, p = intersect rp (axis |> Axis.toCircle Config.radius)
@@ -107,8 +109,9 @@ module RotationController =
                     m
                   | None -> m
             | Nop -> m
+            | SetMode _ -> m
 
-    let viewController (liftMessage : ControllerAction -> 'msg) (m : MTransformation) : ISg<'msg> =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (m : MTransformation) : ISg<'msg> =
             
         let circle axis =
             let col =
@@ -125,7 +128,7 @@ module RotationController =
                     amap {                        
                         let! grabbed = m.grabbed
                         if grabbed.IsSome then
-                            yield Global.onMouseMove (fun e -> RotateRay e.localRay)
+                            yield Global.onMouseMove (fun e -> MoveRay e.localRay)
                             yield Global.onMouseUp   (fun _ -> Release)
                     }
                    )
