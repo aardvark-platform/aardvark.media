@@ -111,7 +111,9 @@ module RotationController =
             | Nop -> m
             | SetMode _ -> m
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (m : MTransformation) : ISg<'msg> =
+    
+
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (scaling : IMod<V3d> -> IMod<float>) (m : MTransformation) : ISg<'msg> =
             
         let circle axis =
             let col =
@@ -177,16 +179,20 @@ module RotationController =
                         return failwith ""
             }        
 
+        let scaleTrafo =            
+            currentTrafo |> Mod.map(fun x -> x.Forward.C3.XYZ) |> scaling |> Mod.map Trafo3d.Scale
+            
         let pickGraphs =
             [
                 for (v,a) in [V3d.XAxis, Axis.X; V3d.YAxis, Axis.Y; V3d.ZAxis, Axis.Z] do
                     yield pickOnCircle |> Sg.trafo (TrafoController.pickingTrafo m)
-                    yield hovering v a |> Sg.trafo currentTrafo
+                    yield hovering v a |> Sg.trafo scaleTrafo |> Sg.trafo currentTrafo
             ] |> Sg.ofSeq 
         
         let scene =
             Sg.ofList [circle Axis.X; circle Axis.Y; circle Axis.Z ]
             |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
+            |> Sg.trafo scaleTrafo
             |> Sg.trafo currentTrafo
             |> Sg.noEvents        
             |> Sg.map liftMessage   

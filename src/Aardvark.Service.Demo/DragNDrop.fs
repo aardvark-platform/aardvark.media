@@ -179,6 +179,25 @@ module TrafoController =
                     return failwith ""
         }
 
+module Sg =
+    open Aardvark.Base
+    open Aardvark.Base.Incremental
+
+    let computeInvariantScale (view : IMod<CameraView>) (near : IMod<float>) (p:IMod<V3d>) (size:IMod<float>) (hfov:IMod<float>) =
+        adaptive {
+            let! p = p
+            let! v = view
+            let! near = near
+            let! size = size
+            let! hfov = hfov
+            let hfov_rad = Conversion.RadiansFromDegrees(hfov)
+               
+            let wz = Fun.Tan(hfov_rad / 2.0) * near * size
+            let dist = V3d.Distance(p, v.Location)
+
+            return ( wz / near ) * dist
+        }
+
 
 module Shader =
     

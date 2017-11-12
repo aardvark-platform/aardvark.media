@@ -98,7 +98,7 @@ module TranslateController =
             | SetMode a-> m 
             | Nop -> m
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (scaling : IMod<V3d> -> IMod<float>) (m : MTransformation) =
         
         let arrow rot axis =
             let col =
@@ -118,7 +118,10 @@ module TranslateController =
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
-               ]                  
+               ]           
+               
+        let scaleTrafo (t:IMod<Trafo3d>) =
+            t |> Mod.map(fun x -> x.Forward.C3.XYZ) |> scaling |> Mod.map Trafo3d.Scale
 
         let pickGraph =
             Sg.empty 
@@ -129,7 +132,8 @@ module TranslateController =
                                 yield Global.onMouseMove (fun e -> MoveRay e.localRay)
                                 yield Global.onMouseUp   (fun _ -> Release)
                         }
-                    )
+                    )                
+                |> Sg.trafo (scaleTrafo (TrafoController.pickingTrafo m))
                 |> Sg.trafo (TrafoController.pickingTrafo m)
                 |> Sg.map liftMessage
 
@@ -137,7 +141,7 @@ module TranslateController =
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
           
-        let controller : IMod<Trafo3d> =
+        let currentTrafo : IMod<Trafo3d> =
             adaptive {
                 let! mode = m.mode
                 match mode with
@@ -153,7 +157,8 @@ module TranslateController =
         let scene =      
             Sg.ofList [arrowX; arrowY; arrowZ ]
             |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
-            |> Sg.trafo controller            
+            |> Sg.trafo (scaleTrafo currentTrafo)
+            |> Sg.trafo currentTrafo            
             |> Sg.map liftMessage   
         
         Sg.ofList [pickGraph; scene]         

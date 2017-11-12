@@ -99,29 +99,33 @@ module App =
                 for (name,obj) in m.world.objects |> AMap.toASet do
                     let selected = ASet.contains name m.world.selectedObjects
                     let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
+                  
+                    let scaling pos= 
+                        Sg.computeInvariantScale m.camera.view (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0)                    
 
                     let controller =
                         adaptive {
 
-                            let! sel  = selected
-                            let! kind = m.kind                            
-
+                            let! sel  = selected                            
+                            let! kind = m.kind                                              
+                            
                             let sg =
                                 match sel with 
                                     | true ->
                                         match kind with
                                           | TrafoKind.Translate -> 
-                                                TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) obj.transformation
+                                                TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) scaling obj.transformation
                                           | TrafoKind.Rotate    -> 
-                                                RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) obj.transformation
+                                                RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) scaling obj.transformation
                                           | TrafoKind.Scale     -> 
-                                                ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) obj.transformation
+                                                ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) scaling obj.transformation
                                           | _ -> Sg.empty
                                     
                                     | false -> Sg.ofList []
 
                             return sg
-                        } |> Sg.dynamic
+                        } |> Sg.dynamic 
+                        
 
                     yield 
                         Sg.box color (Box3d.FromCenterAndSize(V3d.OOO,V3d.III*0.5) |> Mod.constant)
@@ -184,7 +188,7 @@ module App =
                             { 
                                 name           = name
                                 objectType     = ObjectType.Box 
-                                transformation = { TrafoController.initial with pose = pose; } 
+                                transformation = { TrafoController.initial with pose = pose; previewTrafo = Pose.toTrafo pose }
                             }
                         yield name,newObject
         ]
@@ -192,7 +196,7 @@ module App =
     let singleGuid = System.Guid.NewGuid() |> string
 
     let one =
-        let pos = V3d.OII * 0.5
+        let pos = V3d.OII * 1.0
         let name = singleGuid
         let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
         let newObject = { 
@@ -213,7 +217,7 @@ module App =
             threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
             initial = 
                 { 
-                    world = { objects = one; selectedObjects = HSet.empty |> HSet.add singleGuid }
+                    world = { objects = many; selectedObjects = HSet.empty }
                     camera = CameraController.initial' 2.0
                     kind = TrafoKind.Rotate 
                     mode = TrafoMode.Local

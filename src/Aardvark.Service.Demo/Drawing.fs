@@ -138,7 +138,7 @@ module Drawing =
             ]
     module Sg =        
 
-        let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =        
+        let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =
             adaptive {
                 let! p = p
                 let! v = view

@@ -52,7 +52,7 @@ module ScaleController =
                 match m.grabbed with
                   | Some _ ->                     
                     let scale = Trafo3d.Scale m.workingPose.scale
-                    let p = { m.pose with scale = m.workingPose.scale }                                        
+                    let p = { m.pose with scale = m.workingPose.scale }
                     { m with grabbed = None; pose = p; workingPose = Pose.identity }
                   | None   -> m
             | MoveRay rp ->
@@ -75,7 +75,7 @@ module ScaleController =
 
     
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (scaling : IMod<V3d> -> IMod<float>) (m : MTransformation) =
                 
         let box = Sg.box' C4b.Red (Box3d.FromCenterAndSize(V3d.OOI, V3d(coneHeight)))
 
