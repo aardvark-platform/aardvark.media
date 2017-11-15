@@ -74,7 +74,7 @@ let kitchenSink argv =
     //let app = OrbitCameraDemo.app
     //let app = ColorPicker.app
     //let app = Vector3d.app
-    //let app = NavigationModeDemo.app
+   // let app = NavigationModeDemo.app
     //let app = Simple2DDrawingApp.app
     //let app = SimpleScaleApp.app
 

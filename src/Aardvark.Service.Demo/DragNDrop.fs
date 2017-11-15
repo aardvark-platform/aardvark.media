@@ -82,135 +82,52 @@ module App =
 
     let start() = App.start app
 
-module Matrix = 
-    open Aardvark.Base
-    open Aardvark.Base.Incremental
+//module Matrix = 
+//    open Aardvark.Base
+//    open Aardvark.Base.Incremental
 
-    let decomp (m:M44d) = 
+//    let decomp (m:M44d) = 
 
-        let t = m.C3.XYZ
+//        let t = m.C3.XYZ
 
-        let sx = m.C0.XYZ.Length
-        let sy = m.C1.XYZ.Length
-        let sz = m.C2.XYZ.Length
+//        let sx = m.C0.XYZ.Length
+//        let sy = m.C1.XYZ.Length
+//        let sz = m.C2.XYZ.Length
 
-        let s = V3d(sx, sy, sz)
+//        let s = V3d(sx, sy, sz)
 
-        let rc0 = m.C0.XYZ / s.X
-        let rc1 = m.C1.XYZ / s.Y
-        let rc2 = m.C2.XYZ / s.Z
+//        let rc0 = m.C0.XYZ / s.X
+//        let rc1 = m.C1.XYZ / s.Y
+//        let rc2 = m.C2.XYZ / s.Z
 
-        let r : M33d = M33d.FromCols(rc0, rc1, rc2)        
+//        let r : M33d = M33d.FromCols(rc0, rc1, rc2)        
 
-        s,r,t
+//        s,r,t
 
-    //let expandRot (m:M33d) =
-    //    M44d.
+//    //let expandRot (m:M33d) =
+//    //    M44d.
 
-    let decomp' (t:Trafo3d) = 
+//    let decomp' (t:Trafo3d) = 
 
-        let fs,fr,ft = decomp t.Forward
-        let _, br,_ = decomp t.Backward
+//        let fs,fr,ft = decomp t.Forward
+//        let _, br,_ = decomp t.Backward
 
-        let s = Trafo3d.Scale fs
-        let t = Trafo3d.Translation ft
+//        let s = Trafo3d.Scale fs
+//        let t = Trafo3d.Translation ft
 
-        let a = fr |> Rot3d.FromM33d |> M44d.Rotation
-        let b = br |> Rot3d.FromM33d |> M44d.Rotation
+//        let a = fr |> Rot3d.FromM33d |> M44d.Rotation
+//        let b = br |> Rot3d.FromM33d |> M44d.Rotation
                        
-        s, Trafo3d(a, b), t
+//        s, Trafo3d(a, b), t
 
-    let filterTrafo (mode : IMod<TrafoMode>) (trafo : IMod<Trafo3d>)=
-        adaptive {
-            let! tr = trafo
-            let! m = mode
-            let t = 
-                match m with
-                  | TrafoMode.Global -> Trafo3d.Translation(tr.Forward.C3.XYZ)
-                  | TrafoMode.Local | _ -> tr
+//    let filterTrafo (mode : IMod<TrafoMode>) (trafo : IMod<Trafo3d>)=
+//        adaptive {
+//            let! tr = trafo
+//            let! m = mode
+//            let t = 
+//                match m with
+//                  | TrafoMode.Global -> Trafo3d.Translation(tr.Forward.C3.XYZ)
+//                  | TrafoMode.Local | _ -> tr
                  
-            return  t
-        }
-
-module TrafoController = 
-    open Aardvark.Base
-    open Aardvark.Base.Geometry
-    open Aardvark.Base.Incremental
-
-    let initial =
-        { 
-            hovered      = None
-            grabbed      = None
-            mode         = TrafoMode.Global
-            workingPose  = Pose.identity
-            pose         = Pose.identity
-            previewTrafo = Trafo3d.Identity
-        }
-
-
-    type Action = 
-        | Hover   of Axis
-        | Unhover 
-        | MoveRay of RayPart
-        | Grab    of RayPart * Axis
-        | Release
-        | SetMode of TrafoMode
-        | Nop
-
-    let colorMatch axis = 
-        fun g h ->
-            match h, g, axis with
-            | _,      Some g, p when g = p -> C4b.Yellow
-            | Some h, None,   p when h = p -> C4b.White
-            | _,      _,      X -> C4b.Red
-            | _,      _,      Y -> C4b.Green
-            | _,      _,      Z -> C4b.Blue
-
-    let pickingTrafo (m:MTransformation) : IMod<Trafo3d> =
-        adaptive {
-            let! mode = m.mode
-            match mode with
-                | TrafoMode.Local -> 
-                    return! m.pose |> Mod.map Pose.toTrafo
-                | TrafoMode.Global -> 
-                    let! a = m.pose
-                    return Trafo3d.Translation(a.position)
-                | _ -> 
-                    return failwith ""
-        }
-
-module Sg =
-    open Aardvark.Base
-    open Aardvark.Base.Incremental
-
-    let computeInvariantScale (view : IMod<CameraView>) (near : IMod<float>) (p:IMod<V3d>) (size:IMod<float>) (hfov:IMod<float>) =
-        adaptive {
-            let! p = p
-            let! v = view
-            let! near = near
-            let! size = size
-            let! hfov = hfov
-            let hfov_rad = Conversion.RadiansFromDegrees(hfov)
-               
-            let wz = Fun.Tan(hfov_rad / 2.0) * near * size
-            let dist = V3d.Distance(p, v.Location)
-
-            return ( wz / near ) * dist
-        }
-
-
-module Shader =
-    
-    open FShade
-    open Aardvark.Base
-    open Aardvark.Base.Rendering.Effects
-
-    let hoverColor (v : Vertex) =
-        vertex {
-            let c : V4d = uniform?HoverColor
-            return { v with c = c }
-        }
-
-
-
-
+//            return  t
+//        }

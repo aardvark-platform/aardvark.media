@@ -1,4 +1,4 @@
-namespace DragNDrop
+namespace Aardvark.UI.Trafos
 
 module RotationController =
     
@@ -13,8 +13,6 @@ module RotationController =
     open Aardvark.SceneGraph    
 
     open Aardvark.UI
-    open Aardvark.UI.Primitives
-
     open TrafoController
 
 

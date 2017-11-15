@@ -15,7 +15,7 @@ module Mutable =
         let mutable __current : Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Object> = Aardvark.Base.Incremental.EqModRef<PlaceTransformObjects.Object>(__initial) :> Aardvark.Base.Incremental.IModRef<PlaceTransformObjects.Object>
         let _name = ResetMod.Create(__initial.name)
         let _objectType = ResetMod.Create(__initial.objectType)
-        let _transformation = DragNDrop.Mutable.MTransformation.Create(__initial.transformation)
+        let _transformation = Aardvark.UI.Trafos.Mutable.MTransformation.Create(__initial.transformation)
         
         member x.name = _name :> IMod<_>
         member x.objectType = _objectType :> IMod<_>
@@ -28,7 +28,7 @@ module Mutable =
                 
                 ResetMod.Update(_name,v.name)
                 ResetMod.Update(_objectType,v.objectType)
-                DragNDrop.Mutable.MTransformation.Update(_transformation, v.transformation)
+                Aardvark.UI.Trafos.Mutable.MTransformation.Update(_transformation, v.transformation)
                 
         
         static member Create(__initial : PlaceTransformObjects.Object) : MObject = MObject(__initial)
@@ -58,7 +58,7 @@ module Mutable =
                     override x.Update(r,f) = { r with objectType = f r.objectType }
                 }
             let transformation =
-                { new Lens<PlaceTransformObjects.Object, DragNDrop.Transformation>() with
+                { new Lens<PlaceTransformObjects.Object, Aardvark.UI.Trafos.Transformation>() with
                     override x.Get(r) = r.transformation
                     override x.Set(r,v) = { r with transformation = v }
                     override x.Update(r,f) = { r with transformation = f r.transformation }
@@ -156,13 +156,13 @@ module Mutable =
                     override x.Update(r,f) = { r with world = f r.world }
                 }
             let kind =
-                { new Lens<PlaceTransformObjects.Scene, PlaceTransformObjects.TrafoKind>() with
+                { new Lens<PlaceTransformObjects.Scene, Aardvark.UI.Trafos.TrafoKind>() with
                     override x.Get(r) = r.kind
                     override x.Set(r,v) = { r with kind = v }
                     override x.Update(r,f) = { r with kind = f r.kind }
                 }
             let mode =
-                { new Lens<PlaceTransformObjects.Scene, DragNDrop.TrafoMode>() with
+                { new Lens<PlaceTransformObjects.Scene, Aardvark.UI.Trafos.TrafoMode>() with
                     override x.Get(r) = r.mode
                     override x.Set(r,v) = { r with mode = v }
                     override x.Update(r,f) = { r with mode = f r.mode }

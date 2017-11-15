@@ -1,19 +1,14 @@
-namespace DragNDrop
+namespace Aardvark.UI.Trafos
 
 module ScaleController =
 
     open Aardvark.Base
-    open Aardvark.Base.Incremental
-    
+    open Aardvark.Base.Incremental    
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
-    open Aardvark.UI
-    open Aardvark.UI.Primitives
-
     open Aardvark.Base.Geometry
-
-    open DragNDrop
-
+    open Aardvark.UI    
+    
     open TrafoController
 
     type RayPart with
@@ -110,9 +105,9 @@ module ScaleController =
                     }
                 )
 
-        let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
-        let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
-        let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
+        let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf)  Axis.X
+        let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Axis.Y
+        let arrowZ = arrow (Trafo3d.RotationY 0.0)              Axis.Z
                 
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        

@@ -60,6 +60,11 @@
   <ItemGroup>
     <Compile Include="UI.Primitives.Models.fs" />
     <Compile Include="UI.Primitives.fs" />
+    <Compile Include="TrafoControls\TrafoModel.fs" />
+    <Compile Include="TrafoControls\TrafoController.fs" />
+    <Compile Include="TrafoControls\TranslationController.fs" />
+    <Compile Include="TrafoControls\RotationController.fs" />
+    <Compile Include="TrafoControls\ScaleController.fs" />
     <Compile Include="CameraModel.fs" />
     <Compile Include="CameraController.fs" />
     <None Include="paket.references" />

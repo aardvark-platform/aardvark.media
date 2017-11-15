@@ -1,6 +1,5 @@
 ﻿namespace PlaceTransformObjects
 
-
 module App =
 
     open Aardvark.Base
@@ -13,6 +12,7 @@ module App =
     open Aardvark.UI.Primitives
     open Aardvark.Base.Geometry
     open PlaceTransformObjects
+    open Aardvark.UI.Trafos
 
     type Action = 
         | PlaceBox 

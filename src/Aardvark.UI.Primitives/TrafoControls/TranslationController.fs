@@ -1,4 +1,4 @@
-namespace DragNDrop
+namespace Aardvark.UI.Trafos
 
 module TranslateController =
 
@@ -7,13 +7,10 @@ module TranslateController =
     
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
-    open Aardvark.UI
-    open Aardvark.UI.Primitives
-
     open Aardvark.Base.Geometry
-    open TrafoController
+    open Aardvark.UI        
 
-    open DragNDrop
+    open TrafoController
 
     type RayPart with
         member x.Transformed(t : Trafo3d) =
@@ -137,9 +134,9 @@ module TranslateController =
                 |> Sg.trafo (TrafoController.pickingTrafo m)
                 |> Sg.map liftMessage
 
-        let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf) X
-        let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Y
-        let arrowZ = arrow (Trafo3d.RotationY 0.0) Z
+        let arrowX = arrow (Trafo3d.RotationY Constant.PiHalf)  Axis.X
+        let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Axis.Y
+        let arrowZ = arrow (Trafo3d.RotationY 0.0)              Axis.Z
           
         let currentTrafo : IMod<Trafo3d> =
             adaptive {

@@ -162,13 +162,13 @@ module SimpleCompositionViewer =
 
     let start () = App.start app
 
-module OrbitCameraDemo =     
+module OrbitCameraDemo =         
     
     type Action =
-        | CameraMessage    of ArcBallController.Message
-        | RenderingAction  of RenderingProperties.Action                
-        | V3dMessage       of Vector3d.Action
-        | ColorMessage     of ColorPicker.Action
+        | CameraMessage     of ArcBallController.Message
+        | RenderingAction   of RenderingProperties.Action                
+        | V3dMessage        of Vector3d.Action
+        | ColorMessage      of ColorPicker.Action
         | ChangeSensitivity of Numeric.Action
 
     let update (model : OrbitCameraDemoModel) (act : Action) =
