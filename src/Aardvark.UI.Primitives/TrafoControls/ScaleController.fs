@@ -110,6 +110,6 @@ module ScaleController =
         let arrowZ = arrow (Trafo3d.RotationY 0.0)              Axis.Z
                 
         Sg.ofList [arrowX; arrowY; arrowZ ]
-        |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
+        |> Sg.effect [ Shader.stableTrafo |> toEffect; Shader.hoverColor |> toEffect]
         |> Sg.trafo (m.pose |> Mod.map Pose.trafoWoScale)
         |> Sg.map liftMessage               

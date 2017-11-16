@@ -189,7 +189,7 @@ module RotationController =
         
         let scene =
             Sg.ofList [circle Axis.X; circle Axis.Y; circle Axis.Z ]
-            |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
+            |> Sg.effect [ Shader.stableTrafo |> toEffect; Shader.hoverColor |> toEffect] //; DefaultSurfaces.simpleLighting |> toEffect        
             |> Sg.trafo scaleTrafo
             |> Sg.trafo currentTrafo
             |> Sg.noEvents        

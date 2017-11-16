@@ -103,13 +103,46 @@ module Sg =
 
 
 module Shader =
+        
+    open Aardvark.Base
+    open Aardvark.Base.IO
+    open Aardvark.Base.Rendering
+    open Aardvark.Base.Rendering.Effects
     
     open FShade
-    open Aardvark.Base
-    open Aardvark.Base.Rendering.Effects
+
+    type Vertex =
+        {
+            [<Position>]                pos     : V4d            
+            [<WorldPosition>]           wp      : V4d
+            [<TexCoord>]                tc      : V2d
+            [<Color>]                   c       : V4d
+            [<Normal>]                  n       : V3d
+            [<Semantic("Scalar")>]      scalar  : float
+            [<Semantic("LightDir")>]    ldir    : V3d
+        }
 
     let hoverColor (v : Vertex) =
         vertex {
             let c : V4d = uniform?HoverColor
             return { v with c = c }
         }
+
+    [<ReflectedDefinition>]
+    let transformNormal (n : V3d) =
+        uniform.ModelViewTrafoInv.Transposed * V4d(n, 0.0)
+            |> Vec.xyz
+            |> Vec.normalize
+
+    let stableTrafo (v : Vertex) =
+        vertex {
+            let vp = uniform.ModelViewTrafo * v.pos
+            let wp = uniform.ModelTrafo * v.pos
+            return { 
+                v with
+                    pos  = uniform.ProjTrafo * vp
+                    wp   = wp
+                    n    = transformNormal v.n
+                    ldir = V3d.Zero - vp.XYZ |> Vec.normalize
+            } 
+        } 

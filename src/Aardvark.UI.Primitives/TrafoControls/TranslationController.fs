@@ -153,7 +153,7 @@ module TranslateController =
 
         let scene =      
             Sg.ofList [arrowX; arrowY; arrowZ ]
-            |> Sg.effect [ DefaultSurfaces.trafo |> toEffect; Shader.hoverColor |> toEffect; DefaultSurfaces.simpleLighting |> toEffect]        
+            |> Sg.effect [ Shader.stableTrafo |> toEffect; Shader.hoverColor |> toEffect]
             |> Sg.trafo (scaleTrafo currentTrafo)
             |> Sg.trafo currentTrafo            
             |> Sg.map liftMessage   
