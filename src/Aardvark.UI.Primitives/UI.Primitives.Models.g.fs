@@ -396,8 +396,8 @@ module Mutable =
                 match __model with
                     | Node(value,properties,children) -> 
                         __current <- __model
-                        MLeafValue.Update(_value,value)
-                        MProperties.Update(_properties,properties)
+                        MLeafValue.Update(_value, value)
+                        MProperties.Update(_properties, properties)
                         _children.Update(children)
                         true
                     | _ -> false
@@ -419,7 +419,7 @@ module Mutable =
                 match __model with
                     | Leaf(value) -> 
                         __current <- __model
-                        MLeafValue.Update(_value,value)
+                        MLeafValue.Update(_value, value)
                         true
                     | _ -> false
     

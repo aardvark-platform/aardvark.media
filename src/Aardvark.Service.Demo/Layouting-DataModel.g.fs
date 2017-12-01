@@ -93,8 +93,8 @@ module Mutable =
                 match __model with
                     | Vertical(item1,item2) -> 
                         __current <- __model
-                        MTree.Update(_item1,item1)
-                        MTree.Update(_item2,item2)
+                        MTree.Update(_item1, item1)
+                        MTree.Update(_item2, item2)
                         true
                     | _ -> false
     
@@ -117,8 +117,8 @@ module Mutable =
                 match __model with
                     | Horizontal(item1,item2) -> 
                         __current <- __model
-                        MTree.Update(_item1,item1)
-                        MTree.Update(_item2,item2)
+                        MTree.Update(_item1, item1)
+                        MTree.Update(_item2, item2)
                         true
                     | _ -> false
     
@@ -139,7 +139,7 @@ module Mutable =
                 match __model with
                     | Leaf(item) -> 
                         __current <- __model
-                        MTab.Update(_item,item)
+                        MTab.Update(_item, item)
                         true
                     | _ -> false
     
