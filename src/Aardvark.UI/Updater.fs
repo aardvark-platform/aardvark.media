@@ -17,6 +17,7 @@ type UpdateState<'msg> =
         scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
         handlers            : Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
         references          : Dictionary<string * ReferenceKind, Reference>
+        activeChannels      : Dict<string * string, ChannelReader>
     }
 
 type IUpdater<'msg> =
@@ -25,6 +26,8 @@ type IUpdater<'msg> =
     abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
 
     //abstract member Html : AdaptiveToken -> 
+
+
 
 
 [<AbstractClass>]
@@ -250,6 +253,11 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
         for (name,cb) in Map.toSeq ui.Callbacks do
             state.handlers.Remove (id,name) |> ignore
                 
+        for (name, _) in Map.toSeq ui.Channels do
+            match state.activeChannels.TryRemove ((id, name)) with
+                | (true, r) -> r.Dispose()
+                | _ -> ()
+
 
         rAtt.Dispose()
         match ui.Shutdown with
@@ -294,12 +302,23 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
 
             match ui.Boot with
                 | Some getBootCode ->
-//                    for c in ui.Channels do
-//                        state.activeChannels.[(id,c.Name)] <- c
-//                    let prefix = ui.Channels |> List.map (fun c -> sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" c.Name id c.Name) |> String.concat "\r\n"
-                    let prefix = ""
                     let boot = getBootCode id
-                    code.Add(Raw (prefix + boot))
+                    if Map.isEmpty ui.Channels then
+                        code.Add(Raw boot)
+                    else 
+                        for (name, c) in Map.toSeq ui.Channels do
+                            state.activeChannels.[(id,name)] <- c.GetReader()
+
+                        let prefix = 
+                            ui.Channels 
+                            |> Map.toList
+                            |> List.map (fun (name, _) -> 
+                                sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" name id name
+                            ) 
+                            |> String.concat "\r\n"
+                        
+                        code.Add(Raw (prefix + "\r\n" + boot))
+
                 | None ->
                     ()
 
@@ -309,6 +328,7 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
 
 
     new(ui : DomNode<'msg>) = DomUpdater<'msg>(ui, newId())
+
 
 
 [<AutoOpen>]

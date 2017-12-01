@@ -563,13 +563,16 @@ class Channel {
 
 
     received(data) {
-        if (data === "commit-suicide") {
-            console.debug("[Aardvark] channel " + this.name + " was closed")
-            delete aardvark.channels[name];
-        }
-        else {
-            if (this._recv) {
-                this._recv(data);
+        if (this._recv) {
+            for (var i = 0; i < data.length; i++) {
+                var jmsg = data[i];
+                var msg = JSON.parse(jmsg);
+                if (msg === "commit-suicide") {
+                    console.debug("[Aardvark] channel " + this.name + " was closed")
+                    delete aardvark.channels[name];
+                    break;
+                }
+                this._recv(msg);
             }
         }
     }
@@ -650,11 +653,13 @@ if (!aardvark.connect) {
 
         eventSocket.onmessage = function (m) {
             var c = m.data.substring(0, 1);
-            var data = m.data.substring(1, m.data.length);
             if (c === "x") {
+                var data = m.data.substring(1, m.data.length);
                 eval("{\r\n" + data + "\r\n}");
             }
             else {
+                var data = m.data;
+                // { targetId : string; channel : string; data : 'a }
                 var message = JSON.parse(data);
                 var channelName = message.targetId + "_" + message.channel;
                 var channel = aardvark.channels[channelName];
