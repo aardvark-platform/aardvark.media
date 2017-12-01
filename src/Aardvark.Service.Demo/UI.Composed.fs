@@ -66,7 +66,7 @@ module AnnotationProperties =
     open Aardvark.Base
     
     type Action = 
-        | SetGeometry     of Geometry
+        | SetGeometry     of PRo3DModels.Geometry
         | SetProjection   of Projection
         | ChangeThickness of Numeric.Action
         | SetText         of string
