@@ -639,7 +639,7 @@ module D3Axis =
     let view (model:MD3AxisInput) = 
         require [
                 { kind = Script; name = "d3"; url = "https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" }
-                { kind = Script; name = "d3AxisTest"; url = "d3axis.js" }]
+                { kind = Script; name = "d3Test"; url = "d3Test.js" }]
             (
                     Incremental.div AttributeMap.empty (
                         alist {

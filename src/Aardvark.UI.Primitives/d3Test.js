@@ -53,3 +53,79 @@ function stackMax(serie) {
 }
 				
 }
+
+function HiliteAxis(id, minValue, maxValue, tickCount) {
+    var host = d3.select(id);
+
+    var svg = host.append("svg").attr("preserveAspectRatio", "xMinYMin meet").attr("viewBox", "0 0 500 500").classed("svg-content", true);
+
+    // var svg = d3.select(id),
+    // width = +svg.attr("width"),
+    // height = +svg.attr("height");
+
+    var margin = {
+        top: 50,
+        right: 20,
+        left: 10,
+        bottom: 10
+    };
+
+    //var innerWidth = width - margin.left - margin.right;
+    //var innerHeight = height - margin.top - margin.bottom;
+
+    var xScale = d3.scaleLinear().domain([minValue, maxValue]).range([margin.left, 500 - margin.right]);
+
+    var ticks = xScale.ticks(tickCount)
+
+    if (ticks.indexOf(maxValue) < 0) {
+        ticks.push(maxValue)
+    }
+
+    if (ticks.indexOf(minValue) < 0) {
+        ticks.unshift(minValue);
+    }
+
+    var xAxisB = d3.axisBottom(xScale).tickSizeInner(5).tickSizeOuter(15).tickValues(ticks)
+
+
+    var ticks2 = xScale.ticks(tickCount * 2)
+
+    if (ticks2.indexOf(maxValue) < 0) {
+        ticks2.push(maxValue)
+    }
+
+    if (ticks2.indexOf(minValue) < 0) {
+        ticks2.unshift(minValue);
+    }
+
+    var xAxisT = d3.axisTop(xScale).tickSize(20).tickValues(ticks2)
+
+
+    svg.append("g")
+        .attr('transform', 'translate(0,' + margin.top + ')')
+        .classed('x axis', true)
+        .call(xAxisT).selectAll("text").remove();
+
+    svg.append('g')
+        .attr('transform', 'translate(0,' + margin.top + ')')
+        .classed('x axis', true)
+        .call(xAxisB);
+
+    // CREATE CUSTOM SUB-SELECTIONS
+    d3.selection.prototype.first = function () {
+        return d3.select(this._groups[0][0]);
+    };
+
+    d3.selection.prototype.last = function () {
+        var last = this.size() - 1;
+        return d3.select(this._groups[0][last]);
+    };
+
+    // SHIFT THE END LABELS
+    var tickLabels = svg.selectAll('.axis.x .tick text');
+
+    tickLabels.first().attr('transform', 'translate(0,10)');
+    tickLabels.last().attr('transform', 'translate(0,10)');
+
+    //(d3.selectAll("text")._groups[0][9]).attr('transform', 'translate(0,10)');
+}
