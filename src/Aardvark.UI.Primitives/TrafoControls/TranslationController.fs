@@ -78,7 +78,7 @@ module TranslateController =
                         | Z -> V3d.OOI                     
 
                      let closestPoint = closestT rp axis
-                     let shift = (closestPoint - offset) * other                     
+                     let shift = (closestPoint - offset) * other         
 
                      let workingPose = { m.workingPose with position = shift }
 
@@ -95,7 +95,7 @@ module TranslateController =
             | SetMode a-> m 
             | Nop -> m
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (scaling : IMod<V3d> -> IMod<float>) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : IMod<CameraView>) (m : MTransformation) =
         
         let arrow rot axis =
             let col =
@@ -118,7 +118,9 @@ module TranslateController =
                ]           
                
         let scaleTrafo (t:IMod<Trafo3d>) =
-            t |> Mod.map(fun x -> x.Forward.C3.XYZ) |> scaling |> Mod.map Trafo3d.Scale
+            let pos = t |> Mod.map(fun x -> x.Forward.C3.XYZ) 
+            let scale = Sg.computeInvariantScale v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) 
+            scale |> Mod.map Trafo3d.Scale
 
         let pickGraph =
             Sg.empty 

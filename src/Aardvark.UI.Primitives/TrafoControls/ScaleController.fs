@@ -70,7 +70,7 @@ module ScaleController =
 
     
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (scaling : IMod<V3d> -> IMod<float>) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : IMod<CameraView>) (m : MTransformation) =
                 
         let box = Sg.box' C4b.Red (Box3d.FromCenterAndSize(V3d.OOI, V3d(coneHeight)))
 

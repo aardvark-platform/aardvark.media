@@ -111,7 +111,7 @@ module RotationController =
 
     
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (scaling : IMod<V3d> -> IMod<float>) (m : MTransformation) : ISg<'msg> =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : IMod<CameraView>) (m : MTransformation) : ISg<'msg> =
             
         let circle axis =
             let col =
@@ -177,8 +177,10 @@ module RotationController =
                         return failwith ""
             }        
 
-        let scaleTrafo =            
-            currentTrafo |> Mod.map(fun x -> x.Forward.C3.XYZ) |> scaling |> Mod.map Trafo3d.Scale
+        let scaleTrafo =
+            let pos = currentTrafo |> Mod.map(fun x -> x.Forward.C3.XYZ) 
+            let scale = Sg.computeInvariantScale v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) 
+            scale |> Mod.map Trafo3d.Scale        
             
         let pickGraphs =
             [

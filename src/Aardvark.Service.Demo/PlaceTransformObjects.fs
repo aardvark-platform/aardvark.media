@@ -99,10 +99,7 @@ module App =
                 for (name,obj) in m.world.objects |> AMap.toASet do
                     let selected = ASet.contains name m.world.selectedObjects
                     let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
-                  
-                    let scaling pos= 
-                        Sg.computeInvariantScale m.camera.view (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0)                    
-
+                                                                                  
                     let controller =
                         adaptive {
 
@@ -114,11 +111,11 @@ module App =
                                     | true ->
                                         match kind with
                                           | TrafoKind.Translate -> 
-                                                TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) scaling obj.transformation
+                                                TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) m.camera.view obj.transformation
                                           | TrafoKind.Rotate    -> 
-                                                RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) scaling obj.transformation
+                                                RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) m.camera.view obj.transformation
                                           | TrafoKind.Scale     -> 
-                                                ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) scaling obj.transformation
+                                                ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) m.camera.view obj.transformation
                                           | _ -> Sg.empty
                                     
                                     | false -> Sg.ofList []
@@ -218,7 +215,7 @@ module App =
             initial = 
                 { 
                     world = { objects = many; selectedObjects = HSet.empty }
-                    camera = CameraController.initial' 2.0
+                    camera = CameraController.initial' 20.0
                     kind = TrafoKind.Rotate 
                     mode = TrafoMode.Local
                 } |> updateMode TrafoMode.Local
