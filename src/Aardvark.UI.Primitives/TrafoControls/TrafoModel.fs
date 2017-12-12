@@ -37,6 +37,7 @@ type Transformation = {
     workingPose   : Pose
     pose          : Pose
     previewTrafo  : Trafo3d
+    scale         : float
 
     mode          : TrafoMode
     //pivotLocation    : V3d

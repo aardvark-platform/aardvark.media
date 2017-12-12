@@ -19,15 +19,29 @@ module Axis =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]      
 module Pose =
     let identity = { position = V3d.Zero; rotation = Rot3d.Identity; scale = V3d.III }
+
     let inline trafo (p : Pose) = p.Trafo
+
     let translate p = { position = p; rotation = Rot3d.Identity; scale = V3d.III }
+
     let toRotTrafo x = 
         Trafo3d(Rot3d.op_Explicit x.rotation, Rot3d.op_Explicit x.rotation.Inverse)
+
+    let toRotTrafo' (pose:IMod<Pose>) : IMod<Trafo3d> = 
+        pose |> Mod.map(fun x -> Trafo3d(Rot3d.op_Explicit x.rotation, Rot3d.op_Explicit x.rotation.Inverse))
+
     let toTrafo x = 
         let rot = x |> toRotTrafo
         Trafo3d.Scale x.scale * rot * Trafo3d.Translation x.position
+
+    let toTrafo' (pose : IMod<Pose>) : IMod<Trafo3d> =
+        pose |> Mod.map(fun x ->
+            let rot = x |> toRotTrafo
+            Trafo3d.Scale x.scale * rot * Trafo3d.Translation x.position)        
+
     let trafoWoScale x = 
         (x |> toRotTrafo) * Trafo3d.Translation x.position
+
     let toTranslateTrafo x =
         Trafo3d.Translation x.position
 
@@ -49,6 +63,7 @@ module TrafoController =
             workingPose  = Pose.identity
             pose         = Pose.identity
             previewTrafo = Trafo3d.Identity
+            scale        = 1.0
         }
 
     type Action = 
@@ -82,11 +97,14 @@ module TrafoController =
                     return failwith ""
         }
 
+    let getTranslation (t : IMod<Trafo3d>) =
+        t |> Mod.map(fun x -> x.Forward.C3.XYZ)
+
 module Sg =
     open Aardvark.Base
     open Aardvark.Base.Incremental
 
-    let computeInvariantScale (view : IMod<CameraView>) (near : IMod<float>) (p:IMod<V3d>) (size:IMod<float>) (hfov:IMod<float>) =
+    let computeInvariantScale' (view : IMod<CameraView>) (near : IMod<float>) (p:IMod<V3d>) (size:IMod<float>) (hfov:IMod<float>) =
         adaptive {
             let! p = p
             let! v = view
@@ -100,6 +118,14 @@ module Sg =
 
             return ( wz / near ) * dist
         }
+
+    let computeInvariantScale (view : CameraView) (near : float) (p : V3d) (size : float) (hfov : float) =                    
+        let hfov_rad = Conversion.RadiansFromDegrees(hfov)               
+        let wz = Fun.Tan(hfov_rad / 2.0) * near * size
+        let dist = V3d.Distance(p, view.Location)
+
+        ( wz / near ) * dist
+        
 
 
 module Shader =

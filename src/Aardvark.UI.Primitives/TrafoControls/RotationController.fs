@@ -179,7 +179,7 @@ module RotationController =
 
         let scaleTrafo =
             let pos = currentTrafo |> Mod.map(fun x -> x.Forward.C3.XYZ) 
-            let scale = Sg.computeInvariantScale v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) 
+            let scale = Sg.computeInvariantScale' v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) 
             scale |> Mod.map Trafo3d.Scale        
             
         let pickGraphs =

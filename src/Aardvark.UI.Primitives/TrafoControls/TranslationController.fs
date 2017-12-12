@@ -42,12 +42,6 @@ module TranslateController =
             | Unhover -> 
                 { m with hovered = None }
             | Grab (rp, axis) ->
-
-                //let pivot = 
-                //    match m.mode with
-                //      | TrafoMode.Global -> m.fullPose |> Pose.toTrafo
-                //      | TrafoMode.Local | _ -> Trafo3d.Identity
-
                 let offset = closestT rp axis
                 { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }; workingPose = Pose.identity }
             | Release ->
@@ -115,12 +109,10 @@ module TranslateController =
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
                     Sg.onLeave        (fun _ ->   Unhover) 
-               ]           
+               ]
                
-        let scaleTrafo (t:IMod<Trafo3d>) =
-            let pos = t |> Mod.map(fun x -> x.Forward.C3.XYZ) 
-            let scale = Sg.computeInvariantScale v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) 
-            scale |> Mod.map Trafo3d.Scale
+        let scaleTrafo pos =            
+            Sg.computeInvariantScale' v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) |> Mod.map Trafo3d.Scale
 
         let pickGraph =
             Sg.empty 
@@ -132,7 +124,7 @@ module TranslateController =
                                 yield Global.onMouseUp   (fun _ -> Release)
                         }
                     )                
-                |> Sg.trafo (scaleTrafo (TrafoController.pickingTrafo m))
+                |> Sg.trafo (m.pose |> Pose.toTrafo' |> TrafoController.getTranslation |> scaleTrafo)
                 |> Sg.trafo (TrafoController.pickingTrafo m)
                 |> Sg.map liftMessage
 
@@ -156,7 +148,7 @@ module TranslateController =
         let scene =      
             Sg.ofList [arrowX; arrowY; arrowZ ]
             |> Sg.effect [ Shader.stableTrafo |> toEffect; Shader.hoverColor |> toEffect]
-            |> Sg.trafo (scaleTrafo currentTrafo)
+            |> Sg.trafo (currentTrafo |> TrafoController.getTranslation |> scaleTrafo)
             |> Sg.trafo currentTrafo            
             |> Sg.map liftMessage   
         
