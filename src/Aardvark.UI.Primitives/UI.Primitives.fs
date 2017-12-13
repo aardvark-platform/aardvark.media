@@ -225,8 +225,8 @@ module Html =
                      yield onChange (fun _ -> toggle)
 
                      let! check = state
-                     let checkText = if check then "checked" else ""
-                     yield "checked" => checkText
+                     if check then
+                        yield "checked" => ""
                 }
 
       //      div [clazz "ui toggle checkbox"] [
