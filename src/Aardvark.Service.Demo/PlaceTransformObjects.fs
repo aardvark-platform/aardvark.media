@@ -52,7 +52,7 @@ module App =
                 else { m with camera = CameraController.update m.camera a }
             | PlaceBox -> 
                 let name = System.Guid.NewGuid() |> string
-                let newObject = { name = name; objectType = ObjectType.Box; transformation = TrafoController.initial }
+                let newObject = { name = name; objectType = ObjectType.Box Box3d.Unit; transformation = TrafoController.initial }
                 let world = { m.world with objects = HMap.add name newObject m.world.objects }
                 { m with world = world }
             | Select n -> 
@@ -103,7 +103,7 @@ module App =
                     let controller =
                         adaptive {
 
-                            let! sel  = selected                            
+                            let! sel  = selected
                             let! kind = m.kind                                              
                             
                             let sg =
@@ -123,9 +123,15 @@ module App =
                             return sg
                         } |> Sg.dynamic 
                         
-
+                    let box = 
+                        obj.objectType 
+                          |> Mod.map(fun x -> 
+                            match x with
+                              | ObjectType.Box b -> b
+                              | _ -> failwith "object type not supported"                            
+                            )
                     yield 
-                        Sg.box color (Box3d.FromCenterAndSize(V3d.OOO,V3d.III*0.5) |> Mod.constant)
+                        Sg.box color box
                         |> Sg.requirePicking 
                         |> Sg.noEvents
                         |> Sg.Incremental.withEvents (
@@ -134,6 +140,10 @@ module App =
                                 if not selected then
                                     yield Sg.onDoubleClick (fun _ -> Select name)
                             } )                                                       
+                        |> Sg.trafo (obj.objectType |> Mod.map(fun x -> 
+                            match x with 
+                              | ObjectType.Box b -> Trafo3d.Translation -b.Center
+                              | _ -> failwith "object type not supported"))
                         |> Sg.trafo obj.transformation.previewTrafo
                         |> Sg.andAlso controller                        
             } |> Sg.set
@@ -180,11 +190,13 @@ module App =
                     for z in 0 .. 2 do
                         let name = System.Guid.NewGuid() |> string
                         let pos = V3d(float i, float j, float z)
+                        let box = Box3d.FromCenterAndSize(pos, V3d.One * 0.5)
+
                         let pose = Pose.translate pos
                         let newObject = 
                             { 
                                 name           = name
-                                objectType     = ObjectType.Box 
+                                objectType     = ObjectType.Box box
                                 transformation = { TrafoController.initial with pose = pose; previewTrafo = Pose.toTrafo pose }
                             }
                         yield name,newObject
@@ -193,12 +205,14 @@ module App =
     let singleGuid = System.Guid.NewGuid() |> string
 
     let one =
-        let pos = V3d.OII * 1.0
+        let pos = V3d.OII
+        let box = Box3d.FromCenterAndSize(pos, V3d.One * 0.5)
+        let pose = Pose.translate pos
         let name = singleGuid
-        let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
+//        let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
         let newObject = { 
             name           = name
-            objectType     = ObjectType.Box
+            objectType     = ObjectType.Box box
             transformation = 
             { 
                 TrafoController.initial with 

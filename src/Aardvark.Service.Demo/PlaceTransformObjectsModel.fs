@@ -8,7 +8,8 @@ open DragNDrop
 open Aardvark.UI.Trafos
 
 type ObjectType = 
-    Sphere = 0 | Box = 1
+    | Sphere of V3d * float 
+    | Box of Box3d
 
 [<DomainType>]
 type Object =
