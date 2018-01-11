@@ -22,4 +22,12 @@ type Model = {
     animation : Animate
     cameraState : CameraControllerState
     animations  : plist<Animation<Model,CameraView,CameraView>>
+    pending : Option<Message>
 }
+and Message =
+    | Tick of Time
+    | PushAnimation of Animation<Model,CameraView,CameraView>
+    | CameraMessage of CameraControllerMessage
+    | RemoveAnimation of Index
+    | TellMeMore
+    | AskForMore

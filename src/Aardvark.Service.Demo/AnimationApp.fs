@@ -19,11 +19,6 @@ module Lens =
     let update (l : Lens<'m,'a>) (s : 'm) (f : 'a -> 'a) =
         l.Update(s,f)
 
-type Message =
-    | Tick of Time
-    | PushAnimation of Animation<Model,CameraView,CameraView>
-    | CameraMessage of CameraControllerMessage
-    | RemoveAnimation of Index
 
 let shouldAnimate (m : Model) =
     m.animation = Animate.On && PList.count m.animations > 0
@@ -50,7 +45,7 @@ module CameraAnimations =
                 else None
         }
 
-let update (m : Model) (msg : Message) =
+let update (m : Model) (msg : Message )  =
     match msg with
         | CameraMessage msg when not (shouldAnimate m) -> 
             CameraController.update' msg |> Lens.update Model.Lens.cameraState m 
@@ -74,6 +69,12 @@ let update (m : Model) (msg : Message) =
             { m with animations = PList.remove i m.animations }
         | Tick _ -> m // not allowed to animate
         | CameraMessage _ -> m // not allowed to camera around
+        | TellMeMore -> 
+            printfn "tell me more tell me more..."
+            { m with pending = None }
+        | AskForMore -> 
+            printfn "asked for more"
+            { m with pending = Some TellMeMore }
     
 
 let viewScene (m : MModel) =
@@ -101,6 +102,8 @@ let view (m : MModel) =
                         Incremental.div AttributeMap.empty <| AList.mapi (fun i a ->
                             button [onClick (fun _ -> RemoveAnimation i)] [text a.name]
                         ) m.animations
+
+                        button [onClick (fun _ -> AskForMore)] [text "Tell me more"]
                     ]
                 ]
             ]
@@ -117,12 +120,37 @@ let rec time() =
     }
 
 let threads (m : Model) = 
-    let pool = CameraController.threads m.cameraState |> ThreadPool.map CameraMessage
+    let cameraAnimations = CameraController.threads m.cameraState |> ThreadPool.map CameraMessage
        
+    let pendingActions =
+        proclist {
+            match m.pending with
+                | None -> ()
+                | Some a -> 
+                    printfn "starting"
+                    let heavyComputation =
+                        async {
+                            do! Async.SwitchToThreadPool()
+                            let mutable a = 0
+                            let mutable cnt = 10000000
+                            do 
+                                for i in 0 .. cnt do 
+                                    if i % 10000 = 0 then printfn "%f percent" ((float i / float cnt)*100.0)
+                                    a <- a + 1
+                            return a
+                        }
+                    let! result = Proc.Await heavyComputation
+                    printfn "done: %A" result
+                    yield a
+        }
+
+    let pendingActions = ThreadPool.add (System.Guid.NewGuid() |> string) pendingActions cameraAnimations
+
     if shouldAnimate m then
-        ThreadPool.add "timer" (time()) pool
+        ThreadPool.add "timer" (time()) pendingActions
     else
-        pool
+        pendingActions
+
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
     {
@@ -136,6 +164,7 @@ let app =
                    }
                animations = PList.empty
                animation = Animate.On
+               pending = None
             }
         update = update 
         view = view
