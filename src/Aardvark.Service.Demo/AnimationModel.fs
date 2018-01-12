@@ -19,6 +19,7 @@ type Animate = On = 0 | Off = 1
 
 type TaskId = string
 
+
 [<DomainType>]
 type Model = {
     animation : Animate
@@ -26,6 +27,7 @@ type Model = {
     animations  : plist<Animation<Model,CameraView,CameraView>>
     pending : Option<Pending>
     loadTasks : hset<TaskId>
+    progress : hmap<string,float>
 }
 and Message =
     | Tick of Time
@@ -35,6 +37,8 @@ and Message =
     | Ping
     | Pong
     | StartAsyncOperation
-    | AsyncOperationComplete of TaskId
+    | AsyncOperationComplete of TaskId * float
+    | Progress of TaskId * float
+    | StopTask of TaskId
 
 and Pending = { message : Message; id : string}

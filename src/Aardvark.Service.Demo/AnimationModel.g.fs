@@ -18,12 +18,14 @@ module Mutable =
         let _animations = MList.Create(__initial.animations)
         let _pending = MOption.Create(__initial.pending)
         let _loadTasks = MSet.Create(__initial.loadTasks)
+        let _progress = MMap.Create(__initial.progress)
         
         member x.animation = _animation :> IMod<_>
         member x.cameraState = _cameraState
         member x.animations = _animations :> alist<_>
         member x.pending = _pending :> IMod<_>
         member x.loadTasks = _loadTasks :> aset<_>
+        member x.progress = _progress :> amap<_,_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : AnimationModel.Model) =
@@ -35,6 +37,7 @@ module Mutable =
                 MList.Update(_animations, v.animations)
                 MOption.Update(_pending, v.pending)
                 MSet.Update(_loadTasks, v.loadTasks)
+                MMap.Update(_progress, v.progress)
                 
         
         static member Create(__initial : AnimationModel.Model) : MModel = MModel(__initial)
@@ -80,4 +83,10 @@ module Mutable =
                     override x.Get(r) = r.loadTasks
                     override x.Set(r,v) = { r with loadTasks = v }
                     override x.Update(r,f) = { r with loadTasks = f r.loadTasks }
+                }
+            let progress =
+                { new Lens<AnimationModel.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,Microsoft.FSharp.Core.float>>() with
+                    override x.Get(r) = r.progress
+                    override x.Set(r,v) = { r with progress = v }
+                    override x.Update(r,f) = { r with progress = f r.progress }
                 }

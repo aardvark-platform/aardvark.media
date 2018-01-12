@@ -79,9 +79,14 @@ let update (m : Model) (msg : Message )  =
             let name = System.Guid.NewGuid() |> string
             printfn "starting async operation: %s" name
             { m with loadTasks = HSet.add name m.loadTasks }
-        | AsyncOperationComplete name -> 
-            printfn "operation complete: %s" name
-            { m with loadTasks = HSet.remove name m.loadTasks }
+        | AsyncOperationComplete (name,result) -> 
+            printfn "operation complete: %s, result was: %A" name result
+            { m with loadTasks = HSet.remove name m.loadTasks; progress = HMap.remove name m.progress }
+        | Message.Progress(name,progress) ->    
+            { m with progress = HMap.add name progress m.progress }
+        | StopTask name -> 
+            printfn "stopping task: %s" name
+            { m with loadTasks = HSet.remove name m.loadTasks; progress = HMap.remove name m.progress }
     
 
 let viewScene (m : MModel) =
@@ -110,9 +115,15 @@ let view (m : MModel) =
                             button [onClick (fun _ -> RemoveAnimation i)] [text a.name]
                         ) m.animations
 
-                        button [onClick (fun _ -> Ping)] [text "Tell me more"]
+                        button [clazz "ui button"; onClick (fun _ -> Ping)] [text "Tell me more"]
                         br []
-                        button [onClick (fun _ -> StartAsyncOperation)] [text "Start async operation"]
+                        button [clazz "ui button"; onClick (fun _ -> StartAsyncOperation)] [text "Start async operation"]
+
+                        br[]; br[]; b [] [text "Pending operations (click to abort)"]
+
+                        Incremental.div AttributeMap.empty <| AList.mapi (fun i (taskName,progress) ->
+                            button [clazz "ui button"; onClick (fun _ -> StopTask taskName)] [text (sprintf "task %A: %A" (taskName.Substring(0,3)) progress)]
+                        ) (m.progress |> AMap.toASet |> ASet.sortBy snd)
                     ]
                 ]
             ]
@@ -150,27 +161,50 @@ let threads (m : Model) =
 
     // handling of asynchronous load tasks
     let asynchronousLoadOperations =
-        let comp =
+        let asyncComp (logger : System.Collections.Concurrent.BlockingCollection<_>) =
             async {
-                do! Async.SwitchToNewThread()
+                do! Async.SwitchToThreadPool()
                 let cnt = 10000000
                 let mutable blub = 0
-                for i in 0 .. 10000000 do
-                    if i % 1000 = 0 then printfn "working on it: %f percent" ((float i / float cnt)*100.0)
+                for i in 0 .. cnt do
+                    if i % 1000000 = 0 then 
+                        let perc = (float i / float cnt)*100.0
+                        let msg = sprintf "working on it: %f percent" perc
+                        logger.Add(perc)
+                        Log.line "%s" msg
                     blub <- blub + 1
-                return 1
+                return 1.0
             }
+
+        let task =
+            async {
+                return 2.0
+            } |> Async.StartAsTask
                 
-        let loadProc id =
+        let loadProc logger id =
             proclist {
+                let! a = Proc.Await (asyncComp logger)
                 printfn "starting: %s" id
-                let! a = Proc.Await comp
+                let! b = task
                 printfn "finished heavy computation. sending info back"
-                yield Message.AsyncOperationComplete id
+                yield Message.AsyncOperationComplete (id,a)
             }
 
         HSet.fold (fun pool operationId -> 
-            ThreadPool.add operationId (loadProc operationId) pool
+            let logger = new System.Collections.Concurrent.BlockingCollection<_>()
+            let rec loggingProc () =
+                proclist {
+                    let! percentage = 
+                        async { 
+                            do! Async.SwitchToThreadPool(); 
+                            return logger.Take() 
+                        }
+                    yield Progress(operationId,percentage)
+                    yield! loggingProc ()
+                }
+            let logPool = ThreadPool.add (sprintf "%s_logger" operationId) (loggingProc()) ThreadPool.empty
+            let workPool = ThreadPool.add operationId (loadProc logger operationId) pool
+            ThreadPool.union logPool workPool
         ) ThreadPool.empty m.loadTasks
 
 
@@ -206,6 +240,7 @@ let app =
                animation = Animate.On
                pending = None
                loadTasks = HSet.empty
+               progress = HMap.empty
             }
         update = update 
         view = view
