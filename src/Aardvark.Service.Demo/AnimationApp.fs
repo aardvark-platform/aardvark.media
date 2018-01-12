@@ -14,7 +14,6 @@ open AnimationModel
 // TODO: head tail patterns for plist
 // update at for plist
 
-
 module Lens =
     let update (l : Lens<'m,'a>) (s : 'm) (f : 'a -> 'a) =
         l.Update(s,f)
@@ -161,52 +160,35 @@ let threads (m : Model) =
 
     // handling of asynchronous load tasks
     let asynchronousLoadOperations =
-        let asyncComp (logger : System.Collections.Concurrent.BlockingCollection<_>) =
-            async {
-                do! Async.SwitchToThreadPool()
-                let cnt = 10000000
-                let mutable blub = 0
-                for i in 0 .. cnt do
-                    if i % 1000000 = 0 then 
-                        let perc = (float i / float cnt)*100.0
-                        let msg = sprintf "working on it: %f percent" perc
-                        logger.Add(perc)
-                        Log.line "%s" msg
-                    blub <- blub + 1
-                return 1.0
-            }
 
         let task =
             async {
-                return 2.0
+                return 2
             } |> Async.StartAsTask
-                
-        let loadProc logger id =
+
+        let asyncOperationWithProgress (taskName : string) =
             proclist {
-                let! a = Proc.Await (asyncComp logger)
-                printfn "starting: %s" id
-                let! b = task
-                printfn "finished heavy computation. sending info back"
-                yield Message.AsyncOperationComplete (id,a)
+                let cnt = 1000
+                // it is possible here to start other sub tasks...
+                let! someOtherComputation = task
+                // cleanup code for cancellation needs to be registered via Async.OnCancel
+                let! _ = Async.OnCancel (fun _ -> printfn "operation got interrupted...")
+                let mutable iter = 0
+                for i in 0 .. cnt do
+                    do! Proc.Sleep 10
+                    if i % 10 = 0 then 
+                        let perc = (float i / float cnt)*100.0
+                        let msg = sprintf "working on it: %f percent" perc
+                        // we made progress here. send intermediate result to update
+                        yield Progress(taskName,perc)
+                    iter <- iter + 1
+                // we are finished here.. send result to update
+                yield AsyncOperationComplete (taskName, float iter)
             }
 
         HSet.fold (fun pool operationId -> 
-            let logger = new System.Collections.Concurrent.BlockingCollection<_>()
-            let rec loggingProc () =
-                proclist {
-                    let! percentage = 
-                        async { 
-                            do! Async.SwitchToThreadPool(); 
-                            return logger.Take() 
-                        }
-                    yield Progress(operationId,percentage)
-                    yield! loggingProc ()
-                }
-            let logPool = ThreadPool.add (sprintf "%s_logger" operationId) (loggingProc()) ThreadPool.empty
-            let workPool = ThreadPool.add operationId (loadProc logger operationId) pool
-            ThreadPool.union logPool workPool
+            ThreadPool.add operationId (asyncOperationWithProgress operationId) pool
         ) ThreadPool.empty m.loadTasks
-
 
     // handling of continous animations
     let animations = 
@@ -214,7 +196,6 @@ let threads (m : Model) =
             ThreadPool.add "timer" (time()) ThreadPool.empty
         else
             ThreadPool.empty
-
 
     // combining all threads
     ThreadPool.unionMany [
