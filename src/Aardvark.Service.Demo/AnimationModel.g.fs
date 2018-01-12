@@ -10,6 +10,50 @@ module Mutable =
 
     
     
+    type MTaskProgress(__initial : AnimationModel.TaskProgress) =
+        inherit obj()
+        let mutable __current : Aardvark.Base.Incremental.IModRef<AnimationModel.TaskProgress> = Aardvark.Base.Incremental.EqModRef<AnimationModel.TaskProgress>(__initial) :> Aardvark.Base.Incremental.IModRef<AnimationModel.TaskProgress>
+        let _percentage = ResetMod.Create(__initial.percentage)
+        
+        member x.percentage = _percentage :> IMod<_>
+        member x.startTime = __current.Value.startTime
+        
+        member x.Current = __current :> IMod<_>
+        member x.Update(v : AnimationModel.TaskProgress) =
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
+                
+                ResetMod.Update(_percentage,v.percentage)
+                
+        
+        static member Create(__initial : AnimationModel.TaskProgress) : MTaskProgress = MTaskProgress(__initial)
+        static member Update(m : MTaskProgress, v : AnimationModel.TaskProgress) = m.Update(v)
+        
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
+        interface IUpdatable<AnimationModel.TaskProgress> with
+            member x.Update v = x.Update v
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module TaskProgress =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let percentage =
+                { new Lens<AnimationModel.TaskProgress, Microsoft.FSharp.Core.float>() with
+                    override x.Get(r) = r.percentage
+                    override x.Set(r,v) = { r with percentage = v }
+                    override x.Update(r,f) = { r with percentage = f r.percentage }
+                }
+            let startTime =
+                { new Lens<AnimationModel.TaskProgress, System.DateTime>() with
+                    override x.Get(r) = r.startTime
+                    override x.Set(r,v) = { r with startTime = v }
+                    override x.Update(r,f) = { r with startTime = f r.startTime }
+                }
+    
+    
     type MModel(__initial : AnimationModel.Model) =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<AnimationModel.Model> = Aardvark.Base.Incremental.EqModRef<AnimationModel.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<AnimationModel.Model>
@@ -18,7 +62,7 @@ module Mutable =
         let _animations = MList.Create(__initial.animations)
         let _pending = MOption.Create(__initial.pending)
         let _loadTasks = MSet.Create(__initial.loadTasks)
-        let _progress = MMap.Create(__initial.progress)
+        let _progress = MMap.Create(__initial.progress, (fun v -> MTaskProgress.Create(v)), (fun (m,v) -> MTaskProgress.Update(m, v)), (fun v -> v))
         
         member x.animation = _animation :> IMod<_>
         member x.cameraState = _cameraState
@@ -85,7 +129,7 @@ module Mutable =
                     override x.Update(r,f) = { r with loadTasks = f r.loadTasks }
                 }
             let progress =
-                { new Lens<AnimationModel.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,Microsoft.FSharp.Core.float>>() with
+                { new Lens<AnimationModel.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,AnimationModel.TaskProgress>>() with
                     override x.Get(r) = r.progress
                     override x.Set(r,v) = { r with progress = v }
                     override x.Update(r,f) = { r with progress = f r.progress }

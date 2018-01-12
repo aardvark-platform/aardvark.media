@@ -19,6 +19,8 @@ type Animate = On = 0 | Off = 1
 
 type TaskId = string
 
+[<DomainType>]
+type TaskProgress = { percentage : float; [<NonIncremental>] startTime : System.DateTime }
 
 [<DomainType>]
 type Model = {
@@ -27,7 +29,7 @@ type Model = {
     animations  : plist<Animation<Model,CameraView,CameraView>>
     pending : Option<Pending>
     loadTasks : hset<TaskId>
-    progress : hmap<string,float>
+    progress : hmap<string,TaskProgress>
 }
 and Message =
     | Tick of Time

@@ -77,12 +77,16 @@ let update (m : Model) (msg : Message )  =
         | StartAsyncOperation -> 
             let name = System.Guid.NewGuid() |> string
             printfn "starting async operation: %s" name
-            { m with loadTasks = HSet.add name m.loadTasks }
+            { m with loadTasks = HSet.add name m.loadTasks; progress = HMap.add name { percentage = 0.0; startTime = System.DateTime.Now } m.progress }
         | AsyncOperationComplete (name,result) -> 
             printfn "operation complete: %s, result was: %A" name result
             { m with loadTasks = HSet.remove name m.loadTasks; progress = HMap.remove name m.progress }
-        | Message.Progress(name,progress) ->    
-            { m with progress = HMap.add name progress m.progress }
+        | Message.Progress(name,percentage) ->    
+            let update progress =
+                match progress with
+                    | None -> Log.warn "non existing task reported progress."; None // just cancelled task reported progress
+                    | Some old -> Some { old with percentage = percentage }
+            { m with progress = HMap.alter name update m.progress }
         | StopTask name -> 
             printfn "stopping task: %s" name
             { m with loadTasks = HSet.remove name m.loadTasks; progress = HMap.remove name m.progress }
@@ -120,9 +124,10 @@ let view (m : MModel) =
 
                         br[]; br[]; b [] [text "Pending operations (click to abort)"]
 
-                        Incremental.div AttributeMap.empty <| AList.mapi (fun i (taskName,progress) ->
-                            button [clazz "ui button"; onClick (fun _ -> StopTask taskName)] [text (sprintf "task %A: %A" (taskName.Substring(0,3)) progress)]
-                        ) (m.progress |> AMap.toASet |> ASet.sortBy snd)
+                        Incremental.div AttributeMap.empty <| AList.mapi (fun i (taskName:string,progress:MTaskProgress) ->
+                            let text = progress.percentage |> Mod.map (fun percentage -> sprintf "task %A: %A" (taskName.Substring(0,3)) percentage)
+                            button [clazz "ui button"; onClick (fun _ -> StopTask taskName)] [Incremental.text text]
+                        ) (m.progress |> AMap.toASet |> ASet.sortBy (fun (n,p) -> p.startTime))
                     ]
                 ]
             ]
@@ -163,14 +168,18 @@ let threads (m : Model) =
 
         let task =
             async {
+                let! _ = Async.OnCancel (fun _ -> printfn "other computation needs compensation code")
                 return 2
             } |> Async.StartAsTask
 
         let asyncOperationWithProgress (taskName : string) =
             proclist {
+                // optionally, we can run computations in separate threads....
+                do! Async.SwitchToNewThread()
                 let cnt = 1000
                 // it is possible here to start other sub tasks...
                 let! someOtherComputation = task
+                do! Async.Sleep 100
                 // cleanup code for cancellation needs to be registered via Async.OnCancel
                 let! _ = Async.OnCancel (fun _ -> printfn "operation got interrupted...")
                 let mutable iter = 0
@@ -204,7 +213,6 @@ let threads (m : Model) =
         pendingMessages
         asynchronousLoadOperations
     ]
-
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
