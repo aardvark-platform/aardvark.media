@@ -17,17 +17,24 @@ type Animation<'m,'s,'a> = {
 
 type Animate = On = 0 | Off = 1
 
+type TaskId = string
+
 [<DomainType>]
 type Model = {
     animation : Animate
     cameraState : CameraControllerState
     animations  : plist<Animation<Model,CameraView,CameraView>>
-    pending : Option<Message>
+    pending : Option<Pending>
+    loadTasks : hset<TaskId>
 }
 and Message =
     | Tick of Time
     | PushAnimation of Animation<Model,CameraView,CameraView>
     | CameraMessage of CameraControllerMessage
     | RemoveAnimation of Index
-    | TellMeMore
-    | AskForMore
+    | Ping
+    | Pong
+    | StartAsyncOperation
+    | AsyncOperationComplete of TaskId
+
+and Pending = { message : Message; id : string}

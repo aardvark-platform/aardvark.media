@@ -17,11 +17,13 @@ module Mutable =
         let _cameraState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraState)
         let _animations = MList.Create(__initial.animations)
         let _pending = MOption.Create(__initial.pending)
+        let _loadTasks = MSet.Create(__initial.loadTasks)
         
         member x.animation = _animation :> IMod<_>
         member x.cameraState = _cameraState
         member x.animations = _animations :> alist<_>
         member x.pending = _pending :> IMod<_>
+        member x.loadTasks = _loadTasks :> aset<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : AnimationModel.Model) =
@@ -32,6 +34,7 @@ module Mutable =
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraState, v.cameraState)
                 MList.Update(_animations, v.animations)
                 MOption.Update(_pending, v.pending)
+                MSet.Update(_loadTasks, v.loadTasks)
                 
         
         static member Create(__initial : AnimationModel.Model) : MModel = MModel(__initial)
@@ -67,8 +70,14 @@ module Mutable =
                     override x.Update(r,f) = { r with animations = f r.animations }
                 }
             let pending =
-                { new Lens<AnimationModel.Model, Microsoft.FSharp.Core.Option<AnimationModel.Message>>() with
+                { new Lens<AnimationModel.Model, Microsoft.FSharp.Core.Option<AnimationModel.Pending>>() with
                     override x.Get(r) = r.pending
                     override x.Set(r,v) = { r with pending = v }
                     override x.Update(r,f) = { r with pending = f r.pending }
+                }
+            let loadTasks =
+                { new Lens<AnimationModel.Model, Aardvark.Base.hset<AnimationModel.TaskId>>() with
+                    override x.Get(r) = r.loadTasks
+                    override x.Set(r,v) = { r with loadTasks = v }
+                    override x.Update(r,f) = { r with loadTasks = f r.loadTasks }
                 }

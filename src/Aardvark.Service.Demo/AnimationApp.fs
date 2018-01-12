@@ -69,12 +69,19 @@ let update (m : Model) (msg : Message )  =
             { m with animations = PList.remove i m.animations }
         | Tick _ -> m // not allowed to animate
         | CameraMessage _ -> m // not allowed to camera around
-        | TellMeMore -> 
-            printfn "tell me more tell me more..."
+        | Pong -> 
+            printfn "got pong"
             { m with pending = None }
-        | AskForMore -> 
-            printfn "asked for more"
-            { m with pending = Some TellMeMore }
+        | Ping -> 
+            printfn "ping. sending pong to thread pool"
+            { m with pending = Some { message = Pong; id = System.Guid.NewGuid() |> string } }
+        | StartAsyncOperation -> 
+            let name = System.Guid.NewGuid() |> string
+            printfn "starting async operation: %s" name
+            { m with loadTasks = HSet.add name m.loadTasks }
+        | AsyncOperationComplete name -> 
+            printfn "operation complete: %s" name
+            { m with loadTasks = HSet.remove name m.loadTasks }
     
 
 let viewScene (m : MModel) =
@@ -103,7 +110,9 @@ let view (m : MModel) =
                             button [onClick (fun _ -> RemoveAnimation i)] [text a.name]
                         ) m.animations
 
-                        button [onClick (fun _ -> AskForMore)] [text "Tell me more"]
+                        button [onClick (fun _ -> Ping)] [text "Tell me more"]
+                        br []
+                        button [onClick (fun _ -> StartAsyncOperation)] [text "Start async operation"]
                     ]
                 ]
             ]
@@ -119,37 +128,68 @@ let rec time() =
         yield! time()
     }
 
+module ThreadPool =
+    let unionMany xs = List.fold ThreadPool.union ThreadPool.empty xs
+
 let threads (m : Model) = 
+    // handling of continous camera animations (camera controller)
     let cameraAnimations = CameraController.threads m.cameraState |> ThreadPool.map CameraMessage
        
-    let pendingActions =
+    // handling of self messages (example)
+    let pendingActions msg str =
         proclist {
-            match m.pending with
-                | None -> ()
-                | Some a -> 
-                    printfn "starting"
-                    let heavyComputation =
-                        async {
-                            do! Async.SwitchToThreadPool()
-                            let mutable a = 0
-                            let mutable cnt = 10000000
-                            do 
-                                for i in 0 .. cnt do 
-                                    if i % 10000 = 0 then printfn "%f percent" ((float i / float cnt)*100.0)
-                                    a <- a + 1
-                            return a
-                        }
-                    let! result = Proc.Await heavyComputation
-                    printfn "done: %A" result
-                    yield a
+            printfn "got ping, ponging back"
+            yield msg
         }
 
-    let pendingActions = ThreadPool.add (System.Guid.NewGuid() |> string) pendingActions cameraAnimations
+    let pendingMessages =
+        match m.pending with
+            | None -> ThreadPool.empty
+            | Some p -> 
+                ThreadPool.add p.id (pendingActions p.message p.id)  ThreadPool.empty
 
-    if shouldAnimate m then
-        ThreadPool.add "timer" (time()) pendingActions
-    else
-        pendingActions
+    // handling of asynchronous load tasks
+    let asynchronousLoadOperations =
+        let comp =
+            async {
+                do! Async.SwitchToNewThread()
+                let cnt = 10000000
+                let mutable blub = 0
+                for i in 0 .. 10000000 do
+                    if i % 1000 = 0 then printfn "working on it: %f percent" ((float i / float cnt)*100.0)
+                    blub <- blub + 1
+                return 1
+            }
+                
+        let loadProc id =
+            proclist {
+                printfn "starting: %s" id
+                let! a = Proc.Await comp
+                printfn "finished heavy computation. sending info back"
+                yield Message.AsyncOperationComplete id
+            }
+
+        HSet.fold (fun pool operationId -> 
+            ThreadPool.add operationId (loadProc operationId) pool
+        ) ThreadPool.empty m.loadTasks
+
+
+    // handling of continous animations
+    let animations = 
+        if shouldAnimate m then
+            ThreadPool.add "timer" (time()) ThreadPool.empty
+        else
+            ThreadPool.empty
+
+
+    // combining all threads
+    ThreadPool.unionMany [
+        cameraAnimations
+        animations
+        pendingMessages
+        asynchronousLoadOperations
+    ]
+
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
@@ -165,6 +205,7 @@ let app =
                animations = PList.empty
                animation = Animate.On
                pending = None
+               loadTasks = HSet.empty
             }
         update = update 
         view = view
