@@ -66,7 +66,7 @@ module MutableApp =
 
 
 
-    let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =
+    let toWebPart' (runtime : IRuntime) (useGpuCompression : bool) (app : MutableApp<'model, 'msg>) =
         
         let sceneStore =
             ConcurrentDictionary<string, Scene * (ClientInfo -> ClientState)>()
@@ -84,6 +84,8 @@ module MutableApp =
                     match sceneStore.TryGetValue clientInfo.sceneName with
                         | (true, (scene, cam)) -> Some (cam clientInfo)
                         | _ -> None
+
+                useGpuCompression = useGpuCompression
             }
 
 
@@ -198,7 +200,8 @@ module MutableApp =
             prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
         ]
 
-
+    let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =
+        toWebPart' runtime false app
 
 
 

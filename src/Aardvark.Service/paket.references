@@ -5,6 +5,7 @@ Aardvark.Base.Rendering
 Aardvark.Rendering.GL
 Aardvark.Application
 Aardvark.Rendering.Vulkan
+Aardvark.GPGPU
 
 FsPickler
 FsPickler.Json

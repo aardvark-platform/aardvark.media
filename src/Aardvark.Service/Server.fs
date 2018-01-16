@@ -418,11 +418,19 @@ type Server =
         runtime         : IRuntime
         content         : string -> Option<Scene>
         getState        : ClientInfo -> Option<ClientState>
+        useGpuCompression : bool
     }
 
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     let runtime = server.runtime
     let mutable task = RenderTask.empty
+
+    let compressor =
+        if server.useGpuCompression then
+            new JpegCompressor(runtime)
+        else Unchecked.defaultof<_>
+
+    let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
 
     let targetSize = Mod.init V2i.II
     
@@ -431,15 +439,17 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     
     let mutable depth : Option<IRenderbuffer> = None 
     let mutable color : Option<IRenderbuffer> = None
+    let mutable resolved : Option<IBackendTexture> = None
     let mutable target : Option<IFramebuffer> = None 
 
     static let mutable threadCount = 0
 
 
     let deleteFramebuffer() =
-        target |> Option.iter runtime.DeleteFramebuffer
-        depth |> Option.iter runtime.DeleteRenderbuffer
-        color |> Option.iter runtime.DeleteRenderbuffer
+        target     |> Option.iter runtime.DeleteFramebuffer
+        depth      |> Option.iter runtime.DeleteRenderbuffer
+        color      |> Option.iter runtime.DeleteRenderbuffer
+        resolved   |> Option.iter runtime.DeleteTexture
         target <- None
         color <- None
         depth <- None
@@ -473,6 +483,19 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 ]
             )
 
+        if server.useGpuCompression then
+            match gpuCompressorInstance with
+                | None -> 
+                    ()
+                | Some old -> 
+                    old.Dispose()
+            Log.line "[Media.Server] creating GPU image compressor for size: %A" size
+            let instance = compressor.NewInstance(size, Quantization.photoshop10)
+            gpuCompressorInstance <- Some instance
+
+        let r = runtime.CreateTexture(currentSize, TextureFormat.ofRenderbufferFormat colorSignature.format, 1, 1)
+
+        resolved <- Some r
         depth <- Some d
         color <- Some c
         target <- Some newTarget
@@ -568,11 +591,9 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 
             finally
                 //printfn "race here"
-
-
                 innerToken.Release()
                 if scene.State.viewTrafo.ReaderCount > 0 then
-                    printfn "bad hate"
+                    printfn "[Media.Server] bad hate"
 //                let real = scene.State.projTrafo |> Mod.force
 //                let should = state.projTrafo
 //                if real <> should then
@@ -580,7 +601,15 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 Interlocked.Decrement(&threadCount) |> ignore
         )
         compressTime.Start()
-        let data = target.DownloadJpegColor()
+        let data =
+            if server.useGpuCompression then
+                if info.samples > 1 then
+                    runtime.ResolveMultisamples(color.Value, resolved.Value, ImageTrafo.Rot0)
+                else
+                    runtime.Copy(color.Value,resolved.Value.[TextureAspect.Color,0,0])
+                gpuCompressorInstance.Value.Compress(resolved.Value.[TextureAspect.Color,0,0])
+            else
+                target.DownloadJpegColor()
         compressTime.Stop()
         t.Dispose()
         frameCount <- frameCount + 1
@@ -859,11 +888,13 @@ module Server =
                 viewTrafo = Trafo3d.Identity
                 projTrafo = Trafo3d.Identity
             }
-    let empty (r : IRuntime) =
+
+    let empty (useGpuCompression : bool) (r : IRuntime) =
         {
             runtime = r
             content = fun _ -> None
             getState = fun _ -> None
+            useGpuCompression = useGpuCompression
         }
 
     let withState (get : ClientInfo -> ClientState) (server : Server) =

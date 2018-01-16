@@ -471,6 +471,9 @@ class Renderer {
             if (this.loading) {
                 this.fadeIn();
             }
+
+            //artificial render looop (uncommend in invalidate)
+            //this.render();
         }
         else {
             var o = JSON.parse(msg.data);

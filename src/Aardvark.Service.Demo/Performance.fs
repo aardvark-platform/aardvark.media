@@ -49,13 +49,14 @@ let threeD (m : MModel) =
                     toEffect DefaultSurfaces.trafo
                     //toEffect DefaultSurfaces.diffuseTexture
                     toEffect <| DefaultSurfaces.constantColor C4f.Red 
+                    toEffect <| DefaultSurfaces.simpleLighting 
                 ]
             
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
     CameraController.controlledControl m.cameraState CameraAction
         (Mod.constant frustum) 
-        (AttributeMap.ofList [ attribute "style" "width:70%; height: 70%"]) sg
+        (AttributeMap.ofList [ attribute "style" "width:100%; height: 90%"]) sg
 
 let view (m : MModel) =
     div [] [
@@ -80,11 +81,11 @@ let app =
     {
         unpersist = Unpersist.instance
         threads = 
-            fun m -> ThreadPool.empty 
-            //fun (model : Model) -> CameraController.threads model.cameraState |> ThreadPool.map CameraAction
-        initial = { visible = PList.empty ; objects = objects; cameraState = CameraController.initial }
+            fun (model : Model) -> CameraController.threads model.cameraState |> ThreadPool.map CameraAction
+        initial = update { visible = PList.empty ; objects = objects; cameraState = CameraController.initial } Inc 
         update = update
         view = view
-    }
+    } 
+
 
 let start() = App.start app

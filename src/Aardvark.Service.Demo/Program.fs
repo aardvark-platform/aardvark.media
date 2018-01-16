@@ -56,7 +56,7 @@ let kitchenSink argv =
 
     let app, runtime = 
         if useVulkan then
-             let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true) 
+             let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(false) 
              app :> IDisposable, app.Runtime :> IRuntime
          else 
              let app = new OpenGlApplication()
@@ -106,8 +106,9 @@ let kitchenSink argv =
 //        Suave.Files.browseHome
 //    ]  
 
+
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart runtime (app |> App.start)
+        MutableApp.toWebPart' runtime true (app |> App.start)
         Suave.Files.browseHome
     ] 
 
@@ -116,7 +117,7 @@ let kitchenSink argv =
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
     ctrl.StartUrl <- "http://localhost:4321/"
-    ctrl.ShowDevTools()
+    //ctrl.ShowDevTools()
 
     Application.Run form
    
