@@ -22,6 +22,7 @@ open Suave.WebSocket
 open Suave.Successful
 open Suave.Sockets.Control
 open Suave.Sockets
+open Suave.State.CookieStateStore
 
 [<AutoOpen>]
 module private Tools =
@@ -88,11 +89,39 @@ module MutableApp =
                 useGpuCompression = useGpuCompression
             }
 
+        
+        let updaters = ConcurrentDictionary<Guid, IUpdater<'msg>>()
+
+        let setSessionValue (key : string) (value : HttpContext -> Option<IUpdater<'msg>>) : WebPart =
+          context (fun ctx ->
+            match HttpContext.state ctx with
+            | Some state ->
+                let id = Guid.NewGuid() 
+                match value ctx with
+                    | Some v -> 
+                        updaters.[id] <- v
+                        state.set key id
+                    | None -> never //RequestErrors.NOT_FOUND "[Media] page not found." 
+            | _ ->
+                never 
+            )
+
+        let getUpdater (ctx : HttpContext) (key : string) : Option<IUpdater<'msg>> =
+          match HttpContext.state ctx with
+          | Some state ->
+              match state.get key with
+                | Some id -> 
+                    match updaters.TryRemove id with
+                        | (true,updater) -> Some updater
+                        | _ -> None
+                | None -> None
+          | _ ->
+              None
 
         let events (ws : WebSocket) (context: HttpContext) =
-            match context.request.queryParam "session" with
-                | Choice1Of2 (Guid sessionId) ->
-                    let updater = app.ui.NewUpdater()
+            match context.request.queryParam "session", getUpdater context "updater" with
+                | Choice1Of2 (Guid sessionId), Some updater ->
+
                     let state =
                         {
                             scenes      = Dictionary()
@@ -194,11 +223,28 @@ module MutableApp =
                     }
                 | _ ->
                     SocketOp.abort(Error.InputDataError(None, "no session id")) 
-        
-        choose [
-            path "/events" >=> handShake events
-            path "/" >=> OK template
+
+
+        let createUpdater (ctx : HttpContext) =
+            let components = ctx.request.url.AbsolutePath.Split([|'/'|],StringSplitOptions.RemoveEmptyEntries)
+            let request =
+                {
+                    requestPath = components |> Array.toList
+                }
+            try 
+                app.ui.NewUpdater(request) |> Some
+            with 
+                | InvalidSubPage -> None
+                | _ -> reraise ()
+
+
+        choose [            
             prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
+            statefulForSession >=> WebPart.choose 
+                [
+                    path "/events" >=> handShake events
+                    setSessionValue "updater" createUpdater >=> OK template
+                ]
         ]
 
     let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =

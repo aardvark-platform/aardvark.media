@@ -68,24 +68,37 @@ let switchCode = """
 
 
 let view (m : MModel) =
-    let sg = complex
-    fun (ctx : Suave.Http.HttpRequest) ->
-        match ctx.path with
-            | "ipad" ->
-                body [ style "background: #1B1C1E"] [
-                    require (Html.semui) (
-                        onBoot switchCode (
-                            div [] [
-                                div [clazz "complex"] [complex m]
-                                div [clazz "simple"] [simple m]
-                            ]
-                        )
-                    )
-                ]
-            | _ ->
-                notFound
-        //"urdar", bajsdfjasdf
-    ]
+    let complex = complex m
+    let simple = simple m
+  
+    require (Html.semui) (
+        page <| fun (request : Request) ->
+            match request.requestPath with
+                | "simple" :: rest ->
+                    let content = 
+                        body [ style "background: #1B1C1E"] [
+                            require (Html.semui) (
+                                div [] [
+                                    a [attribute "href" "./complex"; attribute "target" "_blank"] [text "complex view"]
+                                    div [clazz "simple"] [simple]
+                                ]
+                            )
+                        ]
+                    Some (content, { request with requestPath = rest })
+                | "complex" :: rest ->
+                    let content = 
+                        body [ style "background: #1B1C1E"] [
+                            require (Html.semui) (
+                                div [] [
+                                    div [clazz "complex"] [complex]
+                                ]
+                            )
+                        ]
+                    Some (content, { request with requestPath = rest })
+                | _ -> 
+                    None
+    )
+    
 
 let threads (m : Model) =
     ThreadPool.empty

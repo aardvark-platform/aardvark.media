@@ -357,7 +357,10 @@ module SceneEventProcessor =
     let unionMany (processors : seq<SceneEventProcessor<'msg>>) =
         processors |> Seq.toList |> UnionProcessor :> SceneEventProcessor<'msg>
 
-
+type Request =
+    {
+        requestPath : list<string>
+    }
 
 [<Sealed>]
 type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, content : DomContent<'msg>) =
@@ -427,6 +430,29 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
         res.Boot <- boot
         res
 
+
+    member x.AddBoot (boot : string -> string) =
+        let res = x.Copy()
+        res.Boot <- 
+            match x.Boot with
+                | Some f -> (fun s -> f s + ";" + boot s) |> Some
+                | None -> Some boot
+        res
+
+    member x.AddShutdown (shutdown : string -> string) =
+        let res = x.Copy()
+        res.Shutdown <- 
+            match x.Shutdown with
+                | Some f -> (fun s -> f s + ";" + shutdown s) |> Some
+                | None -> Some shutdown
+        res
+
+
+    member x.AddRequired (reqs : list<Reference>) =
+        let res = x.Copy()
+        res.Required <- x.Required @ reqs
+        res
+
     member x.WithNamespace (ns : string) =
         let res = x.Copy()
         res.Namespace <- Some ns
@@ -471,6 +497,7 @@ and DomContent<'msg> =
     | Children of alist<DomNode<'msg>>
     | Scene    of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState)
     | Text     of IMod<string>
+    | Page     of (Request -> Option<DomNode<'msg> * Request>)
 
     with 
         static member Map(x : DomContent<'msg>, f : 'msg -> 'b) = 
@@ -479,6 +506,13 @@ and DomContent<'msg> =
                 | Children xs -> Children (AList.map (fun (n:DomNode<'msg>) -> n.Map f) xs)
                 | Scene(s,f)  -> Scene(s,f)
                 | Text t      -> Text t
+                | Page c      -> 
+                    let inner request =
+                        match c request with
+                            | Some (pageDom,request) -> 
+                                Some (pageDom.Map(f), request)
+                            | None -> None
+                    Page inner
             
 open Aardvark.Service
 
@@ -513,6 +547,9 @@ type DomNode private() =
 
     static member Text(content : IMod<string>) = 
         DomNode<'msg>("span", None, AttributeMap.empty, DomContent.Text content)
+
+    static member Page(f : Request -> Option<DomNode<'msg>*Request>) =
+        DomNode<'msg>("page", None, AttributeMap.empty, DomContent.Page f)  
 
     static member SvgText(content : IMod<string>) = 
         DomNode<'msg>("tspan", Some "http://www.w3.org/2000/svg", AttributeMap.empty, DomContent.Text content)

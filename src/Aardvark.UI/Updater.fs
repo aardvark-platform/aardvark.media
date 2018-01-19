@@ -78,6 +78,8 @@ type TextUpdater<'msg>(text : IMod<string>) =
     override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
         JSExpr.Nop
 
+exception InvalidSubPage 
+
 type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
     inherit AbstractUpdater<'msg>()
     let reader = children.GetReader()
@@ -200,7 +202,7 @@ type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
 
         JSExpr.Sequential (CSharpList.toList code)
 
-and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
+and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
     inherit AbstractUpdater<'msg>()
 
     static let mutable currentId = 0
@@ -212,9 +214,16 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
     let rContent = 
         match ui.Content with
             | Scene(scene, cam) -> SceneUpdater(ui, id, scene, cam) :> IUpdater<_>
-            | Children children -> ChildrenUpdater(id, AList.map DomUpdater children) :> IUpdater<_>
+            | Children children -> ChildrenUpdater(id, AList.map (fun c -> DomUpdater(c,request)) children) :> IUpdater<_>
             | Text text -> TextUpdater text :> IUpdater<_>
             | Empty -> EmptyUpdater.Instance
+            | Page p -> 
+                match p request with
+                    | Some(dom,newRequest) -> 
+                        let updater = DomUpdater(dom,newRequest)
+                        updater :> IUpdater<_>
+                    | None -> 
+                        raise InvalidSubPage
 
     let mutable initial = true
 
@@ -308,14 +317,33 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, id : string) =
 
 
 
-    new(ui : DomNode<'msg>) = DomUpdater<'msg>(ui, newId())
+    new(ui : DomNode<'msg>, request : Request) = DomUpdater<'msg>(ui, request, newId())
 
 
 [<AutoOpen>]
 module ``Extensions for Node`` =
     type DomNode<'msg> with
-        member x.NewUpdater() =
-            if x.Tag = "body" then DomUpdater<'msg>(x) :> IUpdater<_>
-            else
-                Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
-                DomUpdater<'msg>(DomNode<'msg>("body", None, AttributeMap.empty, Children (AList.single x))) :> IUpdater<_>
+        member x.NewUpdater(request : Request) =
+            match x.Content with
+                | Page f -> 
+                    match f request with
+                        | None -> raise InvalidSubPage
+                        | Some (p,request) -> 
+                            let mutable p = p
+                            match x.Boot with
+                                | Some boot -> p <- p.AddBoot boot
+                                | _ -> ()
+                            match x.Shutdown with
+                                | Some boot -> p <- p.AddShutdown boot
+                                | _ -> ()
+                            match x.Required with
+                                | [] -> ()
+                                | r -> p <- p.AddRequired(r)
+                            p.NewUpdater(request)
+                | _ -> 
+                    let updater = 
+                        if x.Tag = "body" then DomUpdater<'msg>(x,request) :> IUpdater<_>
+                        else
+                            Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
+                            DomUpdater<'msg>(DomNode<'msg>("body", None, AttributeMap.empty, Children (AList.single x)), request) :> IUpdater<_>
+                    updater

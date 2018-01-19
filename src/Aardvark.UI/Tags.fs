@@ -219,6 +219,9 @@ module Static =
     let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
         DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, None)
 
+    let page (createPage : Request -> Option<DomNode<'msg> * Request>) =
+        DomNode.Page createPage
+
     let inline elem (tagName : string) (attrs : list<string * AttributeValue<'msg>>) (children : list<DomNode<'msg>>) =
         DomNode.Node(tagName, AttributeMap.ofList attrs, AList.ofList children)
 

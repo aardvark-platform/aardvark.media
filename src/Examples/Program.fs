@@ -37,9 +37,52 @@ let main argv =
 
     let mapp = app |> App.start
 
+    let folderRx = System.Text.RegularExpressions.Regex @"^/(?<name>[^/]+)"
+
+    let folder (name : string) (inner : list<WebPart>) : WebPart =
+        fun (ctx : HttpContext) ->
+            let url = ctx.request.url
+            let path = url.PathAndQuery
+            let prefix = "/" + name
+            if path.StartsWith prefix then
+                let newUri = Uri(url.Scheme + "://" + url.Host  + ":" + string url.Port + path.Substring prefix.Length)
+                choose inner { ctx with request = { ctx.request with url = newUri } }
+            else
+                never ctx
+
+    
+    let dynamicFolder (content : string -> list<WebPart>) : WebPart =
+        fun (ctx : HttpContext) ->
+            let url = ctx.request.url
+            let path = url.PathAndQuery
+            let m = folderRx.Match(path)
+
+            if m.Success then
+                let name = m.Groups.["name"].Value
+                let inner = content name
+                match inner with
+                    | [] -> 
+                        never ctx
+                    | _ -> 
+                        let newUri = Uri(url.Scheme + "://" + url.Host  + ":" + string url.Port + path.Substring m.Length)
+                        choose inner { ctx with request = { ctx.request with url = newUri } }
+            else
+                never ctx
+
     WebPart.startServer 4321 [ 
-        Suave.Filters.prefix "/simple" >=> MutableApp.toWebPart' runtime true mapp
-        Suave.Filters.prefix "/complex" >=> MutableApp.toWebPart' runtime true mapp
+//        folder "hugo" [
+////            path "/a" >=> Successful.OK "YEAH"
+////            path "/b" >=> Successful.OK "YIPPIE"
+////
+////            dynamicFolder <| fun str -> 
+////                [path "/" >=> Successful.OK str]
+//
+//        ]
+            
+        folder "hugo" [
+            MutableApp.toWebPart' runtime false mapp
+        ]
+
         Suave.Files.browseHome
     ] 
 
@@ -47,8 +90,8 @@ let main argv =
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
-    ctrl.StartUrl <- "http://localhost:4321/simple/"
-    ctrl.ShowDevTools()
+    ctrl.StartUrl <- "http://localhost:4321/hugo/simple"
+    //ctrl.ShowDevTools()
 
     Application.Run form
     0 
