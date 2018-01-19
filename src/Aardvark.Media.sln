@@ -18,6 +18,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI", "Aardvark.UI\
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Primitives", "Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj", "{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Examples", "Examples\Examples.fsproj", "{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -56,6 +58,10 @@ Global
 		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

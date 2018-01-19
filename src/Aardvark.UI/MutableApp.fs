@@ -154,12 +154,13 @@ module MutableApp =
                                         )
                                     if Config.shouldTimeJsCodeGeneration then Log.line "[Aardvark.UI] code lenght: %d" (code.Length); Log.stop()
 
-                                    let res = ws.send Opcode.Text (ByteSegment(Text.Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
-                                    match res with
-                                        | Choice1Of2 () ->
-                                            ()
-                                        | Choice2Of2 err ->
-                                            failwithf "[WS] error: %A" err
+                                    if code <> "" then
+                                        let res = ws.send Opcode.Text (ByteSegment(Text.Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
+                                        match res with
+                                            | Choice1Of2 () ->
+                                                ()
+                                            | Choice2Of2 err ->
+                                                failwithf "[WS] error: %A" err
                         }
 
                     Async.Start updateThread

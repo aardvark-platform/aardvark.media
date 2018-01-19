@@ -490,7 +490,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 | Some old -> 
                     old.Dispose()
             Log.line "[Media.Server] creating GPU image compressor for size: %A" size
-            let instance = compressor.NewInstance(size, Quantization.photoshop10)
+            let instance = compressor.NewInstance(size, Quantization.photoshop80)
             gpuCompressorInstance <- Some instance
 
         let r = runtime.CreateTexture(currentSize, TextureFormat.ofRenderbufferFormat colorSignature.format, 1, 1)
@@ -570,7 +570,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 
         lock scene (fun () ->
             if Interlocked.Increment(&threadCount) > 1 then
-                Log.warn "HATE"
+                Log.warn "[Media Server] threadCount > 1"
             t <- runtime.ContextLock
             target <- getFramebuffer info.size info.signature
             let innerToken = token.Isolated
