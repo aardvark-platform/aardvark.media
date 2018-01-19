@@ -418,17 +418,17 @@ type Server =
         runtime         : IRuntime
         content         : string -> Option<Scene>
         getState        : ClientInfo -> Option<ClientState>
-        useGpuCompression : bool
+        compressor      : Option<JpegCompressor>
     }
 
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     let runtime = server.runtime
     let mutable task = RenderTask.empty
 
-    let compressor =
-        if server.useGpuCompression then
-            new JpegCompressor(runtime)
-        else Unchecked.defaultof<_>
+//    let compressor =
+//        match server.compressor with
+//            | Some c -> c
+//            | None -> Unchecked.defaultof<_>
 
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
 
@@ -483,15 +483,18 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 ]
             )
 
-        if server.useGpuCompression then
-            match gpuCompressorInstance with
-                | None -> 
-                    ()
-                | Some old -> 
-                    old.Dispose()
-            Log.line "[Media.Server] creating GPU image compressor for size: %A" size
-            let instance = compressor.NewInstance(size, Quantization.photoshop80)
-            gpuCompressorInstance <- Some instance
+        match server.compressor with
+            | Some compressor -> 
+                match gpuCompressorInstance with
+                    | None -> 
+                        ()
+                    | Some old -> 
+                        old.Dispose()
+                Log.line "[Media.Server] creating GPU image compressor for size: %A" size
+                let instance = compressor.NewInstance(size, Quantization.photoshop80)
+                gpuCompressorInstance <- Some instance
+            | _ ->
+                ()
 
         let r = runtime.CreateTexture(currentSize, TextureFormat.ofRenderbufferFormat colorSignature.format, 1, 1)
 
@@ -602,14 +605,16 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         )
         compressTime.Start()
         let data =
-            if server.useGpuCompression then
-                if info.samples > 1 then
-                    runtime.ResolveMultisamples(color.Value, resolved.Value, ImageTrafo.Rot0)
-                else
-                    runtime.Copy(color.Value,resolved.Value.[TextureAspect.Color,0,0])
-                gpuCompressorInstance.Value.Compress(resolved.Value.[TextureAspect.Color,0,0])
-            else
-                target.DownloadJpegColor()
+            match gpuCompressorInstance with
+                | Some gpuCompressorInstance ->
+                    if info.samples > 1 then
+                        runtime.ResolveMultisamples(color.Value, resolved.Value, ImageTrafo.Rot0)
+                    else
+                        runtime.Copy(color.Value,resolved.Value.[TextureAspect.Color,0,0])
+                    gpuCompressorInstance.Compress(resolved.Value.[TextureAspect.Color,0,0])
+                | None -> 
+                    target.DownloadJpegColor()
+
         compressTime.Stop()
         t.Dispose()
         frameCount <- frameCount + 1
@@ -890,11 +895,14 @@ module Server =
             }
 
     let empty (useGpuCompression : bool) (r : IRuntime) =
+        let compressor =
+            if useGpuCompression then new JpegCompressor(r) |> Some
+            else None
         {
             runtime = r
             content = fun _ -> None
             getState = fun _ -> None
-            useGpuCompression = useGpuCompression
+            compressor = compressor
         }
 
     let withState (get : ClientInfo -> ClientState) (server : Server) =

@@ -80,7 +80,7 @@ let main argv =
 //        ]
             
         folder "hugo" [
-            MutableApp.toWebPart' runtime false mapp
+            MutableApp.toWebPart' runtime true mapp
         ]
 
         Suave.Files.browseHome

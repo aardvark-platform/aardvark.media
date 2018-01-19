@@ -72,6 +72,9 @@ module MutableApp =
         let sceneStore =
             ConcurrentDictionary<string, Scene * (ClientInfo -> ClientState)>()
 
+        let compressor =
+            if useGpuCompression then new JpegCompressor(runtime) |> Some
+            else None
         
         let renderer =
             {
@@ -86,7 +89,7 @@ module MutableApp =
                         | (true, (scene, cam)) -> Some (cam clientInfo)
                         | _ -> None
 
-                useGpuCompression = useGpuCompression
+                compressor = compressor
             }
 
         

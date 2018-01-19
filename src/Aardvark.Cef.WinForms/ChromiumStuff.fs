@@ -320,7 +320,7 @@ module Chromium =
                     base.OnProcessMessageReceived(browser, source, msg)
 
     open System.IO
-    type MyCefClient(browser : CefWebBrowser) =
+    type MyCefClient(browser : CefWebBrowser) as this =
         inherit CefWebClient(browser)
 
         let lastPathFile = 
@@ -336,7 +336,9 @@ module Chromium =
         let setPath (path : string) =
             File.WriteAllText(lastPathFile, path)
 
+
         override x.OnProcessMessageReceived(sourceBrowser, source, msg) =
+            
             match IPC.tryReadProcessMessage<Command> msg with
                 | Some command ->
                     match command with

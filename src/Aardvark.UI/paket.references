@@ -7,6 +7,7 @@ Aardvark.Application
 Aardvark.SceneGraph
 Aardvark.Compiler.DomainTypes
 Aardvark.Rendering.Vulkan
+Aardvark.GPGPU
 
 FsPickler
 FsPickler.Json
