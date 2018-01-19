@@ -22,9 +22,9 @@ nuget Aardvark.Compiler.DomainTypes         ~> 0.2.11
 nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.11
 nuget Aardvark.Compiler.DomainTypeTool      ~> 0.2.11
 
-nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.0.13
-nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.13
-nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.0.13
+nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.0.16
+nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.0.16
+nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.0.16
 
 nuget FsPickler       ~> 4.0.0
 nuget FsPickler.Json  ~> 4.0.0
