@@ -35,13 +35,6 @@ type Message =
 type Command =
     | Invalidate
 
-
-module Pickler =
-    open MBrace.FsPickler
-    open MBrace.FsPickler.Json
-
-    let json = FsPickler.CreateJsonSerializer(false, true)
-
 [<AutoOpen>]
 module private Tools = 
     //open TurboJpegWrapper
@@ -419,6 +412,7 @@ type Server =
         content         : string -> Option<Scene>
         getState        : ClientInfo -> Option<ClientState>
         compressor      : Option<JpegCompressor>
+        fileSystemRoot  : Option<string>
     }
 
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
@@ -842,47 +836,6 @@ module Server =
                     frameTime = x.FrameTime.TotalSeconds
                 }
 
-        let mimeTypes =
-            Dictionary.ofList [
-                ".js", "text/javascript"
-                ".css", "text/css"
-                ".svg", "image/svg+xml"
-            ]
-
-        let assemblyWebParts = 
-            let assembly = typeof<Client>.Assembly
-            assembly.GetManifestResourceNames()
-                |> Array.toList
-                |> List.collect (fun name ->
-                    use stream = assembly.GetManifestResourceStream name
-                    let reader = new StreamReader(stream)
-                    let text = reader.ReadToEnd()
-
-                    let ext = Path.GetExtension name
-
-                    // respond with the text
-                    let part = OK text
-
-                    // set the mime-type (if known)
-                    let part = 
-                        match mimeTypes.TryGetValue ext with
-                            | (true, mime) -> part >=> Writers.setMimeType mime
-                            | _ -> part 
-
-                    // index.* is also reachable via /
-                    let parts =
-                        if Path.GetFileNameWithoutExtension name = "index" then
-                            [
-                                path ("/" + name) >=> part
-                                path "/" >=> Redirection.redirectRelative ("/" + name)
-                            ]
-                        else
-                            [ path ("/" + name) >=> part ]
-                
-                    // return the part
-                    parts
-                )
-
         let (|Int|_|) (str : string) =
             match Int32.TryParse str with
                 | (true, v) -> Some v
@@ -903,6 +856,7 @@ module Server =
             content = fun _ -> None
             getState = fun _ -> None
             compressor = compressor
+            fileSystemRoot = None
         }
 
     let withState (get : ClientInfo -> ClientState) (server : Server) =
@@ -1057,13 +1011,21 @@ module Server =
                 | _ ->
                     context |> BAD_REQUEST "no width/height specified"
 
-        let parts = 
-            assemblyWebParts @ [ 
-                pathScan "/render/%s" (render >> handShake)
-                path "/stats.json" >=> statistics 
-                pathScan "/screenshot/%s" (screenshot) 
-            ]
-        choose parts
+        choose [
+            yield Reflection.assemblyWebPart typeof<Client>.Assembly
+            yield pathScan "/render/%s" (render >> handShake)
+            yield path "/stats.json" >=> statistics 
+            yield pathScan "/screenshot/%s" (screenshot) 
+
+            match info.fileSystemRoot with
+                | Some root ->
+                    let fileSystem = 
+                        if root = "/" then new FileSystem()
+                        else new FileSystem(root)
+                    yield path "/fs" >=> FileSystem.toWebPart fileSystem
+                | None ->
+                    ()
+        ]
 
     let run (port : int) (server : Server) =
         server |> toWebPart (obj())  |> List.singleton |> WebPart.runServer port

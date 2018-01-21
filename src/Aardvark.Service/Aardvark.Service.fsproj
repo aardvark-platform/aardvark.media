@@ -69,6 +69,11 @@
     <EmbeddedResource Include="stats.html" />
     <EmbeddedResource Include="aardvark-light.svg" />
     <EmbeddedResource Include="aardvark.svg" />
+    <Compile Include="Utilities.fs" />
+    <Compile Include="SuaveExtensions.fs" />
+    <Compile Include="aardfs\FileSystem.fs" />
+    <EmbeddedResource Include="aardfs\aardfs.css" />
+    <EmbeddedResource Include="aardfs\aardfs.js" />
     <Compile Include="TurboJpeg.fs" />
     <Compile Include="Suave.fs" />
     <Compile Include="Server.fs" />

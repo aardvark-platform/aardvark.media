@@ -90,6 +90,8 @@ module MutableApp =
                         | _ -> None
 
                 compressor = compressor
+
+                fileSystemRoot = Some "/"
             }
 
         
@@ -104,7 +106,8 @@ module MutableApp =
                     | Some v -> 
                         updaters.[id] <- v
                         state.set key id
-                    | None -> never //RequestErrors.NOT_FOUND "[Media] page not found." 
+                    | None -> 
+                        never //RequestErrors.NOT_FOUND "[Media] page not found." 
             | _ ->
                 never 
             )
@@ -246,7 +249,7 @@ module MutableApp =
             statefulForSession >=> WebPart.choose 
                 [
                     path "/events" >=> handShake events
-                    setSessionValue "updater" createUpdater >=> OK template
+                    setSessionValue "updater" createUpdater >=> OK template 
                 ]
         ]
 

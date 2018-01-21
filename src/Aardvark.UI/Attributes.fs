@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.UI
 
+open Suave
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
