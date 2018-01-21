@@ -12,6 +12,9 @@ let update (m : Model) (message : Message) =
         | CameraMessage1 msg -> { m with camera1 = CameraController.update m.camera1 msg }
         | CameraMessage2 msg -> { m with camera2 = CameraController.update m.camera2 msg }
         | CameraMessage3 msg -> { m with camera3 = CameraController.update m.camera3 msg }
+        | SelectFiles files -> 
+            let files = files |> List.map Aardvark.Service.PathUtils.ofUnixStyle
+            Log.warn "%A" files; m
 
 let viewScene (m : MModel) =
     Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
@@ -80,6 +83,10 @@ let view (m : MModel) =
                             require (Html.semui) (
                                 div [] [
                                     a [attribute "href" "./complex"; attribute "target" "_blank"] [text "complex view"]
+                                    button [
+                                        clientEvent "onclick" "aardvark.openFileDialog({ mode: 'file'}, function(path) { aardvark.processEvent('__ID__', 'onselect', path); });"
+                                        onEvent "onselect" [] (function files::_ -> SelectFiles(Pickler.unpickleOfJson files) | _ -> SelectFiles [])
+                                    ] [text "open file"]
                                     div [clazz "simple"] [simple]
                                 ]
                             )

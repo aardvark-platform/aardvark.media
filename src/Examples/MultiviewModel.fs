@@ -15,3 +15,4 @@ type Message =
     | CameraMessage1 of CameraControllerMessage
     | CameraMessage2 of CameraControllerMessage
     | CameraMessage3 of CameraControllerMessage
+    | SelectFiles of list<string>

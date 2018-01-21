@@ -10,7 +10,7 @@ open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Application.WinForms
 
-[<EntryPoint>]
+[<EntryPoint; STAThread>]
 let main argv = 
 
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
@@ -78,10 +78,8 @@ let main argv =
 ////                [path "/" >=> Successful.OK str]
 //
 //        ]
-            
-        folder "hugo" [
-            MutableApp.toWebPart' runtime true mapp
-        ]
+        
+        MutableApp.toWebPart' runtime true mapp
 
         Suave.Files.browseHome
     ] 
@@ -90,7 +88,7 @@ let main argv =
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
-    ctrl.StartUrl <- "http://localhost:4321/hugo/simple"
+    ctrl.StartUrl <- "http://localhost:4321/simple"
     //ctrl.ShowDevTools()
 
     Application.Run form
