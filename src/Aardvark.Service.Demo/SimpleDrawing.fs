@@ -110,33 +110,30 @@ let view (m : MModel) =
                 onMouseMoveRel      MoveCursor
 
                 // our event handlers require to search for the svg element to compute the coordinates realtive to.
-                // currently we use hard coded class name 'svgRoot' in our javascript code. see: utilities.js
+                // currently we use hard coded class name 'svgRoot' in our javascript code. see: aardvark.js
                 clazz "svgRoot"; 
                 
                 // show a border for our svg
                 style "border: 1px solid black;"
             ]
 
-        // our custom event handlers need special functions defined in utilities.js. use require to import javascript files.
-        require [{ kind = Script; name = "utilities"; url = "utilities.js" }] (
-            // finally create our svg. since our content is dynamic we use the incremental version of svg
-            Incremental.Svg.svg attributes <| 
-                alist {
-                    // loop over polygons and emit html code to render the svg
-                    for polygon in m.finishedPolygons do
-                        yield! viewPolygon (Mod.constant []) polygon.points
+        // finally create our svg. since our content is dynamic we use the incremental version of svg
+        Incremental.Svg.svg attributes <| 
+            alist {
+                // loop over polygons and emit html code to render the svg
+                for polygon in m.finishedPolygons do
+                    yield! viewPolygon (Mod.constant []) polygon.points
 
-                    // let us check if we currently have a working polygon
-                    let! currentPolygon = m.workingPolygon
-                    // if so, emit the stuff
-                    match currentPolygon with
-                        | None -> ()
-                        | Some p -> 
-                            // let us prepent our current cursor position in order to get a preview of the 
-                            // last point.
-                            yield! viewPolygon (Mod.map Option.toList m.cursor) p.points
-                }
-        )
+                // let us check if we currently have a working polygon
+                let! currentPolygon = m.workingPolygon
+                // if so, emit the stuff
+                match currentPolygon with
+                    | None -> ()
+                    | Some p -> 
+                        // let us prepent our current cursor position in order to get a preview of the 
+                        // last point.
+                        yield! viewPolygon (Mod.map Option.toList m.cursor) p.points
+            }
 
     // body creates a html body
     body [] [

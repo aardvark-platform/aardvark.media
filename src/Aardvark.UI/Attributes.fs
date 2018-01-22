@@ -21,7 +21,7 @@ module Attributes =
             clientSide = fun send id -> code.Replace("__ID__", id)
             serverSide = fun _ _ _ -> Seq.empty
         }
-
+    
 
 [<AutoOpen>]
 module Events =

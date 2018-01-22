@@ -70,9 +70,27 @@ let switchCode = """
 """
 
 
+let browseOnClick (react : list<string> -> Option<'msg>) : Attribute<'msg> =
+    "onclick", 
+    AttributeValue.Event { 
+        clientSide = fun send id -> 
+            "aardvark.openFileDialog({ mode: 'file'}, function(path) { " + send id ["path"] + " });"
+        serverSide = 
+            fun _ _ files -> 
+                match files with
+                    | files::_ ->
+                        Pickler.unpickleOfJson files 
+                            |> List.map Aardvark.Service.PathUtils.ofUnixStyle 
+                            |> react 
+                            |> Option.toList :> seq<_>
+                    | _ ->
+                        Seq.empty
+    }
+
 let view (m : MModel) =
     let complex = complex m
     let simple = simple m
+
   
     require (Html.semui) (
         page <| fun (request : Request) ->
@@ -90,10 +108,7 @@ let view (m : MModel) =
                         require (Html.semui) (
                             div [] [
                                 a [attribute "href" "./?viewType=complex"; attribute "target" "_blank"] [text "complex view"]
-                                button [
-                                    clientEvent "onclick" "aardvark.openFileDialog({ mode: 'file'}, function(path) { aardvark.processEvent('__ID__', 'onselect', path); });"
-                                    onEvent "onselect" [] (function files::_ -> SelectFiles(Pickler.unpickleOfJson files) | _ -> SelectFiles [])
-                                ] [text "open file"]
+                                button [ browseOnClick (fun files -> Some (SelectFiles files)) ] [text "open file"]
                                 div [clazz "simple"] [simple]
                             ]
                         )

@@ -419,11 +419,6 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let runtime = server.runtime
     let mutable task = RenderTask.empty
 
-//    let compressor =
-//        match server.compressor with
-//            | Some c -> c
-//            | None -> Unchecked.defaultof<_>
-
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
 
     let targetSize = Mod.init V2i.II

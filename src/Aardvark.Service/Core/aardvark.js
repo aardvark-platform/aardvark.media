@@ -789,7 +789,7 @@ if (!aardvark.connect) {
 
 function setAttribute(id,name,value)
 {
-    if(name=="value")
+    if(name == "value")
     {
         id.setAttribute(name,value);
         id.value = value;
@@ -816,3 +816,20 @@ $(document).ready(function () {
 });
 
 
+if (!getCursor) {
+    function findAncestor(el, cls) {
+        if (el.classList.contains(cls)) return el;
+        while ((el = el.parentElement) && !el.classList.contains(cls));
+        return el;
+    }
+
+    getCursor = function (evt) {
+        var source = evt.target || evt.srcElement;
+        var svg = findAncestor(source, "svgRoot");
+        var pt = svg.createSVGPoint();
+        pt.x = evt.clientX;
+        pt.y = evt.clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    };
+
+}
