@@ -81,8 +81,8 @@ module private Tools =
                     jpeg.Compress(
                         NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y, 
                         TJPixelFormat.RGBX, 
-                        TJSubsampling.S420, 
-                        90, 
+                        TJSubsampling.S444, 
+                        80, 
                         TJFlags.BottomUp ||| TJFlags.ForceSSE3
                     )
                 )
@@ -122,8 +122,8 @@ module private Tools =
                 jpeg.Compress(
                     ptr, alignedRowSize, size.X, size.Y, 
                     TJPixelFormat.RGB, 
-                    TJSubsampling.S420, 
-                    90, 
+                    TJSubsampling.S444, 
+                    80, 
                     TJFlags.BottomUp ||| TJFlags.ForceSSE3
                 )
 

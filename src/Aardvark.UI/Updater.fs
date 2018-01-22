@@ -78,8 +78,6 @@ type TextUpdater<'msg>(text : IMod<string>) =
     override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
         JSExpr.Nop
 
-exception InvalidSubPage 
-
 type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
     inherit AbstractUpdater<'msg>()
     let reader = children.GetReader()
@@ -218,12 +216,9 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
             | Text text -> TextUpdater text :> IUpdater<_>
             | Empty -> EmptyUpdater.Instance
             | Page p -> 
-                match p request with
-                    | Some(dom,newRequest) -> 
-                        let updater = DomUpdater(dom,newRequest)
-                        updater :> IUpdater<_>
-                    | None -> 
-                        raise InvalidSubPage
+                let updater = DomUpdater(p request, request)
+                updater :> IUpdater<_>
+
 
     let mutable initial = true
 
@@ -326,20 +321,18 @@ module ``Extensions for Node`` =
         member x.NewUpdater(request : Request) =
             match x.Content with
                 | Page f -> 
-                    match f request with
-                        | None -> raise InvalidSubPage
-                        | Some (p,request) -> 
-                            let mutable p = p
-                            match x.Boot with
-                                | Some boot -> p <- p.AddBoot boot
-                                | _ -> ()
-                            match x.Shutdown with
-                                | Some boot -> p <- p.AddShutdown boot
-                                | _ -> ()
-                            match x.Required with
-                                | [] -> ()
-                                | r -> p <- p.AddRequired(r)
-                            p.NewUpdater(request)
+                    let p = f request
+                    let mutable p = p
+                    match x.Boot with
+                        | Some boot -> p <- p.AddBoot boot
+                        | _ -> ()
+                    match x.Shutdown with
+                        | Some boot -> p <- p.AddShutdown boot
+                        | _ -> ()
+                    match x.Required with
+                        | [] -> ()
+                        | r -> p <- p.AddRequired(r)
+                    p.NewUpdater(request)
                 | _ -> 
                     let updater = 
                         if x.Tag = "body" then DomUpdater<'msg>(x,request) :> IUpdater<_>

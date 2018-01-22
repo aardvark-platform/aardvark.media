@@ -359,7 +359,8 @@ module SceneEventProcessor =
 
 type Request =
     {
-        requestPath : list<string>
+        requestPath : string
+        queryParams : Map<string, string>
     }
 
 [<Sealed>]
@@ -497,7 +498,7 @@ and DomContent<'msg> =
     | Children of alist<DomNode<'msg>>
     | Scene    of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState)
     | Text     of IMod<string>
-    | Page     of (Request -> Option<DomNode<'msg> * Request>)
+    | Page     of (Request -> DomNode<'msg>)
 
     with 
         static member Map(x : DomContent<'msg>, f : 'msg -> 'b) = 
@@ -508,10 +509,8 @@ and DomContent<'msg> =
                 | Text t      -> Text t
                 | Page c      -> 
                     let inner request =
-                        match c request with
-                            | Some (pageDom,request) -> 
-                                Some (pageDom.Map(f), request)
-                            | None -> None
+                        let r = c request
+                        r.Map f
                     Page inner
             
 open Aardvark.Service
@@ -548,7 +547,7 @@ type DomNode private() =
     static member Text(content : IMod<string>) = 
         DomNode<'msg>("span", None, AttributeMap.empty, DomContent.Text content)
 
-    static member Page(f : Request -> Option<DomNode<'msg>*Request>) =
+    static member Page(f : Request -> DomNode<'msg>) =
         DomNode<'msg>("page", None, AttributeMap.empty, DomContent.Page f)  
 
     static member SvgText(content : IMod<string>) = 

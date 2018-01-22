@@ -730,7 +730,21 @@ if (!aardvark.render) {
 
 if (!aardvark.connect) {
     aardvark.connect = function (path) {
-        var url = aardvark.getRelativeUrl('ws', path + '?session=' + aardvark.guid);
+        var urlParams;
+        var match,
+            pl = /\+/g,  // Regex for replacing addition symbol with a space
+            search = /([^&=]+)=?([^&]*)/g,
+            decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+            query = window.location.search.substring(1);
+
+
+        var wsQuery = '?session=' + aardvark.guid;
+
+        while (match = search.exec(query))
+            wsQuery = wsQuery + "&" + decode(match[1]) + "=" + decode(match[2]);
+
+
+        var url = aardvark.getRelativeUrl('ws', path + wsQuery);
         var eventSocket = new WebSocket(url);
 
         eventSocket.onopen = function () {

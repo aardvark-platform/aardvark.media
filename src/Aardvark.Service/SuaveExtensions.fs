@@ -29,7 +29,8 @@ module Filters =
             if path.StartsWith prefix then
                 let rest = path.Substring prefix.Length
                 if rest = "" || rest.StartsWith "/" then
-                    let newUri = url.WithPath (path.Substring prefix.Length)
+                    let rest = if rest = "" then "/" else rest
+                    let newUri = url.WithPath rest
                     choose parts { ctx with request = { ctx.request with url = newUri } }
                 else
                     never ctx
@@ -103,6 +104,7 @@ module Redirection =
                     Redirection.redirect newPath ctx
                 | _ ->
                     Redirection.redirect path ctx
+
 
 module Reflection =
     open Aardvark.Base

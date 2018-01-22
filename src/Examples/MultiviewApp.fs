@@ -76,34 +76,28 @@ let view (m : MModel) =
   
     require (Html.semui) (
         page <| fun (request : Request) ->
-            match request.requestPath with
-                | "simple" :: rest ->
-                    let content = 
-                        body [ style "background: #1B1C1E"] [
-                            require (Html.semui) (
-                                div [] [
-                                    a [attribute "href" "./complex"; attribute "target" "_blank"] [text "complex view"]
-                                    button [
-                                        clientEvent "onclick" "aardvark.openFileDialog({ mode: 'file'}, function(path) { aardvark.processEvent('__ID__', 'onselect', path); });"
-                                        onEvent "onselect" [] (function files::_ -> SelectFiles(Pickler.unpickleOfJson files) | _ -> SelectFiles [])
-                                    ] [text "open file"]
-                                    div [clazz "simple"] [simple]
-                                ]
-                            )
-                        ]
-                    Some (content, { request with requestPath = rest })
-                | "complex" :: rest ->
-                    let content = 
-                        body [ style "background: #1B1C1E"] [
-                            require (Html.semui) (
-                                div [] [
-                                    div [clazz "complex"] [complex]
-                                ]
-                            )
-                        ]
-                    Some (content, { request with requestPath = rest })
-                | _ -> 
-                    None
+            match Map.tryFind "viewType" request.queryParams with
+                | Some "complex" ->
+                    body [ style "background: #1B1C1E"] [
+                        require (Html.semui) (
+                            div [] [
+                                div [clazz "complex"] [complex]
+                            ]
+                        )
+                    ]
+                | _ ->
+                    body [ style "background: #1B1C1E"] [
+                        require (Html.semui) (
+                            div [] [
+                                a [attribute "href" "./?viewType=complex"; attribute "target" "_blank"] [text "complex view"]
+                                button [
+                                    clientEvent "onclick" "aardvark.openFileDialog({ mode: 'file'}, function(path) { aardvark.processEvent('__ID__', 'onselect', path); });"
+                                    onEvent "onselect" [] (function files::_ -> SelectFiles(Pickler.unpickleOfJson files) | _ -> SelectFiles [])
+                                ] [text "open file"]
+                                div [clazz "simple"] [simple]
+                            ]
+                        )
+                    ]
     )
     
 
