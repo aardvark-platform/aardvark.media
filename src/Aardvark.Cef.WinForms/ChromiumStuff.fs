@@ -469,7 +469,6 @@ module Chromium =
                 settings.MultiThreadedMessageLoop <- CefRuntime.Platform = CefRuntimePlatform.Windows;
                 settings.LogSeverity <- CefLogSeverity.Default;
                 settings.LogFile <- "cef.log";
-                settings.ResourcesDirPath <- System.IO.Path.GetDirectoryName(Uri(System.Reflection.Assembly.GetEntryAssembly().CodeBase).LocalPath);
                 settings.RemoteDebuggingPort <- 1337;
                 settings.NoSandbox <- true;
                 let args = 

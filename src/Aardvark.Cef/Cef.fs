@@ -37,7 +37,6 @@ module Cef =
             settings.LogSeverity <- CefLogSeverity.Warning
             settings.RemoteDebuggingPort <- 1337
             settings.IgnoreCertificateErrors <- true
-            settings.LocalesDirPath <- "locales"
             settings.WindowlessRenderingEnabled <- windowless
             
             settings.CommandLineArgsDisabled <- false
