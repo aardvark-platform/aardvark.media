@@ -816,14 +816,14 @@ $(document).ready(function () {
 });
 
 
-if (!getCursor) {
+if (!aardvark.getCursor) {
     function findAncestor(el, cls) {
         if (el.classList.contains(cls)) return el;
         while ((el = el.parentElement) && !el.classList.contains(cls));
         return el;
     }
 
-    getCursor = function (evt) {
+    aardvark.getCursor = function (evt) {
         var source = evt.target || evt.srcElement;
         var svg = findAncestor(source, "svgRoot");
         var pt = svg.createSVGPoint();
@@ -833,3 +833,5 @@ if (!getCursor) {
     };
 
 }
+
+var getCursor = aardvark.getCursor;
