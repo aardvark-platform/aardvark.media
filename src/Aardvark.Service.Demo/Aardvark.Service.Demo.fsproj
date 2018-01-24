@@ -122,10 +122,6 @@
     <Content Include="spectrum.css">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\Aardvark.Service\utilities.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-      <Link>utilities.js</Link>
-    </Content>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">

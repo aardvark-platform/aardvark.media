@@ -730,7 +730,21 @@ if (!aardvark.render) {
 
 if (!aardvark.connect) {
     aardvark.connect = function (path) {
-        var url = aardvark.getRelativeUrl('ws', path + '?session=' + aardvark.guid);
+        var urlParams;
+        var match,
+            pl = /\+/g,  // Regex for replacing addition symbol with a space
+            search = /([^&=]+)=?([^&]*)/g,
+            decode = function (s) { return decodeURIComponent(s.replace(pl, " ")); },
+            query = window.location.search.substring(1);
+
+
+        var wsQuery = '?session=' + aardvark.guid;
+
+        while (match = search.exec(query))
+            wsQuery = wsQuery + "&" + decode(match[1]) + "=" + decode(match[2]);
+
+
+        var url = aardvark.getRelativeUrl('ws', path + wsQuery);
         var eventSocket = new WebSocket(url);
 
         eventSocket.onopen = function () {
@@ -775,7 +789,7 @@ if (!aardvark.connect) {
 
 function setAttribute(id,name,value)
 {
-    if(name=="value")
+    if(name == "value")
     {
         id.setAttribute(name,value);
         id.value = value;
@@ -802,3 +816,22 @@ $(document).ready(function () {
 });
 
 
+if (!aardvark.getCursor) {
+    function findAncestor(el, cls) {
+        if (el.classList.contains(cls)) return el;
+        while ((el = el.parentElement) && !el.classList.contains(cls));
+        return el;
+    }
+
+    aardvark.getCursor = function (evt) {
+        var source = evt.target || evt.srcElement;
+        var svg = findAncestor(source, "svgRoot");
+        var pt = svg.createSVGPoint();
+        pt.x = evt.clientX;
+        pt.y = evt.clientY;
+        return pt.matrixTransform(svg.getScreenCTM().inverse());
+    };
+
+}
+
+var getCursor = aardvark.getCursor;

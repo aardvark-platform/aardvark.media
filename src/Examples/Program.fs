@@ -10,6 +10,13 @@ open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Application.WinForms
 
+let response (statusCode : HttpCode) =
+    fun (ctx : HttpContext) ->
+      let response =
+        { ctx.response with status = statusCode.status; content = HttpContent.NullContent }
+      { ctx with response = response } |> succeed
+
+
 [<EntryPoint; STAThread>]
 let main argv = 
 
@@ -69,6 +76,7 @@ let main argv =
             else
                 never ctx
 
+
     WebPart.startServer 4321 [ 
 //        folder "hugo" [
 ////            path "/a" >=> Successful.OK "YEAH"
@@ -79,16 +87,19 @@ let main argv =
 //
 //        ]
         
-        MutableApp.toWebPart' runtime true mapp
+        MutableApp.toWebPart' runtime false mapp
 
         Suave.Files.browseHome
+
+        response HttpCode.HTTP_404
+
     ] 
 
     //Console.ReadLine() |> ignore
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill
     form.Controls.Add ctrl
-    ctrl.StartUrl <- "http://localhost:4321/simple"
+    ctrl.StartUrl <- "http://localhost:4321/?viewType=simple"
     //ctrl.ShowDevTools()
 
     Application.Run form

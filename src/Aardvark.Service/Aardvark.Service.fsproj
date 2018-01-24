@@ -62,15 +62,14 @@
   </Target>
   -->
   <ItemGroup>
-    <EmbeddedResource Include="aardvark.js" />
-    <EmbeddedResource Include="utilities.js" />
-    <EmbeddedResource Include="aardvark.css" />
-    <EmbeddedResource Include="index.html" />
-    <EmbeddedResource Include="stats.html" />
-    <EmbeddedResource Include="aardvark-light.svg" />
-    <EmbeddedResource Include="aardvark.svg" />
     <Compile Include="Utilities.fs" />
     <Compile Include="SuaveExtensions.fs" />
+    <EmbeddedResource Include="Core\aardvark.js" />
+    <EmbeddedResource Include="Core\aardvark.css" />
+    <EmbeddedResource Include="Core\index.html" />
+    <EmbeddedResource Include="Core\stats.html" />
+    <EmbeddedResource Include="Data\aardvark-light.svg" />
+    <EmbeddedResource Include="Data\aardvark.svg" />
     <Compile Include="aardfs\FileSystem.fs" />
     <EmbeddedResource Include="aardfs\aardfs.css" />
     <EmbeddedResource Include="aardfs\aardfs.js" />
