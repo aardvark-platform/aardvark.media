@@ -47,28 +47,7 @@ let complex (m : MModel) =
 let simple (m : MModel) =
     CameraController.controlledControl m.camera3 CameraMessage3 
         (Frustum.perspective 80.0 0.1 100.0 1.0 |> Mod.constant) 
-        (AttributeMap.ofList [ attribute "style" "width:85%; height: 50%; float: left;"]) (viewScene m)
-
-let switchCode = """
-    debugger;
-    var f = function() {
-    if(window.location.href.indexOf('complex') !== -1)
-    {   
-        debugger;
-        var blub = $( ".simple" ).style;
-        $( ".simple" )[0].style.display = 'block';
-    } else
-    {
-        debugger;
-        $( ".complex" )[0].hide();
-    }
-    };
-    window.addEventListener("load", function load(event) {
-        f();
-    }, false);
-    f();
-"""
-
+        (AttributeMap.ofList [ attribute "data-scene" "myscene"; attribute "style" "width:85%; height: 50%; float: left;"]) (viewScene m)
 
 let browseOnClick (react : list<string> -> Option<'msg>) : Attribute<'msg> =
     "onclick", 

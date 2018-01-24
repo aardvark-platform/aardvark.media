@@ -16,7 +16,6 @@ module Cef =
     let init'(windowless : bool) =
         if not initialized then
             initialized <- true
-            ChromiumUtilities.unpackCef()
 
             let args = getArgs()
             CefRuntime.Load()

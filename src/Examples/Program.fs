@@ -22,7 +22,6 @@ let main argv =
 
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
-    //Aardvark.Cef.Internal.Cef.init' false
 
     let useVulkan = false
 

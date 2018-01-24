@@ -471,6 +471,7 @@ module Chromium =
                 settings.LogFile <- "cef.log";
                 settings.RemoteDebuggingPort <- 1337;
                 settings.NoSandbox <- true;
+                settings.BrowserSubprocessPath <- "Aardvark.Cef.Process.exe"
                 let args = 
                     if CefRuntime.Platform = CefRuntimePlatform.Windows then argv
                     else Array.append [|"-"|] argv
