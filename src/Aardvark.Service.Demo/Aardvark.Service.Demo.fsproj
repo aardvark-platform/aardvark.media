@@ -80,6 +80,8 @@
     <Compile Include="SimpleTestModel.fs" />
     <Compile Include="Drawing.fs" />
     <Compile Include="DrawingApp.fs" />
+    <Compile Include="Correlations\CorrelationDrawing.fs" />
+    <Compile Include="Correlations\CorrelationDrawingApp.fs" />
     <Compile Include="SimpleTest.fs" />
     <Compile Include="Quicktest-Models.fs" />
     <Compile Include="QuickTest.fs" />
