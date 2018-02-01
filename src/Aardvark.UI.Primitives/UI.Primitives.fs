@@ -64,9 +64,10 @@ module Html =
     let test = 
         a |> Mod.map (fun z -> Mod.map (fun v -> v + 1) z.a)
 
-    let semui =
+    let semui = 
         [ 
             { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
+            { kind = Stylesheet; name = "semui"; url = "./semui-overrides.css" }
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
         ]      
 
