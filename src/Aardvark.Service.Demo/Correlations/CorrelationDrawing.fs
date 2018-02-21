@@ -1,8 +1,12 @@
-﻿namespace UI.Composed
+﻿namespace CorrelationDrawing
+
+
+
+
 
 module CorrelationDrawing =
     open Newtonsoft.Json
-    open PRo3DModels
+   // open PRo3DModels
     open Aardvark.Base
     open Aardvark.Application
     open Aardvark.UI
@@ -19,14 +23,39 @@ module CorrelationDrawing =
     open Aardvark.UI.Primitives
     open Aardvark.Rendering.Text
 
-    open PRo3DModels
-
     open Aardvark.SceneGraph.SgPrimitives
     open Aardvark.SceneGraph.FShadeSceneGraph
+    open Annotation
+    open CorrelationUtilities
+
+    let initial : CorrelationDrawingModel = {
+        draw = false
+        hoverPosition = None
+        working = None
+        projection = Projection.Viewpoint
+        geometry = GeometryType.Line
+        semantics = hmap.Empty
+        semanticsList = plist.Empty
+        selectedSemantic = None
+        annotations = plist.Empty
+        exportPath = @"."
+    }
+
+    let insertFirstSemantics (model : CorrelationDrawingModel) = 
+        let newSem = Semantic.initial
+        let newSemantics = HMap.union model.semantics (model.semantics.Add(newSem.label, newSem))
+        {model with semantics = newSemantics; semanticsList = plistFromHMap newSemantics; selectedSemantic = Some newSem.label}
+           
+    let insertSampleSemantics (model : CorrelationDrawingModel) = 
+        let newSem = {Semantic.initial with label = (sprintf "Semantic%i" (model.semantics.Count + 1))}
+        {model with semantics = model.semantics.Add(newSem.label, newSem); semanticsList = model.semanticsList.Append(newSem); selectedSemantic = Some newSem.label}
+        
 
     type Action =
-        | SetSemantic      of Semantic
-        | SetGeometry      of Geometry
+        | SetSemantic      of Option<string>
+        | AddSemantic
+        | EditSemantic     of Semantic.Action
+        | SetGeometry      of GeometryType
         | SetProjection    of Projection
         | SetExportPath    of string
         | Move             of V3d
@@ -36,13 +65,16 @@ module CorrelationDrawing =
         | KeyUp of key : Keys      
         | Export
 
-    let finishAndAppend (model : DrawingModel) = 
+    let finishAndAppend (model : CorrelationDrawingModel) = 
         let anns = match model.working with
                             | Some w -> model.annotations |> PList.append w
                             | None -> model.annotations
         { model with working = None; annotations = anns }
 
-    let update (model : DrawingModel) (act : Action) =
+//    let getCurrentSemantic (model : CorrelationDrawingModel) =
+//        model.semantics.FindIndex(true, (fun x -> model.selectedSemantic <> Some x.id))
+
+    let update (model : CorrelationDrawingModel) (act : Action) =
         match (act, model.draw) with
             | KeyDown Keys.LeftCtrl, _ ->                     
                     { model with draw = true }
@@ -56,13 +88,13 @@ module CorrelationDrawing =
                                 | Some w ->                                     
                                     { w with points = w.points |> PList.append p }
                                 | None ->                                     
-                                    { (Annotation.make model.projection model.geometry model.semantic) with points = PList.ofList [p]}//add annotation states
+                                    {Annotation.initial with points = PList.ofList [p]}//add annotation states
 
                     let model = { model with working = Some working }
 
                     let model = match (working.geometry, (working.points |> PList.count)) with
-                                    | Geometry.Point, 1 -> model |> finishAndAppend
-                                    | Geometry.Line, 2 -> model |> finishAndAppend
+                                    | GeometryType.Point, 1 -> model |> finishAndAppend
+                                    | GeometryType.Line, 2 -> model |> finishAndAppend
                                     | _ -> model
 
                     model                 
@@ -71,27 +103,42 @@ module CorrelationDrawing =
                     model |> finishAndAppend
             | Exit, _ -> 
                     { model with hoverPosition = None }
-            | SetSemantic mode, _ ->
-                    let model =
-                        match mode with
-                            | Semantic.GrainSize -> { model with geometry = Geometry.Line }
-                            | _ -> model
+            | SetSemantic sem, false ->
+                    {model with selectedSemantic = sem }
+            | EditSemantic sem, false -> model
+            | AddSemantic, _ -> insertSampleSemantics model 
+           
+           //            | EditSemantic sem, _ -> 
+//                {model with semantics = 
+//                        match model.selectedSemantic with
+//                            | Some s -> model.semantics
+//                                            |> PList.  (fun x -> x.id = model.selectedSemantic.id) (fun x -> Semantic.update x)
+//                            | None -> model.semantics
+//                        }
+//                let tryGet (ans:plist<Semantic>) key = 
+//                    ans |> Seq.tryFind(fun x -> x.id = key)
+//                let selectedSem = 
+//                    match model.selectedSemantic with
+//                        | Some s -> tryGet model.semantics s
+//                        | None -> None
+//                match selectedSem with
+//                    | Some s -> {model with semantics = model.semantics.Remove }
+//                    | None -> {model with selectedSemantic = Some (model.semantics.Item 0)}
 
-                    {model with semantic = mode }
             | SetGeometry mode, _ ->
                     { model with geometry = mode }
             | SetProjection mode, _ ->
                     { model with projection = mode }
-            | KeyDown Keys.D0, _ -> 
-                    {model with semantic = Semantic.Horizon0 }               
-            | KeyDown Keys.D1, _ -> 
-                    {model with semantic = Semantic.Horizon1 }               
-            | KeyDown Keys.D2, _ -> 
-                    {model with semantic = Semantic.Horizon2 }               
-            | KeyDown Keys.D3, _ -> 
-                    {model with semantic = Semantic.Horizon3 }               
-            | KeyDown Keys.D4, _ -> 
-                    {model with semantic = Semantic.Horizon4 }               
+//            | KeyDown Keys.D0, _ -> 
+//                    {model with semantic = Semantic.Horizon0 }               
+//            | KeyDown Keys.D1, _ -> 
+//                    {model with semantic = Semantic.Horizon1 }               
+//            | KeyDown Keys.D2, _ -> 
+//                    {model with semantic = Semantic.Horizon2 }               
+//            | KeyDown Keys.D3, _ -> 
+//                    {model with semantic = Semantic.Horizon3 }               
+//            | KeyDown Keys.D4, _ -> 
+//                    {model with semantic = Semantic.Horizon4 }               
             | SetExportPath s, _ ->
                     { model with exportPath = s }
             | Export, _ ->
@@ -104,38 +151,71 @@ module CorrelationDrawing =
             | _ -> model
 
     module UI =
-        open Aardvark.Base.Incremental
+        open Aardvark.Base.Incremental    
+       
+        let viewAnnotationTools (model:MCorrelationDrawingModel) =  
 
-        let viewAnnotationTools (model:MDrawingModel)=  
+            let msel = 
+                adaptive {
+                    let! sel = model.selectedSemantic
+                    match sel with
+                        | Some s -> 
+                            let sem = model.semantics |> AMap.tryFind s
+                            return Mod.force sem
+                            // |> AList.filter (fun x -> x.id = s)
+                            //sel |> AList.tryAt 0
+                        | None -> return None
+                }
+
+                
+
+
             Html.SemUi.accordion "Annotation Tools" "Write" true [
                 Html.table [                            
                     Html.row "Text:"        [Html.SemUi.textBox  model.exportPath SetExportPath ]
                     Html.row "Geometry:"    [Html.SemUi.dropDown model.geometry   SetGeometry]
                     Html.row "Projections:" [Html.SemUi.dropDown model.projection SetProjection]
-                    Html.row "Semantic:"    [Html.SemUi.dropDown model.semantic   SetSemantic]
+                    Html.row "Semantic:"    [Utilities.dropDownList model.semanticsList msel (fun x -> SetSemantic (Mod.force model.selectedSemantic)) (fun x -> Mod.force x.label)]
+                    
+                    // (HMap.find model.selectedSemantic model.semantics)  (fun x -> SetSemantic) (fun x -> x.label)]//  (fun x -> (Mod.force x).label)]  //)) (fun x -> SetSemantic) (fun x -> x.Value.label)]
+//                                                                                                    alist {
+//                                                                                                                                (fun x -> 
+//                                                                                                        match x with
+//                                                                                                            | Some x -> SetSemantic (Some (Mod.force x.Current))
+//                                                                                                            | None -> SetSemantic (Some Semantic.initial))  (fun x -> x.label |> Mod.force) ]
+//                                                                                                    }
+
+                       // (fun x -> SetSemantic (Some (Option.get x)))  (fun x -> x.label |> Mod.force) ]
                 ]                    
             ]
 
-        let viewAnnotations (model:MDrawingModel) = 
+        let viewAnnotations (model:MCorrelationDrawingModel) = 
             Html.SemUi.accordion "Annotations" "File Outline" true [
                 Incremental.div 
                     (AttributeMap.ofList [clazz "ui divided list"]) (
-                            
                         alist {                                                                     
-                            for a in model.annotations do 
-                                        
-                                let! sem = a.semantic
-                                let c = Annotation.color.[int sem]
-
-                                let bgc = sprintf "background: %s" (Html.ofC4b c)
-                                    
-                                yield div [clazz "item"; style bgc] [
-                                        i [clazz "medium File Outline middle aligned icon"][]
-                                        text (a.geometry.ToString())
-                                ]                                                                    
+                            for a in model.annotations do    
+                                yield Annotation.view a                                                                
                         }     
                 )
             ]
+
+        let viewSemantics (model:MCorrelationDrawingModel) = 
+            Html.SemUi.accordion "Semantics" "File Outline" true [
+                Incremental.div
+                    (AttributeMap.ofList [clazz "ui divided list"]) (
+                        alist {
+                            for mSem in model.semanticsList do
+                                let! st = mSem.style
+                                yield div [clazz "item"; style (Html.ofC4b st.color)] [
+                                        i [clazz "medium File Outline middle aligned icon"][]
+                                        text (Mod.force (mSem.label))
+                                ] 
+                        }
+                    )
+            ]
+
+
     module Sg =        
 
         let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =
@@ -231,21 +311,30 @@ module CorrelationDrawing =
                 m |> Mod.bind (function | None -> defaultValue | Some v -> f v)
 
             let color = 
-                withDefault anno (fun a -> a.color) C4b.VRVisGreen
+                    (match (anno |> Mod.force) with
+                        | Some b -> (Mod.force b.semantic.style).color
+                        | None -> C4b.Red
+                    ) |> Mod.constant
+              
+                //withDefault anno (fun a -> a.color) C4b.VRVisGreen
 
             let thickness = 
-                anno |> Mod.bind (function o -> match o with
-                                                | Some a -> a.thickness.value
-                                                | None -> Mod.constant 1.0)
+                    (match (anno |> Mod.force) with
+                        | Some b -> (Mod.force b.semantic.style).thickness.value
+                        | None -> 1.0
+                    ) |> Mod.constant
 
             [lines points color thickness; dots points color view]
+          
+        let annotation' (anno : MAnnotation)(view : IMod<CameraView>) =      
+            let color = ((Mod.force anno.semantic.style).color |> Mod.constant)
+                //withDefault anno (fun a -> a.color) C4b.VRVisGreen
+            let thickness = ((Mod.force anno.semantic.style).thickness.value) |> Mod.constant
 
-        let annotation' (anno : MAnnotation)(view : IMod<CameraView>) =             
-            [lines anno.points anno.color anno.thickness.value; 
-             dots anno.points anno.color view] 
+            [lines anno.points color thickness; dots anno.points color view] 
             |> ASet.ofList
 
-        let view (model:MDrawingModel) (cam:IMod<CameraView>) =        
+        let view (model:MCorrelationDrawingModel) (cam:IMod<CameraView>) =        
             // order is irrelevant for rendering. change list to set,
             // since set provides more degrees of freedom for the compiler
             let annoSet = ASet.ofAList model.annotations 
