@@ -67,7 +67,6 @@ module Html =
     let semui = 
         [ 
             { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
-            { kind = Stylesheet; name = "semui"; url = "./semui-overrides.css" }
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
         ]      
 

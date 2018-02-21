@@ -111,69 +111,99 @@ module MutableApp =
                             scenes      = Dictionary()
                             handlers    = Dictionary()
                             references  = Dictionary()
+                            activeChannels = Dict()
                         }
 
+                    let o = AdaptiveObject()
                     
                     let update = MVar.create true
-                    let subscription = updater.AddMarkingCallback(fun () -> MVar.put update true)
+                    let subscription = o.AddMarkingCallback(fun () -> MVar.put update true)
                     
                     let mutable running = true
+                    let mutable oldChannels : Set<string * string> = Set.empty
 
+                    let send (arr : byte[]) =
+                        let res = ws.send Opcode.Text (ByteSegment(arr)) true |> Async.RunSynchronously
+                        match res with
+                            | Choice1Of2 () ->
+                                ()
+                            | Choice2Of2 err ->
+                                failwithf "[WS] error: %A" err
+                                                
                     let updateThread =
                         async {
                             while running do
                                 let! cont = MVar.takeAsync update
                                 if cont then
+                                    o.EvaluateAlways AdaptiveToken.Top (fun t ->
+                                        if Config.shouldTimeJsCodeGeneration then 
+                                            Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
 
-                                    if Config.shouldTimeJsCodeGeneration then Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
-                                    let code = 
-                                        lock app.lock (fun () ->
-                                            let expr = 
-                                                lock state (fun () -> 
-                                                    state.references.Clear()
-                                                    if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                    let r = updater.Update(AdaptiveToken.Top, JSExpr.Body, state)
-                                                    if Config.shouldTimeUIUpdate then Log.stop ()
-                                                    r
-                                                )
+                                        let code = 
+                                            lock app.lock (fun () ->
+                                                let expr = 
+                                                    lock state (fun () -> 
+                                                        state.references.Clear()
+                                                        if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
+                                                        let r = updater.Update(t, JSExpr.Body, state)
+                                                        if Config.shouldTimeUIUpdate then Log.stop ()
+                                                        r
+                                                    )
 
-                                            for (name, sd) in Dictionary.toSeq state.scenes do
-                                                sceneStore.TryAdd(name, sd) |> ignore
+                                                for (name, sd) in Dictionary.toSeq state.scenes do
+                                                    sceneStore.TryAdd(name, sd) |> ignore
 
-                                            let newReferences = state.references.Values |> Seq.toArray
+                                                let newReferences = state.references.Values |> Seq.toArray
                             
 
-                                            let code = expr |> JSExpr.toString
-                                            let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
+                                                let code = expr |> JSExpr.toString
+                                                let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
                                             
-                                            if newReferences.Length > 0 then
-                                                let args = 
-                                                    newReferences |> Seq.map (fun r -> 
-                                                        sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" (if r.kind = Script then "script" else "stylesheet") r.name r.url
-                                                    ) |> String.concat "," |> sprintf "[%s]" 
-                                                let code = String.indent 1 code
-                                                sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
-                                            else
-                                                code
-                                        )
+                                                if newReferences.Length > 0 then
+                                                    let args = 
+                                                        newReferences |> Seq.map (fun r -> 
+                                                            sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" (if r.kind = Script then "script" else "stylesheet") r.name r.url
+                                                        ) |> String.concat "," |> sprintf "[%s]" 
+                                                    let code = String.indent 1 code
+                                                    sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
+                                                else
+                                                    code
+                                            )
 
-                                    if code <> "" then
-                                        let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
-                                        lock app (fun () -> 
-                                            if Config.shouldPrintDOMUpdates then
-                                                Log.start "update"
-                                                for l in lines do Log.line "%s" l
-                                                Log.stop()
-                                        )
-                                    if Config.shouldTimeJsCodeGeneration then Log.line "[Aardvark.UI] code lenght: %d" (code.Length); Log.stop()
+                                        if Config.shouldTimeJsCodeGeneration then 
+                                            Log.line "[Aardvark.UI] code length: %d" (code.Length); Log.stop()
 
-                                    if code <> "" then
-                                        let res = ws.send Opcode.Text (ByteSegment(Text.Encoding.UTF8.GetBytes("x" + code))) true |> Async.RunSynchronously
-                                        match res with
-                                            | Choice1Of2 () ->
-                                                ()
-                                            | Choice2Of2 err ->
-                                                failwithf "[WS] error: %A" err
+                                        if code <> "" then
+                                            lock app (fun () -> 
+                                                if Config.shouldPrintDOMUpdates then
+                                                    let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
+                                                    Log.start "update"
+                                                    for l in lines do Log.line "%s" l
+                                                    Log.stop()
+                                            )
+
+                                            send (Text.Encoding.UTF8.GetBytes("x" + code))
+    
+                                                
+                                        let mutable o = oldChannels
+                                        let mutable c = Set.empty
+                                        for (KeyValue((id,name), cr)) in state.activeChannels do
+                                            match cr.GetMessages(t) with
+                                                | [] -> ()
+                                                | messages ->
+                                                    let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
+                                                    send message
+
+                                            c <- Set.add (id, name) c
+                                            o <- Set.remove (id, name) o
+
+                                        for (id, name) in o do
+                                            let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
+                                            send message
+                                            
+                                        oldChannels <- c
+                                    )
+
                         }
 
                     Async.Start updateThread
