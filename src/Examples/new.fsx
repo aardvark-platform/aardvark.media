@@ -558,7 +558,7 @@ module ProjectDirectory =
 let private numberedRx = System.Text.RegularExpressions.Regex @"(?<number>[0-9]+) \- .*"
 let newExample (name : string) (dir : string) =
     let dirs = Directory.GetDirectories(dir, "*", SearchOption.TopDirectoryOnly)
-    let template = Path.Combine(dir, "01 - Triangle")
+    let template = Path.Combine(dir, "01 - Inc")
 
     let maxIndex =
         dirs |> Seq.map (fun d ->
@@ -572,7 +572,7 @@ let newExample (name : string) (dir : string) =
     let dst = Path.Combine(dir, sprintf "%02d - %s" id name)
     let newProjs = ProjectDirectory.copy template id dst 
 
-    let slnPath = Path.Combine(dir, "..\\Aardvark.Rendering.sln")
+    let slnPath = Path.Combine(dir, "..\\Aardvark.Media.sln")
     let sln = slnPath |> Solution.load
     let examples = Solution.tryFindFolder "Examples" sln
 
