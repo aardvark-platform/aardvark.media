@@ -10,6 +10,52 @@ module Mutable =
 
     
     
+    type MStyle(__initial : CorrelationDrawing.Style) =
+        inherit obj()
+        let mutable __current : Aardvark.Base.Incremental.IModRef<CorrelationDrawing.Style> = Aardvark.Base.Incremental.EqModRef<CorrelationDrawing.Style>(__initial) :> Aardvark.Base.Incremental.IModRef<CorrelationDrawing.Style>
+        let _color = Aardvark.UI.Mutable.MColorInput.Create(__initial.color)
+        let _thickness = Aardvark.UI.Mutable.MNumericInput.Create(__initial.thickness)
+        
+        member x.color = _color
+        member x.thickness = _thickness
+        
+        member x.Current = __current :> IMod<_>
+        member x.Update(v : CorrelationDrawing.Style) =
+            if not (System.Object.ReferenceEquals(__current.Value, v)) then
+                __current.Value <- v
+                
+                Aardvark.UI.Mutable.MColorInput.Update(_color, v.color)
+                Aardvark.UI.Mutable.MNumericInput.Update(_thickness, v.thickness)
+                
+        
+        static member Create(__initial : CorrelationDrawing.Style) : MStyle = MStyle(__initial)
+        static member Update(m : MStyle, v : CorrelationDrawing.Style) = m.Update(v)
+        
+        override x.ToString() = __current.Value.ToString()
+        member x.AsString = sprintf "%A" __current.Value
+        interface IUpdatable<CorrelationDrawing.Style> with
+            member x.Update v = x.Update v
+    
+    
+    
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module Style =
+        [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+        module Lens =
+            let color =
+                { new Lens<CorrelationDrawing.Style, Aardvark.UI.ColorInput>() with
+                    override x.Get(r) = r.color
+                    override x.Set(r,v) = { r with color = v }
+                    override x.Update(r,f) = { r with color = f r.color }
+                }
+            let thickness =
+                { new Lens<CorrelationDrawing.Style, Aardvark.UI.NumericInput>() with
+                    override x.Get(r) = r.thickness
+                    override x.Set(r,v) = { r with thickness = v }
+                    override x.Update(r,f) = { r with thickness = f r.thickness }
+                }
+    
+    
     type MRenderingParameters(__initial : CorrelationDrawing.RenderingParameters) =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<CorrelationDrawing.RenderingParameters> = Aardvark.Base.Incremental.EqModRef<CorrelationDrawing.RenderingParameters>(__initial) :> Aardvark.Base.Incremental.IModRef<CorrelationDrawing.RenderingParameters>
@@ -60,18 +106,16 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<CorrelationDrawing.Semantic> = Aardvark.Base.Incremental.EqModRef<CorrelationDrawing.Semantic>(__initial) :> Aardvark.Base.Incremental.IModRef<CorrelationDrawing.Semantic>
         let _label = ResetMod.Create(__initial.label)
-        let _elevation = ResetMod.Create(__initial.elevation)
-        let _azimuth = ResetMod.Create(__initial.azimuth)
         let _size = ResetMod.Create(__initial.size)
-        let _style = ResetMod.Create(__initial.style)
+        let _style = MStyle.Create(__initial.style)
         let _geometry = ResetMod.Create(__initial.geometry)
+        let _semanticType = ResetMod.Create(__initial.semanticType)
         
         member x.label = _label :> IMod<_>
-        member x.elevation = _elevation :> IMod<_>
-        member x.azimuth = _azimuth :> IMod<_>
         member x.size = _size :> IMod<_>
-        member x.style = _style :> IMod<_>
+        member x.style = _style
         member x.geometry = _geometry :> IMod<_>
+        member x.semanticType = _semanticType :> IMod<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : CorrelationDrawing.Semantic) =
@@ -79,11 +123,10 @@ module Mutable =
                 __current.Value <- v
                 
                 ResetMod.Update(_label,v.label)
-                ResetMod.Update(_elevation,v.elevation)
-                ResetMod.Update(_azimuth,v.azimuth)
                 ResetMod.Update(_size,v.size)
-                ResetMod.Update(_style,v.style)
+                MStyle.Update(_style, v.style)
                 ResetMod.Update(_geometry,v.geometry)
+                ResetMod.Update(_semanticType,v.semanticType)
                 
         
         static member Create(__initial : CorrelationDrawing.Semantic) : MSemantic = MSemantic(__initial)
@@ -106,18 +149,6 @@ module Mutable =
                     override x.Set(r,v) = { r with label = v }
                     override x.Update(r,f) = { r with label = f r.label }
                 }
-            let elevation =
-                { new Lens<CorrelationDrawing.Semantic, Microsoft.FSharp.Core.double>() with
-                    override x.Get(r) = r.elevation
-                    override x.Set(r,v) = { r with elevation = v }
-                    override x.Update(r,f) = { r with elevation = f r.elevation }
-                }
-            let azimuth =
-                { new Lens<CorrelationDrawing.Semantic, Microsoft.FSharp.Core.double>() with
-                    override x.Get(r) = r.azimuth
-                    override x.Set(r,v) = { r with azimuth = v }
-                    override x.Update(r,f) = { r with azimuth = f r.azimuth }
-                }
             let size =
                 { new Lens<CorrelationDrawing.Semantic, Microsoft.FSharp.Core.double>() with
                     override x.Get(r) = r.size
@@ -135,6 +166,12 @@ module Mutable =
                     override x.Get(r) = r.geometry
                     override x.Set(r,v) = { r with geometry = v }
                     override x.Update(r,f) = { r with geometry = f r.geometry }
+                }
+            let semanticType =
+                { new Lens<CorrelationDrawing.Semantic, CorrelationDrawing.SemanticType>() with
+                    override x.Get(r) = r.semanticType
+                    override x.Set(r,v) = { r with semanticType = v }
+                    override x.Update(r,f) = { r with semanticType = f r.semanticType }
                 }
     
     
@@ -381,7 +418,7 @@ module Mutable =
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
             let working =
-                { new Lens<CorrelationDrawing.CorrelationDrawingModel, Microsoft.FSharp.Core.Option<CorrelationDrawing.Annotation>>() with
+                { new Lens<CorrelationDrawing.CorrelationDrawingModel, Microsoft.FSharp.Core.option<CorrelationDrawing.Annotation>>() with
                     override x.Get(r) = r.working
                     override x.Set(r,v) = { r with working = v }
                     override x.Update(r,f) = { r with working = f r.working }
@@ -411,7 +448,7 @@ module Mutable =
                     override x.Update(r,f) = { r with semanticsList = f r.semanticsList }
                 }
             let selectedSemantic =
-                { new Lens<CorrelationDrawing.CorrelationDrawingModel, Microsoft.FSharp.Core.Option<Microsoft.FSharp.Core.string>>() with
+                { new Lens<CorrelationDrawing.CorrelationDrawingModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with
                     override x.Get(r) = r.selectedSemantic
                     override x.Set(r,v) = { r with selectedSemantic = v }
                     override x.Update(r,f) = { r with selectedSemantic = f r.selectedSemantic }

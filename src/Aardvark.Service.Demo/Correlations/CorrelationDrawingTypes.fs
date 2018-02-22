@@ -10,9 +10,12 @@ open Aardvark.UI.Primitives
 
 type Projection = Linear = 0 | Viewpoint = 1 | Sky = 2
 type GeometryType = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3 | DnS = 4 | Undefined = 5
+type SemanticType = Metric = 0 | Angular = 1 | Hierarchical = 2
 
+
+[<DomainType>]
 type Style = {
-    color : C4b
+    color : ColorInput
     thickness : NumericInput
  } 
 
@@ -33,11 +36,10 @@ module RenderingPars =
 [<DomainType>]
 type Semantic = {
         label             : string
-        elevation         : double
-        azimuth           : double
         size              : double
         style             : Style
         geometry          : GeometryType
+        semanticType      : SemanticType
     }
 
 [<DomainType>]
@@ -68,12 +70,12 @@ type LogModel = {
 type CorrelationDrawingModel = {
     draw             : bool 
     hoverPosition    : option<Trafo3d>
-    working          : Option<Annotation>
+    working          : option<Annotation>
     projection       : Projection
     geometry         : GeometryType
     semantics        : hmap<string, Semantic>
     semanticsList    : plist<Semantic>
-    selectedSemantic : Option<string>
+    selectedSemantic : option<string>
     annotations      : plist<Annotation>
     exportPath       : string
 }

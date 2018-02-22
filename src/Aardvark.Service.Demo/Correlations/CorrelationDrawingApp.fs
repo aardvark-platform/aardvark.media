@@ -15,7 +15,7 @@ open Aardvark.Rendering.Text
 
 open Aardvark.SceneGraph.SgPrimitives
 open Aardvark.SceneGraph.FShadeSceneGraph
-       
+open CorrelationUtilities    
 
 module Serialization =
     open MBrace.FsPickler
@@ -40,9 +40,10 @@ module CorrelationDrawingApp =
     type Action =
         | CameraMessage    of ArcBallController.Message
         | DrawingMessage   of CorrelationDrawing.Action
-        | SemanticMessage of Semantic.Action
+        | SemanticMessage of CorrelationDrawing.Action
+        | AnnotationMessage of CorrelationDrawing.Action
         | AddSemantic of CorrelationDrawing.Action
-//        | EditSemantic of CorrelationDrawing.Action
+        | SetSemantic of CorrelationDrawing.Action
         | KeyDown of key : Keys
         | KeyUp of key : Keys      
         | Export
@@ -65,9 +66,13 @@ module CorrelationDrawingApp =
             | DrawingMessage m, _ ->
                     { model with drawing = CorrelationDrawing.update model.drawing m }    
             | AddSemantic m, false ->
-                {model with drawing = CorrelationDrawing.update model.drawing m}       
-//            | EditSemantic cs, _ ->
-//                    { model with drawing = CorrelationDrawing.update model.drawing cs}
+                {model with drawing = CorrelationDrawing.update model.drawing m} 
+            | SetSemantic m, false ->
+                {model with drawing = CorrelationDrawing.update model.drawing m}      
+            | SemanticMessage m, _ ->
+                {model with drawing = CorrelationDrawing.update model.drawing m}          
+            | AnnotationMessage m, _ ->
+                {model with drawing = CorrelationDrawing.update model.drawing m}          
             | Save, _ -> 
                     Serialization.save model ".\drawing"
                     model
@@ -124,41 +129,27 @@ module CorrelationDrawingApp =
                     
                     div [clazz "ui buttons inverted"] [
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Save)] [
-                                    i [clazz "save icon"] [] ] |> Utilities.wrapToolTip "save"
+                                    i [clazz "save icon"] [] ] |> wrapToolTip "save"
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Load)] [
-                                    i [clazz "folder outline icon"] [] ] |> Utilities.wrapToolTip "load"
+                                    i [clazz "folder outline icon"] [] ] |> wrapToolTip "load"
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Clear)] [
-                                    i [clazz "file outline icon"] [] ] |> Utilities.wrapToolTip "clear"
+                                    i [clazz "file outline icon"] [] ] |> wrapToolTip "clear"
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Export)] [
-                                    i [clazz "external icon"] [] ] |> Utilities.wrapToolTip "export"
+                                    i [clazz "external icon"] [] ] |> wrapToolTip "export"
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Undo)] [
-                                    i [clazz "arrow left icon"] [] ] |> Utilities.wrapToolTip "undo"
+                                    i [clazz "arrow left icon"] [] ] |> wrapToolTip "undo"
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Redo)] [
-                                    i [clazz "arrow right icon"] [] ] |> Utilities.wrapToolTip "redo"
+                                    i [clazz "arrow right icon"] [] ] |> wrapToolTip "redo"
                         button [clazz "ui icon button"; onMouseClick (fun _ -> Action.AddSemantic CorrelationDrawing.AddSemantic)] [
                                     i [clazz "plus icon"] [] ] //|> Utilities.wrapToolTip "add semantic"
                     ]
 
                     CorrelationDrawing.UI.viewAnnotationTools model.drawing |> UI.map DrawingMessage
-                    CorrelationDrawing.UI.viewAnnotations model.drawing    
-                    CorrelationDrawing.UI.viewSemantics model.drawing
+                    CorrelationDrawing.UI.viewAnnotations model.drawing  |> UI.map AnnotationMessage   
+                    CorrelationDrawing.UI.viewSemantics model.drawing |> UI.map SemanticMessage
                 ]
             ]
         )
-   
-    //let initialdrawing = {
-        //hoverPosition = None
-        //draw = false            
-
-        //working = None
-        //projection = Projection.Viewpoint
-        //geometry = GeometryType.Polyline
-        //semantic = Semantic.initial
-
-        //annotations = PList.empty
-
-        //exportPath = @"."
-    //}
 
     let initial : CorrelationAppModel =
         {

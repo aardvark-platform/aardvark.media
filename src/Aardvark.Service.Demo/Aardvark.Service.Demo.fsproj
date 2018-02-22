@@ -80,6 +80,12 @@
     <Compile Include="SimpleTestModel.fs" />
     <Compile Include="Drawing.fs" />
     <Compile Include="DrawingApp.fs" />
+    <Compile Include="Correlations\CorrelationDrawingTypes.fs" />
+    <Compile Include="Correlations\Utilities.fs" />
+    <Compile Include="Correlations\Semantic.fs" />
+    <Compile Include="Correlations\Annotation.fs" />
+    <Compile Include="Correlations\Border.fs" />
+    <Compile Include="Correlations\GeologicalLog.fs" />
     <Compile Include="Correlations\CorrelationDrawing.fs" />
     <Compile Include="Correlations\CorrelationDrawingApp.fs" />
     <Compile Include="SimpleTest.fs" />
@@ -144,6 +150,7 @@
       <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <Reference Include="FSharp.Data.TypeProviders" />
     <Reference Include="Microsoft.WindowsAPICodePack">
       <HintPath>..\..\packages\WindowsAPICodePack-Core\lib\Microsoft.WindowsAPICodePack.dll</HintPath>
     </Reference>
@@ -156,6 +163,8 @@
     <Reference Include="mscorlib" />
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.Linq" />
     <Reference Include="System.Numerics" />
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj">
       <Name>Aardvark.Service</Name>
