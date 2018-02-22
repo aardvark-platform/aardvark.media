@@ -2,6 +2,12 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "04 - DragDropHtml5", "Examples\04 - DragDropHtml5\04 - DragDropHtml5.fsproj", "{C0F982C1-3F05-411D-825F-764EA4A28EF6}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "03 - D3Integration", "Examples\03 - D3Integration\03 - D3Integration.fsproj", "{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "02 - RenderControl", "Examples\02 - RenderControl\02 - RenderControl.fsproj", "{69C4D5DE-8EA4-4594-9783-769CF935B48F}"
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RenderToTextureExample", "RenderToTextureExample\RenderToTextureExample.fsproj", "{7B055C74-1C24-4CB0-96E4-02E01914F60A}"
@@ -19,8 +25,13 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Primitives", "Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj", "{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
+	ProjectSection(SolutionItems) = preProject
+		Examples\new.fsx = Examples\new.fsx
+	EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "01 - Inc", "Examples\01 - Inc\01 - Inc.fsproj", "{206C17A2-A3A1-4191-8CA3-DA92197BB73B}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Examples_old", "Examples_Old\Examples_old.fsproj", "{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -28,6 +39,18 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C0F982C1-3F05-411D-825F-764EA4A28EF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C0F982C1-3F05-411D-825F-764EA4A28EF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C0F982C1-3F05-411D-825F-764EA4A28EF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C0F982C1-3F05-411D-825F-764EA4A28EF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{69C4D5DE-8EA4-4594-9783-769CF935B48F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{69C4D5DE-8EA4-4594-9783-769CF935B48F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{69C4D5DE-8EA4-4594-9783-769CF935B48F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{69C4D5DE-8EA4-4594-9783-769CF935B48F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -64,11 +87,18 @@ Global
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{C0F982C1-3F05-411D-825F-764EA4A28EF6} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{05B18E13-5C1A-440D-BF39-7A0DDA8D224B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{69C4D5DE-8EA4-4594-9783-769CF935B48F} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 	EndGlobalSection
 EndGlobal

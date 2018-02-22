@@ -1,38 +1,55 @@
-﻿module Examples.TemplateApp
+﻿module App
+
+open Aardvark.UI
+open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
-open Aardvark.UI
-open Aardvark.UI.Primitives
-open Examples.TemplateModel
+open Aardvark.Base.Rendering
+open Model
 
-let update (m : Model) (message : Message) =
-    match message with
-        | CameraMessage msg -> { m with camera = CameraController.update m.camera msg }
+// port from: http://bl.ocks.org/nnattawat/8916402
 
-let viewScene (m : MModel) =
-    Sg.empty
+let rnd = RandomSystem()
+let normal = RandomGaussian(rnd)
 
-let view (m : MModel) =
-    body [ style "background: #1B1C1E"] [
-        require (Html.semui) (
-            div [clazz "ui"; style "background: #1B1C1E"] [
-                CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"]) (viewScene m)
+let update (model : Model) (msg : Message) =
+    match msg with
+        | Generate -> 
+            { model with 
+                data = 
+                    Array.init (model.count.value |> round |> int) (fun _ -> normal.GetDouble(20.0,5.0)) |> Array.toList 
+            }
+        | ChangeCount n -> { model with count = Numeric.update model.count n }
 
-                div [style "width:15%; height: 100%; float:right"] [
-                    Html.SemUi.stuffStack [
-                        button [clazz "ui button"; ] [text "Hello World"]
-                        br []
+let view (model : MModel) =
 
-                    ]
+    let dependencies = 
+        [ 
+            { kind = Script; name = "d3"; url = "http://d3js.org/d3.v3.min.js" }
+            { kind = Stylesheet; name = "histogramStyle"; url = "Histogram.css" }
+            { kind = Script; name = "histogramScript"; url = "Histogram.js" }
+        ]    
+
+    let dataChannel = model.data.Channel
+    let updateChart =
+        "data.onmessage = function (values) { if(values.length > 0) refresh(values); };"
+
+    body [] [
+        require dependencies (
+            onBoot' ["data", dataChannel] updateChart (
+                div [] [
+                    Numeric.view model.count |> UI.map ChangeCount
+                    text "  "
+                    button [onClick (fun _ -> Generate)] [text "Generate"]
                 ]
-            ]
+            )
         )
     ]
 
-let threads (m : Model) =
+let threads (model : Model) = 
     ThreadPool.empty
+
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
     {
@@ -40,7 +57,8 @@ let app =
         threads = threads 
         initial = 
             { 
-                camera = CameraController.initial 
+               data = []
+               count =  { min = 100.0; max = 5000.0; value = 1000.0; step = 100.0; format = "{0:0}" }
             }
         update = update 
         view = view
