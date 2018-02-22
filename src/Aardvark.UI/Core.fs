@@ -363,12 +363,91 @@ type Request =
         queryParams : Map<string, string>
     }
 
+type ChannelMessage = { targetId : string; channel : string; data : list<string> }
+
+[<AbstractClass>]
+type ChannelReader() =
+    inherit AdaptiveObject()
+
+    abstract member ComputeMessages : AdaptiveToken -> list<string>
+    abstract member Release : unit -> unit
+
+    member x.GetMessages(t : AdaptiveToken) =
+        x.EvaluateIfNeeded t [] (fun t ->
+            x.ComputeMessages(t)
+        )
+
+    member x.Dispose() =
+        x.Release()
+
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
+
+[<AbstractClass>]
+type Channel() =
+    abstract member GetReader : unit -> ChannelReader
+
+[<AutoOpen>]
+module ChannelThings = 
+    type private ModChannelReader<'a>(m : IMod<'a>) =
+        inherit ChannelReader()
+
+        let mutable last = None
+
+        override x.Release() =
+            last <- None
+
+        override x.ComputeMessages t =
+            let v = m.GetValue t
+
+            if Unchecked.equals last (Some v) then
+                []
+            else
+                last <- Some v
+                [ Pickler.json.PickleToString v ]
+
+    type private ASetChannelReader<'a>(s : aset<'a>) =
+        inherit ChannelReader()
+
+        let reader = s.GetReader()
+    
+        override x.Release() =
+            reader.Dispose()
+
+        override x.ComputeMessages t =
+            let ops = reader.GetOperations t
+            ops |> HDeltaSet.toList |> List.map Pickler.json.PickleToString
+   
+    type private ModChannel<'a>(m : IMod<'a>) =
+        inherit Channel()
+        override x.GetReader() = new ModChannelReader<_>(m) :> ChannelReader
+    
+    type private ASetChannel<'a>(m : aset<'a>) =
+        inherit Channel()
+        override x.GetReader() = new ASetChannelReader<_>(m) :> ChannelReader
+    
+    type IMod<'a> with
+        member x.Channel = ModChannel(x) :> Channel
+
+    type aset<'a> with
+        member x.Channel = ASetChannel(x) :> Channel
+
+    module Mod =
+        let inline channel (m : IMod<'a>) = m.Channel
+
+    module ASet =
+        let inline channel (m : aset<'a>) = m.Channel
+
+
+
 [<Sealed>]
 type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, content : DomContent<'msg>) =
     let mutable required : list<Reference> = []
     let mutable boot : Option<string -> string> = None
     let mutable shutdown : Option<string -> string> = None
     let mutable callbacks : Map<string, (list<string> -> 'msg)> = Map.empty
+    let mutable channels : Map<string, Channel> = Map.empty
+
 
     let mutable ns : Option<string> = ns
 
@@ -390,6 +469,10 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
         with get() = boot
         and private set code = boot <- code
 
+    member x.Channels
+        with get() = channels
+        and private set c = channels <- c
+
     member x.Shutdown
         with get() = shutdown
         and private set code = shutdown <- code
@@ -407,7 +490,8 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
             Required = x.Required,
             Boot = x.Boot,
             Shutdown = x.Shutdown,
-            Callbacks = x.Callbacks
+            Callbacks = x.Callbacks,
+            Channels = x.Channels
         )
 
     member x.Map(f : 'msg -> 'b) = 
@@ -419,7 +503,8 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
             Required = x.Required,
             Boot = x.Boot,
             Shutdown = x.Shutdown,
-            Callbacks = (x.Callbacks |> Map.map (fun k v -> fun xs -> f (v xs)))
+            Callbacks = (x.Callbacks |> Map.map (fun k v -> fun xs -> f (v xs))),
+            Channels = x.Channels
         )
     member x.WithRequired (required : list<Reference>) =
         let res = x.Copy()
@@ -429,6 +514,10 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
     member x.WithBoot (boot : Option<string -> string>) =
         let res = x.Copy()
         res.Boot <- boot
+        res
+    member x.WithChannels (c : Map<string, Channel>) =
+        let res = x.Copy()
+        res.Channels <- c
         res
 
 
@@ -478,7 +567,8 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
             Required = x.Required,
             Boot = x.Boot,
             Shutdown = x.Shutdown,
-            Callbacks = x.Callbacks
+            Callbacks = x.Callbacks,
+            Channels = x.Channels
         )
 
     member x.WithContent(content : DomContent<'msg>) =
@@ -490,7 +580,8 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
             Required = x.Required,
             Boot = x.Boot,
             Shutdown = x.Shutdown,
-            Callbacks = x.Callbacks
+            Callbacks = x.Callbacks,
+            Channels = x.Channels
         )
 
 and DomContent<'msg> =

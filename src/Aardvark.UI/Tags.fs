@@ -437,3 +437,11 @@ module HigherOrderTags =
         match node.Boot with
             | None -> node.WithBoot (Some boot)
             | Some o -> node.WithBoot (Some (fun id -> boot id + "; " + o id))
+    
+    let onBoot' (channels : list<string * Channel>) (code : string) (node : DomNode<'msg>) =
+        let boot id = code.Replace("__ID__", id)
+        let n = Map.union node.Channels (Map.ofList channels)
+
+        match node.Boot with
+            | None -> node.WithBoot(Some boot).WithChannels n
+            | Some o -> node.WithBoot(Some (fun id -> boot id + "; " + o id)).WithChannels n
