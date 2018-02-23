@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "06 - DragDiv", "Examples\06 - DragDiv\06 - DragDiv.fsproj", "{7432CB54-84BE-48F2-8EBF-D25234EDC6F5}"
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "04 - DragDropHtml5", "Examples\04 - DragDropHtml5\04 - DragDropHtml5.fsproj", "{C0F982C1-3F05-411D-825F-764EA4A28EF6}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "03 - D3Integration", "Examples\03 - D3Integration\03 - D3Integration.fsproj", "{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}"
@@ -39,6 +41,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7432CB54-84BE-48F2-8EBF-D25234EDC6F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7432CB54-84BE-48F2-8EBF-D25234EDC6F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7432CB54-84BE-48F2-8EBF-D25234EDC6F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7432CB54-84BE-48F2-8EBF-D25234EDC6F5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C0F982C1-3F05-411D-825F-764EA4A28EF6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C0F982C1-3F05-411D-825F-764EA4A28EF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C0F982C1-3F05-411D-825F-764EA4A28EF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -96,6 +102,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{7432CB54-84BE-48F2-8EBF-D25234EDC6F5} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{C0F982C1-3F05-411D-825F-764EA4A28EF6} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{05B18E13-5C1A-440D-BF39-7A0DDA8D224B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{69C4D5DE-8EA4-4594-9783-769CF935B48F} = {DAC89FC7-17D3-467D-929D-781A88DA5324}

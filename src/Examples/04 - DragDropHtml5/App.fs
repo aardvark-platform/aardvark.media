@@ -8,6 +8,8 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Model
 
+// media port of: https://www.w3schools.com/html/html5_draganddrop.asp
+
 let update (model : Model) (msg : Message) =
     match msg with
         | DropTop -> { model with location = Position.Top }
@@ -21,7 +23,7 @@ let view (model : MModel) =
             attribute "alt" "aardvark"
             // if we start drag, use drag(event) defined in js to activate dragging
             attribute "ondragstart" "drag(event)"
-            style "width: 100px"
+            style "width: 200px"
             // just a class to identify this element in human readable way
             clazz name
         ]
@@ -32,7 +34,7 @@ let view (model : MModel) =
 
     require dependencies (
         body [] [
-            div [ style "width: 100px; height: 50px; border:1px solid black;"; 
+            div [ style "width: 290px; height: 100px; border:1px solid black;"; 
                   // allow dropping
                   attribute "ondragover" "allowDrop(event)" 
                   // on drop, optionally lookup who was dragged here (in this example there is only one draggable thing so we do not need this actually)
@@ -45,7 +47,7 @@ let view (model : MModel) =
                         yield aard "top"
                 }
             ]
-            div [ style "width: 100px; height: 50px; border:1px solid black;"; 
+            div [ style "width: 290px; height: 100px; border:1px solid black;"; 
                   attribute "ondragover" "allowDrop(event)"
                   onEvent "ondrop" ["{ name : event.dataTransfer.getData('source')}"] (fun args -> printfn "dragged thing: %A" args; DropBottom )
                 ] [

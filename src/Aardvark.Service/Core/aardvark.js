@@ -840,3 +840,19 @@ if (!aardvark.getCursor) {
 }
 
 var getCursor = aardvark.getCursor;
+
+if (!aardvark.getRelativeCoords) {
+
+    aardvark.getRelativeCoords = function relativeCoords(event,container) {
+        var source = event.target || event.srcElement;
+        var container = findAncestor(source, container);
+        var bounds = container.getBoundingClientRect();
+        var x = event.clientX - bounds.left;
+        var y = event.clientY - bounds.top;
+        return { x: x, y: y };
+    }
+
+}
+
+var getRelativeCoords = aardvark.getRelativeCoords;
+
