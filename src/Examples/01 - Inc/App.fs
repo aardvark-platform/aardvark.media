@@ -23,6 +23,7 @@ let view (model : MModel) =
         img [
             attribute "src" "https://upload.wikimedia.org/wikipedia/commons/6/67/SanWild17.jpg"; 
             attribute "alt" "aardvark"
+            style "width: 80%"
         ]
     ]
 

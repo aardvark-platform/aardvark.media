@@ -942,6 +942,9 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
     let rectToBox (r : CefRectangle) =
         Box2i.FromMinAndSize(r.X, r.Y, r.Width, r.Height)
 
+    override x.GetAccessibilityHandler() =
+        null
+
     /// <summary>
     /// Gets virtual screen-info for offscreen rendering. It's possible here to supply a rendering-scale factor/etc.
     /// </summary>

@@ -8,6 +8,7 @@ open Aardvark.Cef.Internal
 let main argv = 
     try
         Report.LogFileName <- Path.GetTempFileName()
+        Xilium.CefGlue.ChromiumUtilities.unpackCef()
         Cef.init()
         Cef.shutdown()
         0
