@@ -31,7 +31,7 @@ let main argv =
             app.Runtime :> IRuntime, app :> IDisposable
     use __ = disposable
 
-    use form = new Form(Width = 800, Height = 600)
+    use form = new Form(Width = 1024, Height = 768)
 
     let app = App.app
 
