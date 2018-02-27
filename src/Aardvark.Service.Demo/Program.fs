@@ -88,13 +88,14 @@ let kitchenSink argv =
     //let app = MeasurementsImporterApp.app form
     //let app = RenderModelApp.app 
     //let app = AnnotationApp.app
+    let app = DragNDrop.App.app
 
     //Config.shouldTimeUIUpdate <- true
     //Config.shouldTimeJsCodeGeneration <- true
     //Config.shouldTimeUnpersistCalls <- true
 
 
-    let app = PerformanceApp.app
+    //let app = PerformanceApp.app
     //let app = BoxSelectionDemo.app
     //let app = QuickTestApp.app
 
