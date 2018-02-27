@@ -12,11 +12,11 @@ open Aardvark.UI.Primitives
 open Aardvark.UI
 
 open DrawingModel
-open RenderingPropertiesModel
+open RenderingParametersModel
 
 type Action =
     | CameraMessage    of ArcBallController.Message
-    | RenderingAction  of RenderingProperties.Action
+    | RenderingAction  of RenderingParametersModel.Action
     | Move     of V3d
     | AddPoint of V3d
     | KeyDown  of key : Keys
@@ -28,7 +28,7 @@ let update (model : SimpleDrawingModel) (act : Action) =
         | CameraMessage m, false -> 
             { model with camera = ArcBallController.update model.camera m }
         | RenderingAction a, _ ->
-            { model with rendering = RenderingProperties.update model.rendering a }
+            { model with rendering = RenderingParameters.update model.rendering a }
         | KeyDown Keys.LeftCtrl, _ -> { model with draw = true }
         | KeyUp Keys.LeftCtrl, _ -> { model with draw = false; hoverPosition = None }
         | Move p, true -> { model with hoverPosition = Some (Trafo3d.Translation p) }
@@ -108,10 +108,12 @@ let scene3D (model : MSimpleDrawingModel) =
 
     let spheres =
         model.points 
-            |> Mod.map(function ps -> ps |> List.map (function p -> mkISg (Mod.constant Primitives.colorsBlue.[3])
-                                                                            (computeScale model.camera.view p 5.0)
-                                                                            (Mod.constant (Trafo3d.Translation(p)))) 
-                                            |> Sg.ofList)                                
+            |> Mod.map (fun ps -> 
+                ps |> List.map (fun p -> 
+                        mkISg (Mod.constant Primitives.colorsBlue.[3])
+                              (computeScale model.camera.view p 5.0)
+                              (Mod.constant (Trafo3d.Translation(p)))) 
+                        |> Sg.ofList)                                
             |> Sg.dynamic                            
                                               
     let trafo = 
@@ -139,7 +141,7 @@ let view (model : MSimpleDrawingModel) =
 
             div [style "width:35%; height: 100%; float:right; background: #1B1C1E;"] [
                     Html.SemUi.accordion "Rendering" "configure" true [
-                        RenderingProperties.view model.rendering |> UI.map RenderingAction 
+                        RenderingParameters.view model.rendering |> UI.map RenderingAction 
                     ]
                 ]
             ]

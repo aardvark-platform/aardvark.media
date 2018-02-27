@@ -1,6 +1,6 @@
 ﻿(*
 
-Thomas Ortners Drawing Example
+Thomas Ortners legendary Box selection demo
 
 *)
 

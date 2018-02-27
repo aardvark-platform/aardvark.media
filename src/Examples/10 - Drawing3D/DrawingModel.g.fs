@@ -14,7 +14,7 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<DrawingModel.SimpleDrawingModel> = Aardvark.Base.Incremental.EqModRef<DrawingModel.SimpleDrawingModel>(__initial) :> Aardvark.Base.Incremental.IModRef<DrawingModel.SimpleDrawingModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
-        let _rendering = RenderingPropertiesModel.Mutable.MRenderingParameters.Create(__initial.rendering)
+        let _rendering = RenderingParametersModel.Mutable.MRenderingParameters.Create(__initial.rendering)
         let _draw = ResetMod.Create(__initial.draw)
         let _hoverPosition = MOption.Create(__initial.hoverPosition)
         let _points = ResetMod.Create(__initial.points)
@@ -31,7 +31,7 @@ module Mutable =
                 __current.Value <- v
                 
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
-                RenderingPropertiesModel.Mutable.MRenderingParameters.Update(_rendering, v.rendering)
+                RenderingParametersModel.Mutable.MRenderingParameters.Update(_rendering, v.rendering)
                 ResetMod.Update(_draw,v.draw)
                 MOption.Update(_hoverPosition, v.hoverPosition)
                 ResetMod.Update(_points,v.points)
@@ -58,7 +58,7 @@ module Mutable =
                     override x.Update(r,f) = { r with camera = f r.camera }
                 }
             let rendering =
-                { new Lens<DrawingModel.SimpleDrawingModel, RenderingPropertiesModel.RenderingParameters>() with
+                { new Lens<DrawingModel.SimpleDrawingModel, RenderingParametersModel.RenderingParameters>() with
                     override x.Get(r) = r.rendering
                     override x.Set(r,v) = { r with rendering = v }
                     override x.Update(r,f) = { r with rendering = f r.rendering }

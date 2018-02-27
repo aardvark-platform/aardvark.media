@@ -5,7 +5,7 @@ open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
 open Aardvark.Base.Rendering
 
-open RenderingPropertiesModel
+open RenderingParametersModel
 
 [<DomainType>]
 type SimpleDrawingModel = {

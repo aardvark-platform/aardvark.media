@@ -1,4 +1,4 @@
-﻿namespace RenderingPropertiesModel
+﻿namespace RenderingParametersModel
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
@@ -10,6 +10,10 @@ type RenderingParameters = {
     fillMode : FillMode
     cullMode : CullMode
 }
+
+type Action =
+    | SetFillMode of FillMode
+    | SetCullMode of CullMode
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module RenderingParameters =

@@ -1,10 +1,4 @@
-﻿(*
-
-Thomas Ortners Drawing Example
-
-*)
-
-open System
+﻿open System
 open System.Windows.Forms
 
 open Aardvark.Base
@@ -37,7 +31,7 @@ let main argv =
             app.Runtime :> IRuntime, app :> IDisposable
     use __ = disposable
 
-    use form = new Form(Width = 1024, Height = 768)
+    use form = new Form(Width = 1024, Height = 800)
 
     let app = App.app
 

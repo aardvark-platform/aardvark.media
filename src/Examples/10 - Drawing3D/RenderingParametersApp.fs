@@ -1,13 +1,10 @@
-﻿module RenderingProperties
+﻿module RenderingParameters
 
 open Aardvark.Base.Rendering
 open Aardvark.UI
 
-open RenderingPropertiesModel
+open RenderingParametersModel
 
-type Action =
-    | SetFillMode of FillMode
-    | SetCullMode of CullMode
 
 let update (model : RenderingParameters) (act : Action) =
     match act with
