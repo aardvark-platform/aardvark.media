@@ -1,4 +1,4 @@
-﻿module AnimationApp
+﻿module App
 
 
 open Aardvark.Base

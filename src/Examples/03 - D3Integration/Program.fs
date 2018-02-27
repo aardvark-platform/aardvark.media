@@ -20,27 +20,16 @@ let main argv =
 
     let useVulkan = true
 
-    let runtime, disposable =
-        if useVulkan then
-            let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-        else
-            let app = new OpenGlApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
-
+    use app = new OpenGlApplication()
     use form = new Form(Width = 1024, Height = 600)
 
-    let app = App.app
-
     let instance = 
-        app |> App.start
+        App.app |> App.start
 
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart' runtime false instance
+        MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
     ]  
-
 
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill

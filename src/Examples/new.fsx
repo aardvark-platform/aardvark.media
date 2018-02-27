@@ -558,7 +558,7 @@ module ProjectDirectory =
 let private numberedRx = System.Text.RegularExpressions.Regex @"(?<number>[0-9]+) \- .*"
 let newExample (name : string) (dir : string) =
     let dirs = Directory.GetDirectories(dir, "*", SearchOption.TopDirectoryOnly)
-    let template = Path.Combine(dir, "01 - Inc")
+    let template = Path.Combine(dir, "02 - RenderControl")
 
     let maxIndex =
         dirs |> Seq.map (fun d ->

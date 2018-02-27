@@ -12,32 +12,22 @@ open Suave.WebPart
 [<EntryPoint>]
 let main argv = 
 
+    failwith "this example is currently broken. feel free to fix it ;)"
+
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
 
     Ag.initialize()
     Aardvark.Init()
 
-    let useVulkan = true
-
-    let runtime, disposable =
-        if useVulkan then
-            let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-        else
-            let app = new OpenGlApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
-
-    use form = new Form(Width = 800, Height = 600)
-
-    let app = App.app
+    use app = new OpenGlApplication()
+    use form = new Form(Width = 1024, Height = 600)
 
     let instance = 
-        app |> App.start
+        App.app |> App.start
 
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart' runtime false instance
+        MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
     ]  
 

@@ -1,4 +1,4 @@
-﻿module RenderModelApp
+﻿module App
 
 open RenderModel // open the namespace which holds our domain types (both, the original and the generated ones)
 
@@ -33,12 +33,16 @@ let renderModel (model : IMod<MObject>) =
             | MFileModel fileName -> 
                 let! file = fileName // read current filename (if model stays the same but filename changes)
                 if System.IO.File.Exists file then  // check if good
-                    return file |> Sg.Assimp.loadFromFile true |> Sg.normalize // create scenegraph
+                    return 
+                        file 
+                        |> Sg.Assimp.loadFromFile true 
+                        |> Sg.trafo (Trafo3d.Scale(1.0,1.0,-1.0) |> Mod.constant)
+                        |> Sg.normalize // create scenegraph
                 else 
                     Log.warn "file not found"
                     return Sg.empty 
             | MSphereModel(center,radius) ->
-                let sphere = Sg.sphere 3 (Mod.constant C4b.White) radius 
+                let sphere = Sg.sphere 6 (Mod.constant C4b.White) radius 
                 // create unit sphere of given mod radius and translate adaptively
                 return Sg.translate' center sphere
             | MBoxModel b -> 
@@ -75,18 +79,18 @@ let view3D (m : MModel) =
     let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"]
     CameraController.controlledControl m.cameraState CameraAction frustum attributes sg
 
-let eigi = FileModel @"C:\Development\aardvark.rendering\data\eigi\eigi.dae"
+let aadvarkModel = FileModel @"..\..\data\aardvark\aardvark.obj"
 let defaultSphere = SphereModel(V3d.OOO,1.0)
 let defaultBox = BoxModel Box3d.Unit
 // create camera which looks down from (2,2,2) to (0,0,0) while z is up
-let initialView = CameraView.lookAt (V3d.III * 2.0) V3d.OOO V3d.OOI
+let initialView = CameraView.lookAt (V3d.III * 6.0) V3d.OOO V3d.OOI
 
 let view (m : MModel) =
     require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
         body [] (        // explit html body for our app (adorner menus need to be immediate children of body). if there is no explicit body the we would automatically generate a body for you.
             Html.SemUi.adornerMenu [ 
                 "Set Scene", [ 
-                    button [clazz "ui button"; onClick (fun _ -> SetObject eigi)]          [text "The famous eigi model"]
+                    button [clazz "ui button"; onClick (fun _ -> SetObject aadvarkModel)]  [text "The aardvark model"]
                     button [clazz "ui button"; onClick (fun _ -> SetObject defaultSphere)] [text "Sphere"] 
                     button [clazz "ui button"; onClick (fun _ -> SetObject defaultBox)]    [text "Box"] 
                     button (clazz "ui button" :: Html.IO.fileDialog LoadModel)             [text "Load from File"]
@@ -112,7 +116,7 @@ let app =
                     currentModel = None; 
                     cameraState  = { CameraController.initial with view = initialView }
                     trafo        = Trafo3d.Identity 
-                    appearance   = { cullMode = CullMode.Clockwise }
+                    appearance   = { cullMode = CullMode.None }
                   }
         update = update
         view = view

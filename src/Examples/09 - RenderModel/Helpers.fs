@@ -14,4 +14,5 @@ module Sg =
             f |> Aardvark.SceneGraph.IO.Loader.Assimp.load 
               |> Sg.adapter 
               |> Sg.noEvents
-              |> Sg.transform (if zUp then Trafo3d.FromOrthoNormalBasis(V3d.IOO, V3d.OOI, -V3d.OIO) else Trafo3d.Identity)
+              // z up transform (optionally)
+              //|> Sg.transform (if zUp then Trafo3d.FromOrthoNormalBasis(V3d.IOO, V3d.OOI, -V3d.OIO) else Trafo3d.Identity)

@@ -36,18 +36,32 @@ let onMouseDownRel (container : string) (cb : V2d -> 'msg) =
     onEvent "onmouseup" [sprintf " { X: (getRelativeCoords(event,'%s')).x.toFixed(), Y: (getRelativeCoords(event,'%s')).y.toFixed()  }" container container] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
 
 
-let view (model : MModel) =
+let view (signals : Map<string,Signal<'a>>) (model : MModel) =
+
+
 
     let baseStyle = "width: 50px; height: 50px;border:1px solid black;background: green;position:absolute;"
     let objects =
         aset {
             for (name,o) in model.objects |> AMap.toASet do
+
+                let pos = 
+                    signal {
+                        let! isDown = signal.find "down"
+                        let! pos = siogna...
+                        amsdfasdf....
+
+
+                    }
+
                 let attributes =
                     AttributeMap.ofAMap <|
                         amap {
                             //yield onEvent "ondragstart" []  (fun _ -> StartDrag name)
                             yield clazz name
                             yield onMouseDownRel name (fun l -> StartDrag(name,l))
+                            publish Signal "mousePos"
+                            publöish Signal "down"
                             let! pos = o.position
                             yield sprintf "%s;left:%fpx;top:%fpx;" baseStyle pos.X pos.Y |> style
                         } 

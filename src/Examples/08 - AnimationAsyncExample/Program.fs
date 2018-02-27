@@ -11,38 +11,23 @@ open Suave.WebPart
 
 [<EntryPoint>]
 let main argv = 
-
+    
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
 
     Ag.initialize()
     Aardvark.Init()
 
-    // media apps require a runtime, which serves as renderer for your render controls.
-    // you can use OpenGL or VulkanApplication.
-    let useVulkan = false
-
-    let runtime, disposable =
-        if useVulkan then
-            let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-        else
-            let app = new OpenGlApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
-
-    use form = new Form(Width = 800, Height = 600)
-
-    let app = App.app
+    use app = new OpenGlApplication()
+    use form = new Form(Width = 1000, Height = 800)
 
     let instance = 
-        app |> App.start
+        App.app |> App.start
 
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart' runtime false instance
+        MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
     ]  
-
 
     use ctrl = new AardvarkCefBrowser()
     ctrl.Dock <- DockStyle.Fill

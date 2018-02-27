@@ -1,5 +1,5 @@
 ﻿// by convention, create a separate module for the app
-module Simple2DDrawingApp
+module App
 
 // open domain type namespace (including auto generated adaptive variants)
 open Simple2DDrawing
