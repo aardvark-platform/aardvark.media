@@ -52,21 +52,29 @@ let view (model : MModel) =
 
     page (fun request -> 
         match Map.tryFind "page" request.queryParams with
-            | Some "button" -> 
+            | Some "controls" -> 
                 body [] [
-                    div [style "color: white"] [text "Hello 3D"]
-                    br []
                     button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
-                    br []
+                ]
+
+            | Some "render" -> 
+                body [] [
+                    renderControl
+                ]
+
+            | Some "meta" ->
+                body [] [
                     button [onClick (fun _ -> Undo)] [text "Undo"]
                     button [onClick (fun _ -> Redo)] [text "Redo"]
                 ]
-            | Some "render" -> 
+
+            | Some other ->
+                let msg = sprintf "Unknown page: %A" other
                 body [] [
-                    //text "oida"
-                    renderControl
-                ]
-            | _ -> 
+                    div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
+                ]  
+
+            | None -> 
                 model.dockConfig |> docking [
                     style "width:100%;height:100%;"
                     onLayoutChanged UpdateConfig
@@ -89,7 +97,10 @@ let app =
                     config (
                         horizontal 10.0 [
                             element { id "render"; title "Render View"; weight 20 }
-                            element { id "button"; title "Settings"; weight 5 }
+                            vertical 5.0 [
+                                element { id "controls"; title "Controls"; weight 5 }
+                                element { id "meta"; title "Layout Controls"; weight 5 }
+                            ]
                         ]
                     )
             }
