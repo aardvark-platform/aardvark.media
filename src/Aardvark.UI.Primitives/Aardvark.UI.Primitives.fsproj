@@ -68,6 +68,7 @@
     <Compile Include="TrafoControls\ScaleController.fs" />
     <Compile Include="CameraModel.fs" />
     <Compile Include="CameraController.fs" />
+    <Compile Include="Docking.fs" />
     <None Include="paket.references" />
     <Content Include="d3Test.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

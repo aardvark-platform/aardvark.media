@@ -63,7 +63,7 @@ module Mutable =
                     override x.Update(r,f) = { r with cameraState = f r.cameraState }
                 }
             let dockConfig =
-                { new Lens<Model.Model, Aardvark.UI.DockConfig>() with
+                { new Lens<Model.Model, Aardvark.UI.Primitives.DockConfig>() with
                     override x.Get(r) = r.dockConfig
                     override x.Set(r,v) = { r with dockConfig = v }
                     override x.Update(r,f) = { r with dockConfig = f r.dockConfig }

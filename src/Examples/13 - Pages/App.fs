@@ -47,7 +47,7 @@ let view (model : MModel) =
 
     let renderControl =
         CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 100%; height:100%;"]) 
+                    (AttributeMap.ofList [ style "width: 100%; height:100%;data-samples:8"]) 
                     (viewScene model)
 
     page (fun request -> 
@@ -65,7 +65,6 @@ let view (model : MModel) =
             | Some "meta" ->
                 body [] [
                     button [onClick (fun _ -> Undo)] [text "Undo"]
-                    button [onClick (fun _ -> Redo)] [text "Redo"]
                 ]
 
             | Some other ->

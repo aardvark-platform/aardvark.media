@@ -1,5 +1,6 @@
-﻿namespace Aardvark.UI
+﻿namespace Aardvark.UI.Primitives
 
+open Aardvark.UI
 open Aardvark.Base.Incremental
 
 type DockElement =
@@ -206,10 +207,11 @@ module DockingUIExtensions =
 
         if(dockconfig) {
             dockconfig.onmessage = function(data) {
-                console.warn("got message");
                 var cfg = JSON.parse(data);
                 layouter.currentConfig = cfg;
             }
+        }
+        if(__NEEDSEVENT__){
             layouter.onlayoutchanged = function(cfg) {
                 aardvark.processEvent('__ID__', 'onlayoutchanged', JSON.stringify(cfg));
             };
@@ -240,9 +242,12 @@ module DockingUIExtensions =
         let docking (atts : list<string * AttributeValue<'msg>>) (cfg : IMod<DockConfig>) = 
             let initial =  DockConfig.toJSON (Mod.force cfg)
             let boot = bootCode.Replace("__INITIALCONFIG__", initial.Replace("\\", "\\\\").Replace("\"", "\\\""))
+            let hasLayoutChanged = atts |> List.exists (fst >> ((=) "onlayoutchanged"))
+            let boot = boot.Replace("__NEEDSEVENT__", if hasLayoutChanged then "true" else "false")
+            let channels = if cfg.IsConstant then [] else ["dockconfig", Mod.channel (cfg |> Mod.map DockConfig.toJSON) ]
             require dependencies (
                 body [] [
-                    onBoot' ["dockconfig", Mod.channel (cfg |> Mod.map DockConfig.toJSON) ] boot (
+                    onBoot' channels boot (
                         div atts []
                     )
                 ]

@@ -38,6 +38,7 @@ let main argv =
     let instance = 
         app |> App.start
 
+
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' runtime false instance
         Suave.Files.browseHome
@@ -53,5 +54,5 @@ let main argv =
     form.Icon <- Icons.aardvark 
 
     Application.Run form
-    System.Environment.Exit 0
+
     0 
