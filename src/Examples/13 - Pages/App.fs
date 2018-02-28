@@ -8,7 +8,6 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Model
 
-
 let initialCamera = { 
         CameraController.initial with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
@@ -18,8 +17,22 @@ let update (model : Model) (msg : Message) =
     match msg with
         | Camera m -> 
             { model with cameraState = CameraController.update model.cameraState m }
+
         | CenterScene -> 
             { model with cameraState = initialCamera }
+
+        | UpdateConfig cfg ->
+            { model with dockConfig = cfg; past = Some model }
+
+        | Undo ->
+            match model.past with
+                | Some p -> { p with future = Some model; cameraState = model.cameraState }
+                | None -> model
+
+        | Redo ->
+            match model.future with
+                | Some f -> { f with past = Some model; cameraState = model.cameraState }
+                | None -> model
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -29,34 +42,8 @@ let viewScene (model : MModel) =
             do! DefaultSurfaces.simpleLighting
         }
 
-let dockingBoot = """
-var init = function(element,id,info) {
-    element.innerHTML = "<iframe src='./?page=" + id + "' style='border:none;width:100%;height:100%;'></iframe>";
-};   
-
-var config =
-    {
-        content : {
-            kind: 'horizontal',
-            weight: 10,
-            children : [
-                { kind : 'element', id : 'render', weight: 20 },
-                { kind : 'element', id : 'button', weight: 5 }
-            ]
-        }
-    };
-
-
-var layouter = new Docking.DockLayout(document.getElementById('__ID__'), config, init);
-
-"""
-
 let view (model : MModel) =
 
-    let docking = [
-        { name = "docking-js-style"; url = "http://tatooine.awx.at/docking-js/docking.css"; kind = Stylesheet }
-        { name = "docking-js"; url = "http://tatooine.awx.at/docking-js/docking.js"; kind = Script }
-    ]
 
     let renderControl =
         CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
@@ -67,10 +54,12 @@ let view (model : MModel) =
         match Map.tryFind "page" request.queryParams with
             | Some "button" -> 
                 body [] [
-                    text "Hello 3D"
+                    div [style "color: white"] [text "Hello 3D"]
                     br []
                     button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
                     br []
+                    button [onClick (fun _ -> Undo)] [text "Undo"]
+                    button [onClick (fun _ -> Redo)] [text "Redo"]
                 ]
             | Some "render" -> 
                 body [] [
@@ -78,13 +67,10 @@ let view (model : MModel) =
                     renderControl
                 ]
             | _ -> 
-                require docking (
-                    body [] [
-                        onBoot dockingBoot (
-                            div [clazz "dock-root"; style "width:100%;height:100%;"] []
-                        )
-                    ]
-                )
+                model.dockConfig |> docking [
+                    style "width:100%;height:100%;"
+                    onLayoutChanged UpdateConfig
+                ]
     )
 
 let threads (model : Model) = 
@@ -96,7 +82,16 @@ let app =
         threads = threads 
         initial = 
             { 
-               cameraState = initialCamera
+                past = None
+                future = None
+                cameraState = initialCamera
+                dockConfig =
+                    config (
+                        horizontal 10.0 [
+                            element { id "render"; title "Render View"; weight 20 }
+                            element { id "button"; title "Settings"; weight 5 }
+                        ]
+                    )
             }
         update = update 
         view = view
