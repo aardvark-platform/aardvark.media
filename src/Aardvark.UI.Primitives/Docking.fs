@@ -120,6 +120,9 @@ type DockConfig =
     {
         content : DockNodeConfig
         specialDockSize : Option<float>
+
+        appName         : Option<string>
+        useCachedConfig : Option<bool>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -133,7 +136,9 @@ module DockConfig =
         match DockNodeConfig.tryReadJObject((unbox o.["content"])) with
             | Some res ->
                 let specialDockSize : Option<float> = match o.TryGetValue "specialDockSize" with | (true, v) -> Some (JToken.op_Explicit v) | _ -> None
-                Some { content = res; specialDockSize = specialDockSize }
+                let appName : Option<string> = match o.TryGetValue "appName" with | (true, v) -> Some (JToken.op_Explicit v) | _ -> None
+                let useCachedConfig : Option<bool> = match o.TryGetValue "useCachedConfig" with | (true, v) -> Some (JToken.op_Explicit v) | _ -> None
+                Some { content = res; specialDockSize = specialDockSize; appName = appName; useCachedConfig = useCachedConfig }
             | None ->
                 None
 
@@ -145,6 +150,8 @@ module DockConfig =
     let toJSON (cfg : DockConfig) =
         let o = JObject()
         match cfg.specialDockSize with | Some v -> o.["specialDockSize"] <- JToken.op_Implicit v | _ -> ()
+        match cfg.appName with | Some v -> o.["appName"] <- JToken.op_Implicit v | _ -> ()
+        match cfg.useCachedConfig with | Some v -> o.["useCachedConfig"] <- JToken.op_Implicit v | _ -> ()
         o.["content"] <- DockNodeConfig.toJObject cfg.content
         o.ToString(Formatting.None)
 
@@ -186,9 +193,26 @@ module DockingBuilder =
 
     let test = element { id "hugo"; title "Hugo"; weight 10 }
 
-    let inline config (content : DockNodeConfig) =
-        { content = content; specialDockSize = None }
+    type ConfigBuilder() =
+        member x.Yield(()) = { content = Vertical(1.0,[]); specialDockSize = None; appName = None; useCachedConfig = None }
 
+        [<CustomOperation("content")>]
+        member x.Content(cfg : DockConfig, content : DockNodeConfig) =
+            { cfg with content = content }
+
+        [<CustomOperation("specialDockSize")>]
+        member x.SpecialDockSize(cfg : DockConfig, content : float) =
+            { cfg with specialDockSize = Some content }
+
+        [<CustomOperation("appName")>]
+        member x.AppName(cfg : DockConfig, name : string) =
+            { cfg with appName = Some name }
+
+        [<CustomOperation("useCachedConfig")>]
+        member x.UseCachedConfig(cfg : DockConfig, name : bool) =
+            { cfg with useCachedConfig = Some name }
+
+    let config = ConfigBuilder()
 
 
 [<AutoOpen>]
@@ -205,7 +229,7 @@ module DockingUIExtensions =
 
         root.classList.add('dock-root');
 
-        if(dockconfig) {
+        if(typeof dockconfig != 'undefined') {
             dockconfig.onmessage = function(data) {
                 var cfg = JSON.parse(data);
                 layouter.currentConfig = cfg;

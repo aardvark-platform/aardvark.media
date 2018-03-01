@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.Cef.Internal
 
 open System
+open System.IO
 open Xilium.CefGlue
 open Aardvark.Base
 
@@ -33,10 +34,14 @@ module Cef =
             settings.BrowserSubprocessPath <- "Aardvark.Cef.Process.exe"
             settings.MultiThreadedMessageLoop <- CefRuntime.Platform = CefRuntimePlatform.Windows
             settings.NoSandbox <- true
+            let path = Path.Combine(System.Environment.CurrentDirectory, "cef_cache")
+            if not <| Directory.Exists path then Directory.CreateDirectory path |> ignore
+            settings.CachePath <- path
             settings.LogSeverity <- CefLogSeverity.Warning
             settings.RemoteDebuggingPort <- 1337
             settings.IgnoreCertificateErrors <- true
             settings.WindowlessRenderingEnabled <- windowless
+           
             
             settings.CommandLineArgsDisabled <- false
 

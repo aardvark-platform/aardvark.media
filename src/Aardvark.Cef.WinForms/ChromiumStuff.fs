@@ -471,6 +471,9 @@ module Chromium =
                 settings.LogFile <- "cef.log";
                 settings.RemoteDebuggingPort <- 1337;
                 settings.NoSandbox <- true;
+                let path = Path.Combine(System.Environment.CurrentDirectory, "cef_cache")
+                if not <| Directory.Exists path then Directory.CreateDirectory path |> ignore
+                settings.CachePath <- path
                 settings.BrowserSubprocessPath <- "Aardvark.Cef.Process.exe"
                 let args = 
                     if CefRuntime.Platform = CefRuntimePlatform.Windows then argv
@@ -494,6 +497,8 @@ module Chromium =
 type AardvarkCefBrowser() =
     inherit CefWebBrowser()
 
+    do base.BrowserSettings <- CefBrowserSettings(LocalStorage = CefState.Enabled, ApplicationCache = CefState.Enabled)
+
     let mutable devTools = false
     
     let ownBrowser = System.Threading.Tasks.TaskCompletionSource<CefBrowser>()
@@ -509,8 +514,7 @@ type AardvarkCefBrowser() =
         wi.Height <- form.Height
         wi.X <- form.DesktopLocation.X + form.Width
         wi.Y <- form.DesktopLocation.Y
-
-
+        
         //wi.Style <- WindowStyle.WS_POPUP
         host.ShowDevTools(wi, new DevToolsWebClient(x), new CefBrowserSettings(), CefPoint(-1, -1));
 

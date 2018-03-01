@@ -14,11 +14,15 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<Model.Model> = Aardvark.Base.Incremental.EqModRef<Model.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<Model.Model>
         let _cameraState = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.cameraState)
+        let _cullMode = ResetMod.Create(__initial.cullMode)
+        let _fill = ResetMod.Create(__initial.fill)
         let _dockConfig = ResetMod.Create(__initial.dockConfig)
         
         member x.past = __current.Value.past
         member x.future = __current.Value.future
         member x.cameraState = _cameraState
+        member x.cullMode = _cullMode :> IMod<_>
+        member x.fill = _fill :> IMod<_>
         member x.dockConfig = _dockConfig :> IMod<_>
         
         member x.Current = __current :> IMod<_>
@@ -27,6 +31,8 @@ module Mutable =
                 __current.Value <- v
                 
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_cameraState, v.cameraState)
+                ResetMod.Update(_cullMode,v.cullMode)
+                ResetMod.Update(_fill,v.fill)
                 ResetMod.Update(_dockConfig,v.dockConfig)
                 
         
@@ -61,6 +67,18 @@ module Mutable =
                     override x.Get(r) = r.cameraState
                     override x.Set(r,v) = { r with cameraState = v }
                     override x.Update(r,f) = { r with cameraState = f r.cameraState }
+                }
+            let cullMode =
+                { new Lens<Model.Model, Aardvark.Base.Rendering.CullMode>() with
+                    override x.Get(r) = r.cullMode
+                    override x.Set(r,v) = { r with cullMode = v }
+                    override x.Update(r,f) = { r with cullMode = f r.cullMode }
+                }
+            let fill =
+                { new Lens<Model.Model, Microsoft.FSharp.Core.bool>() with
+                    override x.Get(r) = r.fill
+                    override x.Set(r,v) = { r with fill = v }
+                    override x.Update(r,f) = { r with fill = f r.fill }
                 }
             let dockConfig =
                 { new Lens<Model.Model, Aardvark.UI.Primitives.DockConfig>() with
