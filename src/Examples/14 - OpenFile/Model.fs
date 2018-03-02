@@ -5,10 +5,10 @@ open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
 
 type Message = 
-    | OpenFile of string
+    | OpenFiles of list<string>
 
 [<DomainType>]
 type Model = 
     {
-        currentFile : string
+        currentFiles : plist<string>
     }

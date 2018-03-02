@@ -64,8 +64,8 @@ module Chromium =
 
 
                                             if config.filters.Length > 0 then
-                                                dialog.Filter <- String.concat "|" config.filters
-                                                dialog.FilterIndex <- config.activeFilter
+                                                dialog.Filter <- "File|" + String.concat ";" config.filters
+                                                //dialog.FilterIndex <- config.activeFilter
 
                                             let res = dialog.ShowDialog()
 

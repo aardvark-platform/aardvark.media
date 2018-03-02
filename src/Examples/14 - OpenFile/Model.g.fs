@@ -13,16 +13,16 @@ module Mutable =
     type MModel(__initial : Model.Model) =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<Model.Model> = Aardvark.Base.Incremental.EqModRef<Model.Model>(__initial) :> Aardvark.Base.Incremental.IModRef<Model.Model>
-        let _currentFile = ResetMod.Create(__initial.currentFile)
+        let _currentFiles = MList.Create(__initial.currentFiles)
         
-        member x.currentFile = _currentFile :> IMod<_>
+        member x.currentFiles = _currentFiles :> alist<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : Model.Model) =
             if not (System.Object.ReferenceEquals(__current.Value, v)) then
                 __current.Value <- v
                 
-                ResetMod.Update(_currentFile,v.currentFile)
+                MList.Update(_currentFiles, v.currentFiles)
                 
         
         static member Create(__initial : Model.Model) : MModel = MModel(__initial)
@@ -39,9 +39,9 @@ module Mutable =
     module Model =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
-            let currentFile =
-                { new Lens<Model.Model, Microsoft.FSharp.Core.string>() with
-                    override x.Get(r) = r.currentFile
-                    override x.Set(r,v) = { r with currentFile = v }
-                    override x.Update(r,f) = { r with currentFile = f r.currentFile }
+            let currentFiles =
+                { new Lens<Model.Model, Aardvark.Base.plist<Microsoft.FSharp.Core.string>>() with
+                    override x.Get(r) = r.currentFiles
+                    override x.Set(r,v) = { r with currentFiles = v }
+                    override x.Update(r,f) = { r with currentFiles = f r.currentFiles }
                 }
