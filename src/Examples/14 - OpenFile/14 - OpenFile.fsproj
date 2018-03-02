@@ -6,14 +6,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{7C6E220F-B712-467D-8E2B-A5742F7BD0A5}</ProjectGuid>
+    <ProjectGuid>{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>AnimationAsyncExample</RootNamespace>
-    <AssemblyName>AnimationAsyncExample</AssemblyName>
+    <RootNamespace>OpenFile</RootNamespace>
+    <AssemblyName>OpenFile</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>08 - AnimationAsyncExample</Name>
+    <Name>14 - OpenFile</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
