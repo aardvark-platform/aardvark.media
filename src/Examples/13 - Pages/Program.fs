@@ -9,7 +9,7 @@ open Aardvark.UI
 open Suave
 open Suave.WebPart
 
-[<EntryPoint>]
+[<EntryPoint;STAThread>]
 let main argv = 
 
     Xilium.CefGlue.ChromiumUtilities.unpackCef()

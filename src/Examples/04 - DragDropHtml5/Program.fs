@@ -38,5 +38,4 @@ let main argv =
     form.Icon <- Icons.aardvark 
 
     Application.Run form
-    System.Environment.Exit 0
     0 
