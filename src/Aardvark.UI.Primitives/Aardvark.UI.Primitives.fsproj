@@ -73,6 +73,7 @@
     <Content Include="d3Test.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+    <Compile Include="OpenDialog.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

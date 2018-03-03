@@ -180,12 +180,15 @@ module OpenDialogConfig =
 type Command =
     | OpenDialog of int * OpenDialogConfig
 
+[<RequireQualifiedAccess>]
 type Response =
+    | Error of int * string
     | Abort of int
     | Ok of int * list<string>
 
     member x.id =
         match x with
+            | Error(i,_) -> i
             | Abort i -> i
             | Ok(i,_) -> i
 

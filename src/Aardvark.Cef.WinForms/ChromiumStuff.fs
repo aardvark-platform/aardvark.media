@@ -9,6 +9,7 @@ open System.Reflection
 open Aardvark.Cef
 open System.Windows.Forms
 open System.IO
+open System.Threading
 
 
 module Chromium =
@@ -55,35 +56,43 @@ module Chromium =
                                                     sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
                                     | OpenDialogMode.File -> 
                                         fun () -> 
-                                            let dialog = 
-                                                new OpenFileDialog(
-                                                    Title = config.title,
-                                                    Multiselect = config.allowMultiple,
-                                                    InitialDirectory = getInitialPath config.startPath
-                                                )
+                                            let apartmentState = Thread.CurrentThread.GetApartmentState()
+                                            if apartmentState <> ApartmentState.STA then
+                                                let err = "cannot open FileDialog on MTA thread"
+
+                                                Log.error "[CEF] %s" err
+                                                use msg = IPC.toProcessMessage (Response.Error(id, err))
+                                                sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                            else
+                                                let dialog = 
+                                                    new OpenFileDialog(
+                                                        Title = config.title,
+                                                        Multiselect = config.allowMultiple,
+                                                        InitialDirectory = getInitialPath config.startPath
+                                                    )
 
 
-                                            if config.filters.Length > 0 then
-                                                dialog.Filter <- "File|" + String.concat ";" config.filters
-                                                //dialog.FilterIndex <- config.activeFilter
+                                                if config.filters.Length > 0 then
+                                                    dialog.Filter <- "File|" + String.concat ";" config.filters
+                                                    //dialog.FilterIndex <- config.activeFilter
 
-                                            let res = dialog.ShowDialog()
+                                                let res = dialog.ShowDialog()
 
 
-                                            match res with
-                                                | DialogResult.OK -> 
-                                                    let files = dialog.FileNames
-                                                    let path = files |> Seq.truncate 1 |> Seq.map Path.GetDirectoryName |> Seq.tryHead
-                                                    match path with
-                                                        | Some p -> setPath p
-                                                        | None -> ()
+                                                match res with
+                                                    | DialogResult.OK -> 
+                                                        let files = dialog.FileNames
+                                                        let path = files |> Seq.truncate 1 |> Seq.map Path.GetDirectoryName |> Seq.tryHead
+                                                        match path with
+                                                            | Some p -> setPath p
+                                                            | None -> ()
 
-                                                    let files = files |> Array.map PathUtils.toUnixStyle
-                                                    use msg = IPC.toProcessMessage (Response.Ok(id, Array.toList files))
-                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
-                                                | _ -> 
-                                                    use msg = IPC.toProcessMessage (Response.Abort id)
-                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                        let files = files |> Array.map PathUtils.toUnixStyle
+                                                        use msg = IPC.toProcessMessage (Response.Ok(id, Array.toList files))
+                                                        sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                    | _ -> 
+                                                        use msg = IPC.toProcessMessage (Response.Abort id)
+                                                        sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
                                     | _ -> 
                                         Log.warn "unknown openDialogMode"
                                         fun () -> ()
@@ -99,8 +108,17 @@ module Chromium =
 type AardvarkCefBrowser() =
     inherit CefWebBrowser()
 
-    do base.BrowserSettings <- CefBrowserSettings(LocalStorage = CefState.Enabled, ApplicationCache = CefState.Enabled)
-
+    do base.BrowserSettings <- 
+        CefBrowserSettings(
+            LocalStorage = CefState.Enabled, 
+            ApplicationCache = CefState.Enabled,
+            JavaScriptAccessClipboard = CefState.Enabled,
+            JavaScriptCloseWindows = CefState.Enabled,
+            JavaScriptDomPaste = CefState.Enabled,
+            TextAreaResize = CefState.Enabled,
+            UniversalAccessFromFileUrls = CefState.Enabled,
+            WebGL = CefState.Enabled
+        )
     let mutable devTools = false
     
     let ownBrowser = System.Threading.Tasks.TaskCompletionSource<CefBrowser>()

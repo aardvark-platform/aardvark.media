@@ -792,22 +792,24 @@ if (!aardvark.connect) {
     }
 }
 
-function setAttribute(id,name,value)
-{
-    if(name == "value")
-    {
-        id.setAttribute(name,value);
-        id.value = value;
-    }
-    else if (name == "selected")
-    {
-        id.setAttribute(name, value);
-        id.selected = value;
-    }
-    else 
-    {   
-        id.setAttribute(name,value);
-    }
+if (!aardvark.setAttribute) {
+    aardvark.setAttribute = function (id, name, value) {
+        if (name == "value") {
+            id.setAttribute(name, value);
+            id.value = value;
+        }
+        else if (name == "checked") {
+            id.setAttribute(name, value);
+            id.selected = (checked ? true : false);
+        }
+        else if (name == "selected") {
+            id.setAttribute(name, value);
+            id.selected = value;
+        }
+        else {
+            id.setAttribute(name, value);
+        }
+    };
 }
 
 $(document).ready(function () {

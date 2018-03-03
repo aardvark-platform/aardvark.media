@@ -9,7 +9,13 @@ module Cef =
     let mutable private initialized = false
     let private l = obj()
 
-
+    
+    let shutdown() =
+        lock l (fun () ->
+            if initialized then
+                initialized <- false
+                CefRuntime.Shutdown()
+        )
 
     let init argv =
         lock l (fun _ -> 
@@ -43,17 +49,11 @@ module Cef =
                 CefRuntime.Initialize(mainArgs, settings, app, 0n)
 
                 Application.ApplicationExit.Add(fun _ -> 
-                    CefRuntime.Shutdown()
+                    shutdown()
                 )
                 AppDomain.CurrentDomain.ProcessExit.Add(fun _ -> 
-                    CefRuntime.Shutdown()
+                    shutdown()
                 )
         )
 
-    let shutdown() =
-        lock l (fun () ->
-            if initialized then
-                initialized <- false
-                CefRuntime.Shutdown()
-        )
         

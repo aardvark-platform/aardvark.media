@@ -135,7 +135,7 @@ module JSExpr =
 
             | SetAttribute(t, name, value) ->
                 let t = toStringInternal t
-                sprintf "setAttribute(%s,\"%s\", \"%s\");" t name (escape value)
+                sprintf "aardvark.setAttribute(%s,\"%s\", \"%s\");" t name (escape value)
 
             | RemoveAttribute(t, name) ->
                 let t = toStringInternal t

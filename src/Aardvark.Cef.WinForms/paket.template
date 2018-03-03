@@ -10,4 +10,5 @@ files
     ..\..\bin\Release\Aardvark.Cef.WinForms.dll ==> lib\net45
     ..\..\bin\Release\Aardvark.Cef.WinForms.pdb ==> lib\net45
     ..\..\bin\Release\Aardvark.Cef.WinForms.Process.exe ==> lib\net45
+	..\..\bin\Release\Aardvark.Cef.WinForms.Process.exe.config ==> lib\net45
     ..\..\bin\Release\Aardvark.Cef.WinForms.Process.pdb ==> lib\net45

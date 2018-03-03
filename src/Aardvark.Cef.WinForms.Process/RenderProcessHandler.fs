@@ -11,6 +11,9 @@ type AardvarkRenderProcessHandler() =
     override x.OnContextCreated(browser : CefBrowser, frame : CefFrame, ctx : CefV8Context) =
         base.OnContextCreated(browser, frame, ctx)
 
+        let aardvark = 
+            aardvarks.GetOrAdd(browser.Identifier, fun id -> AardvarkIO(browser))
+
         ctx.Use (fun () ->
             use scope = ctx.GetGlobal()
             use glob = scope.GetValue("document")
@@ -18,14 +21,13 @@ type AardvarkRenderProcessHandler() =
             glob.SetValue("aardvark", target, CefV8PropertyAttribute.DontDelete) 
                 |> check "could not set global aardvark-value"
 
-            let aardvark = AardvarkIO(browser, ctx)
-            aardvarks.[browser.Identifier] <- aardvark
-                
+
             for name in aardvark.FunctionNames do
                 use f = CefV8Value.CreateFunction(name, aardvark)
                 target.SetValue(name, f, CefV8PropertyAttribute.DontDelete) 
                     |> check "could not attach function to aardvark-value"
         )
+
 
     override x.OnProcessMessageReceived(browser, source, msg) =
         match IPC.tryReadProcessMessage<Response> msg with

@@ -15,7 +15,7 @@ open Xilium.CefGlue.Wrapper
 open Xilium.CefGlue
 open Aardvark.Cef
 
-type AardvarkIO(browser : CefBrowser, ctx : CefV8Context) as this =
+type AardvarkIO(browser : CefBrowser) as this =
     inherit CefV8Handler()
 
     let functions : Dictionary<string, CefV8Value[] -> CefResult> = 
@@ -25,8 +25,8 @@ type AardvarkIO(browser : CefBrowser, ctx : CefV8Context) as this =
             |> Dictionary.ofSeq
 
                 
-    let runner = ctx.GetTaskRunner()
-    let reactions = ConcurrentDictionary<int, CefV8Value[] -> CefV8Value>()
+    //let runner = ctx.GetTaskRunner()
+    let reactions = ConcurrentDictionary<int, CefV8Context * (CefV8Value[] -> CefV8Value)>()
     let mutable currentId = 0
 
     member x.FunctionNames = 
@@ -50,13 +50,13 @@ type AardvarkIO(browser : CefBrowser, ctx : CefV8Context) as this =
 
     member x.got(response : Response) =
         match reactions.TryRemove response.id with
-            | (true, f) ->
-                runner.PostTask {
+            | (true, (ctx, f)) ->
+                ctx.GetTaskRunner().PostTask {
                     new CefTask() with
                         member x.Execute() =
                             ctx.Use (fun () ->
                                 match response with
-                                    | Ok(_,files) ->
+                                    | Response.Ok(_,files) ->
                                         let files = List.toArray files
                                         use arr = CefV8Value.CreateArray(files.Length)
                                         for i in 0 .. files.Length - 1 do
@@ -64,8 +64,18 @@ type AardvarkIO(browser : CefBrowser, ctx : CefV8Context) as this =
                                             arr.SetValue(i, file) |> ignore
 
                                         f [| arr |] |> ignore
-                                    | Abort _ ->
+                                    | Response.Abort _ ->
                                         f [| |] |> ignore
+
+                                    | Response.Error(_,err) ->
+                                        use scope = ctx.GetGlobal()
+                                        use console = scope.GetValue("console")
+                                        use warn = console.GetValue("warn");
+
+                                        use err = CefV8Value.CreateString(err)
+                                        use __ = warn.ExecuteFunction(console, [| err |])
+
+                                        ()
                             )
                 }
             | _ ->
@@ -80,8 +90,9 @@ type AardvarkIO(browser : CefBrowser, ctx : CefV8Context) as this =
 
         match config with
             | Some (config, f) -> 
+                let ctx = CefV8Context.GetCurrentContext()
                 let id = Interlocked.Increment(&currentId)
-                reactions.[id] <- f
+                reactions.[id] <- (ctx, f)
                 use msg = IPC.toProcessMessage (OpenDialog(id, config))
                 browser.SendProcessMessage(CefProcessId.Browser, msg) |> ignore
 
