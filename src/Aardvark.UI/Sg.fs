@@ -268,7 +268,12 @@ module ``F# Sg`` =
 
         let toUntypedSg (sg : ISg<'msg>) = unbox sg
 
-        let noEvents (sg : ISg) : ISg<'msg> = box sg
+        let noEvents (sg : ISg) : ISg<'msg> =             
+           match sg with
+           | :? ISg<'msg> as isgMsg -> 
+             Log.warn "[Media:] superfluous use of Sg.noEvents, returning input as is"
+             isgMsg
+           | _ -> box sg
 
         let withEvents (events : list<SceneEventKind * (SceneHit -> bool * seq<'msg>)>) (sg : ISg<'msg>) =
             Sg.EventApplicator(AMap.ofList events, sg) :> ISg<'msg>
