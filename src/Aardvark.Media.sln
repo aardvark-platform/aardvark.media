@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
 VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "14 - OpenFile", "Examples\14 - OpenFile\14 - OpenFile.fsproj", "{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}"
+EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "13 - Pages", "Examples\13 - Pages\13 - Pages.fsproj", "{2FC3A53E-CD69-4128-B16A-58198B95367F}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "12 - NavigationDemo", "Examples\12 - NavigationDemo\12 - NavigationDemo.fsproj", "{C6377422-B1D8-4C7C-AE4E-1CF4CF5D14B3}"
@@ -49,12 +51,18 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "01 - Inc", "Examples\01 - I
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Examples_old", "Examples_Old\Examples_old.fsproj", "{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.WinForms.Process", "Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj", "{EDE32464-755B-415A-B0CA-CDA89F49F6F5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2FC3A53E-CD69-4128-B16A-58198B95367F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2FC3A53E-CD69-4128-B16A-58198B95367F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2FC3A53E-CD69-4128-B16A-58198B95367F}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -139,11 +147,16 @@ Global
 		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{603EAB1F-0F4A-4EE2-A0EA-47C00D753887} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{2FC3A53E-CD69-4128-B16A-58198B95367F} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{C6377422-B1D8-4C7C-AE4E-1CF4CF5D14B3} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{8D5BAD67-8EED-4734-8B64-5B9A3CB76953} = {DAC89FC7-17D3-467D-929D-781A88DA5324}

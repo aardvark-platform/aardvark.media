@@ -65,20 +65,7 @@
   </Target>
   -->
   <ItemGroup>
-    <Content Include="Static\style.css">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Static\bootstrap.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="Static\template.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
-    <Content Include="boot.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Content>
     <Compile Include="ChromiumStuff.fs" />
-    <Compile Include="Bootstrap.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
@@ -87,14 +74,11 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Windows.Forms" />
-    <ProjectReference Include="..\Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj">
-      <Name>Aardvark.Cef.Process</Name>
-      <Project>{1dfeb808-39fa-4db3-92b6-77baadc1457d}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\Aardvark.Cef\Aardvark.Cef.fsproj">
-      <Name>Aardvark.Cef</Name>
-      <Project>{70c08f03-f4a5-414a-abd6-cc07dc42e07c}</Project>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj">
+      <Name>Aardvark.Cef.WinForms.Process</Name>
+      <Project>{ede32464-755b-415a-b0ca-cda89f49f6f5}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>

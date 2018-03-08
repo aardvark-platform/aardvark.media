@@ -399,8 +399,10 @@ type RenderProcessHandler() =
 
     override x.OnContextCreated(browser : CefBrowser, frame : CefFrame, context : CefV8Context) =
         context.Use (fun () ->
-            use glob = context.GetGlobal()
-            use target = CefV8Value.CreateObject(null)
+            use scope = context.GetGlobal()
+            use glob = scope.GetValue("document")
+
+            use target = CefV8Value.CreateObject()
             glob.SetValue("aardvark", target, CefV8PropertyAttribute.DontDelete) 
                 |> check "could not set global aardvark-value"
 

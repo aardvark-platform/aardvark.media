@@ -270,11 +270,9 @@ module DockingUIExtensions =
             let boot = boot.Replace("__NEEDSEVENT__", if hasLayoutChanged then "true" else "false")
             let channels = if cfg.IsConstant then [] else ["dockconfig", Mod.channel (cfg |> Mod.map DockConfig.toJSON) ]
             require dependencies (
-                body [] [
-                    onBoot' channels boot (
-                        div atts []
-                    )
-                ]
+                onBoot' channels boot (
+                    div atts []
+                )
             )
 
 

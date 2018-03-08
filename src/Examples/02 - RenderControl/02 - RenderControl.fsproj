@@ -25,7 +25,8 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile></DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -36,7 +37,8 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile></DocumentationFile>
+    <DocumentationFile>
+    </DocumentationFile>
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
@@ -54,14 +56,14 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj">
+      <Name>Aardvark.Cef.WinForms.Process</Name>
+      <Project>{ede32464-755b-415a-b0ca-cda89f49f6f5}</Project>
+      <Private>True</Private>
+    </ProjectReference>
     <ProjectReference Include="..\..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">
       <Name>Aardvark.Cef.WinForms</Name>
       <Project>{f20c78dd-06cb-44e8-90db-6de144863078}</Project>
-      <Private>True</Private>
-    </ProjectReference>
-    <ProjectReference Include="..\..\Aardvark.Cef\Aardvark.Cef.fsproj">
-      <Name>Aardvark.Cef</Name>
-      <Project>{70c08f03-f4a5-414a-abd6-cc07dc42e07c}</Project>
       <Private>True</Private>
     </ProjectReference>
     <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj">
