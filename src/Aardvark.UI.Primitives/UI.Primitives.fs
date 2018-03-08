@@ -119,18 +119,19 @@ module Html =
                 div [
                     clazz "ui black big launch right attached fixed button menubutton"
                     js "onclick"        "$('.sidebar').sidebar('toggle');"
+                    style "z-index:1"
                 ] [
                     i [clazz "content icon"] [] 
                     span [clazz "text"] [text "Menu"]
                 ]
             [
                 yield 
-                    menu "ui vertical inverted sidebar menu" sectionsAndItems
-                yield 
                     div [clazz "pusher"] [
                         yield pushButton()                    
                         yield! rest                    
                     ]
+                yield 
+                    menu "ui vertical inverted sidebar menu" sectionsAndItems
             ]                    
 
         let stuffStack (ls) =
