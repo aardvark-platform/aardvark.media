@@ -800,7 +800,7 @@ if (!aardvark.setAttribute) {
         }
         else if (name == "checked") {
             id.setAttribute(name, value);
-            id.selected = (checked ? true : false);
+            id.checked = (value ? true : false);
         }
         else if (name == "selected") {
             id.setAttribute(name, value);
