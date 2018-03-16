@@ -4,27 +4,27 @@ source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 
 nuget FSharp.Core                          ~> 4.0.0
 
-nuget Aardvark.Base                        ~> 3.0.54
-nuget Aardvark.Base.Incremental            ~> 3.0.54
-nuget Aardvark.Base.FSharp                 ~> 3.0.54
-nuget Aardvark.Base.Essentials             ~> 3.0.54
+nuget Aardvark.Base                        ~> 3.0.58
+nuget Aardvark.Base.Incremental            ~> 3.0.58
+nuget Aardvark.Base.FSharp                 ~> 3.0.58
+nuget Aardvark.Base.Essentials             ~> 3.0.58
 
-nuget Aardvark.Base.Rendering              ~> 3.6.11
-nuget Aardvark.Application.WinForms.GL     ~> 3.6.11
-nuget Aardvark.SceneGraph                  ~> 3.6.11
-nuget Aardvark.SceneGraph.IO               ~> 3.6.11
-nuget Aardvark.Rendering.NanoVg            ~> 3.6.11
-nuget Aardvark.Rendering.Text              ~> 3.6.11
-nuget Aardvark.Rendering.Vulkan            ~> 3.6.11
-nuget Aardvark.GPGPU                       ~> 3.6.11
+nuget Aardvark.Base.Rendering              ~> 3.6.22
+nuget Aardvark.Application.WinForms.GL     ~> 3.6.22
+nuget Aardvark.SceneGraph                  ~> 3.6.22
+nuget Aardvark.SceneGraph.IO               ~> 3.6.22
+nuget Aardvark.Rendering.NanoVg            ~> 3.6.22
+nuget Aardvark.Rendering.Text              ~> 3.6.22
+nuget Aardvark.Rendering.Vulkan            ~> 3.6.22
+nuget Aardvark.GPGPU                       ~> 3.6.22
 
-nuget Aardvark.Compiler.DomainTypes         ~> 0.2.11
-nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.2.11
-nuget Aardvark.Compiler.DomainTypeTool      ~> 0.2.11
+nuget Aardvark.Compiler.DomainTypes         ~> 0.3.0
+nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.3.0
+nuget Aardvark.Compiler.DomainTypeTool      ~> 0.3.0
 
-nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.1.0
-nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.1.0
-nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.1.0
+nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.1.1
+nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.1.1
+nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.1.1
 
 nuget FsPickler       ~> 4.0.0
 nuget FsPickler.Json  ~> 4.0.0
