@@ -126,6 +126,8 @@ class Renderer {
         this.isClosed = false;
         this.loading = true;
 
+        this.depthCallbacks = [];
+
         this.init();
     }
 
@@ -428,6 +430,11 @@ class Renderer {
         }
     }
 
+    getDepth(pixel, callback) {
+        this.depthCallbacks.push({ pixel: pixel, callback: callback });
+        this.send(JSON.stringify({ Case: "RequestDepth", pixel: { X: pixel.x, Y: pixel.y } }));
+    }
+
     received(msg) {
         if (msg.data instanceof Blob) {
             var now = performance.now();
@@ -481,6 +488,18 @@ class Renderer {
             if (o.Case === "Invalidate") {
                 // TODO: what if not visible??
                 this.render();
+            }
+            else if (o.Case === "Depth" && o.depth) {
+                if (this.depthCallbacks.length > 0) {
+                    var cb = this.depthCallbacks[0];
+
+                    var x = 2 * (cb.pixel.x / this.div.clientWidth) - 1.0;
+                    var y = -2 * (cb.pixel.y / this.div.clientHeight) + 1.0;
+                    var z = 2.0 * o.depth - 1.0;
+
+                    cb.callback({ X: x.toFixed(10), Y: y.toFixed(10), Z: z.toFixed(10) });
+                    this.depthCallbacks.splice(0, 1);
+                }
             }
             else if (o.Case === "Subscribe") {
                 var evt = o.eventName;
@@ -729,6 +748,13 @@ if (!aardvark.render) {
         var r = aardvark.getRenderer(id);
         r.render();
     }
+}
+
+if (!aardvark.getDepth) {
+    aardvark.getDepth = function (id, pixel, callback) {
+        var r = aardvark.getRenderer(id);
+        r.getDepth(pixel, callback)
+    };
 }
 
 if (!aardvark.connect) {
