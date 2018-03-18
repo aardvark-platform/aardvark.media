@@ -103,12 +103,12 @@ let view (m : MModel) =
     let doubleClick (callback : V3d -> seq<'msg>) =
         "ondblclick", AttributeValue.Event {
             clientSide = fun send id -> 
-                "aardvark.getDepth('" + id + "', {x : event.clientX, y: event.clientY }, function(d) { " + send id ["d"] + " })"
+                "aardvark.getWorldPosition('" + id + "', {x : event.clientX, y: event.clientY }, function(d) { " + send id ["d"] + " })"
             serverSide = fun client id args -> 
                 match args with
                     | h :: _ ->
                         let v : V3d = Pickler.json.UnPickleOfString h
-                        Log.warn "ndc: %A" v
+                        Log.warn "wp: %A" v
                         callback v
                     | _ ->
                         Seq.empty

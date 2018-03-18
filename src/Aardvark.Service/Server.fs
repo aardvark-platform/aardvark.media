@@ -28,14 +28,14 @@ open System.Diagnostics
 
 type Message =
     | RequestImage of size : V2i
-    | RequestDepth of pixel : V2i
+    | RequestWorldPosition of pixel : V2i
     | Rendered
     | Shutdown
     | Change of scene : string * samples : int
 
 type Command =
     | Invalidate
-    | Depth of depth : float
+    | WorldPosition of pos : V3d
 
 [<AutoOpen>]
 module private Tools = 
@@ -592,6 +592,38 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             | None ->
                 None
 
+    member x.GetWorldPosition(pixel : V2i) =
+        match target with
+            | Some fbo ->
+                match Map.tryFind DefaultSemantic.Depth fbo.Attachments with
+                    | Some (:? IBackendTextureOutputView as t) ->
+                        if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller t.Size.XY then
+                            match ReadPixel.downloadDepth pixel t.texture with
+                                | Some depth ->
+                                    let tc = (V2d pixel + V2d(0.5, 0.5)) / V2d t.Size.XY
+
+                                    let ndc = V3d(2.0 * tc.X - 1.0, 1.0 - 2.0 * tc.Y, 2.0 * float depth - 1.0)
+                                    match currentScene with
+                                        | Some (_,cs) ->
+                                            let view = cs.State.viewTrafo |> Mod.force
+                                            let proj = cs.State.projTrafo |> Mod.force
+
+                                            let vp = proj.Backward.TransformPosProj ndc 
+                                            let wp = view.Backward.TransformPos vp
+                                            Some wp
+                                        | None ->
+                                            None
+                                | None ->
+                                    None
+
+                        else
+                            None
+                    | _ ->
+                        None
+            | None ->
+                None
+        
+
     member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
         lastInfo <- Some info
 
@@ -806,13 +838,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         roundTripTime.Start()
                                         MVar.put requestedSize size
 
-                                    | RequestDepth pixel ->
-                                        let depth = 
-                                            match task.DownloadDepth pixel with
+                                    | RequestWorldPosition pixel ->
+                                        let wp = 
+                                            match task.GetWorldPosition pixel with
                                                 | Some d -> d
-                                                | None -> 1.0
+                                                | None -> V3d.Zero
 
-                                        send (Depth depth)
+                                        send (WorldPosition wp)
 
                                     | Rendered ->
                                         roundTripTime.Stop()

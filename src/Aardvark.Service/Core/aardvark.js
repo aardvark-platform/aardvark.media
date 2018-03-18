@@ -430,9 +430,9 @@ class Renderer {
         }
     }
 
-    getDepth(pixel, callback) {
+    getWorldPosition(pixel, callback) {
         this.depthCallbacks.push({ pixel: pixel, callback: callback });
-        this.send(JSON.stringify({ Case: "RequestDepth", pixel: { X: pixel.x, Y: pixel.y } }));
+        this.send(JSON.stringify({ Case: "RequestWorldPosition", pixel: { X: pixel.x, Y: pixel.y } }));
     }
 
     received(msg) {
@@ -489,15 +489,10 @@ class Renderer {
                 // TODO: what if not visible??
                 this.render();
             }
-            else if (o.Case === "Depth" && o.depth) {
+            else if (o.Case === "WorldPosition" && o.pos) {
                 if (this.depthCallbacks.length > 0) {
                     var cb = this.depthCallbacks[0];
-
-                    var x = 2 * (cb.pixel.x / this.div.clientWidth) - 1.0;
-                    var y = -2 * (cb.pixel.y / this.div.clientHeight) + 1.0;
-                    var z = 2.0 * o.depth - 1.0;
-
-                    cb.callback({ X: x.toFixed(10), Y: y.toFixed(10), Z: z.toFixed(10) });
+                    cb.callback(o.pos);
                     this.depthCallbacks.splice(0, 1);
                 }
             }
@@ -750,10 +745,10 @@ if (!aardvark.render) {
     }
 }
 
-if (!aardvark.getDepth) {
-    aardvark.getDepth = function (id, pixel, callback) {
+if (!aardvark.getWorldPosition) {
+    aardvark.getWorldPosition = function (id, pixel, callback) {
         var r = aardvark.getRenderer(id);
-        r.getDepth(pixel, callback)
+        r.getWorldPosition(pixel, callback)
     };
 }
 
