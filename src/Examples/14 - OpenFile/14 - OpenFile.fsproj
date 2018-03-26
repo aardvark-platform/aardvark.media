@@ -6,14 +6,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{2FC3A53E-CD69-4128-B16A-58198B95367F}</ProjectGuid>
+    <ProjectGuid>{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}</ProjectGuid>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Pages</RootNamespace>
-    <AssemblyName>Pages</AssemblyName>
+    <RootNamespace>OpenFile</RootNamespace>
+    <AssemblyName>OpenFile</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>13 - Pages</Name>
+    <Name>14 - OpenFile</Name>
     <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

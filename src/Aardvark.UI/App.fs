@@ -34,8 +34,10 @@ module App =
 
     let start (app : App<'model, 'mmodel, 'msg>) =
         let l = obj()
-        let state = Mod.init app.initial
-        let mstate = app.unpersist.create app.initial
+        let initial = app.initial
+        let state = Mod.init initial
+        let mstate = app.unpersist.create initial
+        let initialThreads = app.threads initial
         let node = app.view mstate
 
         let mutable running = true
@@ -91,6 +93,9 @@ module App =
                 Monitor.Pulse messageQueue
             )
 
+
+        // start initial threads
+        adjustThreads initialThreads
 
         let updateThread =
             let update () = 

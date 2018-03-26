@@ -6,6 +6,7 @@ open System.IO
 open System.Diagnostics
 open Aardvark.Fake
 
+do MSBuildDefaults <- { MSBuildDefaults with Verbosity = Some Minimal }
 do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
 DefaultSetup.install ["src/Aardvark.Media.sln"]

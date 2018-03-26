@@ -100,11 +100,28 @@ let viewScene (m : MModel) =
        }
 
 let view (m : MModel) =
+    let doubleClick (callback : V3d -> seq<'msg>) =
+        "ondblclick", AttributeValue.Event {
+            clientSide = fun send id -> 
+                "aardvark.getWorldPosition('" + id + "', {x : event.clientX, y: event.clientY }, function(d) { " + send id ["d"] + " })"
+            serverSide = fun client id args -> 
+                match args with
+                    | h :: _ ->
+                        let v : V3d = Pickler.json.UnPickleOfString h
+                        Log.warn "wp: %A" v
+                        callback v
+                    | _ ->
+                        Seq.empty
+        }   
+
+    let callback (v : V3d) =
+        Seq.empty
+
     body [ style "background: #1B1C1E"] [
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"]) (viewScene m)
+                    (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"; doubleClick callback]) (viewScene m)
 
                 div [style "width:15%; height: 100%; float:right"] [
                     Html.SemUi.stuffStack [

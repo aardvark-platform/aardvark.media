@@ -2,6 +2,7 @@
 
 open System
 open Suave
+open System.Text
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
@@ -70,6 +71,30 @@ module Html =
             { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
         ]      
 
+    let multiselectList (entries : list<'a>) (getId : 'a -> string) (getDomNode : 'a -> DomNode<'msg>) (getValue : string -> 'a) (onSelected : list<'a> -> 'msg) =
+        div [attribute "style" "width:100%"] [
+            select [
+                attribute "style" "width:100%"
+                attribute "multiple" ""
+                onEvent "onchange" ["Array.prototype.slice.call(event.target.selectedOptions).map(x => x.value)"] 
+                    (fun xs ->
+                        let s = (xs |> Seq.head)
+
+                        //shame
+                        let vals = s.Substring(1,s.Length-1).Split([|','|]) 
+                                    |> Array.map ( fun v -> v.Replace("\"","").Replace("[","").Replace("]","").Trim()) 
+                                    |> Array.toList
+
+                        vals |> List.map getValue |> onSelected
+                    )
+            ] (entries |> List.map ( fun s ->
+                option [attribute "value" (getId s)] [getDomNode s]
+            ))
+        ]
+
+    let multiselectListSimple (entries : list<string>) (onSelected : list<string> -> 'msg) =
+        multiselectList entries id text id onSelected
+
     module SemUi =
         open Aardvark.Base.AMD64.Compiler
         open Aardvark.Base.Geometry.RayHit
@@ -94,18 +119,19 @@ module Html =
                 div [
                     clazz "ui black big launch right attached fixed button menubutton"
                     js "onclick"        "$('.sidebar').sidebar('toggle');"
+                    style "z-index:1"
                 ] [
                     i [clazz "content icon"] [] 
                     span [clazz "text"] [text "Menu"]
                 ]
             [
                 yield 
-                    menu "ui vertical inverted sidebar menu" sectionsAndItems
-                yield 
                     div [clazz "pusher"] [
                         yield pushButton()                    
                         yield! rest                    
                     ]
+                yield 
+                    menu "ui vertical inverted sidebar menu" sectionsAndItems
             ]                    
 
         let stuffStack (ls) =

@@ -9,7 +9,7 @@ open Aardvark.UI
 open Suave
 open Suave.WebPart
 
-[<EntryPoint>]
+[<EntryPoint; STAThread>]
 let main argv = 
 
     failwith "this example is currently broken. feel free to fix it ;)"
@@ -41,5 +41,4 @@ let main argv =
     form.Icon <- Icons.aardvark 
 
     Application.Run form
-    System.Environment.Exit 0
     0 

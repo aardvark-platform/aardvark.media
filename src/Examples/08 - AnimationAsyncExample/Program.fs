@@ -9,7 +9,7 @@ open Aardvark.UI
 open Suave
 open Suave.WebPart
 
-[<EntryPoint>]
+[<EntryPoint; STAThread>]
 let main argv = 
     
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
@@ -18,7 +18,7 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
 
-    use app = new OpenGlApplication()
+    use app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication()
     use form = new Form(Width = 1000, Height = 800)
 
     let instance = 
@@ -38,5 +38,4 @@ let main argv =
     form.Icon <- Icons.aardvark 
 
     Application.Run form
-    System.Environment.Exit 0
     0 
