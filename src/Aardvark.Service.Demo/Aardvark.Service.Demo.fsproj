@@ -88,9 +88,8 @@
     <Compile Include="Correlations\GeologicalLog.fs" />
     <Compile Include="Correlations\CorrelationDrawing.fs" />
     <Compile Include="Correlations\CorrelationDrawingApp.fs" />
-    <Compile Include="Animation\Model.fs" />
-    <Compile Include="Animation\AnimationBase.fs" />
-    <Compile Include="Animation\AnimationApp.fs" />
+    <Compile Include="AnimationAppModel.fs" />
+    <Compile Include="AnimationApp.fs" />
     <Compile Include="SimpleTest.fs" />
     <Compile Include="Quicktest-Models.fs" />
     <Compile Include="QuickTest.fs" />

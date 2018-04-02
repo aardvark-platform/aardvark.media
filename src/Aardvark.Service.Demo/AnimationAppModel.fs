@@ -1,39 +1,11 @@
-﻿namespace Aardvark.AnimationModel
+﻿namespace AnimationDemo
 
 open Aardvark.Base                 
 open Aardvark.Base.Incremental 
 open Aardvark.UI.Primitives
+open Aardvark.UI.Animation
 
-type Time = float
-type RelativeTime = Time
-
-type Animation<'m,'s,'a> = {
-    state     : Option<'s>
-    name      : string
-    startTime : Option<Time>
-    start     : 'm -> 's
-    sample    : RelativeTime * Time -> 's -> Option<'s * 'a>
-}
-
-type Animate = On = 0 | Off = 1
-
-type TaskId = string
-
-[<DomainType>]
-type TaskProgress = { percentage : float; [<NonIncremental>] startTime : System.DateTime }
-
-[<DomainType>]
-type AnimationModel = {
-   cam        : CameraView
-   animation  : Animate
-   animations : plist<Animation<AnimationModel,CameraView,CameraView>>
-}
-
-type AnimationAction = 
- | Tick of Time
- | PushAnimation of Animation<AnimationModel,CameraView,CameraView>
- | RemoveAnimation of Index   
-
+ 
 [<DomainType>]
 type DemoModel = {
     animations  : AnimationModel
@@ -44,8 +16,7 @@ type Message =
   | CameraMessage    of CameraControllerMessage
   | AnimationMessage of AnimationAction
         
-module CameraAnimations =
-  open Aardvark.Base.Trafo
+module CameraAnimations = 
 
   let initial name = 
     {

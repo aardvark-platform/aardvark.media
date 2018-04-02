@@ -1,4 +1,4 @@
-namespace Aardvark.Animation
+namespace Aardvark.UI.Animation
 
 module AnimationApp = 
   open Aardvark.Base
@@ -7,14 +7,11 @@ module AnimationApp =
   open Aardvark.Base.Rendering
   
   open Aardvark.UI
-  open Aardvark.UI.Primitives
-  
-  open Aardvark.AnimationModel
-          
+              
   let shouldAnimate (m : AnimationModel) =
         m.animation = Animate.On && PList.count m.animations > 0
     
-  let updateAnimation (m : 'm) (t : Time) (a : Animation<'m,'s,'a>) =
+  let updateAnimation (m : 'm) (t : Aardvark.UI.Animation.Time) (a : Animation<'m,'s,'a>) =
         match a.state with
             | None ->
                 let s = a.start m

@@ -1,4 +1,4 @@
-namespace Aardvark.Animation
+namespace AnimationDemo
 
   module AnimationDemoApp = 
     
@@ -9,9 +9,8 @@ namespace Aardvark.Animation
     
     open Aardvark.UI
     open Aardvark.UI.Primitives
-    
-    open Aardvark.AnimationModel
-        
+    open Aardvark.UI.Animation
+                
     // TODO: head tail patterns for plist
     // update at for plist
     module Lens =
@@ -23,10 +22,10 @@ namespace Aardvark.Animation
             | CameraMessage msg when not (AnimationApp.shouldAnimate m.animations) -> 
               let cc = CameraController.update m.cameraState msg               
               { m with cameraState = cc; animations = { m.animations with cam = cc.view}}
+            | CameraMessage _ -> m // not allowed to camera around           
             | AnimationMessage msg ->
               let a = AnimationApp.update m.animations msg
               { m with animations = a; cameraState = { m.cameraState with view = a.cam}}
-            | CameraMessage _ -> m // not allowed to camera around                    
     
     let viewScene (m : MDemoModel) =
         let b1 =
