@@ -52,18 +52,12 @@ module AnimationApp =
   module ThreadPool =
       let unionMany xs = List.fold ThreadPool.union ThreadPool.empty xs
     
-      let threads (m : AnimationModel) = 
-        // handling of continous camera animations (camera controller)
-        //let cameraAnimations = CameraController.threads m.cameraState |> ThreadPool.map CameraMessage
-                               
+      let threads (m : AnimationModel) =                                        
         // handling of continous animations
-        let animations = 
-            if shouldAnimate m then
-                ThreadPool.add "timer" (time()) ThreadPool.empty
-            else
-                ThreadPool.empty
-    
-        // combining all threads
-                
-        animations                        
+        
+        if shouldAnimate m then
+          ThreadPool.add "timer" (time()) ThreadPool.empty
+        else
+          ThreadPool.empty
+        
         
