@@ -90,7 +90,7 @@ let kitchenSink argv =
     //let app = AnnotationApp.app
     //let app = DragNDrop.App.app
 
-    let app = Aardvark.Animation.AnimationApp.app
+    let app = Aardvark.Animation.AnimationDemoApp.app
 
     //Config.shouldTimeUIUpdate <- true
     //Config.shouldTimeJsCodeGeneration <- true

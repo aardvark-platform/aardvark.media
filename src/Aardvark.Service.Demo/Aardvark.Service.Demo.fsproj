@@ -89,6 +89,7 @@
     <Compile Include="Correlations\CorrelationDrawing.fs" />
     <Compile Include="Correlations\CorrelationDrawingApp.fs" />
     <Compile Include="Animation\Model.fs" />
+    <Compile Include="Animation\AnimationBase.fs" />
     <Compile Include="Animation\AnimationApp.fs" />
     <Compile Include="SimpleTest.fs" />
     <Compile Include="Quicktest-Models.fs" />

@@ -1,8 +1,7 @@
 namespace Aardvark.Animation
 
-  module AnimationApp = 
-  
-  
+  module AnimationDemoApp = 
+    
     open Aardvark.Base
     open Aardvark.Base.Incremental
     open Aardvark.Base.Incremental.Operators
@@ -12,143 +11,24 @@ namespace Aardvark.Animation
     open Aardvark.UI.Primitives
     
     open Aardvark.AnimationModel
-    open Aardvark.Rendering.Vulkan.VkFormat
-    
+        
     // TODO: head tail patterns for plist
     // update at for plist
-    
     module Lens =
-        let update (l : Lens<'m,'a>) (s : 'm) (f : 'a -> 'a) =
-            l.Update(s,f)
-    
-    
-    let shouldAnimate (m : Model) =
-        m.animation = Animate.On && PList.count m.animations > 0
-    
-    let updateAnimation (m : 'm) (t : Time) (a : Animation<'m,'s,'a>) =
-        match a.state with
-            | None ->
-                let s = a.start m
-                { a with state = Some s; startTime = Some t}, 0.0, s
-            | Some s -> a, t-a.startTime.Value, s
-    
-    module CameraAnimations =
-        open Aardvark.Base.Trafo
-
-        let initial name = 
-          {
-            startTime = None
-            state = None
-            name = name
-            start = fun m -> m.cameraState.view // initially, grab camera controller state
-            sample = fun (_,_) (state : CameraView) -> None
-          }
-
-        let zoom (dir : float) (name : string) = 
-          {
-            (initial name) with 
-              sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
-                if localTime < 1.0 then
-                    let view = state.WithLocation(state.Location + dir * state.Forward * (localTime / 1.0))
-                    Some (state,view)
-                else None
-          }
-
-        let animateLocation (destination : V3d) (duration : RelativeTime) (name : string) = 
-          {
-            (initial name) with 
-              sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
-                if localTime < duration then
-                  let vec      = destination - state.Location
-                  let velocity = vec.Length / duration                  
-                  let dir      = vec.Normalized
-
-                  let location' = state.Location + dir * velocity * localTime
-                  let view = state.WithLocation(location')
-
-                  Some (state,view)
-                else None
-          }
-
-        let animateLocationFixedLookAt (destination : V3d) (lookAt : V3d) (duration : RelativeTime) (name : string) = 
-          {
-            (initial name) with 
-              sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
-                if localTime < duration then
-                  let vec      = destination - state.Location
-                  let velocity = vec.Length / duration                  
-                  let dir      = vec.Normalized                  
-
-                  let location' = state.Location + dir * velocity * localTime
-                  let forward = (lookAt - location').Normalized
-
-                  let view = 
-                    state 
-                      |> CameraView.withLocation(location') 
-                      |> CameraView.withForward forward
-
-                  Some (state,view)
-                else None
-          }
-
-        let animateLookAt (src : V3d)(dst : V3d) (duration : RelativeTime) (name : string) = 
-          {
-            (initial name) with 
-              sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
-                if localTime < duration then
-                  let vec      = dst - src
-                  let velocity = vec.Length / duration
-                  let dir      = vec.Normalized
-
-                  let lookAt' = src + dir * velocity * localTime
-                  let forward = (lookAt' - state.Location).Normalized
-
-                  let view = state |> CameraView.withForward forward                  
-                                  
-                  Some (state,view)
-                else None
-          }
-
-        let animateFoward (dst : V3d) (duration : RelativeTime) (name : string) = 
-          {
-            (initial name) with 
-              sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
-                if localTime < duration then                  
-                  let rot = Rot3d(state.Forward, dst) * localTime / duration
-                  let forward' = rot.TransformDir(state.Forward)                  
-                  let view = state |> CameraView.withForward forward'
-
-                  Some (state,view)
-                else None
-          }
-
-    
-    let update (m : Model) (msg : Message )  =
+      let update (l : Lens<'m,'a>) (s : 'm) (f : 'a -> 'a) =
+        l.Update(s,f)
+                
+    let update (m : DemoModel) (msg : Message ) =
         match msg with
-            | CameraMessage msg when not (shouldAnimate m) -> 
-                CameraController.update' msg |> Lens.update Model.Lens.cameraState m 
-            | Tick t when shouldAnimate m -> 
-                match PList.tryAt 0 m.animations with
-                    | Some anim -> 
-                        // initialize animation (if needed)
-                        let (anim,localTime,state) = updateAnimation m t anim
-                        match anim.sample(localTime, t) state with 
-                            | None -> { m with animations = PList.removeAt 0 m.animations } // animation stops, so pop it
-                            | Some (s,cameraView) -> 
-                                // feed in new state
-                                let anim = { anim with state = Some s } 
-                                // activate result in camera state
-                                { m with cameraState = { m.cameraState with view = cameraView }; 
-                                         animations = PList.setAt 0 anim m.animations }
-                    | None -> m
-            | PushAnimation a -> 
-                { m with animations = PList.append a m.animations }
-            | RemoveAnimation i -> 
-                { m with animations = PList.remove i m.animations }
-            | Tick _ -> m // not allowed to animate
+            | CameraMessage msg when not (AnimationApp.shouldAnimate m.animations) -> 
+              let cc = CameraController.update m.cameraState msg               
+              { m with cameraState = cc; animations = { m.animations with cam = cc.view}}
+            | AnimationMessage msg ->
+              let a = AnimationApp.update m.animations msg
+              { m with animations = a; cameraState = { m.cameraState with view = a.cam}}
             | CameraMessage _ -> m // not allowed to camera around                    
     
-    let viewScene (m : MModel) =
+    let viewScene (m : MDemoModel) =
         let b1 =
           Sg.box ~~C4b.DarkRed ~~Box3d.Unit
           |> Sg.shader {
@@ -166,7 +46,7 @@ namespace Aardvark.Animation
 
         Sg.ofList [b1; b2]
         
-    let view (m : MModel) =            
+    let view (m : MDemoModel) =            
       body [ style "background: #1B1C1E"] [
         require (Html.semui) (
           div [clazz "ui"; style "background: #1B1C1E"] [
@@ -177,24 +57,34 @@ namespace Aardvark.Animation
               Html.SemUi.stuffStack [
                 b [] [text "Camera actions:"]; br[]; 
                 
-                button [clazz "ui button"; onClick (fun _ ->  PushAnimation (CameraAnimations.zoom  1.0 "zoom in  (1s)"))] [text "Zoom in"]
-                button [clazz "ui button"; onClick (fun _ ->  PushAnimation (CameraAnimations.zoom -1.0 "zoom out (1s)"))] [text "Zoom away"]
                 button [clazz "ui button"; onClick (fun _ ->  
-                  PushAnimation (CameraAnimations.animateLocation (V3d.IOI * 3.0) 2.0 "flyto 333"))] [text "FlyTo in 2s"]
+                  AnimationAction.PushAnimation (CameraAnimations.zoom  1.0 "zoom in  (1s)"))] [text "Zoom in"] 
+                    |> UI.map AnimationMessage
 
                 button [clazz "ui button"; onClick (fun _ ->  
-                  PushAnimation (CameraAnimations.animateLocationFixedLookAt (V3d.IOI * 3.0) (V3d.Zero) 2.0 "flyto fixed look"))] [text "FlyTo fixed in 2s"]
+                  AnimationAction.PushAnimation (CameraAnimations.zoom -1.0 "zoom out (1s)"))] [text "Zoom away"] 
+                    |> UI.map AnimationMessage
 
                 button [clazz "ui button"; onClick (fun _ ->  
-                  PushAnimation (CameraAnimations.animateLookAt (V3d.Zero) (V3d.IOO * -2.0) 2.0 "lookAt"))] [text "rotate"]
+                  AnimationAction.PushAnimation (CameraAnimations.animateLocation (V3d.IOI * 3.0) 2.0 "flyto 333"))] [text "FlyTo in 2s"] 
+                    |> UI.map AnimationMessage
 
                 button [clazz "ui button"; onClick (fun _ ->  
-                  PushAnimation (CameraAnimations.animateFoward ((V3d.IOO * -2.0) - (m.cameraState.view |> Mod.force).Location).Normalized 2.0 "rotate"))] [text "foward"]
+                  AnimationAction.PushAnimation (CameraAnimations.animateLocationFixedLookAt (V3d.IOI * 3.0) (V3d.Zero) 2.0 "flyto fixed look"))] [text "FlyTo fixed in 2s"] 
+                    |> UI.map AnimationMessage
+
+                button [clazz "ui button"; onClick (fun _ ->  
+                  AnimationAction.PushAnimation (CameraAnimations.animateLookAt (V3d.Zero) (V3d.IOO * -2.0) 2.0 "lookAt"))] [text "rotate"] 
+                    |> UI.map AnimationMessage
+
+                button [clazz "ui button"; onClick (fun _ ->  
+                  AnimationAction.PushAnimation (CameraAnimations.animateFoward ((V3d.IOO * -2.0) - (m.cameraState.view |> Mod.force).Location).Normalized 2.0 "rotate"))] [text "foward"] 
+                    |> UI.map AnimationMessage
     
                 br[]; br[]; b [] [text "Pending animations (click to abort)"]
                 Incremental.div AttributeMap.empty <| AList.mapi (fun i a ->
-                    button [onClick (fun _ -> RemoveAnimation i)] [text a.name]
-                ) m.animations                          
+                    button [onClick (fun _ -> AnimationAction.RemoveAnimation i)] [text a.name] |> UI.map AnimationMessage
+                ) m.animations.animations
               ]
             ]
           ]
@@ -202,48 +92,39 @@ namespace Aardvark.Animation
       ]
     
     
-    let totalTime = System.Diagnostics.Stopwatch.StartNew()
-    let rec time() =
-        proclist {
-            do! Proc.Sleep 10
-            yield Tick totalTime.Elapsed.TotalSeconds
-            yield! time()
-        }
-    
     module ThreadPool =
-        let unionMany xs = List.fold ThreadPool.union ThreadPool.empty xs
+      let unionMany xs = List.fold ThreadPool.union ThreadPool.empty xs
     
-    let threads (m : Model) = 
+      let threads (m : DemoModel) = 
         // handling of continous camera animations (camera controller)
         let cameraAnimations = CameraController.threads m.cameraState |> ThreadPool.map CameraMessage
-                               
-        // handling of continous animations
-        let animations = 
-            if shouldAnimate m then
-                ThreadPool.add "timer" (time()) ThreadPool.empty
-            else
-                ThreadPool.empty
-    
+                
+        let animations = AnimationApp.ThreadPool.threads m.animations |> ThreadPool.map AnimationMessage
+           
         // combining all threads
-        ThreadPool.unionMany [
-            cameraAnimations
-            animations                        
+        unionMany [
+          cameraAnimations
+          animations                        
         ]
     
+    let initialView = CameraView.lookAt (V3d.III * 3.0) V3d.Zero V3d.OOI
     
     let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
       {
         unpersist = Unpersist.instance     
-        threads = threads 
+        threads = ThreadPool.threads
         initial = 
           { 
              cameraState =  
                { CameraController.initial with 
-                    view = CameraView.lookAt (V3d.III * 3.0) V3d.Zero V3d.OOI
+                    view = initialView
                }
-             animations = PList.empty
-             animation = Animate.On             
-          }
+             animations = 
+               { 
+                 animations =  PList.empty; 
+                 animation  = Animate.On; 
+                 cam        = initialView }
+               }
         update = update 
         view = view
       }
