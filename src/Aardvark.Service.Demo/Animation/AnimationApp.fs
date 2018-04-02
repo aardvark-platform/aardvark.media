@@ -33,6 +33,8 @@ namespace Aardvark.Animation
             | Some s -> a, t-a.startTime.Value, s
     
     module CameraAnimations =
+        open Aardvark.Base.Trafo
+
         let initial name = 
           {
             startTime = None
@@ -102,6 +104,19 @@ namespace Aardvark.Animation
                   let forward = (lookAt' - state.Location).Normalized
 
                   let view = state |> CameraView.withForward forward                  
+                                  
+                  Some (state,view)
+                else None
+          }
+
+        let animateFoward (dst : V3d) (duration : RelativeTime) (name : string) = 
+          {
+            (initial name) with 
+              sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
+                if localTime < duration then                  
+                  let rot = Rot3d(state.Forward, dst) * localTime / duration
+                  let forward' = rot.TransformDir(state.Forward)                  
+                  let view = state |> CameraView.withForward forward'
 
                   Some (state,view)
                 else None
@@ -171,7 +186,10 @@ namespace Aardvark.Animation
                   PushAnimation (CameraAnimations.animateLocationFixedLookAt (V3d.IOI * 3.0) (V3d.Zero) 2.0 "flyto fixed look"))] [text "FlyTo fixed in 2s"]
 
                 button [clazz "ui button"; onClick (fun _ ->  
-                  PushAnimation (CameraAnimations.animateLookAt (V3d.Zero) (V3d.IOO * -2.0) 2.0 "rotate"))] [text "rotate"]
+                  PushAnimation (CameraAnimations.animateLookAt (V3d.Zero) (V3d.IOO * -2.0) 2.0 "lookAt"))] [text "rotate"]
+
+                button [clazz "ui button"; onClick (fun _ ->  
+                  PushAnimation (CameraAnimations.animateFoward ((V3d.IOO * -2.0) - (m.cameraState.view |> Mod.force).Location).Normalized 2.0 "rotate"))] [text "foward"]
     
                 br[]; br[]; b [] [text "Pending animations (click to abort)"]
                 Incremental.div AttributeMap.empty <| AList.mapi (fun i a ->
