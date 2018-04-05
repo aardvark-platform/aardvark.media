@@ -682,19 +682,22 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         data
 
     member x.Dispose() =
-        match lastInfo, currentScene with
-            | Some i, Some(_,s) ->
-                s.Scene.RemoveClientInfo(i.session, i.targetId)
-                lastInfo <- None
-            | _ -> 
-                ()
-        deleteFramebuffer()
-        task.Dispose()
-        renderTime.Reset()
-        compressTime.Reset()
-        frameCount <- 0
-        currentScene <- None
-        lastInfo <- None
+        try 
+            match lastInfo, currentScene with
+                | Some i, Some(_,s) ->
+                    s.Scene.RemoveClientInfo(i.session, i.targetId)
+                    lastInfo <- None
+                | _ -> 
+                    ()
+            deleteFramebuffer()
+            task.Dispose()
+            renderTime.Reset()
+            compressTime.Reset()
+            frameCount <- 0
+            currentScene <- None
+            lastInfo <- None
+        with e -> 
+            Log.warn "[Media] render server disposal failed (alread disposed?)"
 
     member x.RenderTime = renderTime.MicroTime
     member x.CompressTime = compressTime.MicroTime
