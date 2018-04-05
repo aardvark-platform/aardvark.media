@@ -15,26 +15,40 @@ let setPosition name objects newPos =
 let update (model : Model) (msg : Message) =
     match msg with
         | StartDrag(name,pos) -> 
-            printfn "start drag: %s" name
-            { model with dragObject = Some { name = name; startOffset = pos  }}
+            { model with dragObject = Some { name = name; startOffset = pos.relativeToElement  }}
         | Move location  -> 
             match model.dragObject with
                 | None -> model
-                | Some d -> { model with objects = setPosition d.name model.objects (location + d.startOffset) }
+                | Some d -> { model with objects = setPosition d.name model.objects (location - d.startOffset) }
         | StopDrag location  -> 
             match model.dragObject with
                 | None -> model
-                | Some d -> { model with objects = setPosition d.name model.objects (location + d.startOffset); dragObject = None }
+                | Some d -> { model with objects = setPosition d.name model.objects (location - d.startOffset); dragObject = None }
 
-let onMouseMoveRel (cb : V2d -> 'msg) =
-    onEvent "onmousemove" [sprintf " { X: (getRelativeCoords(event,'container')).x.toFixed(), Y: (getRelativeCoords(event,'container')).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
+let onMouseMoveRel (cb : V2d -> 'msg) : Attribute<'msg> =
+    onEvent "onmousemove" [" toFixedV2d(relativeTo(event,'container'))"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
 let onMouseUpRel (cb : V2d -> 'msg) =
-    onEvent "onmouseup" [sprintf " { X: (getRelativeCoords(event,'container')).x.toFixed(), Y: (getRelativeCoords(event,'container')).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
+    onEvent "onmouseup" [" toFixedV2d(relativeTo(event,'container'))"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
-let onMouseDownRel (container : string) (cb : V2d -> 'msg) =
-    onEvent "onmouseup" [sprintf " { X: (getRelativeCoords(event,'%s')).x.toFixed(), Y: (getRelativeCoords(event,'%s')).y.toFixed()  }" container container] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
+let onMouseDownRel (container : string) (self : string) (cb : RelativeClick -> 'msg) =
+    let args =  [
+        sprintf "toFixedV2d(relativeTo(event,'%s'))" container
+        sprintf "toFixedV2d(relativeTo(event,'%s'))" self
+    ]
+    let reaction args =
+        match args with
+            | containerRelative::selfRelative::_ -> 
+                { relativeToContainer = Pickler.json.UnPickleOfString containerRelative
+                  relativeToElement = Pickler.json.UnPickleOfString selfRelative
+                }
+            | _ -> failwith ""
+    onEvent "onmousedown" args (reaction >> cb)
 
+let dependencies =
+    [
+        { kind = Script; url = "resources/DragUtilities.js"; name = "DragUtilities" }
+    ]
 
 let view (model : MModel) =
 
@@ -45,25 +59,29 @@ let view (model : MModel) =
                 let attributes =
                     AttributeMap.ofAMap <|
                         amap {
-                            //yield onEvent "ondragstart" []  (fun _ -> StartDrag name)
                             yield clazz name
-                            yield onMouseDownRel name (fun l -> StartDrag(name,l))
+                            yield onMouseDownRel "container" name (fun l -> StartDrag(name,l))
                             let! pos = o.position
                             yield sprintf "%s;left:%fpx;top:%fpx;" baseStyle pos.X pos.Y |> style
                         } 
                 yield Incremental.div attributes AList.empty
         }
 
-    body [] [
-        Incremental.div (
-            AttributeMap.ofList [
-                style "width: 300px; height: 200px;border:1px solid black;position:relative";
-                onMouseMoveRel Move
-                onMouseUpRel StopDrag
-                clazz "container"
-            ]
-        ) (ASet.toAList objects)
-    ]
+    require dependencies (
+        body [] [
+            text "abc"
+            br []
+            br []
+            Incremental.div (
+                AttributeMap.ofList [
+                    style "width: 600px; height: 400px;border:1px solid black;position:relative";
+                    onMouseMoveRel Move
+                    onMouseUpRel StopDrag
+                    clazz "container"
+                ]
+            ) (ASet.toAList objects)
+        ]
+    )
 
 let threads (model : Model) = 
     ThreadPool.empty
@@ -77,8 +95,8 @@ let app =
             { 
                objects = 
                     HMap.ofList [ 
-                        "object 1", { position = V2d(50,20) }
-                        "object 2", { position = V2d(50,100) }
+                        "object1", { position = V2d(50,20) }
+                        "object2", { position = V2d(50,100) }
                     ]
                dragObject = None
             }
