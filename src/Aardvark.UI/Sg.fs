@@ -472,14 +472,9 @@ module FShadeSceneGraph =
 
         member x.Run(f : unit -> list<FShadeEffect>) =
             let surface = 
-                f() |> (fun effects ->
-                    effects
-                        |> FShade.Effect.compose
-                        |> FShadeSurface.Get
-                        :> ISurface
-                )
+                f() 
 
-            fun (sg : ISg<'a>) -> ``F# Sg``.Sg.surface surface sg
+            fun (sg : ISg<'a>) -> ``F# Sg``.Sg.effect surface sg
 
     module Sg =
         let shader<'a> = SgEffectBuilder<'a>()
