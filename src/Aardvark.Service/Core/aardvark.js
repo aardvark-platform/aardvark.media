@@ -879,3 +879,12 @@ if (!aardvark.getRelativeCoords) {
 
 var getRelativeCoords = aardvark.getRelativeCoords;
 
+if (!aardvark.toFixedV2d) {
+
+    aardvark.toFixedV2d = function toFixedV2d(v) {
+        return { X: v.x.toFixed(), Y: v.y.toFixed() };
+    }
+
+}
+
+var toFixedV2d = aardvark.toFixedV2d;

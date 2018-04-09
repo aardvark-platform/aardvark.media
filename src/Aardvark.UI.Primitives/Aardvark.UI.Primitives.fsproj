@@ -66,6 +66,8 @@
     <Compile Include="TrafoControls\TranslationController.fs" />
     <Compile Include="TrafoControls\RotationController.fs" />
     <Compile Include="TrafoControls\ScaleController.fs" />
+    <Compile Include="Animation\Model.fs" />
+    <Compile Include="Animation\AnimationBase.fs" />
     <Compile Include="CameraModel.fs" />
     <Compile Include="CameraController.fs" />
     <Compile Include="Docking.fs" />
