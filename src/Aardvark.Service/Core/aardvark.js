@@ -232,10 +232,21 @@ class Renderer {
 
         this.img.oncontextmenu = function (e) { e.preventDefault(); };
 
-        $(this.div).resize(function () {
-            self.render();
-        });
-
+        var $self = $(this.div);
+        var w = $self.width();
+        var h = $self.height();
+        var check = function () {
+            var cw = $self.width();
+            var ch = $self.height();
+            if(cw != w || ch != h)
+            {
+                w = cw;
+                h = ch;
+                self.render();
+            }
+        };
+        check();
+        setInterval(check, 50);
     }
 
     change(scene, samples) {
