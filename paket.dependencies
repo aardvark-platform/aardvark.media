@@ -33,7 +33,7 @@ nuget WindowsAPICodePack-Core
 nuget WindowsAPICodePack-ShellExtensions
  
 nuget TurboJpegWrapper      ~> 1.4.2.6
-nuget Suave                 ~> 2.0.2
+nuget Suave                 ~> 2.2.0
 
 group Build
 framework: net45
