@@ -770,14 +770,14 @@ type DomNode private() =
 
         DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ClientValues -> ISg<'msg>, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ClientValues -> ISg<'msg>, isOrtho: bool, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
             let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
 
             {
                 viewTrafo = CameraView.viewTrafo cam.cameraView
-                projTrafo = Frustum.projTrafo cam.frustum
+                projTrafo = if isOrtho then Frustum.orthoTrafo cam.frustum else Frustum.projTrafo cam.frustum
             }
 
         let tree = Mod.init <| PickTree.ofSg (Sg.ofList [])
@@ -824,8 +824,8 @@ type DomNode private() =
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, htmlChildren : Option<DomNode<_>>) =
-        DomNode.RenderControl(attributes, camera, constF sg, htmlChildren)
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, isOrtho: bool, htmlChildren : Option<DomNode<_>>) =
+        DomNode.RenderControl(attributes, camera, constF sg, isOrtho, htmlChildren)
 
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sgs : alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
@@ -924,11 +924,11 @@ type DomNode private() =
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
 
-    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
-        DomNode.RenderControl(AttributeMap.empty, camera, constF scene, htmlChildren)
+    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, isOrtho:bool, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+        DomNode.RenderControl(AttributeMap.empty, camera, constF scene, isOrtho, htmlChildren)
 
-    static member RenderControl(camera : IMod<Camera>, scene : ClientValues -> ISg<'msg>, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
-        DomNode.RenderControl(AttributeMap.empty, camera, scene, htmlChildren)
+    static member RenderControl(camera : IMod<Camera>, scene : ClientValues -> ISg<'msg>,isOrtho:bool, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+        DomNode.RenderControl(AttributeMap.empty, camera, scene, isOrtho, htmlChildren)
 
 
 

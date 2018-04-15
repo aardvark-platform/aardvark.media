@@ -75,6 +75,8 @@
     <Compile Include="PRo3dModels.fs" />
     <Compile Include="ViewerModel.fs" />
     <Compile Include="BookmarkApp.fs" />
+    <Compile Include="OrthoCameraModel.fs" />
+    <Compile Include="OrthoCamera.fs" />
     <Compile Include="UI.Composed.fs" />
     <Compile Include="ComposedViewer.fs" />
     <Compile Include="SimpleTestModel.fs" />
