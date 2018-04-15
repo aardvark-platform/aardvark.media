@@ -499,7 +499,7 @@ module ArcBallController =
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
         ] |> AttributeMap.toAMap
 
-    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (isOrtho : bool) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
@@ -516,8 +516,8 @@ module ArcBallController =
         let cam = Mod.map2 Camera.create state.view frustum 
         Incremental.renderControlWithClientValues cam attributes sg
 
-    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (isOrtho : bool) (sg : ISg<'msg>) =
-        controlledControlWithClientValues state f frustum att isOrtho (constF sg)
+    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+        controlledControlWithClientValues state f frustum att (constF sg)
 
     let view (state : MCameraControllerState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
@@ -525,8 +525,7 @@ module ArcBallController =
   
             controlledControl state id 
                 (Mod.constant frustum)
-                (AttributeMap.empty)
-                false
+                (AttributeMap.empty)                
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
                         |> Sg.noEvents
