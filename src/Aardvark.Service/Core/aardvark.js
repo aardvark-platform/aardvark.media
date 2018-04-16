@@ -128,6 +128,11 @@ class Renderer {
 
         this.depthCallbacks = [];
 
+        var renderAlways = this.div.getAttribute("data-renderalways");
+        if (renderAlways) renderAlways = true;
+        else renderAlways = false;
+        this.renderAlways = renderAlways;
+
         this.init();
     }
 
@@ -441,6 +446,14 @@ class Renderer {
         }
     }
 
+    setRenderAlways(r) {
+        if (r) {
+            this.renderAlways = true;
+            this.render();
+        }
+        else this.renderAlways = false;
+    }
+
     getWorldPosition(pixel, callback) {
         this.depthCallbacks.push({ pixel: pixel, callback: callback });
         this.send(JSON.stringify({ Case: "RequestWorldPosition", pixel: { X: pixel.x, Y: pixel.y } }));
@@ -485,8 +498,11 @@ class Renderer {
                 this.fadeIn();
             }
 
-            //artificial render looop (uncommend in invalidate)
-            //this.render();
+            if (this.renderAlways) {
+
+                //artificial render looop (uncommend in invalidate)
+                this.render();
+            }
         }
         else {
             var o = JSON.parse(msg.data);
@@ -497,8 +513,10 @@ class Renderer {
             //    | Unsubscribe of eventName : string
 
             if (o.Case === "Invalidate") {
-                // TODO: what if not visible??
-                this.render();
+                if (!this.renderAlways) {
+                    // TODO: what if not visible??
+                    this.render();
+                }
             }
             else if (o.Case === "WorldPosition" && o.pos) {
                 if (this.depthCallbacks.length > 0) {
