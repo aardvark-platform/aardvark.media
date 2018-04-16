@@ -121,7 +121,12 @@ let view (m : MModel) =
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
                 CameraController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"; doubleClick callback]) (viewScene m)
+                    (AttributeMap.ofList [ 
+                        attribute "style" "width:85%; height: 100%; float: left;";
+                        attribute "data-samples" "8"
+                        attribute "showFPS" "true"
+                        doubleClick callback
+                     ]) (viewScene m)
 
                 div [style "width:15%; height: 100%; float:right"] [
                     Html.SemUi.stuffStack [

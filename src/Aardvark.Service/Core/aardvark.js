@@ -121,6 +121,10 @@ class Renderer {
         if (!samples) samples = 1;
         this.samples = samples;
 
+        var showFPS = this.div.getAttribute("showFPS");
+        if (showFPS == "true") showFPS = true;
+        this.showFPS = showFPS;
+
         this.buffer = [];
         this.isOpen = false;
         this.isClosed = false;
@@ -178,6 +182,7 @@ class Renderer {
         this.img = img;
 
         var overlay = document.createElement("span")
+        if (!this.showFPS) overlay.style = "display:none;";
         this.div.appendChild(overlay);
         overlay.className = "fps";
         overlay.innerText = "";
