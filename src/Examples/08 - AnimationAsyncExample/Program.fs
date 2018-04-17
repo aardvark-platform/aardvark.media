@@ -18,7 +18,7 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
 
-    use app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication()
+    use app = new Aardvark.Application.WinForms.OpenGlApplication()
     use form = new Form(Width = 1000, Height = 800)
 
     let instance = 

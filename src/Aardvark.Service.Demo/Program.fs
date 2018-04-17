@@ -90,7 +90,9 @@ let kitchenSink argv =
     //let app = AnnotationApp.app
     //let app = DragNDrop.App.app
 
-    let app = AnimationDemo.AnimationDemoApp.app
+    //let app = AnimationDemo.AnimationDemoApp.app
+
+    let app = OrthoCamera.OrthoCameraDemo.app
 
     //Config.shouldTimeUIUpdate <- true
     //Config.shouldTimeJsCodeGeneration <- true
@@ -110,7 +112,7 @@ let kitchenSink argv =
 
 
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart' runtime true (app |> App.start)
+        MutableApp.toWebPart' runtime false (app |> App.start)
         Suave.Files.browseHome
     ] 
 

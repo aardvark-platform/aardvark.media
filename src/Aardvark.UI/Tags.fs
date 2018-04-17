@@ -6,10 +6,16 @@ open Aardvark.Base.Incremental
 module Incremental =
 
     let renderControl (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, None)
+        DomNode.RenderControl(attributes, cam, sg, false, None)
+
+    let renderControl' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
+        DomNode.RenderControl(attributes, cam, sg, true, None)
 
     let renderControlWithClientValues (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, None)
+        DomNode.RenderControl(attributes, cam, sg, false, None)
+
+    let renderControlWithClientValues' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+        DomNode.RenderControl(attributes, cam, sg, true, None)
 
     let inline elem (tagName : string) (attrs : AttributeMap<'msg>) (children : alist<DomNode<'msg>>) =
         DomNode.Node(tagName, attrs, children)
@@ -216,8 +222,8 @@ module Incremental =
 [<AutoOpen>]
 module Static =
 
-    let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, None)
+    let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (isOrtho:bool)(sg : ISg<'msg>) =
+        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg,isOrtho, None)
 
     let page (createPage : Request -> DomNode<'msg>) =
         DomNode.Page createPage

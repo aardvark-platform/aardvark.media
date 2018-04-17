@@ -198,7 +198,7 @@ module CameraController =
 
 
 
-    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (isOrtho : bool) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
@@ -216,7 +216,10 @@ module CameraController =
         Incremental.renderControlWithClientValues cam attributes sg
 
     let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        controlledControlWithClientValues state f frustum att (constF sg)
+        controlledControlWithClientValues state f frustum att false (constF sg)
+    
+    let controlledControl' (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+        controlledControlWithClientValues state f frustum att true (constF sg)
 
     let withControls (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (node : DomNode<'msg>) =
         let cam = Mod.map2 Camera.create state.view frustum 
@@ -254,7 +257,7 @@ module CameraController =
   
             controlledControl state id 
                 (Mod.constant frustum)
-                (AttributeMap.empty)
+                (AttributeMap.empty)                
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
                         |> Sg.noEvents
@@ -522,7 +525,7 @@ module ArcBallController =
   
             controlledControl state id 
                 (Mod.constant frustum)
-                (AttributeMap.empty)
+                (AttributeMap.empty)                
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))
                         |> Sg.noEvents

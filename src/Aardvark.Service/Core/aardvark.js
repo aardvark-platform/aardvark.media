@@ -121,12 +121,21 @@ class Renderer {
         if (!samples) samples = 1;
         this.samples = samples;
 
+        var showFPS = this.div.getAttribute("showFPS");
+        if (showFPS == "true") showFPS = true;
+        this.showFPS = showFPS;
+
         this.buffer = [];
         this.isOpen = false;
         this.isClosed = false;
         this.loading = true;
 
         this.depthCallbacks = [];
+
+        var renderAlways = this.div.getAttribute("data-renderalways");
+        if (renderAlways) renderAlways = true;
+        else renderAlways = false;
+        this.renderAlways = renderAlways;
 
         this.init();
     }
@@ -173,6 +182,7 @@ class Renderer {
         this.img = img;
 
         var overlay = document.createElement("span")
+        if (!this.showFPS) overlay.style = "display:none;";
         this.div.appendChild(overlay);
         overlay.className = "fps";
         overlay.innerText = "";
@@ -232,10 +242,21 @@ class Renderer {
 
         this.img.oncontextmenu = function (e) { e.preventDefault(); };
 
-        $(this.div).resize(function () {
-            self.render();
-        });
-
+        var $self = $(this.div);
+        var w = $self.width();
+        var h = $self.height();
+        var check = function () {
+            var cw = $self.width();
+            var ch = $self.height();
+            if(cw != w || ch != h)
+            {
+                w = cw;
+                h = ch;
+                self.render();
+            }
+        };
+        check();
+        setInterval(check, 50);
     }
 
     change(scene, samples) {
@@ -430,6 +451,14 @@ class Renderer {
         }
     }
 
+    setRenderAlways(r) {
+        if (r) {
+            this.renderAlways = true;
+            this.render();
+        }
+        else this.renderAlways = false;
+    }
+
     getWorldPosition(pixel, callback) {
         this.depthCallbacks.push({ pixel: pixel, callback: callback });
         this.send(JSON.stringify({ Case: "RequestWorldPosition", pixel: { X: pixel.x, Y: pixel.y } }));
@@ -474,8 +503,11 @@ class Renderer {
                 this.fadeIn();
             }
 
-            //artificial render looop (uncommend in invalidate)
-            //this.render();
+            if (this.renderAlways) {
+
+                //artificial render looop (uncommend in invalidate)
+                this.render();
+            }
         }
         else {
             var o = JSON.parse(msg.data);
@@ -486,8 +518,10 @@ class Renderer {
             //    | Unsubscribe of eventName : string
 
             if (o.Case === "Invalidate") {
-                // TODO: what if not visible??
-                this.render();
+                if (!this.renderAlways) {
+                    // TODO: what if not visible??
+                    this.render();
+                }
             }
             else if (o.Case === "WorldPosition" && o.pos) {
                 if (this.depthCallbacks.length > 0) {
