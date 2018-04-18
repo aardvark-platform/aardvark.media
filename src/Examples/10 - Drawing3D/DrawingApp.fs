@@ -4,8 +4,6 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Aardvark.Application
-open Aardvark.Application.WinForms
-
 open Aardvark.SceneGraph
 
 open Aardvark.UI.Primitives
