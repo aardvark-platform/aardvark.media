@@ -79,7 +79,7 @@ let view3D (m : MModel) =
     let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"]
     CameraController.controlledControl m.cameraState CameraAction frustum attributes sg
 
-let aadvarkModel = FileModel @"..\..\data\aardvark\aardvark.obj"
+let aadvarkModel = FileModel @"..\..\..\data\aardvark\aardvark.obj"
 let defaultSphere = SphereModel(V3d.OOO,1.0)
 let defaultBox = BoxModel Box3d.Unit
 // create camera which looks down from (2,2,2) to (0,0,0) while z is up
