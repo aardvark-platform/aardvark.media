@@ -1,30 +1,30 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "14 - OpenFile", "Examples\14 - OpenFile\14 - OpenFile.fsproj", "{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "14 - OpenFile", "Examples\14 - OpenFile\14 - OpenFile.fsproj", "{603EAB1F-0F4A-4EE2-A0EA-47C00D753887}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "13 - Pages", "Examples\13 - Pages\13 - Pages.fsproj", "{2FC3A53E-CD69-4128-B16A-58198B95367F}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "13 - Pages", "Examples\13 - Pages\13 - Pages.fsproj", "{2FC3A53E-CD69-4128-B16A-58198B95367F}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "12 - NavigationDemo", "Examples\12 - NavigationDemo\12 - NavigationDemo.fsproj", "{C6377422-B1D8-4C7C-AE4E-1CF4CF5D14B3}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - NavigationDemo", "Examples\12 - NavigationDemo\12 - NavigationDemo.fsproj", "{C6377422-B1D8-4C7C-AE4E-1CF4CF5D14B3}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "11 - BoxSelection", "Examples\11 - BoxSelection\11 - BoxSelection.fsproj", "{8D5BAD67-8EED-4734-8B64-5B9A3CB76953}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "11 - BoxSelection", "Examples\11 - BoxSelection\11 - BoxSelection.fsproj", "{8D5BAD67-8EED-4734-8B64-5B9A3CB76953}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "10 - Drawing3D", "Examples\10 - Drawing3D\10 - Drawing3D.fsproj", "{2CA1572B-2AF1-4072-84EC-0AB6B63AFD85}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "10 - Drawing3D", "Examples\10 - Drawing3D\10 - Drawing3D.fsproj", "{2CA1572B-2AF1-4072-84EC-0AB6B63AFD85}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "09 - RenderModel", "Examples\09 - RenderModel\09 - RenderModel.fsproj", "{472564F9-3F16-45F7-AFA5-9810216533BF}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "09 - RenderModel", "Examples\09 - RenderModel\09 - RenderModel.fsproj", "{472564F9-3F16-45F7-AFA5-9810216533BF}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "08 - AnimationAsyncExample", "Examples\08 - AnimationAsyncExample\08 - AnimationAsyncExample.fsproj", "{7C6E220F-B712-467D-8E2B-A5742F7BD0A5}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "08 - AnimationAsyncExample", "Examples\08 - AnimationAsyncExample\08 - AnimationAsyncExample.fsproj", "{7C6E220F-B712-467D-8E2B-A5742F7BD0A5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "07 - Simple2DDrawing", "Examples\07 - Simple2DDrawing\07 - Simple2DDrawing.fsproj", "{1D74E413-EFCE-430B-81D6-922ABA642455}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "07 - Simple2DDrawing", "Examples\07 - Simple2DDrawing\07 - Simple2DDrawing.fsproj", "{1D74E413-EFCE-430B-81D6-922ABA642455}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "06 - DragDiv", "Examples\06 - DragDiv\06 - DragDiv.fsproj", "{7432CB54-84BE-48F2-8EBF-D25234EDC6F5}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "06 - DragDiv", "Examples\06 - DragDiv\06 - DragDiv.fsproj", "{7432CB54-84BE-48F2-8EBF-D25234EDC6F5}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "04 - DragDropHtml5", "Examples\04 - DragDropHtml5\04 - DragDropHtml5.fsproj", "{C0F982C1-3F05-411D-825F-764EA4A28EF6}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "04 - DragDropHtml5", "Examples\04 - DragDropHtml5\04 - DragDropHtml5.fsproj", "{C0F982C1-3F05-411D-825F-764EA4A28EF6}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "03 - D3Integration", "Examples\03 - D3Integration\03 - D3Integration.fsproj", "{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "03 - D3Integration", "Examples\03 - D3Integration\03 - D3Integration.fsproj", "{05B18E13-5C1A-440D-BF39-7A0DDA8D224B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "02 - RenderControl", "Examples\02 - RenderControl\02 - RenderControl.fsproj", "{69C4D5DE-8EA4-4594-9783-769CF935B48F}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - RenderControl", "Examples\02 - RenderControl\02 - RenderControl.fsproj", "{69C4D5DE-8EA4-4594-9783-769CF935B48F}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
 EndProject
@@ -34,24 +34,30 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.Process", "Aar
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.WinForms", "Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj", "{F20C78DD-06CB-44E8-90DB-6DE144863078}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Service", "Aardvark.Service\Aardvark.Service.fsproj", "{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Service", "Aardvark.Service\Aardvark.Service.fsproj", "{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Service.Demo", "Aardvark.Service.Demo\Aardvark.Service.Demo.fsproj", "{4FC26DDD-A83D-4739-AB2D-6B2354E6A2D6}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI", "Aardvark.UI\Aardvark.UI.fsproj", "{222260E2-428B-485D-89FB-BFBF1D87CD06}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI", "Aardvark.UI\Aardvark.UI.fsproj", "{222260E2-428B-485D-89FB-BFBF1D87CD06}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Primitives", "Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj", "{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Primitives", "Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj", "{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (dotnetcore)", "Examples (dotnetcore)", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
 	ProjectSection(SolutionItems) = preProject
 		Examples\new.fsx = Examples\new.fsx
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "01 - Inc", "Examples\01 - Inc\01 - Inc.fsproj", "{206C17A2-A3A1-4191-8CA3-DA92197BB73B}"
-EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Examples_old", "Examples_Old\Examples_old.fsproj", "{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01 - Inc", "Examples\01 - Inc\01 - Inc.fsproj", "{206C17A2-A3A1-4191-8CA3-DA92197BB73B}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.WinForms.Process", "Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj", "{EDE32464-755B-415A-B0CA-CDA89F49F6F5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (net471)", "Examples (net471)", "{6D553C3F-E56A-4B26-8018-DA17A4B4C407}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Hello World (CEF)", "Hello World (net471)\Hello World (CEF)\Hello World (CEF).fsproj", "{9824D872-86F5-4058-B378-9E922026FC70}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net471", "net471", "{2FE8734A-BF34-43DE-8731-5D580FE4E83B}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "netstandard", "netstandard", "{5DAFA99B-848D-4185-B4C1-287119815657}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -143,14 +149,14 @@ Global
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3ADFA749-3E82-4FCF-B577-907FB1CC26C4}.Release|Any CPU.Build.0 = Release|Any CPU
 		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9824D872-86F5-4058-B378-9E922026FC70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9824D872-86F5-4058-B378-9E922026FC70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9824D872-86F5-4058-B378-9E922026FC70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9824D872-86F5-4058-B378-9E922026FC70}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -168,6 +174,19 @@ Global
 		{C0F982C1-3F05-411D-825F-764EA4A28EF6} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{05B18E13-5C1A-440D-BF39-7A0DDA8D224B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{69C4D5DE-8EA4-4594-9783-769CF935B48F} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
+		{7B055C74-1C24-4CB0-96E4-02E01914F60A} = {6D553C3F-E56A-4B26-8018-DA17A4B4C407}
+		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
+		{F20C78DD-06CB-44E8-90DB-6DE144863078} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
+		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2} = {5DAFA99B-848D-4185-B4C1-287119815657}
+		{4FC26DDD-A83D-4739-AB2D-6B2354E6A2D6} = {6D553C3F-E56A-4B26-8018-DA17A4B4C407}
+		{222260E2-428B-485D-89FB-BFBF1D87CD06} = {5DAFA99B-848D-4185-B4C1-287119815657}
+		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8} = {5DAFA99B-848D-4185-B4C1-287119815657}
 		{206C17A2-A3A1-4191-8CA3-DA92197BB73B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{EDE32464-755B-415A-B0CA-CDA89F49F6F5} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
+		{9824D872-86F5-4058-B378-9E922026FC70} = {6D553C3F-E56A-4B26-8018-DA17A4B4C407}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}
 	EndGlobalSection
 EndGlobal

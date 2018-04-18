@@ -36,10 +36,11 @@ module Shader =
 
 [<EntryPoint>]
 let main argv = 
+    Xilium.CefGlue.ChromiumUtilities.unpackCef()
+    Chromium.init()
+
     Ag.initialize()
     Aardvark.Init()
-    
-    Chromium.init()
 
     use app = new OpenGlApplication()
     let win = app.CreateSimpleRenderWindow()
