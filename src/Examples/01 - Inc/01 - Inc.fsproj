@@ -20,8 +20,6 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj" />
-    <ProjectReference Include="..\..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj" />
     <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj" />
