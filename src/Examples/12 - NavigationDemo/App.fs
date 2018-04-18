@@ -60,7 +60,6 @@ let update (model : NavigationModeDemoModel) (act : Action) =
             { model with navsensitivity = sense; camera = { model.camera with sensitivity = sense.value } }
         | KeyUp k -> model
 
-let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
 let view (model : MNavigationModeDemoModel) =
     let cam =
@@ -127,7 +126,7 @@ let view (model : MNavigationModeDemoModel) =
                 | _ -> failwith "Invalid NavigationMode"
         } |> AttributeMap.ofAMap
         
-    require (Html.semui @ [myCss]) ( 
+    require Html.semui ( 
         div [clazz "ui"; style "background: #1B1C1E"] [
                 yield 
                     Incremental.renderControl 
