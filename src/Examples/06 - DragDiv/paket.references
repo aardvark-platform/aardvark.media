@@ -4,7 +4,7 @@ Aardvark.Base.FSharp
 
 Aardvark.Base.Rendering
 Aardvark.Rendering.Vulkan
-Aardvark.Application.WinForms.GL
+Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
 Aardvark.SceneGraph.IO
 Aardvark.Rendering.Text
@@ -13,9 +13,7 @@ Aardvark.Compiler.DomainTypes.MSBuild
 FsPickler
 FsPickler.Json
 
-Another.Unofficial.Xilium.CefGlue
-Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies
-Another.Unofficial.Xilium.CefGlue.WindowsForms
+Aardium
 
 Suave
 FSharp.Core
