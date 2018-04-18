@@ -1,56 +1,49 @@
 ﻿open System
-open System.Windows.Forms
-
 open Aardvark.Base
 open Aardvark.Application
-open Aardvark.Application.WinForms
+open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardium
 
 open Suave
 open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main argv = 
-
-    Xilium.CefGlue.ChromiumUtilities.unpackCef()
-    Chromium.init argv
-
     Ag.initialize()
     Aardvark.Init()
+    Aardium.init()
 
-    // media apps require a runtime, which serves as renderer for your render controls.
-    // you can use OpenGL or VulkanApplication.
-    let useVulkan = false
+    use app = new OpenGlApplication()
+    let instance = App.app |> App.start
 
-    let runtime, disposable =
-        if useVulkan then
-            let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-        else
-            let app = new OpenGlApplication()
-            app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
-
-    use form = new Form(Width = 800, Height = 600)
-
-    let app = App.app
-
-    let instance = 
-        app |> App.start
-
-    WebPart.startServer 4321 [ 
-        MutableApp.toWebPart' runtime false instance
+    // use can use whatever suave server to start you mutable app. 
+    // startServerLocalhost is one of the convinience functions which sets up 
+    // a server without much boilerplate.
+    // there is also WebPart.startServer and WebPart.runServer. 
+    // look at their implementation here: https://github.com/aardvark-platform/aardvark.media/blob/master/src/Aardvark.Service/Suave.fs#L10
+    // if you are unhappy with them, you can always use your own server config.
+    // the localhost variant does not require to allow the port through your firewall.
+    // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
+    WebPart.startServerLocalhost 4321 [ 
+        MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
     ]  
 
+    Aardium.run {
+        url "http://localhost:4321/"
+        width 1024
+        height 768
+        debug true
+    }
 
-    use ctrl = new AardvarkCefBrowser()
-    ctrl.Dock <- DockStyle.Fill
-    form.Controls.Add ctrl
-    ctrl.StartUrl <- "http://localhost:4321/"
-    ctrl.ShowDevTools()
-    form.Text <- "Examples"
-    form.Icon <- Icons.aardvark 
+    //use ctrl = new AardvarkCefBrowser()
+    //ctrl.Dock <- DockStyle.Fill
+    //form.Controls.Add ctrl
+    //ctrl.StartUrl <- "http://localhost:4321/"
+    //ctrl.ShowDevTools()
+    //form.Text <- "Examples"
+    //form.Icon <- Icons.aardvark 
 
-    Application.Run form
+    //Application.Run form
     0 
