@@ -122,18 +122,38 @@ module Reflection =
             ".css", "text/css"
             ".svg", "image/svg+xml"
         ]
+        
+    let private (|LocalResourceName|_|) (ass : Assembly) (n : string) =
+        let myNamespace = ass.GetName().Name + "."
+        if n.StartsWith myNamespace then 
+            let name = n.Substring(myNamespace.Length)
+            let arr = name.Split('.')
+            if arr.Length > 1 then
+                Some (String.concat "." arr.[arr.Length - 2 .. ])
+            else
+                Some name
+
+        else
+            None
 
     let assemblyWebPart (assembly : Assembly) = 
-
         assembly.GetManifestResourceNames()
             |> Array.toList
-            |> List.collect (fun name ->
-                use stream = assembly.GetManifestResourceStream name
+            |> List.choose (fun resName -> 
+                match resName with 
+                    | LocalResourceName assembly n -> 
+                        Some(resName, n) 
+                    | _ -> 
+                        None
+            )
+            |> List.collect (fun (resName, name) ->
+                use stream = assembly.GetManifestResourceStream resName
                 let reader = new StreamReader(stream)
                 let text = reader.ReadToEnd()
 
                 let ext = Path.GetExtension name
 
+               
                 // respond with the text
                 let part = OK text
 

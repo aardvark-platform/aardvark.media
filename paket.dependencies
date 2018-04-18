@@ -11,6 +11,7 @@ nuget Aardvark.Base.Essentials             ~> 4.0.4
 
 nuget Aardvark.Base.Rendering              ~> 4.0.0
 nuget Aardvark.Application.WinForms.GL     ~> 4.0.0
+nuget Aardvark.Application.Slim.GL         ~> 4.0.0
 nuget Aardvark.SceneGraph                  ~> 4.0.0
 nuget Aardvark.SceneGraph.IO               ~> 4.0.0
 nuget Aardvark.Rendering.Text              ~> 4.0.0
@@ -25,6 +26,8 @@ nuget FsPickler.Json                        ~> 5.2.0
 
 nuget TurboJpegWrapper                      ~> 1.5.2
 nuget Suave                                 ~> 2.2.1
+
+nuget Aardium                               ~> 1.0.1
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.1.1
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.1.1
