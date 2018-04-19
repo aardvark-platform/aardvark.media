@@ -40,7 +40,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI", "Aardvark.UI\
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Primitives", "Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj", "{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (dotnetcore)", "Examples (dotnetcore)", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
 	ProjectSection(SolutionItems) = preProject
 		Examples\new.fsx = Examples\new.fsx
 	EndProjectSection
