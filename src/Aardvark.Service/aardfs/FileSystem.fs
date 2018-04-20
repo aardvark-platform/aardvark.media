@@ -161,7 +161,7 @@ type FileSystem private(rootPath : Option<string>) =
     let rootEntries =
         DriveInfo.GetDrives()
             |> Array.toList
-            |> List.map (fun di ->
+            |> List.choose (fun di ->
                 let kind =
                     match di.DriveType with
                         | DriveType.Fixed -> FSEntryKind.Disk
@@ -169,33 +169,45 @@ type FileSystem private(rootPath : Option<string>) =
                         | DriveType.Removable -> FSEntryKind.Removable
                         | DriveType.CDRom -> FSEntryKind.DVD
                         | _ -> FSEntryKind.Unknown
+                    
+                let should =
+                    match System.Environment.OSVersion with
+                        | Linux | Mac when di.Name = "/" -> true
+                        | Windows -> true
+                        | _ -> false
+                    
+                if should then
+                        
+                    let name = 
+                        match System.Environment.OSVersion with 
+                            | Windows -> di.Name.Substring(0, di.Name.Length - 2)
+                            | _ -> di.Name
 
-                let name = di.Name.Substring(0, di.Name.Length - 2)
-
-                let hasChildren, length =
-                    if di.IsReady then
-                        try 
-                            let empty = DirectoryInfo(di.Name).EnumerateFiles() |> Seq.isEmpty
-                            not empty, di.TotalSize
-                        with _ -> 
+                    let hasChildren, length =
+                        if di.IsReady then
+                            try 
+                                let empty = DirectoryInfo(di.Name).EnumerateFiles() |> Seq.isEmpty
+                                not empty, di.TotalSize
+                            with _ -> 
+                                false, 0L
+                        else
                             false, 0L
-                    else
-                        false, 0L
 
-                {
-                    kind            = kind
-                    isDevice        = true
-                    path            = "/" + name
-                    name            = name
-                    length          = length
-                    lastWriteTime   = DateTime.MinValue
-                    lastAccessTime  = DateTime.MinValue
-                    creationTime    = DateTime.MinValue
-                    hasChildren     = hasChildren
-                    hasFolders      = hasChildren
-                    isHidden        = false
-                    isSystem        = false
-                }
+                    {
+                        kind            = kind
+                        isDevice        = true
+                        path            = "/" + name
+                        name            = name
+                        length          = length
+                        lastWriteTime   = DateTime.MinValue
+                        lastAccessTime  = DateTime.MinValue
+                        creationTime    = DateTime.MinValue
+                        hasChildren     = hasChildren
+                        hasFolders      = hasChildren
+                        isHidden        = false
+                        isSystem        = false
+                    } |> Some
+                else None
 
             )
 
