@@ -20,7 +20,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <Tailcalls>false</Tailcalls>
-    <OutputPath>..\..\bin\Debug\</OutputPath>
+    <OutputPath>..\..\..\bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -32,7 +32,7 @@
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <Tailcalls>true</Tailcalls>
-    <OutputPath>..\..\bin\Release</OutputPath>
+    <OutputPath>..\..\..\bin\Release</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -53,12 +53,12 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj">
+    <ProjectReference Include="..\..\Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj">
       <Name>Aardvark.Cef.Process</Name>
       <Project>{1dfeb808-39fa-4db3-92b6-77baadc1457d}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\Aardvark.Cef\Aardvark.Cef.fsproj">
+    <ProjectReference Include="..\..\Aardvark.Cef\Aardvark.Cef.fsproj">
       <Name>Aardvark.Cef</Name>
       <Project>{70c08f03-f4a5-414a-abd6-cc07dc42e07c}</Project>
       <Private>True</Private>
