@@ -25,6 +25,7 @@ div.aardvark {
     user-select: none;
     overflow: hidden;
     background-color: black;
+    position:relative;
    
 }
 
@@ -98,70 +99,79 @@ div.loader {
     top: 0px;
     width: 100%;
     height: 100%;
-    z-index: -1;
 }
 
-.fountainG{
-	position:absolute;
-	top:0;
-	background-color:rgb(115,115,115);
-	width:28px;
-	height:28px;
-	animation-name:bounce_fountainG;
-	animation-duration:1.5s;
-	animation-iteration-count:infinite;
-	animation-direction:normal;
-	transform:scale(.5);
-	border-radius:19px;
+.fountainG {
+    position: absolute;
+    top: 0;
+    background-color: rgb(115,115,115);
+    width: 28px;
+    height: 28px;
+    animation-name: bounce_fountainG;
+    animation-duration: 1.5s;
+    animation-iteration-count: infinite;
+    animation-direction: normal;
+    transform: scale(.5);
+    border-radius: 19px;
+    z-index: 1;
 }
 
-.fountainG_0{
-	position:absolute;
-	width:234px;
-	height:28px;
-	margin-left:-117px;
+.fountainG_0 {
+    position: absolute;
+    width: 234px;
+    height: 28px;
+    margin-left: -117px;
     margin-top: 100px;
     left: 50%;
     top: 50%;
+    z-index: 1;
 }
-.fountainG.fountainG_1{
-	left:0;
-	animation-delay:0.6s;
-}
-
-.fountainG.fountainG_2{
-	left:29px;
-	animation-delay:0.75s;
+.fountainG.fountainG_1 {
+    left: 0;
+    animation-delay: 0.6s;
+    z-index: 1;
 }
 
-.fountainG.fountainG_3{
-	left:58px;
-	animation-delay:0.9s;
+.fountainG.fountainG_2 {
+    left: 29px;
+    animation-delay: 0.75s;
+    z-index: 1;
 }
 
-.fountainG.fountainG_4{
-	left:88px;
-	animation-delay:1.05s;
+.fountainG.fountainG_3 {
+    left: 58px;
+    animation-delay: 0.9s;
+    z-index: 1;
 }
 
-.fountainG.fountainG_5{
-	left:117px;
-	animation-delay:1.2s;
+.fountainG.fountainG_4 {
+    left: 88px;
+    animation-delay: 1.05s;
+    z-index: 1;
 }
 
-.fountainG.fountainG_6{
-	left:146px;
-	animation-delay:1.35s;
+.fountainG.fountainG_5 {
+    left: 117px;
+    animation-delay: 1.2s;
+    z-index: 1;
 }
 
-.fountainG.fountainG_7{
-	left:175px;
-	animation-delay:1.5s;
+.fountainG.fountainG_6 {
+    left: 146px;
+    animation-delay: 1.35s;
+    z-index: 1;
 }
 
-.fountainG.fountainG_8{
-	left:205px;
-	animation-delay:1.64s;
+.fountainG.fountainG_7 {
+    left: 175px;
+    animation-delay: 1.5s;
+    z-index: 1;
+}
+
+.fountainG.fountainG_8 {
+    left: 205px;
+    animation-delay: 1.64s;
+    z-index: 1;
 }
 
 
