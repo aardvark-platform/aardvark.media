@@ -40,7 +40,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let points =
-                { new Lens<Simple2DDrawing.Polygon, Microsoft.FSharp.Collections.list<Aardvark.Base.V2d>>() with
+                { new Lens<Simple2DDrawing.Polygon, Microsoft.FSharp.Collections.List<Aardvark.Base.V2d>>() with
                     override x.Get(r) = r.points
                     override x.Set(r,v) = { r with points = v }
                     override x.Update(r,f) = { r with points = f r.points }

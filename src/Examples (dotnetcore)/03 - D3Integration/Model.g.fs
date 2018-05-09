@@ -49,7 +49,7 @@ module Mutable =
                     override x.Update(r,f) = { r with count = f r.count }
                 }
             let data =
-                { new Lens<Model.Model, Microsoft.FSharp.Collections.list<Microsoft.FSharp.Core.float>>() with
+                { new Lens<Model.Model, Microsoft.FSharp.Collections.List<System.Double>>() with
                     override x.Get(r) = r.data
                     override x.Set(r,v) = { r with data = v }
                     override x.Update(r,f) = { r with data = f r.data }

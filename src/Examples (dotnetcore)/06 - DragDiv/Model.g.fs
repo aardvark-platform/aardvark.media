@@ -80,7 +80,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let name =
-                { new Lens<Model.Drag, Microsoft.FSharp.Core.string>() with
+                { new Lens<Model.Drag, System.String>() with
                     override x.Get(r) = r.name
                     override x.Set(r,v) = { r with name = v }
                     override x.Update(r,f) = { r with name = f r.name }
@@ -132,7 +132,7 @@ module Mutable =
                     override x.Update(r,f) = { r with dragObject = f r.dragObject }
                 }
             let objects =
-                { new Lens<Model.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,Model.Object>>() with
+                { new Lens<Model.Model, Aardvark.Base.hmap<System.String,Model.Object>>() with
                     override x.Get(r) = r.objects
                     override x.Set(r,v) = { r with objects = v }
                     override x.Update(r,f) = { r with objects = f r.objects }

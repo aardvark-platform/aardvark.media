@@ -22,7 +22,8 @@ let attach (s : string) (t : string) =
             var o = document.getElementById('__ID__');
             var p = parent.createSVGPoint();
             p.x = event.clientX;
-            p.y = event.clientY;
+            p.y = event.clientY;
+
             if(o)
             {
                 var m = o.getScreenCTM();
@@ -30,7 +31,9 @@ let attach (s : string) (t : string) =
                 aardvark.processEvent('__ID__', '__TARGET__', [toFixedV2d(p)]);
             }
         """.Replace("__SOURCE__",s).Replace("__TARGET__",t).Replace("\n","").Replace("\r","")
-   
+  
+let dependencies = [ { url = "SvgDragUtilities.js"; name = "SvgDragUtils"; kind = Script } ]
+
 let onDrag (s : string) (cb : V2d -> 'msg) =
     onEvent s [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> List.head >> cb)
 
@@ -39,18 +42,22 @@ let view (model : MModel) =
     let (=>) n v = attribute n v
 
     body [] [
-        Svg.svg [clazz "mySvg"] [
-            Incremental.Svg.circle <| 
-                AttributeMap.ofListCond [
-                    always <| attribute "r" "20"
-                    always <| attribute "cx" "20"
-                    always <| attribute "cy" "20"
-                    always <| attach "onmousedown" "startDragPos"
-                    always <| attach "onmousemove" "dragPos"
-                    onlyWhen (Mod.map Option.isNone model.startPos) (onDrag "startDragPos" StartDrag)
-                    onlyWhen (Mod.map Option.isSome model.startPos) (onDrag "dragPos" Drag)
-                ] 
-        ]
+        require dependencies (
+            Svg.svg [clazz "mySvg"] [
+                onBoot "draggable(__ID__)" (
+                    Incremental.Svg.circle <| 
+                        AttributeMap.ofListCond [
+                            always <| attribute "r" "20"
+                            always <| attribute "cx" "20"
+                            always <| attribute "cy" "20"
+                            //always <| attach "onmousedown" "startDragPos"
+                            //always <| attach "onmousemove" "dragPos"
+                            //onlyWhen (Mod.map Option.isNone model.startPos) (onDrag "startDragPos" StartDrag)
+                            //onlyWhen (Mod.map Option.isSome model.startPos) (onDrag "dragPos" Drag)
+                        ] 
+                )
+            ]
+        )
     ]
 
 let threads (model : Model) = ThreadPool.empty

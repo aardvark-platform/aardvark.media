@@ -41,7 +41,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let percentage =
-                { new Lens<AnimationModel.TaskProgress, Microsoft.FSharp.Core.float>() with
+                { new Lens<AnimationModel.TaskProgress, System.Double>() with
                     override x.Get(r) = r.percentage
                     override x.Set(r,v) = { r with percentage = v }
                     override x.Update(r,f) = { r with percentage = f r.percentage }
@@ -123,13 +123,13 @@ module Mutable =
                     override x.Update(r,f) = { r with pending = f r.pending }
                 }
             let loadTasks =
-                { new Lens<AnimationModel.Model, Aardvark.Base.hset<AnimationModel.TaskId>>() with
+                { new Lens<AnimationModel.Model, Aardvark.Base.hset<System.String>>() with
                     override x.Get(r) = r.loadTasks
                     override x.Set(r,v) = { r with loadTasks = v }
                     override x.Update(r,f) = { r with loadTasks = f r.loadTasks }
                 }
             let progress =
-                { new Lens<AnimationModel.Model, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,AnimationModel.TaskProgress>>() with
+                { new Lens<AnimationModel.Model, Aardvark.Base.hmap<System.String,AnimationModel.TaskProgress>>() with
                     override x.Get(r) = r.progress
                     override x.Set(r,v) = { r with progress = v }
                     override x.Update(r,f) = { r with progress = f r.progress }

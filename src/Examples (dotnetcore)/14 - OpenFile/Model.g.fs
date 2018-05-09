@@ -40,7 +40,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let currentFiles =
-                { new Lens<Model.Model, Aardvark.Base.plist<Microsoft.FSharp.Core.string>>() with
+                { new Lens<Model.Model, Aardvark.Base.plist<System.String>>() with
                     override x.Get(r) = r.currentFiles
                     override x.Set(r,v) = { r with currentFiles = v }
                     override x.Update(r,f) = { r with currentFiles = f r.currentFiles }

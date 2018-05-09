@@ -56,7 +56,7 @@ module Mutable =
                     override x.Update(r,f) = { r with color = f r.color }
                 }
             let id =
-                { new Lens<Model.VisibleBox, Microsoft.FSharp.Core.string>() with
+                { new Lens<Model.VisibleBox, System.String>() with
                     override x.Get(r) = r.id
                     override x.Set(r,v) = { r with id = v }
                     override x.Update(r,f) = { r with id = f r.id }
@@ -135,19 +135,19 @@ module Mutable =
                     override x.Update(r,f) = { r with boxesSet = f r.boxesSet }
                 }
             let boxesMap =
-                { new Lens<Model.BoxSelectionDemoModel, Aardvark.Base.hmap<Microsoft.FSharp.Core.string,Model.VisibleBox>>() with
+                { new Lens<Model.BoxSelectionDemoModel, Aardvark.Base.hmap<System.String,Model.VisibleBox>>() with
                     override x.Get(r) = r.boxesMap
                     override x.Set(r,v) = { r with boxesMap = v }
                     override x.Update(r,f) = { r with boxesMap = f r.boxesMap }
                 }
             let boxHovered =
-                { new Lens<Model.BoxSelectionDemoModel, Microsoft.FSharp.Core.option<Microsoft.FSharp.Core.string>>() with
+                { new Lens<Model.BoxSelectionDemoModel, Microsoft.FSharp.Core.Option<System.String>>() with
                     override x.Get(r) = r.boxHovered
                     override x.Set(r,v) = { r with boxHovered = v }
                     override x.Update(r,f) = { r with boxHovered = f r.boxHovered }
                 }
             let selectedBoxes =
-                { new Lens<Model.BoxSelectionDemoModel, Aardvark.Base.hset<Microsoft.FSharp.Core.string>>() with
+                { new Lens<Model.BoxSelectionDemoModel, Aardvark.Base.hset<System.String>>() with
                     override x.Get(r) = r.selectedBoxes
                     override x.Set(r,v) = { r with selectedBoxes = v }
                     override x.Update(r,f) = { r with selectedBoxes = f r.selectedBoxes }

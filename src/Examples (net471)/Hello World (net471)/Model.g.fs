@@ -40,7 +40,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let value =
-                { new Lens<Model.Model, Microsoft.FSharp.Core.int>() with
+                { new Lens<Model.Model, System.Int32>() with
                     override x.Get(r) = r.value
                     override x.Set(r,v) = { r with value = v }
                     override x.Update(r,f) = { r with value = f r.value }

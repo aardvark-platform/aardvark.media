@@ -62,8 +62,13 @@ EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "14 - OpenFile", "Examples (dotnetcore)\14 - OpenFile\14 - OpenFile.fsproj", "{A75D9DF0-AFA3-44B8-9914-97CE5253A8D1}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scratch", "Scratch", "{6886C4F9-BA04-4E56-8687-672B6A9822DF}"
+	ProjectSection(SolutionItems) = preProject
+		Scratch\new.fsx = Scratch\new.fsx
+	EndProjectSection
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "15 - Svg", "Examples (dotnetcore)\15 - Svg\15 - Svg.fsproj", "{043DC49E-6833-41FA-AD93-45A49046AE05}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01-PerfTest", "Scratch\01-PerfTest\01-PerfTest.fsproj", "{2F067EBB-A2A1-4267-8F9A-29551E3D10C3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -163,6 +168,10 @@ Global
 		{043DC49E-6833-41FA-AD93-45A49046AE05}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{043DC49E-6833-41FA-AD93-45A49046AE05}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{043DC49E-6833-41FA-AD93-45A49046AE05}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2F067EBB-A2A1-4267-8F9A-29551E3D10C3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2F067EBB-A2A1-4267-8F9A-29551E3D10C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2F067EBB-A2A1-4267-8F9A-29551E3D10C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2F067EBB-A2A1-4267-8F9A-29551E3D10C3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -191,6 +200,7 @@ Global
 		{5202777F-21A4-4226-9DB0-51952C3E702F} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{A75D9DF0-AFA3-44B8-9914-97CE5253A8D1} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{043DC49E-6833-41FA-AD93-45A49046AE05} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{2F067EBB-A2A1-4267-8F9A-29551E3D10C3} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}

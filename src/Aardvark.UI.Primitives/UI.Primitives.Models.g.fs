@@ -52,31 +52,31 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let value =
-                { new Lens<Aardvark.UI.NumericInput, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.NumericInput, System.Double>() with
                     override x.Get(r) = r.value
                     override x.Set(r,v) = { r with value = v }
                     override x.Update(r,f) = { r with value = f r.value }
                 }
             let min =
-                { new Lens<Aardvark.UI.NumericInput, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.NumericInput, System.Double>() with
                     override x.Get(r) = r.min
                     override x.Set(r,v) = { r with min = v }
                     override x.Update(r,f) = { r with min = f r.min }
                 }
             let max =
-                { new Lens<Aardvark.UI.NumericInput, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.NumericInput, System.Double>() with
                     override x.Get(r) = r.max
                     override x.Set(r,v) = { r with max = v }
                     override x.Update(r,f) = { r with max = f r.max }
                 }
             let step =
-                { new Lens<Aardvark.UI.NumericInput, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.NumericInput, System.Double>() with
                     override x.Get(r) = r.step
                     override x.Set(r,v) = { r with step = v }
                     override x.Update(r,f) = { r with step = f r.step }
                 }
             let format =
-                { new Lens<Aardvark.UI.NumericInput, Microsoft.FSharp.Core.string>() with
+                { new Lens<Aardvark.UI.NumericInput, System.String>() with
                     override x.Get(r) = r.format
                     override x.Set(r,v) = { r with format = v }
                     override x.Update(r,f) = { r with format = f r.format }
@@ -217,13 +217,13 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let values =
-                { new Lens<Aardvark.UI.DropDownModel, Aardvark.Base.hmap<Microsoft.FSharp.Core.int,Microsoft.FSharp.Core.string>>() with
+                { new Lens<Aardvark.UI.DropDownModel, Aardvark.Base.hmap<System.Int32,System.String>>() with
                     override x.Get(r) = r.values
                     override x.Set(r,v) = { r with values = v }
                     override x.Update(r,f) = { r with values = f r.values }
                 }
             let selected =
-                { new Lens<Aardvark.UI.DropDownModel, Microsoft.FSharp.Core.int>() with
+                { new Lens<Aardvark.UI.DropDownModel, System.Int32>() with
                     override x.Get(r) = r.selected
                     override x.Set(r,v) = { r with selected = v }
                     override x.Update(r,f) = { r with selected = f r.selected }
@@ -339,19 +339,19 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let isExpanded =
-                { new Lens<Aardvark.UI.Properties, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Properties, System.Boolean>() with
                     override x.Get(r) = r.isExpanded
                     override x.Set(r,v) = { r with isExpanded = v }
                     override x.Update(r,f) = { r with isExpanded = f r.isExpanded }
                 }
             let isSelected =
-                { new Lens<Aardvark.UI.Properties, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Properties, System.Boolean>() with
                     override x.Get(r) = r.isSelected
                     override x.Set(r,v) = { r with isSelected = v }
                     override x.Update(r,f) = { r with isSelected = f r.isSelected }
                 }
             let isActive =
-                { new Lens<Aardvark.UI.Properties, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Properties, System.Boolean>() with
                     override x.Get(r) = r.isActive
                     override x.Set(r,v) = { r with isActive = v }
                     override x.Update(r,f) = { r with isActive = f r.isActive }
@@ -507,13 +507,13 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let t1 =
-                { new Lens<Aardvark.UI.D3TestInput, Microsoft.FSharp.Core.int>() with
+                { new Lens<Aardvark.UI.D3TestInput, System.Int32>() with
                     override x.Get(r) = r.t1
                     override x.Set(r,v) = { r with t1 = v }
                     override x.Update(r,f) = { r with t1 = f r.t1 }
                 }
             let t2 =
-                { new Lens<Aardvark.UI.D3TestInput, Microsoft.FSharp.Core.int>() with
+                { new Lens<Aardvark.UI.D3TestInput, System.Int32>() with
                     override x.Get(r) = r.t2
                     override x.Set(r,v) = { r with t2 = v }
                     override x.Update(r,f) = { r with t2 = f r.t2 }
@@ -556,19 +556,19 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let min =
-                { new Lens<Aardvark.UI.D3AxisInput, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.D3AxisInput, System.Double>() with
                     override x.Get(r) = r.min
                     override x.Set(r,v) = { r with min = v }
                     override x.Update(r,f) = { r with min = f r.min }
                 }
             let max =
-                { new Lens<Aardvark.UI.D3AxisInput, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.D3AxisInput, System.Double>() with
                     override x.Get(r) = r.max
                     override x.Set(r,v) = { r with max = v }
                     override x.Update(r,f) = { r with max = f r.max }
                 }
             let tickCount =
-                { new Lens<Aardvark.UI.D3AxisInput, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.D3AxisInput, System.Double>() with
                     override x.Get(r) = r.tickCount
                     override x.Set(r,v) = { r with tickCount = v }
                     override x.Update(r,f) = { r with tickCount = f r.tickCount }

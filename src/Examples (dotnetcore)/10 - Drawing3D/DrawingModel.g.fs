@@ -64,19 +64,19 @@ module Mutable =
                     override x.Update(r,f) = { r with rendering = f r.rendering }
                 }
             let draw =
-                { new Lens<DrawingModel.SimpleDrawingModel, Microsoft.FSharp.Core.bool>() with
+                { new Lens<DrawingModel.SimpleDrawingModel, System.Boolean>() with
                     override x.Get(r) = r.draw
                     override x.Set(r,v) = { r with draw = v }
                     override x.Update(r,f) = { r with draw = f r.draw }
                 }
             let hoverPosition =
-                { new Lens<DrawingModel.SimpleDrawingModel, Microsoft.FSharp.Core.option<Aardvark.Base.Trafo3d>>() with
+                { new Lens<DrawingModel.SimpleDrawingModel, Microsoft.FSharp.Core.Option<Aardvark.Base.Trafo3d>>() with
                     override x.Get(r) = r.hoverPosition
                     override x.Set(r,v) = { r with hoverPosition = v }
                     override x.Update(r,f) = { r with hoverPosition = f r.hoverPosition }
                 }
             let points =
-                { new Lens<DrawingModel.SimpleDrawingModel, Microsoft.FSharp.Collections.list<Aardvark.Base.V3d>>() with
+                { new Lens<DrawingModel.SimpleDrawingModel, Microsoft.FSharp.Collections.List<Aardvark.Base.V3d>>() with
                     override x.Get(r) = r.points
                     override x.Set(r,v) = { r with points = v }
                     override x.Update(r,f) = { r with points = f r.points }

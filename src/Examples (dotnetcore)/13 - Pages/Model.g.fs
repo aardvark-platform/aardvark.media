@@ -75,7 +75,7 @@ module Mutable =
                     override x.Update(r,f) = { r with cullMode = f r.cullMode }
                 }
             let fill =
-                { new Lens<Model.Model, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Model.Model, System.Boolean>() with
                     override x.Get(r) = r.fill
                     override x.Set(r,v) = { r with fill = v }
                     override x.Update(r,f) = { r with fill = f r.fill }
