@@ -312,6 +312,17 @@ module Annotation =
             text = ""
         }
 
+[<DomainType>]
+type FalseColorsModel = {
+    useFalseColors  : bool
+    lowerBound      : NumericInput
+    upperBound      : NumericInput
+    interval        : NumericInput
+    invertMapping   : bool
+    lowerColor      : ColorInput //C4b
+    upperColor      : ColorInput //C4b
+}
+
 module InitValues = 
     let edge = [ V3d.IOI; V3d.III; V3d.OOI ]
     let annotation = 
@@ -350,3 +361,36 @@ module InitValues =
         {
             navigationMode = NavigationMode.FreeFly
         }
+
+    let lb  = {
+        value   = 0.0
+        min     = 0.0
+        max     = 100.0
+        step    = 1.0
+        format  = "{000:0}"
+    } 
+    let ub  = {
+        value   = 100.0
+        min     = 0.0
+        max     = 100.0
+        step    = 1.0
+        format  = "{000:0}"
+    } 
+    let interv  = {
+        value   = 5.0
+        min     = 0.0
+        max     = 100.0
+        step    = 1.0
+        format  = "{000:0}"
+    } 
+    let falseColors = 
+        {
+            useFalseColors  = false
+            lowerBound      = lb
+            upperBound      = ub
+            interval        = interv
+            invertMapping   = false
+            lowerColor      = { c = C4b.Blue }
+            upperColor      = { c = C4b.Red }
+        }
+

@@ -89,10 +89,11 @@ let kitchenSink argv =
     //let app = RenderModelApp.app 
     //let app = AnnotationApp.app
     //let app = DragNDrop.App.app
+    let app = FalseColorLegendApp.app
 
     //let app = AnimationDemo.AnimationDemoApp.app
 
-    let app = OrthoCamera.OrthoCameraDemo.app
+    //let app = OrthoCamera.OrthoCameraDemo.app
 
     //Config.shouldTimeUIUpdate <- true
     //Config.shouldTimeJsCodeGeneration <- true
