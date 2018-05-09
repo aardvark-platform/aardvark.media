@@ -75,15 +75,13 @@ module TrafoController =
         | SetMode of TrafoMode
         | Nop
 
-    let colorMatch axis = 
-        fun g h ->
-            failwith ""
-            //match h, g, axis with
-            //| _,      Some g, p when g = p -> C4b.Yellow
-            //| Some h, None,   p when h = p -> C4b.White
-            //| _,      _,      X -> C4b.Red
-            //| _,      _,      Y -> C4b.Green
-            //| _,      _,      Z -> C4b.Blue
+    let colorMatch (axis : Axis) (g : Option<Axis>) (h : Option<Axis>) : C4b = 
+        match h, g, axis with
+        | _,      Some g, p when g = p -> C4b.Yellow
+        | Some h, None,   p when h = p -> C4b.White
+        | _,      _,      X -> C4b.Red
+        | _,      _,      Y -> C4b.Green
+        | _,      _,      Z -> C4b.Blue
 
     let pickingTrafo (m:MTransformation) : IMod<Trafo3d> =
         adaptive {

@@ -93,7 +93,9 @@ module TranslateController =
         
         let arrow rot axis =
             let col =
-                m.hovered |> Mod.map2 (colorMatch axis) (m.grabbed |> Mod.map (Option.map ( fun p -> p.axis )))
+                let g : IMod<Option<PickPoint>> = m.grabbed
+                let p : IMod<Option<Axis>> =  (g |> Mod.map (Option.map ( fun (p:PickPoint) -> p.axis )))
+                m.hovered |> Mod.map2 (colorMatch axis) p
 
             Sg.cylinder tessellation col (Mod.constant cylinderRadius) (Mod.constant 1.0) 
             |> Sg.noEvents
