@@ -385,11 +385,11 @@ module InitValues =
     } 
     let falseColors = 
         {
-            useFalseColors  = false
+            useFalseColors  = true
             lowerBound      = lb
             upperBound      = ub
             interval        = interv
-            invertMapping   = false
+            invertMapping   = true
             lowerColor      = { c = C4b.Blue }
             upperColor      = { c = C4b.Red }
         }

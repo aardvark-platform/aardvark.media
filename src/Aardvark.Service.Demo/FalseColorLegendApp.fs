@@ -60,11 +60,12 @@ module FalseColorLegendApp =
             Html.SemUi.accordion "Legend Tools" "Write" true [
                 Html.table [  
                     Html.row "show legend:"     [Html.SemUi.toggleBox model.useFalseColors UseFalseColors ]
-                    Html.row "lower bound:"     [Numeric.view' [InputBox] model.lowerBound |> UI.map SetLowerBound ]
                     Html.row "upper bound:"     [Numeric.view' [InputBox] model.upperBound |> UI.map SetUpperBound ]
-                    Html.row "invert mapping:"  [Html.SemUi.toggleBox model.invertMapping InvertMapping ]
-                    Html.row "lower color:"     [ColorPicker.view model.lowerColor |> UI.map SetLowerColor ]
+                    Html.row "lower bound:"     [Numeric.view' [InputBox] model.lowerBound |> UI.map SetLowerBound ]
+                    Html.row "interval:"        [Numeric.view' [InputBox] model.interval |> UI.map SetInterval ]
                     Html.row "upper color:"     [ColorPicker.view model.upperColor |> UI.map SetUpperColor ]
+                    Html.row "lower color:"     [ColorPicker.view model.lowerColor |> UI.map SetLowerColor ]
+                    Html.row "invert mapping:"  [Html.SemUi.toggleBox model.invertMapping InvertMapping ]
                 ]                    
             ]
 
@@ -75,7 +76,7 @@ module FalseColorLegendApp =
             currHSV.ToC3f().ToC3b()
 
         let createStopps (numOfStops : int) (startColor : C4b) (endColor : C4b) (inverted : bool) =
-            
+            let inverted = (not inverted)
             let hsvStart = HSVf.FromC3f (startColor.ToC3f())
             let hsvEnd   = HSVf.FromC3f (endColor.ToC3f())
             let stepSize = 1.0 / (float numOfStops)
@@ -129,6 +130,7 @@ module FalseColorLegendApp =
         let createFalseColorLegendBasics (falseColor : MFalseColorsModel) (boxSize : V2d) =
             alist { 
                     let! enabled        = falseColor.useFalseColors
+                    let enabled = (not enabled)
                     let! fcUpperBound   = falseColor.upperBound.value
                     let! fcLowerBound   = falseColor.lowerBound.value
                     let! fcInterval     = falseColor.interval.value
