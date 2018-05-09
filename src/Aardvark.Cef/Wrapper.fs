@@ -865,7 +865,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
 
     member x.ReadPixel(pos : V2i) =
         x.Init()
-        texture.ReadPixel(pos)
+        renderHandler.GetPixelValue(pos).ToC4f()
+        //texture.ReadPixel(pos)
 
     member x.Events = eventSink :> IObservable<_>
 
@@ -944,6 +945,9 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
     let rectToBox (r : CefRectangle) =
         Box2i.FromMinAndSize(r.X, r.Y, r.Width, r.Height)
 
+    let mutable pixelData : byte[] = [||]
+    let mutable pixelSize = V2i.Zero
+
     override x.GetAccessibilityHandler() =
         null
 
@@ -996,12 +1000,20 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
     /// Note that the given buffer is only accessible during the execution of this function.
     /// </summary>
     override x.OnPaint(browser : CefBrowser, elementType : CefPaintElementType, dirtyRects : CefRectangle[], buffer : nativeint, width : int, height : int) : unit =
+
         if elementType = CefPaintElementType.View then
+
+            let size = V2i(width, height)
+            if size <> pixelSize then 
+                pixelData <- Array.zeroCreate(width * height * 4)
+                pixelSize <- size
+
+            Marshal.Copy(buffer, pixelData, 0, pixelData.Length)
+
             parent.Render(fun () ->
                 let size = V2i(width, height)
                 texture.UpdateAsync(PixFormat.ByteBGRA, V2i(width, height), buffer)
-            )
-            
+            )     
 
     /// <summary>
     /// Notifies the "main" process to change the cursor-symbol (hovering over text/links/etc.)
@@ -1018,6 +1030,18 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
     override x.OnImeCompositionRangeChanged(browser, selectedRange, characterBounds) =
         ()
 
+    member x.GetPixelValue (pos : V2i) : C4b =
+        if pos.X < pixelSize.X && pos.Y < pixelSize.Y && pos.X >= 0 && pos.Y >= 0 then
+            let lookup = 4 * (pos.Y * pixelSize.X + pos.X)
+
+            if lookup+3 < pixelData.Length then
+                let b = pixelData.[lookup]
+                let g = pixelData.[lookup+1]
+                let r = pixelData.[lookup+2]
+                let a = pixelData.[lookup+3]
+                C4b(r,g,b,a)
+            else C4b.Red
+        else C4b.Green
 
 type BrowserProcessHandler() =
     inherit CefBrowserProcessHandler()
