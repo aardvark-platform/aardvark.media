@@ -230,8 +230,13 @@ module ClientState =
     let pickRay (pp : PixelPosition) (state : ClientState) =
         let n = pp.NormalizedPosition
         let ndc = V3d(2.0 * n.X - 1.0, 1.0 - 2.0 * n.Y, 0.0)
-        let viewDir = state.projTrafo.Backward.TransformPosProj ndc |> Vec.normalize
-        let ray = Ray3d(V3d.Zero, viewDir)
+        let ndcNeg = V3d(2.0 * n.X - 1.0, 1.0 - 2.0 * n.Y, -1.0)
+
+        let p = state.projTrafo.Backward.TransformPosProj ndc
+        let pNeg = state.projTrafo.Backward.TransformPosProj ndcNeg
+
+        let viewDir = (p - pNeg) |> Vec.normalize
+        let ray = Ray3d(pNeg, viewDir)
         ray.Transformed(state.viewTrafo.Backward)
 
 
