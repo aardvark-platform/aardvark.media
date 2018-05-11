@@ -7,6 +7,8 @@ open Aardvark.UI
 
 open Suave
 open Suave.WebPart
+open Suave.Filters
+open Suave.Operators
 open Aardium
 
 type Self = Self
@@ -37,7 +39,8 @@ let main argv =
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' runtime false instance
-        Suave.Embedded.browse typeof<Self>.Assembly
+        prefix "/resources" >=> Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
+        //prefix "/resources" >=> Suave.Embedded.browse typeof<Self>.Assembly
     ]  
     
 

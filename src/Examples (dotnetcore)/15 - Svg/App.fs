@@ -7,55 +7,61 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Model
+open Aardvark.UI.Html
+ 
+let (%) (v : V2d) (f : float) = V2d(f * float (int v.X / int f), f * float (int v.Y / int f))
+
+let getPosition (model : Model) =
+    match model.dragInfo, model.dragMode with
+        | Some p, DragMode.Unrestricted -> p.absolutePosition % model.stepSize.value + model.pos 
+        | Some p, DragMode.Horizontal   -> p.absolutePosition.XO % model.stepSize.value + model.pos 
+        | Some p, DragMode.Vertical     -> p.absolutePosition.OY % model.stepSize.value + model.pos 
+        | _  -> model.pos
 
 
 let update (model : Model) (msg : Message) =
-    printfn "%A" msg
     match msg with
-        | StartDrag s -> { model with startPos = Some s }
-        | Drag p -> { model with pos = p }
+        | Drag dragInfo     -> { model with dragInfo = Some dragInfo }
+        | StopDrag dragInfo -> { model with pos = getPosition model; dragInfo = None }
+        | SetDragMode m -> { model with dragMode = m }
+        | SetStepSize s -> { model with stepSize = Numeric.update model.stepSize s }
 
+let dependencies = [ { url = "resources/SvgDragUtilities.js"; name = "SvgDragUtils"; kind = Script } ]
 
-let attach (s : string) (t : string) =
-    clientEvent s <| """
-            var parent = document.getElementsByClassName('mySvg')[0];
-            var o = document.getElementById('__ID__');
-            var p = parent.createSVGPoint();
-            p.x = event.clientX;
-            p.y = event.clientY;
+let onDrag  (cb : DragInfo -> 'msg) =
+    onEvent "ondrag" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> cb)
 
-            if(o)
-            {
-                var m = o.getScreenCTM();
-                p = p.matrixTransform(m.inverse());
-                aardvark.processEvent('__ID__', '__TARGET__', [toFixedV2d(p)]);
-            }
-        """.Replace("__SOURCE__",s).Replace("__TARGET__",t).Replace("\n","").Replace("\r","")
-  
-let dependencies = [ { url = "SvgDragUtilities.js"; name = "SvgDragUtils"; kind = Script } ]
+let onEndDrag  (cb : DragInfo -> 'msg) =
+    onEvent "onendrag" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> cb)
 
-let onDrag (s : string) (cb : V2d -> 'msg) =
-    onEvent s [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> List.head >> cb)
+let (=>) n v = attribute n v
 
 let view (model : MModel) =
 
-    let (=>) n v = attribute n v
+    let position = model.Current |> Mod.map getPosition
 
     body [] [
         require dependencies (
-            Svg.svg [clazz "mySvg"] [
-                onBoot "draggable(__ID__)" (
-                    Incremental.Svg.circle <| 
-                        AttributeMap.ofListCond [
-                            always <| attribute "r" "20"
-                            always <| attribute "cx" "20"
-                            always <| attribute "cy" "20"
-                            //always <| attach "onmousedown" "startDragPos"
-                            //always <| attach "onmousemove" "dragPos"
-                            //onlyWhen (Mod.map Option.isNone model.startPos) (onDrag "startDragPos" StartDrag)
-                            //onlyWhen (Mod.map Option.isSome model.startPos) (onDrag "dragPos" Drag)
-                        ] 
-                )
+            div [] [
+                Svg.svg [clazz "mySvg"; style "width:600px;height:400px;stroke='blue';user-select: none;"] [
+                    onBoot "draggable('mySvg',__ID__);" (
+                        Incremental.Svg.circle ( 
+                            amap {
+                                yield attribute "r" "20"
+                                yield onDrag    Drag
+                                yield onEndDrag StopDrag
+                                let! pos = position
+                                yield attribute "cx" (sprintf "%f" pos.X)
+                                yield attribute "cy" (sprintf "%f" pos.Y)
+                            } |> AttributeMap.ofAMap
+                        )
+                    )
+                ]
+                br []
+                SemUi.dropDown model.dragMode SetDragMode
+                br []
+                text "StepSize "
+                Numeric.numericField (SetStepSize >> Seq.singleton) AttributeMap.empty model.stepSize Slider
             ]
         )
     ]
@@ -68,8 +74,10 @@ let app =
         threads = threads 
         initial = 
             { 
-               startPos = None
-               pos = V2d.OO
+               dragInfo = None
+               dragMode = DragMode.Unrestricted
+               pos = V2d(100,100)
+               stepSize = { min = 1.0; max = 40.0; value = 1.0; step = 1.0; format = "{0:0}" }
             }
         update = update 
         view = view
