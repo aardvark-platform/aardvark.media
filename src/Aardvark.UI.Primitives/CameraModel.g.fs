@@ -100,43 +100,43 @@ module Mutable =
                     override x.Update(r,f) = { r with dragStart = f r.dragStart }
                 }
             let look =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.look
                     override x.Set(r,v) = { r with look = v }
                     override x.Update(r,f) = { r with look = f r.look }
                 }
             let zoom =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.zoom
                     override x.Set(r,v) = { r with zoom = v }
                     override x.Update(r,f) = { r with zoom = f r.zoom }
                 }
             let pan =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.pan
                     override x.Set(r,v) = { r with pan = v }
                     override x.Update(r,f) = { r with pan = f r.pan }
                 }
             let forward =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.forward
                     override x.Set(r,v) = { r with forward = v }
                     override x.Update(r,f) = { r with forward = f r.forward }
                 }
             let backward =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.backward
                     override x.Set(r,v) = { r with backward = v }
                     override x.Update(r,f) = { r with backward = f r.backward }
                 }
             let left =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.left
                     override x.Set(r,v) = { r with left = v }
                     override x.Update(r,f) = { r with left = f r.left }
                 }
             let right =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.bool>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.right
                     override x.Set(r,v) = { r with right = v }
                     override x.Update(r,f) = { r with right = f r.right }
@@ -154,31 +154,31 @@ module Mutable =
                     override x.Update(r,f) = { r with orbitCenter = f r.orbitCenter }
                 }
             let lastTime =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Microsoft.FSharp.Core.float>>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<System.Double>>() with
                     override x.Get(r) = r.lastTime
                     override x.Set(r,v) = { r with lastTime = v }
                     override x.Update(r,f) = { r with lastTime = f r.lastTime }
                 }
             let sensitivity =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
                     override x.Get(r) = r.sensitivity
                     override x.Set(r,v) = { r with sensitivity = v }
                     override x.Update(r,f) = { r with sensitivity = f r.sensitivity }
                 }
             let zoomFactor =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
                     override x.Get(r) = r.zoomFactor
                     override x.Set(r,v) = { r with zoomFactor = v }
                     override x.Update(r,f) = { r with zoomFactor = f r.zoomFactor }
                 }
             let panFactor =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
                     override x.Get(r) = r.panFactor
                     override x.Set(r,v) = { r with panFactor = v }
                     override x.Update(r,f) = { r with panFactor = f r.panFactor }
                 }
             let rotationFactor =
-                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
                     override x.Get(r) = r.rotationFactor
                     override x.Set(r,v) = { r with rotationFactor = v }
                     override x.Update(r,f) = { r with rotationFactor = f r.rotationFactor }

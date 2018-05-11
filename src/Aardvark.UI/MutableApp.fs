@@ -49,7 +49,7 @@ module MutableApp =
     
     let private template = 
         let ass = typeof<DomNode<_>>.Assembly
-        use stream = ass.GetManifestResourceStream("template.html")
+        use stream = ass.GetManifestResourceStream("Aardvark.UI.template.html")
         let reader = new IO.StreamReader(stream)
         reader.ReadToEnd()
 

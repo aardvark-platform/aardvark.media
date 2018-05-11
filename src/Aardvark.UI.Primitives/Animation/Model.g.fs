@@ -41,7 +41,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let percentage =
-                { new Lens<Aardvark.UI.Animation.TaskProgress, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.Animation.TaskProgress, System.Double>() with
                     override x.Get(r) = r.percentage
                     override x.Set(r,v) = { r with percentage = v }
                     override x.Update(r,f) = { r with percentage = f r.percentage }

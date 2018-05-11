@@ -76,7 +76,7 @@ module Mutable =
                     override x.Update(r,f) = { r with previewTrafo = f r.previewTrafo }
                 }
             let scale =
-                { new Lens<Aardvark.UI.Trafos.Transformation, Microsoft.FSharp.Core.float>() with
+                { new Lens<Aardvark.UI.Trafos.Transformation, System.Double>() with
                     override x.Get(r) = r.scale
                     override x.Set(r,v) = { r with scale = v }
                     override x.Update(r,f) = { r with scale = f r.scale }

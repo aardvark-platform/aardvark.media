@@ -1,39 +1,38 @@
-framework: net45
+framework: netstandard2.0, net471, netcoreapp2.0
 source https://api.nuget.org/v3/index.json
 source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 
-nuget FSharp.Core                          ~> 4.0.0
+nuget FSharp.Core                          ~> 4.3.0
 
-nuget Aardvark.Base                        ~> 3.0.58
-nuget Aardvark.Base.Incremental            ~> 3.0.58
-nuget Aardvark.Base.FSharp                 ~> 3.0.58
-nuget Aardvark.Base.Essentials             ~> 3.0.58
+nuget Aardvark.Base                        ~> 4.0.10
+nuget Aardvark.Base.Incremental            ~> 4.0.10
+nuget Aardvark.Base.FSharp                 ~> 4.0.10
+nuget Aardvark.Base.Essentials             ~> 4.0.10
 
-nuget Aardvark.Base.Rendering              ~> 3.6.28
-nuget Aardvark.Application.WinForms.GL     ~> 3.6.28
-nuget Aardvark.SceneGraph                  ~> 3.6.28
-nuget Aardvark.SceneGraph.IO               ~> 3.6.28
-nuget Aardvark.Rendering.NanoVg            ~> 3.6.28
-nuget Aardvark.Rendering.Text              ~> 3.6.28
-nuget Aardvark.Rendering.Vulkan            ~> 3.6.28
-nuget Aardvark.GPGPU                       ~> 3.6.28
+nuget Aardvark.Base.Rendering              ~> 4.1.2
+nuget Aardvark.Application.WinForms.GL     ~> 4.1.2
+nuget Aardvark.Application.Slim.GL         ~> 4.1.2
+nuget Aardvark.SceneGraph                  ~> 4.1.2
+nuget Aardvark.SceneGraph.IO               ~> 4.1.2
+nuget Aardvark.Rendering.Text              ~> 4.1.2
+nuget Aardvark.Rendering.Vulkan            ~> 4.1.2
+nuget Aardvark.GPGPU                       ~> 4.1.2
 
-nuget Aardvark.Compiler.DomainTypes         ~> 0.3.0
-nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 0.3.0
-nuget Aardvark.Compiler.DomainTypeTool      ~> 0.3.0
+nuget Aardvark.Compiler.DomainTypes         ~> 4.0.5
+nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.0.5
+
+nuget FsPickler                             ~> 5.2.0
+nuget FsPickler.Json                        ~> 5.2.0
+
+nuget TurboJpegWrapper                      ~> 1.5.2
+nuget Suave                                 ~> 2.2.1
+
+nuget Aardium                               ~> 1.0.2
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.1.1
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.1.1
 nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.1.1
 
-nuget FsPickler       ~> 4.0.0
-nuget FsPickler.Json  ~> 4.0.0
-
-nuget WindowsAPICodePack-Core
-nuget WindowsAPICodePack-ShellExtensions
- 
-nuget TurboJpegWrapper      ~> 1.4.2.6
-nuget Suave                 ~> 2.2.0
 
 group Build
 framework: net45
@@ -42,4 +41,4 @@ source https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
 source https://api.nuget.org/v3/index.json
 
 nuget FSharp.Formatting.CommandTool
-github aardvark-platform/aardvark.fake:standalone
+github aardvark-platform/aardvark.fake:v4
