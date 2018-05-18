@@ -51,14 +51,14 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<Model.NavigationModeDemoModel> = Aardvark.Base.Incremental.EqModRef<Model.NavigationModeDemoModel>(__initial) :> Aardvark.Base.Incremental.IModRef<Model.NavigationModeDemoModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
-        let _rendering = RenderingParametersModel.Mutable.MRenderingParameters.Create(__initial.rendering)
+        let _rendering = ResetMod.Create(__initial.rendering)
         let _navigation = MNavigationParameters.Create(__initial.navigation)
         let _navsensitivity = Aardvark.UI.Mutable.MNumericInput.Create(__initial.navsensitivity)
         let _zoomFactor = Aardvark.UI.Mutable.MNumericInput.Create(__initial.zoomFactor)
         let _panFactor = Aardvark.UI.Mutable.MNumericInput.Create(__initial.panFactor)
         
         member x.camera = _camera
-        member x.rendering = _rendering
+        member x.rendering = _rendering :> IMod<_>
         member x.navigation = _navigation
         member x.navsensitivity = _navsensitivity
         member x.zoomFactor = _zoomFactor
@@ -70,7 +70,7 @@ module Mutable =
                 __current.Value <- v
                 
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
-                RenderingParametersModel.Mutable.MRenderingParameters.Update(_rendering, v.rendering)
+                ResetMod.Update(_rendering,v.rendering)
                 MNavigationParameters.Update(_navigation, v.navigation)
                 Aardvark.UI.Mutable.MNumericInput.Update(_navsensitivity, v.navsensitivity)
                 Aardvark.UI.Mutable.MNumericInput.Update(_zoomFactor, v.zoomFactor)
@@ -98,7 +98,7 @@ module Mutable =
                     override x.Update(r,f) = { r with camera = f r.camera }
                 }
             let rendering =
-                { new Lens<Model.NavigationModeDemoModel, RenderingParametersModel.RenderingParameters>() with
+                { new Lens<Model.NavigationModeDemoModel, System.Object>() with
                     override x.Get(r) = r.rendering
                     override x.Set(r,v) = { r with rendering = v }
                     override x.Update(r,f) = { r with rendering = f r.rendering }

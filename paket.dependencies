@@ -27,7 +27,7 @@ nuget FsPickler.Json                        ~> 5.2.0
 nuget TurboJpegWrapper                      ~> 1.5.2
 nuget Suave                                 ~> 2.2.1
 
-nuget Aardium                               ~> 1.0.2
+nuget Aardium                               ~> 1.0.5
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.1.1
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.1.1

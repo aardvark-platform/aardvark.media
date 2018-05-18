@@ -67,7 +67,7 @@ module Mutable =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<Model.BoxSelectionDemoModel> = Aardvark.Base.Incremental.EqModRef<Model.BoxSelectionDemoModel>(__initial) :> Aardvark.Base.Incremental.IModRef<Model.BoxSelectionDemoModel>
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
-        let _rendering = RenderingParametersModel.Mutable.MRenderingParameters.Create(__initial.rendering)
+        let _rendering = ResetMod.Create(__initial.rendering)
         let _boxes = MList.Create(__initial.boxes, (fun v -> MVisibleBox.Create(v)), (fun (m,v) -> MVisibleBox.Update(m, v)), (fun v -> v))
         let _boxesSet = MSet.Create((fun (v : Model.VisibleBox) -> v.id :> obj), __initial.boxesSet, (fun v -> MVisibleBox.Create(v)), (fun (m,v) -> MVisibleBox.Update(m, v)), (fun v -> v))
         let _boxesMap = MMap.Create(__initial.boxesMap, (fun v -> MVisibleBox.Create(v)), (fun (m,v) -> MVisibleBox.Update(m, v)), (fun v -> v))
@@ -75,7 +75,7 @@ module Mutable =
         let _selectedBoxes = MSet.Create(__initial.selectedBoxes)
         
         member x.camera = _camera
-        member x.rendering = _rendering
+        member x.rendering = _rendering :> IMod<_>
         member x.boxes = _boxes :> alist<_>
         member x.boxesSet = _boxesSet :> aset<_>
         member x.boxesMap = _boxesMap :> amap<_,_>
@@ -88,7 +88,7 @@ module Mutable =
                 __current.Value <- v
                 
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
-                RenderingParametersModel.Mutable.MRenderingParameters.Update(_rendering, v.rendering)
+                ResetMod.Update(_rendering,v.rendering)
                 MList.Update(_boxes, v.boxes)
                 MSet.Update(_boxesSet, v.boxesSet)
                 MMap.Update(_boxesMap, v.boxesMap)
@@ -117,7 +117,7 @@ module Mutable =
                     override x.Update(r,f) = { r with camera = f r.camera }
                 }
             let rendering =
-                { new Lens<Model.BoxSelectionDemoModel, RenderingParametersModel.RenderingParameters>() with
+                { new Lens<Model.BoxSelectionDemoModel, System.Object>() with
                     override x.Get(r) = r.rendering
                     override x.Set(r,v) = { r with rendering = v }
                     override x.Update(r,f) = { r with rendering = f r.rendering }
