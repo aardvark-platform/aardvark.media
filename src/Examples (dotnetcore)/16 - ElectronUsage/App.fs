@@ -21,7 +21,10 @@ let update (model : Model) (msg : Message) =
         | CenterScene -> 
             { model with cameraState = initialCamera }
         | LoadFiles s -> 
-            printfn "%A" s
+            printfn "%A" msg
+            model
+        | SaveFile s -> 
+            printfn "%A" msg
             model
 
 let viewScene (model : MModel) =
@@ -33,23 +36,38 @@ let viewScene (model : MModel) =
         }
 
 let onChooseFiles (chosen : list<string> -> 'msg) =
-    onEvent "onchoose" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> List.map Aardvark.Service.PathUtils.ofUnixStyle >> chosen)
+    let cb xs =
+        match xs with
+            | [] -> chosen []
+            | x::[] when x <> null -> x |> Aardvark.Service.Pickler.json.UnPickleOfString |> List.map Aardvark.Service.PathUtils.ofUnixStyle |> chosen
+            | _ -> failwithf "onChooseFiles: %A" xs
+    onEvent "onchoose" [] cb
         
+let onSaveFile (chosen : string -> 'msg) =
+    let cb xs =
+        match xs with
+            | x::[] when x <> null -> x |> Aardvark.Service.Pickler.json.UnPickleOfString |> Aardvark.Service.PathUtils.ofUnixStyle |> chosen
+            | _ -> failwithf "onSaveFile: %A" xs
+    onEvent "onsave" [] cb
 
-// variant with html5 grid layouting (currently not working in our cef)
 let view (model : MModel) =
 
     let renderControl =
         CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 100%; grid-row: 2"]) 
+                    (AttributeMap.ofList [ style "width: 100%; "]) 
                     (viewScene model)
 
     body [] [
-        div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
+        div [] [
             button [
                 onChooseFiles (fun files -> printfn "%A" files; LoadFiles files)
                 clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
             ] [text "open directory"]
+            br []
+            button [
+                onSaveFile SaveFile
+                clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onsave', aardvark.dialog.showSaveDialog({properties: []}));") 
+            ] [text "save file"]
 
         ]
     ]

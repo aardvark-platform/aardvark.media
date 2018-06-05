@@ -8,6 +8,7 @@ type Message =
     | Camera of CameraController.Message
     | CenterScene
     | LoadFiles of list<string>
+    | SaveFile of string
 
 [<DomainType>]
 type Model = 
