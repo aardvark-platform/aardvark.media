@@ -20,6 +20,7 @@
     <EmbeddedResource Include="Core\stats.html" />
     <EmbeddedResource Include="Data\aardvark-light.svg" />
     <EmbeddedResource Include="Data\aardvark.svg" />
+	<EmbeddedResource Include="resources\jquery-3-3-1.js" />
     <Compile Include="aardfs\FileSystem.fs" />
     <EmbeddedResource Include="aardfs\aardfs.css" />
     <EmbeddedResource Include="aardfs\aardfs.js" />
