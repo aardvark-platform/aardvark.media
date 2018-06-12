@@ -1,0 +1,168 @@
+.dock-root.noevents .dock-element-content {
+  pointer-events: none; }
+
+.dock-root {
+  position: relative;
+  background: #1e1e1e; }
+
+.dock-root.changing > * {
+  display: none; }
+
+.dock-container {
+  position: absolute;
+  background: #1e1e1e;
+  width: 100%;
+  height: 100%; }
+
+.dock-element-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 16pt;
+  width: 100%;
+  background: #243d4c;
+  vertical-align: middle;
+  cursor: move; }
+
+.dock-element-tab-header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 16pt;
+  width: 100%;
+  background: #243d4c;
+  vertical-align: middle;
+  z-index: 100;
+  overflow: hidden; }
+
+.dock-header-title {
+  height: 100%;
+  width: calc(100% - 4pt);
+  padding-left: 4pt;
+  border: none;
+  color: #FFFFFF;
+  font-weight: bold;
+  font-size: 10pt;
+  font-family: sans-serif;
+  vertical-align: middle;
+  float: left;
+  line-height: 16pt; }
+
+.dock-header-tab {
+  box-sizing: border-box;
+  padding-left: 4pt;
+  border-right: 2px solid #828282;
+  color: #FFFFFF;
+  font-weight: bold;
+  font-size: 10pt;
+  font-family: sans-serif;
+  float: left;
+  height: 16pt;
+  min-width: 50pt;
+  user-select: none;
+  vertical-align: middle; }
+
+.dock-header-tab:hover {
+  background: #387194; }
+
+.dock-header-tab.active {
+  background: #537a93;
+  color: #FFFFFF; }
+
+.dock-element-header:hover {
+  background: #387194; }
+
+.dock-hover-box {
+  box-sizing: border-box;
+  z-index: 1000;
+  position: absolute;
+  background: rgba(0, 0, 0, 0.3);
+  border: dashed 2px rgba(65, 65, 65, 0.5); }
+
+.dock-element-content {
+  position: absolute;
+  top: 16pt;
+  left: 0;
+  height: calc(100% - 16pt);
+  width: 100%;
+  background: #1e1e1e;
+  overflow: auto; }
+
+.dock-container.moving {
+  position: fixed;
+  cursor: default !important;
+  z-index: 2000;
+  overflow: auto;
+  border: solid 2px #414141;
+  pointer-events: none;
+  opacity: 0.4; }
+
+.dock-splitter {
+  position: absolute;
+  background: #414141;
+  z-index: 100; }
+
+.dock-splitter.dragging {
+  background: #387194; }
+
+.dock-splitter:hover {
+  background: #387194; }
+
+.dock-splitter.horizontal {
+  cursor: ns-resize;
+  height: 2px; }
+
+.dock-splitter.horizontal::before {
+  position: absolute;
+  content: '';
+  top: -5pt;
+  left: 5pt;
+  right: 5pt;
+  bottom: -5pt; }
+
+.dock-splitter.vertical {
+  cursor: ew-resize;
+  width: 2px; }
+
+.dock-splitter.vertical::before {
+  position: absolute;
+  content: '';
+  top: 5pt;
+  left: -5pt;
+  right: -5pt;
+  bottom: 5pt; }
+
+.icon.close {
+  padding: 0;
+  padding-right: 0;
+  padding-left: 0;
+  width: 16pt;
+  height: 16pt;
+  position: relative; }
+
+.icon.close:hover {
+  background: #387194; }
+
+.icon.close:hover:after {
+  border-color: white; }
+
+.icon.close:hover:before {
+  border-color: white; }
+
+.icon.close:after {
+  content: '';
+  height: calc(16pt - 2 * 4pt);
+  border-left: 2px solid #828282;
+  position: absolute;
+  transform: rotate(45deg);
+  top: 4pt;
+  left: calc(4pt + 4px); }
+
+.icon.close:before {
+  content: '';
+  height: calc(16pt - 2 * 4pt);
+  border-left: 2px solid #828282;
+  position: absolute;
+  transform: rotate(-45deg);
+  top: 4pt;
+  left: calc(4pt + 4px); }
