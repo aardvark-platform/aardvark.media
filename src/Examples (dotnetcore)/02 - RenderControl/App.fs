@@ -1,4 +1,4 @@
-﻿module App
+﻿module RenderControl.App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
@@ -6,7 +6,7 @@ open Aardvark.UI.Primitives
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
-open Model
+open RenderControl.Model
 
 
 let initialCamera = { 
@@ -36,7 +36,7 @@ let view (model : MModel) =
                     (AttributeMap.ofList [ style "width: 400px; height:400px"]) 
                     (viewScene model)
 
-    body [] [
+    div [] [
         text "Hello 3D"
         br []
         button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
@@ -52,17 +52,16 @@ let view2 (model : MModel) =
                     (AttributeMap.ofList [ style "width: 100%; grid-row: 2"]) 
                     (viewScene model)
 
-    body [] [
-        div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
-            div [style "grid-row: 1"] [
-                text "Hello 3D"
-                br []
-                button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
-            ]
-            renderControl
+
+    div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
+        div [style "grid-row: 1"] [
+            text "Hello 3D"
             br []
-            text "use first person shooter WASD + mouse controls to control the 3d scene"
+            button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
         ]
+        renderControl
+        br []
+        text "use first person shooter WASD + mouse controls to control the 3d scene"
     ]
 
 let threads (model : Model) = 

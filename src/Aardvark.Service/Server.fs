@@ -740,6 +740,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let send (cmd : Command) =
         let data = Pickler.json.Pickle cmd
+
         let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
         match res with
             | Choice1Of2 () -> ()
@@ -779,7 +780,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                         try
                             let state = getState info
                             let data = task.Run(token, info, state)
-
+                        
                             let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
                             match res with
                                 | Choice1Of2() -> ()
@@ -838,32 +839,41 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     match code with
                         | Opcode.Text ->
                             try
-                                let msg : Message = Pickler.json.UnPickle data
+                                
+                                if data.Length > 0 && data.[0] = uint8 '#' then
+                                    let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
+                                    match str with
+                                        | "ping" -> 
+                                            do! createInfo.socket.send Opcode.Pong (ByteSegment([||])) true
+                                        | _ ->
+                                            Log.warn "bad opcode: %A" str
+                                else
+                                    let msg : Message = Pickler.json.UnPickle data
 
-                                match msg with
-                                    | RequestImage size ->
-                                        invalidateTime.Stop()
-                                        roundTripTime.Start()
-                                        MVar.put requestedSize size
+                                    match msg with
+                                        | RequestImage size ->
+                                            invalidateTime.Stop()
+                                            roundTripTime.Start()
+                                            MVar.put requestedSize size
 
-                                    | RequestWorldPosition pixel ->
-                                        let wp = 
-                                            match task.GetWorldPosition pixel with
-                                                | Some d -> d
-                                                | None -> V3d.Zero
+                                        | RequestWorldPosition pixel ->
+                                            let wp = 
+                                                match task.GetWorldPosition pixel with
+                                                    | Some d -> d
+                                                    | None -> V3d.Zero
 
-                                        send (WorldPosition wp)
+                                            send (WorldPosition wp)
 
-                                    | Rendered ->
-                                        roundTripTime.Stop()
-                                        frameCount <- frameCount + 1
+                                        | Rendered ->
+                                            roundTripTime.Stop()
+                                            frameCount <- frameCount + 1
 
-                                    | Shutdown ->
-                                        running <- false
+                                        | Shutdown ->
+                                            running <- false
 
-                                    | Change(scene, samples) ->
-                                        let signature = createInfo.getSignature samples
-                                        Interlocked.Change(&info, fun info -> { info with samples = samples; signature = signature; sceneName = scene }) |> ignore
+                                        | Change(scene, samples) ->
+                                            let signature = createInfo.getSignature samples
+                                            Interlocked.Change(&info, fun info -> { info with samples = samples; signature = signature; sceneName = scene }) |> ignore
 
                             with e ->
                                 Log.warn "[Client] %d: unexpected message %A" id (Encoding.UTF8.GetString data)
@@ -872,6 +882,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                             Log.warn "[Client] %d: unexpected binary message" id
                         | Opcode.Close ->
                             running <- false
+                        | Opcode.Ping -> 
+                            do! createInfo.socket.send Opcode.Pong (ByteSegment([||])) true
                         | _ ->
                             ()
 
@@ -999,7 +1011,7 @@ module Server =
         let render (targetId : string) (ws : WebSocket) (context: HttpContext) =
             let request = context.request
             let args = request.query |> List.choose (function (n,Some v) -> Some(n,v) | _ -> None) |> Map.ofList
-
+            
             let sceneName =
                 match Map.tryFind "scene" args with
                     | Some scene -> scene

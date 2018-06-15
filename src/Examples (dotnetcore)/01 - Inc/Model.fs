@@ -1,4 +1,4 @@
-﻿namespace Model
+﻿namespace Inc.Model
 
 open Aardvark.Base
 open Aardvark.Base.Incremental

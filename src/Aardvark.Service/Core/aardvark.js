@@ -207,6 +207,13 @@ class Renderer {
             socket.binaryType = "blob";
             self.socket = socket;
 
+            var doPing = function () {
+                if (socket.readyState <= 1) {
+                    socket.send("#ping");
+                    setTimeout(doPing, 50);
+                }
+            };
+
             socket.onopen = function () {
                 for (var i = 0; i < self.buffer.length; i++) {
                     socket.send(self.buffer[i]);
@@ -216,6 +223,8 @@ class Renderer {
                 self.buffer = [];
 
                 self.render();
+
+                doPing();
 
             };
 
@@ -805,6 +814,14 @@ if (!aardvark.connect) {
         var url = aardvark.getRelativeUrl('ws', path + wsQuery);
         var eventSocket = new WebSocket(url);
 
+        var doPing = function () {
+            if (eventSocket.readyState <= 1) {
+                eventSocket.send("#ping");
+                setTimeout(doPing, 50);
+            }
+        };
+        
+
         eventSocket.onopen = function () {
             aardvark.processEvent = function () {
                 var sender = arguments[0];
@@ -815,7 +832,8 @@ if (!aardvark.connect) {
                 }
                 var message = JSON.stringify({ sender: sender, name: name, args: args });
                 eventSocket.send(message);
-            }
+            };
+            doPing();
         };
 
         eventSocket.onmessage = function (m) {
@@ -844,6 +862,8 @@ if (!aardvark.connect) {
         eventSocket.onerror = function (e) {
             aardvark.processEvent = function () { };
         };
+
+        
     }
 }
 

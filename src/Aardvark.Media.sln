@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "17 - SubApps", "Examples (dotnetcore)\17 - SubApps\17 - SubApps.fsproj", "{2EC53267-BAD3-486B-9270-65A305443296}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "16 - ElectronUsage", "Examples (dotnetcore)\16 - ElectronUsage\16 - ElectronUsage.fsproj", "{04C22CCA-E291-43C3-A124-22391B8165E6}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
@@ -78,6 +80,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2EC53267-BAD3-486B-9270-65A305443296}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EC53267-BAD3-486B-9270-65A305443296}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EC53267-BAD3-486B-9270-65A305443296}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EC53267-BAD3-486B-9270-65A305443296}.Release|Any CPU.Build.0 = Release|Any CPU
 		{04C22CCA-E291-43C3-A124-22391B8165E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{04C22CCA-E291-43C3-A124-22391B8165E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{04C22CCA-E291-43C3-A124-22391B8165E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -114,10 +120,6 @@ Global
 		{9824D872-86F5-4058-B378-9E922026FC70}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9824D872-86F5-4058-B378-9E922026FC70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9824D872-86F5-4058-B378-9E922026FC70}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -183,6 +185,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{2EC53267-BAD3-486B-9270-65A305443296} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{04C22CCA-E291-43C3-A124-22391B8165E6} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
 		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}

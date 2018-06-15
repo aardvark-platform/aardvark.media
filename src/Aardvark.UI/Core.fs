@@ -506,6 +506,8 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
             Callbacks = (x.Callbacks |> Map.map (fun k v -> fun xs -> f (v xs))),
             Channels = x.Channels
         )
+        
+
     member x.WithRequired (required : list<Reference>) =
         let res = x.Copy()
         res.Required <- required
@@ -584,12 +586,40 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
             Channels = x.Channels
         )
 
+and RunningSubApp<'msg> =
+    {
+        stop : unit -> unit
+        view : DomNode<'msg>
+    }
+
+and IAppVisitor<'r> =
+    abstract member Visit : IApp<'model, 'msg> -> 'r
+
+and IApp =
+    abstract Visit : IAppVisitor<'r> -> 'r
+
+and IApp<'model, 'msg> =
+    inherit IApp
+    abstract member ToOuter<'outer> : 'model * 'msg -> seq<'outer>
+    abstract member Start : unit -> MutableApp<'model, 'msg>
+    
+and MutableApp<'model, 'msg> =
+    {
+        lock        : obj
+        model       : IMod<'model>
+        ui          : DomNode<'msg>
+        update      : Guid -> seq<'msg> -> unit
+        shutdown    : unit -> unit
+    }
+
+
 and DomContent<'msg> =
     | Empty
     | Children of alist<DomNode<'msg>>
     | Scene    of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState)
     | Text     of IMod<string>
     | Page     of (Request -> DomNode<'msg>)
+    | SubApp   of IApp
 
     with 
         static member Map(x : DomContent<'msg>, f : 'msg -> 'b) = 
@@ -603,7 +633,27 @@ and DomContent<'msg> =
                         let r = c request
                         r.Map f
                     Page inner
-            
+                | SubApp a ->
+                    SubApp a
+  
+ 
+type Unpersist<'model, 'mmodel> =
+    {
+        create : 'model -> 'mmodel
+        update : 'mmodel -> 'model -> unit
+    }
+
+module Unpersist =
+    let inline instance<'model, 'mmodel when 'mmodel : (static member Create : 'model -> 'mmodel) and 'mmodel : (member Update : 'model -> unit)> =
+        {
+            create = fun m -> (^mmodel : (static member Create : 'model -> 'mmodel) (m))
+            update = fun mm m -> (^mmodel : (member Update : 'model -> unit) (mm, m))
+        }
+
+
+
+
+
 open Aardvark.Service
 
 type RenderCommand<'msg> =

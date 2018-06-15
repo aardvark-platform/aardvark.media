@@ -160,7 +160,7 @@ module JSExpr =
             | AppendChild(parent,inner) -> 
                 let parent = toStringInternal parent
                 sprintf "%s.appendChild(%s);" parent (toStringInternal inner)
-
+  
             | InsertBefore(reference,element) -> 
                 match reference with
                     | Var v -> 
@@ -182,7 +182,7 @@ module JSExpr =
             | Replace(o,n) ->
                 let ref = toStringInternal o
                 sprintf "%s.parentElement.replaceChild(%s, %s);" ref (toStringInternal n) ref
-
+             
             | Var v ->
                 v.name
 

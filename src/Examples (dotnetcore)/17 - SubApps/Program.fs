@@ -8,7 +8,6 @@ open Aardvark.UI
 open Suave
 open Suave.WebPart
 open Aardium
-open RenderControl
 
 [<EntryPoint; STAThread>]
 let main argv = 

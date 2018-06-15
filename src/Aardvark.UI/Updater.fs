@@ -12,6 +12,14 @@ open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI
 
+[<AutoOpen>]
+module IdGen =
+    let mutable private currentId = 0
+    let newId() =
+        let id = Interlocked.Increment(&currentId)
+        "n" + string id
+
+
 type UpdateState<'msg> =
     {
         scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
@@ -101,13 +109,16 @@ type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
         l, s, r
 
     static let create (ui : DomUpdater<'msg>) (inner : JSExpr -> list<JSExpr>) =
-        let v = { name = ui.Id }
-        JSExpr.Let(
-            v, JSExpr.CreateElement(ui.Tag, ui.Namespace),
-            JSExpr.Sequential (
-                JSExpr.SetAttribute(JSExpr.Var v, "id", ui.Id) :: inner (JSExpr.Var v)
+        if ui.Tag = "" then
+            inner JSExpr.Nop |> JSExpr.Sequential
+        else
+            let v = { name = ui.Id }
+            JSExpr.Let(
+                v, JSExpr.CreateElement(ui.Tag, ui.Namespace),
+                JSExpr.Sequential (
+                    JSExpr.SetAttribute(JSExpr.Var v, "id", ui.Id) :: inner (JSExpr.Var v)
+                )
             )
-        )
 
     //let mutable initial = true
     //let lastId = id + "_last"
@@ -203,13 +214,91 @@ type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
 
         JSExpr.Sequential (CSharpList.toList code)
 
+and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app : IApp<'model, 'msg>, request : Request, id : string) =
+    inherit AbstractUpdater<'outermsg>()
+    
+    let mutable old = Set.empty
+    let mutable mapp : Option<MutableApp<_,_> * DomUpdater<'msg> * UpdateState<'msg>> = None
+
+
+    let update key (client : Guid) (bla : string) (args : list<string>) =
+        match mapp with
+            | Some (mapp, updater, myState) ->
+                match myState.handlers.TryGetValue key with
+                    | (true, handler) ->
+                        let messages = handler client bla args
+                        mapp.update client messages
+                        let model = mapp.model.GetValue()
+                        messages |> Seq.collect (fun msg -> app.ToOuter<'outermsg>(model, msg))
+
+                    | _ ->
+                        Seq.empty
+            | _ ->
+                Seq.empty
+
+    override x.PerformUpdate(token, self, state : UpdateState<'outermsg>) =
+        let mapp, updater, myState =
+            match mapp with
+                | Some a -> a
+                | None ->
+                    let m = app.Start()
+                    
+                    let innerAtt = 
+                        container.Attributes |> AttributeMap.choose (fun key value ->
+                            match value with
+                                | AttributeValue.String a -> Some (AttributeValue.String a)
+                                | _ -> None
+                        )
+
+                    let parent = DomNode<_>(container.Tag, container.Namespace, innerAtt, DomContent.Children(AList.ofList [m.ui]))
+                    let updater = DomUpdater(parent, request, id)
+                    
+                    let myState =
+                        {
+                            scenes              = state.scenes
+                            handlers            = Dictionary()
+                            references          = state.references
+                            activeChannels      = state.activeChannels
+                        }
+
+                    mapp <- Some (m,updater, myState)
+                    (m, updater, myState)
+  
+        let mutable n = Set.empty
+        let mutable deleted = old
+        //let mutable old = myState.handlers.Keys |> Set.ofSeq
+        let updateCode = updater.Update(token, self, myState)
+
+        for KeyValue(key, handler) in myState.handlers do
+            n <- Set.add key n
+            deleted <- Set.remove key deleted
+            state.handlers.[key] <- update key
+
+        for key in deleted do
+            state.handlers.Remove key |> ignore
+        old <- n
+
+        updateCode
+        
+    override x.Destroy(state, self) =
+        match mapp with
+            | Some (app, updater, myState) ->
+                
+                let code = updater.Destroy(myState, self)
+                app.shutdown()
+                for key in myState.handlers.Keys do
+                    state.handlers.Remove key |> ignore
+                myState.handlers.Clear()
+                old <- Set.empty
+                mapp <- None
+                code
+            | None ->
+                JSExpr.Nop
+    
+
 and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
     inherit AbstractUpdater<'msg>()
 
-    static let mutable currentId = 0
-    static let newId() =
-        let id = Interlocked.Increment(&currentId)
-        "n" + string id
 
     let rAtt = ui.Attributes.GetReader()
     let rContent = 
@@ -221,7 +310,12 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
             | Page p -> 
                 let updater = DomUpdater(p request, request)
                 updater :> IUpdater<_>
-
+            | SubApp a -> 
+                a.Visit {
+                    new IAppVisitor<IUpdater<'msg>> with
+                        member x.Visit(app : IApp<'a, 'b>) =
+                            SubAppUpdater<'a, 'b, 'msg>(ui, app, request, id) :> IUpdater<'msg>
+                }
 
     let mutable initial = true
 

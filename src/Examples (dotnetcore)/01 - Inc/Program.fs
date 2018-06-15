@@ -4,6 +4,7 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
+open Inc
 
 open Suave
 open Suave.WebPart

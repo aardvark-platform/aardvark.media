@@ -1,43 +1,44 @@
-﻿module Inc.App
+﻿module App
+
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
-open Inc.Model
+open Model
+
 
 let update (model : Model) (msg : Message) =
-    match msg with
-        Inc -> { model with value = model.value + 1 }
+    { model with dummy = model.dummy + 1 }
 
 let view (model : MModel) =
-    div [] [
-        text "Hello World"
-        br []
-        button [onClick (fun _ -> Inc)] [text "Increment"]
-        text "    "
-        Incremental.text (model.value |> Mod.map string)
-        br []
-        img [
-            attribute "src" "https://upload.wikimedia.org/wikipedia/commons/6/67/SanWild17.jpg"; 
-            attribute "alt" "aardvark"
-            style "max-width: 80%; max-height: 80%"
+    body [] [
+        div [style "display: flex; flex-direction: column; width: 100%; height: 100%"] [
+            div [] [
+                Incremental.text (model.dummy |> Mod.map (sprintf "messages: %d"))
+            ]
+
+            div [ style "display: flex; height: 40%" ] [
+                div [style "position: absolute" ] [
+                    subApp' (fun _model _innermsg -> Seq.singleton Increment) [] Inc.App.app
+                ]
+            ]
+
+            div [ style "display: flex; height: 40%" ] [
+                div [style "position: absolute" ] [
+                    subApp' (fun _model _innermsg -> Seq.singleton Increment) [] RenderControl.App.app
+                ]
+            ]
         ]
     ]
-
-let threads (model : Model) = 
-    ThreadPool.empty
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
     {
         unpersist = Unpersist.instance     
-        threads = threads 
-        initial = 
-            { 
-               value = 0
-            }
+        threads = fun _ -> ThreadPool.empty 
+        initial =  { dummy = 0 }
         update = update 
         view = view
     }

@@ -37,13 +37,6 @@ module private Tools =
                     return (t, Array.append d rest)
             }
 
-type MutableApp<'model, 'msg> =
-    {
-        lock        : obj
-        model       : IMod<'model>
-        ui          : DomNode<'msg>
-        update      : Guid -> seq<'msg> -> unit
-    }
 
 module MutableApp =
     
@@ -214,19 +207,30 @@ module MutableApp =
                             match code with
                                 | Opcode.Text ->
                                     try
-                                        let evt : EventMessage = Pickler.json.UnPickle data
-                                        match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
-                                            | (true, handler) ->
-                                                let messages = handler sessionId evt.sender (Array.toList evt.args)
-                                                app.update sessionId messages
-                                            | _ ->
-                                                ()
+                                        if data.Length > 0 && data.[0] = uint8 '#' then
+                                            let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
+                                            match str with
+                                                | "ping" -> 
+                                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
+                                                | _ ->
+                                                    Log.warn "bad opcode: %A" str
+                                        else
+                                            let evt : EventMessage = Pickler.json.UnPickle data
+                                            match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
+                                                | (true, handler) ->
+                                                    let messages = handler sessionId evt.sender (Array.toList evt.args)
+                                                    app.update sessionId messages
+                                                | _ ->
+                                                    ()
 
                                     with e ->
                                         Log.warn "unpickle faulted: %A" e
 
                                 | Opcode.Close ->
                                     running <- false
+
+                                | Opcode.Ping -> 
+                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
 
                                 | _ ->
                                     Log.warn "[MutableApp] unknown message: %A" (code,data)

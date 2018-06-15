@@ -1,15 +1,14 @@
-﻿namespace RenderControl.Model
+﻿namespace Model
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
 
 type Message = 
-    | Camera of CameraController.Message
-    | CenterScene
+    | Increment
 
 [<DomainType>]
 type Model = 
     {
-        cameraState : CameraControllerState
+        dummy : int
     }
