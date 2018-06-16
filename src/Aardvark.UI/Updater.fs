@@ -220,18 +220,16 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
     inherit AbstractUpdater<'outermsg>()
     
     let mutable old = Set.empty
-    let mutable mapp : Option<MutableApp<_,_> * DomUpdater<'msg> * UpdateState<'msg> * Subject<'msg>> = None
+    let mutable mapp : Option<MutableApp<_,_> * DomUpdater<'msg> * UpdateState<'msg>> = None
     
     let update key (client : Guid) (bla : string) (args : list<string>) =
         match mapp with
-            | Some (mapp, updater, myState, subject) ->
+            | Some (mapp, updater, myState) ->
                 match myState.handlers.TryGetValue key with
                     | (true, handler) ->
                         let messages = handler client bla args
                         mapp.update client messages
                         let model = mapp.model.GetValue()
-                        for m in messages do subject.OnNext(m)
-
                         messages |> Seq.collect (fun msg -> app.ToOuter<'outermsg>(model, msg))
 
                     | _ ->
@@ -240,7 +238,7 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
                 Seq.empty
 
     override x.PerformUpdate(token, self, state : UpdateState<'outermsg>) =
-        let mapp, updater, myState, subject =
+        let mapp, updater, myState =
             match mapp with
                 | Some a -> a
                 | None ->
@@ -256,32 +254,30 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
                     let parent = DomNode<_>(container.Tag, container.Namespace, innerAtt, DomContent.Children(AList.ofList [m.ui]))
                     let updater = DomUpdater(parent, request, id)
                     
-                    let subject = new Subject<_>()
                     let myState =
                         {
                             scenes              = state.scenes
                             handlers            = Dictionary()
                             references          = state.references
                             activeChannels      = state.activeChannels
-                            messages            = subject
+                            messages            = m.messages
                         }
 
                     let subscription = 
                         state.messages.Subscribe(fun msg -> 
-                            let msgs = app.ToInner<'outermsg>(msg)
+                            let msgs = app.ToInner<'outermsg>(m.model.GetValue(), msg)
                             m.update Guid.Empty msgs
-                            for msg in msgs do subject.OnNext(msg)
                         )
                         
-                    subject.Subscribe {
+                    m.messages.Subscribe {
                         new IObserver<'msg> with
                             member x.OnNext _ = ()
                             member x.OnError _ = ()
                             member x.OnCompleted () = subscription.Dispose()
                     } |> ignore
 
-                    mapp <- Some (m,updater, myState, subject)
-                    (m, updater, myState, subject)
+                    mapp <- Some (m,updater, myState)
+                    (m, updater, myState)
   
         let mutable n = Set.empty
         let mutable deleted = old
@@ -301,7 +297,7 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
         
     override x.Destroy(state, self) =
         match mapp with
-            | Some (app, updater, myState, subject) ->
+            | Some (app, updater, myState) ->
                 
                 let code = updater.Destroy(myState, self)
                 app.shutdown()
@@ -310,8 +306,6 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
                 myState.handlers.Clear()
                 old <- Set.empty
                 mapp <- None
-                subject.OnCompleted()
-                subject.Dispose()
                 code
             | None ->
                 JSExpr.Nop

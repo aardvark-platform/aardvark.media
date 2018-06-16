@@ -5,6 +5,7 @@ open System.Threading
 open System.Collections.Generic
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open System.Reactive.Subjects
 
 type private Message<'msg> = { msgs : seq<'msg>; processed : Option<System.Threading.ManualResetEventSlim> }
 
@@ -29,6 +30,7 @@ type App<'model, 'mmodel, 'msg> =
 
         let mutable running = true
         let messageQueue = List<Message<'msg>>(128)
+        let subject = new Subject<'msg>()
 
         let mutable currentThreads = ThreadPool.empty
 
@@ -73,6 +75,8 @@ type App<'model, 'mmodel, 'msg> =
                     msg.processed |> Option.iter (fun mri -> mri.Set())
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
+            for m in msgs do 
+                for m in m.msgs do subject.OnNext(m)
 
         and emit (msg : 'msg) =
             lock messageQueue (fun () ->
@@ -116,6 +120,8 @@ type App<'model, 'mmodel, 'msg> =
             running <- false
             lock messageQueue (fun () -> Monitor.PulseAll messageQueue)
             updateThread.Join()
+            subject.OnCompleted()
+            subject.Dispose()
 
         {
             lock = l
@@ -123,6 +129,7 @@ type App<'model, 'mmodel, 'msg> =
             ui = node
             update = update
             shutdown = shutdown
+            messages = subject
         }
         
         
@@ -132,7 +139,7 @@ type App<'model, 'mmodel, 'msg> =
     interface IApp<'model, 'msg> with
         member x.Start() = x.start()
         member x.ToOuter(_,_) = Seq.empty
-        member x.ToInner(_) = Seq.empty
+        member x.ToInner(_,_) = Seq.empty
 
 module App =
 

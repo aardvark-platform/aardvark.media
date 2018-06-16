@@ -8,6 +8,7 @@ open Aardvark.Base.Incremental
 open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Semantics
+open System.Reactive.Subjects
 
 
 
@@ -601,7 +602,7 @@ and IApp =
 and IApp<'model, 'msg> =
     inherit IApp
     abstract member ToOuter<'outer> : 'model * 'msg -> seq<'outer>
-    abstract member ToInner<'outer> : 'outer -> seq<'msg>
+    abstract member ToInner<'outer> : 'model * 'outer -> seq<'msg>
     abstract member Start : unit -> MutableApp<'model, 'msg>
     
 and MutableApp<'model, 'msg> =
@@ -610,6 +611,7 @@ and MutableApp<'model, 'msg> =
         model       : IMod<'model>
         ui          : DomNode<'msg>
         update      : Guid -> seq<'msg> -> unit
+        messages    : IObservable<'msg>
         shutdown    : unit -> unit
     }
 

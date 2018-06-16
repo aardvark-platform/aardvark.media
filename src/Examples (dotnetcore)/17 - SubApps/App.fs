@@ -28,13 +28,28 @@ let view (model : MModel) =
 
             div [ style "display: flex; height: 40%" ] [
                 div [style "position: absolute" ] [
-                    subApp' (fun _model _innermsg -> Seq.singleton Increment) (function ResetAll -> Seq.singleton Inc.Model.Message.Inc | _ -> Seq.empty) [] Inc.App.app
+                    subApp' 
+                        (fun _model _innermsg -> Seq.singleton Increment) 
+                        (fun _model msg ->
+                            match msg with
+                                | ResetAll -> Seq.singleton Inc.Model.Message.Inc 
+                                | _ -> Seq.empty
+                        ) 
+                        [] 
+                        Inc.App.app
                 ]
             ]
 
             div [ style "display: flex; height: 40%" ] [
                 div [style "position: absolute" ] [
-                    subApp' (fun _model _innermsg -> Seq.singleton Increment) (function ResetAll -> Seq.singleton RenderControl.Model.Message.CenterScene | _ -> Seq.empty) [] RenderControl.App.app
+                    subApp' 
+                        (fun _model _innermsg -> Seq.singleton Increment) 
+                        (fun _model msg ->
+                            match msg with
+                                | ResetAll -> Seq.singleton RenderControl.Model.Message.CenterScene 
+                                | _ -> Seq.empty
+                        ) 
+                        [] RenderControl.App.app
                 ]
             ]
         ]
