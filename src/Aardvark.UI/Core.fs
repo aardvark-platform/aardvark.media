@@ -601,6 +601,7 @@ and IApp =
 and IApp<'model, 'msg> =
     inherit IApp
     abstract member ToOuter<'outer> : 'model * 'msg -> seq<'outer>
+    abstract member ToInner<'outer> : 'outer -> seq<'msg>
     abstract member Start : unit -> MutableApp<'model, 'msg>
     
 and MutableApp<'model, 'msg> =

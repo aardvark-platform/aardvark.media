@@ -6,6 +6,7 @@ open Aardvark.UI.Primitives
 
 type Message = 
     | Increment
+    | ResetAll
 
 [<DomainType>]
 type Model = 

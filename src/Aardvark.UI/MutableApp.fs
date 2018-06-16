@@ -39,6 +39,7 @@ module private Tools =
 
 
 module MutableApp =
+    open System.Reactive.Subjects
     
     let private template = 
         let ass = typeof<DomNode<_>>.Assembly
@@ -99,12 +100,14 @@ module MutableApp =
 
                     let updater = app.ui.NewUpdater(request)
 
+                    let messages = new Subject<'msg>()
                     let state =
                         {
                             scenes      = Dictionary()
                             handlers    = Dictionary()
                             references  = Dictionary()
                             activeChannels = Dict()
+                            messages = messages
                         }
 
                     let o = AdaptiveObject()
@@ -218,8 +221,11 @@ module MutableApp =
                                             let evt : EventMessage = Pickler.json.UnPickle data
                                             match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
                                                 | (true, handler) ->
-                                                    let messages = handler sessionId evt.sender (Array.toList evt.args)
-                                                    app.update sessionId messages
+                                                    let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                                    app.update sessionId msgs
+
+                                                    for mi in msgs do messages.OnNext(mi)
+
                                                 | _ ->
                                                     ()
 

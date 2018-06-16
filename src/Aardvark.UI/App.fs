@@ -132,6 +132,7 @@ type App<'model, 'mmodel, 'msg> =
     interface IApp<'model, 'msg> with
         member x.Start() = x.start()
         member x.ToOuter(_,_) = Seq.empty
+        member x.ToInner(_) = Seq.empty
 
 module App =
 
