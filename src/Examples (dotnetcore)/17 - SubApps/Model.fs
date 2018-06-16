@@ -7,7 +7,7 @@ open Aardvark.UI.Primitives
 type Message = 
     | Increment
     | ResetAll
-
+    | Ping
 [<DomainType>]
 type Model = 
     {

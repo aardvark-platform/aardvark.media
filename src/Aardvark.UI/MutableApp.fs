@@ -99,15 +99,14 @@ module MutableApp =
                         }
 
                     let updater = app.ui.NewUpdater(request)
-
-                    let messages = new Subject<'msg>()
+                    
                     let state =
                         {
-                            scenes      = Dictionary()
-                            handlers    = Dictionary()
-                            references  = Dictionary()
-                            activeChannels = Dict()
-                            messages = messages
+                            scenes          = Dictionary()
+                            handlers        = Dictionary()
+                            references      = Dictionary()
+                            activeChannels  = Dict()
+                            messages        = app.messages
                         }
 
                     let o = AdaptiveObject()
@@ -223,9 +222,7 @@ module MutableApp =
                                                 | (true, handler) ->
                                                     let msgs = handler sessionId evt.sender (Array.toList evt.args)
                                                     app.update sessionId msgs
-
-                                                    for mi in msgs do messages.OnNext(mi)
-
+                                                    
                                                 | _ ->
                                                     ()
 
