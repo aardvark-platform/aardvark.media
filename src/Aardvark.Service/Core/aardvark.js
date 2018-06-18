@@ -504,6 +504,7 @@ class Renderer {
 
             var oldUrl = this.img.src;
             this.img.src = urlCreator.createObjectURL(msg.data);
+            delete msg.data;
 
             urlCreator.revokeObjectURL(oldUrl);
 
@@ -555,7 +556,13 @@ class Renderer {
 
     render() {
         var rect = this.div.getBoundingClientRect();
-        this.send(JSON.stringify({ Case: "RequestImage", size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
+
+        var color = { r: 0, g: 0, b: 0 };
+        var bg = window.getComputedStyle(this.div).backgroundColor;
+        if(typeof bg != undefined)
+            color = new RGBColor(bg);
+
+        this.send(JSON.stringify({ Case: "RequestImage", background: { A: 255, B: color.b, G: color.g, R: color.r }, size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
     }
 
 }

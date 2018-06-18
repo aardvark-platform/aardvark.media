@@ -1,16 +1,17 @@
 ﻿<html>
-    <head>
-        <title>Aardvark rocks \o/</title>
-        <script src="./jquery-3-3-1.js"></script>
-        <script src="./aardvark.js"></script>
-        <script>
-            function changeScene(e) {
-                var renderer = $('#renderView').renderer();
-                renderer.change(e.target.value, 1)
-            }
-        </script>
-        <link rel="stylesheet" type="text/css" href="./aardvark.css">
-    </head>
+<head>
+    <title>Aardvark rocks \o/</title>
+    <script src="./jquery-3-3-1.js"></script>
+    <script src="./rgbcolor.js"></script>
+    <script src="./aardvark.js"></script>
+    <script>
+        function changeScene(e) {
+            var renderer = $('#renderView').renderer();
+            renderer.change(e.target.value, 1)
+        }
+    </script>
+    <link rel="stylesheet" type="text/css" href="./aardvark.css">
+</head>
     <body style="width: 100%; height: 100%; border: 0; padding: 0; margin: 0">
         <div id="renderView" class="aardvark" data-samples="1" data-scene="bla" style="position: fixed; top: 0px; left: 0px; width: 100%; height: 100%; border: 0; padding: 0; margin: 0">
         </div>

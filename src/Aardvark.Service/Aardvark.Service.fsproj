@@ -20,6 +20,7 @@
     <EmbeddedResource Include="Core\stats.html" />
     <EmbeddedResource Include="Data\aardvark-light.svg" />
     <EmbeddedResource Include="Data\aardvark.svg" />
+    <EmbeddedResource Include="resources\rgbcolor.js" />
     <EmbeddedResource Include="resources\docking.css" />
     <EmbeddedResource Include="resources\semantic.css" />
     <EmbeddedResource Include="resources\docking.js" />

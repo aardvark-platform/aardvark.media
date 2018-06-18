@@ -27,7 +27,7 @@ open Aardvark.Application
 open System.Diagnostics
 
 type Message =
-    | RequestImage of size : V2i
+    | RequestImage of background : C4b * size : V2i
     | RequestWorldPosition of pixel : V2i
     | Rendered
     | Shutdown
@@ -217,6 +217,7 @@ type ClientInfo =
         size : V2i
         samples : int
         time : MicroTime
+        clearColor : C4f
     }
 
 type ClientState =
@@ -538,7 +539,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let compressTime = Stopwatch()
     let mutable frameCount = 0
 
-    let mutable currentScene : Option<string * ConcreteScene> = None
+    let mutable currentScene : Option<string * ConcreteScene * ModRef<C4f>> = None
 
     let mutable lastInfo : Option<ClientInfo> = None
 
@@ -554,12 +555,13 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 
     let rebuildTask (name : string) (signature : IFramebufferSignature) =
         match currentScene with
-            | Some (oldName, scene) -> Log.warn "rebuild(%s <> %s)"  oldName name
+            | Some (oldName, scene,clear) -> Log.warn "rebuild(%s <> %s)"  oldName name
             | _ -> ()
 
         transact (fun () -> task.Dispose())
         let newScene = getScene signature name
-        let clear = runtime.CompileClear(signature, Mod.constant C4f.Black, Mod.constant 1.0)
+        let clearColor = Mod.init C4f.Black
+        let clear = runtime.CompileClear(signature, clearColor, Mod.constant 1.0)
         let render = newScene.CreateNewRenderTask()
         task <- RenderTask.ofList [clear; render]
 
@@ -567,19 +569,19 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         let lastInfo = lastInfo.Value
         newScene.Scene.AddClientInfo(lastInfo.session, lastInfo.targetId, getInfo)
 
-        currentScene <- Some (name, newScene)
-        newScene, task
+        currentScene <- Some (name, newScene, clearColor)
+        newScene, task, clearColor
 
     let getSceneAndTask (name : string) (signature : IFramebufferSignature) =
         match currentScene with
-            | Some(sceneName, scene) ->
+            | Some(sceneName, scene, clear) ->
                 if sceneName <> name || scene.FramebufferSignature <> signature then
                     match lastInfo with
                         | Some info -> scene.Scene.RemoveClientInfo(info.session, info.targetId)
                         | _ -> ()
                     rebuildTask name signature
                 else
-                    scene, task
+                    scene, task, clear
             | None ->
                 rebuildTask name signature
 
@@ -609,7 +611,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 
                                     let ndc = V3d(2.0 * tc.X - 1.0, 1.0 - 2.0 * tc.Y, 2.0 * float depth - 1.0)
                                     match currentScene with
-                                        | Some (_,cs) ->
+                                        | Some (_,cs,_) ->
                                             let view = cs.State.viewTrafo |> Mod.force
                                             let proj = cs.State.projTrafo |> Mod.force
 
@@ -632,7 +634,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
         lastInfo <- Some info
 
-        let scene, task = getSceneAndTask info.sceneName info.signature
+        let scene, task, clearColor = getSceneAndTask info.sceneName info.signature
 
         let mutable t = Unchecked.defaultof<IDisposable>
         let mutable target = Unchecked.defaultof<IFramebuffer>
@@ -644,6 +646,9 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             target <- getFramebuffer info.size info.signature
             let innerToken = token.Isolated
             let token = ()
+
+            transact (fun () -> clearColor.Value <- info.clearColor)
+            
             try
                 scene.EvaluateAlways innerToken (fun innerToken ->
                     scene.OutOfDate <- true
@@ -654,10 +659,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                     renderTime.Stop()
                     innerToken.Release()
                 )
-
                 
-
-
             finally
                 //printfn "race here"
                 innerToken.Release()
@@ -689,7 +691,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     member x.Dispose() =
         try 
             match lastInfo, currentScene with
-                | Some i, Some(_,s) ->
+                | Some i, Some(_,s,_) ->
                     s.Scene.RemoveClientInfo(i.session, i.targetId)
                     lastInfo <- None
                 | _ -> 
@@ -728,7 +730,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
  
     let id = Interlocked.Increment(&currentId)
     let sender = AdaptiveObject()
-    let requestedSize : MVar<V2i> = MVar.empty()
+    let requestedSize : MVar<C4b * V2i> = MVar.empty()
     let mutable createInfo = createInfo
     let mutable task = new ClientRenderTask(createInfo.server, getContent)
     let mutable running = false
@@ -765,6 +767,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             samples = createInfo.samples
             size = V2i.II
             time = MicroTime.Now
+            clearColor = C4f.Black
         }
 
     let mutable subscription = subscribe()
@@ -772,11 +775,11 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let renderLoop() =
         while running do
-            let size = MVar.take requestedSize
+            let (background, size) = MVar.take requestedSize
             if size.AllGreater 0 then
                 lock updateLock (fun () ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                        let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now })
+                        let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
                         try
                             let state = getState info
                             let data = task.Run(token, info, state)
@@ -821,7 +824,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             task.Dispose()
             subscription.Dispose()
             running <- false
-            MVar.put requestedSize V2i.Zero
+            MVar.put requestedSize (C4b.Black, V2i.Zero)
             frameCount <- 0
             roundTripTime.Reset()
             invalidateTime.Reset()
@@ -851,10 +854,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                     let msg : Message = Pickler.json.UnPickle data
 
                                     match msg with
-                                        | RequestImage size ->
+                                        | RequestImage(background, size) ->
                                             invalidateTime.Stop()
                                             roundTripTime.Start()
-                                            MVar.put requestedSize size
+                                            MVar.put requestedSize (background, size)
 
                                         | RequestWorldPosition pixel ->
                                             let wp = 
@@ -1097,6 +1100,7 @@ module Server =
                             size = V2i(w,h)
                             samples = samples
                             time = MicroTime.Now
+                            clearColor = C4f.Black
                         }
 
                     let state = getState clientInfo
