@@ -67,8 +67,8 @@ module Html =
 
     let semui = 
         [ 
-            { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
-            { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
+            { kind = Stylesheet; name = "semui"; url = "./rendering/semantic.css" }
+            { kind = Script; name = "semui"; url = "./rendering/semantic.js" }
         ]      
 
     let multiselectList (entries : list<'a>) (getId : 'a -> string) (getDomNode : 'a -> DomNode<'msg>) (getValue : string -> 'a) (onSelected : list<'a> -> 'msg) =

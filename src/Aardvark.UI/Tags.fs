@@ -222,6 +222,23 @@ module Incremental =
 [<AutoOpen>]
 module Static =
 
+    let subApp (att : list<string * AttributeValue<'msg>>) (app : App<'model,'mmodel,'innermsg>) : DomNode<'msg> =
+        DomNode<'msg>("div", None, AttributeMap.ofList att, DomContent.SubApp app)
+
+    let subApp' (mapOut : 'model -> 'innermsg -> seq<'msg>) (mapIn : 'model -> 'msg -> seq<'innermsg>) (att : list<string * AttributeValue<'msg>>) (app : App<'model,'mmodel,'innermsg>) : DomNode<'msg> =
+
+        let app =
+            { new IApp<'model, 'innermsg> with
+                member x.Visit v = v.Visit x
+                member x.Start() = App.start app
+                member x.ToOuter<'m>(model, msg) = mapOut model msg |> unbox<seq<'m>>
+                member x.ToInner<'m>(model, o : 'm) = mapIn model (unbox<'msg> o)
+            }
+
+
+        DomNode<'msg>("div", None, AttributeMap.ofList att, DomContent.SubApp app)
+
+
     let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (isOrtho:bool)(sg : ISg<'msg>) =
         DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg,isOrtho, None)
 

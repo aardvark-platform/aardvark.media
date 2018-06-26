@@ -5,19 +5,11 @@ open System.Threading
 open System.Collections.Generic
 open Aardvark.Base
 open Aardvark.Base.Incremental
+open System.Reactive.Subjects
 
-type Unpersist<'model, 'mmodel> =
-    {
-        create : 'model -> 'mmodel
-        update : 'mmodel -> 'model -> unit
-    }
+type private Message<'msg> = { msgs : seq<'msg>; processed : Option<System.Threading.ManualResetEventSlim> }
 
-module Unpersist =
-    let inline instance<'model, 'mmodel when 'mmodel : (static member Create : 'model -> 'mmodel) and 'mmodel : (member Update : 'model -> unit)> =
-        {
-            create = fun m -> (^mmodel : (static member Create : 'model -> 'mmodel) (m))
-            update = fun mm m -> (^mmodel : (member Update : 'model -> unit) (mm, m))
-        }
+
 
 type App<'model, 'mmodel, 'msg> =
     {
@@ -28,11 +20,7 @@ type App<'model, 'mmodel, 'msg> =
         view        : 'mmodel -> DomNode<'msg>
     }
 
-module App =
-
-    type private Message<'msg> = { msgs : seq<'msg>; processed : Option<System.Threading.ManualResetEventSlim> }
-
-    let start (app : App<'model, 'mmodel, 'msg>) =
+    member app.start() =
         let l = obj()
         let initial = app.initial
         let state = Mod.init initial
@@ -42,6 +30,7 @@ module App =
 
         let mutable running = true
         let messageQueue = List<Message<'msg>>(128)
+        let subject = new Subject<'msg>()
 
         let mutable currentThreads = ThreadPool.empty
 
@@ -86,6 +75,8 @@ module App =
                     msg.processed |> Option.iter (fun mri -> mri.Set())
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
+            for m in msgs do 
+                for m in m.msgs do subject.OnNext(m)
 
         and emit (msg : 'msg) =
             lock messageQueue (fun () ->
@@ -104,24 +95,55 @@ module App =
                     while running && messageQueue.Count = 0 do
                         Monitor.Wait(messageQueue) |> ignore
                     
-                    let messages = messageQueue |> CSharpList.toList
+                    let messages = 
+                        if running then 
+                            let messages = messageQueue |> CSharpList.toList
+                            messages
+                        else      
+                            []      
+                            
                     messageQueue.Clear()                 
+                            
                     Monitor.Exit(messageQueue)
 
-                    doit messages
+                    match messages with
+                        | [] -> ()
+                        | _ -> doit messages
+
             Thread(ThreadStart update)
 
         updateThread.Name <- "[Aardvark.Media.App] updateThread"
         updateThread.IsBackground <- true
         updateThread.Start()
 
+        let shutdown () =
+            running <- false
+            lock messageQueue (fun () -> Monitor.PulseAll messageQueue)
+            updateThread.Join()
+            subject.OnCompleted()
+            subject.Dispose()
 
         {
             lock = l
             model = state
             ui = node
             update = update
+            shutdown = shutdown
+            messages = subject
         }
+        
+        
+    interface IApp with
+        member x.Visit v  = v.Visit x
+
+    interface IApp<'model, 'msg> with
+        member x.Start() = x.start()
+        member x.ToOuter(_,_) = Seq.empty
+        member x.ToInner(_,_) = Seq.empty
+
+module App =
+
+    let start (app : App<'model, 'mmodel, 'msg>) = app.start()
 
     let toWebPart (runtime : IRuntime) (app : App<'model, 'mmodel, 'msg>) =
         app |> start |> MutableApp.toWebPart runtime

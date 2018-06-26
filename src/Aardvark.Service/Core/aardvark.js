@@ -207,6 +207,13 @@ class Renderer {
             socket.binaryType = "blob";
             self.socket = socket;
 
+            var doPing = function () {
+                if (socket.readyState <= 1) {
+                    socket.send("#ping");
+                    setTimeout(doPing, 50);
+                }
+            };
+
             socket.onopen = function () {
                 for (var i = 0; i < self.buffer.length; i++) {
                     socket.send(self.buffer[i]);
@@ -216,6 +223,8 @@ class Renderer {
                 self.buffer = [];
 
                 self.render();
+
+                doPing();
 
             };
 
@@ -495,6 +504,7 @@ class Renderer {
 
             var oldUrl = this.img.src;
             this.img.src = urlCreator.createObjectURL(msg.data);
+            delete msg.data;
 
             urlCreator.revokeObjectURL(oldUrl);
 
@@ -546,7 +556,13 @@ class Renderer {
 
     render() {
         var rect = this.div.getBoundingClientRect();
-        this.send(JSON.stringify({ Case: "RequestImage", size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
+
+        var color = { r: 0, g: 0, b: 0 };
+        var bg = window.getComputedStyle(this.div).backgroundColor;
+        if(typeof bg != undefined)
+            color = new RGBColor(bg);
+
+        this.send(JSON.stringify({ Case: "RequestImage", background: { A: 255, B: color.b, G: color.g, R: color.r }, size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
     }
 
 }
@@ -805,6 +821,14 @@ if (!aardvark.connect) {
         var url = aardvark.getRelativeUrl('ws', path + wsQuery);
         var eventSocket = new WebSocket(url);
 
+        var doPing = function () {
+            if (eventSocket.readyState <= 1) {
+                eventSocket.send("#ping");
+                setTimeout(doPing, 50);
+            }
+        };
+        
+
         eventSocket.onopen = function () {
             aardvark.processEvent = function () {
                 var sender = arguments[0];
@@ -815,7 +839,8 @@ if (!aardvark.connect) {
                 }
                 var message = JSON.stringify({ sender: sender, name: name, args: args });
                 eventSocket.send(message);
-            }
+            };
+            doPing();
         };
 
         eventSocket.onmessage = function (m) {
@@ -844,6 +869,8 @@ if (!aardvark.connect) {
         eventSocket.onerror = function (e) {
             aardvark.processEvent = function () { };
         };
+
+        
     }
 }
 

@@ -37,19 +37,13 @@ module private Tools =
                     return (t, Array.append d rest)
             }
 
-type MutableApp<'model, 'msg> =
-    {
-        lock        : obj
-        model       : IMod<'model>
-        ui          : DomNode<'msg>
-        update      : Guid -> seq<'msg> -> unit
-    }
 
 module MutableApp =
+    open System.Reactive.Subjects
     
     let private template = 
         let ass = typeof<DomNode<_>>.Assembly
-        use stream = ass.GetManifestResourceStream("template.html")
+        use stream = ass.GetManifestResourceStream("Aardvark.UI.template.html")
         let reader = new IO.StreamReader(stream)
         reader.ReadToEnd()
 
@@ -105,13 +99,14 @@ module MutableApp =
                         }
 
                     let updater = app.ui.NewUpdater(request)
-
+                    
                     let state =
                         {
-                            scenes      = Dictionary()
-                            handlers    = Dictionary()
-                            references  = Dictionary()
-                            activeChannels = Dict()
+                            scenes          = Dictionary()
+                            handlers        = Dictionary()
+                            references      = Dictionary()
+                            activeChannels  = Dict()
+                            messages        = app.messages
                         }
 
                     let o = AdaptiveObject()
@@ -214,19 +209,31 @@ module MutableApp =
                             match code with
                                 | Opcode.Text ->
                                     try
-                                        let evt : EventMessage = Pickler.json.UnPickle data
-                                        match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
-                                            | (true, handler) ->
-                                                let messages = handler sessionId evt.sender (Array.toList evt.args)
-                                                app.update sessionId messages
-                                            | _ ->
-                                                ()
+                                        if data.Length > 0 && data.[0] = uint8 '#' then
+                                            let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
+                                            match str with
+                                                | "ping" -> 
+                                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
+                                                | _ ->
+                                                    Log.warn "bad opcode: %A" str
+                                        else
+                                            let evt : EventMessage = Pickler.json.UnPickle data
+                                            match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
+                                                | (true, handler) ->
+                                                    let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                                    app.update sessionId msgs
+                                                    
+                                                | _ ->
+                                                    ()
 
                                     with e ->
                                         Log.warn "unpickle faulted: %A" e
 
                                 | Opcode.Close ->
                                     running <- false
+
+                                | Opcode.Ping -> 
+                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
 
                                 | _ ->
                                     Log.warn "[MutableApp] unknown message: %A" (code,data)
