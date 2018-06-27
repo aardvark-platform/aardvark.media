@@ -25,6 +25,7 @@ module Mutable =
         let _moveVec = ResetMod.Create(__initial.moveVec)
         let _orbitCenter = MOption.Create(__initial.orbitCenter)
         let _lastTime = MOption.Create(__initial.lastTime)
+        let _isWheel = ResetMod.Create(__initial.isWheel)
         let _sensitivity = ResetMod.Create(__initial.sensitivity)
         let _zoomFactor = ResetMod.Create(__initial.zoomFactor)
         let _panFactor = ResetMod.Create(__initial.panFactor)
@@ -43,6 +44,7 @@ module Mutable =
         member x.moveVec = _moveVec :> IMod<_>
         member x.orbitCenter = _orbitCenter :> IMod<_>
         member x.lastTime = _lastTime :> IMod<_>
+        member x.isWheel = _isWheel :> IMod<_>
         member x.sensitivity = _sensitivity :> IMod<_>
         member x.zoomFactor = _zoomFactor :> IMod<_>
         member x.panFactor = _panFactor :> IMod<_>
@@ -66,6 +68,7 @@ module Mutable =
                 ResetMod.Update(_moveVec,v.moveVec)
                 MOption.Update(_orbitCenter, v.orbitCenter)
                 MOption.Update(_lastTime, v.lastTime)
+                ResetMod.Update(_isWheel,v.isWheel)
                 ResetMod.Update(_sensitivity,v.sensitivity)
                 ResetMod.Update(_zoomFactor,v.zoomFactor)
                 ResetMod.Update(_panFactor,v.panFactor)
@@ -158,6 +161,12 @@ module Mutable =
                     override x.Get(r) = r.lastTime
                     override x.Set(r,v) = { r with lastTime = v }
                     override x.Update(r,f) = { r with lastTime = f r.lastTime }
+                }
+            let isWheel =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
+                    override x.Get(r) = r.isWheel
+                    override x.Set(r,v) = { r with isWheel = v }
+                    override x.Update(r,f) = { r with isWheel = f r.isWheel }
                 }
             let sensitivity =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with

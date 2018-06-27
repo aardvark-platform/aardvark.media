@@ -33,6 +33,7 @@ module CameraController =
             dragStart = V2i.Zero
             look = false; zoom = false; pan = false                    
             forward = false; backward = false; left = false; right = false
+            isWheel = false;
         }
 
     let initial' (dist:float) =
@@ -57,31 +58,30 @@ module CameraController =
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
                 }
-
             | StepTime ->
-                let now = sw.Elapsed.TotalSeconds
-                let cam = model.view
+              let now = sw.Elapsed.TotalSeconds
+              let cam = model.view                
 
-                let cam = 
-                    match model.lastTime with
-                        | Some last ->
-                            let dt = now - last
+              let cam = 
+                match model.lastTime with
+                  | Some last ->
+                    let dt = now - last
 
-                            let dir = 
-                                cam.Forward * float model.moveVec.Z +
-                                cam.Right * float model.moveVec.X +
-                                cam.Sky * float model.moveVec.Y
+                    let dir = 
+                        cam.Forward * float model.moveVec.Z +
+                        cam.Right * float model.moveVec.X +
+                        cam.Sky * float model.moveVec.Y
 
-                            if model.moveVec = V3i.Zero then
-                                printfn "useless time %A" now
+                    if model.moveVec = V3i.Zero then
+                        printfn "useless time %A" now
 
-                            cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+                    cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+                  | None -> 
+                      cam
 
-                        | None -> 
-                            cam
+              let model = if model.isWheel then { model with moveVec = V3i.Zero; isWheel = false} else model                  
 
-
-                { model with lastTime = Some now; view = cam }
+              { model with lastTime = Some now; view = cam }
 
             | KeyDown Keys.W ->
                 if not model.forward then
@@ -106,9 +106,8 @@ module CameraController =
                     withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
-
-
-
+            | Wheel delta ->
+                withTime { model with isWheel = true; moveVec = model.moveVec + V3i.OOI * int delta.Y * 10 }
             | KeyDown Keys.A ->
                 if not model.left then
                     withTime { model with left = true; moveVec = model.moveVec - V3i.IOO  }
@@ -120,7 +119,6 @@ module CameraController =
                     withTime { model with left = false; moveVec = model.moveVec + V3i.IOO  }
                 else
                     model
-
 
             | KeyDown Keys.D ->
                 if not model.right then
@@ -137,7 +135,6 @@ module CameraController =
             | KeyDown _ | KeyUp _ ->
                 model
 
-
             | Down(button,pos) ->
                 let model = { model with dragStart = pos }
                 match button with
@@ -151,8 +148,7 @@ module CameraController =
                     | MouseButtons.Left -> { model with look = false }
                     | MouseButtons.Middle -> { model with pan = false }
                     | MouseButtons.Right -> { model with zoom = false }
-                    | _ -> model
-
+                    | _ -> model            
             | Move pos  ->
                 let cam = model.view
                 let delta = pos - model.dragStart
@@ -193,6 +189,7 @@ module CameraController =
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))
+            always (onWheel(fun x -> f (Wheel x)))
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
         ] |> AttributeMap.toAMap
 
@@ -205,7 +202,8 @@ module CameraController =
                 always (onMouseDown (fun b p -> f (Down(b,p))))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
                 always (onKeyDown (KeyDown >> f))
-                always (onKeyUp (KeyUp >> f))
+                always (onKeyUp (KeyUp >> f))           
+                always (onWheel(fun x -> f (Wheel x)))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
             ]
 
@@ -243,6 +241,7 @@ module CameraController =
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
                 always (onKeyDown (KeyDown >> f))
                 always (onKeyUp (KeyUp >> f))
+                always (onWheel(fun x -> f (Wheel x)))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
             ]
 
@@ -300,14 +299,15 @@ module ArcBallController =
     open Aardvark.Base.Incremental.Operators
 
     type Message = 
-        | Down of button : MouseButtons * pos : V2i
-        | Up of button : MouseButtons
-        | Move of V2i
+        | Down      of button : MouseButtons * pos : V2i
+        | Up        of button : MouseButtons
+        | Move      of V2i
         | StepTime
-        | KeyDown of key : Keys
-        | KeyUp of key : Keys
+        | KeyDown   of key : Keys
+        | KeyUp     of key : Keys
+        | Wheel     of V2d
         | Blur
-        | Pick of V3d
+        | Pick      of V3d
 
     let initial =
         {
@@ -316,7 +316,8 @@ module ArcBallController =
             look        = false
             zoom        = false
             pan         = false
-            forward = false; backward = false; left = false; right = false
+            forward     = false; backward = false; left = false; right = false; isWheel = false
+
             moveVec         = V3i.Zero
             lastTime        = None
             orbitCenter     = Some V3d.Zero
@@ -324,7 +325,7 @@ module ArcBallController =
             sensitivity     = 1.0
             zoomFactor      = 0.01
             panFactor       = 0.01
-            rotationFactor  = 0.01            
+            rotationFactor  = 0.01
         }
 
     let sw = Diagnostics.Stopwatch()
@@ -348,31 +349,33 @@ module ArcBallController =
                                 
                 { model with orbitCenter = Some p; view = CameraView.lookAt cam.Location p cam.Up }
             | StepTime ->
-                let now = sw.Elapsed.TotalSeconds
-                let cam = model.view
+              let now = sw.Elapsed.TotalSeconds
+              let cam = model.view
 
-                let cam, center = 
-                    match model.lastTime with
-                        | Some last ->
-                            let dt = now - last
+              let cam, center = 
+                match model.lastTime with
+                  | Some last ->
+                      let dt = now - last
 
-                            let dir = 
-                                cam.Forward * float model.moveVec.Z +
-                                cam.Right * float model.moveVec.X +
-                                cam.Sky * float model.moveVec.Y
+                      let dir = 
+                          cam.Forward * float model.moveVec.Z +
+                          cam.Right * float model.moveVec.X +
+                          cam.Sky * float model.moveVec.Y
 
-                            if model.moveVec = V3i.Zero then
-                                printfn "useless time %A" now
+                      if model.moveVec = V3i.Zero then
+                          printfn "useless time %A" now
 
-                            let step = dir * (exp model.sensitivity) * dt
-                            let center = model.orbitCenter.Value + step
-                            
-                            cam.WithLocation(cam.Location + step), Some center
+                      let step = dir * (exp model.sensitivity) * dt
+                      let center = if model.isWheel then model.orbitCenter.Value else model.orbitCenter.Value + step
+                      
+                      cam.WithLocation(cam.Location + step), Some center
 
-                        | None -> 
-                            cam, model.orbitCenter
+                  | None -> 
+                      cam, model.orbitCenter
 
-                { model with lastTime = Some now; view = cam; orbitCenter = center }
+              let model = if model.isWheel then { model with moveVec = V3i.Zero; isWheel = false} else model                
+
+              { model with lastTime = Some now; view = cam; orbitCenter = center }
 
             | KeyDown Keys.W ->                
                 if not model.forward then
@@ -422,6 +425,9 @@ module ArcBallController =
                 else
                     model
 
+            | Wheel delta ->
+                withTime { model with isWheel = true; moveVec = model.moveVec + V3i.OOI * int delta.Y * 10 }
+
             | KeyDown _ | KeyUp _ ->
                 model
 
@@ -446,6 +452,7 @@ module ArcBallController =
                 let cam = model.view
                 let delta = pos - model.dragStart
 
+                //orientation
                 let cam =
                     if model.look && model.orbitCenter.IsSome then
                         let trafo = 
@@ -462,7 +469,6 @@ module ArcBallController =
                         //let tempcam = cam.WithLocation newLocation
                         
                         // make cam with up vector
-
 
                         //tempcam.WithForward newForward
                         let newForward = model.orbitCenter.Value - newLocation |> Vec.normalize
@@ -496,6 +502,7 @@ module ArcBallController =
             always (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))
+            always (onWheel(fun x -> f (Wheel x)))
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
         ] |> AttributeMap.toAMap
 
@@ -507,6 +514,7 @@ module ArcBallController =
                 always (onMouseUp (fun b p -> f (Up b)))
                 always (onKeyDown (KeyDown >> f))
                 always (onKeyUp (KeyUp >> f))
+                always (onWheel(fun x -> f (Wheel x)))
                 onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
 //                onlyWhen (state.moveVec |> Mod.map (fun v -> v <> V3i.Zero)) (onRendered (fun s c t -> f StepTime))
             ]

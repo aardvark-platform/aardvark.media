@@ -7,6 +7,7 @@ open Aardvark.Application
 type CameraControllerMessage = 
         | Down of button : MouseButtons * pos : V2i
         | Up of button : MouseButtons
+        | Wheel of V2d
         | Move of V2i
         | StepTime
         | KeyDown of key : Keys
@@ -30,6 +31,7 @@ type CameraControllerState =
         moveVec     : V3i
         orbitCenter : Option<V3d>
         lastTime    : Option<float>
+        isWheel     : bool
 
         sensitivity     : float
         zoomFactor      : float

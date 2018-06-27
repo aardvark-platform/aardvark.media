@@ -135,7 +135,9 @@ let view (model : MNavigationModeDemoModel) =
                             renderControlAttributes 
                                 
                             [
-                                attribute "style" "width:65%; height: 100%; float: left;"
+                                attribute "style" "width:65%; height: 100%; float: left"
+                                attribute "data-renderalways" "true"
+                                attribute "showFPS" "true"
                                 onKeyDown (KeyDown)
                                 onKeyUp (KeyUp) ] |> AttributeMap.ofList
                         ])
@@ -204,12 +206,18 @@ let initial : NavigationModeDemoModel =
         navsensitivity  = initNavSens
     }
 
+let threads model =  
+  match model.navigation.navigationMode with
+    | NavigationMode.FreeFly -> CameraController.threads model.camera |> ThreadPool.map FreeFlyAction
+    | NavigationMode.ArcBall -> ArcBallController.threads model.camera |> ThreadPool.map ArcBallAction
+    | _ -> failwith "invalid navmode"
+
 let app =
     {
         unpersist = Unpersist.instance
-        threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map ArcBallAction
-        initial = initial
-        update = update
-        view = view
+        threads   = threads            
+        initial   = initial
+        update    = update
+        view      = view
     }
 
