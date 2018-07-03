@@ -24,6 +24,7 @@
     <Compile Include="Attributes.fs" />
     <None Include="paket.references" />
     <Compile Include="SgFSharpExtensions.fs" />
+    <Compile Include="Combinators.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />

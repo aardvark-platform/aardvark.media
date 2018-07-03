@@ -1,38 +1,17 @@
 ﻿namespace Aardvark.UI
 
 open System
-open Suave
-open System.Text
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
 open Aardvark.UI
-
-
+open Aardvark.UI.Operators
 
 module UI = 
-    let onWheel (f : Aardvark.Base.V2d -> 'msg) =
-        let serverClick (args : list<string>) : Aardvark.Base.V2d = 
-            let delta = List.head args |> Pickler.unpickleOfJson
-            delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
-
-        onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
-
-    let onWheel' (f : Aardvark.Base.V2d -> seq<'msg>) =
-        let serverClick (args : list<string>) : Aardvark.Base.V2d = 
-            let delta = List.head args |> Pickler.unpickleOfJson
-            delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
-
-        onEvent' "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed()  }"] (serverClick >> f)
-
     let map (f : 'a -> 'b) (source : DomNode<'a>) : DomNode<'b> =
         source.Map f
 
-module Combinators =
-    let (=>) n v = attribute n v
-
-open Combinators
 
 type NumericInputType = Slider | InputBox
 
@@ -228,7 +207,8 @@ module Html =
                 (values
                     |> AList.mapi(fun i x -> Incremental.option (attributes (f x)) (AList.ofList [text (f x)]))
                 )
-                                                
+                  
+        
         let textBox (text : IMod<string>) (set : string -> 'msg) =          
             
             let attributes = 
@@ -327,6 +307,13 @@ module Numeric =
                 | _ ->  printfn "validation failed: %s" s
                         fallback
 
+        let onWheel' (f : Aardvark.Base.V2d -> seq<'msg>) =
+            let serverClick (args : list<string>) : Aardvark.Base.V2d = 
+                let delta = List.head args |> Pickler.unpickleOfJson
+                delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
+
+            onEvent' "onwheel" ["{ X: event.deltaX.toFixed(10), Y: event.deltaY.toFixed(10)  }"] (serverClick >> f)
+
         let attributes = 
             amap {                
                 yield style "text-align:right; color : black"                
@@ -343,7 +330,7 @@ module Numeric =
                         yield onChange' (tryParseAndClamp min max value >> SetValue >> f)  // batch updates for input box (to let user type)
 
                 let! step = model.step
-                yield UI.onWheel' (fun d -> value + d.Y * step |> clamp min max |> SetValue |> f)
+                yield onWheel' (fun d -> value + d.Y * step |> clamp min max |> SetValue |> f)
 
                 yield "step" => sprintf "%f" step
                 yield "min"  => sprintf "%f" min

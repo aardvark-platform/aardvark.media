@@ -25,14 +25,14 @@ module UtilitiesForThisDemoNowMergedToCore =
 
     // add an event handler for onclick. If fired, produce a message, given the svg local coordinates.
     let onMouseDownRel (cb : V2d -> 'msg) =
-        onEvent "onclick" [sprintf " { X: (getCursor(event)).x.toFixed(), Y: (getCursor(event)).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
+        onEvent "onclick" [sprintf " { X: (getCursor(event,'svgRoot')).x.toFixed(), Y: (getCursor(event,'svgRoot')).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
 
     // this goes on for other event types such as right mouse down etc... (remember, that there is no right mouse down in svg as we can quickly queck by using google).
     let onMouseRightDownRel (cb : V2d -> 'msg) =
-        onEvent "oncontextmenu" [sprintf "{ X: (getCursor(event)).x.toFixed(), Y: (getCursor(event)).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
+        onEvent "oncontextmenu" [sprintf "{ X: (getCursor(event,'svgRoot')).x.toFixed(), Y: (getCursor(event,'svgRoot')).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
 
     let onMouseMoveRel (cb : V2d -> 'msg) =
-        onEvent "onmousemove" [sprintf "{ X: (getCursor(event)).x.toFixed(), Y: (getCursor(event)).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
+        onEvent "onmousemove" [sprintf "{ X: (getCursor(event,'svgRoot')).x.toFixed(), Y: (getCursor(event,'svgRoot')).y.toFixed()  }"] (List.head >> (fun a -> Pickler.json.UnPickleOfString a) >> cb)
     
     // i often use this operator in order to write attribute maps more succiently. at the time of reading this will be also defined in Aardvark.UI.Operators
     let inline (==>) a b = Aardvark.UI.Attributes.attribute a b
