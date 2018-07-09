@@ -309,7 +309,47 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
                 code
             | None ->
                 JSExpr.Nop
-    
+   
+and MapUpdater<'inner, 'outer>(mapping : 'inner -> 'outer, request : Request, id : string, child : DomUpdater<'inner>) =
+    inherit AbstractUpdater<'outer>()
+
+    let subject = new Subject<'inner>()
+    let handlers = Dictionary()
+
+    override x.Destroy(state : UpdateState<'outer>, self : JSExpr) : JSExpr =
+        let inner = 
+            {
+                scenes              = state.scenes
+                handlers            = handlers
+                references          = state.references
+                activeChannels      = state.activeChannels
+                messages            = subject
+            }
+        let res = child.Destroy(inner, self)
+        subject.OnCompleted()
+        subject.Dispose()
+        handlers.Clear()
+        res
+
+    override x.PerformUpdate(token, self : JSExpr, state : UpdateState<'outer>) : JSExpr =
+        let inner = 
+            {
+                scenes              = state.scenes
+                handlers            = handlers
+                references          = state.references
+                activeChannels      = state.activeChannels
+                messages            = subject
+            }
+        let result = child.PerformUpdate(token, self, inner)
+            
+        for (k,v) in Dictionary.toSeq inner.handlers do
+            state.handlers.[k] <- fun a b c -> 
+                let msgs = v a b c 
+                for m in msgs do subject.OnNext m
+                Seq.map mapping msgs
+
+        result
+
 
 and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
     inherit AbstractUpdater<'msg>()
