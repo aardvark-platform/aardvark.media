@@ -379,7 +379,30 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
     let rAtt = ui.Attributes.GetReader()
     let rContent = 
         match ui.Content with
-            | Scene(scene, cam) -> SceneUpdater(ui, id, scene, cam) :> IUpdater<_>
+            | Scene(scene, cam) ->                 JSExpr.Sequential [
+                    let id = x.Id.Value
+
+                    let atts = reader.GetOperations token
+                    for (name, op) in atts do
+                        match op with
+                            | Set value ->
+                                let value =
+                                    match value with
+                                        | AttributeValue.String str -> 
+                                            str
+                                        | AttributeValue.Event evt ->
+                                            let key = (id, name)
+                                            state.handlers.[key] <- evt.serverSide
+                                            Event.toString id name evt
+
+                                yield JSExpr.SetAttribute(self, name, value)
+
+                            | Remove -> 
+                                let key = (id,name)
+                                state.handlers.Remove key |> ignore
+                                yield JSExpr.RemoveAttribute(self, name)
+                      
+                ](ui, id, scene, cam) :> IUpdater<_>
             | Children children -> ChildrenUpdater(id, AList.map (fun c -> DomUpdater(c,request)) children) :> IUpdater<_>
             | Text text -> TextUpdater text :> IUpdater<_>
             | Empty -> EmptyUpdater.Instance
