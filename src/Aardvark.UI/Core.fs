@@ -642,6 +642,7 @@ module NewImpl =
     module Updaters =
         open System.Threading
         open System.Collections.Generic
+        open MBrace.FsPickler.Combinators
 
         [<AutoOpen>]
         module IdGen =
@@ -686,17 +687,73 @@ module NewImpl =
         [<AbstractClass>]
         type AbstractUpdater<'msg>(node : DomNode<'msg>) =
             inherit AdaptiveObject()
+            let mutable initial = true
+            let id = lazy (IdGen.newId())
 
-            abstract member PerformUpdate : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
-            abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
+            let setup () =
+                
+                match node.Boot with
+                    | Some boot ->
+                        if not id.IsValueCreated then failwith "[UI] cannot boot element which is not created"
+                        let id = id.Value
+
+                        let code = boot id
+                        JSExpr.Raw code
+                        
+                    | None ->
+                        JSExpr.Nop
+
+            let shutdown() =
+                JSExpr.Nop
+
+
+            abstract member CreateElement : Option<string * Option<string>>
+            default x.CreateElement = None
+
+            abstract member PerformUpdate : AdaptiveToken * UpdateState<'msg> * JSExpr -> JSExpr
+            abstract member PerformDestroy : UpdateState<'msg> * JSExpr -> JSExpr
 
             member x.Update(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
                 x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
-                    let res = x.PerformUpdate(token, self, state)
+                    match x.CreateElement with
+                        | Some (tag, ns) ->
+                            if initial then
+                                initial <- false
+                                let var = { name = id.Value }
 
-                    // TODO: update attributes, etc.
+                                JSExpr.Let(var, JSExpr.CreateElement(tag, ns),
+                                    JSExpr.Sequential [
+                                        setup ()
+                                        x.PerformUpdate(token, state, JSExpr.Var var)
+                                    ]
+                                )
+                            else
+                                let var = { name = id.Value }
+                                JSExpr.Let(var, JSExpr.GetElementById(id.Value),
+                                    x.PerformUpdate(token, state, JSExpr.Var var)
+                                )
+                                    
+                        | None ->
+                            if initial then
+                                initial <- false
+                                setup ()
+                                x.PerformUpdate(token, state, JSExpr.Nop)
+                            else
+                                x.PerformUpdate(token, state, JSExpr.Nop)
+                    
+                )
 
-                    res
+            member x.Destroy(state, self) =
+                lock x (fun () -> 
+                    match x.CreateElement with  
+                    JSExpr.Sequential [
+                        if not initial then
+                            initial <- true
+                            // TODO: process shutdown, etc.
+                            yield JSExpr.Nop
+                    
+                        yield x.PerformDestroy(state)
+                    ]
                 )
 
             interface IUpdater<'msg> with
@@ -706,22 +763,40 @@ module NewImpl =
         type EmptyUpdater<'msg>(e : EmptyNode<'msg>) =
             inherit AbstractUpdater<'msg>(e)
 
-            override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
+            override x.CreateElement = false
+
+            override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>) =
                 JSExpr.Nop
 
-            override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
+            override x.PerformDestroy(state : UpdateState<'msg>) =
                 JSExpr.Nop
 
         type VoidUpdater<'msg>(e : VoidNode<'msg>) =
             inherit AbstractUpdater<'msg>(e)
 
+            let id = IdGen.newId()
+            let mutable initial = true
             let reader = e.Attributes.GetReader()
 
-            override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
-                let atts = reader.GetOperations token
+
+            override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>) =
+                
+                JSExpr.Sequential [
+                    JSExpr.Let(JSVar("asd"), )
+                    if initial then 
+                        initial <- false
+                        yield JSExpr.CreateElement(e.Tag, e.Namespace)
+                    
+                    let atts = reader.GetOperations token
+                ]
+                
+
+
+
+
                 JSExpr.Nop
 
-            override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
+            override x.Destroy(state : UpdateState<'msg>) =
                 JSExpr.Nop
 
             
