@@ -173,7 +173,6 @@ module Updaters =
                         JSExpr.Sequential [
                             shutdown state
                             x.PerformDestroy(state, self)
-                            //JSExpr.Remove(self)
                         ]
                     | None ->
                         JSExpr.Sequential [
