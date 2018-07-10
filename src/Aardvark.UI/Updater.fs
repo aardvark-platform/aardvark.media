@@ -131,8 +131,8 @@ module Updaters =
                             if tag = "body" then
                                 JSExpr.Sequential [
                                     SetAttribute(JSExpr.Body, "id", id.Value)
-                                    setup state
                                     x.PerformUpdate(token, state, JSExpr.Body)
+                                    setup state
                                 ]
                             else
                                 let var = { name = id.Value }
@@ -144,8 +144,8 @@ module Updaters =
                                             | None -> failwith "[UI] should not be inserted"
                                         )
                                         SetAttribute(JSExpr.Var var, "id", id.Value)
-                                        setup state
                                         x.PerformUpdate(token, state, JSExpr.Var var)
+                                        setup state
                                     ]
                                 )
                         else
