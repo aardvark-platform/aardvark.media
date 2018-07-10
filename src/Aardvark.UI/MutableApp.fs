@@ -40,6 +40,7 @@ module private Tools =
 
 module MutableApp =
     open System.Reactive.Subjects
+    open Aardvark.UI.Internal.Updaters
     
     let private template = 
         let ass = typeof<DomNode<_>>.Assembly
@@ -102,7 +103,7 @@ module MutableApp =
                     
                     let handlers = Dictionary()
 
-                    let state =
+                    let state : UpdateState<'msg> =
                         {
                             scenes          = Dictionary()
                             handlers        = ContraDict.ofDictionary handlers
@@ -142,7 +143,7 @@ module MutableApp =
                                                     lock state (fun () -> 
                                                         state.references.Clear()
                                                         if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                        let r = updater.Update(t, JSExpr.Body, state)
+                                                        let r = updater.Update(t,state,fun n -> JSExpr.Replace(JSExpr.Body, n))
                                                         if Config.shouldTimeUIUpdate then Log.stop ()
                                                         r
                                                     )

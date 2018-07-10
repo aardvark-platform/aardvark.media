@@ -10,7 +10,7 @@ open Aardvark.UI.Operators
 
 module UI = 
     let map (f : 'a -> 'b) (source : DomNode<'a>) : DomNode<'b> =
-        MapDomNode<'a, 'b>(f, source) :> DomNode<_>
+        MapNode<'a, 'b>(f, source) :> DomNode<_>
         //source.Map f
 
 

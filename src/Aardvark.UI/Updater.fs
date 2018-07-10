@@ -3,606 +3,597 @@
 open System
 open System.Threading
 open System.Collections.Generic
-open Aardvark.Base
-open Aardvark.Base.Geometry
-open Aardvark.Base.Rendering
-open Aardvark.SceneGraph
-open Aardvark.Base.Incremental
-open Aardvark.Application
-open Aardvark.Service
 open Aardvark.UI
-open System.Reactive.Subjects
+open Aardvark.Base
+open Aardvark.Base.Incremental
+open Aardvark.Service
+open System.Runtime.CompilerServices
 
-[<AutoOpen>]
-module IdGen =
-    let mutable private currentId = 0
-    let newId() =
-        let id = Interlocked.Increment(&currentId)
-        "n" + string id
+module Updaters =
 
-type ContraDict<'k, 'v> =
-    abstract member Item : 'k -> 'v with set
-    abstract member Remove : 'k -> bool
+    [<AutoOpen>]
+    module IdGen =
+        let mutable private currentId = 0
+        let newId() =
+            let id = Interlocked.Increment(&currentId)
+            "n" + string id
 
-module ContraDict =
-    let ofDictionary (d : Dictionary<'k, 'v>) =
-        { new ContraDict<'k, 'v> with
-            member x.Item with set (k : 'k) (v : 'v) = d.[k] <- v
-            member x.Remove k = d.Remove k
+    type ContraDict<'k, 'v> =
+        abstract member Item : 'k -> 'v with set
+        abstract member Remove : 'k -> bool
+
+    module ContraDict =
+        let ofDictionary (d : Dictionary<'k, 'v>) =
+            { new ContraDict<'k, 'v> with
+                member x.Item with set (k : 'k) (v : 'v) = d.[k] <- v
+                member x.Remove k = d.Remove k
+            }
+
+        let map (f : 'k -> 'b -> 'v) (d : ContraDict<'k, 'v>) =
+            { new ContraDict<'k, 'b> with
+                member x.Item with set (k : 'k) (v : 'b) = d.[k] <- f k v
+                member x.Remove k = d.Remove k
+            }
+
+    type RootHandlers<'msg> = Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
+
+    type UpdateState<'msg> =
+        {
+            scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
+            handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
+            references          : Dictionary<string * ReferenceKind, Reference>
+            activeChannels      : Dict<string * string, ChannelReader>
+            messages            : IObservable<'msg>
         }
 
-    let map (f : 'k -> 'b -> 'v) (d : ContraDict<'k, 'v>) =
-        { new ContraDict<'k, 'b> with
-            member x.Item with set (k : 'k) (v : 'b) = d.[k] <- f k v
-            member x.Remove k = d.Remove k
-        }
-
-type RootHandlers<'msg> = Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
-
-type UpdateState<'msg> =
-    {
-        scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
-        handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
-        references          : Dictionary<string * ReferenceKind, Reference>
-        activeChannels      : Dict<string * string, ChannelReader>
-        messages            : IObservable<'msg>
-    }
-
-type IUpdater<'msg> =
-    inherit IAdaptiveObject
-    abstract member Update : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
-    abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
-
-    //abstract member Html : AdaptiveToken -> 
-
-
-
-
-[<AbstractClass>]
-type AbstractUpdater<'msg>() =
-    inherit AdaptiveObject()
-
-    abstract member PerformUpdate : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
-    abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
-
-    member x.Update(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
-        x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
-            x.PerformUpdate(token, self, state)
-        )
-
-    interface IUpdater<'msg> with
-        member x.Update(t,s,state) = x.Update(t,s,state)
-        member x.Destroy(state, self) = x.Destroy(state, self)
-
-type SceneUpdater<'msg>(ui : DomNode<'msg>, id : string, scene : Scene, camera : ClientInfo -> ClientState) =
-    inherit AbstractUpdater<'msg>()
-
-    let mutable initial = true
-
-    override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
-        state.scenes.Remove(id) |> ignore
-        JSExpr.Nop
-
-    override x.PerformUpdate(token, self, state) =
-        if initial then
-            initial <- false
-            state.scenes.[id] <- (scene, camera)
-        JSExpr.Nop
-
-type EmptyUpdater<'msg> private() =
-    inherit ConstantObject()
-
-    static let instance = EmptyUpdater<'msg>() :> IUpdater<_>
-    static member Instance = instance
-
-    interface IUpdater<'msg> with
-        member x.Update(_,_,_) = JSExpr.Nop
-        member x.Destroy(_,_) = JSExpr.Nop
-
-type TextUpdater<'msg>(text : IMod<string>) =
-    inherit AbstractUpdater<'msg>()
-
-    override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
-        let nt = text.GetValue token
-        JSExpr.InnerText(self, nt)
-
-    override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
-        JSExpr.Nop
-
-type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
-    inherit AbstractUpdater<'msg>()
-    let reader = children.GetReader()
-
-    static let cmpState =
-        { new IComparer<Index * ref<DomUpdater<'msg>>> with
-            member x.Compare((l,_), (r,_)) =
-                compare l r
-        }
-
-    let content = SortedSetExt<Index * ref<DomUpdater<'msg>>>(cmpState)
-
-    let neighbours (i : Index) =
-        let (l,s,r) = content.FindNeighbours((i, Unchecked.defaultof<_>))
-        let l = if l.HasValue then Some l.Value else None
-        let r = if r.HasValue then Some r.Value else None
-        let s = if s.HasValue then Some (snd s.Value) else None
-        l, s, r
-
-    static let create (ui : DomUpdater<'msg>) (inner : JSExpr -> list<JSExpr>) =
-        if ui.Tag = "" then
-            inner JSExpr.Nop |> JSExpr.Sequential
-        else
-            let v = { name = ui.Id }
-            JSExpr.Let(
-                v, JSExpr.CreateElement(ui.Tag, ui.Namespace),
-                JSExpr.Sequential (
-                    JSExpr.SetAttribute(JSExpr.Var v, "id", ui.Id) :: inner (JSExpr.Var v)
-                )
-            )
-
-    //let mutable initial = true
-    //let lastId = id + "_last"
-
-    override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
-        let all = List()
-        for (_,r) in content do
-            r.Value.Destroy(state, GetElementById r.Value.Id) |> all.Add
-        content.Clear()
-        reader.Dispose()
-        JSExpr.Sequential (CSharpList.toList all)
-
-    override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
-        let code = List<JSExpr>()
-        //if initial then
-        //    initial <- false
-        //    let v = { name = lastId }
-        //    code.Add(Expr.Let(v, CreateElement("span"), Expr.Sequential [SetAttribute(Var v, "id", lastId); AppendChild(self, Var v) ]))
-
-
-        let mutable toUpdate = reader.State
-        let ops = reader.GetOperations token
-
-
-        for (i,op) in PDeltaList.toSeq ops do
-            match op with
-                | ElementOperation.Remove ->
-                    let (_,s,_) = neighbours i
-                    toUpdate <- PList.remove i toUpdate
-                    match s with
-                        | Some n -> 
-                            let n = !n
-                            content.Remove(i, Unchecked.defaultof<_>) |> ignore
-                            code.Add(Remove (GetElementById n.Id))
-                            code.Add(n.Destroy(state, GetElementById n.Id))
-                        | None ->
-                            failwith "sadasdlnsajdnmsad"
-
-                | ElementOperation.Set newElement ->
-                    let (l,s,r) = neighbours i
-                                    
-                    match s with
-                        | Some ref ->
-                            let oldElement = !ref
-                            code.Add(oldElement.Destroy(state, GetElementById oldElement.Id))
-                            ref := newElement
-
-                            toUpdate <- PList.remove i toUpdate
-
-                            let v = { name = newElement.Id }
-                            let expr = 
-                                create newElement (fun n ->
-                                    [
-                                        JSExpr.Replace(GetElementById oldElement.Id, n)
-                                        newElement.Update(token, Var v, state)
-                                    ]
-                                )
-
-                            code.Add expr
-
-                        | _ ->
-                            content.Add(i, ref newElement) |> ignore
-
-                            match r with
-                                | None ->
-                                        
-                                    //let expr = create newElement (fun n -> [ InsertBefore(GetElementById lastId, n); newElement.Update(token, n, state) ] )
-                                    //code.Add expr
-                                    match l with
-                                        | None -> 
-                                            let expr = create newElement (fun n -> [ AppendChild(self, n); newElement.Update(token, n, state) ] )
-                                            code.Add expr
-                                        | Some(_,l) ->
-                                            let expr = create newElement (fun n -> [ InsertAfter(GetElementById l.Value.Id, n); newElement.Update(token, n, state) ] )
-                                            code.Add expr
-                                                
-
-                                | Some (_,r) ->
-                                    let r = r.Value.Id
-                                    let expr = create newElement (fun n -> [ InsertBefore(GetElementById r, n); newElement.Update(token, n, state) ] )
-                                    code.Add expr
-                                                    
-                                                    
-                
-        for i in toUpdate do
-            let v = { name = i.Id }
-            let expr = 
-                JSExpr.Let(
-                    v, JSExpr.GetElementById i.Id,
-                    i.Update(token, Var v, state)
-                )
-            code.Add expr
-
-        JSExpr.Sequential (CSharpList.toList code)
-
-and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app : IApp<'model, 'msg>, request : Request, id : string) =
-    inherit AbstractUpdater<'outermsg>()
-    
-    //let mutable old = Set.empty
-    let mutable mapp : Option<MutableApp<_,_> * DomUpdater<'msg> * UpdateState<'msg>> = None
-    
-    //let update key (client : Guid) (bla : string) (args : list<string>) =
-    //    match mapp with
-    //        | Some (mapp, updater, myState, myHandlers) ->
-    //            match myHandlers.TryGetValue key with
-    //                | (true, handler) ->
-    //                    let messages = handler client bla args
-    //                    mapp.update client messages
-    //                    let model = mapp.model.GetValue()
-    //                    messages |> Seq.collect (fun msg -> app.ToOuter<'outermsg>(model, msg))
-
-    //                | _ ->
-    //                    Seq.empty
-    //        | _ ->
-    //            Seq.empty
-
-    override x.PerformUpdate(token, self, state : UpdateState<'outermsg>) =
-        let mapp, updater, myState =
-            match mapp with
-                | Some a -> a
-                | None ->
-                    let m = app.Start()
-                    
-                    let innerAtt = 
-                        container.Attributes |> AttributeMap.choose (fun key value ->
-                            match value with
-                                | AttributeValue.String a -> Some (AttributeValue.String a)
-                                | _ -> None
-                        )
-
-                    let parent = DomNode<_>(container.Tag, container.Namespace, innerAtt, DomContent.Children(AList.ofList [m.ui]))
-                    let updater = DomUpdater(parent, request, id)
-                    
-                    let updateFun handler (client : Guid) (bla : string) (args : list<string>) =
-                        let messages = handler client bla args
-                        m.update client messages
-                        let model = m.model.GetValue()
-                        messages |> Seq.collect (fun msg -> app.ToOuter<'outermsg>(model, msg))
-
-                    let myState =
-                        {
-                            scenes              = state.scenes
-                            handlers            = state.handlers |> ContraDict.map (fun k -> updateFun)
-                            references          = state.references
-                            activeChannels      = state.activeChannels
-                            messages            = m.messages
-                        }
-
-                    let subscription = 
-                        state.messages.Subscribe(fun msg -> 
-                            let msgs = app.ToInner<'outermsg>(m.model.GetValue(), msg)
-                            m.update Guid.Empty msgs
-                        )
-                        
-                    m.messages.Subscribe {
-                        new IObserver<'msg> with
-                            member x.OnNext _ = ()
-                            member x.OnError _ = ()
-                            member x.OnCompleted () = subscription.Dispose()
-                    } |> ignore
-
-                    mapp <- Some (m,updater, myState)
-                    (m, updater, myState)
-  
-        //let mutable n = Set.empty
-        //let mutable deleted = old
-        ////let mutable old = myState.handlers.Keys |> Set.ofSeq
-        let updateCode = updater.Update(token, self, myState)
-
-        //for KeyValue(key, handler) in myState.handlers do
-        //    n <- Set.add key n
-        //    deleted <- Set.remove key deleted
-        //    state.handlers.[key] <- update key
-
-        //for key in deleted do
-        //    state.handlers.Remove key |> ignore
-        //old <- n
-
-        updateCode
-        
-    override x.Destroy(state, self) =
-        match mapp with
-            | Some (app, updater, myState) ->
-                let code = updater.Destroy(myState, self)
-                app.shutdown()
-                mapp <- None
-                code
-            | None ->
-                JSExpr.Nop
-   
-and MapUpdater<'inner, 'outer>(mapNode : MapDomNode<'inner, 'outer>, request : Request) =
-    inherit AbstractUpdater<'outer>()
-
-    let mapping = mapNode.Mapping
-    let child = DomUpdater<'inner>(mapNode.Inner, request)
-
-    let subject = new Subject<'inner>()
-    let mutable cache : Option<UpdateState<'inner> * Subject<'inner>> = None
-
-    override x.Destroy(state : UpdateState<'outer>, self : JSExpr) : JSExpr =
-        match cache with
-            | Some (inner, subject) -> 
-                let res = child.Destroy(inner, self)
-                subject.OnCompleted()
-                subject.Dispose()
-                cache <- None
-                res
-            | None ->
-                JSExpr.Nop
-
-    override x.PerformUpdate(token, self : JSExpr, state : UpdateState<'outer>) : JSExpr =
-        let inner, subject = 
-            match cache with
-                | Some a -> a
-                | None ->
-                    let updateFun handler (client : Guid) (bla : string) (args : list<string>) =
-                        let messages = handler client bla args
-                        messages |> Seq.map mapping
-
-                    let subject = new Subject<'inner>()
-                    let inner = 
-                        {
-                            scenes              = state.scenes
-                            handlers            = state.handlers |> ContraDict.map (fun _ -> updateFun)
-                            references          = state.references
-                            activeChannels      = state.activeChannels
-                            messages            = subject
-                        }
-                    cache <- Some (inner, subject)
-                    inner, subject
-
-        child.PerformUpdate(token, self, inner)
+    type IUpdater =
+        inherit IAdaptiveObject
+        abstract member Id : Option<string>
             
-and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
-    inherit AbstractUpdater<'msg>()
+    type IUpdater<'msg> =
+        inherit IUpdater
+        abstract member Update : AdaptiveToken * UpdateState<'msg> * (JSExpr -> JSExpr) -> JSExpr
+        abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
 
 
-    let rAtt = ui.Attributes.GetReader()
-    let rContent = 
-        match ui.Content with
-            | Scene(scene, cam) ->                 JSExpr.Sequential [
-                    let id = x.Id.Value
+    [<AbstractClass>]
+    type AbstractUpdater<'msg>(node : DomNode<'msg>) =
+        inherit AdaptiveObject()
+        let mutable initial = true
+        let id = lazy (IdGen.newId())
 
-                    let atts = reader.GetOperations token
-                    for (name, op) in atts do
-                        match op with
-                            | Set value ->
-                                let value =
-                                    match value with
-                                        | AttributeValue.String str -> 
-                                            str
-                                        | AttributeValue.Event evt ->
-                                            let key = (id, name)
-                                            state.handlers.[key] <- evt.serverSide
-                                            Event.toString id name evt
+        let setup (state : UpdateState<'msg>) =
+            if id.IsValueCreated then
+                for (name,cb) in Map.toSeq node.Callbacks do
+                    state.handlers.[(id.Value,name)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
 
-                                yield JSExpr.SetAttribute(self, name, value)
-
-                            | Remove -> 
-                                let key = (id,name)
-                                state.handlers.Remove key |> ignore
-                                yield JSExpr.RemoveAttribute(self, name)
-                      
-                ](ui, id, scene, cam) :> IUpdater<_>
-            | Children children -> ChildrenUpdater(id, AList.map (fun c -> DomUpdater(c,request)) children) :> IUpdater<_>
-            | Text text -> TextUpdater text :> IUpdater<_>
-            | Empty -> EmptyUpdater.Instance
-            | Page p -> 
-                let updater = DomUpdater(p request, request)
-                updater :> IUpdater<_>
-            | SubApp a -> 
-                a.Visit {
-                    new IAppVisitor<IUpdater<'msg>> with
-                        member x.Visit(app : IApp<'a, 'b>) =
-                            SubAppUpdater<'a, 'b, 'msg>(ui, app, request, id) :> IUpdater<'msg>
-                }
-
-    let mutable initial = true
-
-
-    static let toAttributeValue (state : UpdateState<'msg>) (id : string) (name : string) (v : AttributeValue<'msg>) =
-        match v with
-            | AttributeValue.String str -> 
-                Some str
-
-            | AttributeValue.Event desc ->
-                let code = Event.toString id name desc
-                state.handlers.[(id, name)] <- desc.serverSide
-                Some code
-
-            //| AttributeValue.RenderControlEvent _ ->
-            //    None
-
-    static let destroyAttribute (state : UpdateState<'msg>) (id : string) (name : string) =
-        state.handlers.Remove (id,name) |> ignore
-        true
-
-
-    member x.Tag : string = ui.Tag
-    member x.Namespace : Option<string> = ui.Namespace
-    member x.Id : string = id
-
-    override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
-        for (name, v) in rAtt.State do
-            match v with
-                | AttributeValue.Event _ -> state.handlers.Remove(id, name) |> ignore
-                | _ -> ()
-
-        for (name,cb) in Map.toSeq ui.Callbacks do
-            state.handlers.Remove (id,name) |> ignore
-                
-        for (name, _) in Map.toSeq ui.Channels do
-            match state.activeChannels.TryRemove ((id, name)) with
-                | (true, r) -> r.Dispose()
-                | _ -> ()
-
-
-        rAtt.Dispose()
-        match ui.Shutdown with
-            | Some shutdown ->
-                JSExpr.Sequential [
-                    rContent.Destroy(state, self)
-                    Raw (shutdown id)
-                ]
-            | None ->
-                rContent.Destroy(state, self)
-                    
-
-    override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
-        let code = List()
-
-
-        let attOps = rAtt.GetOperations(token)
-        for (name, op) in attOps do
-            match op with
-                | ElementOperation.Set v -> 
-                    match toAttributeValue state id name v with
-                        | Some value -> 
-                            code.Add(SetAttribute(self, name, value))
-                        | None ->
-                            ()
-
-                | ElementOperation.Remove ->
-                    if destroyAttribute state id name then
-                        code.Add(RemoveAttribute(self, name))
-
-        code.Add (rContent.Update(token, self, state))
-
-                
-        if initial then
-            initial <- false
-
-            for (name,cb) in Map.toSeq ui.Callbacks do
-                state.handlers.[(id,name)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
-
-            for r in ui.Required do
+            for r in node.Required do
                 state.references.[(r.name, r.kind)] <- r
+                
+            match node.Boot with
+                | Some boot ->
+                    let id = if id.IsValueCreated then id.Value else "NOT AN ID"
+                    let code = boot id
 
-            match ui.Boot with
-                | Some getBootCode ->
-                    let boot = getBootCode id
-                    if Map.isEmpty ui.Channels then
-                        code.Add(Raw boot)
+                    if Map.isEmpty node.Channels then
+                        Raw code
                     else 
-                        for (name, c) in Map.toSeq ui.Channels do
+                        for (name, c) in Map.toSeq node.Channels do
                             state.activeChannels.[(id,name)] <- c.GetReader()
 
                         let prefix = 
-                            ui.Channels 
+                            node.Channels 
                             |> Map.toList
                             |> List.map (fun (name, _) -> 
                                 sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" name id name
                             ) 
                             |> String.concat "\r\n"
                         
-                        code.Add(Raw (prefix + "\r\n" + boot))
-
+                        Raw (prefix + "\r\n" + code)
+                        
                 | None ->
-                    ()
+                    JSExpr.Nop
 
+        let shutdown (state : UpdateState<'msg>) =
+            if id.IsValueCreated then
+                for (name, c) in Map.toSeq node.Channels do
+                    state.activeChannels.Remove((id.Value,name)) |> ignore
 
-        JSExpr.Sequential (CSharpList.toList code)
-
-
-
-    new(ui : DomNode<'msg>, request : Request) = DomUpdater<'msg>(ui, request, newId())
-
-
-
-[<AutoOpen>]
-module ``Extensions for Node`` =
-    open Aardvark.Base.IL
-    
-
-    let private cache = System.Collections.Concurrent.ConcurrentDictionary<Type, obj -> Request -> obj>()
-
-    let rec plain (x : DomNode<'a>) (request : Request) =
-        match x.Content with
-            | Page f -> 
-                let p = f request
-                let mutable p = p
-                match x.Boot with
-                    | Some boot -> p <- p.AddBoot boot
-                    | _ -> ()
-                match x.Shutdown with
-                    | Some boot -> p <- p.AddShutdown boot
-                    | _ -> ()
-                match x.Required with
-                    | [] -> ()
-                    | r -> p <- p.AddRequired(r)
-                newUpdater p request
-            | _ -> 
-                let updater = 
-                    if x.Tag = "body" then DomUpdater<'a>(x,request) :> IUpdater<_>
+            match node.Shutdown with
+                | Some shutdown ->
+                    if id.IsValueCreated then
+                        Raw (shutdown id.Value)
                     else
-                        Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
-                        DomUpdater<'a>(DomNode<'a>("body", None, AttributeMap.empty, Children (AList.single x)), request) :> IUpdater<_>
-                updater
-    and newUpdater (v : DomNode<'a>) (request : Request) =
-        let t = v.GetType()
-        let creator = 
-            cache.GetOrAdd(t, Func<_,_>(fun (t : Type) ->
-                let td = t.GetGenericTypeDefinition()
-                let targs = t.GetGenericArguments()
+                        Raw (shutdown "NOT AN ID")
+                | None ->
+                    JSExpr.Nop
+                            
 
-                if td = typedefof<MapDomNode<_,_>> then
-                    let tUpdater = typedefof<MapUpdater<_,_>>.MakeGenericType targs
-                    let ctor = tUpdater.GetConstructor [| t; typeof<Request> |]
-                    cil {
-                        do! IL.ldarg 0
-                        do! IL.ldarg 1
-                        do! IL.newobj ctor
-                        do! IL.ret
+
+        abstract member CreateElement : Option<string * Option<string>>
+        default x.CreateElement = None
+
+        abstract member PerformUpdate : AdaptiveToken * UpdateState<'msg> * JSExpr -> JSExpr
+        abstract member PerformDestroy : UpdateState<'msg> * JSExpr -> JSExpr
+
+        abstract member Id : Option<string>
+        default x.Id = 
+            if id.IsValueCreated then Some id.Value
+            else None
+
+        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, insert : JSExpr -> JSExpr) =
+            x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
+                match x.CreateElement with
+                    | Some (tag, ns) ->
+                        if initial then
+                            initial <- false
+                            let var = { name = id.Value }
+
+                            JSExpr.Let(var, JSExpr.CreateElement(tag, ns),
+                                JSExpr.Sequential [
+                                    insert (JSExpr.Var var)
+                                    SetAttribute(JSExpr.Var var, "id", id.Value)
+                                    setup state
+                                    x.PerformUpdate(token, state, JSExpr.Var var)
+                                ]
+                            )
+                        else
+                            let var = { name = id.Value }
+                            JSExpr.Let(var, JSExpr.GetElementById(id.Value),
+                                x.PerformUpdate(token, state, JSExpr.Var var)
+                            )
+                                    
+                    | None ->
+                        if initial then
+                            initial <- false
+                            JSExpr.Sequential [
+                                setup state
+                                x.PerformUpdate(token, state, JSExpr.Nop)
+                            ]
+                        else
+                            x.PerformUpdate(token, state, JSExpr.Nop)
+                    
+            )
+
+        member x.Destroy(state, self) =
+            lock x (fun () -> 
+                match x.CreateElement with
+                    | Some _ -> 
+                        JSExpr.Sequential [
+                            shutdown state
+                            x.PerformDestroy(state, self)
+                            JSExpr.Remove(self)
+                        ]
+                    | None ->
+                        JSExpr.Sequential [
+                            shutdown state
+                            x.PerformDestroy(state, self)
+                        ]
+            )
+
+        interface IUpdater<'msg> with
+            member x.Id = x.Id
+            member x.Update(t,state, s) = x.Update(t,state, s)
+            member x.Destroy(state, self) = x.Destroy(state, self)
+                
+    [<AbstractClass>]
+    type WrappedUpdater<'msg>(node : DomNode<'msg>, id : Option<string>) =
+        inherit AdaptiveObject()
+        let mutable initial = true
+
+        let setup (state : UpdateState<'msg>) =
+            for r in node.Required do
+                state.references.[(r.name, r.kind)] <- r
+
+            match node.Boot with
+                | Some boot ->
+                    let id = "NOT AN ID"
+                    let code = boot id
+
+                    if Map.isEmpty node.Channels then
+                        Raw code
+                    else 
+                        for (name, c) in Map.toSeq node.Channels do
+                            state.activeChannels.[(id,name)] <- c.GetReader()
+
+                        let prefix = 
+                            node.Channels 
+                            |> Map.toList
+                            |> List.map (fun (name, _) -> 
+                                sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" name id name
+                            ) 
+                            |> String.concat "\r\n"
+                        
+                        Raw (prefix + "\r\n" + code)
+                        
+                | None ->
+                    JSExpr.Nop
+
+        let shutdown() =
+            match node.Shutdown with
+                | Some shutdown ->
+                    Raw (shutdown "NOT AN ID")
+                | None ->
+                    JSExpr.Nop
+                            
+        abstract member PerformUpdate : AdaptiveToken * UpdateState<'msg> * (JSExpr -> JSExpr) -> JSExpr
+        abstract member PerformDestroy : UpdateState<'msg> * JSExpr -> JSExpr
+            
+        member x.Id = id
+
+        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, insert : JSExpr -> JSExpr) =
+            x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
+                if initial then
+                    initial <- false
+                    JSExpr.Sequential [
+                        x.PerformUpdate(token, state, insert)
+                        setup state
+                    ]
+                else
+                    x.PerformUpdate(token, state, insert)
+                    
+            )
+
+        member x.Destroy(state, self) =
+            lock x (fun () -> 
+                JSExpr.Sequential [
+                    shutdown()
+                    x.PerformDestroy(state, self)
+                ]
+            )
+
+        interface IUpdater<'msg> with
+            member x.Id = id
+            member x.Update(t,state, s) = x.Update(t,state, s)
+            member x.Destroy(state, self) = x.Destroy(state, self)
+            
+
+    type AttributeUpdater<'msg>(attributes : AttributeMap<'msg>) =
+        let reader = attributes.GetReader()
+
+        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) =
+            JSExpr.Sequential [
+                let atts = reader.GetOperations token
+                for (name, op) in atts do
+                    match op with
+                        | Set value ->
+                            let value =
+                                match value with
+                                    | AttributeValue.String str -> 
+                                        str
+                                    | AttributeValue.Event evt ->
+                                        let key = (id, name)
+                                        state.handlers.[key] <- evt.serverSide
+                                        Event.toString id name evt
+
+                            yield JSExpr.SetAttribute(self, name, value)
+
+                        | Remove -> 
+                            let key = (id,name)
+                            state.handlers.Remove key |> ignore
+                            yield JSExpr.RemoveAttribute(self, name)
+            ]
+
+        member x.Dispose() =
+            reader.Dispose()
+
+        interface IDisposable with
+            member x.Dispose() = x.Dispose()
+
+    type EmptyUpdater<'msg>(e : EmptyNode<'msg>) =
+        inherit AbstractUpdater<'msg>(e)
+
+        override x.CreateElement = None
+
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, _) =
+            JSExpr.Nop
+
+        override x.PerformDestroy(state : UpdateState<'msg>, _) =
+            JSExpr.Nop
+
+    and VoidUpdater<'msg>(e : VoidNode<'msg>) =
+        inherit AbstractUpdater<'msg>(e)
+            
+        let att = new AttributeUpdater<_>(e.Attributes)
+        override x.CreateElement = Some(e.Tag, e.Namespace)
+            
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
+            let id = x.Id.Value
+            att.Update(token, state, id, self)
+
+        override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
+            att.Dispose()
+            JSExpr.Nop
+
+    and InnerUpdater<'msg>(e : InnerNode<'msg>, request : Request) =
+        inherit AbstractUpdater<'msg>(e)
+            
+        let elemReader : IListReader<IUpdater<'msg>> = (AList.map (fun n -> Foo.NewUpdater(n, request)) e.Children).GetReader()
+        let att = new AttributeUpdater<_>(e.Attributes)
+
+        static let cmpState =
+            { new IComparer<Index * ref<IUpdater<'msg>>> with
+                member x.Compare((l,_), (r,_)) =
+                    compare l r
+            }
+
+        let content = SortedSetExt<Index * ref<IUpdater<'msg>>>(cmpState)
+
+        let neighbours (i : Index) =
+            let (l,s,r) = content.FindNeighbours((i, Unchecked.defaultof<_>))
+            let l = if l.HasValue then Some l.Value else None
+            let r = if r.HasValue then Some r.Value else None
+            let s = if s.HasValue then Some (snd s.Value) else None
+            l, s, r
+
+
+        override x.CreateElement = Some(e.Tag, e.Namespace)
+
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
+            JSExpr.Sequential [
+                let id = x.Id.Value
+                yield att.Update(token, state, id, self)
+                      
+                let mutable toUpdate = elemReader.State
+                let ops = elemReader.GetOperations token
+
+
+                for (i,op) in PDeltaList.toSeq ops do
+                    match op with
+                        | ElementOperation.Remove ->
+                            let (_,s,_) = neighbours i
+                            toUpdate <- PList.remove i toUpdate
+                            match s with
+                                | Some n -> 
+                                    let n = !n
+                                    content.Remove(i, Unchecked.defaultof<_>) |> ignore
+                                    match n.Id with
+                                        | Some id -> 
+                                            let self = { name = id }
+                                            yield JSExpr.Let(self, GetElementById id,
+                                                JSExpr.Sequential [
+                                                    n.Destroy(state, JSExpr.Var self)
+                                                    JSExpr.Remove (JSExpr.Var self)
+                                                ]
+                                            )
+                                        | _ ->
+                                            yield n.Destroy(state, JSExpr.Nop)
+                                | None ->
+                                    failwith "sadasdlnsajdnmsad"
+
+                        | ElementOperation.Set newElement ->
+                            let (l,s,r) = neighbours i
+                                    
+                            let (|HasId|_|) (n : ref<IUpdater<'msg>>) =
+                                match n.Value.Id with
+                                    | Some id -> Some (id, n.Value)
+                                    | _ -> None
+
+                            let insert =
+                                match l, r with
+                                    | Some (li, HasId(lid, l)), _ ->
+                                        fun v -> JSExpr.InsertAfter(GetElementById lid, v)
+
+                                    | _, Some (ri, HasId(rid, r))  ->
+                                        fun v -> JSExpr.InsertBefore(GetElementById rid, v)
+
+                                    | _ ->
+                                        fun v -> JSExpr.AppendChild(self, v)
+
+                            match s with
+                                | Some ref ->
+                                    let oldElement = !ref
+                                    ref := newElement
+                                    toUpdate <- PList.remove i toUpdate
+                                    match oldElement.Id, newElement.Id with
+                                        | Some o, Some id ->
+                                            let vo = { name = o }
+                                            yield 
+                                                JSExpr.Let(vo,  GetElementById o,
+                                                    JSExpr.Sequential [
+                                                        oldElement.Destroy(state, Var vo)
+                                                        newElement.Update(token, state, fun n -> JSExpr.Replace(Var vo, n))
+                                                    ]
+                                                )
+
+                                        | None, Some id ->
+                                            yield
+                                                JSExpr.Sequential [
+                                                    oldElement.Destroy(state, JSExpr.Nop)
+                                                    newElement.Update(token, state, insert)
+                                                ]
+
+                                        | Some o, None ->
+                                            yield
+                                                JSExpr.Sequential [
+                                                    oldElement.Destroy(state, GetElementById o)
+                                                    newElement.Update(token, state, fun _ -> JSExpr.Nop)
+                                                ]
+
+                                        | None, None ->
+                                            yield
+                                                JSExpr.Sequential [
+                                                    oldElement.Destroy(state, JSExpr.Nop)
+                                                    newElement.Update(token, state, fun _ -> JSExpr.Nop)
+                                                ]
+                                                    
+
+                                | _ ->
+                                    content.Add(i, ref newElement) |> ignore
+                                    yield newElement.Update(token, state, insert)
+
+                for u in toUpdate do
+                    yield u.Update(token, state, fun _ -> failwith "should not be initial")
+
+            ]
+
+        override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
+            elemReader.Dispose()
+            att.Dispose()
+            JSExpr.Nop
+            
+    and SceneUpdater<'msg>(e : SceneNode<'msg>) =
+        inherit AbstractUpdater<'msg>(e)
+            
+        let mutable initial = true
+        let att = new AttributeUpdater<_>(e.Attributes)
+
+        override x.CreateElement = Some ("div", None)
+
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
+            if initial then
+                initial <- false
+                state.scenes.[x.Id.Value] <- (e.Scene, e.GetClientState)
+                    
+            let id = x.Id.Value
+            att.Update(token, state, id, self)
+             
+
+        override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
+            state.scenes.Remove(x.Id.Value) |> ignore
+            att.Dispose()
+            initial <- true
+            JSExpr.Nop
+        
+    and TextUpdater<'msg>(e : TextNode<'msg>) =
+        inherit AbstractUpdater<'msg>(e)
+            
+        let att = new AttributeUpdater<_>(e.Attributes)
+        override x.CreateElement = Some ("span", None)
+
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
+            let id = x.Id.Value
+            let text = e.Text.GetValue token
+            
+            JSExpr.Sequential [
+                att.Update(token, state, id, self)
+                JSExpr.InnerText(self, text)
+            ]
+
+        override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
+            att.Dispose()
+            JSExpr.Nop
+
+    and MapUpdater<'inner, 'outer>(m : MapNode<'inner, 'outer>, inner : IUpdater<'inner>) =
+        inherit WrappedUpdater<'outer>(m, inner.Id)
+            
+        let mutable cache : Option<UpdateState<'inner> * System.Reactive.Subjects.Subject<'inner>> = None
+            
+        let mapMsg handler (client : Guid) (name : string) (args : list<string>) =
+            match cache with
+                | Some (_,subject) ->
+                    let messages = handler client name args
+                    seq {
+                        for msg in messages do
+                            yield m.Mapping msg
+                            subject.OnNext msg
+                    }
+                | _ ->
+                    Seq.empty
+
+        let get (state : UpdateState<'outer>) =
+            match cache with    
+            | Some c -> c
+            | None ->
+                let subject = new System.Reactive.Subjects.Subject<'inner>()
+                let innerState =
+                    {
+                        scenes              = state.scenes
+                        handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
+                        references          = state.references
+                        activeChannels      = state.activeChannels
+                        messages            = subject
+                    }
+                cache <- Some (innerState, subject)
+                (innerState, subject)
+                    
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'outer>, insert : JSExpr -> JSExpr) =
+            let innerState, subject = get state
+            inner.Update(token, innerState, insert)
+
+        override x.PerformDestroy(state : UpdateState<'outer>, self : JSExpr) =
+            match cache with
+                | Some (innerState, subject) ->
+                    subject.Dispose()
+                    cache <- None
+                    inner.Destroy(innerState, self)
+                | None ->
+                    JSExpr.Nop
+            
+    and SubAppUpdater<'model, 'inner, 'outer>(n : SubAppNode<'model, 'inner, 'outer>, m : MutableApp<'model, 'inner>, inner : IUpdater<'inner>) =
+        inherit WrappedUpdater<'outer>(n, inner.Id)
+            
+        let mutable cache : Option<UpdateState<'inner> * System.Reactive.Subjects.Subject<'inner> * IDisposable> = None
+
+        let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
+            match cache with
+                | Some (_, subject, _) ->
+                    let messages = handler client bla args |> Seq.cache
+                    m.update client messages
+                    for msg in messages do subject.OnNext msg
+                    let model = m.model.GetValue()
+                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg))
+                | None ->
+                    Seq.empty
+
+        let get (state : UpdateState<'outer>) =
+            match cache with    
+            | Some c -> c
+            | None ->
+                let subject = new System.Reactive.Subjects.Subject<'inner>()
+                let innerState =
+                    {
+                        scenes              = state.scenes
+                        handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
+                        references          = state.references
+                        activeChannels      = state.activeChannels
+                        messages            = subject
                     }
 
+                    
+                let subscription = 
+                    state.messages.Subscribe(fun msg -> 
+                        let msgs = n.App.ToInner(m.model.GetValue(), msg)
+                        m.update Guid.Empty msgs
+                    )
 
-                else
-                    fun o r -> plain (unbox<DomNode<'a>> o) r :> obj
-            ))
-        creator v request |> unbox<IUpdater<'a>>
+                cache <- Some (innerState, subject, subscription)
+                (innerState, subject, subscription)
+                    
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'outer>, insert : JSExpr -> JSExpr) =
+            let innerState, subject, _ = get state
+            inner.Update(token, innerState, insert)
 
-
-    type DomNode<'msg> with
-        member x.NewUpdater(request : Request) =
-            newUpdater x request
-            //let c = creator
-            //match x.Content with
-            //    | Page f -> 
-            //        let p = f request
-            //        let mutable p = p
-            //        match x.Boot with
-            //            | Some boot -> p <- p.AddBoot boot
-            //            | _ -> ()
-            //        match x.Shutdown with
-            //            | Some boot -> p <- p.AddShutdown boot
-            //            | _ -> ()
-            //        match x.Required with
-            //            | [] -> ()
-            //            | r -> p <- p.AddRequired(r)
-            //        p.NewUpdater(request)
-            //    | _ -> 
-            //        let updater = 
-            //            if x.Tag = "body" then DomUpdater<'msg>(x,request) :> IUpdater<_>
-            //            else
-            //                Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
-            //                DomUpdater<'msg>(DomNode<'msg>("body", None, AttributeMap.empty, Children (AList.single x)), request) :> IUpdater<_>
-            //        updater
+        override x.PerformDestroy(state : UpdateState<'outer>, self : JSExpr) =
+            match cache with
+                | Some (innerState, subject, subscription) ->
+                    subscription.Dispose()
+                    m.shutdown()
+                    subject.Dispose()
+                    cache <- None
+                    inner.Destroy(innerState, self)
+                | None ->
+                    JSExpr.Nop
+            
+    and internal Foo () =
+        static member NewUpdater<'msg>(x : DomNode<'msg>, request : Request) : IUpdater<'msg> =
+            x.Visit {
+                new DomNodeVisitor<'msg, IUpdater<'msg>> with
+                    member x.Empty e    = EmptyUpdater(e) :> IUpdater<_>
+                    member x.Inner n    = InnerUpdater(n, request) :> IUpdater<_>
+                    member x.Void n     = VoidUpdater(n) :> IUpdater<_>
+                    member x.Scene n    = SceneUpdater(n) :> IUpdater<_>
+                    member x.Text n     = TextUpdater(n) :> IUpdater<_>
+                    member x.Page n     = Foo.NewUpdater(n.Content(request), request)
+                    member x.SubApp n   = 
+                        let mapp = n.App.Start()
+                        let updater = Foo.NewUpdater(mapp.ui, request)
+                        SubAppUpdater(n, mapp, updater) :> IUpdater<_>
+                    member x.Map n      = MapUpdater(n, Foo.NewUpdater(n.Node, request)) :> IUpdater<_>
+            }
+    
+[<AbstractClass; Sealed; Extension>]
+type DomNodeExtensions private() =
+    [<Extension>]
+    static member NewUpdater<'msg>(x : DomNode<'msg>, request : Request) : Updaters.IUpdater<'msg> = Updaters.Foo.NewUpdater(x, request)
+        

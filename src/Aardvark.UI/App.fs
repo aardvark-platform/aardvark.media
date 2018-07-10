@@ -133,10 +133,8 @@ type App<'model, 'mmodel, 'msg> =
         }
         
         
-    interface IApp with
-        member x.Visit v  = v.Visit x
 
-    interface IApp<'model, 'msg> with
+    interface IApp<'model, 'msg, 'msg> with
         member x.Start() = x.start()
         member x.ToOuter(_,_) = Seq.empty
         member x.ToInner(_,_) = Seq.empty
