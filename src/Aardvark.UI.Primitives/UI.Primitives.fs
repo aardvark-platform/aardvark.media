@@ -10,7 +10,8 @@ open Aardvark.UI.Operators
 
 module UI = 
     let map (f : 'a -> 'b) (source : DomNode<'a>) : DomNode<'b> =
-        source.Map f
+        MapNode<'a, 'b>(f, source) :> DomNode<_>
+        //source.Map f
 
 
 type NumericInputType = Slider | InputBox

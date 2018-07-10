@@ -40,6 +40,7 @@ module private Tools =
 
 module MutableApp =
     open System.Reactive.Subjects
+    open Aardvark.UI.Internal.Updaters
     
     let private template = 
         let ass = typeof<DomNode<_>>.Assembly
@@ -100,10 +101,12 @@ module MutableApp =
 
                     let updater = app.ui.NewUpdater(request)
                     
-                    let state =
+                    let handlers = Dictionary()
+
+                    let state : UpdateState<'msg> =
                         {
                             scenes          = Dictionary()
-                            handlers        = Dictionary()
+                            handlers        = ContraDict.ofDictionary handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
                             messages        = app.messages
@@ -140,7 +143,7 @@ module MutableApp =
                                                     lock state (fun () -> 
                                                         state.references.Clear()
                                                         if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                        let r = updater.Update(t, JSExpr.Body, state)
+                                                        let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
                                                         if Config.shouldTimeUIUpdate then Log.stop ()
                                                         r
                                                     )
@@ -218,7 +221,7 @@ module MutableApp =
                                                     Log.warn "bad opcode: %A" str
                                         else
                                             let evt : EventMessage = Pickler.json.UnPickle data
-                                            match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
+                                            match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
                                                 | (true, handler) ->
                                                     let msgs = handler sessionId evt.sender (Array.toList evt.args)
                                                     app.update sessionId msgs
