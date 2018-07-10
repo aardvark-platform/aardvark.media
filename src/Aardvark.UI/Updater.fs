@@ -52,7 +52,7 @@ module Updaters =
             
     type IUpdater<'msg> =
         inherit IUpdater
-        abstract member Update : AdaptiveToken * UpdateState<'msg> * (JSExpr -> JSExpr) -> JSExpr
+        abstract member Update : AdaptiveToken * UpdateState<'msg> * Option<JSExpr -> JSExpr> -> JSExpr
         abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
 
 
@@ -118,25 +118,36 @@ module Updaters =
 
         abstract member Id : Option<string>
         default x.Id = 
-            if id.IsValueCreated then Some id.Value
-            else None
+            match x.CreateElement with
+                | Some _ -> Some id.Value
+                | None -> None
 
-        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, insert : JSExpr -> JSExpr) =
+        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, insert : Option<JSExpr -> JSExpr>) =
             x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
                 match x.CreateElement with
                     | Some (tag, ns) ->
                         if initial then
                             initial <- false
-                            let var = { name = id.Value }
-
-                            JSExpr.Let(var, JSExpr.CreateElement(tag, ns),
+                            if tag = "body" then
                                 JSExpr.Sequential [
-                                    insert (JSExpr.Var var)
-                                    SetAttribute(JSExpr.Var var, "id", id.Value)
+                                    SetAttribute(JSExpr.Body, "id", id.Value)
                                     setup state
-                                    x.PerformUpdate(token, state, JSExpr.Var var)
+                                    x.PerformUpdate(token, state, JSExpr.Body)
                                 ]
-                            )
+                            else
+                                let var = { name = id.Value }
+                                JSExpr.Let(var, JSExpr.CreateElement(tag, ns),
+                                    JSExpr.Sequential [
+                                        (
+                                            match insert with
+                                            | Some insert -> insert (JSExpr.Var var)
+                                            | None -> failwith "[UI] should not be inserted"
+                                        )
+                                        SetAttribute(JSExpr.Var var, "id", id.Value)
+                                        setup state
+                                        x.PerformUpdate(token, state, JSExpr.Var var)
+                                    ]
+                                )
                         else
                             let var = { name = id.Value }
                             JSExpr.Let(var, JSExpr.GetElementById(id.Value),
@@ -162,7 +173,7 @@ module Updaters =
                         JSExpr.Sequential [
                             shutdown state
                             x.PerformDestroy(state, self)
-                            JSExpr.Remove(self)
+                            //JSExpr.Remove(self)
                         ]
                     | None ->
                         JSExpr.Sequential [
@@ -216,12 +227,12 @@ module Updaters =
                 | None ->
                     JSExpr.Nop
                             
-        abstract member PerformUpdate : AdaptiveToken * UpdateState<'msg> * (JSExpr -> JSExpr) -> JSExpr
+        abstract member PerformUpdate : AdaptiveToken * UpdateState<'msg> * Option<JSExpr -> JSExpr> -> JSExpr
         abstract member PerformDestroy : UpdateState<'msg> * JSExpr -> JSExpr
             
         member x.Id = id
 
-        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, insert : JSExpr -> JSExpr) =
+        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, insert : Option<JSExpr -> JSExpr>) =
             x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
                 if initial then
                     initial <- false
@@ -371,11 +382,11 @@ module Updaters =
 
                             let insert =
                                 match l, r with
-                                    | Some (li, HasId(lid, l)), _ ->
-                                        fun v -> JSExpr.InsertAfter(GetElementById lid, v)
-
                                     | _, Some (ri, HasId(rid, r))  ->
                                         fun v -> JSExpr.InsertBefore(GetElementById rid, v)
+
+                                    | Some (li, HasId(lid, l)), _ ->
+                                        fun v -> JSExpr.InsertAfter(GetElementById lid, v)
 
                                     | _ ->
                                         fun v -> JSExpr.AppendChild(self, v)
@@ -392,7 +403,7 @@ module Updaters =
                                                 JSExpr.Let(vo,  GetElementById o,
                                                     JSExpr.Sequential [
                                                         oldElement.Destroy(state, Var vo)
-                                                        newElement.Update(token, state, fun n -> JSExpr.Replace(Var vo, n))
+                                                        newElement.Update(token, state, Some (fun n -> JSExpr.Replace(Var vo, n)))
                                                     ]
                                                 )
 
@@ -400,30 +411,30 @@ module Updaters =
                                             yield
                                                 JSExpr.Sequential [
                                                     oldElement.Destroy(state, JSExpr.Nop)
-                                                    newElement.Update(token, state, insert)
+                                                    newElement.Update(token, state, Some insert)
                                                 ]
 
                                         | Some o, None ->
                                             yield
                                                 JSExpr.Sequential [
                                                     oldElement.Destroy(state, GetElementById o)
-                                                    newElement.Update(token, state, fun _ -> JSExpr.Nop)
+                                                    newElement.Update(token, state, None)
                                                 ]
 
                                         | None, None ->
                                             yield
                                                 JSExpr.Sequential [
                                                     oldElement.Destroy(state, JSExpr.Nop)
-                                                    newElement.Update(token, state, fun _ -> JSExpr.Nop)
+                                                    newElement.Update(token, state, None)
                                                 ]
                                                     
 
                                 | _ ->
                                     content.Add(i, ref newElement) |> ignore
-                                    yield newElement.Update(token, state, insert)
+                                    yield newElement.Update(token, state, Some insert)
 
                 for u in toUpdate do
-                    yield u.Update(token, state, fun _ -> failwith "should not be initial")
+                    yield u.Update(token, state, None)
 
             ]
 
@@ -459,7 +470,7 @@ module Updaters =
         inherit AbstractUpdater<'msg>(e)
             
         let att = new AttributeUpdater<_>(e.Attributes)
-        override x.CreateElement = Some ("span", None)
+        override x.CreateElement = Some (e.Tag, e.Namespace)
 
         override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
             let id = x.Id.Value
@@ -507,7 +518,7 @@ module Updaters =
                 cache <- Some (innerState, subject)
                 (innerState, subject)
                     
-        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'outer>, insert : JSExpr -> JSExpr) =
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'outer>, insert : Option<JSExpr -> JSExpr>) =
             let innerState, subject = get state
             inner.Update(token, innerState, insert)
 
@@ -560,7 +571,7 @@ module Updaters =
                 cache <- Some (innerState, subject, subscription)
                 (innerState, subject, subscription)
                     
-        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'outer>, insert : JSExpr -> JSExpr) =
+        override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'outer>, insert : Option<JSExpr -> JSExpr>) =
             let innerState, subject, _ = get state
             inner.Update(token, innerState, insert)
 

@@ -143,7 +143,7 @@ module MutableApp =
                                                     lock state (fun () -> 
                                                         state.references.Clear()
                                                         if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                        let r = updater.Update(t,state,fun n -> JSExpr.Replace(JSExpr.Body, n))
+                                                        let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
                                                         if Config.shouldTimeUIUpdate then Log.stop ()
                                                         r
                                                     )
