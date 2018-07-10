@@ -20,11 +20,29 @@ module IdGen =
         let id = Interlocked.Increment(&currentId)
         "n" + string id
 
+type ContraDict<'k, 'v> =
+    abstract member Item : 'k -> 'v with set
+    abstract member Remove : 'k -> bool
+
+module ContraDict =
+    let ofDictionary (d : Dictionary<'k, 'v>) =
+        { new ContraDict<'k, 'v> with
+            member x.Item with set (k : 'k) (v : 'v) = d.[k] <- v
+            member x.Remove k = d.Remove k
+        }
+
+    let map (f : 'k -> 'b -> 'v) (d : ContraDict<'k, 'v>) =
+        { new ContraDict<'k, 'b> with
+            member x.Item with set (k : 'k) (v : 'b) = d.[k] <- f k v
+            member x.Remove k = d.Remove k
+        }
+
+type RootHandlers<'msg> = Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
 
 type UpdateState<'msg> =
     {
         scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
-        handlers            : Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
+        handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
         references          : Dictionary<string * ReferenceKind, Reference>
         activeChannels      : Dict<string * string, ChannelReader>
         messages            : IObservable<'msg>
@@ -219,23 +237,23 @@ type ChildrenUpdater<'msg>(id : string, children : alist<DomUpdater<'msg>>) =
 and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app : IApp<'model, 'msg>, request : Request, id : string) =
     inherit AbstractUpdater<'outermsg>()
     
-    let mutable old = Set.empty
+    //let mutable old = Set.empty
     let mutable mapp : Option<MutableApp<_,_> * DomUpdater<'msg> * UpdateState<'msg>> = None
     
-    let update key (client : Guid) (bla : string) (args : list<string>) =
-        match mapp with
-            | Some (mapp, updater, myState) ->
-                match myState.handlers.TryGetValue key with
-                    | (true, handler) ->
-                        let messages = handler client bla args
-                        mapp.update client messages
-                        let model = mapp.model.GetValue()
-                        messages |> Seq.collect (fun msg -> app.ToOuter<'outermsg>(model, msg))
+    //let update key (client : Guid) (bla : string) (args : list<string>) =
+    //    match mapp with
+    //        | Some (mapp, updater, myState, myHandlers) ->
+    //            match myHandlers.TryGetValue key with
+    //                | (true, handler) ->
+    //                    let messages = handler client bla args
+    //                    mapp.update client messages
+    //                    let model = mapp.model.GetValue()
+    //                    messages |> Seq.collect (fun msg -> app.ToOuter<'outermsg>(model, msg))
 
-                    | _ ->
-                        Seq.empty
-            | _ ->
-                Seq.empty
+    //                | _ ->
+    //                    Seq.empty
+    //        | _ ->
+    //            Seq.empty
 
     override x.PerformUpdate(token, self, state : UpdateState<'outermsg>) =
         let mapp, updater, myState =
@@ -254,10 +272,16 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
                     let parent = DomNode<_>(container.Tag, container.Namespace, innerAtt, DomContent.Children(AList.ofList [m.ui]))
                     let updater = DomUpdater(parent, request, id)
                     
+                    let updateFun handler (client : Guid) (bla : string) (args : list<string>) =
+                        let messages = handler client bla args
+                        m.update client messages
+                        let model = m.model.GetValue()
+                        messages |> Seq.collect (fun msg -> app.ToOuter<'outermsg>(model, msg))
+
                     let myState =
                         {
                             scenes              = state.scenes
-                            handlers            = Dictionary()
+                            handlers            = state.handlers |> ContraDict.map (fun k -> updateFun)
                             references          = state.references
                             activeChannels      = state.activeChannels
                             messages            = m.messages
@@ -279,78 +303,75 @@ and SubAppUpdater<'model, 'msg, 'outermsg>(container : DomNode<'outermsg>, app :
                     mapp <- Some (m,updater, myState)
                     (m, updater, myState)
   
-        let mutable n = Set.empty
-        let mutable deleted = old
-        //let mutable old = myState.handlers.Keys |> Set.ofSeq
+        //let mutable n = Set.empty
+        //let mutable deleted = old
+        ////let mutable old = myState.handlers.Keys |> Set.ofSeq
         let updateCode = updater.Update(token, self, myState)
 
-        for KeyValue(key, handler) in myState.handlers do
-            n <- Set.add key n
-            deleted <- Set.remove key deleted
-            state.handlers.[key] <- update key
+        //for KeyValue(key, handler) in myState.handlers do
+        //    n <- Set.add key n
+        //    deleted <- Set.remove key deleted
+        //    state.handlers.[key] <- update key
 
-        for key in deleted do
-            state.handlers.Remove key |> ignore
-        old <- n
+        //for key in deleted do
+        //    state.handlers.Remove key |> ignore
+        //old <- n
 
         updateCode
         
     override x.Destroy(state, self) =
         match mapp with
             | Some (app, updater, myState) ->
-                
                 let code = updater.Destroy(myState, self)
                 app.shutdown()
-                for key in myState.handlers.Keys do
-                    state.handlers.Remove key |> ignore
-                myState.handlers.Clear()
-                old <- Set.empty
                 mapp <- None
                 code
             | None ->
                 JSExpr.Nop
    
-and MapUpdater<'inner, 'outer>(mapping : 'inner -> 'outer, request : Request, id : string, child : DomUpdater<'inner>) =
+and MapUpdater<'inner, 'outer>(mapNode : MapDomNode<'inner, 'outer>, request : Request) =
     inherit AbstractUpdater<'outer>()
 
+    let mapping = mapNode.Mapping
+    let child = DomUpdater<'inner>(mapNode.Inner, request)
+
     let subject = new Subject<'inner>()
-    let handlers = Dictionary()
+    let mutable cache : Option<UpdateState<'inner> * Subject<'inner>> = None
 
     override x.Destroy(state : UpdateState<'outer>, self : JSExpr) : JSExpr =
-        let inner = 
-            {
-                scenes              = state.scenes
-                handlers            = handlers
-                references          = state.references
-                activeChannels      = state.activeChannels
-                messages            = subject
-            }
-        let res = child.Destroy(inner, self)
-        subject.OnCompleted()
-        subject.Dispose()
-        handlers.Clear()
-        res
+        match cache with
+            | Some (inner, subject) -> 
+                let res = child.Destroy(inner, self)
+                subject.OnCompleted()
+                subject.Dispose()
+                cache <- None
+                res
+            | None ->
+                JSExpr.Nop
 
     override x.PerformUpdate(token, self : JSExpr, state : UpdateState<'outer>) : JSExpr =
-        let inner = 
-            {
-                scenes              = state.scenes
-                handlers            = handlers
-                references          = state.references
-                activeChannels      = state.activeChannels
-                messages            = subject
-            }
-        let result = child.PerformUpdate(token, self, inner)
+        let inner, subject = 
+            match cache with
+                | Some a -> a
+                | None ->
+                    let updateFun handler (client : Guid) (bla : string) (args : list<string>) =
+                        let messages = handler client bla args
+                        messages |> Seq.map mapping
+
+                    let subject = new Subject<'inner>()
+                    let inner = 
+                        {
+                            scenes              = state.scenes
+                            handlers            = state.handlers |> ContraDict.map (fun _ -> updateFun)
+                            references          = state.references
+                            activeChannels      = state.activeChannels
+                            messages            = subject
+                        }
+                    cache <- Some (inner, subject)
+                    inner, subject
+
+        child.PerformUpdate(token, self, inner)
             
-        for (k,v) in Dictionary.toSeq inner.handlers do
-            state.handlers.[k] <- fun a b c -> 
-                let msgs = v a b c 
-                for m in msgs do subject.OnNext m
-                Seq.map mapping msgs
-
-        result
-
-
 and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
     inherit AbstractUpdater<'msg>()
 
@@ -486,26 +507,79 @@ and DomUpdater<'msg>(ui : DomNode<'msg>, request : Request, id : string) =
 
 [<AutoOpen>]
 module ``Extensions for Node`` =
+    open Aardvark.Base.IL
+    
+
+    let private cache = System.Collections.Concurrent.ConcurrentDictionary<Type, obj -> Request -> obj>()
+
+    let rec plain (x : DomNode<'a>) (request : Request) =
+        match x.Content with
+            | Page f -> 
+                let p = f request
+                let mutable p = p
+                match x.Boot with
+                    | Some boot -> p <- p.AddBoot boot
+                    | _ -> ()
+                match x.Shutdown with
+                    | Some boot -> p <- p.AddShutdown boot
+                    | _ -> ()
+                match x.Required with
+                    | [] -> ()
+                    | r -> p <- p.AddRequired(r)
+                newUpdater p request
+            | _ -> 
+                let updater = 
+                    if x.Tag = "body" then DomUpdater<'a>(x,request) :> IUpdater<_>
+                    else
+                        Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
+                        DomUpdater<'a>(DomNode<'a>("body", None, AttributeMap.empty, Children (AList.single x)), request) :> IUpdater<_>
+                updater
+    and newUpdater (v : DomNode<'a>) (request : Request) =
+        let t = v.GetType()
+        let creator = 
+            cache.GetOrAdd(t, Func<_,_>(fun (t : Type) ->
+                let td = t.GetGenericTypeDefinition()
+                let targs = t.GetGenericArguments()
+
+                if td = typedefof<MapDomNode<_,_>> then
+                    let tUpdater = typedefof<MapUpdater<_,_>>.MakeGenericType targs
+                    let ctor = tUpdater.GetConstructor [| t; typeof<Request> |]
+                    cil {
+                        do! IL.ldarg 0
+                        do! IL.ldarg 1
+                        do! IL.newobj ctor
+                        do! IL.ret
+                    }
+
+
+                else
+                    fun o r -> plain (unbox<DomNode<'a>> o) r :> obj
+            ))
+        creator v request |> unbox<IUpdater<'a>>
+
+
     type DomNode<'msg> with
         member x.NewUpdater(request : Request) =
-            match x.Content with
-                | Page f -> 
-                    let p = f request
-                    let mutable p = p
-                    match x.Boot with
-                        | Some boot -> p <- p.AddBoot boot
-                        | _ -> ()
-                    match x.Shutdown with
-                        | Some boot -> p <- p.AddShutdown boot
-                        | _ -> ()
-                    match x.Required with
-                        | [] -> ()
-                        | r -> p <- p.AddRequired(r)
-                    p.NewUpdater(request)
-                | _ -> 
-                    let updater = 
-                        if x.Tag = "body" then DomUpdater<'msg>(x,request) :> IUpdater<_>
-                        else
-                            Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
-                            DomUpdater<'msg>(DomNode<'msg>("body", None, AttributeMap.empty, Children (AList.single x)), request) :> IUpdater<_>
-                    updater
+            newUpdater x request
+            //let c = creator
+            //match x.Content with
+            //    | Page f -> 
+            //        let p = f request
+            //        let mutable p = p
+            //        match x.Boot with
+            //            | Some boot -> p <- p.AddBoot boot
+            //            | _ -> ()
+            //        match x.Shutdown with
+            //            | Some boot -> p <- p.AddShutdown boot
+            //            | _ -> ()
+            //        match x.Required with
+            //            | [] -> ()
+            //            | r -> p <- p.AddRequired(r)
+            //        p.NewUpdater(request)
+            //    | _ -> 
+            //        let updater = 
+            //            if x.Tag = "body" then DomUpdater<'msg>(x,request) :> IUpdater<_>
+            //            else
+            //                Log.warn "[Aardvark.UI.Dom] auto generating body. consider adding an explicit body to your view function"
+            //                DomUpdater<'msg>(DomNode<'msg>("body", None, AttributeMap.empty, Children (AList.single x)), request) :> IUpdater<_>
+            //        updater

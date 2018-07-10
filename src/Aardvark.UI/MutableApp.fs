@@ -100,10 +100,12 @@ module MutableApp =
 
                     let updater = app.ui.NewUpdater(request)
                     
+                    let handlers = Dictionary()
+
                     let state =
                         {
                             scenes          = Dictionary()
-                            handlers        = Dictionary()
+                            handlers        = ContraDict.ofDictionary handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
                             messages        = app.messages
@@ -218,7 +220,7 @@ module MutableApp =
                                                     Log.warn "bad opcode: %A" str
                                         else
                                             let evt : EventMessage = Pickler.json.UnPickle data
-                                            match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
+                                            match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
                                                 | (true, handler) ->
                                                     let msgs = handler sessionId evt.sender (Array.toList evt.args)
                                                     app.update sessionId msgs

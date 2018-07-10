@@ -440,8 +440,308 @@ module ChannelThings =
         let inline channel (m : aset<'a>) = m.Channel
 
 
+module NewImpl =
 
-[<Sealed>]
+    //| Empty
+    //| Children of alist<DomNode<'msg>>
+    //| Scene    of Aardvark.Service.Scene * (Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState)
+    //| Text     of IMod<string>
+    //| Page     of (Request -> DomNode<'msg>)
+    //| SubApp   of IApp
+
+    type IApp<'model, 'msg, 'outer> =
+        abstract member ToOuter : 'model * 'msg -> seq<'outer>
+        abstract member ToInner : 'model * 'outer -> seq<'msg>
+        abstract member Start : unit -> MutableApp<'model, 'msg>
+        
+    and MutableApp<'model, 'msg> =
+        {
+            lock        : obj
+            model       : IMod<'model>
+            ui          : DomNode<'msg>
+            update      : Guid -> seq<'msg> -> unit
+            messages    : IObservable<'msg>
+            shutdown    : unit -> unit
+        }
+
+    
+    and [<AbstractClass>] DomNode<'msg>() =
+        let mutable required : list<Reference> = []
+        let mutable boot : Option<string -> string> = None
+        let mutable shutdown : Option<string -> string> = None
+        let mutable callbacks : Map<string, (list<string> -> 'msg)> = Map.empty
+        let mutable channels : Map<string, Channel> = Map.empty
+        
+        member x.Required
+            with get() = required
+            and set v = required <- v
+
+        member x.Boot
+            with get() = boot
+            and set v = boot <- v
+
+        member x.Shutdown
+            with get() = shutdown
+            and set v = shutdown <- v
+
+        member x.Callbacks
+            with get() = callbacks
+            and set v = callbacks <- v
+
+        member x.Channels
+            with get() = channels
+            and set v = channels <- v
+
+        member private x.WithAttributesFrom(other : DomNode<'msg>) =
+            required <- other.Required
+            boot <- other.Boot
+            shutdown <- other.Shutdown
+            callbacks <- other.Callbacks
+            channels <- other.Channels
+            x
+
+        abstract member Visit : DomNodeVisitor<'msg, 'r> -> 'r
+
+        member x.Clone() =
+            x.Visit {
+                new DomNodeVisitor<'msg, DomNode<'msg>> with
+                    member x.Empty e    = DomNode.Empty().WithAttributesFrom e
+                    member x.Inner n    = DomNode.Element(n.Tag, n.Namespace, n.Attributes, n.Children).WithAttributesFrom n
+                    member x.Void n     = DomNode.Element(n.Tag, n.Namespace, n.Attributes).WithAttributesFrom n
+                    member x.Scene n    = DomNode.Scene(n.Scene, n.GetClientState).WithAttributesFrom n
+                    member x.Text n     = DomNode.Text(n.Tag, n.Namespace, n.Attributes, n.Text).WithAttributesFrom n
+                    member x.Page n     = DomNode.Page(n.Content).WithAttributesFrom n
+                    member x.SubApp n   = DomNode.SubApp(n.App).WithAttributesFrom n
+                    member x.Map n      = DomNode.Map(n.Mapping, n.Node).WithAttributesFrom n
+            }
+        
+        member x.WithRequired r =
+            let res = x.Clone()
+            res.Required <- r
+            res
+
+        member x.WithBoot r =
+            let res = x.Clone()
+            res.Boot <- r
+            res
+
+        member x.WithShutdown r =
+            let res = x.Clone()
+            res.Shutdown <- r
+            res
+
+        member x.WithCallbacks r =
+            let res = x.Clone()
+            res.Callbacks <- r
+            res
+
+        member x.WithChannels r =
+            let res = x.Clone()
+            res.Channels <- r
+            res
+
+        member x.AddRequired r = x.WithRequired (x.Required @ r)
+        member x.AddBoot r = 
+            match x.Boot with
+                | None -> x.WithBoot (Some r)
+                | Some b -> x.WithBoot (Some (fun self -> b self + ";" + r self))
+        member x.AddShutdown r = 
+            match x.Shutdown with
+                | None -> x.WithShutdown (Some r)
+                | Some b -> x.WithShutdown (Some (fun self -> b self + ";" + r self))
+        member x.AddCallbacks r = x.WithCallbacks (Map.union x.Callbacks r)
+        member x.AddChannels r = x.WithChannels (Map.union x.Channels r)
+
+
+    and EmptyNode<'msg>() =
+        inherit DomNode<'msg>()
+        override x.Visit v = v.Empty x
+
+    and InnerNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, children : alist<DomNode<'msg>>) =
+        inherit DomNode<'msg>()
+        member x.Tag = tag
+        member x.Namespace = ns
+        member x.Attributes = attributes
+        member x.Children = children
+        override x.Visit v = v.Inner x
+
+    and VoidNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>) =
+        inherit DomNode<'msg>()
+        member x.Tag = tag
+        member x.Namespace = ns
+        member x.Attributes = attributes
+        override x.Visit v = v.Void x
+
+    and SceneNode<'msg>(scene : Aardvark.Service.Scene, getClientState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState) =
+        inherit DomNode<'msg>()
+        member x.Scene = scene
+        member x.GetClientState i = getClientState i
+        override x.Visit v = v.Scene x
+
+    and TextNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, text : IMod<string>) =
+        inherit DomNode<'msg>()
+        member x.Tag = tag
+        member x.Namespace = ns
+        member x.Attributes = attributes
+        member x.Text = text
+        override x.Visit v = v.Text x
+
+    and PageNode<'msg>(content : Request -> DomNode<'msg>) =
+        inherit DomNode<'msg>()
+        member x.Content = content
+        override x.Visit v = v.Page x
+
+    and SubAppNode<'model, 'inner, 'outer>(app : IApp<'model, 'inner, 'outer>) =
+        inherit DomNode<'outer>()
+        member x.App : IApp<'model, 'inner, 'outer> = app
+        override x.Visit v = v.SubApp x
+
+    and MapNode<'inner, 'outer>(mapping : 'inner -> 'outer, node : DomNode<'inner>) =
+        inherit DomNode<'outer>()
+        member x.Mapping : 'inner -> 'outer = mapping
+        member x.Node : DomNode<'inner> = node
+        override x.Visit v = v.Map x
+    
+    and DomNodeVisitor<'msg, 'r> =
+        abstract member Empty                   : EmptyNode<'msg> -> 'r
+        abstract member Inner                   : InnerNode<'msg> -> 'r
+        abstract member Void                    : VoidNode<'msg> -> 'r
+        abstract member Scene                   : SceneNode<'msg> -> 'r
+        abstract member Text                    : TextNode<'msg> -> 'r
+        abstract member Page                    : PageNode<'msg> -> 'r
+        abstract member SubApp<'model, 'inner>  : SubAppNode<'model, 'inner, 'msg> -> 'r
+        abstract member Map<'inner>             : MapNode<'inner, 'msg> -> 'r
+
+    and DomNode private() =
+        
+        static member Empty<'msg>() : DomNode<'msg> = 
+            EmptyNode<'msg>() :> DomNode<'msg>
+
+        static member Element<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, children : alist<DomNode<'msg>>) : DomNode<'msg> =
+            InnerNode<'msg>(tag, ns, attributes, children) :> DomNode<_>
+
+        static member Element<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>) : DomNode<'msg> =
+            VoidNode(tag, ns, attributes) :> DomNode<_>
+        
+        static member Scene<'msg>(scene : Aardvark.Service.Scene, getClientState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState) : DomNode<'msg> =
+            SceneNode(scene, getClientState) :> DomNode<_>
+
+        static member Text<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, text : IMod<string>) : DomNode<'msg> =
+            TextNode(tag, ns, attributes, text) :> DomNode<_>
+
+        static member Page<'msg>(content : Request -> DomNode<'msg>) : DomNode<'msg> =
+            PageNode(content) :> DomNode<_>
+
+        static member Map<'inner, 'outer>(mapping : 'inner -> 'outer, node : DomNode<'inner>) : DomNode<'outer> =
+            MapNode<'inner, 'outer>(mapping, node) :> DomNode<_>
+
+        static member SubApp<'model, 'inner, 'outer>(app : IApp<'model, 'inner, 'outer>) : DomNode<'outer> =
+            SubAppNode<'model, 'inner, 'outer>(app) :> DomNode<_>
+
+
+    module Updaters =
+        open System.Threading
+        open System.Collections.Generic
+
+        [<AutoOpen>]
+        module IdGen =
+            let mutable private currentId = 0
+            let newId() =
+                let id = Interlocked.Increment(&currentId)
+                "n" + string id
+
+        type ContraDict<'k, 'v> =
+            abstract member Item : 'k -> 'v with set
+            abstract member Remove : 'k -> bool
+
+        module ContraDict =
+            let ofDictionary (d : Dictionary<'k, 'v>) =
+                { new ContraDict<'k, 'v> with
+                    member x.Item with set (k : 'k) (v : 'v) = d.[k] <- v
+                    member x.Remove k = d.Remove k
+                }
+
+            let map (f : 'k -> 'b -> 'v) (d : ContraDict<'k, 'v>) =
+                { new ContraDict<'k, 'b> with
+                    member x.Item with set (k : 'k) (v : 'b) = d.[k] <- f k v
+                    member x.Remove k = d.Remove k
+                }
+
+        type RootHandlers<'msg> = Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
+
+        type UpdateState<'msg> =
+            {
+                scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
+                handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
+                references          : Dictionary<string * ReferenceKind, Reference>
+                activeChannels      : Dict<string * string, ChannelReader>
+                messages            : IObservable<'msg>
+            }
+
+        type IUpdater<'msg> =
+            inherit IAdaptiveObject
+            abstract member Update : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
+            abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
+
+        [<AbstractClass>]
+        type AbstractUpdater<'msg>(node : DomNode<'msg>) =
+            inherit AdaptiveObject()
+
+            abstract member PerformUpdate : AdaptiveToken * JSExpr * UpdateState<'msg> -> JSExpr
+            abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
+
+            member x.Update(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
+                x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
+                    let res = x.PerformUpdate(token, self, state)
+
+                    // TODO: update attributes, etc.
+
+                    res
+                )
+
+            interface IUpdater<'msg> with
+                member x.Update(t,s,state) = x.Update(t,s,state)
+                member x.Destroy(state, self) = x.Destroy(state, self)
+
+        type EmptyUpdater<'msg>(e : EmptyNode<'msg>) =
+            inherit AbstractUpdater<'msg>(e)
+
+            override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
+                JSExpr.Nop
+
+            override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
+                JSExpr.Nop
+
+        type VoidUpdater<'msg>(e : VoidNode<'msg>) =
+            inherit AbstractUpdater<'msg>(e)
+
+            let reader = e.Attributes.GetReader()
+
+            override x.PerformUpdate(token : AdaptiveToken, self : JSExpr, state : UpdateState<'msg>) =
+                let atts = reader.GetOperations token
+                JSExpr.Nop
+
+            override x.Destroy(state : UpdateState<'msg>, self : JSExpr) =
+                JSExpr.Nop
+
+            
+
+        type DomNode<'msg> with
+            member x.NewUpdater() =
+                x.Visit {
+                    new DomNodeVisitor<'msg, IUpdater<'msg>> with
+                        member x.Empty e    = EmptyUpdater(e) :> IUpdater<_>
+                        member x.Inner n    = failwith ""
+                        member x.Void n     = failwith ""
+                        member x.Scene n    = failwith ""
+                        member x.Text n     = failwith ""
+                        member x.Page n     = failwith ""
+                        member x.SubApp n   = failwith ""
+                        member x.Map n      = failwith ""
+                }
+
+
+
 type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, content : DomContent<'msg>) =
     let mutable required : list<Reference> = []
     let mutable boot : Option<string -> string> = None
@@ -482,7 +782,8 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
         with get() = callbacks
         and private set cbs = callbacks <- cbs
 
-    member private x.Copy() =
+    abstract member Copy : unit -> DomNode<'msg>
+    default x.Copy() =
         DomNode<'msg>(
             x.Tag,
             x.Namespace,
@@ -496,17 +797,8 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
         )
 
     member x.Map(f : 'msg -> 'b) = 
-        DomNode<'b>(
-            x.Tag,
-            x.Namespace,
-            x.Attributes |> AttributeMap.mapAttributes (AttributeValue.map f),
-            DomContent.Map(x.Content, f),
-            Required = x.Required,
-            Boot = x.Boot,
-            Shutdown = x.Shutdown,
-            Callbacks = (x.Callbacks |> Map.map (fun k v -> fun xs -> f (v xs))),
-            Channels = x.Channels
-        )
+        MapDomNode<'msg, 'b>(f, x) :> DomNode<'b>
+
         
 
     member x.WithRequired (required : list<Reference>) =
@@ -587,6 +879,12 @@ type DomNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
             Channels = x.Channels
         )
 
+and MapDomNode<'inner, 'outer>(mapping : 'inner -> 'outer, inner : DomNode<'inner>) =
+    inherit DomNode<'outer>(inner.Tag, None, AttributeMap.empty, DomContent.Empty)
+    member x.Mapping = mapping
+    member x.Inner = inner
+    override x.Copy() = MapDomNode(mapping, inner.Copy()) :> DomNode<_>
+
 and RunningSubApp<'msg> =
     {
         stop : unit -> unit
@@ -624,20 +922,20 @@ and DomContent<'msg> =
     | Page     of (Request -> DomNode<'msg>)
     | SubApp   of IApp
 
-    with 
-        static member Map(x : DomContent<'msg>, f : 'msg -> 'b) = 
-            match x with
-                | Empty -> Empty
-                | Children xs -> Children (AList.map (fun (n:DomNode<'msg>) -> n.Map f) xs)
-                | Scene(s,f)  -> Scene(s,f)
-                | Text t      -> Text t
-                | Page c      -> 
-                    let inner request =
-                        let r = c request
-                        r.Map f
-                    Page inner
-                | SubApp a ->
-                    SubApp a
+    //with 
+    //    static member Map(x : DomContent<'msg>, f : 'msg -> 'b) =
+    //        match x with
+    //            | Empty -> Empty
+    //            | Children xs -> Children (AList.map (fun (n:DomNode<'msg>) -> n.Map f) xs)
+    //            | Scene(s,f)  -> Scene(s,f)
+    //            | Text t      -> Text t
+    //            | Page c      -> 
+    //                let inner request =
+    //                    let r = c request
+    //                    r.Map f
+    //                Page inner
+    //            | SubApp a ->
+    //                SubApp a
   
  
 type Unpersist<'model, 'mmodel> =
