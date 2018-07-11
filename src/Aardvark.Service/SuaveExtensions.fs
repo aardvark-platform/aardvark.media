@@ -164,7 +164,7 @@ module Reflection =
 
                 let ext = Path.GetExtension name
         
-                Report.Line(2, "{0} serves {1}", assembly.FullName, name)
+                Report.Line(2, "{0} serves {1}", assembly.GetName().Name, name)
                
                 let part = ok  buffer
 
