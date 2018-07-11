@@ -101,7 +101,7 @@ if (!aardvark.getRelativeUrl) {
         if (!dir.endsWith("/")) dir = dir + "/";
 
         var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
-        console.warn(path);
+        console.log(path);
 
         return path;
     }

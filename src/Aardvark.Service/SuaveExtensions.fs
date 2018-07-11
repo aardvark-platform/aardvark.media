@@ -121,6 +121,10 @@ module Reflection =
             ".js", "text/javascript"
             ".css", "text/css"
             ".svg", "image/svg+xml"
+            ".woff", "application/x-font-woff"
+            ".woff2", "font/woff2"
+            ".ttf","application/octet-stream" 
+            ".eot","application/vnd.ms-fontobject"
         ]
         
     let private (|LocalResourceName|_|) (ass : Assembly) (n : string) =
@@ -148,14 +152,21 @@ module Reflection =
             )
             |> List.collect (fun (resName, name) ->
                 use stream = assembly.GetManifestResourceStream resName
-                let reader = new StreamReader(stream)
-                let text = reader.ReadToEnd()
+
+                let buffer = Array.zeroCreate (int stream.Length)
+                
+                let mutable remaining = buffer.Length
+                let mutable read = 0
+                while remaining > 0 do
+                    let s = stream.Read(buffer, read, remaining)
+                    read <- read + s
+                    remaining <- remaining - s
 
                 let ext = Path.GetExtension name
-
+        
+                Report.Line(2, "{0} serves {1}", assembly.FullName, name)
                
-                // respond with the text
-                let part = OK text
+                let part = ok  buffer
 
                 // set the mime-type (if known)
                 let part = 
