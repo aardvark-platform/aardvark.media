@@ -140,11 +140,21 @@ module Reflection =
         else
             None
 
+    let private isNetFramework (assembly : Assembly) =
+        let attributeValue = assembly.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>()
+        attributeValue.FrameworkName.ToLower().Contains("framework")
+
+    let (|PlainFrameworkEmbedding|_|) (assembly : Assembly) (resName : string) =
+        if assembly |> isNetFramework then Some resName
+        else None
+
     let assemblyWebPart (assembly : Assembly) = 
         assembly.GetManifestResourceNames()
             |> Array.toList
             |> List.choose (fun resName -> 
                 match resName with 
+                    | PlainFrameworkEmbedding assembly n -> 
+                        Some(resName, n)
                     | LocalResourceName assembly n -> 
                         Some(resName, n) 
                     | _ -> 
