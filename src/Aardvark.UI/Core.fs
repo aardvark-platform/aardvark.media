@@ -822,11 +822,25 @@ type DomNode private() =
             }
 
         DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene, htmlChildren)
+    
+    
+
+    
 
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ClientValues -> ISg<'msg>, isOrtho: bool, htmlChildren : Option<DomNode<_>>) =
+
+        let aspect { left = l; right = r; top = t; bottom = b } =  (t - b) / (r - l)
+        let withAspectFlipped (newAspect : float) ( { left = l; right = r; top = t; bottom = b } as f)  = 
+          let factor = 1.0 - (newAspect / aspect f)                  
+          { f with bottom = factor * t + b; top  = factor * b + t }
+
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
-            let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+            let cam = 
+              if isOrtho then 
+                { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+              else
+                { cam with frustum = cam.frustum |> withAspectFlipped (float c.size.Y / float c.size.X) }
 
             {
                 viewTrafo = CameraView.viewTrafo cam.cameraView
