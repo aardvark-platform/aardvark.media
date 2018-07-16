@@ -164,7 +164,98 @@ module Events =
         k, m |> Mod.map (function true -> Some v | false -> None)
 
 
+    let internal onMouseRel (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> 'msg) =
+        kind, AttributeValue.Event {
+            clientSide = fun send src -> 
+                String.concat ";" [
+                    "var rect = getBoundingClientRect(event.target)"
+                    "var x = (event.clientX - rect.left) / rect.width"
+                    "var y = (event.clientY - rect.top) / rect.height"
+                    send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
+                        
+                ]
+            serverSide = fun client src args -> 
+                match args with
+                    | which :: pos :: _ ->
+                        let v : V2d = Pickler.json.UnPickleOfString pos
+                        let button = if needButton then button which else MouseButtons.Left
+                        Seq.singleton (f button v)
+                    | _ ->
+                        Seq.empty      
+        }
+
+    let internal onMouseAbs (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> V2d -> 'msg) =
+        kind, AttributeValue.Event {
+            clientSide = fun send src -> 
+                String.concat ";" [
+                    "var rect = getBoundingClientRect(event.target)"
+                    "var x = (event.clientX - rect.left)"
+                    "var y = (event.clientY - rect.top)"
+                    send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"; "{ X: rect.width.toFixed(10), Y: rect.height.toFixed(10) }"]
+                        
+                ]
+            serverSide = fun client src args -> 
+                match args with
+                    | which :: pos :: size :: _ ->
+                        let pos : V2d = Pickler.json.UnPickleOfString pos
+                        let size : V2d = Pickler.json.UnPickleOfString size
+                        let button = if needButton then button which else MouseButtons.Left
+                        Seq.singleton (f button pos size)
+                    | _ ->
+                        Seq.empty      
+        }
+
+    let onMouseDownAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
+        onMouseAbs "onmousedown" true f
+
+    let onMouseUpAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
+        onMouseAbs "onmouseup" true f
+
+    let onMouseMoveAbs (f : V2d -> V2d -> 'msg) =
+        onMouseAbs "onmousemove" false (fun _ -> f)
+
+    let onMouseClickAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
+        onMouseAbs "onclick" true f
+        
+    let onMouseDoubleClickAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
+        onMouseAbs "ondblclick" true f
+
+
+
+    let onMouseDownRel (f : MouseButtons -> V2d -> 'msg) =
+        onMouseRel "onmousedown" true f
+
+    let onMouseUpRel (f : MouseButtons -> V2d -> 'msg) =
+        onMouseRel "onmouseup" true f
+
+    let onMouseMoveRel (f : V2d -> 'msg) =
+        onMouseRel "onmousemove" false (fun _ -> f)
+
+    let onMouseClickRel (f : MouseButtons -> V2d -> 'msg) =
+        onMouseRel "onclick" true f
+
+    let onWheel' (f : V2d -> V2d -> 'msg) =
+
+        "onwheel", AttributeValue.Event {
+            clientSide = fun send src -> 
+                String.concat ";" [
+                    "var rect = getBoundingClientRect(event.target)"
+                    "var x = (event.clientX - rect.left) / rect.width"
+                    "var y = (event.clientY - rect.top) / rect.height"
+                    send src ["{ X: event.deltaX.toFixed(), Y : event.deltaY.toFixed() }"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
+                        
+                ]
+            serverSide = fun client src args -> 
+                match args with
+                    | delta :: pos :: _ ->
+                        let v : V2d = Pickler.json.UnPickleOfString pos
+                        let delta : V2d = Pickler.json.UnPickleOfString delta
+                        Seq.singleton (f delta v)
+                    | _ ->
+                        Seq.empty      
+        }
+
 
 module Operators =
     
-    let inline (==>) a b = Attributes.attribute a b
+    let inline (=>) a b = Attributes.attribute a b

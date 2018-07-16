@@ -93,6 +93,10 @@ let view (model : MModel) =
                         ]
                         br []
                         br []
+                        button [
+                            onChooseFiles (fun files -> printfn "%A" files; ToggleFill)
+                            clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
+                        ] [text "open directory"]
                         button [style "position: absolute; bottom: 5px; left: 5px;"; clazz "ui small button"; onClick (fun _ -> CenterScene)] [text "Center Scene"]
                     ]
                 )

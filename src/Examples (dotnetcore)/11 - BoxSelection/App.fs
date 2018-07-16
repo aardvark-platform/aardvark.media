@@ -142,7 +142,7 @@ let view (model : MBoxSelectionDemoModel) =
                                         onMouseEnter(fun _ -> Enter b.id)
                                         onMouseLeave(fun _ -> Exit)
                                      ] [
-                                        i [clazz "medium File Outline middle aligned icon"][]
+                                        i [clazz "file outline middle aligned icon"][]
                                      ]                                                                    
                         }     
                 )

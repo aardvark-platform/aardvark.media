@@ -15,8 +15,8 @@
     <EmbeddedResource Include="template.html" />
     <Compile Include="Config.fs" />
     <Compile Include="Sg.fs" />
-    <Compile Include="Core.fs" />
     <Compile Include="Javascript.fs" />
+    <Compile Include="Core.fs" />
     <Compile Include="Updater.fs" />
     <Compile Include="MutableApp.fs" />
     <Compile Include="App.fs" />
@@ -24,6 +24,7 @@
     <Compile Include="Attributes.fs" />
     <None Include="paket.references" />
     <Compile Include="SgFSharpExtensions.fs" />
+    <Compile Include="Combinators.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />
