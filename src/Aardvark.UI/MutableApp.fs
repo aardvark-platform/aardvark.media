@@ -133,12 +133,12 @@ module MutableApp =
                             while running do
                                 let! cont = MVar.takeAsync update
                                 if cont then
-                                    o.EvaluateAlways AdaptiveToken.Top (fun t ->
-                                        if Config.shouldTimeJsCodeGeneration then 
-                                            Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
+                                    lock app.lock (fun () ->
+                                        o.EvaluateAlways AdaptiveToken.Top (fun t ->
+                                            if Config.shouldTimeJsCodeGeneration then 
+                                                Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
 
-                                        let code = 
-                                            lock app.lock (fun () ->
+                                            let code = 
                                                 let expr = 
                                                     lock state (fun () -> 
                                                         state.references.Clear()
@@ -166,40 +166,40 @@ module MutableApp =
                                                     sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
                                                 else
                                                     code
-                                            )
 
-                                        if Config.shouldTimeJsCodeGeneration then 
-                                            Log.line "[Aardvark.UI] code length: %d" (code.Length); Log.stop()
+                                            if Config.shouldTimeJsCodeGeneration then 
+                                                Log.line "[Aardvark.UI] code length: %d" (code.Length); Log.stop()
 
-                                        if code <> "" then
-                                            lock app (fun () -> 
-                                                if Config.shouldPrintDOMUpdates then
-                                                    let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
-                                                    Log.start "update"
-                                                    for l in lines do Log.line "%s" l
-                                                    Log.stop()
-                                            )
+                                            if code <> "" then
+                                                lock app (fun () -> 
+                                                    if Config.shouldPrintDOMUpdates then
+                                                        let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
+                                                        Log.start "update"
+                                                        for l in lines do Log.line "%s" l
+                                                        Log.stop()
+                                                )
 
-                                            send (Text.Encoding.UTF8.GetBytes("x" + code))
+                                                send (Text.Encoding.UTF8.GetBytes("x" + code))
     
                                                 
-                                        let mutable o = oldChannels
-                                        let mutable c = Set.empty
-                                        for (KeyValue((id,name), cr)) in state.activeChannels do
-                                            match cr.GetMessages(t) with
-                                                | [] -> ()
-                                                | messages ->
-                                                    let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
-                                                    send message
+                                            let mutable o = oldChannels
+                                            let mutable c = Set.empty
+                                            for (KeyValue((id,name), cr)) in state.activeChannels do
+                                                match cr.GetMessages(t) with
+                                                    | [] -> ()
+                                                    | messages ->
+                                                        let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
+                                                        send message
 
-                                            c <- Set.add (id, name) c
-                                            o <- Set.remove (id, name) o
+                                                c <- Set.add (id, name) c
+                                                o <- Set.remove (id, name) o
 
-                                        for (id, name) in o do
-                                            let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
-                                            send message
+                                            for (id, name) in o do
+                                                let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
+                                                send message
                                             
-                                        oldChannels <- c
+                                            oldChannels <- c
+                                        )
                                     )
 
                         }
