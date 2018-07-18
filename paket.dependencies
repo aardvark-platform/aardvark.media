@@ -18,8 +18,8 @@ nuget Aardvark.Rendering.Text              ~> 4.2.0
 nuget Aardvark.Rendering.Vulkan            ~> 4.2.0
 nuget Aardvark.GPGPU                       ~> 4.2.0
 
-nuget Aardvark.Compiler.DomainTypes         ~> 4.0.7
-nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.0.7
+nuget Aardvark.Compiler.DomainTypes         ~> 4.0.10
+nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.0.10
 
 nuget FsPickler                             ~> 5.2.0
 nuget FsPickler.Json                        ~> 5.2.0
