@@ -36,13 +36,21 @@ let view (model : MModel) =
                     (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"]) 
                     (viewScene model)
 
-    div [] [
-        text "Hello 3D"
-        br []
-        button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
-        br []
-        renderControl
-    ]
+    let channel = model.cameraState.view
+                    |> Mod.map (fun v -> v.Forward)
+                    |> Mod.channel
+
+    let updateData = "foo.onmessage = function (data) { console.log(data); }"
+
+    onBoot' ["foo", channel] updateData (
+        div [] [
+            text "Hello 3D"
+            br []
+            button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
+            br []
+            renderControl
+        ]
+    )
 
 // variant with html5 grid layouting (currently not working in our cef)
 let view2 (model : MModel) =
