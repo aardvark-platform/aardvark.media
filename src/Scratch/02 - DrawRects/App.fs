@@ -40,7 +40,7 @@ module ClientApp =
 
     let view (model : MModel) (clientState : MClientState) =
     
-        let attributes = 
+        let svgAttribs = 
             amap {
                 yield clazz "svgRoot"
                 yield "width" => "100%"
@@ -57,6 +57,7 @@ module ClientApp =
                 //     yield onMouseMoveRel (fun n -> toGlobalSpace n |> Drag)
             } |> AttributeMap.ofAMap 
         
+        let svgContent = AList.empty
 
         div [style "display: flex; flex-direction: row; width: 100%; height: 100%"] [
             div [style "display: flex; width: 70%;"] [
@@ -78,6 +79,7 @@ module ClientApp =
             initial = 
                 { 
                    viewport = Box2d.Unit
+                   selectedRect = None
                 }
             update = update 
             view = view outer

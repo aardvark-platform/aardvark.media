@@ -24,6 +24,8 @@ open Suave.Sockets.Control
 open Suave.Sockets
 open Suave.State.CookieStateStore
 
+type EmbeddedResources = EmbeddedResources
+
 [<AutoOpen>]
 module private Tools =
     type WebSocket with
@@ -250,6 +252,7 @@ module MutableApp =
 
         choose [            
             prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
+            Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
             path "/events" >=> handShake events
             path "/" >=> OK template 
         ]

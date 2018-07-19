@@ -34,16 +34,16 @@ let main argv =
     let instance = 
         app |> App.start
 
-    WebPart.runServer 80 [ 
+    WebPart.startServer 4321 [ 
         MutableApp.toWebPart' runtime false instance
         Suave.Files.browseHome
     ]  
     
 
-    //Aardium.run {
-    //    url "http://localhost:4321/"
-    //    width 1024
-    //    height 768
-    //    debug true
-    //}
+    Aardium.run {
+        url "http://localhost:4321/"
+        width 1024
+        height 768
+        debug true
+    }
     0 
