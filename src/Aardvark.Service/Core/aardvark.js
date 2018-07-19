@@ -121,9 +121,15 @@ class Renderer {
         if (!samples) samples = 1;
         this.samples = samples;
 
-        var showFPS = this.div.getAttribute("showFPS");
-        if (showFPS == "true") showFPS = true;
-        this.showFPS = showFPS;
+		debugger;
+		var showFPS = this.div.getAttribute("showFPS");
+		if (showFPS === "true") showFPS = true; else showFPS = false;
+		this.showFPS = showFPS;
+
+
+		var showLoader = this.div.getAttribute("showLoader");
+		if (showLoader === "false") showLoader = false; else showLoader = true;
+		this.showLoader = showLoader;
 
         this.buffer = [];
         this.isOpen = false;
@@ -178,7 +184,9 @@ class Renderer {
         this.div.appendChild(img);
         img.setAttribute("class", "rendercontrol");
 
-        this.createLoader();
+		debugger;
+		if (this.showLoader) this.createLoader();
+
         this.img = img;
 
         var overlay = document.createElement("span")

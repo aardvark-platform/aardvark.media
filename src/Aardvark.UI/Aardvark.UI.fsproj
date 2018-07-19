@@ -25,6 +25,7 @@
     <None Include="paket.references" />
     <Compile Include="SgFSharpExtensions.fs" />
     <Compile Include="Combinators.fs" />
+	<EmbeddedResource Include="resources\favicon.ico" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />
