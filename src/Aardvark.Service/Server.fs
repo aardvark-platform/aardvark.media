@@ -807,10 +807,47 @@ module internal RawDownload =
                     dst <- dst - lineSize
             )
 
+    module private GL =
+        open OpenTK.Graphics.OpenGL4
+        open Aardvark.Rendering.GL
+        let download (runtime : IRuntime) (tex : IBackendTexture) (dst : nativeint) =
+            let runtime = unbox<Runtime> runtime
+            let tex = unbox<Texture> tex
+            let ctx = runtime.Context
+            
+            use __ = ctx.ResourceLock
+            let size = tex.Size.X * tex.Size.Y * 4
+
+            let lineMem : byte[] = Array.zeroCreate (tex.Size.X * 4)
+            let gc = GCHandle.Alloc(lineMem, GCHandleType.Pinned)
+            try
+                GL.GetTextureSubImage(tex.Handle, 0, 0, 0, 0, tex.Size.X, tex.Size.Y, 1, PixelFormat.Rgba, PixelType.UnsignedByte, int size, dst)
+
+                let pTmp = gc.AddrOfPinnedObject()
+                let lineSize = 4n * nativeint tex.Size.X
+                for i in 0 .. tex.Size.Y / 2 - 1 do
+                    let l = i |> nativeint
+                    let r = tex.Size.Y - 1 - i |> nativeint
+                    let pL = dst + lineSize * l
+                    let pR = dst + lineSize * r
+                    Marshal.Copy(pL, pTmp, lineSize)
+                    Marshal.Copy(pR, pL, lineSize)
+                    Marshal.Copy(pTmp, pR, lineSize)
+
+
+            
+            finally
+                gc.Free()
+        
+
     let download (runtime : IRuntime) (texture : IBackendTexture) (dst : nativeint) =  
         match runtime with
             | :? Aardvark.Rendering.Vulkan.Runtime ->
                 Vulkan.download runtime texture dst
+
+            | :? Aardvark.Rendering.GL.Runtime ->
+                GL.download runtime texture dst
+                
             | _ ->
                 let dst = 
                     NativeTensor4<byte>(
