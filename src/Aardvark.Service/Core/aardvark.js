@@ -676,10 +676,25 @@ class Renderer {
                     this.mapping = aardvark.openMapping(o.name, o.length);
                 }
 
+                if (this.frameBufferSize) {
+                    if (this.frameBufferSize.X != o.size.X || this.frameBufferSize.Y != o.size.Y) {
+                        var len = o.size.X * o.size.Y * 4;
+                        this.frameBuffer = new Uint8ClampedArray(len);
+                        this.frameBufferSize = o.size;
+                        this.frameBufferLength = len;
+                    }
+                }
+                else {
+                    var len = o.size.X * o.size.Y * 4;
+                    this.frameBuffer = new Uint8ClampedArray(len);
+                    this.frameBufferSize = o.size;
+                    this.frameBufferLength = len;
+                }
 
                 this.canvas.width = o.size.X;
                 this.canvas.height = o.size.Y;
-                this.ctx.putImageData(this.mapping.readImageData(o.size.X, o.size.Y), 0, 0);
+                this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
+                this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
                 
                 this.send(JSON.stringify({ Case: "Rendered" }));
                 if (this.loading) {

@@ -26,6 +26,12 @@ open Aardvark.Base.Incremental
 open Aardvark.Application
 open System.Diagnostics
 
+open System.IO.MemoryMappedFiles
+open Microsoft.FSharp.NativeInterop
+
+
+#nowarn "9"
+
 type Message =
     | RequestImage of background : C4b * size : V2i
     | RequestWorldPosition of pixel : V2i
@@ -447,12 +453,22 @@ module private ReadPixel =
             | :? Aardvark.Rendering.Vulkan.Image as img -> Vulkan.downloadDepth pixel img |> Some
             | _ -> None
 
+type internal MapImage = 
+    {
+        name : string
+        length : int
+        size : V2i
+    }
+
+type internal RenderResult =
+    | Jpeg of byte[]
+    | Mapping of MapImage
+
+[<AbstractClass>]
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     let runtime = server.runtime
     let mutable task = RenderTask.empty
-
-    let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
-
+    
     let targetSize = Mod.init V2i.II
     
     let mutable currentSize = -V2i.II
@@ -460,7 +476,6 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     
     let mutable depth : Option<IRenderbuffer> = None 
     let mutable color : Option<IRenderbuffer> = None
-    let mutable resolved : Option<IBackendTexture> = None
     let mutable target : Option<IFramebuffer> = None 
 
     static let mutable threadCount = 0
@@ -470,7 +485,6 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         target     |> Option.iter runtime.DeleteFramebuffer
         depth      |> Option.iter runtime.DeleteRenderbuffer
         color      |> Option.iter runtime.DeleteRenderbuffer
-        resolved   |> Option.iter runtime.DeleteTexture
         target <- None
         color <- None
         depth <- None
@@ -504,22 +518,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 ]
             )
 
-        match server.compressor with
-            | Some compressor -> 
-                match gpuCompressorInstance with
-                    | None -> 
-                        ()
-                    | Some old -> 
-                        old.Dispose()
-                Log.line "[Media.Server] creating GPU image compressor for size: %A" size
-                let instance = compressor.NewInstance(size, Quantization.photoshop80)
-                gpuCompressorInstance <- Some instance
-            | _ ->
-                ()
 
-        let r = runtime.CreateTexture(currentSize, TextureFormat.ofRenderbufferFormat colorSignature.format, 1, 1)
-
-        resolved <- Some r
         depth <- Some d
         color <- Some c
         target <- Some newTarget
@@ -630,6 +629,8 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             | None ->
                 None
         
+    abstract member ProcessImage : IFramebuffer * IRenderbuffer -> RenderResult
+    abstract member Release : unit -> unit
 
     member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
         lastInfo <- Some info
@@ -672,16 +673,17 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 Interlocked.Decrement(&threadCount) |> ignore
         )
         compressTime.Start()
-        let data =
-            match gpuCompressorInstance with
-                | Some gpuCompressorInstance ->
-                    if info.samples > 1 then
-                        runtime.ResolveMultisamples(color.Value, resolved.Value, ImageTrafo.Rot0)
-                    else
-                        runtime.Copy(color.Value,resolved.Value.[TextureAspect.Color,0,0])
-                    gpuCompressorInstance.Compress(resolved.Value.[TextureAspect.Color,0,0])
-                | None -> 
-                    target.DownloadJpegColor()
+        let data = x.ProcessImage(target, color.Value)
+        //let data =
+        //    match gpuCompressorInstance with
+        //        | Some gpuCompressorInstance ->
+        //            if info.samples > 1 then
+        //                runtime.ResolveMultisamples(color.Value, resolved.Value, ImageTrafo.Rot0)
+        //            else
+        //                runtime.Copy(color.Value,resolved.Value.[TextureAspect.Color,0,0])
+        //            gpuCompressorInstance.Compress(resolved.Value.[TextureAspect.Color,0,0])
+        //        | None -> 
+        //            target.DownloadJpegColor()
 
         compressTime.Stop()
         t.Dispose()
@@ -703,6 +705,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             frameCount <- 0
             currentScene <- None
             lastInfo <- None
+            x.Release()
         with e -> 
             Log.warn "[Media] render server disposal failed (alread disposed?)"
 
@@ -714,6 +717,180 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         member x.Dispose() =
             x.Dispose()
 
+type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    inherit ClientRenderTask(server, getScene)
+    
+    let runtime = server.runtime
+    let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
+    let mutable resolved : Option<IBackendTexture> = None
+
+    let recreate  (fmt : RenderbufferFormat) (size : V2i) =
+        match server.compressor with
+            | Some compressor -> 
+                match gpuCompressorInstance with
+                    | None -> 
+                        ()
+                    | Some old -> 
+                        old.Dispose()
+                Log.line "[Media.Server] creating GPU image compressor for size: %A" size
+                let instance = compressor.NewInstance(size, Quantization.photoshop80)
+                gpuCompressorInstance <- Some instance
+
+                resolved |> Option.iter runtime.DeleteTexture
+                let r = runtime.CreateTexture(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+                resolved <- Some r
+                Some r
+
+            | _ ->
+                None
+
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        let resolved = 
+            match resolved with
+                | Some r when r.Size.XY = color.Size -> Some r
+                | _ -> recreate color.Format color.Size
+        let data =
+            match gpuCompressorInstance with
+                | Some gpuCompressorInstance ->
+                    let resolved = resolved.Value
+                    if color.Samples > 1 then
+                        runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
+                    else
+                        runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
+                    gpuCompressorInstance.Compress(resolved.[TextureAspect.Color,0,0])
+                | None -> 
+                    target.DownloadJpegColor()
+        Jpeg data
+
+    override x.Release() =
+        gpuCompressorInstance |> Option.iter (fun i -> i.Dispose())
+        resolved |> Option.iter runtime.DeleteTexture
+        gpuCompressorInstance <- None
+        resolved <- None
+        
+
+type private MappingInfo =
+    {
+        name : string
+        file : MemoryMappedFile
+        view : MemoryMappedViewAccessor
+        size : int64
+        data : nativeint
+    }
+    
+module internal RawDownload =
+    open System.Runtime.InteropServices
+
+    module private Vulkan =
+        open Aardvark.Rendering.Vulkan
+        let download (runtime : IRuntime) (image : IBackendTexture) (dst : nativeint) =
+            let runtime = unbox<Runtime> runtime
+            let image = unbox<Image> image
+            let device = runtime.Device
+            
+            let lineSize = 4L * int64 image.Size.X
+            let size = lineSize * int64 image.Size.Y
+            use temp = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+
+            device.perform {
+                do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, image.Size)
+            }
+
+            temp.Memory.Mapped (fun ptr ->
+                let lineSize = nativeint lineSize
+                let mutable src = ptr
+                let mutable dst = dst + nativeint size - lineSize
+
+                for _ in 0 .. image.Size.Y-1 do
+                    Marshal.Copy(src, dst, lineSize)
+                    src <- src + lineSize
+                    dst <- dst - lineSize
+            )
+
+    let download (runtime : IRuntime) (texture : IBackendTexture) (dst : nativeint) =  
+        match runtime with
+            | :? Aardvark.Rendering.Vulkan.Runtime ->
+                Vulkan.download runtime texture dst
+            | _ ->
+                let dst = 
+                    NativeTensor4<byte>(
+                        NativePtr.ofNativeInt dst,
+                        Tensor4Info(
+                            0L,
+                            V4l(texture.Size.X, texture.Size.Y, 1, 4),
+                            V4l(4, 4*texture.Size.X, 4*texture.Size.X*texture.Size.Z, 1)
+                        )
+                    )
+
+                runtime.Copy(texture.[TextureAspect.Color, 0, 0], V3i.Zero, dst, Col.Format.RGBA, texture.Size)
+
+
+type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    inherit ClientRenderTask(server, getScene)
+    let runtime = server.runtime
+
+    let mutable mapping : Option<MappingInfo> = None
+    let mutable resolved : Option<IBackendTexture> = None
+
+    
+    let recreateMapping (desiredSize : int64) =
+        match mapping with
+            | Some m ->
+                m.view.Dispose()
+                m.file.Dispose()
+            | None ->
+                ()
+
+        let name = Guid.NewGuid() |> string
+        let file = MemoryMappedFile.CreateNew(name, desiredSize)
+        let view = file.CreateViewAccessor()
+
+        let m =
+            {
+                name = name
+                file = file
+                view = view
+                size = desiredSize
+                data = view.SafeMemoryMappedViewHandle.DangerousGetHandle()
+            }
+        mapping <- Some m
+        m
+
+    let recreateResolved (fmt : RenderbufferFormat) (size : V2i)  =
+        resolved |> Option.iter runtime.DeleteTexture
+        let r = runtime.CreateTexture(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+        resolved <- Some r
+        r
+
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        let desiredMapSize = Fun.NextPowerOfTwo (int64 color.Size.X * int64 color.Size.Y * 4L)
+
+        let mapping =
+            match mapping with
+                | Some m when m.size = desiredMapSize -> m
+                | _ -> recreateMapping desiredMapSize
+
+        let resolved =
+            match resolved with
+                | Some r when r.Size.XY = color.Size -> r
+                | _ -> recreateResolved color.Format color.Size
+                
+        if color.Samples > 1 then runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
+        else runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
+        
+        RawDownload.download runtime resolved mapping.data
+
+        Mapping { name = mapping.name; size = color.Size; length = int mapping.size }
+
+    override x.Release() =
+        resolved |> Option.iter runtime.DeleteTexture
+        match mapping with
+            | Some m ->
+                m.view.Dispose()
+                m.file.Dispose()
+            | None ->
+                ()
+
 type internal ClientCreateInfo =
     {
         server          : Server
@@ -722,17 +899,24 @@ type internal ClientCreateInfo =
         sceneName       : string
         samples         : int
         socket          : WebSocket
+        useMapping      : bool
         getSignature    : int -> IFramebufferSignature
     }
 
 type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState : ClientInfo -> ClientState, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
     static let mutable currentId = 0
  
+    static let newTask (info : ClientCreateInfo) getContent =
+        if info.useMapping then
+            new MappedClientRenderTask(info.server, getContent) :> ClientRenderTask
+        else
+            new JpegClientRenderTask(info.server, getContent) :> ClientRenderTask
+
     let id = Interlocked.Increment(&currentId)
     let sender = AdaptiveObject()
     let requestedSize : MVar<C4b * V2i> = MVar.empty()
     let mutable createInfo = createInfo
-    let mutable task = new ClientRenderTask(createInfo.server, getContent)
+    let mutable task = newTask createInfo getContent
     let mutable running = false
     let mutable disposed = 0
 
@@ -783,13 +967,24 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                         try
                             let state = getState info
                             let data = task.Run(token, info, state)
-                        
-                            let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
-                            match res with
-                                | Choice1Of2() -> ()
-                                | Choice2Of2 err ->
-                                    running <- false
-                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                            match data with
+                                | Jpeg data -> 
+                                    let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
+                                    match res with
+                                        | Choice1Of2() -> ()
+                                        | Choice2Of2 err ->
+                                            running <- false
+                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                
+                                | Mapping img ->
+                                    let data = Pickler.json.Pickle img
+                                    let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
+                                    match res with
+                                        | Choice1Of2() -> ()
+                                        | Choice2Of2 err ->
+                                            running <- false
+                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                    
                         with e ->
                             running <- false
                             Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
@@ -815,7 +1010,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         if Interlocked.Exchange(&disposed, 0) = 1 then
             Log.line "[Client] %d: revived" id
             createInfo <- newInfo
-            task <- new ClientRenderTask(newInfo.server, getContent)
+            task <- newTask newInfo getContent
             subscription <- subscribe()
             renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
 
@@ -1030,6 +1225,11 @@ module Server =
                     | Some id -> Guid.Parse id
                     | _ -> Guid.NewGuid()
 
+            let useMapping =
+                match Map.tryFind "mapped" args with
+                    | Some _ -> true
+                    | _ -> false
+
             let createInfo =
                 {
                     server          = info
@@ -1038,6 +1238,7 @@ module Server =
                     sceneName       = sceneName
                     samples         = samples
                     socket          = ws
+                    useMapping      = useMapping
                     getSignature    = getSignature
                 }            
 
@@ -1088,7 +1289,7 @@ module Server =
             match Map.tryFind "w" args, Map.tryFind "h" args with
                 | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
                     let scene = content signature sceneName
-                    use task = new ClientRenderTask(info, content)
+                    use task = new JpegClientRenderTask(info, content)
 
                     let clientInfo = 
                         {
@@ -1104,7 +1305,10 @@ module Server =
                         }
 
                     let state = getState clientInfo
-                    let data = task.Run(AdaptiveToken.Top, clientInfo, state)
+                    let data = 
+                        match task.Run(AdaptiveToken.Top, clientInfo, state) with
+                            | Jpeg d -> d
+                            | _ -> failwith "that was unexpected"
 
                     context |> (ok data >=> Writers.setMimeType "image/jpeg")
                 | _ ->
