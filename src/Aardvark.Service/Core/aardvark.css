@@ -15,6 +15,18 @@ img.rendercontrol {
 	transform: translate3d(-50%, -50%, 0);
 
 }
+canvas.rendercontrol:focus {
+    outline: none;
+} 
+canvas.rendercontrol {
+    opacity: 0;
+    user-select: none;
+    background-color: black;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate3d(-50%, -50%, 0);
+}
 
 div.aardvark:focus { 
     outline: none; 
