@@ -17,7 +17,7 @@ img.rendercontrol {
 }
 canvas.rendercontrol:focus {
     outline: none;
-} 
+}
 canvas.rendercontrol {
     opacity: 0;
     user-select: none;
@@ -25,7 +25,7 @@ canvas.rendercontrol {
     position: absolute;
     left: 50%;
     top: 50%;
-    transform: translate3d(-50%, -50%, 0);
+    transform: translate3d(-50%, -50%, 0) scaleY(-1);
 }
 
 div.aardvark:focus { 
