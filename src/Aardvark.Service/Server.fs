@@ -781,7 +781,7 @@ type private MappingInfo =
 module internal RawDownload =
     open System.Runtime.InteropServices
 
-    module private Vulkan =
+    module Vulkan =
         open Aardvark.Rendering.Vulkan
         let download (runtime : IRuntime) (image : IBackendTexture) (dst : nativeint) =
             let runtime = unbox<Runtime> runtime
@@ -807,59 +807,118 @@ module internal RawDownload =
                     dst <- dst - lineSize
             )
 
-    module private GL =
+    module GL =
         open OpenTK.Graphics.OpenGL4
         open Aardvark.Rendering.GL
-        let download (runtime : IRuntime) (tex : IBackendTexture) (dst : nativeint) =
+        let download (runtime : IRuntime) (fbo : IFramebuffer) (samples : int) (dst : nativeint) =
             let runtime = unbox<Runtime> runtime
-            let tex = unbox<Texture> tex
+            let fbo = unbox<Framebuffer> fbo
             let ctx = runtime.Context
             
             use __ = ctx.ResourceLock
-            let size = tex.Size.X * tex.Size.Y * 4
+            let size = fbo.Size
 
-            let lineMem : byte[] = Array.zeroCreate (tex.Size.X * 4)
-            let gc = GCHandle.Alloc(lineMem, GCHandleType.Pinned)
-            try
-                GL.GetTextureSubImage(tex.Handle, 0, 0, 0, 0, tex.Size.X, tex.Size.Y, 1, PixelFormat.Rgba, PixelType.UnsignedByte, int size, dst)
+            let mutable tmpFbo = -1
+            let mutable tmpRbo = -1
+            if samples > 1 then
+                let tmp = GL.GenFramebuffer()
+                let rbo = GL.GenRenderbuffer()
 
-                let pTmp = gc.AddrOfPinnedObject()
-                let lineSize = 4n * nativeint tex.Size.X
-                for i in 0 .. tex.Size.Y / 2 - 1 do
-                    let l = i |> nativeint
-                    let r = tex.Size.Y - 1 - i |> nativeint
-                    let pL = dst + lineSize * l
-                    let pR = dst + lineSize * r
-                    Marshal.Copy(pL, pTmp, lineSize)
-                    Marshal.Copy(pR, pL, lineSize)
-                    Marshal.Copy(pTmp, pR, lineSize)
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, rbo)
+                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, size.X, size.Y)
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
+                
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
+                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, tmp)
+                GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, rbo)
+                
+                GL.BlitFramebuffer(
+                    0, 0, size.X - 1, size.Y - 1, 
+                    0, 0, size.X - 1, size.Y - 1,
+                    ClearBufferMask.ColorBufferBit,
+                    BlitFramebufferFilter.Nearest
+                )
+                
+                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, tmp)
+                
+                tmpFbo <- tmp
+                tmpRbo <- rbo
+
+            else
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
+                
+            let pbo = GL.GenBuffer()
+
+            let rowSize = 4 * size.X
+            let sizeInBytes = rowSize * size.Y
+            GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+            GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+
+            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
+
+            let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
+                
+            let lineSize = nativeint rowSize
+            let mutable src = ptr
+            let mutable dst = dst + nativeint sizeInBytes - lineSize
+
+            for _ in 0 .. size.Y-1 do
+                Marshal.Copy(src, dst, lineSize)
+                src <- src + lineSize
+                dst <- dst - lineSize
+
+            GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+            GL.DeleteBuffer(pbo)
+            if tmpFbo >= 0 then GL.DeleteFramebuffer(tmpFbo)
+            if tmpRbo >= 0 then GL.DeleteRenderbuffer(tmpRbo)
+            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
+
+
+            //let lineMem : byte[] = Array.zeroCreate (tex.Size.X * 4)
+            //let gc = GCHandle.Alloc(lineMem, GCHandleType.Pinned)
+            //try
+            //    GL.GetTextureSubImage(tex.Handle, 0, 0, 0, 0, tex.Size.X, tex.Size.Y, 1, PixelFormat.Rgba, PixelType.UnsignedByte, int size, dst)
+
+            //    let pTmp = gc.AddrOfPinnedObject()
+            //    let lineSize = 4n * nativeint tex.Size.X
+            //    for i in 0 .. tex.Size.Y / 2 - 1 do
+            //        let l = i |> nativeint
+            //        let r = tex.Size.Y - 1 - i |> nativeint
+            //        let pL = dst + lineSize * l
+            //        let pR = dst + lineSize * r
+            //        Marshal.Copy(pL, pTmp, lineSize)
+            //        Marshal.Copy(pR, pL, lineSize)
+            //        Marshal.Copy(pTmp, pR, lineSize)
 
 
             
-            finally
-                gc.Free()
+            //finally
+            //    gc.Free()
         
 
-    let download (runtime : IRuntime) (texture : IBackendTexture) (dst : nativeint) =  
-        match runtime with
-            | :? Aardvark.Rendering.Vulkan.Runtime ->
-                Vulkan.download runtime texture dst
+    //let download (runtime : IRuntime) (texture : IBackendTexture) (dst : nativeint) =  
+    //    match runtime with
+    //        | :? Aardvark.Rendering.Vulkan.Runtime ->
+    //            Vulkan.download runtime texture dst
 
-            | :? Aardvark.Rendering.GL.Runtime ->
-                GL.download runtime texture dst
+    //        | :? Aardvark.Rendering.GL.Runtime ->
+    //            GL.download runtime texture dst
                 
-            | _ ->
-                let dst = 
-                    NativeTensor4<byte>(
-                        NativePtr.ofNativeInt dst,
-                        Tensor4Info(
-                            0L,
-                            V4l(texture.Size.X, texture.Size.Y, 1, 4),
-                            V4l(4, 4*texture.Size.X, 4*texture.Size.X*texture.Size.Z, 1)
-                        )
-                    )
+    //        | _ ->
+    //            let dst = 
+    //                NativeTensor4<byte>(
+    //                    NativePtr.ofNativeInt dst,
+    //                    Tensor4Info(
+    //                        0L,
+    //                        V4l(texture.Size.X, texture.Size.Y, 1, 4),
+    //                        V4l(4, 4*texture.Size.X, 4*texture.Size.X*texture.Size.Z, 1)
+    //                    )
+    //                )
 
-                runtime.Copy(texture.[TextureAspect.Color, 0, 0], V3i.Zero, dst, Col.Format.RGBA, texture.Size)
+    //            runtime.Copy(texture.[TextureAspect.Color, 0, 0], V3i.Zero, dst, Col.Format.RGBA, texture.Size)
 
 
 type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
@@ -907,15 +966,24 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
                 | Some m when m.size = desiredMapSize -> m
                 | _ -> recreateMapping desiredMapSize
 
-        let resolved =
-            match resolved with
-                | Some r when r.Size.XY = color.Size -> r
-                | _ -> recreateResolved color.Format color.Size
+        match runtime with
+            | :? Aardvark.Rendering.Vulkan.Runtime ->
+                let resolved =
+                    match resolved with
+                        | Some r when r.Size.XY = color.Size -> r
+                        | _ -> recreateResolved color.Format color.Size
                 
-        if color.Samples > 1 then runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
-        else runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
+                if color.Samples > 1 then runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
+                else runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
         
-        RawDownload.download runtime resolved mapping.data
+
+                RawDownload.Vulkan.download runtime resolved mapping.data
+
+            | :? Aardvark.Rendering.GL.Runtime ->
+                RawDownload.GL.download runtime target color.Samples mapping.data
+                
+            | _ ->
+                failwith "not implemented"
 
         Mapping { name = mapping.name; size = color.Size; length = int mapping.size }
 
