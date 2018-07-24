@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "03 - LinePicking", "Scratch\03 - LinePicking\03 - LinePicking.fsproj", "{B7C449BE-F831-4492-9632-DF9B5C608C70}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - DrawRects", "Scratch\02 - DrawRects\02 - DrawRects.fsproj", "{C4EBC4E9-48D2-429F-99AB-EFF991C80AFA}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "17 - SubApps", "Examples (dotnetcore)\17 - SubApps\17 - SubApps.fsproj", "{2EC53267-BAD3-486B-9270-65A305443296}"
@@ -82,6 +84,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B7C449BE-F831-4492-9632-DF9B5C608C70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B7C449BE-F831-4492-9632-DF9B5C608C70}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B7C449BE-F831-4492-9632-DF9B5C608C70}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B7C449BE-F831-4492-9632-DF9B5C608C70}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C4EBC4E9-48D2-429F-99AB-EFF991C80AFA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C4EBC4E9-48D2-429F-99AB-EFF991C80AFA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4EBC4E9-48D2-429F-99AB-EFF991C80AFA}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -195,6 +201,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{B7C449BE-F831-4492-9632-DF9B5C608C70} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{C4EBC4E9-48D2-429F-99AB-EFF991C80AFA} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{2EC53267-BAD3-486B-9270-65A305443296} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{04C22CCA-E291-43C3-A124-22391B8165E6} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
