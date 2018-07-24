@@ -163,11 +163,82 @@ module private Interop =
     open Aardvark.Base
     open System.Collections.Generic
     open System.Reflection
+    open System.IO.MemoryMappedFiles
 
     type CefResult =
         | NoRet
         | Success of CefV8Value
         | Error of string
+
+    type KeepGC() =
+        inherit CefV8ArrayBufferReleaseCallback()
+
+        override x.ReleaseBuffer(_) = ()
+
+    type SharedMemory(browser : CefBrowser, ctx : CefV8Context) as this =
+        inherit CefV8Handler()
+        let functions : Dictionary<string, CefV8Value[] -> CefResult> = 
+            typeof<SharedMemory>.GetMethods(BindingFlags.NonPublic ||| BindingFlags.Public ||| BindingFlags.Instance ||| BindingFlags.DeclaredOnly)
+                |> Seq.filter (fun mi -> mi.ReturnType = typeof<CefResult> && mi.GetParameters().Length = 1)
+                |> Seq.map (fun mi -> mi.Name, FunctionReflection.buildFunction this mi)
+                |> Dictionary.ofSeq
+
+        let mappings = System.Collections.Concurrent.ConcurrentDictionary<CefV8Value,unit->unit>()
+
+        member x.FunctionNames = functions.Keys
+
+        member x.close(args : CefV8Value[]) =
+            match mappings.TryRemove args.[0] with
+                | (true,f) -> f()
+                | _ -> Log.warn "could not remove mapping"
+            NoRet
+        
+        member x.openMapping(args : CefV8Value[]) =
+            if args.Length <> 2 then 
+                Log.warn "[CEF Saared Memory] you come to me at runtime (2 args expected)"
+                System.Diagnostics.Debugger.Launch() |> ignore
+                System.Diagnostics.Debugger.Break()
+            let name = args.[0].GetStringValue()
+            let desiredSize = args.[1].GetIntValue() |> uint64
+            
+            let file = MemoryMappedFile.OpenExisting(name)
+            let view = file.CreateViewAccessor()
+
+            let handle = view.SafeMemoryMappedViewHandle.DangerousGetHandle()
+            let buffer = CefV8Value.CreateArrayBuffer(handle, desiredSize, KeepGC())
+            
+            let f = CefV8Value.CreateFunction("close", x)
+
+            let obj = CefV8Value.CreateObject()
+            obj.SetValue("name", args.[0]) |> check "set mapping.name"
+            obj.SetValue("length", args.[1]) |> check "set mapping.length"
+            obj.SetValue("buffer", buffer) |> check "set mapping.buffer"
+            obj.SetValue("close", f) |> check "set mapping.close"
+
+            let dispose () =
+                view.Dispose()
+                file.Dispose()
+                buffer.Dispose() 
+
+            mappings.TryAdd(obj, dispose) |> ignore
+
+            Success obj
+
+        override x.Execute(name, _, args, ret, exn) =
+            match functions.TryGetValue(name) with
+                | (true, f) ->
+                    match f args with
+                        | Success v -> 
+                            ret <- v
+                            true
+                        | NoRet ->
+                            true
+                        | Error err ->
+                            exn <- err
+                            false
+                | _ ->
+                    exn <- sprintf "unknown function %s" name
+                    false
 
     type Aardvark(browser : CefBrowser, ctx : CefV8Context) as this =
         inherit CefV8Handler()
@@ -178,7 +249,6 @@ module private Interop =
                 |> Dictionary.ofSeq
 
         member x.FunctionNames = functions.Keys
-
 
 
         override x.Execute(name, _, args, ret, exn) =
@@ -197,9 +267,6 @@ module private Interop =
                     exn <- sprintf "unknown function %s" name
                     false
 
-        member x.blubber(args : CefV8Value[]) =
-            printfn "gabbl"
-            CefResult.Success (CefV8Value.CreateString "aasdf")
 
         member x.testFunction(args : CefV8Value[]) =
             let b = args.[0]
@@ -366,7 +433,7 @@ type RenderProcessHandler() =
 
     let javascriptUtilities =
         """
-            aardvark.getViewport = function(id) 
+            document.aardvark.getViewport = function(id) 
             {
                 var doc = document.documentElement;
                 var dx = (window.pageXOffset || doc.scrollLeft) - (doc.clientLeft || 0);
@@ -402,6 +469,49 @@ type RenderProcessHandler() =
 
             };
 
+            document.aardvark.openMapping = function (name, len) {
+	            var mapping = document.aardvark.sharedMemory.openMapping(name,len);
+	            var uint8arr = new Uint8Array(mapping.buffer);
+	            var uint8Clamped = new Uint8ClampedArray(mapping.buffer);
+
+	            var result = 
+		            { 
+			            readString: function() {
+				            if(mapping.buffer) {
+					            var i = 0;
+					            var res = "";
+					            while(uint8arr[i] != 0 && i < mapping.length) {
+						            res += String.fromCharCode(uint8arr[i]);
+						            i++;
+					            }
+					            return res;
+				            }
+				            else return "";
+			            },
+
+			            readImageData: function(sx, sy) {
+				            //return new ImageData(uint8Clamped.slice(0, sx *sy * 4), sx, sy);
+                            return new ImageData(uint8Clamped,sx, sy);
+			            },
+
+			            close: function() {
+				            result.length = 0;
+				            result.name = "";
+				            result.buffer = new ArrayBuffer(0);
+				            result.readString = function() { return ""; };
+				            result.readImageData = function() { return null; }
+				            result.close = function() { };
+				            mapping.close(mapping);
+			            },
+
+			            buffer: mapping.buffer,
+			            length: mapping.length,
+			            name: mapping.name
+		            };
+
+	            return result;
+            };
+
 
         """
 
@@ -421,6 +531,15 @@ type RenderProcessHandler() =
                 use f = CefV8Value.CreateFunction(name, aardvark)
                 target.SetValue(name, f, CefV8PropertyAttribute.DontDelete) 
                     |> check "could not attach function to aardvark-value"
+
+            let sharedMemoryInterop = Interop.SharedMemory(browser, context)
+            use sharedMemory = CefV8Value.CreateObject()
+            for name in sharedMemoryInterop.FunctionNames do
+                use f = CefV8Value.CreateFunction(name, sharedMemoryInterop)
+                sharedMemory.SetValue(name, f, CefV8PropertyAttribute.DontDelete) 
+                    |> check "could not attach function to aardvark-value"
+
+            target.SetValue("sharedMemory", sharedMemory) |> check "could not set sharedMemory interop instance"
 
             let (success, res, exn) = context.TryEval(javascriptUtilities,"javascriptUtilities.autogenerated.js", 0)
 

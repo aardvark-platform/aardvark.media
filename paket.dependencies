@@ -29,9 +29,9 @@ nuget Suave                                 ~> 2.2.1
 
 nuget Aardium                               ~> 1.0.8
 
-nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.1.1
-nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.1.1
-nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.1.1
+nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.2.2
+nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.2.2
+nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.2.2
 
 
 group Build

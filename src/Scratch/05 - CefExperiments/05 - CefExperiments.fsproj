@@ -56,9 +56,9 @@
   </Choose>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Model.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
-    <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
@@ -66,10 +66,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Numerics" />
-    <Reference Include="System.ValueTuple">
-      <HintPath>..\..\packages\System.ValueTuple.4.4.0\lib\net461\System.ValueTuple.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj">
@@ -80,6 +76,21 @@
     <ProjectReference Include="..\..\Aardvark.Cef\Aardvark.Cef.fsproj">
       <Name>Aardvark.Cef</Name>
       <Project>{70c08f03-f4a5-414a-abd6-cc07dc42e07c}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj">
+      <Name>Aardvark.Service</Name>
+      <Project>{773eb4c7-ba14-4a60-b6c5-8a27c7d80be2}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj">
+      <Name>Aardvark.UI.Primitives</Name>
+      <Project>{f0d88aca-53db-492c-88cf-080f67fef6b8}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+    <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj">
+      <Name>Aardvark.UI</Name>
+      <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
       <Private>True</Private>
     </ProjectReference>
   </ItemGroup>
