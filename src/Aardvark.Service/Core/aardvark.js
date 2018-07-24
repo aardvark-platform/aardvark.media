@@ -608,7 +608,14 @@ class Renderer {
 
             urlCreator.revokeObjectURL(oldUrl);
 
-            this.send(JSON.stringify({ Case: "Rendered" }));
+			this.send(JSON.stringify({ Case: "Rendered" }));
+
+
+			var shouldSay = this.div.getAttribute("onRendered");
+			if (shouldSay) {
+				aardvark.processEvent(this.div.id, 'onRendered');
+			}
+
             if (this.loading) {
                 this.fadeIn();
             }
@@ -701,16 +708,17 @@ class Renderer {
                     this.frameBufferLength = len;
                 }
 
-				var shouldSay = this.div.getAttribute("onRendered");
-				if (shouldSay) {
-					aardvark.processEvent(this.div.id, 'onRendered');
-				}
                 this.canvas.width = o.size.X;
                 this.canvas.height = o.size.Y;
                 this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
                 this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
                 
-                this.send(JSON.stringify({ Case: "Rendered" }));
+				this.send(JSON.stringify({ Case: "Rendered" }));
+
+				var shouldSay = this.div.getAttribute("onRendered");
+				if (shouldSay) {
+					aardvark.processEvent(this.div.id, 'onRendered');
+				}
                 if (this.loading) {
                     this.fadeIn();
                 }

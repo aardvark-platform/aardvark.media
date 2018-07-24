@@ -123,7 +123,7 @@ module TestApp =
                         (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                attribute "showFPS" "true";       // optional, default is false
                                                //attribute "showLoader" "false"  // optional, default is true
-                                               attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                               //attribute "data-renderalways" "1" // optional, default is incremental rendering
                                                attribute "useMapping" "true"
                                              ]) 
                         (viewScene model)
@@ -271,6 +271,7 @@ let main argv =
     Aardvark.Init()
 
     use app = new OpenGlApplication()
+    //let instance = TestApp.app |> App.start
     let instance = TestApp2.Server.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
