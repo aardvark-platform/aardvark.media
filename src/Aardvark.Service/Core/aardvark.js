@@ -137,6 +137,9 @@ class Renderer {
 		if (useMapping === "false") useMapping = false; else useMapping = true;
 		this.useMapping = useMapping;
 
+		var onRendered = this.div.getAttribute("onRendered");
+		if (onRendered) this.onRendered = onRendered;
+
         this.buffer = [];
         this.isOpen = false;
         this.isClosed = false;
@@ -698,6 +701,10 @@ class Renderer {
                     this.frameBufferLength = len;
                 }
 
+				var shouldSay = this.div.getAttribute("onRendered");
+				if (shouldSay) {
+					aardvark.processEvent(this.div.id, 'onRendered');
+				}
                 this.canvas.width = o.size.X;
                 this.canvas.height = o.size.Y;
                 this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));

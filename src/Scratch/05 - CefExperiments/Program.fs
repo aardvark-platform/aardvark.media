@@ -140,7 +140,7 @@ module TestApp =
         ]
 
     let threads (model : Model) = 
-        ThreadPool.empty
+        CameraController.threads model.cameraState |> ThreadPool.map Camera
 
 
     let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
@@ -156,6 +156,112 @@ module TestApp =
         }
 
 
+ module TestApp2 =
+
+    module PerClient = 
+        open Aardvark.UI
+        open Aardvark.UI.Primitives
+
+        open Aardvark.Base
+        open Aardvark.Base.Incremental
+        open Aardvark.Base.Rendering
+        open Model
+
+        type Message = Camera of CameraController.Message | Rendered
+
+        let update (model : Model) (msg : Message) =
+            match msg with
+               | Camera m -> { model with cameraState = CameraController.update model.cameraState m}
+               | Rendered -> 
+                    let fake = CameraControllerMessage.StepTime
+                    { model with cameraState = CameraController.update model.cameraState fake }
+
+        let viewScene (model : MModel) =
+            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+             |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                }
+
+        let view (model : MModel) =
+
+            let renderControl =
+                CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                            (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
+                                                   attribute "showFPS" "true";       // optional, default is false
+                                                   //attribute "showLoader" "false"  // optional, default is true
+                                                   //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                                   attribute "useMapping" "true"
+                                                   onEvent "onRendered" [] (fun _ -> Rendered)
+                                                 ]) 
+                            (viewScene model)
+
+
+            div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
+                div [style "grid-row: 1"] [
+                    text "Hello 3D"
+                    br []
+                ]
+                renderControl
+                br []
+                text "use first person shooter WASD + mouse controls to control the 3d scene"
+            ]
+
+        let threads (model : Model) = 
+            ThreadPool.empty //CameraController.threads model.cameraState |> ThreadPool.map Camera
+
+
+        let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+            {
+                unpersist = Unpersist.instance     
+                threads = threads 
+                initial = 
+                    { 
+                       cameraState = CameraController.initial
+                    }
+                update = update 
+                view = view
+            }
+
+    module Server =
+        
+        open Aardvark.UI
+        open Aardvark.UI.Primitives
+
+        open Aardvark.Base
+        open Aardvark.Base.Incremental
+        open Aardvark.Base.Rendering
+        open Model
+
+        type Message = Nop
+
+        let update (model : ServerModel) (msg : Message) =
+            match msg with
+               | Nop -> model
+
+        let view (model : MServerModel) =
+
+            body [] [
+                subApp' (fun _ _ -> Seq.empty) (fun _ _ -> Seq.empty) [] PerClient.app
+            ]
+
+        let threads (model : ServerModel) = 
+            ThreadPool.empty
+
+
+        let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+            {
+                unpersist = Unpersist.instance     
+                threads = threads 
+                initial = 
+                    { 
+                       value = 0
+                    }
+                update = update 
+                view = view
+            }
+
 [<EntryPoint>]
 let main argv = 
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
@@ -165,7 +271,7 @@ let main argv =
     Aardvark.Init()
 
     use app = new OpenGlApplication()
-    let instance = TestApp.app |> App.start
+    let instance = TestApp2.Server.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 

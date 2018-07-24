@@ -8,3 +8,9 @@ type Model =
     {   
         cameraState : CameraControllerState
     }
+
+[<DomainType>]
+type ServerModel = 
+    {   
+        value : int
+    }
