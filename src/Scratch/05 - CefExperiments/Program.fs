@@ -122,8 +122,9 @@ module TestApp =
             CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                         (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                attribute "showFPS" "true";       // optional, default is false
-                                               //attribute "showLoader" "false"    // optional, default is true
+                                               //attribute "showLoader" "false"  // optional, default is true
                                                attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                               attribute "useMapping" "true"
                                              ]) 
                         (viewScene model)
 

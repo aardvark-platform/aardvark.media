@@ -1618,7 +1618,8 @@ module Server =
 
             let useMapping =
                 match Map.tryFind "mapped" args with
-                    | Some _ -> true
+                    | Some "false" -> false
+                    | Some "true" -> true
                     | _ -> false
 
             let createInfo =
@@ -1637,7 +1638,7 @@ module Server =
                 let key = (sessionId, targetId)
                 lock clients (fun () ->
                     clients.GetOrCreate(key, fun (sessionId, targetId) ->
-                        Log.line "[Server] created client for (%A/%s)" sessionId targetId
+                        Log.line "[Server] created client for (%A/%s), mapping %s" sessionId targetId (if useMapping then "enabled" else "disabled")
                         new Client(updateLock, createInfo, getState, content)
                     )
                 )

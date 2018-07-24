@@ -129,10 +129,13 @@ class Renderer {
 		if (showFPS === "true") showFPS = true; else showFPS = false;
 		this.showFPS = showFPS;
 
-
 		var showLoader = this.div.getAttribute("showLoader");
 		if (showLoader === "false") showLoader = false; else showLoader = true;
 		this.showLoader = showLoader;
+
+		var useMapping = this.div.getAttribute("useMapping");
+		if (useMapping === "false") useMapping = false; else useMapping = true;
+		this.useMapping = useMapping;
 
         this.buffer = [];
         this.isOpen = false;
@@ -185,7 +188,7 @@ class Renderer {
     init() {
         var connect = null;
 
-        if (aardvark.localhost && aardvark.openMapping) {
+		if (aardvark.localhost && aardvark.openMapping && this.useMapping) {
             var canvas = document.createElement("canvas");
             this.div.appendChild(canvas);
             canvas.setAttribute("class", "rendercontrol");
@@ -204,8 +207,12 @@ class Renderer {
             this.overlay = overlay;
             this.frameCount = 0;
             this.div.tabIndex = 1;
-            canvas.style.cursor = "default";
-            var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples + "&mapped=true");
+			canvas.style.cursor = "default";
+
+			var mappedRequest = "&mapped=true";
+			if (!this.useMapping) mappedRequest = "&mapped=false";
+
+			var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples + mappedRequest);
             
             var self = this;
 
