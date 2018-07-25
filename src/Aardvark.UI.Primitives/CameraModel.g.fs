@@ -15,6 +15,7 @@ module Mutable =
         let mutable __current : Aardvark.Base.Incremental.IModRef<Aardvark.UI.Primitives.CameraControllerState> = Aardvark.Base.Incremental.EqModRef<Aardvark.UI.Primitives.CameraControllerState>(__initial) :> Aardvark.Base.Incremental.IModRef<Aardvark.UI.Primitives.CameraControllerState>
         let _view = ResetMod.Create(__initial.view)
         let _dragStart = ResetMod.Create(__initial.dragStart)
+        let _movePos = ResetMod.Create(__initial.movePos)
         let _look = ResetMod.Create(__initial.look)
         let _zoom = ResetMod.Create(__initial.zoom)
         let _pan = ResetMod.Create(__initial.pan)
@@ -34,6 +35,7 @@ module Mutable =
         
         member x.view = _view :> IMod<_>
         member x.dragStart = _dragStart :> IMod<_>
+        member x.movePos = _movePos :> IMod<_>
         member x.look = _look :> IMod<_>
         member x.zoom = _zoom :> IMod<_>
         member x.pan = _pan :> IMod<_>
@@ -58,6 +60,7 @@ module Mutable =
                 
                 ResetMod.Update(_view,v.view)
                 ResetMod.Update(_dragStart,v.dragStart)
+                ResetMod.Update(_movePos,v.movePos)
                 ResetMod.Update(_look,v.look)
                 ResetMod.Update(_zoom,v.zoom)
                 ResetMod.Update(_pan,v.pan)
@@ -101,6 +104,12 @@ module Mutable =
                     override x.Get(r) = r.dragStart
                     override x.Set(r,v) = { r with dragStart = v }
                     override x.Update(r,f) = { r with dragStart = f r.dragStart }
+                }
+            let movePos =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Aardvark.Base.V2i>() with
+                    override x.Get(r) = r.movePos
+                    override x.Set(r,v) = { r with movePos = v }
+                    override x.Update(r,f) = { r with movePos = f r.movePos }
                 }
             let look =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with

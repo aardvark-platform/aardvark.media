@@ -167,14 +167,16 @@ module TestApp =
         open Aardvark.Base.Rendering
         open Model
 
-        type Message = Camera of CameraController.Message | Rendered
+        type Message = Camera of CameraController.Message | Rendered | CenterScene
 
         let update (model : Model) (msg : Message) =
             match msg with
-               | Camera m -> { model with cameraState = CameraController.update model.cameraState m}
+               | Camera m -> { model with cameraState = CameraController.updateSmooth model.cameraState m}
                | Rendered -> 
                     let fake = CameraControllerMessage.StepTime
-                    { model with cameraState = CameraController.update model.cameraState fake }
+                    { model with cameraState = CameraController.updateSmooth model.cameraState fake }
+               | CenterScene -> 
+                    { model with cameraState = CameraController.initial }
 
         let viewScene (model : MModel) =
             Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -202,6 +204,7 @@ module TestApp =
                 div [style "grid-row: 1"] [
                     text "Hello 3D"
                     br []
+                    button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
                 ]
                 renderControl
                 br []
