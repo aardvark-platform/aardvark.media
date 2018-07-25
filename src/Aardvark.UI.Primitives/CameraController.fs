@@ -78,13 +78,12 @@ module CameraController =
                         cam.Right * moveVec.X +
                         cam.Sky *moveVec.Y
 
-                    if model.moveVec = V3i.Zero then
+                    if model.moveVec = V3i.Zero && not model.scrolling then
                         printfn "useless time %A" now
 
                     let moveSpeed = model.moveSpeed * pow 0.002 dt
 
                     let scroll = if model.scrolling then cam.Forward * moveSpeed * dt else V3d.OOO
-                    printfn "%A" scroll
 
                     let cam = cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt + scroll)
                     if abs model.moveSpeed > 1E-2 then
