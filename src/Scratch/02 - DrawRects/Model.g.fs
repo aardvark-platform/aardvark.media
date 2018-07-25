@@ -134,9 +134,13 @@ module Mutable =
         let mutable __current : Aardvark.Base.Incremental.IModRef<DrawRects.ClientState> = Aardvark.Base.Incremental.EqModRef<DrawRects.ClientState>(__initial) :> Aardvark.Base.Incremental.IModRef<DrawRects.ClientState>
         let _viewport = ResetMod.Create(__initial.viewport)
         let _selectedRect = MOption.Create(__initial.selectedRect)
+        let _workingRect = MOption.Create(__initial.workingRect)
+        let _currentInteraction = ResetMod.Create(__initial.currentInteraction)
         
         member x.viewport = _viewport :> IMod<_>
         member x.selectedRect = _selectedRect :> IMod<_>
+        member x.workingRect = _workingRect :> IMod<_>
+        member x.currentInteraction = _currentInteraction :> IMod<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : DrawRects.ClientState) =
@@ -145,6 +149,8 @@ module Mutable =
                 
                 ResetMod.Update(_viewport,v.viewport)
                 MOption.Update(_selectedRect, v.selectedRect)
+                MOption.Update(_workingRect, v.workingRect)
+                ResetMod.Update(_currentInteraction,v.currentInteraction)
                 
         
         static member Create(__initial : DrawRects.ClientState) : MClientState = MClientState(__initial)
@@ -172,4 +178,16 @@ module Mutable =
                     override x.Get(r) = r.selectedRect
                     override x.Set(r,v) = { r with selectedRect = v }
                     override x.Update(r,f) = { r with selectedRect = f r.selectedRect }
+                }
+            let workingRect =
+                { new Lens<DrawRects.ClientState, Microsoft.FSharp.Core.Option<Aardvark.Base.Box2d>>() with
+                    override x.Get(r) = r.workingRect
+                    override x.Set(r,v) = { r with workingRect = v }
+                    override x.Update(r,f) = { r with workingRect = f r.workingRect }
+                }
+            let currentInteraction =
+                { new Lens<DrawRects.ClientState, DrawRects.Interaction>() with
+                    override x.Get(r) = r.currentInteraction
+                    override x.Set(r,v) = { r with currentInteraction = v }
+                    override x.Update(r,f) = { r with currentInteraction = f r.currentInteraction }
                 }

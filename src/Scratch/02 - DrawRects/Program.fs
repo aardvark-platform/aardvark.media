@@ -9,12 +9,22 @@ open DrawRects
 open Suave
 open Suave.WebPart
 
+open MBrace.FsPickler
+open MBrace.FsPickler.Json
+
+type EmbeddedResources = EmbeddedResources
+
 [<EntryPoint; STAThread>]
 let main argv = 
     Ag.initialize()
     Aardvark.Init()
     Aardium.init()
+    
+    //let pickler = FsPickler.CreateJsonSerializer(omitHeader = true)
+    //pickler.PickleToString(Option<int>.None) |> printfn "%A"
+    //pickler.PickleToString(Option<int>.Some 1) |> printfn "%A"
 
+    //System.Environment.Exit 0
     use app = new OpenGlApplication()
     let instance = DrawRectsApp.app |> App.start
 
@@ -28,6 +38,7 @@ let main argv =
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
+        Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
         Suave.Files.browseHome
     ]  
 

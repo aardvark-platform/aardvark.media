@@ -34,9 +34,37 @@ module ClientApp =
 
     type ClientMessage = 
         | ClientMessage
+        | StartRectangle of V2d
+        | MoveEndpoint of V2d
+        | EndRectangle of V2d
 
     let update (model : ClientState) (msg : ClientMessage) =
-        model
+        printfn "%A" msg
+        match msg with
+            | StartRectangle v -> 
+                { model with currentInteraction = Interaction.CreatingRect; workingRect = Some (Box2d.FromMinAndSize(v,V2d.OO)) }
+            | MoveEndpoint v  -> 
+                match model.workingRect with
+                    | None -> model
+                    | Some b -> { model with workingRect = Some (Box2d.FromPoints(b.Min, v)) }
+            | EndRectangle v -> 
+                { model with workingRect = None; currentInteraction = Nothing }
+            | _ -> model
+
+    let endRectangle (client : ClientState) =
+        match client.workingRect with
+            | Some b -> 
+                Rect.ofBox b |> Some
+            | None -> None
+
+    let dependencies = [
+        { name = "drawRects.css"; url = "drawRects.css"; kind = Stylesheet }
+        { name = "drawRects.js";  url = "drawRects.js";  kind = Script     }
+    ]
+
+    let myMouseCbRel (evtName : string) (containerClass : string) (cb : V2d -> 'msg) =
+        let cb = function None -> Seq.empty | Some v -> Seq.singleton (cb v)
+        onEvent' evtName [sprintf "relativeCoords2(event,'%s')" containerClass] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
     let view (model : MModel) (clientState : MClientState) =
     
@@ -56,17 +84,37 @@ module ClientApp =
                 //if Option.isSome dragging then
                 //     yield onMouseMoveRel (fun n -> toGlobalSpace n |> Drag)
             } |> AttributeMap.ofAMap 
+
+        let containerAttribs = 
+            amap {
+                yield style "display: flex; width: 70%;"; 
+                let! currentInteraction = clientState.currentInteraction
+                match currentInteraction with
+                    | Nothing -> 
+                        yield myMouseCbRel "onmousedown" "svgRoot" StartRectangle
+                    | CreatingRect -> 
+                        yield myMouseCbRel "onmousemove" "svgRoot" MoveEndpoint
+                        yield myMouseCbRel "onmouseup"   "svgRoot" EndRectangle
+                    | _ -> 
+                        ()
+
+
+            } |> AttributeMap.ofAMap
         
         let svgContent = AList.empty
 
-        div [style "display: flex; flex-direction: row; width: 100%; height: 100%"] [
-            div [style "display: flex; width: 70%;"] [
-                Incremental.Svg.svg svgAttribs svgContent
-            ]
+        require dependencies (
+            div [style "display: flex; flex-direction: row; width: 100%; height: 100%"] [
+                Incremental.div containerAttribs <| AList.ofList [
+                    div [clazz "editorFrame"; ] [
+                        Incremental.Svg.svg svgAttribs svgContent
+                    ]
+                ]
 
-            div [ style "display: flex; width: 30%;" ] [
+                div [ style "display: flex; width: 30%;" ] [
+                ]
             ]
-        ]
+        )
 
     let threads (model : ClientState) = 
         ThreadPool.empty
@@ -80,19 +128,40 @@ module ClientApp =
                 { 
                    viewport = Box2d.Unit
                    selectedRect = None
+                   currentInteraction = Interaction.Nothing
+                   workingRect = None
                 }
             update = update 
             view = view outer
         }
 
+open ClientApp
+
+
+type Message = 
+    | AddRectangle of Rect
+
 
 module DrawRectsApp =
     
     let update (m : Model) (msg : Message) =
-        m
+        printfn "%A" msg
+        match msg with
+            | AddRectangle r -> { m with rects = HMap.add r.id r m.rects }
+
+    let mapOut (m : ClientState) (msg : ClientMessage) =
+        seq {
+            match msg with
+                | EndRectangle v -> 
+                    printfn "do it"
+                    yield! (ClientApp.endRectangle m |> Option.map AddRectangle |> Option.toList)
+                | _ -> ()
+        }
 
     let view (m : MModel) =
-        div [] []
+        body [] [
+            subApp' mapOut (fun _ _ -> Seq.empty) [] (ClientApp.app m)
+        ]
 
     let threads (m : Model) = ThreadPool.empty
 
