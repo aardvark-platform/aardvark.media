@@ -24,10 +24,13 @@ module Mutable =
         let _left = ResetMod.Create(__initial.left)
         let _right = ResetMod.Create(__initial.right)
         let _moveVec = ResetMod.Create(__initial.moveVec)
+        let _moveSpeed = ResetMod.Create(__initial.moveSpeed)
         let _orbitCenter = MOption.Create(__initial.orbitCenter)
         let _lastTime = MOption.Create(__initial.lastTime)
         let _isWheel = ResetMod.Create(__initial.isWheel)
         let _sensitivity = ResetMod.Create(__initial.sensitivity)
+        let _scrollSensitivity = ResetMod.Create(__initial.scrollSensitivity)
+        let _scrolling = ResetMod.Create(__initial.scrolling)
         let _zoomFactor = ResetMod.Create(__initial.zoomFactor)
         let _panFactor = ResetMod.Create(__initial.panFactor)
         let _rotationFactor = ResetMod.Create(__initial.rotationFactor)
@@ -44,10 +47,13 @@ module Mutable =
         member x.left = _left :> IMod<_>
         member x.right = _right :> IMod<_>
         member x.moveVec = _moveVec :> IMod<_>
+        member x.moveSpeed = _moveSpeed :> IMod<_>
         member x.orbitCenter = _orbitCenter :> IMod<_>
         member x.lastTime = _lastTime :> IMod<_>
         member x.isWheel = _isWheel :> IMod<_>
         member x.sensitivity = _sensitivity :> IMod<_>
+        member x.scrollSensitivity = _scrollSensitivity :> IMod<_>
+        member x.scrolling = _scrolling :> IMod<_>
         member x.zoomFactor = _zoomFactor :> IMod<_>
         member x.panFactor = _panFactor :> IMod<_>
         member x.rotationFactor = _rotationFactor :> IMod<_>
@@ -69,10 +75,13 @@ module Mutable =
                 ResetMod.Update(_left,v.left)
                 ResetMod.Update(_right,v.right)
                 ResetMod.Update(_moveVec,v.moveVec)
+                ResetMod.Update(_moveSpeed,v.moveSpeed)
                 MOption.Update(_orbitCenter, v.orbitCenter)
                 MOption.Update(_lastTime, v.lastTime)
                 ResetMod.Update(_isWheel,v.isWheel)
                 ResetMod.Update(_sensitivity,v.sensitivity)
+                ResetMod.Update(_scrollSensitivity,v.scrollSensitivity)
+                ResetMod.Update(_scrolling,v.scrolling)
                 ResetMod.Update(_zoomFactor,v.zoomFactor)
                 ResetMod.Update(_panFactor,v.panFactor)
                 ResetMod.Update(_rotationFactor,v.rotationFactor)
@@ -159,6 +168,12 @@ module Mutable =
                     override x.Set(r,v) = { r with moveVec = v }
                     override x.Update(r,f) = { r with moveVec = f r.moveVec }
                 }
+            let moveSpeed =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
+                    override x.Get(r) = r.moveSpeed
+                    override x.Set(r,v) = { r with moveSpeed = v }
+                    override x.Update(r,f) = { r with moveSpeed = f r.moveSpeed }
+                }
             let orbitCenter =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.Base.V3d>>() with
                     override x.Get(r) = r.orbitCenter
@@ -182,6 +197,18 @@ module Mutable =
                     override x.Get(r) = r.sensitivity
                     override x.Set(r,v) = { r with sensitivity = v }
                     override x.Update(r,f) = { r with sensitivity = f r.sensitivity }
+                }
+            let scrollSensitivity =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
+                    override x.Get(r) = r.scrollSensitivity
+                    override x.Set(r,v) = { r with scrollSensitivity = v }
+                    override x.Update(r,f) = { r with scrollSensitivity = f r.scrollSensitivity }
+                }
+            let scrolling =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
+                    override x.Get(r) = r.scrolling
+                    override x.Set(r,v) = { r with scrolling = v }
+                    override x.Update(r,f) = { r with scrolling = f r.scrolling }
                 }
             let zoomFactor =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with

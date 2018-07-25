@@ -30,11 +30,14 @@ type CameraControllerState =
         left        : bool
         right       : bool
         moveVec     : V3i
+        moveSpeed   : float
         orbitCenter : Option<V3d>
         lastTime    : Option<float>
         isWheel     : bool
 
         sensitivity     : float
+        scrollSensitivity : float
+        scrolling : bool
         zoomFactor      : float
         panFactor       : float
         rotationFactor  : float        

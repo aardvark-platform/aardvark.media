@@ -35,6 +35,9 @@ module CameraController =
             look = false; zoom = false; pan = false                    
             forward = false; backward = false; left = false; right = false
             isWheel = false;
+            moveSpeed = 0.0
+            scrollSensitivity = 0.8
+            scrolling = false
         }
 
     let initial' (dist:float) =
@@ -61,28 +64,43 @@ module CameraController =
                 }
             | StepTime ->
               let now = sw.Elapsed.TotalSeconds
-              let cam = model.view                
 
-              let cam = 
+              let model = 
                 match model.lastTime with
                   | Some last ->
+                    let cam = model.view                
                     let dt = now - last
 
+                    let moveVec = V3d model.moveVec
+
                     let dir = 
-                        cam.Forward * float model.moveVec.Z +
-                        cam.Right * float model.moveVec.X +
-                        cam.Sky * float model.moveVec.Y
+                        cam.Forward * moveVec.Z +
+                        cam.Right * moveVec.X +
+                        cam.Sky *moveVec.Y
 
                     if model.moveVec = V3i.Zero then
                         printfn "useless time %A" now
 
-                    cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+                    let moveSpeed = model.moveSpeed * pow 0.002 dt
+
+                    let scroll = if model.scrolling then cam.Forward * moveSpeed * dt else V3d.OOO
+                    printfn "%A" scroll
+
+                    let cam = cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt + scroll)
+                    if abs model.moveSpeed > 1E-2 then
+                            { model with
+                                moveSpeed = moveSpeed
+                                view = cam
+                            }
+                    else 
+                        { model with scrolling = false; moveSpeed = 0.0; view = cam }
                   | None -> 
-                      cam
+                      model
 
-              let model = if model.isWheel then { model with moveVec = V3i.Zero; isWheel = false} else model                  
+              //let model = if model.isWheel then { model with moveVec = V3i.Zero; isWheel = false} else model                  
 
-              { model with lastTime = Some now; view = cam }
+
+              { model with lastTime = Some now; }
 
             | KeyDown Keys.W ->
                 if not model.forward then
@@ -108,7 +126,12 @@ module CameraController =
                 else
                     model
             | Wheel delta ->
-                withTime { model with isWheel = true; moveVec = model.moveVec + V3i.OOI * int delta.Y * 10 }
+                //withTime { model with isWheel = true; moveVec = model.moveVec + V3i.OOI * int delta.Y * 10 }
+                let delta = model.scrollSensitivity * (delta.Y * 10.0)
+                withTime { model with 
+                                moveSpeed = model.moveSpeed + delta 
+                                scrolling = true
+                }
             | KeyDown Keys.A ->
                 if not model.left then
                     withTime { model with left = true; moveVec = model.moveVec - V3i.IOO  }
@@ -418,7 +441,7 @@ module CameraController =
                 yield! time()
             }
 
-        if state.moveVec <> V3i.Zero then
+        if state.moveVec <> V3i.Zero || state.scrolling then
             ThreadPool.add "timer" (time()) pool
 
         else
@@ -466,6 +489,10 @@ module ArcBallController =
             zoomFactor      = 0.01
             panFactor       = 0.01
             rotationFactor  = 0.01
+
+            moveSpeed = 0.0
+            scrollSensitivity = 1.0
+            scrolling = false
         }
 
     let sw = Diagnostics.Stopwatch()
