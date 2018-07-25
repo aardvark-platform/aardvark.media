@@ -542,7 +542,7 @@ module Updaters =
                     m.update client messages
                     for msg in messages do subject.OnNext msg
                     let model = m.model.GetValue()
-                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg))
+                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg)) |> Seq.cache
                 | None ->
                     Seq.empty
 
