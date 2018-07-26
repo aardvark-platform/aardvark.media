@@ -21,21 +21,22 @@ type Color =
 
 [<DomainType>]
 type Rect = {
-    p00 : V2d
-    p10 : V2d
-    p11 : V2d
-    p01 : V2d
+    box : Box2d
     color : Color
     id : int
 }
 
+
+type OpenRect = { s : V2d; t : V2d }
+
 module Rect =
     open System.Threading
     let mutable id = 0
-    let ofBox (b : Box2d) =
+    let ofBox (b : OpenRect) =
         let newId = Interlocked.Increment(&id)
         //let initialColor = { c00 = C4f.White; c10 = C4f.White; c11 = C4f.White; c01 = C4f.White }
-        { p00 = b.Min; p10 = b.Min + V2d(b.Size.X,0.0); p11 = b.Max; p01 = b.Min + V2d(0.0,b.Size.Y); color = Constant C4f.White; id = newId }
+        //{ p00 = b.Min; p10 = b.Min + V2d(b.Size.X,0.0); p11 = b.Max; p01 = b.Min + V2d(0.0,b.Size.Y); color = Constant C4f.White; id = newId }
+        { box = Box2d.FromPoints(b.s,b.t); color = Constant C4f.White; id = newId }
 
 [<DomainType>]
 type Model = 
@@ -48,12 +49,17 @@ type Interaction =
     | MovingRect
     | MovingPoint
     | Nothing
+    
 
 [<DomainType>]
 type ClientState =
     {
         viewport     : Box2d
         selectedRect : Option<int>
-        workingRect  : Option<Box2d>
+        workingRect  : Option<OpenRect>
+
+        mouseDown : Option<V2d>
+        mouseDrag : Option<V2d>
+
         currentInteraction : Interaction
     }
