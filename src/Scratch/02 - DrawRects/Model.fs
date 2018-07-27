@@ -17,7 +17,7 @@ type ColoredRect = {
 type Color = 
     | Gradient of direction : Direction * f : C4f * t : C4f
     | Points   of ColoredRect
-    | Constant of C4f
+    | Constant of C4f 
 
 [<DomainType>]
 type Rect = {
@@ -50,6 +50,7 @@ type Interaction =
     | MovingPoint
     | Nothing
     
+type DragEndpoint = { rect : int; vertexId : int; fixedPoint : V2d; pos : V2d }
 
 [<DomainType>]
 type ClientState =
@@ -57,6 +58,8 @@ type ClientState =
         viewport     : Box2d
         selectedRect : Option<int>
         workingRect  : Option<OpenRect>
+        dragEndPoint : Option<DragEndpoint>
+        downOnRect : bool
 
         mouseDown : Option<V2d>
         mouseDrag : Option<V2d>

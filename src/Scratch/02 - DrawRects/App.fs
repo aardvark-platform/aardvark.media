@@ -31,30 +31,53 @@ module Nvg =
 
 
 module ClientApp =
+    open Aardvark.Application
 
     type ClientMessage = 
-        | MouseDown of V2d
+        | MouseDown of MouseButtons * V2d
         | MouseMove of V2d
         | MouseUp of V2d
         | Select of int
+        | SetColorMode of Color
         | Deselect
+        | DragEndPoint of rectId:int * vertexId:int * vertices : array<V2d> 
+        | Delete of int
+        | Nop
 
     let update (model : ClientState) (msg : ClientMessage) =
-        printfn "[Client] %A" msg
+        printfn "[Client] %A dor: %b" msg model.downOnRect
         match msg with
-            | MouseDown v -> 
-                { model with mouseDown = Some v; }
+            | MouseDown(b,v) -> 
+                if b = MouseButtons.Left then
+                    { model with mouseDown = Some v; }
+                else model
             | MouseMove v ->    
-                let v = V2d(clamp 0.0 1.0 v.X, clamp 0.0 1.0 v.Y)
-                match model.mouseDown with
-                    | None -> model
-                    | Some s -> 
-                        { model with workingRect = Some { s = s; t = v }; mouseDrag = Some v; currentInteraction = Interaction.CreatingRect }
-            | MouseUp v -> 
-                { model with workingRect = None; currentInteraction = Nothing; mouseDown = None; mouseDrag = None; }
+                match model.dragEndPoint with
+                    | None -> 
+                        let v = V2d(clamp 0.0 1.0 v.X, clamp 0.0 1.0 v.Y)
+                        match model.mouseDown with
+                            | None -> model
+                            | Some s -> 
+                                { model with workingRect = Some { s = s; t = v }; mouseDrag = Some v; currentInteraction = Interaction.CreatingRect }
+                    | Some d -> 
+                        { model with dragEndPoint = Some { d with pos = v }}
+                    | _ -> model
+            | MouseUp(v) -> 
+                if model.downOnRect then
+                    { model with downOnRect = false }
+                else
+                    { model with workingRect = None; currentInteraction = Nothing; mouseDown = None; mouseDrag = None; dragEndPoint = None }
             | Select id -> 
-                { model with currentInteraction = Nothing; selectedRect = Some id; workingRect = None; mouseDown = None }
-            | Deselect -> { model with selectedRect = None }
+                { model with currentInteraction = Nothing; selectedRect = Some id; workingRect = None; mouseDown = None; downOnRect = true }
+            | Deselect -> if model.downOnRect then { model with downOnRect = false } else { model with selectedRect = None }
+            | DragEndPoint(rectId,vertexId,vertices) -> 
+                let fixedPoint =
+                    match vertexId with 
+                        | 0 -> 2 | 1 -> 3 | 2 -> 0 | 3 -> 1 | _ -> failwith ""
+                { model with dragEndPoint = Some { rect = rectId; vertexId = vertexId; fixedPoint = vertices.[fixedPoint]; pos = vertices.[vertexId];  }; currentInteraction = Interaction.MovingPoint }
+            | SetColorMode mode -> model
+            | Delete i -> { model with dragEndPoint = None; selectedRect = None }
+            | Nop -> model
 
     let endRectangle (client : ClientState) =
         match client.workingRect with
@@ -71,6 +94,22 @@ module ClientApp =
         let cb = function None -> Seq.empty | Some v -> Seq.singleton (cb v)
         onEvent' evtName [sprintf "relativeCoords2(event,'%s')" containerClass] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
+    let myMouseCbRelButton (evtName : string) (containerClass : string)  (cb : MouseButtons -> V2d -> 'msg) = 
+        onEvent' 
+            evtName
+            [sprintf "relativeCoords2(event,'%s')" containerClass; "event.which"] 
+            (fun args ->
+                match args with
+                    | x :: b :: _ ->
+                        let v : Option<V2d> = Pickler.json.UnPickleOfString x
+                        let b : MouseButtons =  b |> Helpers.button
+                        match v with
+                            | Some v -> cb b v |> Seq.singleton
+                            | None -> Seq.empty
+                    | _ ->
+                        failwith "asdasd"
+            )
+
     //https://bugs.chromium.org/p/chromium/issues/detail?id=716694&can=2&q=716694&colspec=ID%20Pri%20M%20Stars%20ReleaseBlock%20Component%20Status%20Owner%20Summary%20OS%20Modified
     let view (model : MModel) (clientState : MClientState) =
     
@@ -83,24 +122,47 @@ module ClientApp =
                 let viewBox = sprintf "%f %f %f %f" viewport.Min.X viewport.Min.Y viewport.Size.X viewport.Size.Y
                 yield "viewBox" => viewBox
                 yield "preserveAspectRatio" => "none"
-                yield myMouseCbRel "onmousedown" "svgRoot" MouseDown
-                yield myMouseCbRel "onmouseup"   "svgRoot" MouseUp
+                yield myMouseCbRelButton "onmouseup"   "svgRoot" (fun b v -> if b = MouseButtons.Right then Deselect else MouseUp v)
+                yield myMouseCbRelButton "onmousedown" "svgRoot" (fun b v -> if b = MouseButtons.Left then MouseDown(b,v) else Nop)
+                yield onKeyDown (fun k -> if k = Keys.Escape then Deselect else Nop)
             } |> AttributeMap.ofAMap 
 
         let containerAttribs = 
             amap {
                 yield style " width: 70%;margin:auto"; 
                 yield myMouseCbRel "onmousemove" "svgRoot" MouseMove
+                yield onKeyDown (fun k -> if k = Keys.Escape then Deselect else Nop)
             } |> AttributeMap.ofAMap
         
         let svgContent = 
             alist {
                 for (id,r) in model.rects |> AMap.toASet |> ASet.sortBy (fun (id,r) -> id) do
-                    let! box = r.box
-                    yield Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [
-                            style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke";
-                            onMouseDown (fun b _ -> if b = Aardvark.Application.MouseButtons.Right then Select id else Deselect)
-                            ]
+                    let! selection = clientState.selectedRect
+                    match selection with
+                        | Some s when id = s ->
+                            let! box = r.box
+                            let! draggedPoint = clientState.dragEndPoint
+                            let box =
+                                match draggedPoint with
+                                | Some d -> 
+                                    Box2d.FromPoints(d.fixedPoint,d.pos)
+                                | None -> box
+                            let w = 0.008
+                            let vertices = [| box.OO; box.IO; box.II; box.OI |]
+                            yield Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [
+                                    style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke";
+                                ]
+                            yield Nvg.rect (box.Min.X - w) (box.Min.Y - w) (w*2.0) (w*2.0) [myMouseCbRelButton "onmousedown" "svgRoot" (fun _ p -> DragEndPoint(id, 0,vertices)); "vector-effect" => "non-scaling-stroke"]
+                            yield Nvg.rect (box.Max.X - w) (box.Min.Y - w) (w*2.0) (w*2.0) [myMouseCbRelButton "onmousedown" "svgRoot" (fun _ p -> DragEndPoint(id, 1,vertices)); "vector-effect" => "non-scaling-stroke"]
+                            yield Nvg.rect (box.Max.X - w) (box.Max.Y - w) (w*2.0) (w*2.0) [myMouseCbRelButton "onmousedown" "svgRoot" (fun _ p -> DragEndPoint(id, 2,vertices)); "vector-effect" => "non-scaling-stroke"]
+                            yield Nvg.rect (box.Min.X - w) (box.Max.Y - w) (w*2.0) (w*2.0) [myMouseCbRelButton "onmousedown" "svgRoot" (fun _ p -> DragEndPoint(id, 3,vertices)); "vector-effect" => "non-scaling-stroke"]
+                        | _ -> 
+                            let! box = r.box
+                            yield 
+                                Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [
+                                    style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke";
+                                    onMouseDown (fun b _ -> if b = Aardvark.Application.MouseButtons.Right then Select id else Deselect)
+                                ]
 
                 let! o = clientState.workingRect
                 match o with
@@ -114,17 +176,63 @@ module ClientApp =
 
 
         let showSelection (id : int) =
-            div [style "position:absolute; width:30%; height:100px"] [
-                Incremental.Svg.svg (AttributeMap.ofList [clazz "rectPreview"; "viewBox" => "0 0 100 100"; "preserveAspectRatio" => "none"; "width" => "100%"; "height" => "100%" ]) <|
-                    alist {
-                        let! rect = model.rects |> AMap.tryFind id 
+            div [] [
+                yield div [style "position:relative; width:30%; height:100px"] [
+                    Incremental.Svg.svg (AttributeMap.ofList [clazz "rectPreview"; "viewBox" => "0 0 1 1"; "preserveAspectRatio" => "none"; "width" => "100%"; "height" => "100%" ]) <|
+                        alist {
+                            let! rect = model.rects |> AMap.tryFind id 
+                            match rect with
+                                | None -> yield text "could not find selected rect"
+                                | Some r -> 
+                                    let! box = r.box
+                                    yield Nvg.rect 0.0 0.0 1.0 1.0 [style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke"]
+                       }
+                    Incremental.div AttributeMap.empty <|
+                        alist {
+                            let! rect = model.rects |> AMap.tryFind id 
+                            match rect with
+                                | Some r -> 
+                                    let! color = r.color
+                                    match color with
+                                        | Color.Points colors -> 
+                                            yield div [style "position:absolute; left: 0%; top: 0%; background-color: green; width:10px; height: 10px"] []
+                                            yield div [style "position:absolute; left: 0%; top: 100%; margin-top:-10px; background-color: green; width:10px; height: 10px"] []
+                                            yield div [style "position:absolute; left: 100%; top: 100%; margin-left:-10px; margin-top:-10px; background-color: green; width:10px; height: 10px"] []
+                                            yield div [style "position:absolute; left: 100%; top: 0%; margin-left:-10px; background-color: green; width:10px; height: 10px"] []
+                                        | Color.Constant c -> 
+                                            yield div [style "position:absolute; left: 50%; top: 50%; margin-left: -20px; margin-top: -20px; background-color: green; width:40px; height: 40px"] [] 
+                                        | Color.Gradient(Direction.Vertical,_,_) -> 
+                                            yield div [style "position:absolute; left: 0%; top: 0%;  background-color: green; width:100%; height: 20px"] [] 
+                                            yield div [style "position:absolute; left: 0%; bottom: 0%;  background-color: green; width:100%; height:20px"] [] 
+                                        | Color.Gradient(Direction.Horizontal,_,_) -> 
+                                            yield div [style "position:absolute; top: 0%; left: 0%; background-color: green; height:100%; width: 20px"] [] 
+                                            yield div [style "position:absolute; top: 0%; right: 0%;  background-color: green; height:100%; width: 20px"] [] 
+                                | None -> ()
+                        }
+
+                ]
+                let color =
+                    adaptive {
+                        let! rect = model.rects |> AMap.tryFind id
                         match rect with
-                            | None -> yield text "could not find selected rect"
-                            | Some r -> 
-                                let! box = r.box
-                                yield Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"]
-                   }
-                div [style "position:relative; left: 10%; top: 10%; background-color: green; width:10px; height: 10px"] []
+                            | None -> return Color.Constant C4f.White
+                            | Some r -> return! r.color
+                    }
+
+                let colorMode = color |> Mod.map (function Constant _ -> "Constant" | Color.Gradient(Direction.Vertical,_,_) -> "Vertical Gradient" | Color.Gradient(Direction.Horizontal,_,_) -> "Horizontal Gradient" | Color.Points _ -> "Points")
+                let changeMode s =
+                    match s with
+                        | "Constant" -> Color.Constant C4f.White
+                        | "Vertical Gradient" -> Color.Gradient(Direction.Vertical, C4f.White, C4f.White)
+                        | "Horizontal Gradient" -> Color.Gradient(Direction.Horizontal, C4f.White, C4f.White)
+                        | "Points" -> Color.Points({c00 = C4f.White; c01 = C4f.White; c11 = C4f.White; c10 = C4f.White })
+                        | _ -> failwith ""
+                yield br []
+                yield text "Color Mode: "
+                yield div [] [
+                    dropDown [] colorMode (changeMode >> SetColorMode) (Map.ofList [ "Constant", "Constant"; "Vertical Gradient", "Vertical Gradient";"Horizontal Gradient", "Horizontal Gradient";"Points", "Points"])
+                ]
+                yield button [style "ui small red button"; onClick (fun _ -> Delete id)] [text "Delete"]
             ]
 
         require dependencies (
@@ -135,7 +243,7 @@ module ClientApp =
                     ]
                 ]
 
-                Incremental.div (AttributeMap.ofList [ style "width: 30%; margin:auto" ]) <| 
+                Incremental.div (AttributeMap.ofList [ style "width: 30%; " ]) <| 
                     alist {
                         let! selected = clientState.selectedRect
                         match selected with
@@ -162,6 +270,8 @@ module ClientApp =
                    selectedRect = None
                    currentInteraction = Interaction.Nothing
                    workingRect = None
+                   dragEndPoint = None
+                   downOnRect = false
 
                    mouseDown = None
                    mouseDrag = None
@@ -175,26 +285,56 @@ open ClientApp
 
 type Message = 
     | AddRectangle of Rect
+    | SetColorMode of int * Color
+    | SetBoxBounds of int * V2d * V2d
+    | Delete of int
 
 
 module DrawRectsApp =
     
     let update (m : Model) (msg : Message) =
-        printfn "[server] %A" msg
+        //printfn "[server] %A" msg
         match msg with
-            | AddRectangle r -> { m with rects = HMap.add r.id r m.rects }
+            | AddRectangle r  ->
+                if r.box.Area < 0.0001 then 
+                    printfn "supersmall %A" r
+                    m //{ m with rects = HMap.add r.id r m.rects }
+                else { m with rects = HMap.add r.id r m.rects }
+            | SetColorMode(id,c) -> 
+                let update old =
+                    match old with
+                        | None -> None
+                        | Some r -> { r with color = c } |> Some
+                { m with rects = HMap.alter id update m.rects }
+            | SetBoxBounds(id,startPos,endPos) ->
+                let update old =
+                    match old with
+                        | None -> None
+                        | Some r -> { r with box = Box2d.FromPoints(startPos,endPos) } |> Some
+                { m with rects = HMap.alter id update m.rects }
+            | Delete i -> 
+                { m with rects = HMap.remove i m.rects }
 
 
     let mapOut (m : ClientState) (msg : ClientMessage) =
         seq {
             match msg with
-                | MouseUp v when m.currentInteraction = Interaction.CreatingRect -> 
+                | ClientMessage.MouseUp v when m.currentInteraction = Interaction.CreatingRect -> 
                     yield! (ClientApp.endRectangle m |> Option.map AddRectangle |> Option.toList)
+                | ClientMessage.MouseUp v when m.currentInteraction = Interaction.MovingPoint -> 
+                    match m.selectedRect, m.dragEndPoint with
+                        | Some id, Some d -> yield SetBoxBounds(id,d.fixedPoint, d.pos)
+                        | _ -> ()
+                | ClientMessage.SetColorMode mode -> 
+                    match m.selectedRect with
+                        | None -> ()
+                        | Some id -> yield SetColorMode(id,mode)
+                | ClientMessage.Delete i -> yield Delete i
                 | _ -> ()
         }
 
     let view (m : MModel) =
-        body [] [
+        body ["oncontextmenu" => "return false;"] [
             subApp' mapOut (fun _ _ -> Seq.empty) [] (ClientApp.app m)
         ]
 

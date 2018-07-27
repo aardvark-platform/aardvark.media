@@ -108,6 +108,8 @@ module Mutable =
         let _viewport = ResetMod.Create(__initial.viewport)
         let _selectedRect = MOption.Create(__initial.selectedRect)
         let _workingRect = MOption.Create(__initial.workingRect)
+        let _dragEndPoint = MOption.Create(__initial.dragEndPoint)
+        let _downOnRect = ResetMod.Create(__initial.downOnRect)
         let _mouseDown = MOption.Create(__initial.mouseDown)
         let _mouseDrag = MOption.Create(__initial.mouseDrag)
         let _currentInteraction = ResetMod.Create(__initial.currentInteraction)
@@ -115,6 +117,8 @@ module Mutable =
         member x.viewport = _viewport :> IMod<_>
         member x.selectedRect = _selectedRect :> IMod<_>
         member x.workingRect = _workingRect :> IMod<_>
+        member x.dragEndPoint = _dragEndPoint :> IMod<_>
+        member x.downOnRect = _downOnRect :> IMod<_>
         member x.mouseDown = _mouseDown :> IMod<_>
         member x.mouseDrag = _mouseDrag :> IMod<_>
         member x.currentInteraction = _currentInteraction :> IMod<_>
@@ -127,6 +131,8 @@ module Mutable =
                 ResetMod.Update(_viewport,v.viewport)
                 MOption.Update(_selectedRect, v.selectedRect)
                 MOption.Update(_workingRect, v.workingRect)
+                MOption.Update(_dragEndPoint, v.dragEndPoint)
+                ResetMod.Update(_downOnRect,v.downOnRect)
                 MOption.Update(_mouseDown, v.mouseDown)
                 MOption.Update(_mouseDrag, v.mouseDrag)
                 ResetMod.Update(_currentInteraction,v.currentInteraction)
@@ -163,6 +169,18 @@ module Mutable =
                     override x.Get(r) = r.workingRect
                     override x.Set(r,v) = { r with workingRect = v }
                     override x.Update(r,f) = { r with workingRect = f r.workingRect }
+                }
+            let dragEndPoint =
+                { new Lens<DrawRects.ClientState, Microsoft.FSharp.Core.Option<DrawRects.DragEndpoint>>() with
+                    override x.Get(r) = r.dragEndPoint
+                    override x.Set(r,v) = { r with dragEndPoint = v }
+                    override x.Update(r,f) = { r with dragEndPoint = f r.dragEndPoint }
+                }
+            let downOnRect =
+                { new Lens<DrawRects.ClientState, System.Boolean>() with
+                    override x.Get(r) = r.downOnRect
+                    override x.Set(r,v) = { r with downOnRect = v }
+                    override x.Update(r,f) = { r with downOnRect = f r.downOnRect }
                 }
             let mouseDown =
                 { new Lens<DrawRects.ClientState, Microsoft.FSharp.Core.Option<Aardvark.Base.V2d>>() with
