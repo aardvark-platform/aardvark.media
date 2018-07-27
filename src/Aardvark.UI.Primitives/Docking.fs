@@ -191,7 +191,7 @@ module DockingBuilder =
     let dockelement = DockElementBuilder<DockElement>(id)
     let element = DockElementBuilder<DockNodeConfig>(DockNodeConfig.Element)
 
-    let test = element { id "hugo"; title "Hugo"; weight 10 }
+    let test = element { id "hugo"; title "Hugo"; weight 10; }
 
     type ConfigBuilder() =
         member x.Yield(()) = { content = Vertical(1.0,[]); specialDockSize = None; appName = None; useCachedConfig = None }
