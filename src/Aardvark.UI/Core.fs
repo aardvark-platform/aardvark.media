@@ -513,6 +513,20 @@ and [<AbstractClass>] DomNode<'msg>() =
                 member x.SubApp n   = DomNode.SubApp(n.App).WithAttributesFrom n
                 member x.Map n      = DomNode.Map(n.Mapping, n.Node).WithAttributesFrom n
         }
+
+    member x.WithAttributes(additional : AttributeMap<'msg>) =
+        let (|||) a b = AttributeMap.union a b
+        x.Visit {
+            new DomNodeVisitor<'msg, DomNode<'msg>> with
+                member x.Empty e    = DomNode.Empty().WithAttributesFrom e
+                member x.Inner n    = DomNode.Element(n.Tag, n.Namespace, n.Attributes ||| additional, n.Children).WithAttributesFrom n
+                member x.Void n     = DomNode.Element(n.Tag, n.Namespace, n.Attributes ||| additional).WithAttributesFrom n
+                member x.Scene n    = DomNode.Scene(n.Attributes ||| additional, n.Scene, n.GetClientState).WithAttributesFrom n
+                member x.Text n     = DomNode.Text(n.Tag, n.Namespace, n.Attributes ||| additional, n.Text).WithAttributesFrom n
+                member x.Page n     = DomNode.Page(n.Content).WithAttributesFrom n
+                member x.SubApp n   = DomNode.SubApp(n.App).WithAttributesFrom n
+                member x.Map n      = DomNode.Map(n.Mapping, n.Node).WithAttributesFrom n
+        }
         
     member x.WithRequired r =
         let res = x.Clone()

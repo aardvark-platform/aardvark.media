@@ -3,6 +3,8 @@
 open Aardvark.Base.Incremental
 open Aardvark.UI
 
+type EmbeddedResources = EmbeddedResources
+
 [<AutoOpen>]
 module Simple =
     open Microsoft.FSharp.Reflection

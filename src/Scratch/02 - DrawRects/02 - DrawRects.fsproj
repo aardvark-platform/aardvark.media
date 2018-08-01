@@ -12,6 +12,7 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="RenderQuads.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="ColorPicker.fs" />
     <Compile Include="Model.fs" />

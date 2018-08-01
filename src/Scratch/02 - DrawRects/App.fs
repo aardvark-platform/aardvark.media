@@ -43,10 +43,13 @@ module ClientApp =
         | DragEndPoint of rectId:int * vertexId:int * vertices : array<V2d> 
         | Delete of int
         | Nop
+        | ChangeColor of int * C4f
+        | StopDrag
 
     let update (model : ClientState) (msg : ClientMessage) =
-        printfn "[Client] %A dor: %b" msg model.downOnRect
         match msg with
+            | ChangeColor(i,c) -> 
+                model
             | MouseDown(b,v) -> 
                 if b = MouseButtons.Left then
                     { model with mouseDown = Some v; }
@@ -54,19 +57,27 @@ module ClientApp =
             | MouseMove v ->    
                 match model.dragEndPoint with
                     | None -> 
-                        let v = V2d(clamp 0.0 1.0 v.X, clamp 0.0 1.0 v.Y)
-                        match model.mouseDown with
-                            | None -> model
+                        match model.selectedRect with 
+                            | None -> 
+                                let v = V2d(clamp 0.0 1.0 v.X, clamp 0.0 1.0 v.Y)
+                                match model.mouseDown with
+                                    | None -> model
+                                    | Some s -> 
+                                        { model with workingRect = Some { s = s; t = v }; mouseDrag = Some v; currentInteraction = Interaction.CreatingRect }
                             | Some s -> 
-                                { model with workingRect = Some { s = s; t = v }; mouseDrag = Some v; currentInteraction = Interaction.CreatingRect }
+                                match model.mouseDown with
+                                    | Some startPos -> 
+                                        let shift = v - startPos
+                                        { model with dragRect = Some shift;  currentInteraction = Interaction.MovingRect }
+                                    | None -> model
                     | Some d -> 
                         { model with dragEndPoint = Some { d with pos = v }}
-                    | _ -> model
+            | StopDrag -> { model with dragRect = None }
             | MouseUp(v) -> 
                 if model.downOnRect then
-                    { model with downOnRect = false }
+                    { model with downOnRect = false; dragRect  = None; mouseDown = None  }
                 else
-                    { model with workingRect = None; currentInteraction = Nothing; mouseDown = None; mouseDrag = None; dragEndPoint = None }
+                    { model with workingRect = None; currentInteraction = Nothing; mouseDown = None; mouseDrag = None; dragEndPoint = None; dragRect = None  }
             | Select id -> 
                 { model with currentInteraction = Nothing; selectedRect = Some id; workingRect = None; mouseDown = None; downOnRect = true }
             | Deselect -> if model.downOnRect then { model with downOnRect = false } else { model with selectedRect = None }
@@ -88,6 +99,8 @@ module ClientApp =
     let dependencies = Html.semui @ [
         { name = "drawRects.css"; url = "drawRects.css"; kind = Stylesheet }
         { name = "drawRects.js";  url = "drawRects.js";  kind = Script     }
+        { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
+        { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
     ] 
 
     let myMouseCbRel (evtName : string) (containerClass : string) (cb : V2d -> 'msg) =
@@ -111,7 +124,7 @@ module ClientApp =
             )
 
     //https://bugs.chromium.org/p/chromium/issues/detail?id=716694&can=2&q=716694&colspec=ID%20Pri%20M%20Stars%20ReleaseBlock%20Component%20Status%20Owner%20Summary%20OS%20Modified
-    let view (model : MModel) (clientState : MClientState) =
+    let view (runtime : IRuntime) (model : MModel) (clientState : MClientState) =
     
         let svgAttribs = 
             amap {
@@ -140,13 +153,16 @@ module ClientApp =
                     let! selection = clientState.selectedRect
                     match selection with
                         | Some s when id = s ->
-                            let! box = r.box
                             let! draggedPoint = clientState.dragEndPoint
+                            let! dragRect = clientState.dragRect
+                            let! box = r.box
                             let box =
-                                match draggedPoint with
-                                | Some d -> 
+                                match draggedPoint,dragRect with
+                                | Some d,_ -> 
                                     Box2d.FromPoints(d.fixedPoint,d.pos)
-                                | None -> box
+                                | None, Some shift -> 
+                                    box.Translated shift
+                                | _ -> box
                             let w = 0.008
                             let vertices = [| box.OO; box.IO; box.II; box.OI |]
                             yield Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [
@@ -157,12 +173,32 @@ module ClientApp =
                             yield Nvg.rect (box.Max.X - w) (box.Max.Y - w) (w*2.0) (w*2.0) [myMouseCbRelButton "onmousedown" "svgRoot" (fun _ p -> DragEndPoint(id, 2,vertices)); "vector-effect" => "non-scaling-stroke"]
                             yield Nvg.rect (box.Min.X - w) (box.Max.Y - w) (w*2.0) (w*2.0) [myMouseCbRelButton "onmousedown" "svgRoot" (fun _ p -> DragEndPoint(id, 3,vertices)); "vector-effect" => "non-scaling-stroke"]
                         | _ -> 
+                            printfn "RERENDER....."
                             let! box = r.box
-                            yield 
-                                Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [
-                                    style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke";
-                                    onMouseDown (fun b _ -> if b = Aardvark.Application.MouseButtons.Right then Select id else Deselect)
-                                ]
+                            let! color = r.color
+                            match color with
+                                | Color.Constant c -> 
+                                    yield 
+                                        Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [
+                                            style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke";
+                                            onMouseDown (fun b _ -> if b = Aardvark.Application.MouseButtons.Right then Select id else Deselect)
+                                        ]
+                                | Color.Gradient(d,f,t) -> 
+                                    yield 
+                                        Nvg.rect box.Min.X box.Min.Y box.Size.X box.Size.Y [
+                                            style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke";
+                                            onMouseDown (fun b _ -> if b = Aardvark.Application.MouseButtons.Right then Select id else Deselect)
+                                        ]
+                                | Color.Points pts -> 
+                                    ()
+                                    //let data,size = DrawRects.RenderQuads.renderQuad pts.colors runtime
+                                    //let attribs = 
+                                    //    [
+                                    //        "x" => floatString x; "y"  => floatString y;
+                                    //        "width" => floatString width; "height" =>  floatString height;
+                                    //        "xlink:href" => data
+                                    //    ]
+                                    //yield  Svg.image ["width" ]
 
                 let! o = clientState.workingRect
                 match o with
@@ -193,20 +229,28 @@ module ClientApp =
                             match rect with
                                 | Some r -> 
                                     let! color = r.color
+
+                                    let withPicker (c : C4f) (index : int) (s : string)  =
+                                        let ev = onEvent "changeColor" [] (((curry ChangeColor) index) << Spectrum.colorFromHex << Pickler.unpickleOfJson << List.head)
+                                        let color = ColorPicker.colorToHex (c.ToC4b())
+                                        let boot= Spectrum.bootCode.Replace("__COLOR__", color)
+                                        onBoot boot <| div [style (sprintf "%s;background-color:%s; border-color: black; border-style:solid" s color); ev] []
+                                        
+
                                     match color with
                                         | Color.Points colors -> 
-                                            yield div [style "position:absolute; left: 0%; top: 0%; background-color: green; width:10px; height: 10px"] []
-                                            yield div [style "position:absolute; left: 0%; top: 100%; margin-top:-10px; background-color: green; width:10px; height: 10px"] []
-                                            yield div [style "position:absolute; left: 100%; top: 100%; margin-left:-10px; margin-top:-10px; background-color: green; width:10px; height: 10px"] []
-                                            yield div [style "position:absolute; left: 100%; top: 0%; margin-left:-10px; background-color: green; width:10px; height: 10px"] []
+                                            yield withPicker colors.colors.[0] 0 "position:absolute; left: 0%; top: 100%; margin-top:-10px; background-color: green; width:10px; height: 10px"
+                                            yield withPicker colors.colors.[1] 1 "position:absolute; left: 100%; top: 100%; margin-left:-10px; margin-top:-10px; background-color: green; width:10px; height: 10px"
+                                            yield withPicker colors.colors.[2] 2 "position:absolute; left: 100%; top: 0%; margin-left:-10px; background-color: green; width:10px; height: 10px"
+                                            yield withPicker colors.colors.[3] 3 "position:absolute; left: 0%; top: 0%; background-color: green; width:10px; height: 10px"
                                         | Color.Constant c -> 
-                                            yield div [style "position:absolute; left: 50%; top: 50%; margin-left: -20px; margin-top: -20px; background-color: green; width:40px; height: 40px"] [] 
-                                        | Color.Gradient(Direction.Vertical,_,_) -> 
-                                            yield div [style "position:absolute; left: 0%; top: 0%;  background-color: green; width:100%; height: 20px"] [] 
-                                            yield div [style "position:absolute; left: 0%; bottom: 0%;  background-color: green; width:100%; height:20px"] [] 
-                                        | Color.Gradient(Direction.Horizontal,_,_) -> 
-                                            yield div [style "position:absolute; top: 0%; left: 0%; background-color: green; height:100%; width: 20px"] [] 
-                                            yield div [style "position:absolute; top: 0%; right: 0%;  background-color: green; height:100%; width: 20px"] [] 
+                                            yield withPicker c 0 "position:absolute; left: 50%; top: 50%; margin-left: -20px; margin-top: -20px; background-color: green; width:40px; height: 40px"
+                                        | Color.Gradient(Direction.Vertical,f,t) -> 
+                                            yield withPicker f 0 "position:absolute; left: 0%; top: 0%;  background-color: green; width:100%; height: 20px"
+                                            yield withPicker t 1 "position:absolute; left: 0%; bottom: 0%;  background-color: green; width:100%; height:20px"
+                                        | Color.Gradient(Direction.Horizontal,f,t) -> 
+                                            yield withPicker f 0 "position:absolute; top: 0%; left: 0%; background-color: green; height:100%; width: 20px"
+                                            yield withPicker t 0 "position:absolute; top: 0%; right: 0%;  background-color: green; height:100%; width: 20px"
                                 | None -> ()
                         }
 
@@ -225,7 +269,7 @@ module ClientApp =
                         | "Constant" -> Color.Constant C4f.White
                         | "Vertical Gradient" -> Color.Gradient(Direction.Vertical, C4f.White, C4f.White)
                         | "Horizontal Gradient" -> Color.Gradient(Direction.Horizontal, C4f.White, C4f.White)
-                        | "Points" -> Color.Points({c00 = C4f.White; c01 = C4f.White; c11 = C4f.White; c10 = C4f.White })
+                        | "Points" -> Color.Points { colors = Array.init 4 (fun _ -> C4f.White) }
                         | _ -> failwith ""
                 yield br []
                 yield text "Color Mode: "
@@ -260,7 +304,7 @@ module ClientApp =
         ThreadPool.empty
 
 
-    let app outer =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+    let app runtime outer =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
         {
             unpersist = Unpersist.instance     
             threads = threads 
@@ -273,11 +317,13 @@ module ClientApp =
                    dragEndPoint = None
                    downOnRect = false
 
+                   dragRect = None
+
                    mouseDown = None
                    mouseDrag = None
                 }
             update = update 
-            view = view outer
+            view = view runtime outer
         }
 
 open ClientApp
@@ -288,6 +334,8 @@ type Message =
     | SetColorMode of int * Color
     | SetBoxBounds of int * V2d * V2d
     | Delete of int
+    | Translate of int * V2d
+    | ChangeColor of selection : int * point : int * C4f
 
 
 module DrawRectsApp =
@@ -312,8 +360,27 @@ module DrawRectsApp =
                         | None -> None
                         | Some r -> { r with box = Box2d.FromPoints(startPos,endPos) } |> Some
                 { m with rects = HMap.alter id update m.rects }
+            | Translate(id, shift) -> 
+                let update old =
+                    match old with
+                        | None -> None
+                        | Some r -> { r with box = r.box.Translated shift } |> Some
+                { m with rects = HMap.alter id update m.rects }
             | Delete i -> 
                 { m with rects = HMap.remove i m.rects }
+            | ChangeColor(id,point,color) -> 
+                let update old =
+                    match old with
+                        | None -> None
+                        | Some r -> 
+                            match r.color with  
+                                | Color.Constant c -> Some { r with color = Color.Constant color }
+                                | Color.Gradient(dir,f,t) -> Some { r with color = Color.Gradient(dir,(if point = 0 then color else f), (if point = 1 then color else t))}
+                                | Color.Points(pts) -> 
+                                    let points = pts.colors.Copy()
+                                    points.[point] <- color
+                                    Some { r with color = Color.Points { colors = points } }
+                { m with rects = HMap.alter id update m.rects }  
 
 
     let mapOut (m : ClientState) (msg : ClientMessage) =
@@ -325,22 +392,30 @@ module DrawRectsApp =
                     match m.selectedRect, m.dragEndPoint with
                         | Some id, Some d -> yield SetBoxBounds(id,d.fixedPoint, d.pos)
                         | _ -> ()
+                | ClientMessage.MouseUp v when m.currentInteraction = Interaction.MovingRect -> 
+                    match m.mouseDown, m.dragRect, m.selectedRect with
+                        | Some d, Some c, Some id -> yield Translate(id,c)
+                        | _ -> ()
                 | ClientMessage.SetColorMode mode -> 
                     match m.selectedRect with
                         | None -> ()
                         | Some id -> yield SetColorMode(id,mode)
                 | ClientMessage.Delete i -> yield Delete i
+                | ClientMessage.ChangeColor(point,c) -> 
+                    match m.selectedRect with 
+                        | Some id -> yield ChangeColor(id,point,c)
+                        | _ -> ()
                 | _ -> ()
         }
 
-    let view (m : MModel) =
+    let view (runtime : IRuntime) (m : MModel) =
         body ["oncontextmenu" => "return false;"] [
-            subApp' mapOut (fun _ _ -> Seq.empty) [] (ClientApp.app m)
+            subApp' mapOut (fun _ msg -> match msg with Translate(_,_) -> Seq.singleton ClientMessage.StopDrag | _ -> Seq.empty) [] (ClientApp.app runtime m)
         ]
 
     let threads (m : Model) = ThreadPool.empty
 
-    let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+    let app (runtime : IRuntime) =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
         {
             unpersist = Unpersist.instance     
             threads = threads 
@@ -348,6 +423,6 @@ module DrawRectsApp =
                 { 
                    rects = HMap.empty
                 }
-            update = update 
-            view = view
+            update = update
+            view = view runtime
         }

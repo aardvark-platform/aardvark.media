@@ -416,6 +416,7 @@ module Static =
         let inline feFuncR x = voidElemNS "feFuncR" svgNS x
         let inline feGaussianBlur x = voidElemNS "feGaussianBlur" svgNS x
         let inline feImage x = voidElemNS "feImage" svgNS x
+        let inline image x = voidElemNS "image" svgNS x
         let inline feMerge x = voidElemNS "feMerge" svgNS x
         let inline feMergeNode x = voidElemNS "feMergeNode" svgNS x
         let inline feMorphology x = voidElemNS "feMorphology" svgNS x

@@ -1,5 +1,8 @@
 ﻿namespace Aardvark.UI
 
+open System
+open Aardvark.Base
+
 module Spectrum =
 
     let bootCode ="""
@@ -33,3 +36,16 @@ module Spectrum =
                 el.mousedown(function (e) { dragging = false; });
                 el.mousemove(function(e) { dragging = true; });
                 """
+
+     
+    let colorFromHex (hex:string) =
+        Log.warn "%s" (hex.Replace("#", ""))
+        let arr =
+            hex.Replace("#", "")
+                |> Seq.windowed 2
+                |> Seq.mapi   (fun i j -> (i,j))
+                |> Seq.filter (fun (i,j) -> i % 2=0)
+                |> Seq.map    (fun (_,j) -> Byte.Parse(new System.String(j),System.Globalization.NumberStyles.AllowHexSpecifier))
+                |> Array.ofSeq
+
+        C4b(arr.[0], arr.[1], arr.[2], 255uy).ToC4f()

@@ -22,11 +22,12 @@ let main argv =
     
 
     use app = new OpenGlApplication()
-    let instance = DrawRectsApp.app |> App.start
+    let instance = DrawRectsApp.app app.Runtime |> App.start
 
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
+        Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
         Suave.Files.browseHome
     ]  
 

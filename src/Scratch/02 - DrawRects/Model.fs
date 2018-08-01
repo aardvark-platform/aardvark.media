@@ -8,10 +8,7 @@ open Aardvark.UI.Primitives
 type Direction = Vertical | Horizontal
 
 type ColoredRect = {
-    c00 : C4f
-    c10 : C4f
-    c11 : C4f
-    c01 : C4f
+    colors : C4f[]
 }
 
 type Color = 
@@ -60,6 +57,8 @@ type ClientState =
         workingRect  : Option<OpenRect>
         dragEndPoint : Option<DragEndpoint>
         downOnRect : bool
+
+        dragRect : Option<V2d>
 
         mouseDown : Option<V2d>
         mouseDrag : Option<V2d>
