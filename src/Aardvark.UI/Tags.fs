@@ -6,16 +6,16 @@ open Aardvark.Base.Incremental
 module Incremental =
 
     let renderControl (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, false, None)
+        DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard false, None)
 
-    let renderControl' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, true, None)
+    let renderControl' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : ISg<'msg>) =
+        DomNode.RenderControl(attributes, cam, sg, config, None)
 
     let renderControlWithClientValues (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, false, None)
+        DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard false, None)
 
-    let renderControlWithClientValues' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, true, None)
+    let renderControlWithClientValues' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+        DomNode.RenderControl(attributes, cam, sg, config, None)
 
     let inline elem (tagName : string) (attrs : AttributeMap<'msg>) (children : alist<DomNode<'msg>>) =
         DomNode.Node(tagName, attrs, children)
@@ -239,8 +239,11 @@ module Static =
             }
 
 
-    let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (isOrtho:bool)(sg : ISg<'msg>) =
-        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg,isOrtho, None)
+    let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
+        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, RenderControlConfig.standard false, None)
+
+    let renderControl' (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (config : RenderControlConfig) (sg : ISg<'msg>) =
+        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, config, None)
 
     let page (createPage : Request -> DomNode<'msg>) =
         DomNode.Page createPage

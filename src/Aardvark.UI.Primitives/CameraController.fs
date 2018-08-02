@@ -357,7 +357,7 @@ module CameraController =
 
 
 
-    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (isOrtho : bool) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes =
             AttributeMap.ofListCond [
                 always (onBlur (fun _ -> f Blur))
@@ -373,13 +373,13 @@ module CameraController =
 
 
         let cam = Mod.map2 Camera.create state.view frustum 
-        Incremental.renderControlWithClientValues cam attributes sg
+        Incremental.renderControlWithClientValues' cam attributes config sg
 
     let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        controlledControlWithClientValues state f frustum att false (constF sg)
+        controlledControlWithClientValues state f frustum att (RenderControlConfig.standard true) (constF sg)
     
     let controlledControl' (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        controlledControlWithClientValues state f frustum att true (constF sg)
+        controlledControlWithClientValues state f frustum att (RenderControlConfig.standard true) (constF sg)
 
     let withControls (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (node : DomNode<'msg>) =
         let cam = Mod.map2 Camera.create state.view frustum 
