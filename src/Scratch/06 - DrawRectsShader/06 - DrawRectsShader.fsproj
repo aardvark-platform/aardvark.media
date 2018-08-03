@@ -17,7 +17,6 @@
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
-		<EmbeddedResource Include="resources\drawRects.js" />
 	<EmbeddedResource Include="resources\drawRects.css" />
     <None Include="App.config" />
     <None Include="paket.references" />

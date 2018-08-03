@@ -159,7 +159,6 @@ let update (model : Model) (msg : Message) =
 
 let dependencies = Html.semui @ [
     { name = "drawRects.css"; url = "drawRects.css"; kind = Stylesheet }
-    { name = "drawRects.js";  url = "drawRects.js";  kind = Script     }
     { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
     { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
 ] 
@@ -296,12 +295,9 @@ let viewScene (model : MModel) =
 
 let view (model : MModel) =
 
-
     let containerAttribs = 
         amap {
             yield style " width: 70%;margin:auto"; 
-            //yield myMouseCbRel "onmousemove" "svgRoot" MouseMove
-            //yield onKeyDown (fun k -> if k = Keys.Escape then Deselect else Nop)
         } |> AttributeMap.ofAMap
 
     let scene = 
@@ -409,8 +405,9 @@ let view (model : MModel) =
                     }
                 yield Html.SemUi.dropDown (Mod.map fst mode) SetColorMode
                 yield br []
+                yield text "Gradient Direction"
+                yield br []
                 yield Html.SemUi.dropDown (Mod.map snd mode) SetDirection
-                //yield Html.SemUi.toggleBox 
             ]
             yield button [style "ui small red button"; onClick (fun _ -> Delete id)] [text "Delete"]
         ]
