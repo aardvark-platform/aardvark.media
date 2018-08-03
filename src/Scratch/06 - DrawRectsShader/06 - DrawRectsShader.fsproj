@@ -12,6 +12,7 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Utils.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
