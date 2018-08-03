@@ -61,7 +61,14 @@ let changeColor (model : Model) (point : int) (f : C4f -> C4f) =
         | None -> model
         | Some id -> { model with objects = HMap.alter id update model.objects}
 
-let update (model : Model) (msg : Message) =
+let horizontalMapping =
+    [ 0, 0; 1, 1; 2, 1; 3,0 ] |> Map.ofList
+
+let verticalMapping =
+    [ 0,1; 1,1; 2,0; 3,0] |> Map.ofList
+
+let update (model : Model) (msg : Message) =    
+    printfn "%A" msg
     match msg with
         | MouseDown(Canvas, MouseButtons.Left, p) -> 
             { model with down = Some p; selectedObject = None  } 
@@ -145,7 +152,20 @@ let update (model : Model) (msg : Message) =
         | Delete index -> 
             { model with objects = HMap.remove index model.objects }
         | HoverHandle(vertexId) -> 
-            { model with hoverHandle = vertexId }
+            match model.selectedObject with
+                | None -> model
+                | Some i -> 
+                    match HMap.tryFind i model.objects with
+                        | None -> model
+                        | Some o ->
+                            match o with
+                                | Rect(b,c) -> 
+                                    match c.kind,c.gradient.direction with
+                                        | ColorKind.Constant,_ -> { model with hoverHandle = vertexId }
+                                        | ColorKind.Points, _ -> { model with hoverHandle = vertexId }
+                                        | ColorKind.Gradient, Direction.Horizontal -> { model with hoverHandle = Option.map ((flip Map.find) horizontalMapping) vertexId }
+                                        | ColorKind.Gradient, Direction.Vertical -> { model with hoverHandle = Option.map ((flip Map.find) verticalMapping) vertexId }
+                                        | _ -> failwith ""
         | ChangeAlpha(targetId, delta) -> 
             let changeAlpha (c : C4f) =
                 let newAlpha = c.A + float32 delta.Y / -1000.0f
@@ -228,7 +248,15 @@ let viewScene (model : MModel) =
                                         ) originalBox model.dragEndpoint
                                     let vertices = [|box.Min; box.Min + box.Size.XO; box.Min + box.Size; box.Min + box.Size.OY|]
                                     let colors = color |> Mod.map unpackColor
-                                    let baseObject = viewBox (Mod.constant box) (colors) |> Sg.withEvents [ Sg.onClick (fun p -> ClickObject id); Sg.onMouseDown (fun b p -> MouseDown(Where.Object id, b, p))]
+                                    let baseObject = 
+                                        viewBox (Mod.constant box) (colors) 
+                                        |> Sg.withEvents [ 
+                                            Sg.onClick (fun p -> ClickObject id); 
+                                            Sg.onMouseDown (fun b p -> MouseDown(Where.Object id, b, p))
+                                            Sg.onEnter (fun _ -> HoverHandle (Some 0))
+                                            Sg.onLeave (fun _ -> HoverHandle None)
+                                          ]
+
                                     return
                                         vertices |> Array.mapi (fun i origin ->
                                             let b = Box3d.FromCenterAndSize(V3d(origin,1.0),V3d.III*0.01)
