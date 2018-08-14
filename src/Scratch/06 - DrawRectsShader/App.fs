@@ -187,8 +187,10 @@ let dependencies = Html.semui @ [
 let viewBox (box : IMod<Box2d>) (colors : IMod<array<C4f>>) =
     let boxColors = colors |> Mod.map (fun colors -> Array.concat [colors |> Array.map C4b;colors|> Array.map C4b])
     let colors2 = boxColors |> Mod.map (fun colors -> Utils.Geometry.indices |> Array.map (fun i -> colors.[i]))
-    let box = Utils.Geometry.box colors2 (box |> Mod.map (fun b2d -> Box3d.FromPoints(V3d(b2d.Min,0.0),V3d(b2d.Max,1.0)))) 
-    box
+    let b = box |> Mod.map (fun b2d -> Box3d.FromPoints(V3d(b2d.Min,0.0),V3d(b2d.Max,1.0)))
+    let box = Utils.Geometry.box colors2 b 
+    let s = b |> Mod.map (fun b -> if b.Min.AnyNaN || b.Max.AnyNaN then failwith "" else PickShape.Box b)
+    box |> Sg.pickable' s
     
 let unpackColor (color : Color) =
     let t = color.gradient.t
