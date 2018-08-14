@@ -109,7 +109,12 @@ module TestApp =
            | Camera m -> { model with cameraState = CameraController.update model.cameraState m}
 
     let viewScene (model : MModel) =
-        Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+        [for x in -7.0 .. 1.0 .. 10.0 do
+            for y in -6.0 .. 1.0 .. 10.0 do
+                for z in -6.0 .. 1.0 .. 10.0 do
+                    //yield Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.scale 0.5 |> Sg.translate x y z
+                    yield Sg.sphere (10) (Mod.constant C4b.Green) (Mod.constant 0.7) |> Sg.translate x y z
+        ]|> Sg.ofSeq
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -124,7 +129,8 @@ module TestApp =
                                                attribute "showFPS" "true";       // optional, default is false
                                                //attribute "showLoader" "false"  // optional, default is true
                                                //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                                               attribute "useMapping" "true"
+                                               attribute "useMapping" "true" 
+                                               attribute "data-samples" "1"
                                              ]) 
                         (viewScene model)
 
@@ -179,7 +185,12 @@ module TestApp =
                     { model with cameraState = CameraController.initial }
 
         let viewScene (model : MModel) =
-            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+            [for x in -7.0 .. 1.0 .. 10.0 do
+                for y in -6.0 .. 1.0 .. 10.0 do
+                    for z in -6.0 .. 1.0 .. 10.0 do
+                        //yield Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.scale 0.5 |> Sg.translate x y z
+                        yield Sg.sphere (10) (Mod.constant C4b.Green) (Mod.constant 0.7) |> Sg.translate x y z
+            ]|> Sg.ofSeq
              |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -190,13 +201,15 @@ module TestApp =
 
             let renderControl =
                 CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                            (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
-                                                   attribute "showFPS" "true";       // optional, default is false
-                                                   //attribute "showLoader" "false"  // optional, default is true
-                                                   //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                                                   attribute "useMapping" "true"
-                                                   onEvent "onRendered" [] (fun _ -> Rendered)
-                                                 ]) 
+                            (AttributeMap.ofListCond [ 
+                                always <| style "width: 100%; grid-row: 2; background: pink"; 
+                                always <| attribute "showFPS" "true";       // optional, default is false
+                                //always <| //attribute "showLoader" "false"  // optional, default is true
+                                //always <| //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                always <| attribute "useMapping" "false"
+                                onlyWhen (model.cameraState.moveVec |> Mod.map (fun v -> v <> V3i.Zero)) <| onEvent "onRendered" [] (fun _ -> Rendered)
+                                always <| attribute "data-samples" "1"
+                              ]) 
                             (viewScene model)
 
 
@@ -273,9 +286,10 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
 
-    use app = new OpenGlApplication()
-    let instance = TestApp.app |> App.start
-    //let instance = TestApp2.Server.app |> App.start
+    //use app = new OpenGlApplication()
+    use app = new HeadlessVulkanApplication(false)
+    //let instance = TestApp.app |> App.start
+    let instance = TestApp2.Server.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 

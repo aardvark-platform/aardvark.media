@@ -464,6 +464,98 @@ type internal RenderResult =
     | Jpeg of byte[]
     | Mapping of MapImage
 
+module Hackful =
+    open Aardvark.Rendering.Vulkan
+    
+    module private Alignment = 
+        let prev (align : int64) (v : int64) =
+            let r = v % align
+            if r = 0L then v
+            else v - r
+
+        let next (align : int64) (v : int64) =
+            let r = v % align
+            if r = 0L then v
+            else align + v - r
+
+    module Image =
+        open KHRBindMemory2
+
+        let check (str : string) (err : VkResult) =
+            if err <> VkResult.VkSuccess then 
+                Log.error "[Vulkan] %s (%A)" str err
+                failwithf "[Vulkan] %s (%A)" str err
+
+        let allocLinear (size : V2i) (fmt : VkFormat) (usage : VkImageUsageFlags) (memory : DeviceHeap) =
+            let device = memory.Device
+            let mutable info =
+                VkImageCreateInfo(
+                    VkStructureType.ImageCreateInfo, 0n,
+                    VkImageCreateFlags.None,
+                    VkImageType.D2d,
+                    fmt,
+                    VkExtent3D(uint32 size.X, uint32 size.Y, 1u),
+                    1u,
+                    1u,
+                    VkSampleCountFlags.D1Bit,
+                    VkImageTiling.Linear,
+                    usage,
+                    VkSharingMode.Exclusive,
+                    0u, NativePtr.zero,
+                    VkImageLayout.Preinitialized
+                ) 
+
+            let mutable handle = VkImage.Null
+            VkRaw.vkCreateImage(device.Handle, &&info, NativePtr.zero, &&handle)
+                |> check "could not create image"
+
+            let mutable reqs = VkMemoryRequirements()
+            VkRaw.vkGetImageMemoryRequirements(device.Handle, handle, &&reqs)
+            let memalign = int64 reqs.alignment |> Alignment.next device.BufferImageGranularity
+            let memsize = int64 reqs.size |> Alignment.next device.BufferImageGranularity
+
+
+    //        let mutable resource = VkImageSubresource(VkImageAspectFlags.ColorBit, 0u, 0u)
+    //        let mutable layout = VkSubresourceLayout()
+    //
+    //        VkRaw.vkGetImageSubresourceLayout(device.Handle, handle, &&resource, &&layout)
+    //
+    //
+    //
+    //        let blocks = int64 reqs.size / 16L
+    //        let blocksX = int64 (Fun.Ceiling(float size.X / 4.0)) //(Alignment.next (int64 size.X) 4L / 4L)
+    //        let blocksY = int64 (Fun.Ceiling(float size.Y / 4.0)) //(Alignment.next (int64 size.Y) 4L / 4L)
+    //        let expectedBlocks = blocksX * blocksY
+    //
+    //        let vkX = blocks / blocksY
+    //
+    //        if blocksX % 2L <> 0L then
+    //            Log.warn "is bad %A????" size
+    //            Log.warn "%A" layout
+    //
+    //        if vkX <> blocksX then
+    //            Log.warn "bad: %A %A %A" size blocksX vkX
+    //
+
+
+            let ptr = memory.Alloc(memalign, memsize)
+
+            VkRaw.vkBindImageMemory(device.Handle, handle, ptr.Memory.Handle, uint64 ptr.Offset)
+                |> check "could not bind image memory"
+
+            let result = Image(device, handle, V3i(size, 1), 1, 1, 1, TextureDimension.Texture2D, fmt, ptr, VkImageLayout.Preinitialized)
+        
+            result
+
+
+    let createBuffer (runtime: Runtime) (size : V2i) (fmt : RenderbufferFormat) (samples : int) = 
+
+        let mem = runtime.Device.Memories |> Seq.find (fun mem -> mem.Flags.HasFlag(MemoryFlags.DeviceLocal ||| MemoryFlags.HostVisible))
+
+        let imasch = Image.allocLinear size (VkFormat.ofRenderbufferFormat fmt) (VkImageUsageFlags.ColorAttachmentBit ||| VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) mem
+
+        imasch :> IRenderbuffer
+
 [<AbstractClass>]
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     let runtime = server.runtime
@@ -508,7 +600,12 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 | _ -> { format = RenderbufferFormat.Rgba8; samples = 1 }
 
         let d = runtime.CreateRenderbuffer(currentSize, depthSignature.format, depthSignature.samples)
-        let c = runtime.CreateRenderbuffer(currentSize, colorSignature.format, colorSignature.samples)
+        let c = 
+            match runtime with
+                | :? Aardvark.Rendering.Vulkan.Runtime as r -> 
+                    //Hackful.createBuffer r currentSize colorSignature.format colorSignature.samples
+                    runtime.CreateRenderbuffer(currentSize, colorSignature.format, colorSignature.samples)
+                | _ -> runtime.CreateRenderbuffer(currentSize, colorSignature.format, colorSignature.samples)
         let newTarget =
             runtime.CreateFramebuffer(
                 signature,
@@ -791,6 +888,11 @@ module internal RawDownload =
     module Vulkan =
         open Aardvark.Rendering.Vulkan
 
+        let check (str : string) (err : VkResult) =
+            if err <> VkResult.VkSuccess then 
+                Log.error "[Vulkan] %s (%A)" str err
+                failwithf "[Vulkan] %s (%A)" str err
+
         type MSDownloader(runtime : Runtime) =
             let device = runtime.Device
 
@@ -858,21 +960,55 @@ module internal RawDownload =
         type SSDownloader(runtime : Runtime) =
             let device = runtime.Device
             
-            let mutable tempBuffer : Option<Buffer> = None
+            let mutable tempBuffer : Option< Buffer> = None
+
+            
+
+            let memory = device.HostMemory
+                //match device.Memories |> Seq.tryFind (fun a -> a.Flags.HasFlag(MemoryFlags.HostVisible ||| MemoryFlags.HostCoherent) && (a.Flags.HasFlag MemoryFlags.HostCached) && not (a.Flags.HasFlag MemoryFlags.DeviceLocal)) with
+                //    | None -> device.HostMemory
+                //    | Some v -> v
             
             let getTempBuffer (size : int64) =
                 //let size = Fun.NextPowerOfTwo size
                 match tempBuffer with
                     | Some b when b.Size = size -> b
                     | _ ->
-                        tempBuffer |> Option.iter device.Delete
-                        let b = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+                        tempBuffer |> Option.iter (device.Delete)
+                        
+                        //let mutable info =
+                        //    VkBufferCreateInfo(
+                        //        VkStructureType.BufferCreateInfo, 0n,
+                        //        VkBufferCreateFlags.None,
+                        //        uint64 size,
+                        //        VkBufferUsageFlags.TransferDstBit,
+                        //        VkSharingMode.Exclusive,
+                        //        0u, NativePtr.zero
+                        //    )
+
+                        //let mutable handle = VkBuffer.Null
+                        //VkRaw.vkCreateBuffer(device.Handle, &&info, NativePtr.zero, &&handle)
+                        //    |> check "createbuffer"
+
+                        //let mutable reqs = VkMemoryRequirements()
+                        //VkRaw.vkGetBufferMemoryRequirements(device.Handle, handle, &&reqs)
+                        
+                        //let mem = memory.AllocRaw(int64 reqs.size)
+                        ////VkRaw.vkUnmapMemory(device.Handle, mem.Handle)
+
+                        //VkRaw.vkBindBufferMemory(device.Handle, handle, mem.Handle, 0UL)
+                        //    |> check "bindbuffer"
+
+                        //let b = new Buffer(device, handle, mem, size, VkBufferUsageFlags.TransferDstBit)
+
+
+                        let b = memory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
                         tempBuffer <- Some b
                         b
 
             member x.Runtime = runtime :> IRuntime
 
-            member x.Multisampled = true
+            member x.Multisampled = false
 
             member x.Download(fbo : IFramebuffer, dst : nativeint) =
                 let fbo = unbox<Framebuffer> fbo
@@ -889,9 +1025,14 @@ module internal RawDownload =
                     do! Command.TransformLayout(image, l)
                 }
 
+                let mutable ptr = 0n
+                //VkRaw.vkMapMemory(device.Handle, tempBuffer.Memory.Memory.Handle, 0UL, uint64 sizeInBytes, VkMemoryMapFlags.MinValue, &&ptr)
+                //    |> check "mapbuffer"
+
                 tempBuffer.Memory.Mapped (fun ptr ->
                     Marshal.Copy(ptr, dst, nativeint sizeInBytes)
                 )
+                //VkRaw.vkUnmapMemory(device.Handle, tempBuffer.Memory.Memory.Handle)
 
             member x.Dispose() =
                 tempBuffer |> Option.iter device.Delete
@@ -902,6 +1043,7 @@ module internal RawDownload =
                 member x.Runtime = x.Runtime
                 member x.Multisampled = x.Multisampled
                 member x.Download(fbo, dst) = x.Download(fbo, dst)
+
 
         let createDownloader (runtime : IRuntime) (samples : int) =
             if samples = 1 then new SSDownloader(unbox runtime) :> IDownloader

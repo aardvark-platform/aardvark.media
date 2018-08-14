@@ -342,7 +342,7 @@ let view (model : MModel) =
         //            (viewScene model)
         let camera = Camera.create (model.cameraState.view.GetValue()) frustum |> Mod.constant
         renderControl' camera [ style "width: 100%; height:100%; background: #222; border-style: solid; border-color: black; border-width:1px"; 
-                                "useMapping" => "false"
+                                //"useMapping" => "false"
                                 onWheel' (fun delta pos -> ChangeAlpha(None,delta))] (RenderControlConfig.noScaling true) (viewScene model)
 
 

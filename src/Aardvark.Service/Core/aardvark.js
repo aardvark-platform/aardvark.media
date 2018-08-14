@@ -366,7 +366,7 @@ class Renderer {
 
         connect();
 
-        this.img.oncontextmenu = function (e) { e.preventDefault(); };
+        this.div.oncontextmenu = function (e) { e.preventDefault(); };
 
         var $self = $(this.div);
         var w = $self.width();
