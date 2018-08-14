@@ -191,6 +191,8 @@ class Renderer {
     init() {
         var connect = null;
 
+        
+
 		if (aardvark.localhost && aardvark.openMapping && this.useMapping) {
             var canvas = document.createElement("canvas");
             this.div.appendChild(canvas);
@@ -219,8 +221,20 @@ class Renderer {
             
             var self = this;
 
-            this.img.onclick = function () { self.div.focus(); };
 
+            var onGlobalClick = function (event) {
+                if (event.target == self.div) self.div.focus();
+            };
+            document.addEventListener("click", onGlobalClick, false);
+
+
+            //if (this.div.onclick) {
+            //    var old = this.div.onclick;
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); old(); };
+            //}
+            //else {
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); };
+            //}
             connect = function () {
                 var socket = new WebSocket(url);
                 socket.binaryType = "blob";
@@ -282,7 +296,6 @@ class Renderer {
             overlay.innerText = "";
             this.overlay = overlay;
             this.frameCount = 0;
-
             this.div.tabIndex = 1;
             //this.img.contentEditable = true;
 
@@ -294,8 +307,17 @@ class Renderer {
 
             var self = this;
 
-            this.img.onclick = function () { self.div.focus(); };
-
+            var onGlobalClick = function (event) {
+                if (event.target == self.div) self.div.focus();
+            };
+            document.addEventListener("click", onGlobalClick, false);
+            //if (this.div.onclick) {
+            //    var old = this.div.onclick;
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); old(); };
+            //}
+            //else {
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); };
+            //}
             connect = function () {
                 var socket = new WebSocket(url);
                 socket.binaryType = "blob";
@@ -911,7 +933,7 @@ class Channel {
                 var jmsg = data[i];
                 var msg = JSON.parse(jmsg);
                 if (msg === "commit-suicide") {
-                    console.debug("[Aardvark] channel " + this.name + " was closed")
+                    console.debug("[Aardvark] channel " + this.name + " was closed");
                     delete aardvark.channels[name];
                     break;
                 }
