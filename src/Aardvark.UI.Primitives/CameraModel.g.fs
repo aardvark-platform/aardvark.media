@@ -28,6 +28,7 @@ module Mutable =
         let _orbitCenter = MOption.Create(__initial.orbitCenter)
         let _lastTime = MOption.Create(__initial.lastTime)
         let _isWheel = ResetMod.Create(__initial.isWheel)
+        let _animating = ResetMod.Create(__initial.animating)
         let _sensitivity = ResetMod.Create(__initial.sensitivity)
         let _scrollSensitivity = ResetMod.Create(__initial.scrollSensitivity)
         let _scrolling = ResetMod.Create(__initial.scrolling)
@@ -52,6 +53,7 @@ module Mutable =
         member x.orbitCenter = _orbitCenter :> IMod<_>
         member x.lastTime = _lastTime :> IMod<_>
         member x.isWheel = _isWheel :> IMod<_>
+        member x.animating = _animating :> IMod<_>
         member x.sensitivity = _sensitivity :> IMod<_>
         member x.scrollSensitivity = _scrollSensitivity :> IMod<_>
         member x.scrolling = _scrolling :> IMod<_>
@@ -81,6 +83,7 @@ module Mutable =
                 MOption.Update(_orbitCenter, v.orbitCenter)
                 MOption.Update(_lastTime, v.lastTime)
                 ResetMod.Update(_isWheel,v.isWheel)
+                ResetMod.Update(_animating,v.animating)
                 ResetMod.Update(_sensitivity,v.sensitivity)
                 ResetMod.Update(_scrollSensitivity,v.scrollSensitivity)
                 ResetMod.Update(_scrolling,v.scrolling)
@@ -194,6 +197,12 @@ module Mutable =
                     override x.Get(r) = r.isWheel
                     override x.Set(r,v) = { r with isWheel = v }
                     override x.Update(r,f) = { r with isWheel = f r.isWheel }
+                }
+            let animating =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
+                    override x.Get(r) = r.animating
+                    override x.Set(r,v) = { r with animating = v }
+                    override x.Update(r,f) = { r with animating = f r.animating }
                 }
             let sensitivity =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with

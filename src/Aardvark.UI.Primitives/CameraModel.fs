@@ -35,6 +35,8 @@ type CameraControllerState =
         lastTime    : Option<float>
         isWheel     : bool
 
+        animating   : bool
+
         sensitivity     : float
         scrollSensitivity : float
         scrolling : bool

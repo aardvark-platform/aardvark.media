@@ -160,6 +160,7 @@ module CameraController =
             scrolling = false
 
             targetPhiTheta = V2d.Zero
+            animating = false
         }
 
     let initial' (dist:float) =
@@ -171,6 +172,27 @@ module CameraController =
     let withTime (model : CameraControllerState) =
         { model with lastTime = Some sw.Elapsed.TotalSeconds; view = model.view.WithLocation(model.view.Location) }
 
+    let dummyChange (model : CameraControllerState) =
+        { model with view = model.view.WithLocation(model.view.Location) }
+
+    let startAnimation (model : CameraControllerState) =
+        if not model.animating then
+            { model with 
+                view = model.view.WithLocation model.view.Location
+                animating = true
+                lastTime = Some sw.Elapsed.TotalSeconds
+            }
+        else
+            model
+
+    let stopAnimation (model : CameraControllerState) =
+        if model.animating then
+            { model with 
+                animating = false
+                lastTime = None
+            }
+        else
+            model
     let exp x =
         Math.Pow(Math.E, x)
     
@@ -225,13 +247,13 @@ module CameraController =
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
+                    dummyChange { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
+                    dummyChange { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
@@ -357,6 +379,18 @@ module CameraController =
 
     //    { model with view = cam; dragStart = pos }
 
+    let subSteps (maxDt : float) (dt : float) =
+        if dt <= maxDt then [dt]
+        else 
+            let cnt = int (dt / maxDt)
+            (dt % maxDt) :: (List.init cnt (fun _ -> maxDt))
+
+    let rec integrate (maxDt : float) (dt : float) (m : 'm) (acc : 'm -> float -> 'm) =
+        if dt <= maxDt then 
+            acc m dt
+        else
+            integrate maxDt (dt - maxDt) (acc m maxDt) acc
+
     let updateSmooth (model : CameraControllerState) (message : Message) =
         match message with
             | Blur ->
@@ -369,21 +403,13 @@ module CameraController =
                 }
             | StepTime ->
               let now = sw.Elapsed.TotalSeconds
-              let cam = model.view                
-
               let model = 
                 match model.lastTime with
                   | Some last ->
                     let dt = now - last
-
-                    let minStep = 0.1
-                    let count = dt / minStep
-                    let steps = [for i in 1 .. int (floor count) do yield minStep
-                                 yield dt % minStep
-                                ]
-                                 
-                    List.fold (fun model dt -> 
-
+                    let now = ()
+                    integrate 0.0166 dt model (fun model dt ->
+                        let cam = model.view
                         let dir = 
                             cam.Forward * float model.moveVec.Z +
                             cam.Right * float model.moveVec.X +
@@ -417,59 +443,64 @@ module CameraController =
                             { model with view = cam; targetPhiTheta = model.targetPhiTheta - V2d(ru, rr) }
                         else
                             { model with view = cam }
-                    ) model steps
+                    )
 
                   | None -> 
-                      { model with view = cam}
-                      
-              { model with lastTime = Some now; }
+                      model
+                     
+              if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero then
+                stopAnimation model
+              else
+                { model with lastTime = Some now; }
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
+                    startAnimation { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
+                    { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI  }
+                    startAnimation { model with backward = true; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
+                    { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
+
             | Wheel delta ->
                 withTime { model with isWheel = true; moveVec = model.moveVec + V3i.OOI * int delta.Y * 10 }
+
             | KeyDown Keys.A ->
                 if not model.left then
-                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO  }
+                    startAnimation { model with left = true; moveVec = model.moveVec - V3i.IOO  }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO  }
+                    { model with left = false; moveVec = model.moveVec + V3i.IOO  }
                 else
                     model
 
             | KeyDown Keys.D ->
                 if not model.right then
-                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO}
+                    startAnimation { model with right = true; moveVec = model.moveVec + V3i.IOO}
                 else
                     model
 
             | KeyUp Keys.D ->
                 if model.right then
-                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO }
+                    { model with right = false; moveVec = model.moveVec - V3i.IOO }
                 else
                     model
 
@@ -479,7 +510,7 @@ module CameraController =
             | Down(button,pos) ->
                 let model = withTime { model with dragStart = pos }
                 match button with
-                    | MouseButtons.Left -> withTime{ model with look = true }
+                    | MouseButtons.Left -> { model with look = true }
                     | MouseButtons.Middle -> { model with pan = true }
                     | MouseButtons.Right -> { model with zoom = true }
                     | _ -> model
@@ -489,7 +520,8 @@ module CameraController =
                     | MouseButtons.Left -> { model with look = false }
                     | MouseButtons.Middle -> { model with pan = false }
                     | MouseButtons.Right -> { model with zoom = false }
-                    | _ -> model            
+                    | _ -> model   
+                    
             | Move pos  ->
                 if model.look then
                     let delta = pos - model.dragStart
@@ -500,7 +532,7 @@ module CameraController =
 
                     let deltaAngle = V2d(float delta.X * -model.rotationFactor, float delta.Y * -model.rotationFactor)
                     
-                    withTime 
+                    startAnimation 
                         { model with 
                             dragStart = pos
                             targetPhiTheta = model.targetPhiTheta + deltaAngle 
@@ -664,6 +696,7 @@ module ArcBallController =
             scrollSensitivity = 1.0
             scrolling = false
             targetPhiTheta = V2d.Zero
+            animating = false
         }
 
     let sw = Diagnostics.Stopwatch()
@@ -671,6 +704,7 @@ module ArcBallController =
 
     let withTime (model : CameraControllerState) =
         { model with lastTime = Some sw.Elapsed.TotalSeconds }
+        
 
     let exp x =
         let v = Math.Pow(Math.E, x)        

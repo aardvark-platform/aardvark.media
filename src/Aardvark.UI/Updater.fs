@@ -547,14 +547,22 @@ module Updaters =
             
         let mutable cache : Option<UpdateState<'inner> * System.Reactive.Subjects.Subject<'inner> * IDisposable> = None
 
-        let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
+        let processMsgs (client : Guid) (messages : seq<'inner>) =
             match cache with
                 | Some (_, subject, _) ->
-                    let messages = handler client bla args |> Seq.cache
+                    let messages = messages |> Seq.cache
                     m.update client messages
                     for msg in messages do subject.OnNext msg
                     let model = m.model.GetValue()
                     messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg)) |> Seq.cache
+                | _ ->
+                    Seq.empty
+
+        let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
+            match cache with
+                | Some (_, subject, _) ->
+                    let messages = handler client bla args
+                    processMsgs client messages
                 | None ->
                     Seq.empty
 
@@ -565,7 +573,7 @@ module Updaters =
                 let subject = new System.Reactive.Subjects.Subject<'inner>()
                 let innerState =
                     {
-                        scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f v -> let model = m.model.GetValue() in v |> f |>  Seq.collect (fun m -> n.App.ToOuter(model, m)))), getState))
+                        scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f v -> let model = m.model.GetValue() in v |> f |> processMsgs v.session)), getState))
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
                         references          = state.references
                         activeChannels      = state.activeChannels

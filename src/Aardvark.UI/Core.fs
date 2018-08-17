@@ -901,9 +901,7 @@ and DomNode private() =
                                 ()
                     }
             }
-
-        let needed = proc.NeededEvents |> ASet.toList |> printfn "asdf:%A"
-
+            
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =

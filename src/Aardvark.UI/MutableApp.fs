@@ -91,6 +91,7 @@ module MutableApp =
                                         app.updateSync clientInfo.session msgs
                                 | None ->
                                     ()
+
                             Some (cam clientInfo)
                         | _ -> 
                             None

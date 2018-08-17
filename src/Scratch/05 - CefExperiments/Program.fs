@@ -95,8 +95,8 @@ and private DevToolsWebClient(parent : AardvarkCefBrowser) =
 module Shared =
     open Aardvark.Base.Incremental
     let sg<'a> : ISg<'a> = 
-        [for x in -7.0 .. 1.0 .. 10.0 do
-            for y in -6.0 .. 1.0 .. 10.0 do
+        [for x in -3.0 .. 1.0 .. 4.0 do
+            for y in -3.0 .. 1.0 .. 10.0 do
                 for z in -6.0 .. 1.0 .. 10.0 do
                     //yield Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.scale 0.5 |> Sg.translate x y z
                     yield Sg.sphere (10) (Mod.constant C4b.Green) (Mod.constant 0.7) |> Sg.translate x y z
@@ -183,20 +183,22 @@ module TestApp =
             match msg with
                | Camera m -> { model with cameraState = CameraController.updateSmooth model.cameraState m}
                | Rendered -> 
-                    let fake = CameraControllerMessage.StepTime
-                    { model with cameraState = CameraController.updateSmooth model.cameraState fake }
+                    if model.cameraState.animating then
+                        { model with cameraState = { model.cameraState with view = model.cameraState.view.WithLocation(model.cameraState.view.Location)} }
+                    else
+                        model
                     //if model.cameraState.moveVec <> V3i.Zero || model.cameraState.targetPhiTheta <> V2d.Zero then
                     //    { model with cameraState = { model.cameraState with view = model.cameraState.view.WithLocation(model.cameraState.view.Location) } }
                     //else
                     //    model
                | Interpolate -> 
-                    let fake = CameraControllerMessage.StepTime
-                    { model with cameraState = CameraController.updateSmooth model.cameraState fake }
+                    { model with cameraState = CameraController.updateSmooth model.cameraState CameraControllerMessage.StepTime }
                | CenterScene -> 
                     { model with cameraState = CameraController.initial }
 
         let viewScene (model : MModel) =
-            Shared.sg //Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+            Shared.sg
+            //Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
              |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
