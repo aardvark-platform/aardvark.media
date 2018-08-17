@@ -92,6 +92,16 @@ type AardvarkCefBrowser() =
 and private DevToolsWebClient(parent : AardvarkCefBrowser) =
     inherit CefClient()
 
+module Shared =
+    open Aardvark.Base.Incremental
+    let sg<'a> = 
+        [for x in -7.0 .. 1.0 .. 10.0 do
+            for y in -6.0 .. 1.0 .. 10.0 do
+                for z in -6.0 .. 1.0 .. 10.0 do
+                    //yield Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.scale 0.5 |> Sg.translate x y z
+                    yield Sg.sphere (10) (Mod.constant C4b.Green) (Mod.constant 0.7) |> Sg.translate x y z
+        ] |> Sg.ofSeq
+
 module TestApp =
 
     open Aardvark.UI
@@ -123,7 +133,7 @@ module TestApp =
                         (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                attribute "showFPS" "true";       // optional, default is false
                                                //attribute "showLoader" "false"  // optional, default is true
-                                               //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                               attribute "data-renderalways" "1" // optional, default is incremental rendering
                                                attribute "useMapping" "true"
                                              ]) 
                         (viewScene model)

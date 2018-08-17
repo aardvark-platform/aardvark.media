@@ -872,7 +872,7 @@ module internal RawDownload =
 
             member x.Runtime = runtime :> IRuntime
 
-            member x.Multisampled = true
+            member x.Multisampled = false
 
             member x.Download(fbo : IFramebuffer, dst : nativeint) =
                 let fbo = unbox<Framebuffer> fbo

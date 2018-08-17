@@ -41,7 +41,7 @@ module CefExtensions =
 
     let inline fail str = raise <| CefException ("[CEF] " + str)
     let inline failf fmt = Printf.kprintf fail fmt
-    let inline check str v = if not v then System.Diagnostics.Debugger.Launch(); System.Diagnostics.Debugger.Break(); fail str
+    let inline check str v = if not v then System.Diagnostics.Debugger.Launch() |> ignore; System.Diagnostics.Debugger.Break(); fail str
 
     type CefBinaryValue with
         member x.ToArray() =
