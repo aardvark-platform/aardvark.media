@@ -787,9 +787,58 @@ module internal RawDownload =
         abstract member Multisampled : bool
         abstract member Download : fbo : IFramebuffer * dst : nativeint -> unit
         
+    
+
+    let inline copyFlippedImage<'a when 'a : unmanaged> (size : V2i) (src : nativeint) (dst : nativeint) =
+        //Marshal.Copy(src, dst, nativeint size.X * nativeint size.Y * nativeint sizeof<'a>)
+        
+        //let lineSize = nativeint sizeof<'a> * nativeint size.X
+        //let mutable src = src
+        //let mutable dst = dst + nativeint (size.Y - 1) * nativeint lineSize
+        
+        //for r in 0 .. size.Y - 1 do
+        //    Marshal.Copy(src, dst, lineSize)
+        //    src <- src + lineSize
+        //    dst <- dst - lineSize
+
+
+        let delta = nativeint sizeof<'a>
+        let lineSize = delta * nativeint size.X
+        let sizeInBytes = lineSize * nativeint size.Y
+        let mutable src : nativeptr<'a> = NativePtr.ofNativeInt src
+        let mutable dst : nativeptr<'a> = NativePtr.ofNativeInt (dst + nativeint (size.Y - 1) * nativeint lineSize)
+        
+        let dDst = 2n * lineSize
+
+        let mutable r = 0
+        let mutable c = 0
+        let sy = size.Y
+        let sx = size.X
+        
+        while r < sy do
+            c <- 0
+            while c < sx do
+                NativePtr.write dst (NativePtr.read src)
+                src <- NativePtr.ofNativeInt (NativePtr.toNativeInt src + delta)
+                dst <- NativePtr.ofNativeInt (NativePtr.toNativeInt dst + delta)
+                c <- c + 1
+
+            dst <- NativePtr.ofNativeInt (NativePtr.toNativeInt dst - dDst)
+            r <- r + 1
+
+    let copyFlippedImage32 (size : V2i) (src : nativeint) (dst : nativeint) =
+        if size.X &&& 3 = 0 then 
+            copyFlippedImage<System.Numerics.Vector4> (size / V2i(4,1)) src dst
+        elif size.X &&& 1 = 0 then 
+            copyFlippedImage<uint64> (size / V2i(2,1)) src dst
+        else 
+            copyFlippedImage<uint32> size src dst
 
     module Vulkan =
         open Aardvark.Rendering.Vulkan
+
+
+
 
         type MSDownloader(runtime : Runtime) =
             let device = runtime.Device
@@ -841,7 +890,8 @@ module internal RawDownload =
                 }
 
                 tempBuffer.Memory.Mapped (fun ptr ->
-                    Marshal.Copy(ptr, dst, nativeint sizeInBytes)
+                    copyFlippedImage32 image.Size.XY ptr dst
+                    //Marshal.Copy(ptr, dst, nativeint sizeInBytes)
                 )
 
             member x.Dispose() =
@@ -890,7 +940,8 @@ module internal RawDownload =
                 }
 
                 tempBuffer.Memory.Mapped (fun ptr ->
-                    Marshal.Copy(ptr, dst, nativeint sizeInBytes)
+                    copyFlippedImage32 image.Size.XY ptr dst
+                    //Marshal.Copy(ptr, dst, nativeint sizeInBytes)
                 )
 
             member x.Dispose() =
@@ -930,7 +981,8 @@ module internal RawDownload =
                 }
 
                 temp.Memory.Mapped (fun ptr ->
-                    Marshal.Copy(ptr, dst, nativeint size)
+                    copyFlippedImage32 image.Size.XY ptr dst
+                    //Marshal.Copy(ptr, dst, nativeint size)
                 )
 
                 Image.delete tempImage device
@@ -947,7 +999,8 @@ module internal RawDownload =
                 }
 
                 temp.Memory.Mapped (fun ptr ->
-                    Marshal.Copy(ptr, dst, size)
+                    copyFlippedImage32 image.Size.XY ptr dst
+                    //Marshal.Copy(ptr, dst, size)
                 )
 
     module GL =
@@ -991,7 +1044,8 @@ module internal RawDownload =
 
                 let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
                 
-                Marshal.Copy(ptr, dst, sizeInBytes)
+                copyFlippedImage32 size.XY ptr dst
+                //Marshal.Copy(ptr, dst, sizeInBytes)
 
                 GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
@@ -1090,7 +1144,8 @@ module internal RawDownload =
 
                 let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
                 
-                Marshal.Copy(ptr, dst, sizeInBytes)
+                copyFlippedImage32 size.XY ptr dst
+                //Marshal.Copy(ptr, dst, sizeInBytes)
 
                 GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
@@ -1177,15 +1232,9 @@ module internal RawDownload =
 
             let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
                 
-            Marshal.Copy(ptr, dst, sizeInBytes)
-            //let lineSize = nativeint rowSize
-            //let mutable src = ptr
-            //let mutable dst = dst + nativeint sizeInBytes - lineSize
+            copyFlippedImage32 size.XY ptr dst
+            //Marshal.Copy(ptr, dst, sizeInBytes)
 
-            //for _ in 0 .. size.Y-1 do
-            //    Marshal.Copy(src, dst, lineSize)
-            //    src <- src + lineSize
-            //    dst <- dst - lineSize
 
             GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
             GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)

@@ -227,7 +227,7 @@ class Renderer {
             };
             document.addEventListener("click", onGlobalClick, false);
 
-
+            
             //if (this.div.onclick) {
             //    var old = this.div.onclick;
             //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); old(); };
@@ -363,6 +363,38 @@ class Renderer {
                 };
             };
         }
+
+
+        var download = function (dataurl, filename) {
+            var a = document.createElement("a");
+            a.href = dataurl;
+            a.setAttribute("download", filename);
+            var b = document.createEvent("MouseEvents");
+            b.initEvent("click", false, true);
+            a.dispatchEvent(b);
+            
+            return false;
+        };
+
+        var screenshot = function () {
+            var name = "screenshot";
+            if (self.useMapping) {
+                name += ".png";
+                var dataurl = self.img.toDataURL("image/png");
+                download(dataurl, name);
+                console.warn("not implemented");
+            }
+            else {
+                name += ".jpg";
+                download(self.img.src, name);
+            }
+        };
+
+        this.div.addEventListener("keydown", (e) => {
+            if (e.keyCode == 123) { //F12 {
+                screenshot();
+            }
+        });
 
         connect();
 
