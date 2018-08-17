@@ -34,6 +34,7 @@ module Mutable =
         let _zoomFactor = ResetMod.Create(__initial.zoomFactor)
         let _panFactor = ResetMod.Create(__initial.panFactor)
         let _rotationFactor = ResetMod.Create(__initial.rotationFactor)
+        let _targetPhiTheta = ResetMod.Create(__initial.targetPhiTheta)
         let _stash = ResetMod.Create(__initial.stash)
         
         member x.view = _view :> IMod<_>
@@ -57,6 +58,7 @@ module Mutable =
         member x.zoomFactor = _zoomFactor :> IMod<_>
         member x.panFactor = _panFactor :> IMod<_>
         member x.rotationFactor = _rotationFactor :> IMod<_>
+        member x.targetPhiTheta = _targetPhiTheta :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
         member x.Current = __current :> IMod<_>
@@ -85,6 +87,7 @@ module Mutable =
                 ResetMod.Update(_zoomFactor,v.zoomFactor)
                 ResetMod.Update(_panFactor,v.panFactor)
                 ResetMod.Update(_rotationFactor,v.rotationFactor)
+                ResetMod.Update(_targetPhiTheta,v.targetPhiTheta)
                 _stash.Update(v.stash)
                 
         
@@ -227,6 +230,12 @@ module Mutable =
                     override x.Get(r) = r.rotationFactor
                     override x.Set(r,v) = { r with rotationFactor = v }
                     override x.Update(r,f) = { r with rotationFactor = f r.rotationFactor }
+                }
+            let targetPhiTheta =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Aardvark.Base.V2d>() with
+                    override x.Get(r) = r.targetPhiTheta
+                    override x.Set(r,v) = { r with targetPhiTheta = v }
+                    override x.Update(r,f) = { r with targetPhiTheta = f r.targetPhiTheta }
                 }
             let stash =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.UI.Primitives.CameraControllerState>>() with

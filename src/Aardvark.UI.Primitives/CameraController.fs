@@ -158,6 +158,8 @@ module CameraController =
             moveSpeed = 0.0
             scrollSensitivity = 0.8
             scrolling = false
+
+            targetPhiTheta = V2d.Zero
         }
 
     let initial' (dist:float) =
@@ -323,37 +325,37 @@ module CameraController =
 
                 { model with view = cam; dragStart = pos }
 
-    let updateLookAround (model : CameraControllerState) =
-        let cam = model.view
-        let pos = model.movePos
-        let delta = pos - model.dragStart
+    //let updateLookAround (model : CameraControllerState) =
+    //    let cam = model.view
+    //    let pos = model.movePos
+    //    let delta = pos - model.dragStart
 
-        let cam =
-            if model.look then
-                let trafo =
-                    M44d.Rotation(cam.Right, float delta.Y * -model.rotationFactor) *
-                    M44d.Rotation(cam.Sky,   float delta.X * -model.rotationFactor)
+    //    let cam =
+    //        if model.look then
+    //            let trafo =
+    //                M44d.Rotation(cam.Right, float delta.Y * -model.rotationFactor) *
+    //                M44d.Rotation(cam.Sky,   float delta.X * -model.rotationFactor)
 
-                let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
-                cam.WithForward newForward
-            else
-                cam
+    //            let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
+    //            cam.WithForward newForward
+    //        else
+    //            cam
 
-        let cam =
-            if model.zoom then
-                let step = -model.zoomFactor * (cam.Forward * float delta.Y) * (exp model.sensitivity)
-                cam.WithLocation(cam.Location + step)
-            else
-                cam
+    //    let cam =
+    //        if model.zoom then
+    //            let step = -model.zoomFactor * (cam.Forward * float delta.Y) * (exp model.sensitivity)
+    //            cam.WithLocation(cam.Location + step)
+    //        else
+    //            cam
 
-        let cam =
-            if model.pan then
-                let step = model.panFactor * (cam.Down * float delta.Y + cam.Right * float delta.X) * (exp model.sensitivity)
-                cam.WithLocation(cam.Location + step)
-            else
-                cam
+    //    let cam =
+    //        if model.pan then
+    //            let step = model.panFactor * (cam.Down * float delta.Y + cam.Right * float delta.X) * (exp model.sensitivity)
+    //            cam.WithLocation(cam.Location + step)
+    //        else
+    //            cam
 
-        { model with view = cam; dragStart = pos }
+    //    { model with view = cam; dragStart = pos }
 
     let updateSmooth (model : CameraControllerState) (message : Message) =
         match message with
@@ -369,28 +371,57 @@ module CameraController =
               let now = sw.Elapsed.TotalSeconds
               let cam = model.view                
 
-              let cam = 
+              let model = 
                 match model.lastTime with
                   | Some last ->
                     let dt = now - last
 
-                    let dir = 
-                        cam.Forward * float model.moveVec.Z +
-                        cam.Right * float model.moveVec.X +
-                        cam.Sky * float model.moveVec.Y
+                    let minStep = 0.1
+                    let count = dt / minStep
+                    let steps = [for i in 1 .. int (floor count) do yield minStep
+                                 yield dt % minStep
+                                ]
+                                 
+                    List.fold (fun model dt -> 
 
-                    if model.moveVec = V3i.Zero then
-                        //printfn "useless time %A" now
-                        cam
-                    else
-                        cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+                        let dir = 
+                            cam.Forward * float model.moveVec.Z +
+                            cam.Right * float model.moveVec.X +
+                            cam.Sky * float model.moveVec.Y
+
+                        let cam = 
+                            if model.moveVec = V3i.Zero then
+                                //printfn "useless time %A" now
+                                cam
+                            else
+                                cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+
+                        if model.targetPhiTheta <> V2d.Zero then
+                        
+                            let clampAbs (maxAbs : float) (v : float) =
+                                if abs v > maxAbs then
+                                    float (sign v) * maxAbs
+                                else
+                                    v
+
+                            let rr = clampAbs ((0.1 + abs model.targetPhiTheta.Y * 30.0) * dt) (model.targetPhiTheta.Y)
+                            let ru = clampAbs ((0.1 + abs model.targetPhiTheta.X * 30.0) * dt) (model.targetPhiTheta.X)
+
+                            let trafo =
+                                M44d.Rotation(cam.Right, rr) *
+                                M44d.Rotation(cam.Sky,   ru)
+
+                            let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
+                            let cam = cam.WithForward newForward
+
+                            { model with view = cam; targetPhiTheta = model.targetPhiTheta - V2d(ru, rr) }
+                        else
+                            { model with view = cam }
+                    ) model steps
+
                   | None -> 
-                      cam
-
-              let model = if model.isWheel then { model with moveVec = V3i.Zero; isWheel = false} else model        
-              
-              let model = updateLookAround { model with view = cam }
-
+                      { model with view = cam}
+                      
               { model with lastTime = Some now; }
 
             | KeyDown Keys.W ->
@@ -446,9 +477,9 @@ module CameraController =
                 model
 
             | Down(button,pos) ->
-                let model = { model with dragStart = pos }
+                let model = withTime { model with dragStart = pos }
                 match button with
-                    | MouseButtons.Left -> { model with look = true }
+                    | MouseButtons.Left -> withTime{ model with look = true }
                     | MouseButtons.Middle -> { model with pan = true }
                     | MouseButtons.Right -> { model with zoom = true }
                     | _ -> model
@@ -460,7 +491,22 @@ module CameraController =
                     | MouseButtons.Right -> { model with zoom = false }
                     | _ -> model            
             | Move pos  ->
-                { model with movePos = pos; } |> updateLookAround
+                if model.look then
+                    let delta = pos - model.dragStart
+                    
+                    //let trafo =
+                    //    M44d.Rotation(cam.Right, float delta.Y * -model.rotationFactor) *
+                    //    M44d.Rotation(cam.Sky,   float delta.X * -model.rotationFactor)
+
+                    let deltaAngle = V2d(float delta.X * -model.rotationFactor, float delta.Y * -model.rotationFactor)
+                    
+                    withTime 
+                        { model with 
+                            dragStart = pos
+                            targetPhiTheta = model.targetPhiTheta + deltaAngle 
+                        }
+                else
+                    { model with dragStart = pos }
 
 
     let update' = flip update
@@ -617,6 +663,7 @@ module ArcBallController =
             moveSpeed = 0.0
             scrollSensitivity = 1.0
             scrolling = false
+            targetPhiTheta = V2d.Zero
         }
 
     let sw = Diagnostics.Stopwatch()

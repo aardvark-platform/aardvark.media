@@ -24,7 +24,7 @@ type CameraControllerState =
         look      : bool
         zoom      : bool
         pan       : bool
-
+        
         forward     : bool
         backward    : bool
         left        : bool
@@ -41,6 +41,8 @@ type CameraControllerState =
         zoomFactor      : float
         panFactor       : float
         rotationFactor  : float        
+        
+        targetPhiTheta  : V2d
 
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 

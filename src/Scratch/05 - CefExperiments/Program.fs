@@ -94,7 +94,7 @@ and private DevToolsWebClient(parent : AardvarkCefBrowser) =
 
 module Shared =
     open Aardvark.Base.Incremental
-    let sg<'a> = 
+    let sg<'a> : ISg<'a> = 
         [for x in -7.0 .. 1.0 .. 10.0 do
             for y in -6.0 .. 1.0 .. 10.0 do
                 for z in -6.0 .. 1.0 .. 10.0 do
@@ -177,7 +177,7 @@ module TestApp =
         open Aardvark.Base.Rendering
         open Model
 
-        type Message = Camera of CameraController.Message | Rendered | CenterScene
+        type Message = Camera of CameraController.Message | Rendered | Interpolate | CenterScene
 
         let update (model : Model) (msg : Message) =
             match msg with
@@ -185,11 +185,18 @@ module TestApp =
                | Rendered -> 
                     let fake = CameraControllerMessage.StepTime
                     { model with cameraState = CameraController.updateSmooth model.cameraState fake }
+                    //if model.cameraState.moveVec <> V3i.Zero || model.cameraState.targetPhiTheta <> V2d.Zero then
+                    //    { model with cameraState = { model.cameraState with view = model.cameraState.view.WithLocation(model.cameraState.view.Location) } }
+                    //else
+                    //    model
+               | Interpolate -> 
+                    let fake = CameraControllerMessage.StepTime
+                    { model with cameraState = CameraController.updateSmooth model.cameraState fake }
                | CenterScene -> 
                     { model with cameraState = CameraController.initial }
 
         let viewScene (model : MModel) =
-            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+            Shared.sg //Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
              |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -205,7 +212,8 @@ module TestApp =
                                                    //attribute "showLoader" "false"  // optional, default is true
                                                    //attribute "data-renderalways" "1" // optional, default is incremental rendering
                                                    attribute "useMapping" "true"
-                                                   onEvent "preRender" [] (fun _ -> printfn "yeah"; Rendered)
+                                                   onEvent "preRender" [] (fun _ -> Interpolate)
+                                                   onEvent "onRendered" [] (fun _ -> Rendered)
                                                  ]) 
                             (viewScene model)
 
