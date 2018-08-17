@@ -33,6 +33,14 @@ type App<'model, 'mmodel, 'msg> =
         let subject = new Subject<'msg>()
 
         let mutable currentThreads = ThreadPool.empty
+        
+        let updateSync (source : Guid) (msgs : seq<'msg>) =
+            use mri = new System.Threading.ManualResetEventSlim()
+            lock messageQueue (fun () ->
+                messageQueue.Add { msgs = msgs; processed = Some mri }
+                Monitor.Pulse messageQueue
+            )
+            mri.Wait()
 
         let update (source : Guid) (msgs : seq<'msg>) =
             //use mri = new System.Threading.ManualResetEventSlim()
@@ -128,6 +136,7 @@ type App<'model, 'mmodel, 'msg> =
             model = state
             ui = node
             update = update
+            updateSync = updateSync
             shutdown = shutdown
             messages = subject
         }

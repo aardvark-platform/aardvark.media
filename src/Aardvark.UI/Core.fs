@@ -496,6 +496,7 @@ and MutableApp<'model, 'msg> =
         model       : IMod<'model>
         ui          : DomNode<'msg>
         update      : Guid -> seq<'msg> -> unit
+        updateSync  : Guid -> seq<'msg> -> unit
         messages    : IObservable<'msg>
         shutdown    : unit -> unit
     }

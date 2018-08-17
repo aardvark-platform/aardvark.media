@@ -205,7 +205,7 @@ module TestApp =
                                                    //attribute "showLoader" "false"  // optional, default is true
                                                    //attribute "data-renderalways" "1" // optional, default is incremental rendering
                                                    attribute "useMapping" "true"
-                                                   onEvent "onRendered" [] (fun _ -> Rendered)
+                                                   onEvent "preRender" [] (fun _ -> printfn "yeah"; Rendered)
                                                  ]) 
                             (viewScene model)
 
