@@ -284,8 +284,8 @@ let main argv =
     Aardvark.Init()
 
     use app = new OpenGlApplication()
-    let instance = TestApp.app |> App.start
-    //let instance = TestApp2.Server.app |> App.start
+    //let instance = TestApp.app |> App.start
+    let instance = TestApp2.Server.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 

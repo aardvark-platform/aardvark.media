@@ -24,6 +24,8 @@
     <Compile Include="Animation\AnimationBase.fs" />
     <Compile Include="CameraModel.fs" />
     <Compile Include="CameraController.fs" />
+    <Compile Include="CameraModelNew.fs" />
+    <Compile Include="CameraAppNew.fs" />
     <Compile Include="Docking.fs" />
 		<EmbeddedResource Include="resources\spectrum.css" />
 		<EmbeddedResource Include="resources\spectrum.js" />
