@@ -131,10 +131,109 @@ module MultimediaTimer =
             member x.Dispose() = x.Dispose()
 
 
+module Integrator = 
+
+    let inline private dbl (one) = one + one
+
+    let inline rungeKutta (f : ^t -> ^a -> ^da) (y0 : ^a) (h : ^t) : ^a =
+        let twa : ^t = dbl LanguagePrimitives.GenericOne
+        let half : ^t = LanguagePrimitives.GenericOne / twa
+        let hHalf = h * half
+
+        let k1 = h * f LanguagePrimitives.GenericZero y0
+        let k2 = h * f hHalf (y0 + k1 * half)
+        let k3 = h * f hHalf (y0 + k2 * half)
+        let k4 = h * f h (y0 + k3)
+        let sixth = LanguagePrimitives.GenericOne / (dbl twa + twa)
+        y0 + (k1 + twa*k2 + twa*k3 + k4) * sixth
+
+    let inline euler (f : ^t -> ^a -> ^da) (y0 : ^a) (h : ^t) : ^a=
+        y0 + h * f LanguagePrimitives.GenericZero y0
+
+    let rec integrate (maxDt : float) (f : 'm -> float -> 'm) (m0 : 'm) (dt : float) =
+        if dt <= maxDt then
+            f m0 dt
+        else
+            integrate maxDt f (f m0 maxDt) (dt - maxDt) 
+
 
 module CameraController =
     open Aardvark.Base.Incremental.Operators    
     
+    type CameraMotion = { dPos : V3d; dRot : V3d; dMoveSpeed : float } with
+        static member Zero = { dPos = V3d.Zero; dRot = V3d.Zero; dMoveSpeed = 0.0 }
+
+        static member (+) (cam : CameraView, motion : CameraMotion) =
+            let cam = 
+                cam.WithLocation(
+                    cam.Location +
+                    motion.dPos.X * cam.Right +
+                    motion.dPos.Y * cam.Up +
+                    motion.dPos.Z * cam.Forward
+                )
+            
+            let cam =
+                let trafo =
+                    M44d.Rotation(cam.Right, motion.dRot.X) *
+                    M44d.Rotation(cam.Sky, motion.dRot.Y) *
+                    M44d.Rotation(cam.Forward, motion.dRot.Z)
+                    
+                let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
+                cam.WithForward newForward
+
+            cam
+
+        static member (+) (l : CameraMotion, r : CameraMotion) =
+            // TODO: correct?
+            let trafo =
+                M44d.Rotation(V3d.IOO, l.dRot.X) *
+                M44d.Rotation(V3d.OIO, l.dRot.Y) *
+                M44d.Rotation(V3d.OOI, l.dRot.Z)
+                    
+            {
+                dPos = l.dPos + trafo.TransformDir r.dPos
+                dRot = l.dRot + r.dRot
+                dMoveSpeed = l.dMoveSpeed + r.dMoveSpeed
+            }
+
+        static member (*) (motion : CameraMotion, f : float) =
+            { dPos = motion.dPos * f; dRot = motion.dRot * f; dMoveSpeed = motion.dMoveSpeed * f }
+
+        static member (*) (f : float, motion : CameraMotion) =
+            { dPos = motion.dPos * f; dRot = motion.dRot * f; dMoveSpeed = motion.dMoveSpeed * f }
+            
+
+        static member Move(dPos : V3d) = { dPos = dPos; dRot = V3d.Zero; dMoveSpeed = 0.0 }
+        static member Rotate(dRot : V3d) = { dPos = V3d.Zero; dRot = dRot; dMoveSpeed = 0.0 }
+
+
+        static member (+) (state : CameraControllerState, motion : CameraMotion) =
+            let newTarget = state.targetPhiTheta - V2d(motion.dRot.Y, motion.dRot.X)
+
+            let clamping (max : float) (v : float) =
+                if max < 0.0 then
+                    if v < max then max
+                    else v
+                else
+                    if v > max then max
+                    else v
+                
+            let motion = 
+                { motion with 
+                    dRot = V3d(clamping state.targetPhiTheta.Y motion.dRot.X, clamping state.targetPhiTheta.X motion.dRot.Y , motion.dRot.Z)
+                }
+
+            { state with 
+                view = state.view + motion
+                moveSpeed = state.moveSpeed + motion.dMoveSpeed 
+                targetPhiTheta = state.targetPhiTheta - V2d(motion.dRot.Y, motion.dRot.X)
+            }
+
+
+
+
+
+
     type Message = CameraControllerMessage
 
     let initial =
@@ -208,6 +307,8 @@ module CameraController =
                 }
             | StepTime ->
               let now = sw.Elapsed.TotalSeconds
+
+              
 
               let model = 
                 match model.lastTime with
@@ -385,11 +486,8 @@ module CameraController =
             let cnt = int (dt / maxDt)
             (dt % maxDt) :: (List.init cnt (fun _ -> maxDt))
 
-    let rec integrate (maxDt : float) (dt : float) (m : 'm) (acc : 'm -> float -> 'm) =
-        if dt <= maxDt then 
-            acc m dt
-        else
-            integrate maxDt (dt - maxDt) (acc m maxDt) acc
+    //let rec integrate (maxDt : float) (dt : float) (m : 'm) (acc : 'm -> float -> 'm) =
+    //    Integrator.integrate
 
     let updateSmooth (model : CameraControllerState) (message : Message) =
         match message with
@@ -402,56 +500,87 @@ module CameraController =
                     forward = false; backward = false; left = false; right = false
                 }
             | StepTime ->
-              let now = sw.Elapsed.TotalSeconds
-              let model = 
-                match model.lastTime with
-                  | Some last ->
-                    let dt = now - last
-                    let now = ()
-                    integrate 0.0166 dt model (fun model dt ->
-                        let cam = model.view
-                        let dir = 
-                            cam.Forward * float model.moveVec.Z +
-                            cam.Right * float model.moveVec.X +
-                            cam.Sky * float model.moveVec.Y
+                let now = sw.Elapsed.TotalSeconds
+              
+                let clampAbs (maxAbs : float) (v : float) =
+                    if abs v > maxAbs then
+                        float (sign v) * maxAbs
+                    else
+                        v
 
-                        let cam = 
-                            if model.moveVec = V3i.Zero then
-                                //printfn "useless time %A" now
-                                cam
-                            else
-                                cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+                let move (state : CameraControllerState) =
+                    if state.moveVec <> V3i.Zero then
+                        {
+                            dPos = V3d state.moveVec * exp state.sensitivity
+                            dRot = V3d.Zero
+                            dMoveSpeed = 0.0
+                        }
+                    else
+                        CameraMotion.Zero
 
-                        if model.targetPhiTheta <> V2d.Zero then
+                let look (state : CameraControllerState) =
+                    if state.targetPhiTheta <> V2d.Zero then
+                    
+                        let rr = (0.1 + abs state.targetPhiTheta.Y * 30.0) * float (sign (state.targetPhiTheta.Y))
+                        let ru = (0.1 + abs state.targetPhiTheta.X * 30.0) * float (sign (state.targetPhiTheta.X))
+
+                        {
+                            dPos = V3d.Zero
+                            dRot = V3d(rr, ru, 0.0)
+                            dMoveSpeed = 0.0
+                        }
+                    else
+                        CameraMotion.Zero
+
+                let model = 
+                    match model.lastTime with
+                        | Some last ->
+                        let dt = now - last
+                        let now = ()
+
+                        let step = Integrator.rungeKutta (fun t s -> move s + look s)
+
+                        Integrator.integrate 0.01666666 step model dt
+
+                        //integrate 0.0166 dt model (fun model dt ->
+                        //    let cam = model.view
+                        //    let dir = 
+                        //        cam.Forward * float model.moveVec.Z +
+                        //        cam.Right * float model.moveVec.X +
+                        //        cam.Sky * float model.moveVec.Y
+
+                        //    let cam = 
+                        //        if model.moveVec = V3i.Zero then
+                        //            //printfn "useless time %A" now
+                        //            cam
+                        //        else
+                        //            cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt)
+
+                        //    if model.targetPhiTheta <> V2d.Zero then
                         
-                            let clampAbs (maxAbs : float) (v : float) =
-                                if abs v > maxAbs then
-                                    float (sign v) * maxAbs
-                                else
-                                    v
 
-                            let rr = clampAbs ((0.1 + abs model.targetPhiTheta.Y * 30.0) * dt) (model.targetPhiTheta.Y)
-                            let ru = clampAbs ((0.1 + abs model.targetPhiTheta.X * 30.0) * dt) (model.targetPhiTheta.X)
+                        //        let rr = clampAbs ((0.1 + abs model.targetPhiTheta.Y * 30.0) * dt) (model.targetPhiTheta.Y)
+                        //        let ru = clampAbs ((0.1 + abs model.targetPhiTheta.X * 30.0) * dt) (model.targetPhiTheta.X)
 
-                            let trafo =
-                                M44d.Rotation(cam.Right, rr) *
-                                M44d.Rotation(cam.Sky,   ru)
+                        //        let trafo =
+                        //            M44d.Rotation(cam.Right, rr) *
+                        //            M44d.Rotation(cam.Sky,   ru)
 
-                            let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
-                            let cam = cam.WithForward newForward
+                        //        let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
+                        //        let cam = cam.WithForward newForward
 
-                            { model with view = cam; targetPhiTheta = model.targetPhiTheta - V2d(ru, rr) }
-                        else
-                            { model with view = cam }
-                    )
+                        //        { model with view = cam; targetPhiTheta = model.targetPhiTheta - V2d(ru, rr) }
+                        //    else
+                        //        { model with view = cam }
+                        //)
 
-                  | None -> 
-                      model
+                        | None -> 
+                            model
                      
-              if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero then
-                stopAnimation model
-              else
-                { model with lastTime = Some now; }
+                if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero then
+                    stopAnimation model
+                else
+                    { model with lastTime = Some now; }
 
             | KeyDown Keys.W ->
                 if not model.forward then
@@ -461,7 +590,7 @@ module CameraController =
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
+                    startAnimation { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
                 else
                     model
 
@@ -473,7 +602,7 @@ module CameraController =
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
+                    startAnimation { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
                 else
                     model
 
@@ -488,7 +617,7 @@ module CameraController =
 
             | KeyUp Keys.A ->
                 if model.left then
-                    { model with left = false; moveVec = model.moveVec + V3i.IOO  }
+                    startAnimation { model with left = false; moveVec = model.moveVec + V3i.IOO  }
                 else
                     model
 
@@ -500,7 +629,7 @@ module CameraController =
 
             | KeyUp Keys.D ->
                 if model.right then
-                    { model with right = false; moveVec = model.moveVec - V3i.IOO }
+                    startAnimation { model with right = false; moveVec = model.moveVec - V3i.IOO }
                 else
                     model
 
