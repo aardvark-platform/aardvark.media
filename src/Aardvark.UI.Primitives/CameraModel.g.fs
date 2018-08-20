@@ -19,12 +19,14 @@ module Mutable =
         let _look = ResetMod.Create(__initial.look)
         let _zoom = ResetMod.Create(__initial.zoom)
         let _pan = ResetMod.Create(__initial.pan)
+        let _dolly = ResetMod.Create(__initial.dolly)
         let _forward = ResetMod.Create(__initial.forward)
         let _backward = ResetMod.Create(__initial.backward)
         let _left = ResetMod.Create(__initial.left)
         let _right = ResetMod.Create(__initial.right)
         let _moveVec = ResetMod.Create(__initial.moveVec)
         let _moveSpeed = ResetMod.Create(__initial.moveSpeed)
+        let _panSpeed = ResetMod.Create(__initial.panSpeed)
         let _orbitCenter = MOption.Create(__initial.orbitCenter)
         let _lastTime = MOption.Create(__initial.lastTime)
         let _isWheel = ResetMod.Create(__initial.isWheel)
@@ -36,6 +38,8 @@ module Mutable =
         let _panFactor = ResetMod.Create(__initial.panFactor)
         let _rotationFactor = ResetMod.Create(__initial.rotationFactor)
         let _targetPhiTheta = ResetMod.Create(__initial.targetPhiTheta)
+        let _targetPan = ResetMod.Create(__initial.targetPan)
+        let _targetDolly = ResetMod.Create(__initial.targetDolly)
         let _stash = ResetMod.Create(__initial.stash)
         
         member x.view = _view :> IMod<_>
@@ -44,12 +48,14 @@ module Mutable =
         member x.look = _look :> IMod<_>
         member x.zoom = _zoom :> IMod<_>
         member x.pan = _pan :> IMod<_>
+        member x.dolly = _dolly :> IMod<_>
         member x.forward = _forward :> IMod<_>
         member x.backward = _backward :> IMod<_>
         member x.left = _left :> IMod<_>
         member x.right = _right :> IMod<_>
         member x.moveVec = _moveVec :> IMod<_>
         member x.moveSpeed = _moveSpeed :> IMod<_>
+        member x.panSpeed = _panSpeed :> IMod<_>
         member x.orbitCenter = _orbitCenter :> IMod<_>
         member x.lastTime = _lastTime :> IMod<_>
         member x.isWheel = _isWheel :> IMod<_>
@@ -61,6 +67,8 @@ module Mutable =
         member x.panFactor = _panFactor :> IMod<_>
         member x.rotationFactor = _rotationFactor :> IMod<_>
         member x.targetPhiTheta = _targetPhiTheta :> IMod<_>
+        member x.targetPan = _targetPan :> IMod<_>
+        member x.targetDolly = _targetDolly :> IMod<_>
         member x.stash = _stash :> IMod<_>
         
         member x.Current = __current :> IMod<_>
@@ -74,12 +82,14 @@ module Mutable =
                 ResetMod.Update(_look,v.look)
                 ResetMod.Update(_zoom,v.zoom)
                 ResetMod.Update(_pan,v.pan)
+                ResetMod.Update(_dolly,v.dolly)
                 ResetMod.Update(_forward,v.forward)
                 ResetMod.Update(_backward,v.backward)
                 ResetMod.Update(_left,v.left)
                 ResetMod.Update(_right,v.right)
                 ResetMod.Update(_moveVec,v.moveVec)
                 ResetMod.Update(_moveSpeed,v.moveSpeed)
+                ResetMod.Update(_panSpeed,v.panSpeed)
                 MOption.Update(_orbitCenter, v.orbitCenter)
                 MOption.Update(_lastTime, v.lastTime)
                 ResetMod.Update(_isWheel,v.isWheel)
@@ -91,6 +101,8 @@ module Mutable =
                 ResetMod.Update(_panFactor,v.panFactor)
                 ResetMod.Update(_rotationFactor,v.rotationFactor)
                 ResetMod.Update(_targetPhiTheta,v.targetPhiTheta)
+                ResetMod.Update(_targetPan,v.targetPan)
+                ResetMod.Update(_targetDolly,v.targetDolly)
                 _stash.Update(v.stash)
                 
         
@@ -144,6 +156,12 @@ module Mutable =
                     override x.Set(r,v) = { r with pan = v }
                     override x.Update(r,f) = { r with pan = f r.pan }
                 }
+            let dolly =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
+                    override x.Get(r) = r.dolly
+                    override x.Set(r,v) = { r with dolly = v }
+                    override x.Update(r,f) = { r with dolly = f r.dolly }
+                }
             let forward =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Boolean>() with
                     override x.Get(r) = r.forward
@@ -179,6 +197,12 @@ module Mutable =
                     override x.Get(r) = r.moveSpeed
                     override x.Set(r,v) = { r with moveSpeed = v }
                     override x.Update(r,f) = { r with moveSpeed = f r.moveSpeed }
+                }
+            let panSpeed =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
+                    override x.Get(r) = r.panSpeed
+                    override x.Set(r,v) = { r with panSpeed = v }
+                    override x.Update(r,f) = { r with panSpeed = f r.panSpeed }
                 }
             let orbitCenter =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.Base.V3d>>() with
@@ -245,6 +269,18 @@ module Mutable =
                     override x.Get(r) = r.targetPhiTheta
                     override x.Set(r,v) = { r with targetPhiTheta = v }
                     override x.Update(r,f) = { r with targetPhiTheta = f r.targetPhiTheta }
+                }
+            let targetPan =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, Aardvark.Base.V2d>() with
+                    override x.Get(r) = r.targetPan
+                    override x.Set(r,v) = { r with targetPan = v }
+                    override x.Update(r,f) = { r with targetPan = f r.targetPan }
+                }
+            let targetDolly =
+                { new Lens<Aardvark.UI.Primitives.CameraControllerState, System.Double>() with
+                    override x.Get(r) = r.targetDolly
+                    override x.Set(r,v) = { r with targetDolly = v }
+                    override x.Update(r,f) = { r with targetDolly = f r.targetDolly }
                 }
             let stash =
                 { new Lens<Aardvark.UI.Primitives.CameraControllerState, Microsoft.FSharp.Core.Option<Aardvark.UI.Primitives.CameraControllerState>>() with

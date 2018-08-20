@@ -24,6 +24,7 @@ type CameraControllerState =
         look      : bool
         zoom      : bool
         pan       : bool
+        dolly     : bool
         
         forward     : bool
         backward    : bool
@@ -31,6 +32,7 @@ type CameraControllerState =
         right       : bool
         moveVec     : V3i
         moveSpeed   : float
+        panSpeed    : float
         orbitCenter : Option<V3d>
         lastTime    : Option<float>
         isWheel     : bool
@@ -42,9 +44,11 @@ type CameraControllerState =
         scrolling : bool
         zoomFactor      : float
         panFactor       : float
-        rotationFactor  : float        
+        rotationFactor  : float    
         
         targetPhiTheta  : V2d
+        targetPan : V2d    
+        targetDolly : float
 
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 

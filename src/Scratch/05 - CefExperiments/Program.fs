@@ -95,9 +95,9 @@ and private DevToolsWebClient(parent : AardvarkCefBrowser) =
 module Shared =
     open Aardvark.Base.Incremental
     let sg<'a> : ISg<'a> = 
-        [for x in -3.0 .. 1.0 .. 4.0 do
-            for y in -3.0 .. 1.0 .. 10.0 do
-                for z in -6.0 .. 1.0 .. 10.0 do
+        [for x in -10.0 .. 1.0 .. 10.0 do
+            for y in -10.0 .. 1.0 .. 10.0 do
+                for z in -10.0 .. 1.0 .. 10.0 do
                     //yield Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.scale 0.5 |> Sg.translate x y z
                     yield Sg.sphere (10) (Mod.constant C4b.Green) (Mod.constant 0.7) |> Sg.translate x y z
         ] |> Sg.ofSeq
