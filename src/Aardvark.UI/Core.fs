@@ -15,23 +15,21 @@ open System.Reactive.Subjects
 type RenderControlConfig =
     {
         adjustAspect : V2i -> Frustum -> Frustum 
-        isOrthoCamera : bool
     }
 
 module RenderControlConfig =
     
     /// Fills height, depending in aspect ratio
-    let standard (isOrtho : bool) = 
+    let standard = 
         {
             adjustAspect = fun (size : V2i) -> Frustum.withAspect (float size.X / float size.Y) 
-            isOrthoCamera = isOrtho
         }
 
     /// Fills height, depending in aspect ratio
     let fillHeight = standard 
 
     /// Fills width, depending in aspect ratio
-    let fillWidth (isOrtho : bool) =
+    let fillWidth =
         let aspect { left = l; right = r; top = t; bottom = b } =  (t - b) / (r - l)
         let withAspectFlipped (newAspect : float) ( { left = l; right = r; top = t; bottom = b } as f)  = 
             let factor = 1.0 - (newAspect / aspect f)                  
@@ -39,12 +37,10 @@ module RenderControlConfig =
 
         {
             adjustAspect = fun (size : V2i) -> withAspectFlipped (float size.X / float size.Y) 
-            isOrthoCamera = isOrtho
         }
 
-    let noScaling (isOrtho : bool) =
+    let noScaling =
         {
-            isOrthoCamera = isOrtho
             adjustAspect = fun (size : V2i) (frustum : Frustum) -> frustum
         }
     
@@ -857,7 +853,7 @@ and DomNode private() =
             let cam = { cam with frustum = config.adjustAspect c.size cam.frustum }
             {
                 viewTrafo = CameraView.viewTrafo cam.cameraView
-                projTrafo = if config.isOrthoCamera then Frustum.orthoTrafo cam.frustum else Frustum.projTrafo cam.frustum
+                projTrafo = Frustum.projTrafo cam.frustum
             }
 
         let tree = Mod.init <| PickTree.ofSg (Sg.ofList [])

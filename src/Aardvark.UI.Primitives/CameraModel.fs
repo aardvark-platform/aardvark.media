@@ -4,15 +4,6 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Application
 
-type CameraControllerMessage = 
-        | Down of button : MouseButtons * pos : V2i
-        | Up of button : MouseButtons
-        | Wheel of V2d
-        | Move of V2i
-        | StepTime
-        | KeyDown of key : Keys
-        | KeyUp of key : Keys
-        | Blur
 
 [<DomainType>]
 type CameraControllerState =
@@ -39,12 +30,12 @@ type CameraControllerState =
 
         animating   : bool
 
-        sensitivity     : float
+        sensitivity       : float
         scrollSensitivity : float
-        scrolling : bool
-        zoomFactor      : float
-        panFactor       : float
-        rotationFactor  : float    
+        scrolling         : bool
+        zoomFactor        : float
+        panFactor         : float
+        rotationFactor    : float    
         
         targetPhiTheta  : V2d
         targetPan : V2d    

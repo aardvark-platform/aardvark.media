@@ -7,7 +7,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 
 type Message = 
-    | Camera of CameraController.Message
+    | Camera of FreeFlyController.Message
     | CenterScene
     | UpdateConfig of DockConfig
     | Undo

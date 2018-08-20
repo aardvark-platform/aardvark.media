@@ -112,11 +112,11 @@ module TestApp =
     open Aardvark.Base.Rendering
     open Model
 
-    type Message = Camera of CameraController.Message
+    type Message = Camera of FreeFlyController.Message
 
     let update (model : Model) (msg : Message) =
         match msg with
-           | Camera m -> { model with cameraState = CameraController.update model.cameraState m}
+           | Camera m -> { model with cameraState = FreeFlyController.update model.cameraState m}
 
     let viewScene (model : MModel) =
         Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -129,7 +129,7 @@ module TestApp =
     let view (model : MModel) =
 
         let renderControl =
-            CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+            FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                         (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                attribute "showFPS" "true";       // optional, default is false
                                                //attribute "showLoader" "false"  // optional, default is true
@@ -150,7 +150,7 @@ module TestApp =
         ]
 
     let threads (model : Model) = 
-        CameraController.threads model.cameraState |> ThreadPool.map Camera
+        FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
     let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
@@ -159,7 +159,7 @@ module TestApp =
             threads = threads 
             initial = 
                 { 
-                   cameraState = CameraController.initial
+                   cameraState = FreeFlyController.initial
                 }
             update = update 
             view = view
@@ -177,28 +177,25 @@ module TestApp =
         open Aardvark.Base.Rendering
         open Model
 
-        type Message = Camera of CameraController.Message | Rendered | Interpolate | CenterScene
+        type Message = Camera of FreeFlyController.Message | Rendered | Interpolate | CenterScene
 
         let update (model : Model) (msg : Message) =
             match msg with
-               | Camera m -> { model with cameraState = CameraController.updateSmooth model.cameraState m}
+               | Camera m -> { model with cameraState = FreeFlyController.updateSmooth model.cameraState m}
                | Rendered -> 
                     if model.cameraState.animating then
                         { model with cameraState = { model.cameraState with view = model.cameraState.view.WithLocation(model.cameraState.view.Location)} }
                     else
                         model
-                    //if model.cameraState.moveVec <> V3i.Zero || model.cameraState.targetPhiTheta <> V2d.Zero then
-                    //    { model with cameraState = { model.cameraState with view = model.cameraState.view.WithLocation(model.cameraState.view.Location) } }
-                    //else
-                    //    model
                | Interpolate -> 
-                    { model with cameraState = CameraController.updateSmooth model.cameraState CameraControllerMessage.StepTime }
+                    { model with cameraState = FreeFlyController.updateSmooth model.cameraState FreeFlyController.StepTime }
                | CenterScene -> 
-                    { model with cameraState = CameraController.initial }
+                    failwith ""
+                    { model with cameraState = FreeFlyController.initial }
 
         let viewScene (model : MModel) =
-            Shared.sg
-            //Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+            //Shared.sg
+            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
              |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -208,7 +205,7 @@ module TestApp =
         let view (model : MModel) =
 
             let renderControl =
-                CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+               FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                             (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                    attribute "showFPS" "true";       // optional, default is false
                                                    //attribute "showLoader" "false"  // optional, default is true
@@ -232,7 +229,7 @@ module TestApp =
             ]
 
         let threads (model : Model) = 
-            ThreadPool.empty //CameraController.threads model.cameraState |> ThreadPool.map Camera
+            ThreadPool.empty //FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
         let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
@@ -241,7 +238,7 @@ module TestApp =
                 threads = threads 
                 initial = 
                     { 
-                       cameraState = CameraController.initial
+                       cameraState = FreeFlyController.initial
                     }
                 update = update 
                 view = view

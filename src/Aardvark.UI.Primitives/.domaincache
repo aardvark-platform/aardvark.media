@@ -1,4 +1,4 @@
-145E6F1D886380CB16F5F163A581E277
+A0462B803D7FDA0F5075578E9EA8E9A1
 UI.Primitives.Models.fs|true|5248386907853845142|Xg+kHTuBGmrGI+VPs+fxxg==
 UI.Primitives.fs|false|5248386911255020241|UFMna2zg1WyPK184737ovg==
 UI.Primitives.Simple.fs|false|5248386911255010248|2Gbk4JHWHDJFZltVuI19Fg==
@@ -9,7 +9,9 @@ TrafoControls\RotationController.fs|false|5248386907853825164|qQKxx/bnFBuD2N6GGm
 TrafoControls\ScaleController.fs|false|5248386907853825164|oGOtQHhHJwP3a9jCbnZk0w==
 Animation\Model.fs|true|5248386907853785196|/DlehXwK9E7Sd6oSCdUp/w==
 Animation\AnimationBase.fs|false|5248386907853775205|x4QuUzVnVgihIy+RGZMyAw==
-CameraModel.fs|true|5248389756785064378|Yr1mFsx4ZSCieetP07rJVQ==
-CameraController.fs|false|5248389784737782093|8PFZhLu30cYqHEsQM3OxRQ==
+IntegrationHelpers.fs|false|5248389812481980355|UqKLKqNZS2kEKhtWYbv4PA==
+CameraModel.fs|true|5248389825585363378|HDuR0dljajvedQWO4/dXaQ==
+FreeFlyController.fs|false|5248389838706767488|5KT5NCjOAxpOhap0u4aKtg==
+ArcBallController.fs|false|5248389838880431248|BbxrJ4/y1nfHzEjQhRC1XQ==
 Docking.fs|false|5248386907853815291|l6B/831FQUyVcjA8/ie70Q==
 OpenDialog.fs|false|5248386907853815291|J4330PV6MSGl8s15tzyikA==

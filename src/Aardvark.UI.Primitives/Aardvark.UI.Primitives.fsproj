@@ -22,8 +22,10 @@
     <Compile Include="TrafoControls\ScaleController.fs" />
     <Compile Include="Animation\Model.fs" />
     <Compile Include="Animation\AnimationBase.fs" />
+    <Compile Include="IntegrationHelpers.fs" />
     <Compile Include="CameraModel.fs" />
-    <Compile Include="CameraController.fs" />
+    <Compile Include="FreeFlyController.fs" />
+    <Compile Include="ArcBallController.fs" />
     <Compile Include="Docking.fs" />
 		<EmbeddedResource Include="resources\spectrum.css" />
 		<EmbeddedResource Include="resources\spectrum.js" />

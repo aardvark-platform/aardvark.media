@@ -6,13 +6,13 @@ open Aardvark.Base.Incremental
 module Incremental =
 
     let renderControl (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard false, None)
+        DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard, None)
 
     let renderControl' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : ISg<'msg>) =
         DomNode.RenderControl(attributes, cam, sg, config, None)
 
     let renderControlWithClientValues (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
-        DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard false, None)
+        DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard, None)
 
     let renderControlWithClientValues' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         DomNode.RenderControl(attributes, cam, sg, config, None)
@@ -240,7 +240,7 @@ module Static =
 
 
     let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
-        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, RenderControlConfig.standard false, None)
+        DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, RenderControlConfig.standard, None)
 
     let renderControl' (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (config : RenderControlConfig) (sg : ISg<'msg>) =
         DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, config, None)

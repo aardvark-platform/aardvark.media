@@ -18,7 +18,7 @@ type Where =
     | Object of int
 
 type Message = 
-    | Camera of CameraController.Message
+    | Camera of FreeFlyController.Message
     | MouseMove of Where * V3d
     | MouseDown of Where * MouseButtons * V3d
     | MouseUp of Where
@@ -166,6 +166,7 @@ let update (model : Model) (msg : Message) =
                                         | ColorKind.Gradient, Direction.Horizontal -> { model with hoverHandle = Option.map ((flip Map.find) horizontalMapping) vertexId }
                                         | ColorKind.Gradient, Direction.Vertical -> { model with hoverHandle = Option.map ((flip Map.find) verticalMapping) vertexId }
                                         | _ -> failwith ""
+                                 | _ -> failwith ""
         | ChangeAlpha(targetId, delta) -> 
             let changeAlpha (c : C4f) =
                 let newAlpha = c.A + float32 delta.Y / -1000.0f
@@ -174,7 +175,7 @@ let update (model : Model) (msg : Message) =
                 | Some h, _ -> changeColor model h changeAlpha
                 | None, Some h -> changeColor model h changeAlpha
                 | _ -> model
-        | Camera c -> { model with cameraState = CameraController.update model.cameraState c }
+        | Camera c -> { model with cameraState = FreeFlyController.update model.cameraState c }
         | _ -> model
 
 let dependencies = Html.semui @ [
@@ -337,13 +338,13 @@ let view (model : MModel) =
     //let frustum = Frustum.perspective 60.0 0.01 100.0 1.0
 
     let renderControl = 
-        //CameraController.controlledControl' model.cameraState Camera (frustum |> Mod.constant)
+        //FreeFlyController.controlledControl' model.cameraState Camera (frustum |> Mod.constant)
         //            (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; "useMapping" => "false"]) 
         //            (viewScene model)
         let camera = Camera.create (model.cameraState.view.GetValue()) frustum |> Mod.constant
         renderControl' camera [ style "width: 100%; height:100%; background: #222; border-style: solid; border-color: black; border-width:1px"; 
                                 "useMapping" => "false"
-                                onWheel' (fun delta pos -> ChangeAlpha(None,delta))] (RenderControlConfig.noScaling true) (viewScene model)
+                                onWheel' (fun delta pos -> ChangeAlpha(None,delta))] RenderControlConfig.noScaling (viewScene model)
 
 
     let showSelection (id : int) =
@@ -476,7 +477,7 @@ let app =
                      (ObjectId.freshId(), Rect(Box2d.FromMinAndSize(V2d(0.0,0.0),V2d(0.7,0.7)), Color.initial))
                 ] 
                 selectedObject = None
-                cameraState = { CameraController.initial with view = CameraView.lookAt (V3d(0.5,0.5,0.5)) (V3d(0.5,0.5,0.0)) V3d.OIO }
+                cameraState = { FreeFlyController.initial with view = CameraView.lookAt (V3d(0.5,0.5,0.5)) (V3d(0.5,0.5,0.0)) V3d.OIO }
                 
                 dragEndpoint = None
                 translation = None
