@@ -413,7 +413,7 @@ type MessagePump() =
         
 
     let start = ThreadStart(runner)
-    let thread = Thread(start, 1 <<< 26, IsBackground = true)
+    let thread = Thread(start, 1 <<< 26, IsBackground = true, Name = "CefWrapperThread")
     do thread.Start()
 
     member x.Enqueue(action : unit -> unit) =

@@ -150,7 +150,7 @@ module MutableApp =
                                         o.EvaluateAlways AdaptiveToken.Top (fun t ->
                                             if Config.shouldTimeJsCodeGeneration then 
                                                 Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
-
+   
                                             let code = 
                                                 let expr = 
                                                     lock state (fun () -> 
@@ -215,9 +215,16 @@ module MutableApp =
                                         )
                                     )
 
+                        }  
+                         
+                    Async.Start <|
+                        async {
+                            try
+                                return! updateThread
+                            with e -> 
+                                Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
+                                raise e
                         }
-
-                    Async.Start updateThread
 
                     socket {
                         while running do

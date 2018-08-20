@@ -190,7 +190,6 @@ module TestApp =
                | Interpolate -> 
                     { model with cameraState = FreeFlyController.updateSmooth model.cameraState FreeFlyController.StepTime }
                | CenterScene -> 
-                    failwith ""
                     { model with cameraState = FreeFlyController.initial }
 
         let viewScene (model : MModel) =
