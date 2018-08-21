@@ -11,6 +11,7 @@ type DockElement =
         deleteInvisible : Option<bool>
     }
 
+
 type DockNodeConfig =
     | Vertical of weight : float * children : list<DockNodeConfig>
     | Horizontal of weight : float * children : list<DockNodeConfig>
@@ -20,6 +21,7 @@ type DockNodeConfig =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module DockNodeConfig =
     
+
     open Newtonsoft.Json
     open Newtonsoft.Json.Linq
 

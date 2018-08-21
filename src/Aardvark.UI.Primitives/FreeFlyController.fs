@@ -174,159 +174,6 @@ module FreeFlyController =
     
     let exp x = Math.Pow(Math.E, x)
     
-    let update (model : CameraControllerState) (message : Message) =
-        match message with
-            | Blur ->
-                { model with 
-                    lastTime = None
-                    moveVec = V3i.Zero
-                    dragStart = V2i.Zero
-                    look = false; zoom = false; pan = false                    
-                    forward = false; backward = false; left = false; right = false
-                }
-            | StepTime ->
-              let now = sw.Elapsed.TotalSeconds
-
-              
-
-              let model = 
-                match model.lastTime with
-                  | Some last ->
-                    let cam = model.view                
-                    let dt = now - last
-
-                    let moveVec = V3d model.moveVec
-
-                    let dir = 
-                        cam.Forward * moveVec.Z +
-                        cam.Right * moveVec.X +
-                        cam.Sky *moveVec.Y
-
-                    if model.moveVec = V3i.Zero && not model.scrolling then
-                        printfn "useless time %A" now
-
-                    let moveSpeed = model.moveSpeed * pow 0.002 dt
-
-                    let scroll = if model.scrolling then cam.Forward * moveSpeed * dt else V3d.OOO
-
-                    let cam = cam.WithLocation(model.view.Location + dir * (exp model.sensitivity) * dt + scroll)
-                    if abs model.moveSpeed > 1E-2 then
-                            { model with
-                                moveSpeed = moveSpeed
-                                view = cam
-                            }
-                    else 
-                        { model with scrolling = false; moveSpeed = 0.0; view = cam }
-                  | None -> 
-                      model
-
-              //let model = if model.isWheel then { model with moveVec = V3i.Zero; isWheel = false} else model                  
-
-
-              { model with lastTime = Some now; }
-
-            | KeyDown Keys.W ->
-                if not model.forward then
-                    dummyChange { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
-                else
-                    model
-
-            | KeyUp Keys.W ->
-                if model.forward then
-                    dummyChange { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
-                else
-                    model
-
-            | KeyDown Keys.S ->
-                if not model.backward then
-                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI  }
-                else
-                    model
-
-            | KeyUp Keys.S ->
-                if model.backward then
-                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
-                else
-                    model
-            | Wheel delta ->
-                let delta = model.scrollSensitivity * (delta.Y * 10.0)
-                withTime { model with 
-                                moveSpeed = model.moveSpeed + delta 
-                                scrolling = true
-                }
-            | KeyDown Keys.A ->
-                if not model.left then
-                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO  }
-                else
-                    model
-
-            | KeyUp Keys.A ->
-                if model.left then
-                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO  }
-                else
-                    model
-
-            | KeyDown Keys.D ->
-                if not model.right then
-                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO}
-                else
-                    model
-
-            | KeyUp Keys.D ->
-                if model.right then
-                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO }
-                else
-                    model
-
-            | KeyDown _ | KeyUp _ ->
-                model
-
-            | Down(button,pos) ->
-                let model = { model with dragStart = pos }
-                match button with
-                    | MouseButtons.Left -> { model with look = true }
-                    | MouseButtons.Middle -> { model with pan = true }
-                    | MouseButtons.Right -> { model with zoom = true }
-                    | _ -> model
-
-            | Up button ->
-                match button with
-                    | MouseButtons.Left -> { model with look = false }
-                    | MouseButtons.Middle -> { model with pan = false }
-                    | MouseButtons.Right -> { model with zoom = false }
-                    | _ -> model            
-            | Move pos  ->
-                let cam = model.view
-                let delta = pos - model.dragStart
-
-                let cam =
-                    if model.look then
-                        let trafo =
-                            M44d.Rotation(cam.Right, float delta.Y * -model.rotationFactor) *
-                            M44d.Rotation(cam.Sky,   float delta.X * -model.rotationFactor)
-
-                        let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
-                        cam.WithForward newForward
-                    else
-                        cam
-
-                let cam =
-                    if model.zoom then
-                        let step = -model.zoomFactor * (cam.Forward * float delta.Y) * (exp model.sensitivity)
-                        cam.WithLocation(cam.Location + step)
-                    else
-                        cam
-
-                let cam =
-                    if model.pan then
-                        let step = model.panFactor * (cam.Down * float delta.Y + cam.Right * float delta.X) * (exp model.sensitivity)
-                        cam.WithLocation(cam.Location + step)
-                    else
-                        cam
-
-                { model with view = cam; dragStart = pos }
-
-
     let updateSmooth (model : CameraControllerState) (message : Message) =
         match message with
             | Blur ->
@@ -348,7 +195,7 @@ module FreeFlyController =
 
                 let move (state : CameraControllerState) =
                     if state.moveVec <> V3i.Zero then
-                        {CameraMotion.Zero with
+                        { CameraMotion.Zero with
                             dPos = V3d state.moveVec * exp state.sensitivity
                         }
                     else
@@ -358,7 +205,7 @@ module FreeFlyController =
                     if state.targetPan.Length > 0.05 then
                         let tt = (0.01 + abs state.targetPan.X * exp (state.sensitivity * 3.0)) * float (sign state.targetPan.X)
                         let tu = (0.01 + abs state.targetPan.Y * exp (state.sensitivity * 3.0)) * float (sign state.targetPan.Y)
-                        {CameraMotion.Zero with
+                        { CameraMotion.Zero with
                             dPan = V2d(tt,tu)
                         }
                     else
@@ -367,7 +214,7 @@ module FreeFlyController =
                 let dolly (state : CameraControllerState) =
                     if abs state.targetDolly > 0.05 then
                         let dd = (0.05 + abs state.targetDolly * exp (state.sensitivity * 3.25)) * float (sign state.targetDolly)
-                        {CameraMotion.Zero with
+                        { CameraMotion.Zero with
                             dDolly = dd
                         }
                     else
@@ -379,7 +226,7 @@ module FreeFlyController =
                         let rr = (0.1 + abs state.targetPhiTheta.Y * 30.0) * float (sign (state.targetPhiTheta.Y))
                         let ru = (0.1 + abs state.targetPhiTheta.X * 30.0) * float (sign (state.targetPhiTheta.X))
 
-                        {CameraMotion.Zero with
+                        { CameraMotion.Zero with
                             dRot = V3d(rr, ru, 0.0)
                         }
                     else
@@ -517,7 +364,7 @@ module FreeFlyController =
                     |> dolly
 
 
-    let update' = flip update
+    let update' = flip updateSmooth
 
 
 
@@ -583,23 +430,7 @@ module FreeFlyController =
         ]
 
 
-    let threads (state : CameraControllerState) =
-        let pool = ThreadPool.empty
-
-       
-        let rec time() =
-            proclist {
-                do! Proc.Sleep 10
-                //let! _ = Async.AwaitEvent m.Event
-                yield StepTime
-                yield! time()
-            }
-
-        if state.moveVec <> V3i.Zero || state.scrolling then
-            ThreadPool.add "timer" (time()) pool
-
-        else
-            pool
+    let threads (state : CameraControllerState) = ThreadPool.empty
 
 
 
@@ -608,9 +439,7 @@ module FreeFlyController =
             unpersist = Unpersist.instance
             view = view
             threads = threads
-            update = update
+            update = updateSmooth
             initial = initial
         }
 
-
-module CameraController = FreeFlyController

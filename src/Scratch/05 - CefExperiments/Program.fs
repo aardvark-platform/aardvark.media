@@ -112,11 +112,11 @@ module TestApp =
     open Aardvark.Base.Rendering
     open Model
 
-    type Message = Camera of FreeFlyController.Message
+    type Message = Camera of CameraController.Message
 
     let update (model : Model) (msg : Message) =
         match msg with
-           | Camera m -> { model with cameraState = FreeFlyController.update model.cameraState m}
+           | Camera m -> { model with cameraState = CameraController.update model.cameraState m}
 
     let viewScene (model : MModel) =
         Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -129,7 +129,7 @@ module TestApp =
     let view (model : MModel) =
 
         let renderControl =
-            FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+            CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                         (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                attribute "showFPS" "true";       // optional, default is false
                                                //attribute "showLoader" "false"  // optional, default is true
@@ -150,7 +150,7 @@ module TestApp =
         ]
 
     let threads (model : Model) = 
-        FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
+        CameraController.threads model.cameraState |> ThreadPool.map Camera
 
 
     let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
@@ -159,7 +159,7 @@ module TestApp =
             threads = threads 
             initial = 
                 { 
-                   cameraState = FreeFlyController.initial
+                   cameraState = CameraController.initial
                 }
             update = update 
             view = view
@@ -290,8 +290,8 @@ let main argv =
     Aardvark.Init()
 
     use app = new OpenGlApplication()
-    //let instance = TestApp.app |> App.start
-    let instance = TestApp2.Server.app |> App.start
+    let instance = TestApp.app |> App.start
+    //let instance = TestApp2.Server.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 
