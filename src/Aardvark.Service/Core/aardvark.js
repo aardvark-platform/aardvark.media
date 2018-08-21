@@ -364,6 +364,51 @@ class Renderer {
             };
         }
 
+		var downloadDirect = function (dataurl, filename) {
+			var a = document.createElement("a");
+			a.href = dataurl;
+			a.setAttribute("download", filename);
+			var b = document.createEvent("MouseEvents");
+			b.initEvent("click", false, true);
+			a.dispatchEvent(b);
+
+			return false;
+		};
+
+		function downloadURI(uri, name) {
+			console.log("downloading " + uri + " -> " + name);
+			var link = document.createElement("a");
+			link.download = name;
+			link.href = uri;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		};
+
+		var screenshot = function () {
+			var name = "screenshot"; 
+			if (self.useMapping) {
+				//name += ".png";
+				//var dataurl = self.img.toDataURL("image/png");
+				//download(dataurl, name);
+				// workaround for currently flipped stuff.
+				console.log("mapping enabled -> using fallback download mechanism via screenshot service...");
+				name += ".jpg";
+				var url3 = window.location.href + "rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8";
+				downloadURI(url3, name);
+			}
+			else {
+				name += ".jpg";
+				download(self.img.src, name);
+			}
+		};
+		this.div.addEventListener("keydown", (e) => {
+			if (e.keyCode === 123) { //F12 {
+				screenshot();
+			}
+		});
+
+
         connect();
 
 		this.div.oncontextmenu = function (e) { e.preventDefault(); };
