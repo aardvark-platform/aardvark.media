@@ -59,6 +59,9 @@ module ArcBallController =
             targetPan = V2d.Zero 
             targetDolly = 0.0
             panSpeed = 0.0
+            targetZoom = 0.0
+
+            freeFlyConfig = FreeFlyConfig.initial
         }
 
     let sw = Diagnostics.Stopwatch()

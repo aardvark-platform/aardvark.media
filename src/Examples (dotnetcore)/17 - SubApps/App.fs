@@ -20,6 +20,39 @@ let update (model : Model) (msg : WrappedMessage) =
         | Wrapped Ping ->
             model
 
+module IncApp' =
+    open Aardvark.Base.Incremental
+    open Inc.App
+    open Inc.Model
+
+    let view (model : MModel) =
+        div [] [
+            text "Hello World"
+            br []
+            button [onClick (fun _ -> Inc)] [text "Increment"]
+            text "    "
+            Incremental.text (model.value |> Mod.map string)
+            br []
+            img [
+                attribute "src" "https://upload.wikimedia.org/wikipedia/commons/6/67/SanWild17.jpg"; 
+                attribute "alt" "aardvark"
+                style "width: 200px"
+            ]
+        ]
+
+    let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+        {
+            unpersist = Unpersist.instance     
+            threads = threads 
+            initial = 
+                { 
+                   value = 0
+                }
+            update = update 
+            view = view
+        }
+
+
 let view (model : MModel) =
     body [] [
         div [style "display: flex; flex-direction: column; width: 100%; height: 100%"] [
@@ -40,7 +73,7 @@ let view (model : MModel) =
                                 | _ -> Seq.empty
                         ) 
                         [] 
-                        Inc.App.app
+                        IncApp'.app
                 ]
             ]
 
@@ -59,6 +92,8 @@ let view (model : MModel) =
             ]
         ]
     ]
+
+
 
 
 let app =                  

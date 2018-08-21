@@ -76,7 +76,7 @@ let view3D (m : MModel) =
             
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant
-    let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"]
+    let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"; attribute "data-samples" "8"]
     FreeFlyController.controlledControl m.cameraState CameraAction frustum attributes sg
 
 let aadvarkModel = FileModel @"..\..\..\data\aardvark\aardvark.obj"

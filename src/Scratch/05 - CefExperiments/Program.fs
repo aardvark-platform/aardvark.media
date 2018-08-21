@@ -1,4 +1,6 @@
-﻿open Aardvark.Cef
+﻿#nowarn "044"
+
+open Aardvark.Cef
 open Aardvark.Cef.Internal
 open System.Windows.Forms
 open Xilium.CefGlue.WindowsForms
@@ -177,20 +179,12 @@ module TestApp =
         open Aardvark.Base.Rendering
         open Model
 
-        type Message = Camera of FreeFlyController.Message | Rendered | Interpolate | CenterScene
+        type Message = Camera of FreeFlyController.Message | CenterScene
 
         let update (model : Model) (msg : Message) =
             match msg with
                | Camera m -> { model with cameraState = FreeFlyController.update model.cameraState m}
-               | Rendered -> 
-                    if model.cameraState.animating then
-                        { model with cameraState = { model.cameraState with view = model.cameraState.view.WithLocation(model.cameraState.view.Location)} }
-                    else
-                        model
-               | Interpolate -> 
-                    { model with cameraState = FreeFlyController.update model.cameraState FreeFlyController.StepTime }
-               | CenterScene -> 
-                    { model with cameraState = FreeFlyController.initial }
+               | CenterScene -> { model with cameraState = FreeFlyController.initial }
 
         let viewScene (model : MModel) =
             //Shared.sg
@@ -210,8 +204,6 @@ module TestApp =
                                                    //attribute "showLoader" "false"  // optional, default is true
                                                    //attribute "data-renderalways" "1" // optional, default is incremental rendering
                                                    attribute "useMapping" "true"
-                                                   onEvent "preRender" [] (fun _ -> Interpolate)
-                                                   onEvent "onRendered" [] (fun _ -> Rendered)
                                                  ]) 
                             (viewScene model)
 

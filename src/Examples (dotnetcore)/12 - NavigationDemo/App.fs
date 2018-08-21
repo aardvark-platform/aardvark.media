@@ -138,6 +138,7 @@ let view (model : MNavigationModeDemoModel) =
                                 attribute "style" "width:65%; height: 100%; float: left"
                                 attribute "data-renderalways" "true"
                                 attribute "showFPS" "true"
+                                attribute "data-samples" "8"
                                 onKeyDown (KeyDown)
                                 onKeyUp (KeyUp) ] |> AttributeMap.ofList
                         ])

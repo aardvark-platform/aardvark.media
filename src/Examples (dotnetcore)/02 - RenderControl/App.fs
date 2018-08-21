@@ -33,14 +33,14 @@ let view (model : MModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"]) 
+                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
                     (viewScene model)
 
     let channel = model.cameraState.view
                     |> Mod.map (fun v -> v.Forward)
                     |> Mod.channel
 
-    let updateData = "foo.onmessage = function (data) { console.log(data); }"
+    let updateData = "foo.onmessage = function (data) { console.log('got camera view update: ' + data); }"
 
     onBoot' ["foo", channel] updateData (
         div [] [
@@ -57,10 +57,11 @@ let view2 (model : MModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
+                    (AttributeMap.ofList [ style "width: 100%; grid-row: 2; height:100%"; 
                                            attribute "showFPS" "true";       // optional, default is false
                                            //attribute "showLoader" "false"    // optional, default is true
                                            //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                           attribute "data-samples" "8"
                                          ]) 
                     (viewScene model)
 
@@ -89,5 +90,5 @@ let app =
                cameraState = initialCamera
             }
         update = update 
-        view = view2
+        view = view
     }

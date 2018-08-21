@@ -4,6 +4,50 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Application
 
+[<DomainType>]
+type FreeFlyConfig = 
+    {
+        lookAtMouseSensitivity  : float
+        lookAtConstant          : float
+        lookAtDamping           : float
+
+        panMouseSensitivity     : float
+        panConstant             : float
+        panDamping              : float
+        
+        dollyMouseSensitivity   : float
+        dollyConstant           : float
+        dollyDamping             : float
+
+        zoomMouseWheelSensitivity : float
+        zoomConstant              : float
+        zoomDamping                : float
+
+        moveSensitivity : float
+    }
+
+module FreeFlyConfig =
+    let initial = {
+        lookAtMouseSensitivity       = 0.01
+        lookAtConstant               = 0.1
+        lookAtDamping                = 30.0
+                                     
+        panMouseSensitivity          = 0.05
+        panConstant                  = 0.01
+        panDamping                   = 3.0
+                                     
+        dollyMouseSensitivity        = 0.175
+        dollyConstant                = 0.05
+        dollyDamping                 = 3.25
+                                     
+        zoomMouseWheelSensitivity    = 1.5
+        zoomConstant                 = 0.05
+        zoomDamping                  = 3.25
+
+        moveSensitivity = 1.0
+    }
+
+
 
 [<DomainType>]
 type CameraControllerState =
@@ -16,6 +60,8 @@ type CameraControllerState =
         zoom      : bool
         pan       : bool
         dolly     : bool
+        isWheel     : bool
+        scrolling   : bool
         
         forward     : bool
         backward    : bool
@@ -26,13 +72,11 @@ type CameraControllerState =
         panSpeed    : float
         orbitCenter : Option<V3d>
         lastTime    : Option<float>
-        isWheel     : bool
 
         animating   : bool
 
         sensitivity       : float
         scrollSensitivity : float
-        scrolling         : bool
         zoomFactor        : float
         panFactor         : float
         rotationFactor    : float    
@@ -40,6 +84,9 @@ type CameraControllerState =
         targetPhiTheta  : V2d
         targetPan : V2d    
         targetDolly : float
+        targetZoom : float
+
+        freeFlyConfig : FreeFlyConfig
 
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 

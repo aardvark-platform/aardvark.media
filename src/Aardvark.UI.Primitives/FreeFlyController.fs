@@ -16,8 +16,8 @@ open Aardvark.UI.Primitives
 module FreeFlyController =
     open Aardvark.Base.Incremental.Operators    
     
-    type CameraMotion = { dPos : V3d; dRot : V3d; dMoveSpeed : float; dPanSpeed : float; dPan : V2d; dDolly : float } with
-        static member Zero = { dPos = V3d.Zero; dRot = V3d.Zero; dMoveSpeed = 0.0; dPanSpeed = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
+    type CameraMotion = { dPos : V3d; dRot : V3d; dMoveSpeed : float; dZoom : float; dPan : V2d; dDolly : float } with
+        static member Zero = { dPos = V3d.Zero; dRot = V3d.Zero; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
 
         static member (+) (cam : CameraView, motion : CameraMotion) =
             let cam = 
@@ -39,6 +39,12 @@ module FreeFlyController =
                 cam.WithLocation(
                     cam.Location +
                     motion.dDolly * cam.Forward
+                )
+
+            let cam =
+                cam.WithLocation(
+                    cam.Location +
+                    motion.dZoom * cam.Forward
                 )
             
             let cam =
@@ -63,19 +69,19 @@ module FreeFlyController =
                 dPos = l.dPos + trafo.TransformDir r.dPos
                 dRot = l.dRot + r.dRot
                 dMoveSpeed = l.dMoveSpeed + r.dMoveSpeed
-                dPanSpeed = l.dPanSpeed + r.dPanSpeed
+                dZoom = l.dZoom + r.dZoom
                 dPan = l.dPan + r.dPan
                 dDolly = l.dDolly + r.dDolly
             }
 
         static member (*) (motion : CameraMotion, f : float) =
-            { dPos = motion.dPos * f; dRot = motion.dRot * f; dMoveSpeed = motion.dMoveSpeed * f; dPanSpeed = motion.dPanSpeed * f; dPan = motion.dPan * f; dDolly = motion.dDolly * f}
+            { dPos = motion.dPos * f; dRot = motion.dRot * f; dMoveSpeed = motion.dMoveSpeed * f; dZoom = motion.dZoom * f; dPan = motion.dPan * f; dDolly = motion.dDolly * f}
 
         static member (*) (f : float, motion : CameraMotion) = motion * f
             
 
-        static member Move(dPos : V3d) = { dPos = dPos; dRot = V3d.Zero; dMoveSpeed = 0.0; dPanSpeed = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
-        static member Rotate(dRot : V3d) = { dPos = V3d.Zero; dRot = dRot; dMoveSpeed = 0.0; dPanSpeed = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
+        static member Move(dPos : V3d) = { dPos = dPos; dRot = V3d.Zero; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
+        static member Rotate(dRot : V3d) = { dPos = V3d.Zero; dRot = dRot; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
 
 
         static member (+) (state : CameraControllerState, motion : CameraMotion) =
@@ -96,7 +102,7 @@ module FreeFlyController =
                 view = state.view + motion
                 moveSpeed = state.moveSpeed + motion.dMoveSpeed 
                 targetPhiTheta = state.targetPhiTheta - V2d(motion.dRot.Y, motion.dRot.X)
-                panSpeed = state.panSpeed - motion.dPanSpeed
+                targetZoom = state.targetZoom - motion.dZoom
                 targetPan = state.targetPan - motion.dPan
                 targetDolly = state.targetDolly - motion.dDolly
             }
@@ -106,10 +112,11 @@ module FreeFlyController =
         | Up of button : MouseButtons
         | Wheel of V2d
         | Move of V2i
-        | StepTime
         | KeyDown of key : Keys
         | KeyUp of key : Keys
         | Blur
+        | Interpolate
+        | Rendered
 
     let initial =
         {
@@ -134,7 +141,10 @@ module FreeFlyController =
             scrollSensitivity = 0.8
             scrolling = false
 
+            freeFlyConfig = FreeFlyConfig.initial
+
             targetPhiTheta = V2d.Zero
+            targetZoom = 0.0
             targetDolly = 0.0
             animating = false
             targetPan = V2d.Zero
@@ -176,6 +186,8 @@ module FreeFlyController =
     
     let update (model : CameraControllerState) (message : Message) =
         match message with
+            | Rendered -> 
+                if model.animating then dummyChange model else model
             | Blur ->
                 { model with 
                     lastTime = None
@@ -184,7 +196,7 @@ module FreeFlyController =
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
                 }
-            | StepTime ->
+            | Interpolate ->
                 let now = sw.Elapsed.TotalSeconds
               
                 let clampAbs (maxAbs : float) (v : float) =
@@ -196,15 +208,15 @@ module FreeFlyController =
                 let move (state : CameraControllerState) =
                     if state.moveVec <> V3i.Zero then
                         { CameraMotion.Zero with
-                            dPos = V3d state.moveVec * exp state.sensitivity
+                            dPos = V3d state.moveVec * exp state.freeFlyConfig.moveSensitivity
                         }
                     else
                         CameraMotion.Zero
 
                 let pan (state : CameraControllerState) =
                     if state.targetPan.Length > 0.05 then
-                        let tt = (0.01 + abs state.targetPan.X * exp (state.sensitivity * 3.0)) * float (sign state.targetPan.X)
-                        let tu = (0.01 + abs state.targetPan.Y * exp (state.sensitivity * 3.0)) * float (sign state.targetPan.Y)
+                        let tt = (state.freeFlyConfig.panConstant + abs state.targetPan.X * exp (state.freeFlyConfig.panDamping )) * float (sign state.targetPan.X)
+                        let tu = (state.freeFlyConfig.panConstant + abs state.targetPan.Y * exp (state.freeFlyConfig.panDamping )) * float (sign state.targetPan.Y)
                         { CameraMotion.Zero with
                             dPan = V2d(tt,tu)
                         }
@@ -213,9 +225,18 @@ module FreeFlyController =
                 
                 let dolly (state : CameraControllerState) =
                     if abs state.targetDolly > 0.05 then
-                        let dd = (0.05 + abs state.targetDolly * exp (state.sensitivity * 3.25)) * float (sign state.targetDolly)
+                        let dd = (state.freeFlyConfig.dollyConstant + abs state.targetDolly * exp (state.freeFlyConfig.dollyDamping )) * float (sign state.targetDolly)
                         { CameraMotion.Zero with
                             dDolly = dd
+                        }
+                    else
+                        CameraMotion.Zero
+
+                let zoom (state : CameraControllerState) =
+                    if abs state.targetZoom > 0.05 then
+                        let dd = (state.freeFlyConfig.zoomConstant + abs state.targetZoom * exp (state.freeFlyConfig.zoomDamping )) * float (sign state.targetZoom)
+                        { CameraMotion.Zero with
+                            dZoom = dd
                         }
                     else
                         CameraMotion.Zero
@@ -223,8 +244,8 @@ module FreeFlyController =
                 let look (state : CameraControllerState) =
                     if state.targetPhiTheta <> V2d.Zero then
                     
-                        let rr = (0.1 + abs state.targetPhiTheta.Y * 30.0) * float (sign (state.targetPhiTheta.Y))
-                        let ru = (0.1 + abs state.targetPhiTheta.X * 30.0) * float (sign (state.targetPhiTheta.X))
+                        let rr = (state.freeFlyConfig.lookAtConstant + abs state.targetPhiTheta.Y * state.freeFlyConfig.lookAtDamping) * float (sign (state.targetPhiTheta.Y))
+                        let ru = (state.freeFlyConfig.lookAtConstant + abs state.targetPhiTheta.X * state.freeFlyConfig.lookAtDamping) * float (sign (state.targetPhiTheta.X))
 
                         { CameraMotion.Zero with
                             dRot = V3d(rr, ru, 0.0)
@@ -236,14 +257,14 @@ module FreeFlyController =
                     match model.lastTime with
                         | Some last ->
                             let dt = now - last
-                            let step = Integrator.rungeKutta (fun t s -> move s + look s + pan s + dolly s)
+                            let step = Integrator.rungeKutta (fun t s -> move s + look s + pan s + dolly s + zoom s)
 
                             Integrator.integrate 0.0166666 step model dt
 
                         | None -> 
                             model
                      
-                if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) then
+                if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) && (abs model.targetZoom <= 0.05) then
                     stopAnimation model
                 else
                     { model with lastTime = Some now; }
@@ -275,7 +296,7 @@ module FreeFlyController =
             | Wheel delta ->
                 startAnimation 
                     { model with
-                        targetDolly = model.targetDolly + (float delta.Y) * 1.5
+                        targetZoom = model.targetZoom + (float delta.Y) * model.freeFlyConfig.zoomMouseWheelSensitivity
                     }
 
             | KeyDown Keys.A ->
@@ -322,14 +343,10 @@ module FreeFlyController =
                     
             | Move pos  ->
                 let delta = pos - model.dragStart
-                    
-                //let trafo =
-                //    M44d.Rotation(cam.Right, float delta.Y * -model.rotationFactor) *
-                //    M44d.Rotation(cam.Sky,   float delta.X * -model.rotationFactor)
 
                 let look model = 
                     if model.look then
-                        let deltaAngle = V2d(float delta.X * -model.rotationFactor, float delta.Y * -model.rotationFactor)
+                        let deltaAngle = V2d(float delta.X * -model.freeFlyConfig.lookAtMouseSensitivity, float delta.Y * -model.freeFlyConfig.lookAtMouseSensitivity)
                     
                         startAnimation 
                             { model with 
@@ -342,7 +359,7 @@ module FreeFlyController =
                     if model.pan then
                         startAnimation 
                             { model with
-                                targetPan = model.targetPan + (V2d(delta.X,-delta.Y)) * 0.05
+                                targetPan = model.targetPan + (V2d(delta.X,-delta.Y)) * model.freeFlyConfig.panMouseSensitivity
                                 dragStart = pos
                             }
                     else 
@@ -352,7 +369,7 @@ module FreeFlyController =
                     if model.dolly then
                         startAnimation 
                             { model with
-                                targetDolly = model.targetDolly + (float -delta.Y) * 0.0175
+                                targetDolly = model.targetDolly + (float -delta.Y) * model.freeFlyConfig.dollyMouseSensitivity
                                 dragStart = pos
                             }
                     else 
@@ -377,6 +394,8 @@ module FreeFlyController =
             always (onKeyUp (KeyUp >> f))           
             always (onWheel(fun x -> f (Wheel x)))
             onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseMove (Move >> f))
+            always (onEvent "preRender" [] (fun _ -> f Interpolate))
+            onlyWhen state.animating (onEvent "onRendered" [] (fun _ -> f Rendered))
         ]
 
     let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) =

@@ -56,6 +56,8 @@ module CameraController =
             animating = false
             targetPan = V2d.Zero
             panSpeed = 0.0
+            targetZoom = 0.0
+            freeFlyConfig = FreeFlyConfig.initial
         }
 
     let initial' (dist:float) =
@@ -287,7 +289,6 @@ module CameraController =
         ]
 
 
-    [<Obsolete("CameraController module is deprecated. Use much smoother FreeFlyController instead.")>]
     let threads (state : CameraControllerState) =
         let pool = ThreadPool.empty
 

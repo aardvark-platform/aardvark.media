@@ -102,6 +102,7 @@ let view (model : MBoxSelectionDemoModel) =
             FreeFlyController.controlledControl model.camera CameraMessage frustum
                 (AttributeMap.ofList [
                     attribute "style" "width:65%; height: 100%; float: left;"
+                    attribute "data-samples" "8"
                 ])
                 (
                        
