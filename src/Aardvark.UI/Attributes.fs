@@ -23,17 +23,19 @@ module Attributes =
         }
     
 
-[<AutoOpen>]
-module Events =
+module Helpers = 
     open Aardvark.Application
 
-
-    let internal button (str : string) =
+    let button (str : string) =
         match int (float str) with
             | 1 -> MouseButtons.Left
             | 2 -> MouseButtons.Middle
             | 3 -> MouseButtons.Right
             | _ -> MouseButtons.None
+[<AutoOpen>]
+module Events =
+    open Aardvark.Application
+    open Helpers
 
     let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = 
         eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb >> Seq.singleton))

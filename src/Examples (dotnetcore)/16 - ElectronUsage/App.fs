@@ -10,14 +10,14 @@ open Model
 
 
 let initialCamera = { 
-        CameraController.initial with 
+        FreeFlyController.initial with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
     }
 
 let update (model : Model) (msg : Message) =
     match msg with
         | Camera m -> 
-            { model with cameraState = CameraController.update model.cameraState m }
+            { model with cameraState = FreeFlyController.update model.cameraState m }
         | CenterScene -> 
             { model with cameraState = initialCamera }
         | LoadFiles s -> 
@@ -53,7 +53,7 @@ let onSaveFile (chosen : string -> 'msg) =
 let view (model : MModel) =
 
     let renderControl =
-        CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                     (AttributeMap.ofList [ style "width: 100%; "]) 
                     (viewScene model)
 
@@ -73,7 +73,7 @@ let view (model : MModel) =
     ]
 
 let threads (model : Model) = 
-    CameraController.threads model.cameraState |> ThreadPool.map Camera
+    FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

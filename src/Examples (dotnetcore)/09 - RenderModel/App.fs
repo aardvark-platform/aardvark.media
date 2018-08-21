@@ -14,14 +14,14 @@ type Action =
     | SetObject     of Object 
     | LoadModel     of string
     | SetCullMode   of CullMode
-    | CameraAction  of CameraController.Message // a nested message, handled by camera controller app
+    | CameraAction  of FreeFlyController.Message // a nested message, handled by camera controller app
 
 // given the current immutable state and an action, compute a new immutable model
 let update (m : Model) (a : Action) =
     match a with
         | SetObject obj      -> { m with currentModel = Some obj }
         | CameraAction a     -> // compute a new state by reusing camera update logic implemented in CameraController app.
-            { m with cameraState = CameraController.update m.cameraState a }
+            { m with cameraState = FreeFlyController.update m.cameraState a }
         | LoadModel file     -> { m with currentModel = Some (FileModel file) }
         | SetCullMode mode -> { m with appearance = { cullMode = mode } }
 
@@ -76,8 +76,8 @@ let view3D (m : MModel) =
             
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant
-    let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"]
-    CameraController.controlledControl m.cameraState CameraAction frustum attributes sg
+    let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"; attribute "data-samples" "8"]
+    FreeFlyController.controlledControl m.cameraState CameraAction frustum attributes sg
 
 let aadvarkModel = FileModel @"..\..\..\data\aardvark\aardvark.obj"
 let defaultSphere = SphereModel(V3d.OOO,1.0)
@@ -106,7 +106,7 @@ let view (m : MModel) =
 // background operations (we call threads). The app maintains (just like each other state)
 // a set of threads which will be executed as long as they exist (no manual subscription stuff required).
 let threads (model : Model) = 
-    CameraController.threads model.cameraState |> ThreadPool.map CameraAction // compute threads for camera controller and map its outputs with our CameraAction
+    FreeFlyController.threads model.cameraState |> ThreadPool.map CameraAction // compute threads for camera controller and map its outputs with our CameraAction
 
 let app =
     {
@@ -114,7 +114,7 @@ let app =
         threads = threads
         initial = { 
                     currentModel = None; 
-                    cameraState  = { CameraController.initial with view = initialView }
+                    cameraState  = { FreeFlyController.initial with view = initialView }
                     trafo        = Trafo3d.Identity 
                     appearance   = { cullMode = CullMode.None }
                   }

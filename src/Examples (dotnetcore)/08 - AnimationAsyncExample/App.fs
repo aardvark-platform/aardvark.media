@@ -47,7 +47,7 @@ module CameraAnimations =
 let update (m : Model) (msg : Message )  =
     match msg with
         | CameraMessage msg when not (shouldAnimate m) -> 
-            CameraController.update' msg |> Lens.update Model.Lens.cameraState m 
+            FreeFlyController.update' msg |> Lens.update Model.Lens.cameraState m 
         | Tick t when shouldAnimate m -> 
             match PList.tryAt 0 m.animations with
                 | Some anim -> 
@@ -120,7 +120,7 @@ let view (m : MModel) =
     body [ style "background: #1B1C1E"] [
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
-                CameraController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                FreeFlyController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                     (AttributeMap.ofList [ 
                         attribute "style" "width:85%; height: 100%; float: left;";
                         attribute "data-samples" "8"
@@ -170,7 +170,7 @@ module ThreadPool =
 
 let threads (m : Model) = 
     // handling of continous camera animations (camera controller)
-    let cameraAnimations = CameraController.threads m.cameraState |> ThreadPool.map CameraMessage
+    let cameraAnimations = FreeFlyController.threads m.cameraState |> ThreadPool.map CameraMessage
        
     // handling of self messages (example)
     let pendingActions msg str =
@@ -244,7 +244,7 @@ let app =
         initial = 
             { 
                cameraState =  
-                   { CameraController.initial with 
+                   { FreeFlyController.initial with 
                         view = CameraView.lookAt (V3d.III * 3.0) V3d.Zero V3d.OOI
                    }
                animations = PList.empty

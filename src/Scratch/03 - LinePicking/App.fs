@@ -142,7 +142,7 @@ module App =
       Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
     
     let renderControlAttributes = 
-      CameraController.extractAttributes model.camera FreeFlyAction frustum |> AttributeMap.ofAMap
+      CameraController.extractAttributes model.camera FreeFlyAction |> AttributeMap.ofAMap
     
     require Html.semui ( 
       div [clazz "ui"; style "background: #1B1C1E"] [

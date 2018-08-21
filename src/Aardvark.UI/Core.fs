@@ -12,6 +12,39 @@ open Aardvark.UI.Semantics
 open System.Reactive.Subjects
 
 
+type RenderControlConfig =
+    {
+        adjustAspect : V2i -> Frustum -> Frustum 
+    }
+
+module RenderControlConfig =
+    
+    /// Fills height, depending in aspect ratio
+    let standard = 
+        {
+            adjustAspect = fun (size : V2i) -> Frustum.withAspect (float size.X / float size.Y) 
+        }
+
+    /// Fills height, depending in aspect ratio
+    let fillHeight = standard 
+
+    /// Fills width, depending in aspect ratio
+    let fillWidth =
+        let aspect { left = l; right = r; top = t; bottom = b } =  (t - b) / (r - l)
+        let withAspectFlipped (newAspect : float) ( { left = l; right = r; top = t; bottom = b } as f)  = 
+            let factor = 1.0 - (newAspect / aspect f)                  
+            { f with bottom = factor * t + b; top  = factor * b + t }
+
+        {
+            adjustAspect = fun (size : V2i) -> withAspectFlipped (float size.X / float size.Y) 
+        }
+
+    let noScaling =
+        {
+            adjustAspect = fun (size : V2i) (frustum : Frustum) -> frustum
+        }
+    
+
 
 [<AutoOpen>]
 module private Utils =
@@ -459,6 +492,7 @@ and MutableApp<'model, 'msg> =
         model       : IMod<'model>
         ui          : DomNode<'msg>
         update      : Guid -> seq<'msg> -> unit
+        updateSync  : Guid -> seq<'msg> -> unit
         messages    : IObservable<'msg>
         shutdown    : unit -> unit
     }
@@ -509,6 +543,20 @@ and [<AbstractClass>] DomNode<'msg>() =
                 member x.Void n     = DomNode.Element(n.Tag, n.Namespace, n.Attributes).WithAttributesFrom n
                 member x.Scene n    = DomNode.Scene(n.Attributes, n.Scene, n.GetClientState).WithAttributesFrom n
                 member x.Text n     = DomNode.Text(n.Tag, n.Namespace, n.Attributes, n.Text).WithAttributesFrom n
+                member x.Page n     = DomNode.Page(n.Content).WithAttributesFrom n
+                member x.SubApp n   = DomNode.SubApp(n.App).WithAttributesFrom n
+                member x.Map n      = DomNode.Map(n.Mapping, n.Node).WithAttributesFrom n
+        }
+
+    member x.WithAttributes(additional : AttributeMap<'msg>) =
+        let (|||) a b = AttributeMap.union a b
+        x.Visit {
+            new DomNodeVisitor<'msg, DomNode<'msg>> with
+                member x.Empty e    = DomNode.Empty().WithAttributesFrom e
+                member x.Inner n    = DomNode.Element(n.Tag, n.Namespace, n.Attributes ||| additional, n.Children).WithAttributesFrom n
+                member x.Void n     = DomNode.Element(n.Tag, n.Namespace, n.Attributes ||| additional).WithAttributesFrom n
+                member x.Scene n    = DomNode.Scene(n.Attributes ||| additional, n.Scene, n.GetClientState).WithAttributesFrom n
+                member x.Text n     = DomNode.Text(n.Tag, n.Namespace, n.Attributes ||| additional, n.Text).WithAttributesFrom n
                 member x.Page n     = DomNode.Page(n.Content).WithAttributesFrom n
                 member x.SubApp n   = DomNode.SubApp(n.App).WithAttributesFrom n
                 member x.Map n      = DomNode.Map(n.Mapping, n.Node).WithAttributesFrom n
@@ -678,7 +726,8 @@ and DomNode private() =
     static member Node(tag : string, ns : string, attributes : AttributeMap<'msg>, content : alist<DomNode<'msg>>) =
        DomNode.Element(tag, Some ns, attributes, content)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, 
+                                scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
 
 
         let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : seq<'msg> =
@@ -777,7 +826,8 @@ and DomNode private() =
 
 
 
-    static member RenderControl(attributes : AttributeMap<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, getState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState, 
+                                scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
         DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene, htmlChildren)
     
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
@@ -796,24 +846,14 @@ and DomNode private() =
 
     
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ClientValues -> ISg<'msg>, isOrtho: bool, htmlChildren : Option<DomNode<_>>) =
-
-        let aspect { left = l; right = r; top = t; bottom = b } =  (t - b) / (r - l)
-        let withAspectFlipped (newAspect : float) ( { left = l; right = r; top = t; bottom = b } as f)  = 
-          let factor = 1.0 - (newAspect / aspect f)                  
-          { f with bottom = factor * t + b; top  = factor * b + t }
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ClientValues -> ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =
 
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
-            let cam = 
-              if isOrtho then 
-                { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
-              else
-                { cam with frustum = cam.frustum |> withAspectFlipped (float c.size.Y / float c.size.X) }
-
+            let cam = { cam with frustum = config.adjustAspect c.size cam.frustum }
             {
                 viewTrafo = CameraView.viewTrafo cam.cameraView
-                projTrafo = if isOrtho then Frustum.orthoTrafo cam.frustum else Frustum.projTrafo cam.frustum
+                projTrafo = Frustum.projTrafo cam.frustum
             }
 
         let tree = Mod.init <| PickTree.ofSg (Sg.ofList [])
@@ -857,11 +897,11 @@ and DomNode private() =
                                 ()
                     }
             }
-
+            
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, isOrtho: bool, htmlChildren : Option<DomNode<_>>) =
-        DomNode.RenderControl(attributes, camera, constF sg, isOrtho, htmlChildren)
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =
+        DomNode.RenderControl(attributes, camera, constF sg, config, htmlChildren)
 
     static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sgs : alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
@@ -960,11 +1000,11 @@ and DomNode private() =
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
 
-    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, isOrtho:bool, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
-        DomNode.RenderControl(AttributeMap.empty, camera, constF scene, isOrtho, htmlChildren)
+    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, config : RenderControlConfig, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+        DomNode.RenderControl(AttributeMap.empty, camera, constF scene, config, htmlChildren)
 
-    static member RenderControl(camera : IMod<Camera>, scene : ClientValues -> ISg<'msg>,isOrtho:bool, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
-        DomNode.RenderControl(AttributeMap.empty, camera, scene, isOrtho, htmlChildren)
+    static member RenderControl(camera : IMod<Camera>, scene : ClientValues -> ISg<'msg>, config : RenderControlConfig, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+        DomNode.RenderControl(AttributeMap.empty, camera, scene, config, htmlChildren)
 
 
 

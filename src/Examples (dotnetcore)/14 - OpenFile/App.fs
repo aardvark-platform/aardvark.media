@@ -10,7 +10,7 @@ open Model
 
 
 let initialCamera = { 
-        CameraController.initial with 
+        FreeFlyController.initial with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
     }
 

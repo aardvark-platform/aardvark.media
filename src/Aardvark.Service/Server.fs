@@ -26,6 +26,12 @@ open Aardvark.Base.Incremental
 open Aardvark.Application
 open System.Diagnostics
 
+open System.IO.MemoryMappedFiles
+open Microsoft.FSharp.NativeInterop
+
+
+#nowarn "9"
+
 type Message =
     | RequestImage of background : C4b * size : V2i
     | RequestWorldPosition of pixel : V2i
@@ -63,7 +69,7 @@ module private Tools =
     module Vulkan = 
         open Aardvark.Rendering.Vulkan
 
-        let downloadFBO (jpeg : TJCompressor) (size : V2i) (fbo : Framebuffer) =
+        let downloadFBO (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
             let device = fbo.Device
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
 
@@ -84,7 +90,40 @@ module private Tools =
                         NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y, 
                         TJPixelFormat.RGBX, 
                         TJSubsampling.S444, 
-                        80, 
+                        quality, 
+                        TJFlags.BottomUp ||| TJFlags.ForceSSE3
+                    )
+                )
+
+            device.Delete tmp
+            result
+
+        let downloadFBOMS (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
+            let device = fbo.Device
+            let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
+
+            let tempImage = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+
+            let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
+            let oldLayout = color.Image.Layout
+            device.perform {
+                do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
+                do! Command.ResolveMultisamples(color.Image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+                do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
+                do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], tmp)
+                do! Command.TransformLayout(color.Image, oldLayout)
+            }
+            
+            let rowSize = 4 * size.X
+            let alignedRowSize = rowSize
+
+            let result = 
+                tmp.Volume.Mapped (fun src ->
+                    jpeg.Compress(
+                        NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y, 
+                        TJPixelFormat.RGBX, 
+                        TJSubsampling.S444, 
+                        quality, 
                         TJFlags.BottomUp ||| TJFlags.ForceSSE3
                     )
                 )
@@ -93,12 +132,12 @@ module private Tools =
             result
 
         type Framebuffer with
-            member x.DownloadJpegColor() =
+            member x.DownloadJpegColor(quality : int) =
                 let jpeg = Compressor.Instance
                 if x.Attachments.[DefaultSemantic.Colors].Image.Samples <> 1 then
-                    failwith "MS not implemented"
-
-                downloadFBO jpeg x.Size x
+                    downloadFBOMS jpeg x.Size quality x
+                else
+                    downloadFBO jpeg x.Size quality x
 
     [<AutoOpen>]
     module GL = 
@@ -106,7 +145,7 @@ module private Tools =
         open OpenTK.Graphics.OpenGL4
         open Aardvark.Rendering.GL
 
-        let private downloadFBO (jpeg : TJCompressor) (size : V2i) (ctx : Context) =
+        let private downloadFBO (jpeg : TJCompressor) (size : V2i) (quality : int) (ctx : Context) =
             let pbo = GL.GenBuffer()
 
             let rowSize = 3 * size.X
@@ -125,7 +164,7 @@ module private Tools =
                     ptr, alignedRowSize, size.X, size.Y, 
                     TJPixelFormat.RGB, 
                     TJSubsampling.S444, 
-                    80, 
+                    quality, 
                     TJFlags.BottomUp ||| TJFlags.ForceSSE3
                 )
 
@@ -136,7 +175,7 @@ module private Tools =
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
 
         type Framebuffer with
-            member x.DownloadJpegColor() =
+            member x.DownloadJpegColor(quality : int) =
                 let jpeg = Compressor.Instance
                 let ctx = x.Context
                 use __ = ctx.ResourceLock
@@ -168,20 +207,20 @@ module private Tools =
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
                     
                     try
-                        ctx |> downloadFBO jpeg size
+                        ctx |> downloadFBO jpeg size quality
                     finally
                         GL.DeleteFramebuffer(fbo)
                         GL.DeleteRenderbuffer(resolved)
 
                 else
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-                    ctx |> downloadFBO jpeg size
+                    ctx |> downloadFBO jpeg size quality
 
     type IFramebuffer with
-        member x.DownloadJpegColor() =
+        member x.DownloadJpegColor(quality : int) =
             match x with
-                | :? Aardvark.Rendering.GL.Framebuffer as fbo -> fbo.DownloadJpegColor()
-                | :? Aardvark.Rendering.Vulkan.Framebuffer as fbo -> fbo.DownloadJpegColor()
+                | :? Aardvark.Rendering.GL.Framebuffer as fbo -> fbo.DownloadJpegColor(quality)
+                | :? Aardvark.Rendering.Vulkan.Framebuffer as fbo -> fbo.DownloadJpegColor(quality)
                 | _ -> failwith "not implemented"
  
     type WebSocket with
@@ -447,12 +486,22 @@ module private ReadPixel =
             | :? Aardvark.Rendering.Vulkan.Image as img -> Vulkan.downloadDepth pixel img |> Some
             | _ -> None
 
+type internal MapImage = 
+    {
+        name : string
+        length : int
+        size : V2i
+    }
+
+type internal RenderResult =
+    | Jpeg of byte[]
+    | Mapping of MapImage
+
+[<AbstractClass>]
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     let runtime = server.runtime
     let mutable task = RenderTask.empty
-
-    let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
-
+    
     let targetSize = Mod.init V2i.II
     
     let mutable currentSize = -V2i.II
@@ -460,7 +509,6 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     
     let mutable depth : Option<IRenderbuffer> = None 
     let mutable color : Option<IRenderbuffer> = None
-    let mutable resolved : Option<IBackendTexture> = None
     let mutable target : Option<IFramebuffer> = None 
 
     static let mutable threadCount = 0
@@ -470,7 +518,6 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         target     |> Option.iter runtime.DeleteFramebuffer
         depth      |> Option.iter runtime.DeleteRenderbuffer
         color      |> Option.iter runtime.DeleteRenderbuffer
-        resolved   |> Option.iter runtime.DeleteTexture
         target <- None
         color <- None
         depth <- None
@@ -504,22 +551,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 ]
             )
 
-        match server.compressor with
-            | Some compressor -> 
-                match gpuCompressorInstance with
-                    | None -> 
-                        ()
-                    | Some old -> 
-                        old.Dispose()
-                Log.line "[Media.Server] creating GPU image compressor for size: %A" size
-                let instance = compressor.NewInstance(size, Quantization.photoshop80)
-                gpuCompressorInstance <- Some instance
-            | _ ->
-                ()
 
-        let r = runtime.CreateTexture(currentSize, TextureFormat.ofRenderbufferFormat colorSignature.format, 1, 1)
-
-        resolved <- Some r
         depth <- Some d
         color <- Some c
         target <- Some newTarget
@@ -630,6 +662,8 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             | None ->
                 None
         
+    abstract member ProcessImage : IFramebuffer * IRenderbuffer -> RenderResult
+    abstract member Release : unit -> unit
 
     member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
         lastInfo <- Some info
@@ -672,16 +706,17 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 Interlocked.Decrement(&threadCount) |> ignore
         )
         compressTime.Start()
-        let data =
-            match gpuCompressorInstance with
-                | Some gpuCompressorInstance ->
-                    if info.samples > 1 then
-                        runtime.ResolveMultisamples(color.Value, resolved.Value, ImageTrafo.Rot0)
-                    else
-                        runtime.Copy(color.Value,resolved.Value.[TextureAspect.Color,0,0])
-                    gpuCompressorInstance.Compress(resolved.Value.[TextureAspect.Color,0,0])
-                | None -> 
-                    target.DownloadJpegColor()
+        let data = x.ProcessImage(target, color.Value)
+        //let data =
+        //    match gpuCompressorInstance with
+        //        | Some gpuCompressorInstance ->
+        //            if info.samples > 1 then
+        //                runtime.ResolveMultisamples(color.Value, resolved.Value, ImageTrafo.Rot0)
+        //            else
+        //                runtime.Copy(color.Value,resolved.Value.[TextureAspect.Color,0,0])
+        //            gpuCompressorInstance.Compress(resolved.Value.[TextureAspect.Color,0,0])
+        //        | None -> 
+        //            target.DownloadJpegColor()
 
         compressTime.Stop()
         t.Dispose()
@@ -703,6 +738,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             frameCount <- 0
             currentScene <- None
             lastInfo <- None
+            x.Release()
         with e -> 
             Log.warn "[Media] render server disposal failed (alread disposed?)"
 
@@ -714,6 +750,574 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         member x.Dispose() =
             x.Dispose()
 
+type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
+    inherit ClientRenderTask(server, getScene)
+    
+    let quantization,quality = quality
+    let runtime = server.runtime
+    let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
+    let mutable resolved : Option<IBackendTexture> = None
+
+    let recreate  (fmt : RenderbufferFormat) (size : V2i) =
+        match server.compressor with
+            | Some compressor -> 
+                match gpuCompressorInstance with
+                    | None -> 
+                        ()
+                    | Some old -> 
+                        old.Dispose()
+                Log.line "[Media.Server] creating GPU image compressor for size: %A" size
+                let instance = compressor.NewInstance(size, quantization)
+                gpuCompressorInstance <- Some instance
+
+                resolved |> Option.iter runtime.DeleteTexture
+                let r = runtime.CreateTexture(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+                resolved <- Some r
+                Some r
+
+            | _ ->
+                None
+
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        let resolved = 
+            match resolved with
+                | Some r when r.Size.XY = color.Size -> Some r
+                | _ -> recreate color.Format color.Size
+        let data =
+            match gpuCompressorInstance with
+                | Some gpuCompressorInstance ->
+                    let resolved = resolved.Value
+                    if color.Samples > 1 then
+                        runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
+                    else
+                        runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
+                    gpuCompressorInstance.Compress(resolved.[TextureAspect.Color,0,0])
+                | None -> 
+                    target.DownloadJpegColor(quality)
+        Jpeg data
+
+    override x.Release() =
+        gpuCompressorInstance |> Option.iter (fun i -> i.Dispose())
+        resolved |> Option.iter runtime.DeleteTexture
+        gpuCompressorInstance <- None
+        resolved <- None
+
+    new(server,getScene) = new JpegClientRenderTask(server,getScene,(Quantization.photoshop80,80))
+        
+
+type private MappingInfo =
+    {
+        name : string
+        file : MemoryMappedFile
+        view : MemoryMappedViewAccessor
+        size : int64
+        data : nativeint
+    }
+    
+module internal RawDownload =
+    open System.Runtime.InteropServices
+
+    type IDownloader =
+        inherit IDisposable
+        abstract member Runtime : IRuntime
+        abstract member Multisampled : bool
+        abstract member Download : fbo : IFramebuffer * dst : nativeint -> unit
+        
+
+    module Vulkan =
+        open Aardvark.Rendering.Vulkan
+
+        type MSDownloader(runtime : Runtime) =
+            let device = runtime.Device
+
+            let mutable tempImage : Option<Image> = None
+            let mutable tempBuffer : Option<Buffer> = None
+
+            let getTempImage(size : V2i) =
+                //let size = V2i(Fun.NextPowerOfTwo size.X, Fun.NextPowerOfTwo size.Y)
+                match tempImage with
+                    | Some t when t.Size.XY = size -> t
+                    | _ ->
+                        tempImage |> Option.iter device.Delete
+                        let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                        tempImage <- Some t
+                        t
+
+            let getTempBuffer (size : int64) =
+                //let size = Fun.NextPowerOfTwo size
+                match tempBuffer with
+                    | Some b when b.Size = size -> b
+                    | _ ->
+                        tempBuffer |> Option.iter device.Delete
+                        let b = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+                        tempBuffer <- Some b
+                        b
+
+            member x.Runtime = runtime :> IRuntime
+
+            member x.Multisampled = true
+
+            member x.Download(fbo : IFramebuffer, dst : nativeint) =
+                let fbo = unbox<Framebuffer> fbo
+                let image = fbo.Attachments.[DefaultSemantic.Colors].Image
+                let lineSize = 4L * int64 image.Size.X
+                let sizeInBytes = lineSize * int64 image.Size.Y
+
+                let tempImage = getTempImage image.Size.XY
+                let tempBuffer = getTempBuffer sizeInBytes
+                
+                let l = image.Layout
+                device.perform {
+                    do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
+                    do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
+                    do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, image.Size)
+                    do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
+                    do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
+                    do! Command.TransformLayout(image, l)
+                }
+
+                tempBuffer.Memory.Mapped (fun ptr ->
+                    Marshal.Copy(ptr, dst, nativeint sizeInBytes)
+                )
+
+            member x.Dispose() =
+                tempImage |> Option.iter device.Delete
+                tempBuffer |> Option.iter device.Delete
+
+
+            interface IDownloader with
+                member x.Dispose() = x.Dispose()
+                member x.Runtime = x.Runtime
+                member x.Multisampled = x.Multisampled
+                member x.Download(fbo, dst) = x.Download(fbo, dst)
+
+        type SSDownloader(runtime : Runtime) =
+            let device = runtime.Device
+            
+            let mutable tempBuffer : Option<Buffer> = None
+            
+            let getTempBuffer (size : int64) =
+                //let size = Fun.NextPowerOfTwo size
+                match tempBuffer with
+                    | Some b when b.Size = size -> b
+                    | _ ->
+                        tempBuffer |> Option.iter device.Delete
+                        let b = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+                        tempBuffer <- Some b
+                        b
+
+            member x.Runtime = runtime :> IRuntime
+
+            member x.Multisampled = false
+
+            member x.Download(fbo : IFramebuffer, dst : nativeint) =
+                let fbo = unbox<Framebuffer> fbo
+                let image = fbo.Attachments.[DefaultSemantic.Colors].Image
+                let lineSize = 4L * int64 image.Size.X
+                let sizeInBytes = lineSize * int64 image.Size.Y
+                
+                let tempBuffer = getTempBuffer sizeInBytes
+                
+                let l = image.Layout
+                device.perform {
+                    do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
+                    do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
+                    do! Command.TransformLayout(image, l)
+                }
+
+                tempBuffer.Memory.Mapped (fun ptr ->
+                    Marshal.Copy(ptr, dst, nativeint sizeInBytes)
+                )
+
+            member x.Dispose() =
+                tempBuffer |> Option.iter device.Delete
+
+
+            interface IDownloader with
+                member x.Dispose() = x.Dispose()
+                member x.Runtime = x.Runtime
+                member x.Multisampled = x.Multisampled
+                member x.Download(fbo, dst) = x.Download(fbo, dst)
+
+        let createDownloader (runtime : IRuntime) (samples : int) =
+            if samples = 1 then new SSDownloader(unbox runtime) :> IDownloader
+            else new MSDownloader(unbox runtime) :> IDownloader
+
+        let download (runtime : IRuntime) (fbo : IFramebuffer) (samples : int) (dst : nativeint) =
+            let runtime = unbox<Runtime> runtime
+            let fbo = unbox<Framebuffer> fbo
+            let image = fbo.Attachments.[DefaultSemantic.Colors].Image
+            let device = runtime.Device
+            
+            if samples > 1 then
+                let lineSize = 4L * int64 image.Size.X
+                let size = lineSize * int64 image.Size.Y
+                let tempImage = Image.create image.Size 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                use temp = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+
+                let l = image.Layout
+                device.perform {
+                    do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
+                    do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
+                    do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], tempImage.[ImageAspect.Color, 0, 0])
+                    do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
+                    do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, tempImage.Size)
+                    do! Command.TransformLayout(image, l)
+                }
+
+                temp.Memory.Mapped (fun ptr ->
+                    Marshal.Copy(ptr, dst, nativeint size)
+                )
+
+                Image.delete tempImage device
+            else
+                let lineSize = 4L * int64 image.Size.X
+                let size = lineSize * int64 image.Size.Y
+                use temp = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+
+                let l = image.Layout
+                device.perform {
+                    do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
+                    do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, image.Size)
+                    do! Command.TransformLayout(image, l)
+                }
+
+                temp.Memory.Mapped (fun ptr ->
+                    Marshal.Copy(ptr, dst, size)
+                )
+
+    module GL =
+        open OpenTK.Graphics.OpenGL4
+        open Aardvark.Rendering.GL
+
+        type SSDownloader(runtime : Runtime) =
+            
+            //let mutable pbo : Option<int * int64> = None
+
+            //let getPBO (size : int64) =
+            //    //let size = Fun.NextPowerOfTwo size
+            //    match pbo with
+            //        | Some (h,s) when s = size -> h
+            //        | _ ->
+            //            pbo |> Option.iter (fun (h,_) -> GL.DeleteBuffer(h))
+            //            let b = GL.GenBuffer()
+            //            GL.BindBuffer(BufferTarget.PixelPackBuffer, b)
+            //            GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint size, 0n, BufferStorageFlags.MapReadBit)
+            //            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+            //            pbo <- Some (b, size)
+            //            b
+
+            member x.Download(fbo : IFramebuffer, dst : nativeint) =
+                let fbo = unbox<Framebuffer> fbo
+                let ctx = runtime.Context
+            
+                use __ = ctx.ResourceLock
+                let size = fbo.Size
+                let rowSize = 4L * int64 size.X
+                let sizeInBytes = rowSize * int64 size.Y
+
+                let pbo = GL.GenBuffer()
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
+                GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
+
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
+
+                let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
+                
+                Marshal.Copy(ptr, dst, sizeInBytes)
+
+                GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
+                GL.DeleteBuffer(pbo)
+
+            member x.Dispose() =
+                ()
+
+            member x.Multisampled = false
+
+            member x.Runtime = runtime :> IRuntime
+            
+            interface IDownloader with
+                member x.Dispose() = x.Dispose()
+                member x.Runtime = x.Runtime
+                member x.Multisampled = x.Multisampled
+                member x.Download(fbo, dst) = x.Download(fbo, dst)
+
+        type MSDownloader(runtime : Runtime) =
+            
+            //let mutable pbo : Option<int * int64> = None
+            let mutable resolved : Option<int * int * V2i> = None
+
+            //let getPBO (size : int64) =
+                //let size = Fun.NextPowerOfTwo size
+                //match pbo with
+                //    | Some (h,s) when s = size -> h
+                //    | _ ->
+                //        pbo |> Option.iter (fun (h,_) -> GL.DeleteBuffer(h))
+                //        let b = GL.GenBuffer()
+                //        GL.BindBuffer(BufferTarget.PixelPackBuffer, b)
+                //        GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint size, 0n, BufferStorageFlags.MapReadBit)
+                //        GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+                //        pbo <- Some (b, size)
+                //        b
+
+            let getFramebuffer (size : V2i) =
+                //let size = V2i(Fun.NextPowerOfTwo size.X, Fun.NextPowerOfTwo size.Y)
+                match resolved with
+                    | Some (f,_,s) when s = size -> f
+                    | _ ->
+                        match resolved with
+                            | Some (f,r,_) ->
+                                GL.DeleteFramebuffer(f)
+                                GL.DeleteRenderbuffer(r)
+                            | None ->
+                                ()
+
+                        let f = GL.GenFramebuffer()
+                        let r = GL.GenRenderbuffer()
+
+                        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, r)
+                        GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, size.X, size.Y)
+                        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
+                
+                        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, f)
+                        GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, r)
+                        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                        
+                        resolved <- Some(f,r,size)
+                        f
+
+            member x.Download(fbo : IFramebuffer, dst : nativeint) =
+                let fbo = unbox<Framebuffer> fbo
+                let ctx = runtime.Context
+            
+                use __ = ctx.ResourceLock
+                let size = fbo.Size
+                let rowSize = 4L * int64 size.X
+                let sizeInBytes = rowSize * int64 size.Y
+
+                let pbo = GL.GenBuffer()
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+
+                let temp = getFramebuffer size
+
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
+                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, temp)
+
+                GL.BlitFramebuffer(
+                    0, 0, size.X - 1, size.Y - 1, 
+                    0, 0, size.X - 1, size.Y - 1,
+                    ClearBufferMask.ColorBufferBit,
+                    BlitFramebufferFilter.Nearest
+                )
+                
+                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, temp)
+
+                GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
+
+                let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
+                
+                Marshal.Copy(ptr, dst, sizeInBytes)
+
+                GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
+                GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
+                GL.DeleteBuffer(pbo)
+
+            member x.Dispose() =
+                use __ = runtime.Context.ResourceLock
+                //pbo |> Option.iter (fst >> GL.DeleteBuffer)
+                //pbo <- None
+                
+                match resolved with
+                    | Some (f,r,_) ->
+                        GL.DeleteFramebuffer(f)
+                        GL.DeleteRenderbuffer(r)
+                        resolved <- None
+                    | None ->
+                        ()
+
+
+            member x.Multisampled = false
+
+            member x.Runtime = runtime :> IRuntime
+            
+            interface IDownloader with
+                member x.Dispose() = x.Dispose()
+                member x.Runtime = x.Runtime
+                member x.Multisampled = x.Multisampled
+                member x.Download(fbo, dst) = x.Download(fbo, dst)
+
+        let createDownloader (runtime : IRuntime) (samples : int) : IDownloader =
+            if samples = 1 then new SSDownloader(unbox runtime) :> IDownloader
+            else new MSDownloader(unbox runtime) :> IDownloader
+
+        let download (runtime : IRuntime) (fbo : IFramebuffer) (samples : int) (dst : nativeint) =
+            let runtime = unbox<Runtime> runtime
+            let fbo = unbox<Framebuffer> fbo
+            let ctx = runtime.Context
+            
+            use __ = ctx.ResourceLock
+            let size = fbo.Size
+
+            let mutable tmpFbo = -1
+            let mutable tmpRbo = -1
+            if samples > 1 then
+                let tmp = GL.GenFramebuffer()
+                let rbo = GL.GenRenderbuffer()
+
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, rbo)
+                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, size.X, size.Y)
+                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
+                
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
+                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, tmp)
+                GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, rbo)
+                
+                GL.BlitFramebuffer(
+                    0, 0, size.X - 1, size.Y - 1, 
+                    0, 0, size.X - 1, size.Y - 1,
+                    ClearBufferMask.ColorBufferBit,
+                    BlitFramebufferFilter.Nearest
+                )
+                
+                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, tmp)
+                
+                tmpFbo <- tmp
+                tmpRbo <- rbo
+
+            else
+                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
+              
+
+
+            let pbo = GL.GenBuffer()
+
+            let rowSize = 4 * size.X
+            let sizeInBytes = rowSize * size.Y
+            GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+            GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+
+            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
+
+            let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
+                
+            Marshal.Copy(ptr, dst, sizeInBytes)
+            //let lineSize = nativeint rowSize
+            //let mutable src = ptr
+            //let mutable dst = dst + nativeint sizeInBytes - lineSize
+
+            //for _ in 0 .. size.Y-1 do
+            //    Marshal.Copy(src, dst, lineSize)
+            //    src <- src + lineSize
+            //    dst <- dst - lineSize
+
+            GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
+            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
+            GL.DeleteBuffer(pbo)
+
+
+
+            if tmpFbo >= 0 then GL.DeleteFramebuffer(tmpFbo)
+            if tmpRbo >= 0 then GL.DeleteRenderbuffer(tmpRbo)
+            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
+            
+        
+
+    let download (runtime : IRuntime) (fbo : IFramebuffer) (samples : int) (dst : nativeint) =  
+        match runtime with
+            | :? Aardvark.Rendering.Vulkan.Runtime ->
+                Vulkan.download runtime fbo samples dst
+
+            | :? Aardvark.Rendering.GL.Runtime ->
+                GL.download runtime fbo samples dst
+                
+            | _ ->
+                failwith "bad runtime"
+
+
+type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    inherit ClientRenderTask(server, getScene)
+    let runtime = server.runtime
+
+    let mutable mapping : Option<MappingInfo> = None
+    let mutable downloader : Option<RawDownload.IDownloader> = None
+    
+    let recreateMapping (desiredSize : int64) =
+        match mapping with
+            | Some m ->
+                m.view.Dispose()
+                m.file.Dispose()
+            | None ->
+                ()
+
+        let name = Guid.NewGuid() |> string
+        let file = MemoryMappedFile.CreateNew(name, desiredSize)
+        let view = file.CreateViewAccessor()
+
+        let m =
+            {
+                name = name
+                file = file
+                view = view
+                size = desiredSize
+                data = view.SafeMemoryMappedViewHandle.DangerousGetHandle()
+            }
+        mapping <- Some m
+        m
+
+    let recreateDownloader (runtime : IRuntime) (samples : int)  =
+        downloader |> Option.iter (fun d -> d.Dispose())
+        let d = 
+            match runtime with
+                | :? Aardvark.Rendering.Vulkan.Runtime -> RawDownload.Vulkan.createDownloader runtime samples
+                | :? Aardvark.Rendering.GL.Runtime -> RawDownload.GL.createDownloader runtime samples
+                | _ -> failwith "unknown runtime"
+        downloader <- Some d
+        d
+
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        let desiredMapSize = Fun.NextPowerOfTwo (int64 color.Size.X * int64 color.Size.Y * 4L)
+
+        let mapping =
+            match mapping with
+                | Some m when m.size = desiredMapSize -> m
+                | _ -> recreateMapping desiredMapSize
+
+        //RawDownload.download runtime target color.Samples mapping.data
+
+        let downloader =
+            let isMS = color.Samples > 1
+            match downloader with
+                | Some d when d.Multisampled = isMS -> d
+                | _ -> recreateDownloader runtime color.Samples
+
+        downloader.Download(target, mapping.data)
+
+        Mapping { name = mapping.name; size = color.Size; length = int mapping.size }
+
+    override x.Release() =
+        downloader |> Option.iter (fun d -> d.Dispose())
+        downloader <- None
+        match mapping with
+            | Some m ->
+                m.view.Dispose()
+                m.file.Dispose()
+                mapping <- None
+            | None ->
+                ()
+
 type internal ClientCreateInfo =
     {
         server          : Server
@@ -722,17 +1326,24 @@ type internal ClientCreateInfo =
         sceneName       : string
         samples         : int
         socket          : WebSocket
+        useMapping      : bool
         getSignature    : int -> IFramebufferSignature
     }
 
 type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState : ClientInfo -> ClientState, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
     static let mutable currentId = 0
  
+    static let newTask (info : ClientCreateInfo) getContent =
+        if info.useMapping then
+            new MappedClientRenderTask(info.server, getContent) :> ClientRenderTask
+        else
+            new JpegClientRenderTask(info.server, getContent) :> ClientRenderTask
+
     let id = Interlocked.Increment(&currentId)
     let sender = AdaptiveObject()
     let requestedSize : MVar<C4b * V2i> = MVar.empty()
     let mutable createInfo = createInfo
-    let mutable task = new ClientRenderTask(createInfo.server, getContent)
+    let mutable task = newTask createInfo getContent
     let mutable running = false
     let mutable disposed = 0
 
@@ -783,13 +1394,24 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                         try
                             let state = getState info
                             let data = task.Run(token, info, state)
-                        
-                            let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
-                            match res with
-                                | Choice1Of2() -> ()
-                                | Choice2Of2 err ->
-                                    running <- false
-                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                            match data with
+                                | Jpeg data -> 
+                                    let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
+                                    match res with
+                                        | Choice1Of2() -> ()
+                                        | Choice2Of2 err ->
+                                            running <- false
+                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                
+                                | Mapping img ->
+                                    let data = Pickler.json.Pickle img
+                                    let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
+                                    match res with
+                                        | Choice1Of2() -> ()
+                                        | Choice2Of2 err ->
+                                            running <- false
+                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                    
                         with e ->
                             running <- false
                             Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
@@ -815,7 +1437,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         if Interlocked.Exchange(&disposed, 0) = 1 then
             Log.line "[Client] %d: revived" id
             createInfo <- newInfo
-            task <- new ClientRenderTask(newInfo.server, getContent)
+            task <- newTask newInfo getContent
             subscription <- subscribe()
             renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
 
@@ -1030,6 +1652,12 @@ module Server =
                     | Some id -> Guid.Parse id
                     | _ -> Guid.NewGuid()
 
+            let useMapping =
+                match Map.tryFind "mapped" args with
+                    | Some "false" -> false
+                    | Some "true" -> true
+                    | _ -> false
+
             let createInfo =
                 {
                     server          = info
@@ -1038,6 +1666,7 @@ module Server =
                     sceneName       = sceneName
                     samples         = samples
                     socket          = ws
+                    useMapping      = useMapping
                     getSignature    = getSignature
                 }            
 
@@ -1045,7 +1674,7 @@ module Server =
                 let key = (sessionId, targetId)
                 lock clients (fun () ->
                     clients.GetOrCreate(key, fun (sessionId, targetId) ->
-                        Log.line "[Server] created client for (%A/%s)" sessionId targetId
+                        Log.line "[Server] created client for (%A/%s), mapping %s" sessionId targetId (if useMapping then "enabled" else "disabled")
                         new Client(updateLock, createInfo, getState, content)
                     )
                 )
@@ -1088,7 +1717,7 @@ module Server =
             match Map.tryFind "w" args, Map.tryFind "h" args with
                 | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
                     let scene = content signature sceneName
-                    use task = new ClientRenderTask(info, content)
+                    use task = new JpegClientRenderTask(info, content, (Quantization.photoshop100,100))
 
                     let clientInfo = 
                         {
@@ -1104,7 +1733,10 @@ module Server =
                         }
 
                     let state = getState clientInfo
-                    let data = task.Run(AdaptiveToken.Top, clientInfo, state)
+                    let data = 
+                        match task.Run(AdaptiveToken.Top, clientInfo, state) with
+                            | Jpeg d -> d
+                            | _ -> failwith "that was unexpected"
 
                     context |> (ok data >=> Writers.setMimeType "image/jpeg")
                 | _ ->
@@ -1114,7 +1746,7 @@ module Server =
             yield Reflection.assemblyWebPart typeof<Client>.Assembly
             yield pathScan "/render/%s" (render >> handShake)
             yield path "/stats.json" >=> statistics 
-            yield pathScan "/screenshot/%s" (screenshot) 
+            yield pathScan "/screenshot/%s" screenshot
 
             match info.fileSystemRoot with
                 | Some root ->

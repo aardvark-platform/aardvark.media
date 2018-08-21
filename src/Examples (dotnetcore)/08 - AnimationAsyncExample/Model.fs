@@ -34,7 +34,7 @@ type Model = {
 and Message =
     | Tick of Time
     | PushAnimation of Animation<Model,CameraView,CameraView>
-    | CameraMessage of CameraControllerMessage
+    | CameraMessage of FreeFlyController.Message
     | RemoveAnimation of Index
     | Ping
     | Pong

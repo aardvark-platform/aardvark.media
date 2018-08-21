@@ -263,6 +263,9 @@ module ``F# Sg`` =
         let pickable (p : PickShape) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickable p)
 
+        let pickable' (p : IMod<PickShape>) (sg : ISg<'msg>) =
+            sg |> unboxed (fun s -> new Sg.PickableApplicator(Mod.map Pickable.ofShape p, Mod.constant s) :> ISg)
+
         let pickBoundingBox (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickBoundingBox)
 

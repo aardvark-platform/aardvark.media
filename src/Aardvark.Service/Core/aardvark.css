@@ -2,18 +2,30 @@
 /* RenderControl styles */
 img.rendercontrol:focus { 
     outline: none; 
-} 
+}
 
 img.rendercontrol {
     opacity: 0;
     user-select: none;
     background-color: black;
-
-	position: relative;
+    position: relative;
     left: 50%;
-	top: 50%;
-	transform: translate3d(-50%, -50%, 0);
-
+    top: 50%;
+    transform: translate3d(-50%, -50%, 0);
+    pointer-events: none;
+}
+canvas.rendercontrol:focus {
+    outline: none;
+}
+canvas.rendercontrol {
+    opacity: 0;
+    user-select: none;
+    background-color: black;
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate3d(-50%, -50%, 0) scaleY(-1);
+    pointer-events: none;
 }
 
 div.aardvark:focus { 
@@ -26,6 +38,7 @@ div.aardvark {
     overflow: hidden;
     background-color: black;
     position:relative;
+    
    
 }
 

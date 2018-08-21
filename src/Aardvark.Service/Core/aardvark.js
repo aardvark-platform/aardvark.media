@@ -59,14 +59,18 @@ if (!aardvark.processEvent) {
     };
 }
 
+if (!aardvark.localhost) {
+    aardvark.localhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+}
+
 if (!aardvark.getRelativeUrl) {
-    function splitPath(path) {
+    var splitPath = function (path) {
         var dirPart, filePart;
         path.replace(/^(.*\/)?([^/]*)$/, function (_, dir, file) {
             dirPart = dir; filePart = file;
         });
         return { dirPart: dirPart, filePart: filePart };
-    }
+    };
 
     var scripts = document.head.getElementsByTagName("script");
     var selfScript = undefined;
@@ -100,7 +104,7 @@ if (!aardvark.getRelativeUrl) {
         if (!dir.startsWith("/")) dir = "/" + dir;
         if (!dir.endsWith("/")) dir = dir + "/";
 
-        var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
+        path = protocol + "://" + window.location.host + path.dirPart + relativePath;
         console.log(path);
 
         return path;
@@ -120,16 +124,21 @@ class Renderer {
         var samples = this.div.getAttribute("data-samples");
         if (!samples) samples = 1;
         this.samples = samples;
-
-		debugger;
+        
 		var showFPS = this.div.getAttribute("showFPS");
 		if (showFPS === "true") showFPS = true; else showFPS = false;
 		this.showFPS = showFPS;
 
-
 		var showLoader = this.div.getAttribute("showLoader");
 		if (showLoader === "false") showLoader = false; else showLoader = true;
 		this.showLoader = showLoader;
+
+		var useMapping = this.div.getAttribute("useMapping");
+		if (useMapping === "false") useMapping = false; else useMapping = true;
+		this.useMapping = useMapping;
+
+		var onRendered = this.div.getAttribute("onRendered");
+		if (onRendered) this.onRendered = onRendered;
 
         this.buffer = [];
         this.isOpen = false;
@@ -154,14 +163,14 @@ class Renderer {
 
             $(loader).html(
                 "<div class='fountainG_0'>" +
-	            "<div class='fountainG_1 fountainG'></div>" +
-	            "<div class='fountainG_2 fountainG'></div>" +
-	            "<div class='fountainG_3 fountainG'></div>" +
-	            "<div class='fountainG_4 fountainG'></div>" +
-	            "<div class='fountainG_5 fountainG'></div>" +
-	            "<div class='fountainG_6 fountainG'></div>" +
-	            "<div class='fountainG_7 fountainG'></div>" +
-	            "<div class='fountainG_8 fountainG'></div>" +
+                "<div class='fountainG_1 fountainG'></div>" +
+                "<div class='fountainG_2 fountainG'></div>" +
+                "<div class='fountainG_3 fountainG'></div>" +
+                "<div class='fountainG_4 fountainG'></div>" +
+                "<div class='fountainG_5 fountainG'></div>" +
+                "<div class='fountainG_6 fountainG'></div>" +
+                "<div class='fountainG_7 fountainG'></div>" +
+                "<div class='fountainG_8 fountainG'></div>" +
                 "</div>"
             );
 
@@ -180,84 +189,229 @@ class Renderer {
     }
 
     init() {
-        var img = document.createElement("img");
-        this.div.appendChild(img);
-        img.setAttribute("class", "rendercontrol");
+        var connect = null;
 
-		debugger;
-		if (this.showLoader) this.createLoader();
-
-        this.img = img;
-
-        var overlay = document.createElement("span")
-        if (!this.showFPS) overlay.style = "display:none;";
-        this.div.appendChild(overlay);
-        overlay.className = "fps";
-        overlay.innerText = "";
-        this.overlay = overlay;
-        this.frameCount = 0;
-
-        this.div.tabIndex = 1;
-        //this.img.contentEditable = true;
         
-        img.style.cursor = "default";
 
-        var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples);
+		if (aardvark.localhost && aardvark.openMapping && this.useMapping) {
+            var canvas = document.createElement("canvas");
+            this.div.appendChild(canvas);
+            canvas.setAttribute("class", "rendercontrol");
+
+            if (this.showLoader) this.createLoader();
+
+            this.canvas = canvas;
+            this.ctx = canvas.getContext("2d");
+            this.img = canvas;
+
+            var overlay = document.createElement("span");
+            if (!this.showFPS) overlay.style = "display:none;";
+            this.div.appendChild(overlay);
+            overlay.className = "fps";
+            overlay.innerText = "";
+            this.overlay = overlay;
+            this.frameCount = 0;
+            this.div.tabIndex = 1;
+			canvas.style.cursor = "default";
+
+			var mappedRequest = "&mapped=true";
+			if (!this.useMapping) mappedRequest = "&mapped=false";
+
+			var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples + mappedRequest);
+            
+            var self = this;
 
 
-
-        var self = this;
-
-        this.img.onclick = function () { self.div.focus(); };
-        
-        function connect() {
-            var socket = new WebSocket(url);
-            socket.binaryType = "blob";
-            self.socket = socket;
-
-            var doPing = function () {
-                if (socket.readyState <= 1) {
-                    socket.send("#ping");
-                    setTimeout(doPing, 50);
-                }
+            var onGlobalClick = function (event) {
+                if (event.target == self.div) self.div.focus();
             };
+            document.addEventListener("click", onGlobalClick, false);
 
-            socket.onopen = function () {
-                for (var i = 0; i < self.buffer.length; i++) {
-                    socket.send(self.buffer[i]);
-                }
-                self.isClosed = false;
-                self.isOpen = true;
-                self.buffer = [];
 
-                self.render();
+            //if (this.div.onclick) {
+            //    var old = this.div.onclick;
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); old(); };
+            //}
+            //else {
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); };
+            //}
+            connect = function () {
+                var socket = new WebSocket(url);
+                socket.binaryType = "blob";
+                self.socket = socket;
 
-                doPing();
+                var doPing = function () {
+                    if (socket.readyState <= 1) {
+                        socket.send("#ping");
+                        setTimeout(doPing, 50);
+                    }
+                };
 
+                socket.onopen = function () {
+                    for (var i = 0; i < self.buffer.length; i++) {
+                        socket.send(self.buffer[i]);
+                    }
+                    self.isClosed = false;
+                    self.isOpen = true;
+                    self.buffer = [];
+
+                    self.render();
+
+                    doPing();
+
+                };
+
+                socket.onmessage = function (msg) {
+                    self.received(msg);
+                };
+
+                socket.onclose = function () {
+                    self.isOpen = false;
+                    self.isClosed = true;
+                    self.fadeOut();
+                    //setTimeout(connect, 500);
+                };
+
+                socket.onerror = function (err) {
+                    console.warn(err);
+                    self.isClosed = true;
+                    self.fadeOut();
+                    //setTimeout(connect, 500);
+                };
             };
+        }
+        else {
+            var img = document.createElement("img");
+            this.div.appendChild(img);
+            img.setAttribute("class", "rendercontrol");
 
-            socket.onmessage = function (msg) {
-                self.received(msg);
+            if (this.showLoader) this.createLoader();
+
+            this.img = img;
+
+            var overlay = document.createElement("span");
+            if (!this.showFPS) overlay.style = "display:none;";
+            this.div.appendChild(overlay);
+            overlay.className = "fps";
+            overlay.innerText = "";
+            this.overlay = overlay;
+            this.frameCount = 0;
+            this.div.tabIndex = 1;
+            //this.img.contentEditable = true;
+
+            img.style.cursor = "default";
+
+            var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples);
+
+
+
+            var self = this;
+
+            var onGlobalClick = function (event) {
+                if (event.target == self.div) self.div.focus();
             };
+            document.addEventListener("click", onGlobalClick, false);
+            //if (this.div.onclick) {
+            //    var old = this.div.onclick;
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); old(); };
+            //}
+            //else {
+            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); };
+            //}
+            connect = function () {
+                var socket = new WebSocket(url);
+                socket.binaryType = "blob";
+                self.socket = socket;
 
-            socket.onclose = function () {
-                self.isOpen = false;
-                self.isClosed = true;
-                self.fadeOut();
-                //setTimeout(connect, 500);
-            };
+                var doPing = function () {
+                    if (socket.readyState <= 1) {
+                        socket.send("#ping");
+                        setTimeout(doPing, 50);
+                    }
+                };
 
-            socket.onerror = function (err) {
-                console.warn(err);
-                self.isClosed = true;
-                self.fadeOut();
-                //setTimeout(connect, 500);
+                socket.onopen = function () {
+                    for (var i = 0; i < self.buffer.length; i++) {
+                        socket.send(self.buffer[i]);
+                    }
+                    self.isClosed = false;
+                    self.isOpen = true;
+                    self.buffer = [];
+
+                    self.render();
+
+                    doPing();
+
+                };
+
+                socket.onmessage = function (msg) {
+                    self.received(msg);
+                };
+
+                socket.onclose = function () {
+                    self.isOpen = false;
+                    self.isClosed = true;
+                    self.fadeOut();
+                    //setTimeout(connect, 500);
+                };
+
+                socket.onerror = function (err) {
+                    console.warn(err);
+                    self.isClosed = true;
+                    self.fadeOut();
+                    //setTimeout(connect, 500);
+                };
             };
         }
 
+		var downloadDirect = function (dataurl, filename) {
+			var a = document.createElement("a");
+			a.href = dataurl;
+			a.setAttribute("download", filename);
+			var b = document.createEvent("MouseEvents");
+			b.initEvent("click", false, true);
+			a.dispatchEvent(b);
+
+			return false;
+		};
+
+		function downloadURI(uri, name) {
+			console.log("downloading " + uri + " -> " + name);
+			var link = document.createElement("a");
+			link.download = name;
+			link.href = uri;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+		};
+
+		var screenshot = function () {
+			var name = "screenshot"; 
+			if (self.useMapping) {
+				//name += ".png";
+				//var dataurl = self.img.toDataURL("image/png");
+				//download(dataurl, name);
+				// workaround for currently flipped stuff.
+				console.log("mapping enabled -> using fallback download mechanism via screenshot service...");
+				name += ".jpg";
+				var url3 = window.location.href + "rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8";
+				downloadURI(url3, name);
+			}
+			else {
+				name += ".jpg";
+				download(self.img.src, name);
+			}
+		};
+		this.div.addEventListener("keydown", (e) => {
+			if (e.keyCode === 123) { //F12 {
+				screenshot();
+			}
+		});
+
+
         connect();
 
-        this.img.oncontextmenu = function (e) { e.preventDefault(); };
+		this.div.oncontextmenu = function (e) { e.preventDefault(); };
 
         var $self = $(this.div);
         var w = $self.width();
@@ -265,7 +419,7 @@ class Renderer {
         var check = function () {
             var cw = $self.width();
             var ch = $self.height();
-            if(cw != w || ch != h)
+            if(cw !== w || ch !== h)
             {
                 w = cw;
                 h = ch;
@@ -463,6 +617,11 @@ class Renderer {
         if (!this.loading) {
             this.loading = true;
             this.createLoader();
+            if (this.mapping) {
+                this.mapping.close();
+                delete this.mapping;
+            }
+
             console.debug("[Aardvark] closed renderControl " + this.id);
             $(this.img).animate({ opacity: 0.0 }, 400, "swing");
         }
@@ -516,7 +675,14 @@ class Renderer {
 
             urlCreator.revokeObjectURL(oldUrl);
 
-            this.send(JSON.stringify({ Case: "Rendered" }));
+			this.send(JSON.stringify({ Case: "Rendered" }));
+
+
+			var shouldSay = this.div.getAttribute("onRendered");
+			if (shouldSay) {
+				aardvark.processEvent(this.div.id, 'onRendered');
+			}
+
             if (this.loading) {
                 this.fadeIn();
             }
@@ -555,6 +721,80 @@ class Renderer {
             else if (o.Case === "Unsubscribe") {
                 var evt = o.eventName;
                 this.unsubscribe(evt);
+            }
+            else if (o.name && o.size && o.length) {
+                var now = performance.now();
+                if (!this.lastTime) {
+                    this.lastTime = now;
+                }
+
+                if (now - this.lastTime > 1000.0) {
+                    if (this.frameCount > 0) {
+                        var dt = now - this.lastTime;
+                        var cnt = this.frameCount;
+                        this.lastTime = now;
+                        this.frameCount = 0;
+                        var fps = 1000.0 * cnt / dt;
+                        this.overlay.innerText = fps.toFixed(2) + " fps";
+                        if (this.overlay.style.opacity < 0.5) {
+                            $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
+                        }
+                    }
+                    else {
+                        if (this.overlay.style.opacity > 0.5) {
+                            $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
+                        }
+                    }
+                }
+
+                this.frameCount++;
+
+                //HERE
+                if (this.mapping) {
+                    if (this.mapping.name !== o.name) {
+                        this.mapping.close();
+                        this.mapping = aardvark.openMapping(o.name, o.length);
+                    }
+                }
+                else {
+                    this.mapping = aardvark.openMapping(o.name, o.length);
+                }
+
+                if (this.frameBufferSize) {
+                    if (this.frameBufferSize.X != o.size.X || this.frameBufferSize.Y != o.size.Y) {
+                        var len = o.size.X * o.size.Y * 4;
+                        this.frameBuffer = new Uint8ClampedArray(len);
+                        this.frameBufferSize = o.size;
+                        this.frameBufferLength = len;
+                    }
+                }
+                else {
+                    var len = o.size.X * o.size.Y * 4;
+                    this.frameBuffer = new Uint8ClampedArray(len);
+                    this.frameBufferSize = o.size;
+                    this.frameBufferLength = len;
+                }
+
+                this.canvas.width = o.size.X;
+                this.canvas.height = o.size.Y;
+                this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
+                this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
+                
+				this.send(JSON.stringify({ Case: "Rendered" }));
+
+				var shouldSay = this.div.getAttribute("onRendered");
+				if (shouldSay) {
+					aardvark.processEvent(this.div.id, 'onRendered');
+				}
+                if (this.loading) {
+                    this.fadeIn();
+                }
+
+                if (this.renderAlways) {
+
+                    //artificial render looop (uncommend in invalidate)
+                    this.render();
+                }
             }
             else {
                 console.warn("unexpected message " + o);
@@ -738,7 +978,7 @@ class Channel {
                 var jmsg = data[i];
                 var msg = JSON.parse(jmsg);
                 if (msg === "commit-suicide") {
-                    console.debug("[Aardvark] channel " + this.name + " was closed")
+                    console.debug("[Aardvark] channel " + this.name + " was closed");
                     delete aardvark.channels[name];
                     break;
                 }

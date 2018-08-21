@@ -26,7 +26,7 @@ let update (model : BoxSelectionDemoModel) (act : Action) =
         
     match act with
         | CameraMessage m -> 
-                { model with camera = CameraController.update model.camera m }          
+                { model with camera = FreeFlyController.update model.camera m }          
         | RenderingAction a ->
                 { model with rendering = RenderingParameters.update model.rendering a }
         | Select id-> 
@@ -99,9 +99,10 @@ let view (model : MBoxSelectionDemoModel) =
       
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
-            CameraController.controlledControl model.camera CameraMessage frustum
+            FreeFlyController.controlledControl model.camera CameraMessage frustum
                 (AttributeMap.ofList [
                     attribute "style" "width:65%; height: 100%; float: left;"
+                    attribute "data-samples" "8"
                 ])
                 (
                        
@@ -152,7 +153,7 @@ let view (model : MBoxSelectionDemoModel) =
              
 let initial =
     {
-        camera           = CameraController.initial            
+        camera           = FreeFlyController.initial            
         rendering        = RenderingParameters.initial            
         boxHovered       = None
         boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> mkVisibleBox Primitives.colors.[i % 5] k) |> PList.ofList
@@ -164,7 +165,7 @@ let initial =
 let app : App<BoxSelectionDemoModel,MBoxSelectionDemoModel,Action> =
     {
         unpersist = Unpersist.instance
-        threads = fun model -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
+        threads = fun model -> FreeFlyController.threads model.camera |> ThreadPool.map CameraMessage
         initial = initial
         update = update
         view = view

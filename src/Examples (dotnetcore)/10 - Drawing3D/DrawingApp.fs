@@ -132,7 +132,7 @@ let view (model : MSimpleDrawingModel) =
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum
                 (AttributeMap.ofList [
-                        onKeyDown KeyDown; onKeyUp KeyUp; attribute "style" "width:65%; height: 100%; float: left;"
+                        onKeyDown KeyDown; onKeyUp KeyUp; attribute "style" "width:65%; height: 100%; float: left;"; attribute "data-samples" "8"
                     ]
                 )
                 (scene3D model)

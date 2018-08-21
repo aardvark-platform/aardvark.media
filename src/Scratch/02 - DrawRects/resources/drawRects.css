@@ -1,0 +1,13 @@
+:root {
+    --frameWidth: 10px;
+}
+
+.editorFrame {
+    height: calc(100% - var(--frameWidth) * 2);
+    width: calc(100% - var(--frameWidth) * 2);
+    position: relative;
+    left: calc(var(--frameWidth));
+    top: calc(var(--frameWidth));
+    border-style: solid;
+    border-width: 0.5px;
+}

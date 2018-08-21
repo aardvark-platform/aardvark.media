@@ -4,15 +4,50 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Application
 
-type CameraControllerMessage = 
-        | Down of button : MouseButtons * pos : V2i
-        | Up of button : MouseButtons
-        | Wheel of V2d
-        | Move of V2i
-        | StepTime
-        | KeyDown of key : Keys
-        | KeyUp of key : Keys
-        | Blur
+[<DomainType>]
+type FreeFlyConfig = 
+    {
+        lookAtMouseSensitivity  : float
+        lookAtConstant          : float
+        lookAtDamping           : float
+
+        panMouseSensitivity     : float
+        panConstant             : float
+        panDamping              : float
+        
+        dollyMouseSensitivity   : float
+        dollyConstant           : float
+        dollyDamping             : float
+
+        zoomMouseWheelSensitivity : float
+        zoomConstant              : float
+        zoomDamping                : float
+
+        moveSensitivity : float
+    }
+
+module FreeFlyConfig =
+    let initial = {
+        lookAtMouseSensitivity       = 0.01
+        lookAtConstant               = 0.1
+        lookAtDamping                = 30.0
+                                     
+        panMouseSensitivity          = 0.05
+        panConstant                  = 0.01
+        panDamping                   = 3.0
+                                     
+        dollyMouseSensitivity        = 0.175
+        dollyConstant                = 0.05
+        dollyDamping                 = 3.25
+                                     
+        zoomMouseWheelSensitivity    = 1.5
+        zoomConstant                 = 0.05
+        zoomDamping                  = 3.25
+
+        moveSensitivity = 1.0
+    }
+
+
 
 [<DomainType>]
 type CameraControllerState =
@@ -20,23 +55,38 @@ type CameraControllerState =
         view : CameraView
 
         dragStart : V2i
+        movePos   : V2i
         look      : bool
         zoom      : bool
         pan       : bool
-
+        dolly     : bool
+        isWheel     : bool
+        scrolling   : bool
+        
         forward     : bool
         backward    : bool
         left        : bool
         right       : bool
         moveVec     : V3i
+        moveSpeed   : float
+        panSpeed    : float
         orbitCenter : Option<V3d>
         lastTime    : Option<float>
-        isWheel     : bool
 
-        sensitivity     : float
-        zoomFactor      : float
-        panFactor       : float
-        rotationFactor  : float        
+        animating   : bool
+
+        sensitivity       : float
+        scrollSensitivity : float
+        zoomFactor        : float
+        panFactor         : float
+        rotationFactor    : float    
+        
+        targetPhiTheta  : V2d
+        targetPan : V2d    
+        targetDolly : float
+        targetZoom : float
+
+        freeFlyConfig : FreeFlyConfig
 
         [<TreatAsValue>]
         stash : Option<CameraControllerState> 

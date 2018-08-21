@@ -39,7 +39,7 @@ module Updaters =
 
     type UpdateState<'msg> =
         {
-            scenes              : Dictionary<string, Scene * (ClientInfo -> ClientState)>
+            scenes              : ContraDict<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>
             handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
             references          : Dictionary<string * ReferenceKind, Reference>
             activeChannels      : Dict<string * string, ChannelReader>
@@ -261,6 +261,9 @@ module Updaters =
     type AttributeUpdater<'msg>(attributes : AttributeMap<'msg>) =
         let reader = attributes.GetReader()
 
+        member x.TryGetAttrbute(name : string) =
+            HMap.tryFind name reader.State
+
         member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) =
             JSExpr.Sequential [
                 let atts = reader.GetOperations token
@@ -442,18 +445,26 @@ module Updaters =
             att.Dispose()
             JSExpr.Nop
             
-    and SceneUpdater<'msg>(e : SceneNode<'msg>) =
+    and SceneUpdater<'msg>(e : SceneNode<'msg>) as this =
         inherit AbstractUpdater<'msg>(e)
             
         let mutable initial = true
         let att = new AttributeUpdater<_>(e.Attributes)
 
+        let renderMessage (info : ClientInfo) =
+            let attributes = e.Attributes.Content.GetValue()
+            match HMap.tryFind "preRender" attributes with
+                | Some (AttributeValue.Event evt) ->
+                    evt.serverSide info.session this.Id.Value []
+                | _ ->
+                    Seq.empty
+                    
         override x.CreateElement = Some ("div", None)
 
         override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
             if initial then
                 initial <- false
-                state.scenes.[x.Id.Value] <- (e.Scene, e.GetClientState)
+                state.scenes.[x.Id.Value] <- (e.Scene, Some renderMessage, e.GetClientState)
                     
             let id = x.Id.Value
             att.Update(token, state, id, self)
@@ -507,8 +518,9 @@ module Updaters =
             | None ->
                 let subject = new System.Reactive.Subjects.Subject<'inner>()
                 let innerState =
+                    let test = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f -> f >> Seq.map m.Mapping)), getState))
                     {
-                        scenes              = state.scenes
+                        scenes              = test
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
                         references          = state.references
                         activeChannels      = state.activeChannels
@@ -535,14 +547,22 @@ module Updaters =
             
         let mutable cache : Option<UpdateState<'inner> * System.Reactive.Subjects.Subject<'inner> * IDisposable> = None
 
-        let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
+        let processMsgs (client : Guid) (messages : seq<'inner>) =
             match cache with
                 | Some (_, subject, _) ->
-                    let messages = handler client bla args |> Seq.cache
+                    let messages = messages |> Seq.cache
                     m.update client messages
                     for msg in messages do subject.OnNext msg
                     let model = m.model.GetValue()
-                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg))
+                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg)) |> Seq.cache
+                | _ ->
+                    Seq.empty
+
+        let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
+            match cache with
+                | Some (_, subject, _) ->
+                    let messages = handler client bla args
+                    processMsgs client messages
                 | None ->
                     Seq.empty
 
@@ -553,7 +573,7 @@ module Updaters =
                 let subject = new System.Reactive.Subjects.Subject<'inner>()
                 let innerState =
                     {
-                        scenes              = state.scenes
+                        scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f v -> let model = m.model.GetValue() in v |> f |> processMsgs v.session)), getState))
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
                         references          = state.references
                         activeChannels      = state.activeChannels

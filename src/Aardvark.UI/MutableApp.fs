@@ -67,24 +67,34 @@ module MutableApp =
     let toWebPart' (runtime : IRuntime) (useGpuCompression : bool) (app : MutableApp<'model, 'msg>) =
         
         let sceneStore =
-            ConcurrentDictionary<string, Scene * (ClientInfo -> ClientState)>()
+            ConcurrentDictionary<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>()
 
         let compressor =
             if useGpuCompression then new JpegCompressor(runtime) |> Some
             else None
-        
+         
         let renderer =
             {
                 runtime = runtime
                 content = fun sceneName ->
                     match sceneStore.TryGetValue sceneName with
-                        | (true, (scene, cam)) -> Some scene
+                        | (true, (scene, _, _)) -> Some scene
                         | _ -> None
 
                 getState = fun clientInfo ->
                     match sceneStore.TryGetValue clientInfo.sceneName with
-                        | (true, (scene, cam)) -> Some (cam clientInfo)
-                        | _ -> None
+                        | (true, (scene, update, cam)) -> 
+                            match update with
+                                | Some update -> 
+                                    let msgs = update clientInfo
+                                    if not (Seq.isEmpty msgs) then
+                                        app.updateSync clientInfo.session msgs
+                                | None ->
+                                    ()
+
+                            Some (cam clientInfo)
+                        | _ -> 
+                            None
 
                 compressor = compressor
 
@@ -104,10 +114,11 @@ module MutableApp =
                     let updater = app.ui.NewUpdater(request)
                     
                     let handlers = Dictionary()
+                    let scenes = Dictionary()
 
                     let state : UpdateState<'msg> =
                         {
-                            scenes          = Dictionary()
+                            scenes          = ContraDict.ofDictionary scenes
                             handlers        = ContraDict.ofDictionary handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
@@ -139,7 +150,7 @@ module MutableApp =
                                         o.EvaluateAlways AdaptiveToken.Top (fun t ->
                                             if Config.shouldTimeJsCodeGeneration then 
                                                 Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
-
+   
                                             let code = 
                                                 let expr = 
                                                     lock state (fun () -> 
@@ -150,7 +161,7 @@ module MutableApp =
                                                         r
                                                     )
 
-                                                for (name, sd) in Dictionary.toSeq state.scenes do
+                                                for (name, sd) in Dictionary.toSeq scenes do
                                                     sceneStore.TryAdd(name, sd) |> ignore
 
                                                 let newReferences = state.references.Values |> Seq.toArray
@@ -204,9 +215,16 @@ module MutableApp =
                                         )
                                     )
 
+                        }  
+                         
+                    Async.Start <|
+                        async {
+                            try
+                                return! updateThread
+                            with e -> 
+                                Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
+                                raise e
                         }
-
-                    Async.Start updateThread
 
                     socket {
                         while running do
