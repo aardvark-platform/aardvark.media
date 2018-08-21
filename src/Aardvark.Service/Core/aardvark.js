@@ -402,11 +402,30 @@ class Renderer {
 				download(self.img.src, name);
 			}
 		};
+		var ctrlDown = false;
 		this.div.addEventListener("keydown", (e) => {
-			if (e.keyCode === 123) { //F12 {
+			if (e.keyCode === 123 && !ctrlDown) { //F12 {
 				screenshot();
 			}
 		});
+
+		if (aardvark.captureFullscreen && aardvark.electron) {
+			console.log("installing fullscreen capturer");
+			this.div.addEventListener("keydown", (e) => {
+				if (e.keyCode === 17) ctrlDown = true;
+				else if (e.keyCode === 123 && ctrlDown) {
+					var path = aardvark.dialog.showSaveDialog({
+						filters: [
+							{ name: 'Images', extensions: ['png'] }
+						]});
+					console.log("saving fullscreen screenshot to" + path);
+					aardvark.captureFullscreen(path);
+				}
+			});
+			this.div.addEventListener("keyup", (e) => {
+				if (e.keyCode === 17) ctrlDown = false;
+			});
+		}
 
 
         connect();
