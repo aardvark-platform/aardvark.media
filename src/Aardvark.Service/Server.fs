@@ -69,7 +69,7 @@ module private Tools =
     module Vulkan = 
         open Aardvark.Rendering.Vulkan
 
-        let downloadFBO (jpeg : TJCompressor) (size : V2i) (fbo : Framebuffer) =
+        let downloadFBO (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
             let device = fbo.Device
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
 
@@ -90,7 +90,40 @@ module private Tools =
                         NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y, 
                         TJPixelFormat.RGBX, 
                         TJSubsampling.S444, 
-                        80, 
+                        quality, 
+                        TJFlags.BottomUp ||| TJFlags.ForceSSE3
+                    )
+                )
+
+            device.Delete tmp
+            result
+
+        let downloadFBOMS (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
+            let device = fbo.Device
+            let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
+
+            let tempImage = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+
+            let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
+            let oldLayout = color.Image.Layout
+            device.perform {
+                do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
+                do! Command.ResolveMultisamples(color.Image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+                do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
+                do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], tmp)
+                do! Command.TransformLayout(color.Image, oldLayout)
+            }
+            
+            let rowSize = 4 * size.X
+            let alignedRowSize = rowSize
+
+            let result = 
+                tmp.Volume.Mapped (fun src ->
+                    jpeg.Compress(
+                        NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y, 
+                        TJPixelFormat.RGBX, 
+                        TJSubsampling.S444, 
+                        quality, 
                         TJFlags.BottomUp ||| TJFlags.ForceSSE3
                     )
                 )
@@ -99,12 +132,12 @@ module private Tools =
             result
 
         type Framebuffer with
-            member x.DownloadJpegColor() =
+            member x.DownloadJpegColor(quality : int) =
                 let jpeg = Compressor.Instance
                 if x.Attachments.[DefaultSemantic.Colors].Image.Samples <> 1 then
-                    failwith "MS not implemented"
-
-                downloadFBO jpeg x.Size x
+                    downloadFBOMS jpeg x.Size quality x
+                else
+                    downloadFBO jpeg x.Size quality x
 
     [<AutoOpen>]
     module GL = 
@@ -112,7 +145,7 @@ module private Tools =
         open OpenTK.Graphics.OpenGL4
         open Aardvark.Rendering.GL
 
-        let private downloadFBO (jpeg : TJCompressor) (size : V2i) (ctx : Context) =
+        let private downloadFBO (jpeg : TJCompressor) (size : V2i) (quality : int) (ctx : Context) =
             let pbo = GL.GenBuffer()
 
             let rowSize = 3 * size.X
@@ -131,7 +164,7 @@ module private Tools =
                     ptr, alignedRowSize, size.X, size.Y, 
                     TJPixelFormat.RGB, 
                     TJSubsampling.S444, 
-                    80, 
+                    quality, 
                     TJFlags.BottomUp ||| TJFlags.ForceSSE3
                 )
 
@@ -142,7 +175,7 @@ module private Tools =
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
 
         type Framebuffer with
-            member x.DownloadJpegColor() =
+            member x.DownloadJpegColor(quality : int) =
                 let jpeg = Compressor.Instance
                 let ctx = x.Context
                 use __ = ctx.ResourceLock
@@ -174,20 +207,20 @@ module private Tools =
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
                     
                     try
-                        ctx |> downloadFBO jpeg size
+                        ctx |> downloadFBO jpeg size quality
                     finally
                         GL.DeleteFramebuffer(fbo)
                         GL.DeleteRenderbuffer(resolved)
 
                 else
                     GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-                    ctx |> downloadFBO jpeg size
+                    ctx |> downloadFBO jpeg size quality
 
     type IFramebuffer with
-        member x.DownloadJpegColor() =
+        member x.DownloadJpegColor(quality : int) =
             match x with
-                | :? Aardvark.Rendering.GL.Framebuffer as fbo -> fbo.DownloadJpegColor()
-                | :? Aardvark.Rendering.Vulkan.Framebuffer as fbo -> fbo.DownloadJpegColor()
+                | :? Aardvark.Rendering.GL.Framebuffer as fbo -> fbo.DownloadJpegColor(quality)
+                | :? Aardvark.Rendering.Vulkan.Framebuffer as fbo -> fbo.DownloadJpegColor(quality)
                 | _ -> failwith "not implemented"
  
     type WebSocket with
@@ -717,9 +750,10 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         member x.Dispose() =
             x.Dispose()
 
-type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
     inherit ClientRenderTask(server, getScene)
     
+    let quantization,quality = quality
     let runtime = server.runtime
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
     let mutable resolved : Option<IBackendTexture> = None
@@ -733,7 +767,7 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
                     | Some old -> 
                         old.Dispose()
                 Log.line "[Media.Server] creating GPU image compressor for size: %A" size
-                let instance = compressor.NewInstance(size, Quantization.photoshop80)
+                let instance = compressor.NewInstance(size, quantization)
                 gpuCompressorInstance <- Some instance
 
                 resolved |> Option.iter runtime.DeleteTexture
@@ -759,7 +793,7 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
                         runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
                     gpuCompressorInstance.Compress(resolved.[TextureAspect.Color,0,0])
                 | None -> 
-                    target.DownloadJpegColor()
+                    target.DownloadJpegColor(quality)
         Jpeg data
 
     override x.Release() =
@@ -767,6 +801,8 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
         resolved |> Option.iter runtime.DeleteTexture
         gpuCompressorInstance <- None
         resolved <- None
+
+    new(server,getScene) = new JpegClientRenderTask(server,getScene,(Quantization.photoshop80,80))
         
 
 type private MappingInfo =
@@ -1681,7 +1717,7 @@ module Server =
             match Map.tryFind "w" args, Map.tryFind "h" args with
                 | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
                     let scene = content signature sceneName
-                    use task = new JpegClientRenderTask(info, content)
+                    use task = new JpegClientRenderTask(info, content, (Quantization.photoshop100,100))
 
                     let clientInfo = 
                         {
@@ -1710,7 +1746,7 @@ module Server =
             yield Reflection.assemblyWebPart typeof<Client>.Assembly
             yield pathScan "/render/%s" (render >> handShake)
             yield path "/stats.json" >=> statistics 
-            yield pathScan "/screenshot/%s" (screenshot) 
+            yield pathScan "/screenshot/%s" screenshot
 
             match info.fileSystemRoot with
                 | Some root ->
