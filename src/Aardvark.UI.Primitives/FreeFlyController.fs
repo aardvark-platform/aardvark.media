@@ -174,7 +174,7 @@ module FreeFlyController =
     
     let exp x = Math.Pow(Math.E, x)
     
-    let updateSmooth (model : CameraControllerState) (message : Message) =
+    let update (model : CameraControllerState) (message : Message) =
         match message with
             | Blur ->
                 { model with 
@@ -364,7 +364,7 @@ module FreeFlyController =
                     |> dolly
 
 
-    let update' = flip updateSmooth
+    let update' = flip update
 
 
 
@@ -439,7 +439,7 @@ module FreeFlyController =
             unpersist = Unpersist.instance
             view = view
             threads = threads
-            update = updateSmooth
+            update = update
             initial = initial
         }
 

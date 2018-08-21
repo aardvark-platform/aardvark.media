@@ -181,14 +181,14 @@ module TestApp =
 
         let update (model : Model) (msg : Message) =
             match msg with
-               | Camera m -> { model with cameraState = FreeFlyController.updateSmooth model.cameraState m}
+               | Camera m -> { model with cameraState = FreeFlyController.update model.cameraState m}
                | Rendered -> 
                     if model.cameraState.animating then
                         { model with cameraState = { model.cameraState with view = model.cameraState.view.WithLocation(model.cameraState.view.Location)} }
                     else
                         model
                | Interpolate -> 
-                    { model with cameraState = FreeFlyController.updateSmooth model.cameraState FreeFlyController.StepTime }
+                    { model with cameraState = FreeFlyController.update model.cameraState FreeFlyController.StepTime }
                | CenterScene -> 
                     { model with cameraState = FreeFlyController.initial }
 

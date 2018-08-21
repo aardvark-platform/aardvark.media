@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "18 - CameraControllerSettings", "Examples (dotnetcore)\18 - CameraControllerSettings\18 - CameraControllerSettings.fsproj", "{1AA14F14-3481-4B58-9BA0-44729938B189}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "06 - DrawRectsShader", "Scratch\06 - DrawRectsShader\06 - DrawRectsShader.fsproj", "{61B377A5-2522-49E1-B040-2D5F3D7EE4D8}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - DrawRects", "Scratch\02 - DrawRects\02 - DrawRects.fsproj", "{C4EBC4E9-48D2-429F-99AB-EFF991C80AFA}"
@@ -86,6 +88,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1AA14F14-3481-4B58-9BA0-44729938B189}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AA14F14-3481-4B58-9BA0-44729938B189}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AA14F14-3481-4B58-9BA0-44729938B189}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AA14F14-3481-4B58-9BA0-44729938B189}.Release|Any CPU.Build.0 = Release|Any CPU
 		{61B377A5-2522-49E1-B040-2D5F3D7EE4D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{61B377A5-2522-49E1-B040-2D5F3D7EE4D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{61B377A5-2522-49E1-B040-2D5F3D7EE4D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -207,6 +213,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{1AA14F14-3481-4B58-9BA0-44729938B189} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{61B377A5-2522-49E1-B040-2D5F3D7EE4D8} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{C4EBC4E9-48D2-429F-99AB-EFF991C80AFA} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{2EC53267-BAD3-486B-9270-65A305443296} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
