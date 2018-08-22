@@ -8,6 +8,8 @@ open Suave.Operators
 
 //[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module WebPart =
+    open Suave.Logging
+
     let runServer (port : int) (content : list<WebPart>) =
         let corsConfig = { defaultCORSConfig with allowedUris = InclusiveOption.All }
 
@@ -24,6 +26,7 @@ module WebPart =
         let config =
             { defaultConfig with
                 bindings = [ HttpBinding.create HTTP IPAddress.Any (uint16 port) ] 
+                logger = Targets.create Verbose [||]
             }
         let index = cors corsConfig >=> choose content
         let (_,s) = startWebServerAsync config index

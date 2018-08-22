@@ -6,6 +6,8 @@ if (!document.aardvark) {
 }
 var aardvark = document.aardvark;
 
+var lastTimeX = performance.now();
+var currentTimeX = performance.now();
 if (!aardvark.newguid) {
     aardvark.newguid = function() {
         /// <summary>
@@ -151,6 +153,16 @@ class Renderer {
         if (renderAlways) renderAlways = true;
         else renderAlways = false;
         this.renderAlways = renderAlways;
+
+        setInterval(function () {
+            currentTimeX = performance.now();
+            var diff = currentTimeX - lastTimeX;
+            console.log(diff);
+            if (diff > 250) {
+                console.error("ALARMSTUFE!!!!!!");
+                debugger;
+            }
+        }, 50);
 
         this.init();
     }
@@ -665,6 +677,7 @@ class Renderer {
             if (!this.lastTime) {
                 this.lastTime = now;
             }
+            lastTimeX = now;
 
             if (now - this.lastTime > 1000.0) {
                 if (this.frameCount > 0) {
@@ -745,8 +758,9 @@ class Renderer {
                 var now = performance.now();
                 if (!this.lastTime) {
                     this.lastTime = now;
+                    
                 }
-
+                lastTimeX = now;
                 if (now - this.lastTime > 1000.0) {
                     if (this.frameCount > 0) {
                         var dt = now - this.lastTime;
@@ -798,7 +812,8 @@ class Renderer {
                 this.canvas.height = o.size.Y;
                 this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
                 this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
-                
+
+                //console.log("rendered...");
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
 				var shouldSay = this.div.getAttribute("onRendered");

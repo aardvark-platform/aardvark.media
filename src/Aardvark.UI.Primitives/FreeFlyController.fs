@@ -387,15 +387,15 @@ module FreeFlyController =
 
     let attributes (state : MCameraControllerState) (f : Message -> 'msg) = 
          AttributeMap.ofListCond [
-            always (onBlur (fun _ -> f Blur))
-            always (onMouseDown (fun b p -> f (Down(b,p))))
-            onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
-            always (onKeyDown (KeyDown >> f))
-            always (onKeyUp (KeyUp >> f))           
-            always (onWheel(fun x -> f (Wheel x)))
-            onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseMove (Move >> f))
-            always (onEvent "preRender" [] (fun _ -> f Interpolate))
-            onlyWhen state.animating (onEvent "onRendered" [] (fun _ -> f Rendered))
+            // always (onBlur (fun _ -> f Blur))
+            // always (onMouseDown (fun b p -> f (Down(b,p))))
+            // onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
+            // always (onKeyDown (KeyDown >> f))
+            // always (onKeyUp (KeyUp >> f))           
+            // always (onWheel(fun x -> f (Wheel x)))
+            // onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseMove (Move >> f))
+            // always (onEvent "preRender" [] (fun _ -> f Interpolate))
+            // onlyWhen state.animating (onEvent "onRendered" [] (fun _ -> f Rendered))
         ]
 
     let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) =

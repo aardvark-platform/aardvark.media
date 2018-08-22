@@ -26,8 +26,11 @@ type Message =
                     
     | SetMoveSensitivity   of float
 
+    | SetTime
+
 [<DomainType>]
 type Model = 
     {
         cameraState : CameraControllerState
+        rot : float
     }
