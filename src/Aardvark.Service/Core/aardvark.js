@@ -157,9 +157,16 @@ class Renderer {
         setInterval(function () {
             currentTimeX = performance.now();
             var diff = currentTimeX - lastTimeX;
-            console.log(diff);
+            //console.log(diff);
             if (diff > 250) {
-                console.error("ALARMSTUFE!!!!!!");
+                var currentdate = new Date();
+                var datetime = "Last Sync: " + currentdate.getDate() + "/"
+                    + (currentdate.getMonth() + 1) + "/"
+                    + currentdate.getFullYear() + " @ "
+                    + currentdate.getHours() + ":"
+                    + currentdate.getMinutes() + ":"
+                    + currentdate.getSeconds();
+                console.error("ALARMSTUFE!!!!!!" + datetime);
                 debugger;
             }
         }, 50);

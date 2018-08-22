@@ -12,10 +12,11 @@ open RenderControl
 
 [<EntryPoint; STAThread>]
 let main argv = 
+    System.Runtime.GCSettings.LatencyMode <- System.Runtime.GCLatencyMode.SustainedLowLatency
+    if System.Runtime.GCSettings.IsServerGC then printfn "i am server!" else printfn "no server"
     Ag.initialize()
     Aardvark.Init()
     Aardium.init()
-
     // media apps require a runtime, which serves as renderer for your render controls.
     // you can use OpenGL or VulkanApplication.
     let useVulkan = false

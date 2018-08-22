@@ -59,6 +59,7 @@ let view (model : MModel) =
                     (AttributeMap.ofList [ style "width: 100%; height:100%"; 
                                            attribute "showFPS" "true";       // optional, default is false
                                            attribute "data-samples" "1"
+                                           onEvent "onRendered" [] (fun _ -> SetTime)
                                          ]) 
                     (viewScene model)
 
@@ -94,18 +95,19 @@ let view (model : MModel) =
     ]
 
 let threads (model : Model) = 
-    let pool = ThreadPool.empty
-
-       
-    let rec time() =
-        proclist {
-            do! Proc.Sleep 10
-            //let! _ = Async.AwaitEvent m.Event
-            yield Message.SetTime
-            yield! time()
-        }
-
-    ThreadPool.add "timer" (time()) pool
+    ThreadPool.empty
+    //let pool = ThreadPool.empty
+    //
+    //   
+    //let rec time() =
+    //    proclist {
+    //        do! Proc.Sleep 10
+    //        //let! _ = Async.AwaitEvent m.Event
+    //        yield Message.SetTime
+    //        yield! time()
+    //    }
+    //
+    //ThreadPool.add "timer" (time()) pool
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

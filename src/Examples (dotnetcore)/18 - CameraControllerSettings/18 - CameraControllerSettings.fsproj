@@ -4,7 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-	    <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
+		<EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
+  <ServerGarbageCollection>true</ServerGarbageCollection>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>
