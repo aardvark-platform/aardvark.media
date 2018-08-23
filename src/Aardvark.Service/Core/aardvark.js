@@ -193,7 +193,7 @@ class Renderer {
 
         
 
-		if (aardvark.localhost && aardvark.openMapping && this.useMapping) {
+		if (aardvark.localhost && top.aardvark.openMapping && this.useMapping) {
             var canvas = document.createElement("canvas");
             this.div.appendChild(canvas);
             canvas.setAttribute("class", "rendercontrol");
@@ -772,11 +772,11 @@ class Renderer {
                 if (this.mapping) {
                     if (this.mapping.name !== o.name) {
                         this.mapping.close();
-                        this.mapping = aardvark.openMapping(o.name, o.length);
+                        this.mapping = top.aardvark.openMapping(o.name, o.length);
                     }
                 }
                 else {
-                    this.mapping = aardvark.openMapping(o.name, o.length);
+					this.mapping = top.aardvark.openMapping(o.name, o.length);
                 }
 
                 if (this.frameBufferSize) {
