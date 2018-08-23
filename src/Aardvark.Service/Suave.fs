@@ -25,7 +25,7 @@ module WebPart =
 
         let config =
             { defaultConfig with
-                bindings = [ HttpBinding.create HTTP IPAddress.Any (uint16 port) ] 
+                bindings = [ HttpBinding.create HTTP IPAddress.Loopback (uint16 port) ] 
                 logger = Targets.create Verbose [||]
             }
         let index = cors corsConfig >=> choose content

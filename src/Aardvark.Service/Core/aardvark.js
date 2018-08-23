@@ -167,7 +167,6 @@ class Renderer {
                     + currentdate.getMinutes() + ":"
                     + currentdate.getSeconds();
                 console.error("ALARMSTUFE!!!!!!" + datetime);
-                debugger;
             }
         }, 50);
 
@@ -679,6 +678,7 @@ class Renderer {
     }
 
     received(msg) {
+        debugger;
         if (msg.data instanceof Blob) {
             var now = performance.now();
             if (!this.lastTime) {
@@ -743,7 +743,7 @@ class Renderer {
             if (o.Case === "Invalidate") {
                 if (!this.renderAlways) {
                     // TODO: what if not visible??
-                    this.render();
+                    //this.render();
                 }
             }
             else if (o.Case === "WorldPosition" && o.pos) {
@@ -761,6 +761,31 @@ class Renderer {
                 var evt = o.eventName;
                 this.unsubscribe(evt);
             }
+            else if (o == "dummy")
+            {
+                console.log("SDJFAJSDFJASJDFAJSDFJ");
+                var now = performance.now();
+                if (!this.lastTime) {
+                    this.lastTime = now;
+
+                }
+                lastTimeX = now;
+                this.send(JSON.stringify({ Case: "Rendered" }));
+
+                var shouldSay = this.div.getAttribute("onRendered");
+                if (shouldSay) {
+                    aardvark.processEvent(this.div.id, 'onRendered');
+                }
+                if (this.loading) {
+                    this.fadeIn();
+                }
+
+                if (this.renderAlways || true) {
+
+                    //artificial render looop (uncommend in invalidate)
+                    this.render();
+                }
+            }
             else if (o.name && o.size && o.length) {
                 var now = performance.now();
                 if (!this.lastTime) {
@@ -768,57 +793,57 @@ class Renderer {
                     
                 }
                 lastTimeX = now;
-                if (now - this.lastTime > 1000.0) {
-                    if (this.frameCount > 0) {
-                        var dt = now - this.lastTime;
-                        var cnt = this.frameCount;
-                        this.lastTime = now;
-                        this.frameCount = 0;
-                        var fps = 1000.0 * cnt / dt;
-                        this.overlay.innerText = fps.toFixed(2) + " fps";
-                        if (this.overlay.style.opacity < 0.5) {
-                            $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
-                        }
-                    }
-                    else {
-                        if (this.overlay.style.opacity > 0.5) {
-                            $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
-                        }
-                    }
-                }
+                //if (now - this.lastTime > 1000.0) {
+                //    if (this.frameCount > 0) {
+                //        var dt = now - this.lastTime;
+                //        var cnt = this.frameCount;
+                //        this.lastTime = now;
+                //        this.frameCount = 0;
+                //        var fps = 1000.0 * cnt / dt;
+                //        this.overlay.innerText = fps.toFixed(2) + " fps";
+                //        if (this.overlay.style.opacity < 0.5) {
+                //            $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
+                //        }
+                //    }
+                //    else {
+                //        if (this.overlay.style.opacity > 0.5) {
+                //            $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
+                //        }
+                //    }
+                //}
 
                 this.frameCount++;
 
-                //HERE
-                if (this.mapping) {
-                    if (this.mapping.name !== o.name) {
-                        this.mapping.close();
-                        this.mapping = aardvark.openMapping(o.name, o.length);
-                    }
-                }
-                else {
-                    this.mapping = aardvark.openMapping(o.name, o.length);
-                }
-
-                if (this.frameBufferSize) {
-                    if (this.frameBufferSize.X != o.size.X || this.frameBufferSize.Y != o.size.Y) {
-                        var len = o.size.X * o.size.Y * 4;
-                        this.frameBuffer = new Uint8ClampedArray(len);
-                        this.frameBufferSize = o.size;
-                        this.frameBufferLength = len;
-                    }
-                }
-                else {
-                    var len = o.size.X * o.size.Y * 4;
-                    this.frameBuffer = new Uint8ClampedArray(len);
-                    this.frameBufferSize = o.size;
-                    this.frameBufferLength = len;
-                }
-
-                this.canvas.width = o.size.X;
-                this.canvas.height = o.size.Y;
-                this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
-                this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
+                ////HERE
+                //if (this.mapping) {
+                //    if (this.mapping.name !== o.name) {
+                //        this.mapping.close();
+                //        this.mapping = aardvark.openMapping(o.name, o.length);
+                //    }
+                //}
+                //else {
+                //    this.mapping = aardvark.openMapping(o.name, o.length);
+                //}
+                //
+                //if (this.frameBufferSize) {
+                //    if (this.frameBufferSize.X != o.size.X || this.frameBufferSize.Y != o.size.Y) {
+                //        var len = o.size.X * o.size.Y * 4;
+                //        this.frameBuffer = new Uint8ClampedArray(len);
+                //        this.frameBufferSize = o.size;
+                //        this.frameBufferLength = len;
+                //    }
+                //}
+                //else {
+                //    var len = o.size.X * o.size.Y * 4;
+                //    this.frameBuffer = new Uint8ClampedArray(len);
+                //    this.frameBufferSize = o.size;
+                //    this.frameBufferLength = len;
+                //}
+                //
+                //this.canvas.width = o.size.X;
+                //this.canvas.height = o.size.Y;
+                //this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
+                //this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
 
                 //console.log("rendered...");
 				this.send(JSON.stringify({ Case: "Rendered" }));
@@ -1129,7 +1154,7 @@ if (!aardvark.connect) {
                 var message = JSON.stringify({ sender: sender, name: name, args: args });
                 eventSocket.send(message);
             };
-            doPing();
+            //doPing();
         };
 
         eventSocket.onmessage = function (m) {

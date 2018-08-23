@@ -142,8 +142,9 @@ module MutableApp =
                                 failwithf "[WS] error: %A" err
                                                 
                     let updateThread =
+                        let sw = System.Diagnostics.Stopwatch.StartNew()
                         async {
-                            while running do
+                            while running && sw.Elapsed.TotalSeconds < 10.0 do
                                 let! cont = MVar.takeAsync update
                                 if cont then
                                     lock app.lock (fun () ->
@@ -215,16 +216,18 @@ module MutableApp =
                                         )
                                     )
 
-                        }  
+                            printfn "thread gone!"
+                        }   
                          
                     Async.Start <|
                         async {
+                            do! Async.SwitchToNewThread()
                             try
                                 return! updateThread
                             with e -> 
                                 Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
                                 raise e
-                        }
+                        } 
 
                     socket {
                         while running do
@@ -268,10 +271,30 @@ module MutableApp =
                 | _ ->
                     SocketOp.abort(Error.InputDataError(None, "no session id")) 
 
+        /// An example of explictly fetching websocket errors and handling them in your codebase.
+        let wsWithErrorHandling (webSocket : WebSocket) (context: HttpContext) = 
+   
+           let exampleDisposableResource = { new IDisposable with member __.Dispose() = printfn "Resource needed by websocket connection disposed" }
+           let websocketWorkflow = events webSocket context
+   
+           async {
+            let! successOrError = websocketWorkflow
+            match successOrError with
+            // Success case
+            | Choice1Of2() -> ()
+            // Error case
+            | Choice2Of2(error) ->
+                // Example error handling logic here
+                printfn "Error: [%A]" error
+                exampleDisposableResource.Dispose()
+        
+            return successOrError
+           }
+
         choose [            
             prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
             Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
-            path "/events" >=> handShake events
+            path "/events" >=> handShake wsWithErrorHandling
             path "/" >=> OK template 
         ]
 

@@ -60,6 +60,7 @@ let view (model : MModel) =
                                            attribute "showFPS" "true";       // optional, default is false
                                            attribute "data-samples" "1"
                                            onEvent "onRendered" [] (fun _ -> SetTime)
+                                           attribute "data-renderalways" "true"
                                          ]) 
                     (viewScene model)
 

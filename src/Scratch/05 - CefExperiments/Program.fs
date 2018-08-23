@@ -121,28 +121,28 @@ let main argv =
     ]  
 
     
-    //Xilium.CefGlue.ChromiumUtilities.unpackCef()
-    //Chromium.init ()
-    //use form = new Form()
-    //form.Width <- 800
-    //form.Height <- 600
+    Xilium.CefGlue.ChromiumUtilities.unpackCef()
+    Chromium.init ()
+    use form = new Form()
+    form.Width <- 800
+    form.Height <- 600
 
-    //use ctrl = new AardvarkCefBrowser()
-    //ctrl.Dock <- DockStyle.Fill
-    //form.Controls.Add ctrl
-    //ctrl.StartUrl <- "http://localhost:4321/"
-    //ctrl.ShowDevTools()
-    //form.Text <- "Examples"
+    use ctrl = new AardvarkCefBrowser()
+    ctrl.Dock <- DockStyle.Fill
+    form.Controls.Add ctrl
+    ctrl.StartUrl <- "http://localhost:4321/"
+    ctrl.ShowDevTools()
+    form.Text <- "Examples"
 
-    //Application.Run form
+    Application.Run form
     
-    //Chromium.shutdown()
+    Chromium.shutdown()
 
-    Aardium.run {
-        url "http://localhost:4321/"
-        width 1024
-        height 768
-        debug true
-    }
+    //Aardium.run {
+    //    url "http://localhost:4321/"
+    //    width 1024
+    //    height 768
+    //    debug true
+    //}
 
     0 

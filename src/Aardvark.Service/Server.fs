@@ -1383,17 +1383,28 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let mutable subscription = subscribe()
 
+    let conc = System.Collections.Concurrent.BlockingCollection()
 
+    let mutable first = None
+    let mutable renders = 0
     let renderLoop() =
         while running do
-            let (background, size) = MVar.take requestedSize
+            let (background:C4b, size : V2i) = conc.Take() //MVar.take requestedSize
+            printfn "count: %A renders %A" conc.Count renders
+            renders <- renders + 1
             if size.AllGreater 0 then
                 lock updateLock (fun () ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
                         let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
                         try
                             let state = getState info
-                            let data = task.Run(token, info, state)
+                            let data = 
+                                match first with
+                                     | None -> 
+                                        let data = task.Run(token, info, state)
+                                        //first <- Some data
+                                        data
+                                     | Some d -> d
                             match data with
                                 | Jpeg data -> 
                                     let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
@@ -1422,7 +1433,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 
 
 
-    let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)
+    let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = false, Name = "ClientRenderer_" + string createInfo.session)
 
 
     member x.Info = info
@@ -1479,7 +1490,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         | RequestImage(background, size) ->
                                             invalidateTime.Stop()
                                             roundTripTime.Start()
-                                            MVar.put requestedSize (background, size)
+                                            if renders < 100 then
+                                                conc.Add((background,size)) 
+                                            else
+                                                //printfn "stopping shit"
+                                                //MVar.put requestedSize (background, size)
+                                                let helloWorld = System.Text.Encoding.UTF8.GetBytes("\"dummy\"")
+                                                do! createInfo.socket.send Opcode.Text (ByteSegment helloWorld) true
 
                                         | RequestWorldPosition pixel ->
                                             let wp = 
@@ -1703,6 +1720,26 @@ module Server =
             let json = Pickler.json.PickleToString stats
             ctx |> (OK json >=> Writers.setMimeType "text/json")
 
+       /// An example of explictly fetching websocket errors and handling them in your codebase.
+        let wsWithErrorHandling (str : string)  (webSocket : WebSocket) (context: HttpContext) = 
+   
+           let exampleDisposableResource = { new IDisposable with member __.Dispose() = printfn "Resource needed by websocket connection disposed" }
+           let websocketWorkflow = render str webSocket context
+   
+           async {
+            let! successOrError = websocketWorkflow
+            match successOrError with
+            // Success case
+            | Choice1Of2() -> ()
+            // Error case
+            | Choice2Of2(error) ->
+                // Example error handling logic here
+                printfn "Error: [%A]" error
+                exampleDisposableResource.Dispose()
+        
+            return successOrError
+           }
+
         let screenshot (sceneName : string) (context: HttpContext) =
             let request = context.request
             let args = request.query |> List.choose (function (n,Some v) -> Some(n,v) | _ -> None) |> Map.ofList
@@ -1744,7 +1781,7 @@ module Server =
 
         choose [
             yield Reflection.assemblyWebPart typeof<Client>.Assembly
-            yield pathScan "/render/%s" (render >> handShake)
+            yield pathScan "/render/%s" (handShake << wsWithErrorHandling)
             yield path "/stats.json" >=> statistics 
             yield pathScan "/screenshot/%s" screenshot
 
