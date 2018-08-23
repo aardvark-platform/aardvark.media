@@ -801,10 +801,10 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-				var shouldSay = this.div.getAttribute("onRendered");
-				if (shouldSay) {
+				//var shouldSay = this.div.getAttribute("onRendered");
+				//if (shouldSay) {
 					aardvark.processEvent(this.div.id, 'onRendered');
-				}
+				//}
                 if (this.loading) {
                     this.fadeIn();
                 }

@@ -186,17 +186,19 @@ module FreeFlyController =
     
     let update (model : CameraControllerState) (message : Message) =
         match message with
-            | Rendered -> 
-                if model.animating then dummyChange model else model
+            //| Rendered -> 
+            //    if model.animating then dummyChange model else model
             | Blur ->
-                { model with 
-                    lastTime = None
-                    moveVec = V3i.Zero
-                    dragStart = V2i.Zero
-                    look = false; zoom = false; pan = false                    
-                    forward = false; backward = false; left = false; right = false
-                }
-            | Interpolate ->
+                model
+                //{ model with 
+                //    lastTime = None
+                //    moveVec = V3i.Zero
+                //    dragStart = V2i.Zero
+                //    look = false; zoom = false; pan = false                    
+                //    forward = false; backward = false; left = false; right = false
+                //}
+            | Interpolate | Rendered ->
+
                 let now = sw.Elapsed.TotalSeconds
               
                 let clampAbs (maxAbs : float) (v : float) =
@@ -394,8 +396,8 @@ module FreeFlyController =
             always (onKeyUp (KeyUp >> f))           
             always (onWheel(fun x -> f (Wheel x)))
             onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseMove (Move >> f))
-            always (onEvent "preRender" [] (fun _ -> f Interpolate))
-            onlyWhen state.animating (onEvent "onRendered" [] (fun _ -> f Rendered))
+            //always (onEvent "preRender" [] (fun _ -> f Interpolate))
+            always (onEvent "onRendered" [] (fun _ -> f Rendered))
         ]
 
     let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) =
