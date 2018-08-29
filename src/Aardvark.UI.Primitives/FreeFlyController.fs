@@ -186,8 +186,8 @@ module FreeFlyController =
     
     let update (model : CameraControllerState) (message : Message) =
         match message with
-            | Rendered -> 
-                if model.animating then dummyChange model else model
+            //| Rendered -> 
+            //    if model.animating then dummyChange model else model
             | Blur ->
                 { model with 
                     lastTime = None
@@ -196,7 +196,7 @@ module FreeFlyController =
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
                 }
-            | Interpolate ->
+            | Interpolate | Rendered ->
                 let now = sw.Elapsed.TotalSeconds
               
                 let clampAbs (maxAbs : float) (v : float) =
@@ -267,7 +267,11 @@ module FreeFlyController =
                 if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) && (abs model.targetZoom <= 0.05) then
                     stopAnimation model
                 else
-                    { model with lastTime = Some now; }
+                    let model = 
+                        { model with lastTime = Some now; }
+                    if model.animating then 
+                        { model with lastTime = Some now; } |> dummyChange 
+                    else model 
 
             | KeyDown Keys.W ->
                 if not model.forward then
@@ -394,8 +398,8 @@ module FreeFlyController =
             always (onKeyUp (KeyUp >> f))           
             always (onWheel(fun x -> f (Wheel x)))
             onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseMove (Move >> f))
-            always (onEvent "preRender" [] (fun _ -> f Interpolate))
-            onlyWhen state.animating (onEvent "onRendered" [] (fun _ -> f Rendered))
+            //always (onEvent "preRender" [] (fun _ -> f Interpolate))
+            always <| onEvent "onRendered" [] (fun _ -> f Rendered)
         ]
 
     let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) =

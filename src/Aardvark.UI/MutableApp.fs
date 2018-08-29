@@ -141,10 +141,10 @@ module MutableApp =
                             | Choice2Of2 err ->
                                 failwithf "[WS] error: %A" err
                                                 
-                    let updateThread =
-                        async {
+                    let updateFunction () =
+                        try
                             while running do
-                                let! cont = MVar.takeAsync update
+                                let cont = MVar.take update
                                 if cont then
                                     lock app.lock (fun () ->
                                         o.EvaluateAlways AdaptiveToken.Top (fun t ->
@@ -214,17 +214,16 @@ module MutableApp =
                                             oldChannels <- c
                                         )
                                     )
+                          with e -> 
+                            Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
+                            raise e
 
-                        }  
-                         
-                    Async.Start <|
-                        async {
-                            try
-                                return! updateThread
-                            with e -> 
-                                Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
-                                raise e
-                        }
+
+                    let updateThread = Thread(ThreadStart updateFunction)
+                    updateThread.IsBackground <- true
+                    updateThread.Name <- "[media] UpdateThread"
+                    updateThread.Start()
+                    
 
                     socket {
                         while running do
