@@ -18,7 +18,7 @@ let initialCamera = {
 let update (model : Model) (msg : Message) =
     match msg with
         | Camera m -> 
-            { model with cameraState = FreeFlyController.update model.cameraState m }
+            { model with cameraState = FreeFlyController.update model.cameraState m; rot = model.rot + 0.01 }
         | CenterScene -> 
             { model with cameraState = initialCamera }
         | SetLookAtSensitivity s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.lookAtMouseSensitivity <== (model,s)
@@ -59,7 +59,7 @@ let view (model : MModel) =
                     (AttributeMap.ofList [ style "width: 100%; height:100%"; 
                                            attribute "showFPS" "true";       // optional, default is false
                                            attribute "data-samples" "8"
-                                           onEvent "onRendered" [] (fun _ -> SetTime)
+                                           //onEvent "onRendered" [] (fun _ -> SetTime)
                                          ]) 
                     (viewScene model)
 

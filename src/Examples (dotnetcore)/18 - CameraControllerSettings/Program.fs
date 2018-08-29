@@ -18,7 +18,7 @@ let main argv =
     printfn "%A %A " w c
     System.Threading.ThreadPool.GetMinThreads(&w,&c)
     printfn "%A %A " w c
-    System.Threading.ThreadPool.SetMinThreads(4,4) |> printfn "oida: %A"
+    System.Threading.ThreadPool.SetMinThreads(1,1) |> printfn "oida: %A"
     System.Threading.ThreadPool.SetMaxThreads(12,12) |> printfn "oida: %A"
     Ag.initialize()
     Aardvark.Init()
