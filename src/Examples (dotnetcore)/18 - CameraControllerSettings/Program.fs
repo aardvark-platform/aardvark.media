@@ -12,6 +12,14 @@ open RenderControl
 
 [<EntryPoint; STAThread>]
 let main argv = 
+    let mutable w = 0
+    let mutable c = 0
+    System.Threading.ThreadPool.GetMaxThreads(&w,&c)
+    printfn "%A %A " w c
+    System.Threading.ThreadPool.GetMinThreads(&w,&c)
+    printfn "%A %A " w c
+    System.Threading.ThreadPool.SetMinThreads(4,4) |> printfn "oida: %A"
+    System.Threading.ThreadPool.SetMaxThreads(12,12) |> printfn "oida: %A"
     Ag.initialize()
     Aardvark.Init()
     Aardium.init()
@@ -33,6 +41,8 @@ let main argv =
 
     let instance = 
         app |> App.start
+
+
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' runtime false instance

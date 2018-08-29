@@ -38,11 +38,13 @@ let update (model : Model) (msg : Message) =
         | SetZoomSmoothing     s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.zoomDamping  <== (model,s)
 
         | SetMoveSensitivity   s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.moveSensitivity <== (model,s)
+        | SetTime -> { model with rot = 0.01 + model.rot }
        
 
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+     |> Sg.trafo (model.rot |> Mod.map (fun a -> Trafo3d.RotationZ a))
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -57,6 +59,7 @@ let view (model : MModel) =
                     (AttributeMap.ofList [ style "width: 100%; height:100%"; 
                                            attribute "showFPS" "true";       // optional, default is false
                                            attribute "data-samples" "8"
+                                           onEvent "onRendered" [] (fun _ -> SetTime)
                                          ]) 
                     (viewScene model)
 
@@ -92,7 +95,7 @@ let view (model : MModel) =
     ]
 
 let threads (model : Model) = 
-    FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
+    ThreadPool.empty
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
@@ -102,6 +105,7 @@ let app =
         initial = 
             { 
                cameraState = initialCamera
+               rot = 0.0
             }
         update = update 
         view = view
