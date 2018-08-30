@@ -12,21 +12,15 @@ open RenderControl
 
 [<EntryPoint; STAThread>]
 let main argv = 
-    let mutable w = 0
-    let mutable c = 0
-    System.Threading.ThreadPool.GetMaxThreads(&w,&c)
-    printfn "%A %A " w c
-    System.Threading.ThreadPool.GetMinThreads(&w,&c)
-    printfn "%A %A " w c
-    System.Threading.ThreadPool.SetMinThreads(1,1) |> printfn "oida: %A"
-    System.Threading.ThreadPool.SetMaxThreads(12,12) |> printfn "oida: %A"
-    Ag.initialize()
+    printfn "%A" System.Environment.CurrentDirectory
+
     Aardvark.Init()
+    Ag.initialize()
     Aardium.init()
 
     // media apps require a runtime, which serves as renderer for your render controls.
     // you can use OpenGL or VulkanApplication.
-    let useVulkan = true
+    let useVulkan = false
 
     let runtime, disposable =
         if useVulkan then
