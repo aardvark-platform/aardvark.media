@@ -53,8 +53,10 @@ module FreeFlyController =
                     M44d.Rotation(cam.Sky, motion.dRot.Y) *
                     M44d.Rotation(cam.Forward, motion.dRot.Z)
                     
-                let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
-                cam.WithForward newForward
+                if trafo.IsIdentity(Double.Epsilon) then cam
+                else
+                    let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
+                    cam.WithForward newForward
 
             cam
 
