@@ -188,9 +188,10 @@ module MutableApp =
 
                                                 let newReferences = state.references.Values |> Seq.toArray
                             
-
+                                                if Config.showTimeJsAssembly then Log.startTimed "[Aardvark.UI] JS assembler"
                                                 let code = expr |> JSExpr.toString
                                                 let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
+                                                if Config.showTimeJsAssembly then Log.stop()
                                             
                                                 if newReferences.Length > 0 then
                                                     let args = 
