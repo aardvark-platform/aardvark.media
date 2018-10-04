@@ -102,10 +102,18 @@ module ArcBallController =
                       if model.moveVec = V3i.Zero then
                           printfn "useless time %A" now
 
-                      let step = dir * (exp model.sensitivity) * dt
-                      let center = if model.isWheel then model.orbitCenter.Value else model.orbitCenter.Value + step
-                      
-                      cam.WithLocation(cam.Location + step), Some center
+                      let step = dir * (exp model.sensitivity) * dt                      
+                      let loc' = cam.Location + step
+                      let direction = (V3d.Dot(model.orbitCenter.Value - loc', cam.Forward)).Sign()
+
+                      //Log.line "[ArcBall:] direction dot %A" direction
+
+                      if (model.left || model.right) then 
+                        cam.WithLocation(loc'), (model.orbitCenter.Value + step) |> Some
+                      else if (model.forward || model.backward || model.isWheel) && direction > 0 then      
+                        cam.WithLocation(loc'), model.orbitCenter
+                      else
+                        cam, model.orbitCenter
 
                   | None -> 
                       cam, model.orbitCenter
@@ -217,7 +225,14 @@ module ArcBallController =
                 let cam =
                     if model.zoom then
                         let step = -model.zoomFactor * (exp model.sensitivity) * (cam.Forward * float delta.Y)
-                        cam.WithLocation(cam.Location + step)
+
+                        let loc' = cam.Location + step
+                        let direction = (V3d.Dot(model.orbitCenter.Value - loc', cam.Forward)).Sign()
+
+                        if direction > 0 then
+                          cam.WithLocation(loc')
+                        else 
+                          cam
                     else
                         cam
 
