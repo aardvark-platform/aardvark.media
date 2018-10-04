@@ -1,6 +1,6 @@
 RESTRICTION: || (== net471) (== netcoreapp2.0) (== netstandard2.0)
 NUGET
-  remote: https://vrvis.myget.org/F/aardvark_public/api/v3/index.json
+  remote: https://api.nuget.org/v3/index.json
     Aardium (1.0.9)
       Aardvark.Base.FSharp (>= 4.0.4)
     Aardvark.Application (4.4.0)
@@ -127,7 +127,6 @@ NUGET
     Unofficial.OpenTK (3.0.16)
     Unofficial.OpenTK.GLControl (3.0.16)
       Unofficial.OpenTK (3.0.16)
-  remote: https://api.nuget.org/v3/index.json
     Aardvark.Base (4.2)
       Aardvark.Base.Telemetry (4.2)
       DevILSharp (>= 0.2.4 < 0.3)
