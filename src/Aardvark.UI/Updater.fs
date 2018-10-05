@@ -54,6 +54,7 @@ module Updaters =
         inherit IUpdater
         abstract member Update : AdaptiveToken * UpdateState<'msg> * Option<JSExpr -> JSExpr> -> JSExpr
         abstract member Destroy : UpdateState<'msg> * JSExpr -> JSExpr
+        abstract member TryReplaceNode : DomNode<'msg> * AdaptiveToken * UpdateState<'msg> * JSExpr -> Option<JSExpr> 
 
 
     [<AbstractClass>]
@@ -122,6 +123,9 @@ module Updaters =
                 | Some _ -> Some id.Value
                 | None -> None
 
+        abstract member TryReplaceNode : DomNode<'msg> * AdaptiveToken * UpdateState<'msg> * JSExpr -> Option<JSExpr> 
+        default x.TryReplaceNode(n : DomNode<'msg>, token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) = None
+
         member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, insert : Option<JSExpr -> JSExpr>) =
             x.EvaluateIfNeeded token JSExpr.Nop (fun token ->
                 match x.CreateElement with
@@ -185,6 +189,7 @@ module Updaters =
             member x.Id = x.Id
             member x.Update(t,state, s) = x.Update(t,state, s)
             member x.Destroy(state, self) = x.Destroy(state, self)
+            member x.TryReplaceNode(n,t,s,self) = x.TryReplaceNode(n,t,s,self)
                 
     [<AbstractClass>]
     type WrappedUpdater<'msg>(node : DomNode<'msg>, id : Option<string>) =
@@ -256,18 +261,15 @@ module Updaters =
             member x.Id = id
             member x.Update(t,state, s) = x.Update(t,state, s)
             member x.Destroy(state, self) = x.Destroy(state, self)
+            member x.TryReplaceNode(_,_,_,_) = None
             
 
-    type AttributeUpdater<'msg>(attributes : AttributeMap<'msg>) =
-        let reader = attributes.GetReader()
+    type AttributeUpdater<'msg>(attributes : AttributeMap<'msg> ) =
+        let mutable reader = attributes.GetReader()
 
-        member x.TryGetAttrbute(name : string) =
-            HMap.tryFind name reader.State
-
-        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) =
+        let applyAttributes (state : UpdateState<'msg>) (id : string) (self : JSExpr) (ops : hdeltamap<_,_>) =
             JSExpr.Sequential [
-                let atts = reader.GetOperations token
-                for (name, op) in atts do
+                for (name, op) in ops do
                     match op with
                         | Set value ->
                             let value =
@@ -286,6 +288,25 @@ module Updaters =
                             state.handlers.Remove key |> ignore
                             yield JSExpr.RemoveAttribute(self, name)
             ]
+
+
+        member x.ReplaceAttributes(n : AttributeMap<'msg>,token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) : JSExpr =
+            let nr = n.GetReader()
+            let ops = nr.GetOperations token
+            let ops = HMap.computeDelta reader.State nr.State
+            reader.Dispose()
+            let mutable foo = 0
+            reader.Outputs.Consume(&foo) |> ignore
+            reader <- nr
+            applyAttributes state id self ops
+
+            
+        member x.TryGetAttrbute(name : string) =
+            HMap.tryFind name reader.State
+
+        member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) =
+            let atts = reader.GetOperations token
+            applyAttributes state id self atts
 
         member x.Dispose() =
             reader.Dispose()
@@ -321,7 +342,9 @@ module Updaters =
     and InnerUpdater<'msg>(e : InnerNode<'msg>, request : Request) =
         inherit AbstractUpdater<'msg>(e)
             
-        let elemReader : IListReader<IUpdater<'msg>> = (AList.map (fun n -> Foo.NewUpdater(n, request)) e.Children).GetReader()
+        let mutable e = e
+
+        let elemReader : IListReader<DomNode<'msg>> = e.Children.GetReader() //(AList.map (fun n -> Foo.NewUpdater(n, request)) e.Children).GetReader()
         let att = new AttributeUpdater<_>(e.Attributes)
 
         static let cmpState =
@@ -339,7 +362,6 @@ module Updaters =
             let s = if s.HasValue then Some (snd s.Value) else None
             l, s, r
 
-
         override x.CreateElement = Some(e.Tag, e.Namespace)
 
         override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
@@ -350,12 +372,15 @@ module Updaters =
                 let mutable toUpdate = elemReader.State
                 let ops = elemReader.GetOperations token
 
+                let notToUpdate = List<Index>()
+
 
                 for (i,op) in PDeltaList.toSeq ops do
                     match op with
                         | ElementOperation.Remove ->
                             let (_,s,_) = neighbours i
-                            toUpdate <- PList.remove i toUpdate
+                            notToUpdate.Add i |> ignore
+                            //toUpdate <- PList.remove i toUpdate
                             match s with
                                 | Some n -> 
                                     let n = !n
@@ -374,7 +399,7 @@ module Updaters =
                                 | None ->
                                     failwith "sadasdlnsajdnmsad"
 
-                        | ElementOperation.Set newElement ->
+                        | ElementOperation.Set newDomNode ->
                             let (l,s,r) = neighbours i
                                     
                             let (|HasId|_|) (n : ref<IUpdater<'msg>>) =
@@ -396,47 +421,56 @@ module Updaters =
                             match s with
                                 | Some ref ->
                                     let oldElement = !ref
-                                    ref := newElement
-                                    toUpdate <- PList.remove i toUpdate
-                                    match oldElement.Id, newElement.Id with
-                                        | Some o, Some id ->
-                                            let vo = { name = o }
-                                            yield 
-                                                JSExpr.Let(vo,  GetElementById o,
-                                                    JSExpr.Sequential [
-                                                        oldElement.Destroy(state, Var vo)
-                                                        newElement.Update(token, state, Some (fun n -> JSExpr.Replace(Var vo, n)))
-                                                    ]
-                                                )
+                                    match oldElement.TryReplaceNode(newDomNode,token,state,self) with
+                                        | Some replaceCode -> 
+                                            notToUpdate.Add(i) |> ignore
+                                            yield replaceCode
+                                        | None -> 
+                                            let newElement = Foo.NewUpdater(newDomNode,request)
+                                            ref := newElement
+                                            toUpdate <- PList.remove i toUpdate
+                                            match oldElement.Id, newElement.Id with
+                                                | Some o, Some id ->
+                                                    let vo = { name = o }
+                                                    yield 
+                                                        JSExpr.Let(vo,  GetElementById o,
+                                                            JSExpr.Sequential [
+                                                                oldElement.Destroy(state, Var vo)
+                                                                newElement.Update(token, state, Some (fun n -> JSExpr.Replace(Var vo, n)))
+                                                            ]
+                                                        )
 
-                                        | None, Some id ->
-                                            yield
-                                                JSExpr.Sequential [
-                                                    oldElement.Destroy(state, JSExpr.Nop)
-                                                    newElement.Update(token, state, Some insert)
-                                                ]
+                                                | None, Some id ->
+                                                    yield
+                                                        JSExpr.Sequential [
+                                                            oldElement.Destroy(state, JSExpr.Nop)
+                                                            newElement.Update(token, state, Some insert)
+                                                        ]
 
-                                        | Some o, None ->
-                                            yield
-                                                JSExpr.Sequential [
-                                                    oldElement.Destroy(state, GetElementById o)
-                                                    newElement.Update(token, state, None)
-                                                ]
+                                                | Some o, None ->
+                                                    yield
+                                                        JSExpr.Sequential [
+                                                            oldElement.Destroy(state, GetElementById o)
+                                                            newElement.Update(token, state, None)
+                                                        ]
 
-                                        | None, None ->
-                                            yield
-                                                JSExpr.Sequential [
-                                                    oldElement.Destroy(state, JSExpr.Nop)
-                                                    newElement.Update(token, state, None)
-                                                ]
+                                                | None, None ->
+                                                    yield
+                                                        JSExpr.Sequential [
+                                                            oldElement.Destroy(state, JSExpr.Nop)
+                                                            newElement.Update(token, state, None)
+                                                        ]
                                                     
 
                                 | _ ->
+                                    let newElement = Foo.NewUpdater(newDomNode, request)
                                     content.Add(i, ref newElement) |> ignore
                                     yield newElement.Update(token, state, Some insert)
 
-                for u in toUpdate do
-                    yield u.Update(token, state, None)
+                //for u in toUpdate do
+                //    //yield u.Update(token, state, None)
+                for (i,u) in content do
+                    if notToUpdate.Contains i then () else yield u.Value.Update(token,state,None)
 
             ]
 
@@ -478,8 +512,28 @@ module Updaters =
         
     and TextUpdater<'msg>(e : TextNode<'msg>) =
         inherit AbstractUpdater<'msg>(e)
-            
+           
+        let mutable e = e
+
         let att = new AttributeUpdater<_>(e.Attributes)
+        
+        override x.TryReplaceNode(n : DomNode<'msg>, token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
+            match n with
+                | :? TextNode<'msg> as n ->
+                    if n.Tag = e.Tag then
+                        let id = x.Id.Value
+                        let updateAttributes = att.ReplaceAttributes(n.Attributes, token, state, id, self)
+                        if not (isNull token.Caller) then e.Text.Outputs.Remove(token.Caller) |> ignore
+                        e <- n
+                        let text = e.Text.GetValue(token)       
+                        JSExpr.Sequential [
+                            att.Update(token, state, id, self)
+                            JSExpr.InnerText(self, text)
+                        ] |> Some
+                    else    
+                        None
+                | _ -> None
+        
         override x.CreateElement = Some (e.Tag, e.Namespace)
 
         override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
