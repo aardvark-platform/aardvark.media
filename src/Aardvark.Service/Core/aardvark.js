@@ -394,7 +394,7 @@ class Renderer {
 				// workaround for currently flipped stuff.
 				console.log("mapping enabled -> using fallback download mechanism via screenshot service...");
 				name += ".jpg";
-				var url3 = window.location.href + "rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8";
+				var url3 = window.top.location.href + "rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8";
 				downloadURI(url3, name);
 			}
 			else {
@@ -409,17 +409,17 @@ class Renderer {
 			}
 		});
 
-		if (aardvark.captureFullscreen && aardvark.electron) {
+		if (top.aardvark.captureFullscreen && top.aardvark.electron) {
 			console.log("installing fullscreen capturer");
 			this.div.addEventListener("keydown", (e) => {
 				if (e.keyCode === 17) ctrlDown = true;
 				else if (e.keyCode === 123 && ctrlDown) {
-					var path = aardvark.dialog.showSaveDialog({
+					var path = top.aardvark.dialog.showSaveDialog({
 						filters: [
-							{ name: 'Images', extensions: ['png'] }
+							{ name: 'Images', extensions: ['png','jpg'] }
 						]});
 					console.log("saving fullscreen screenshot to" + path);
-					aardvark.captureFullscreen(path);
+					top.aardvark.captureFullscreen(path);
 				}
 			});
 			this.div.addEventListener("keyup", (e) => {

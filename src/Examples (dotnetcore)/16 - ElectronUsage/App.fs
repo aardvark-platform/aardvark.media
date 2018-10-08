@@ -50,27 +50,38 @@ let onSaveFile (chosen : string -> 'msg) =
             | _ -> failwithf "onSaveFile: %A" xs
     onEvent "onsave" [] cb
 
+
+
+let dependencies = [
+    { name = "helpers"; url = "helper.js"; kind = Script }
+]
+
 let view (model : MModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 100%; "]) 
+                    (AttributeMap.ofList [ style "width: 50%;height:50%;"; clazz "myRenderControl"]) 
                     (viewScene model)
 
-    body [] [
-        div [] [
-            button [
-                onChooseFiles (fun files -> printfn "%A" files; LoadFiles files)
-                clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
-            ] [text "open directory"]
-            br []
-            button [
-                onSaveFile SaveFile
-                clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onsave', aardvark.dialog.showSaveDialog({properties: []}));") 
-            ] [text "save file"]
-
+    require dependencies (
+        body [] [
+            div [] [
+                button [
+                    onChooseFiles (fun files -> printfn "%A" files; LoadFiles files)
+                    clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
+                ] [text "open directory"]
+                br []
+                button [
+                    onSaveFile SaveFile
+                    clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onsave', aardvark.dialog.showSaveDialog({properties: []}));") 
+                ] [text "save file"]
+                renderControl
+                button [
+                    clientEvent "onclick" "screenit('myRenderControl')"
+                ] [text "screenshot"]
+            ]
         ]
-    ]
+    )
 
 let threads (model : Model) = 
     FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
