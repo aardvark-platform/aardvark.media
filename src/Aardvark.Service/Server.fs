@@ -1436,6 +1436,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         | Choice2Of2 err ->
                                             running <- false
                                             Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                | Png data -> 
+                                    Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
                                 
                                 | Mapping img ->
                                     let data = Pickler.json.Pickle img
