@@ -496,6 +496,7 @@ type internal MapImage =
 type internal RenderResult =
     | Jpeg of byte[]
     | Mapping of MapImage
+    | Png of byte[]
 
 [<AbstractClass>]
 type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
@@ -803,7 +804,40 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
         resolved <- None
 
     new(server,getScene) = new JpegClientRenderTask(server,getScene,(Quantization.photoshop80,80))
-        
+
+type internal PngClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    inherit ClientRenderTask(server, getScene)     
+
+    let runtime = server.runtime
+    let mutable resolved : Option<IBackendTexture> = None
+
+    let recreate  (fmt : RenderbufferFormat) (size : V2i) =
+        resolved |> Option.iter runtime.DeleteTexture
+        let r = runtime.CreateTexture(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+        resolved <- Some r
+        r
+
+
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        let resolved = 
+            match resolved with
+                | Some r when r.Size.XY = color.Size -> r
+                | _ -> recreate color.Format color.Size
+        let data =
+            if color.Samples > 1 then
+                runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
+            else
+                runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
+
+        let pi = runtime.Download(resolved)
+        use stream = new System.IO.MemoryStream()
+        pi.SaveAsImage(stream, PixFileFormat.Png)
+        RenderResult.Png (stream.ToArray())
+
+    override x.Release() =
+        resolved |> Option.iter runtime.DeleteTexture
+        resolved <- None
+
 
 type private MappingInfo =
     {
@@ -1717,7 +1751,6 @@ module Server =
             match Map.tryFind "w" args, Map.tryFind "h" args with
                 | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
                     let scene = content signature sceneName
-                    use task = new JpegClientRenderTask(info, content, (Quantization.photoshop100,100))
 
                     let clientInfo = 
                         {
@@ -1733,12 +1766,25 @@ module Server =
                         }
 
                     let state = getState clientInfo
-                    let data = 
-                        match task.Run(AdaptiveToken.Top, clientInfo, state) with
-                            | Jpeg d -> d
-                            | _ -> failwith "that was unexpected"
 
-                    context |> (ok data >=> Writers.setMimeType "image/jpeg")
+                    let respondOK (mime : string) (task : ClientRenderTask)  =
+                        let data = 
+                            match task.Run(AdaptiveToken.Top, clientInfo, state) with
+                                | RenderResult.Jpeg d -> d
+                                | RenderResult.Png d -> d
+                                | _ -> failwith "that was unexpected"
+
+                        context |> (ok data >=> Writers.setMimeType mime)
+
+                    match Map.tryFind "fmt" args with
+                        | Some "jpg" | None -> 
+                            use t = new JpegClientRenderTask(info, content, (Quantization.photoshop100,100)) :> ClientRenderTask
+                            t |> respondOK "image/jpeg"
+                        | Some "png" -> 
+                            use t = new PngClientRenderTask(info, content) :> ClientRenderTask
+                            t |> respondOK "image/png"
+                        | Some fmt -> context |> BAD_REQUEST (sprintf  "format not supported: %s" fmt)
+
                 | _ ->
                     context |> BAD_REQUEST "no width/height specified"
 

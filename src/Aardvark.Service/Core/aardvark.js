@@ -394,7 +394,7 @@ class Renderer {
 				// workaround for currently flipped stuff.
 				console.log("mapping enabled -> using fallback download mechanism via screenshot service...");
 				name += ".jpg";
-				var url3 = window.top.location.href + "rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8";
+				var url3 = window.top.location.href + "rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8&fmt=png" ;
 				downloadURI(url3, name);
 			}
 			else {
