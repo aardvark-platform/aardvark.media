@@ -829,7 +829,7 @@ type internal PngClientRenderTask internal(server : Server, getScene : IFramebuf
             else
                 runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
 
-        let pi = runtime.Download(resolved)
+        let pi = runtime.Download(resolved).ToPixImage<byte>().ToFormat(Col.Format.RGB)
         use stream = new System.IO.MemoryStream()
         pi.SaveAsImage(stream, PixFileFormat.Png)
         RenderResult.Png (stream.ToArray())

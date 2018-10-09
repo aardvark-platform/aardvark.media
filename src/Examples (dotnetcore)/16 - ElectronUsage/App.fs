@@ -79,6 +79,9 @@ let view (model : MModel) =
                 button [
                     clientEvent "onclick" "screenit('myRenderControl')"
                 ] [text "screenshot"]
+                onBoot "installScreenshotPath(__ID__,'myRenderControl')" (
+                    input []
+                )
             ]
         ]
     )
