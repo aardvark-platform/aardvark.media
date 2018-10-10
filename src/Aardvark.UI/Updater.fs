@@ -372,7 +372,7 @@ module Updaters =
                                         | _ ->
                                             yield n.Destroy(state, JSExpr.Nop)
                                 | None ->
-                                    failwith "sadasdlnsajdnmsad"
+                                    failwith "[Media] UI Updater. trying to remove non existent objects (locking issue?)"
 
                         | ElementOperation.Set newElement ->
                             let (l,s,r) = neighbours i
