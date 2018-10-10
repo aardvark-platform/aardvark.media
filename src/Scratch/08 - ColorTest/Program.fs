@@ -18,17 +18,17 @@ open Inc.Model
 let dehateObject (m : Object) : IMod<IObject> =
     m.trafo |> Mod.map (fun t -> { itrafo = t })
 
-let dehateScene1 (s : Scene) : IMod<IScene> = 
-    let reader = s.objects.GetReader()
-    Mod.custom (fun t -> 
-        printfn "running dehate"
+//let dehateScene1 (s : Scene) : IMod<IScene> = 
+//    let reader = s.objects.GetReader()
+//    Mod.custom (fun t -> 
+//        printfn "running dehate"
 
-        let _ = reader.GetOperations t
+//        let _ = reader.GetOperations t
 
-        let objects = [ for o in reader.State do yield { itrafo = o.trafo.GetValue t }]
+//        let objects = [ for o in reader.State do yield { itrafo = o.trafo.GetValue t }]
         
-        { iobjects = objects |> HSet.ofSeq }
-    )
+//        { iobjects = objects |> HSet.ofSeq }
+//    )
 
 let dehateScene2 (s : Scene) : IMod<IScene> = 
     let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
@@ -37,20 +37,11 @@ let dehateScene2 (s : Scene) : IMod<IScene> =
 
         let _ = reader.GetOperations t
  
-        { iobjects = reader.State |> HSet.ofSeq  }
+        { iobjects = reader.State  }
     )
 
-let dehateScene (s : Scene) : IMod<IScene> = 
-    Mod.custom (fun t -> 
-        printfn "running dehate"
 
-        let r = s.objects.GetReader()
-        r.GetOperations(t) |> ignore
- 
-        { iobjects = r.State |> Seq.map (fun o -> { itrafo = o.trafo.GetValue t }) |> HSet.ofSeq }
-    )
-
-let dehateSceneslow (s : Scene) : IMod<IScene> = 
+let dehateScene3 (s : Scene) : IMod<IScene> = 
     adaptive {
         let objects = 
             aset {
@@ -59,16 +50,45 @@ let dehateSceneslow (s : Scene) : IMod<IScene> =
                     yield { itrafo = t }
             }
         let! o = ASet.toMod objects
-        return { iobjects = o |> HSet.ofSeq }
+        return { iobjects = o  }
     }
 
-let dehateScene9 (s : Scene) : IMod<IScene> = 
+let dehateScene99 (s : Scene) : IMod<IScene> = 
     let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
     let mutable objects = HRefSet.empty
     Mod.custom (fun t -> 
         let deltas = reader.GetOperations(t)
         let (a,b) = deltas |> HRefSet.applyDelta objects
-        { iobjects = a |> HSet.ofSeq }
+        { iobjects = a  }
+    )
+
+open System.Collections.Generic
+let dehateScene22 (s : Scene) : IMod<IScene> = 
+    let cache = Dictionary<Object,IMod<IObject>>()
+    let r = s.objects.GetReader()
+    Mod.custom (fun t -> 
+        printfn "running dehate"
+
+        for d in r.GetOperations(t) do
+            match d with
+                | Rem(1, v) -> 
+                    cache.Remove v |> ignore
+                | Add(1,v) -> 
+                    let i = v.trafo |> Mod.map (fun t -> { itrafo = t })
+                    cache.[v] <- i
+ 
+        { iobjects = r.State |> Seq.map (fun o -> cache.[o].GetValue t) |> HRefSet.ofSeq }
+    )
+
+let dehateScene (s : Scene) : IMod<IScene> = 
+    let reader = s.objects.GetReader()
+    Mod.custom (fun t -> 
+        printfn "running dehate"
+
+        reader.GetOperations(t) |> ignore
+       
+
+        { iobjects = reader.State |> HRefSet.map (fun o -> printfn "mk"; { itrafo = o.trafo.GetValue(t)})  }
     )
 
 [<EntryPoint; STAThread>]
@@ -77,7 +97,7 @@ let main argv =
     Aardvark.Init()
 
     let cnt = 200000
-    let trafos = [| for i in 1.. cnt do yield Mod.init "A" |]
+    let trafos = [| for i in 1.. cnt do yield Mod.init (sprintf "A%d" i) |]
     let objects = 
         [
             for t in trafos do
@@ -86,7 +106,7 @@ let main argv =
 
     let scene = { objects = objects }
     let iscene = dehateScene scene
-    let mscene = MIScene.Create({iobjects=HSet.empty})
+    let mscene = MIScene.Create({iobjects=HRefSet.empty})
     let sw = System.Diagnostics.Stopwatch()
     sw.Start()
     let mscene = iscene |> Mod.unsafeRegisterCallbackKeepDisposable (fun s -> mscene.Update s; sw.Stop())
@@ -96,6 +116,7 @@ let main argv =
     transact (fun _ -> 
         trafos.[cnt - 10].Value <- "B"
     )
+    
     printfn "updating single value took: %A" (sw.Elapsed.TotalSeconds)
 
     System.Environment.Exit 0

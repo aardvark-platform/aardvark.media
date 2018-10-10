@@ -15,10 +15,12 @@ type Model =
         cameraState : CameraControllerState
     }
 
+[<ReferenceEquality;>]
 type Object = { trafo : IMod<string> }
+[<ReferenceEquality;>]
 type Scene = { objects : aset<Object> }
 
 [<DomainType>]
 type IObject = { itrafo : string }
 [<DomainType>]
-type IScene = { iobjects : hset<IObject> }
+type IScene = { iobjects : hrefset<IObject> }

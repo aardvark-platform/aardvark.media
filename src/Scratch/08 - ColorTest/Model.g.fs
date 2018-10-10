@@ -96,16 +96,16 @@ module Mutable =
     type MIScene(__initial : Inc.Model.IScene) =
         inherit obj()
         let mutable __current : Aardvark.Base.Incremental.IModRef<Inc.Model.IScene> = Aardvark.Base.Incremental.EqModRef<Inc.Model.IScene>(__initial) :> Aardvark.Base.Incremental.IModRef<Inc.Model.IScene>
-        let _iobjects = MSet.Create(unbox, __initial.iobjects, (fun v -> MIObject.Create(v)), (fun (m,v) -> MIObject.Update(m, v)), (fun v -> v))
+        let _iobjects = ResetMod.Create(__initial.iobjects)
         
-        member x.iobjects = _iobjects :> aset<_>
+        member x.iobjects = _iobjects :> IMod<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : Inc.Model.IScene) =
             if not (System.Object.ReferenceEquals(__current.Value, v)) then
                 __current.Value <- v
                 
-                MSet.Update(_iobjects, v.iobjects)
+                ResetMod.Update(_iobjects,v.iobjects)
                 
         
         static member Create(__initial : Inc.Model.IScene) : MIScene = MIScene(__initial)
@@ -123,7 +123,7 @@ module Mutable =
         [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
         module Lens =
             let iobjects =
-                { new Lens<Inc.Model.IScene, Aardvark.Base.hset<Inc.Model.IObject>>() with
+                { new Lens<Inc.Model.IScene, Aardvark.Base.hrefset<Inc.Model.IObject>>() with
                     override x.Get(r) = r.iobjects
                     override x.Set(r,v) = { r with iobjects = v }
                     override x.Update(r,f) = { r with iobjects = f r.iobjects }
