@@ -8,14 +8,101 @@ open Inc
 
 open Suave
 open Suave.WebPart
+open Aardvark.Rendering.Vulkan
+
+open Aardvark.Base.Incremental
+
+open Inc.Model
+
+
+let dehateObject (m : Object) : IMod<IObject> =
+    m.trafo |> Mod.map (fun t -> { itrafo = t })
+
+let dehateScene1 (s : Scene) : IMod<IScene> = 
+    let reader = s.objects.GetReader()
+    Mod.custom (fun t -> 
+        printfn "running dehate"
+
+        let _ = reader.GetOperations t
+
+        let objects = [ for o in reader.State do yield { itrafo = o.trafo.GetValue t }]
+        
+        { iobjects = objects |> HSet.ofSeq }
+    )
+
+let dehateScene2 (s : Scene) : IMod<IScene> = 
+    let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
+    Mod.custom (fun t -> 
+        printfn "running dehate"
+
+        let _ = reader.GetOperations t
+ 
+        { iobjects = reader.State |> HSet.ofSeq  }
+    )
+
+let dehateScene (s : Scene) : IMod<IScene> = 
+    Mod.custom (fun t -> 
+        printfn "running dehate"
+
+        let r = s.objects.GetReader()
+        r.GetOperations(t) |> ignore
+ 
+        { iobjects = r.State |> Seq.map (fun o -> { itrafo = o.trafo.GetValue t }) |> HSet.ofSeq }
+    )
+
+let dehateSceneslow (s : Scene) : IMod<IScene> = 
+    adaptive {
+        let objects = 
+            aset {
+                for o in s.objects do
+                    let! t = o.trafo
+                    yield { itrafo = t }
+            }
+        let! o = ASet.toMod objects
+        return { iobjects = o |> HSet.ofSeq }
+    }
+
+let dehateScene9 (s : Scene) : IMod<IScene> = 
+    let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
+    let mutable objects = HRefSet.empty
+    Mod.custom (fun t -> 
+        let deltas = reader.GetOperations(t)
+        let (a,b) = deltas |> HRefSet.applyDelta objects
+        { iobjects = a |> HSet.ofSeq }
+    )
 
 [<EntryPoint; STAThread>]
 let main argv = 
     Ag.initialize()
     Aardvark.Init()
+
+    let cnt = 200000
+    let trafos = [| for i in 1.. cnt do yield Mod.init "A" |]
+    let objects = 
+        [
+            for t in trafos do
+                yield { trafo = t }
+        ] |> CSet.ofList
+
+    let scene = { objects = objects }
+    let iscene = dehateScene scene
+    let mscene = MIScene.Create({iobjects=HSet.empty})
+    let sw = System.Diagnostics.Stopwatch()
+    sw.Start()
+    let mscene = iscene |> Mod.unsafeRegisterCallbackKeepDisposable (fun s -> mscene.Update s; sw.Stop())
+    printfn "initial took: %A" (sw.Elapsed.TotalSeconds)
+    
+    sw.Start()
+    transact (fun _ -> 
+        trafos.[cnt - 10].Value <- "B"
+    )
+    printfn "updating single value took: %A" (sw.Elapsed.TotalSeconds)
+
+    System.Environment.Exit 0
+
     Aardium.init()
 
-    use app = new OpenGlApplication()
+    use app = new HeadlessVulkanApplication()
     let instance = App.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 

@@ -14,3 +14,11 @@ type Model =
         value : int
         cameraState : CameraControllerState
     }
+
+type Object = { trafo : IMod<string> }
+type Scene = { objects : aset<Object> }
+
+[<DomainType>]
+type IObject = { itrafo : string }
+[<DomainType>]
+type IScene = { iobjects : hset<IObject> }
