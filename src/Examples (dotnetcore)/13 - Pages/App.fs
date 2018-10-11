@@ -142,15 +142,15 @@ let app =
                     config {
                         content (
                             horizontal 10.0 [
-                                element { id "render"; title "Render View"; weight 20 }
+                                element { id "render"; title "Render View"; weight 20; isCloseable true }
                                 vertical 5.0 [
                                     element { id "controls"; title "Controls"; weight 5 }
-                                    element { id "meta"; title "Layout Controls"; weight 5 }
+                                    element { id "meta"; title "Layout Controls"; weight 5; isCloseable false }
                                 ]
                             ]
                         )
                         appName "PagesExample"
-                        useCachedConfig true
+                        useCachedConfig false
                     }
             }
         update = update 
