@@ -13,10 +13,12 @@ let update (model : Model) (msg : Message) =
 
 let dependencies = 
     [
+        //{ name = "sigma"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/sigma.min.js"; kind = Script }
+        //{ name = "labels"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.renderers.edgeLabels.min.js"; kind = Script }
+        //{ name = "force"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.layout.forceAtlas2.min.js"; kind = Script }
+        { name = "viva"; url = "https://cdnjs.cloudflare.com/ajax/libs/vivagraphjs/0.10.1/vivagraph.min.js"; kind = Script }
+        { url = "style.css"; name = "style.css"; kind = Stylesheet }
         { url = "force.js"; name = "force.js"; kind = Script }
-        { name = "sigma"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/sigma.min.js"; kind = Script }
-        { name = "labels"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.renderers.edgeLabels.min.js"; kind = Script }
-        { name = "force"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.layout.forceAtlas2.min.js"; kind = Script }
     ]
 
 open Chiron
@@ -30,8 +32,8 @@ type Edge = { id: string; weight: float; fromId : int; toId : int } with
         json {
             do! Json.write "id" x.id 
             do! Json.write "weight" x.weight
-            do! Json.write "fromId" x.weight
-            do! Json.write "toId" x.weight
+            do! Json.write "fromId" x.fromId
+            do! Json.write "toId" x.toId
         }
     
 type Graph = { nodes : array<Node>; edges : array<Edge> } with
@@ -48,7 +50,7 @@ module Printing =
         s.Replace("&lt;","<").Replace("&gt;",">").Replace("&quot;","\"")
 
 let view (model : MModel) =
-    let graph = { nodes = [| { name= "a"}; {name="b"}|]; edges = [| {id="e"; weight=10.0; fromId=0; toId=1} |] }
+    let graph = { nodes = [| { name= "a"}; {name="b"}; {name="c"}|]; edges = [| {id="e"; weight=1.0; fromId=0; toId=1}; {id="f"; weight=10.0; fromId=0; toId=2}; {id="g"; weight=5.0; fromId=1; toId=2}   |] }
     let a = graph |> Json.serialize |> Json.format
     require dependencies (
         onBoot (sprintf "mkForce(__ID__,'%s')" a) (
