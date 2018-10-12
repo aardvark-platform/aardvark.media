@@ -14,6 +14,7 @@ type Message =
     | Redo
     | SetCullMode of CullMode
     | ToggleFill
+    | SetFiles of list<string>
 
 [<DomainType>]
 type Model = 
@@ -30,4 +31,6 @@ type Model =
         fill : bool
 
         dockConfig : DockConfig
+
+        files : plist<string>
     }
