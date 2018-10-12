@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "19 - KitchenSink", "Examples (dotnetcore)\19 - KitchenSink\19 - KitchenSink.fsproj", "{5B057402-ECEC-443E-9BC9-95D06C9B76F2}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "09 - Force", "Scratch\09 - Force\09 - Force.fsproj", "{4554040A-296C-4587-9A27-4CCA4471CF8E}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "08 - ColorTest", "Scratch\08 - ColorTest\08 - ColorTest.fsproj", "{C90A8352-FE55-4070-A7BC-7873FA2447FD}"
@@ -96,6 +98,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5B057402-ECEC-443E-9BC9-95D06C9B76F2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B057402-ECEC-443E-9BC9-95D06C9B76F2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B057402-ECEC-443E-9BC9-95D06C9B76F2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B057402-ECEC-443E-9BC9-95D06C9B76F2}.Release|Any CPU.Build.0 = Release|Any CPU
 		{4554040A-296C-4587-9A27-4CCA4471CF8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{4554040A-296C-4587-9A27-4CCA4471CF8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4554040A-296C-4587-9A27-4CCA4471CF8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -237,6 +243,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{5B057402-ECEC-443E-9BC9-95D06C9B76F2} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{4554040A-296C-4587-9A27-4CCA4471CF8E} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{C90A8352-FE55-4070-A7BC-7873FA2447FD} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{16E1296F-4A35-4237-81B0-6450A065535E} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
