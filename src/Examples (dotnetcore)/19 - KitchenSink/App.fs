@@ -8,6 +8,8 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open RenderControl.Model
 
+open Aardvark.UI.Primitives.Simple
+
 
 let initialCamera = { 
         FreeFlyController.initial with 
@@ -24,6 +26,9 @@ let update (model : Model) (msg : Message) =
         | SetFloat f -> 
             printfn "set value: %f" f
             { model with floatValue = f  }
+        | SetInt d -> 
+            printfn "set value: %d" d
+            { model with intValue = d  }
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -48,9 +53,14 @@ let view (model : MModel) =
         renderControl
         br []
         text "super simple float input: "
-        Simple.SemUi.labeledFloatInput "float value: " 0.0 10.0 0.01 SetFloat model.floatValue
         br []
-        Simple.SemUi.labeledIntegerInput "int value: " 0 10 SetInt model.intValue
+        Plain.labeledFloatInput' AttributeMap.empty AttributeMap.empty 
+            "float value: " 0.0 10.0 0.01 SetFloat model.floatValue
+        br []
+        Plain.labeledIntegerInput' AttributeMap.empty AttributeMap.empty 
+            None "int value: " 0 10 SetInt model.intValue
+        br []
+
     ]
 
 let threads (model : Model) = 
@@ -67,6 +77,7 @@ let app =
                floatValue = 0.5
                intValue = 1
                stringValue = "no value yet"
+               enumValue = EnumValue.One
             }
         update = update 
         view = view
