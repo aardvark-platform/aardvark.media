@@ -29,6 +29,12 @@ let update (model : Model) (msg : Message) =
         | SetInt d -> 
             printfn "set value: %d" d
             { model with intValue = d  }
+        | SetEnum e -> 
+            printfn "set enum to: %A" e
+            { model with enumValue = e }
+        | SetUnion e -> 
+            printfn "set union to: %A" e
+            { model with unionValue = e }
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -52,15 +58,18 @@ let view (model : MModel) =
         br []
         renderControl
         br []
-        text "super simple float input: "
+        text "simple float input: "
         br []
-        Plain.labeledFloatInput' AttributeMap.empty AttributeMap.empty 
-            "float value: " 0.0 10.0 0.01 SetFloat model.floatValue
+        Html5.labeledFloatInput' AttributeMap.empty (AttributeMap.ofList [style "width:100px;display:inline-block;"])
+            None "float value: " 0.0 10.0 0.01 SetFloat model.floatValue
+        Html5.labeledIntegerInput' AttributeMap.empty (AttributeMap.ofList [style "width:100px;display:inline-block;"])
+            None "int value:   " 0 10 SetInt model.intValue
+        text "automatic dropdown for enums: "
+        Html5.dropDownAuto AttributeMap.empty model.enumValue SetEnum
         br []
-        Plain.labeledIntegerInput' AttributeMap.empty AttributeMap.empty 
-            None "int value: " 0 10 SetInt model.intValue
+        text "automatic dropdown for enums: "
+        Html5.dropDownAuto AttributeMap.empty model.unionValue SetUnion
         br []
-
     ]
 
 let threads (model : Model) = 
@@ -78,6 +87,7 @@ let app =
                intValue = 1
                stringValue = "no value yet"
                enumValue = EnumValue.One
+               unionValue = U
             }
         update = update 
         view = view

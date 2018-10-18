@@ -29,5 +29,5 @@ type Model =
         stringValue : string
 
         enumValue : EnumValue
-    
+        unionValue : UnionValue
     }

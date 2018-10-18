@@ -33,7 +33,8 @@ module Simple =
         let values = Enum.GetValues(typeof<'a>) |> unbox<'a[]>
         Array.zip values names |> Map.ofArray
 
-    module Plain =
+    module Html5 =
+        open Aardvark.Base.MultimethodTest
 
         let labeledIntegerInput' (containerAttributes : AttributeMap<'msg>) (labelAttributes : AttributeMap<'msg>) (labelSize : Option<int>) (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : IMod<int>) =
             let defaultValue = max 0 minValue
@@ -67,7 +68,7 @@ module Simple =
 
             Incremental.div containerAttributes <| 
                 alist {
-                    yield Incremental.div labelAttributes (AList.ofList [ text name ])
+                    yield Incremental.span labelAttributes (AList.ofList [ text name ])
                     yield Incremental.input <|
                         AttributeMap.ofListCond [
                             yield always <| attribute "type" "number"
@@ -86,7 +87,8 @@ module Simple =
                         ]
                 }
 
-        let labeledFloatInput' (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>)  =
+        let labeledFloatInput' (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) (labelSize : Option<int>) (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>)  =
+            let labelSize = Option.defaultValue name.Length labelSize
             let changed =
                 AttributeValue.Event  {
                     clientSide = fun send src -> 
@@ -111,7 +113,7 @@ module Simple =
 
             Incremental.div containerAttribs <|
                 AList.ofList [
-                    Incremental.div labelAttribs (AList.ofList [ text name ])
+                    Incremental.span labelAttribs (AList.ofList [ text name ])
                     Incremental.input <|
                         AttributeMap.ofListCond [
                             yield always <| attribute "type" "number"
@@ -120,7 +122,7 @@ module Simple =
                             yield always <| attribute "max" (string maxValue)
 
                             yield always <| attribute "placeholder" name
-                            yield always <| attribute "size" "4"
+                            yield always <| attribute "size" (string labelSize)
                     
                             yield always <| ("oninput", changed)
                             yield always <| ("onchange", changed)
@@ -133,6 +135,8 @@ module Simple =
         let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : AttributeMap<'msg>) 
                 (current : IMod<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
         
+            let mutable id = 0
+            let newId() = System.Threading.Interlocked.Increment(&id)
             let mutable back = Map.empty
             let forth = 
                 names |> Map.map (fun a s -> 
@@ -145,8 +149,8 @@ module Simple =
         
             let boot = 
                 String.concat "\r\n" [
-                    sprintf "__ID__.selectedIndex = %d;" (Mod.force selectedValue)
-                    "current.onmessage = function(v) { __ID__.selectedIndex = v; };"
+                    sprintf "$('#__ID__').selectedIndex = %d;" (Mod.force selectedValue)
+                    "current.onmessage = function(v) { console.log(v); debugger; $('#__ID__').selectedIndex = v; };"
                 ]
 
             let attributes = 
@@ -161,12 +165,18 @@ module Simple =
                     ]
             )
 
-        let dropDownEnum (att : AttributeMap<'msg>) (current : IMod<'a>) (update : 'a -> 'msg) =
-            dropDown att current update enumToCases<'a> 
+        let dropDownAuto (att : AttributeMap<'msg>) (current : IMod<'a>) (update : 'a -> 'msg) =
+            let map = 
+                if FSharpType.IsUnion typeof<'a> then 
+                    unionToCases
+                elif typeof<'a>.IsEnum then
+                    enumToCases
+                else failwithf "[Media] dropDownAuto. type %s is neither union nor enum type." typeof<'a>.FullName
+            dropDown att current update map
 
     module SemUi =
 
-        open Plain
+        open Html5
 
         let integerInput (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : IMod<int>) =
             let defaultValue = max 0 minValue
@@ -216,7 +226,7 @@ module Simple =
             labeledIntegerInput' (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) None name minValue maxValue changed value
 
         let labeledFloatInput (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>) =
-            labeledFloatInput' (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) name minValue maxValue step changed value 
+            labeledFloatInput' (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) None name minValue maxValue step changed value 
 
         let modal (id : string) (name : string) (ok : 'msg) (attributes : list<string * AttributeValue<'msg>>) (content : list<DomNode<'msg>>) =
             require Html.semui (
