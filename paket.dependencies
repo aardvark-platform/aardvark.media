@@ -13,12 +13,15 @@ nuget Aardvark.Application.WinForms.GL     ~> 4.4.0
 nuget Aardvark.Application.Slim.GL         ~> 4.4.0
 nuget Aardvark.SceneGraph                  ~> 4.4.0
 nuget Aardvark.SceneGraph.IO               ~> 4.4.0
+nuget Aardvark.SceneGraph.Opc			   ~> 4.4.0
 nuget Aardvark.Rendering.Text              ~> 4.4.0
 nuget Aardvark.Rendering.Vulkan            ~> 4.4.0
 nuget Aardvark.GPGPU                       ~> 4.4.0
 
 nuget Aardvark.Compiler.DomainTypes         ~> 4.2.0
 nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.2.0
+
+nuget Aardvark.Geometry.Intersection        ~> 4.3.0-prerelease1
 
 nuget FsPickler                             ~> 5.2.0
 nuget FsPickler.Json                        ~> 5.2.0
