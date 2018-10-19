@@ -16,6 +16,7 @@ type Message =
     | SetString of string 
     | SetEnum   of EnumValue
     | SetUnion  of UnionValue
+    | ToggleBoolean
 
 
 [<DomainType>]
@@ -30,4 +31,5 @@ type Model =
 
         enumValue : EnumValue
         unionValue : UnionValue
+        boolean : bool
     }

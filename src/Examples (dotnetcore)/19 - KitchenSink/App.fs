@@ -35,6 +35,9 @@ let update (model : Model) (msg : Message) =
         | SetUnion e -> 
             printfn "set union to: %A" e
             { model with unionValue = e }
+        | ToggleBoolean -> 
+            printfn "toggle boolean old: %A" model.boolean
+            { model with boolean = not model.boolean }
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -82,6 +85,10 @@ let view (model : MModel) =
                 SemUi.labeledFloatInput "semui float input" 0.0 10.0 0.1 SetFloat model.floatValue
                 br []
                 SemUi.dropDownAuto AttributeMap.empty model.enumValue SetEnum 
+                br []
+                SemUi.toggleBox "boolean" model.boolean ToggleBoolean
+                br []
+                button [clazz "ui button"; onClick (fun _ -> ToggleBoolean)] [text "toggle externally"]
             ]
         )
     ]
@@ -102,6 +109,7 @@ let app =
                stringValue = "no value yet"
                enumValue = EnumValue.One
                unionValue = U
+               boolean = false
             }
         update = update 
         view = view

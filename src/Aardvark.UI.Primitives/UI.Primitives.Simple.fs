@@ -154,7 +154,7 @@ module Simple =
             let boot = 
                 String.concat "\r\n" [
                     sprintf "$('#__ID__').selectedIndex = %d;" (Mod.force selectedValue)
-                    "current.onmessage = function(v) { console.log(v); debugger; $('#__ID__').selectedIndex = v; };"
+                    "current.onmessage = function(v) { $('#__ID__').selectedIndex = v; };"
                 ]
 
             let attributes = 
@@ -276,14 +276,16 @@ module Simple =
 
             let attributes = AttributeMap.union att (AttributeMap.ofList [onChange (fun str -> Map.find (str |> int) back |> update)])
 
-            onBoot' ["current", Mod.channel selectedValue] boot  (
-                Incremental.select attributes <|
-                    alist {
-                        for (value, name) in Map.toSeq names do
-                            let v = Map.find value forth
-                            yield option [attribute "value" (string v)] [ text name ]
-                    }
-            )
+            div [] [
+                onBoot' ["current", Mod.channel selectedValue] boot  (
+                    Incremental.select attributes <|
+                        alist {
+                            for (value, name) in Map.toSeq names do
+                                let v = Map.find value forth
+                                yield option [attribute "value" (string v)] [ text name ]
+                        }
+                )
+            ]
 
         let dropDownAuto (att : AttributeMap<'msg>) (current : IMod<'a>) (update : 'a -> 'msg) =
             let map = 
@@ -293,3 +295,27 @@ module Simple =
                     enumToCases
                 else failwithf "[Media] dropDownAuto. type %s is neither union nor enum type." typeof<'a>.FullName
             dropDown att current update map
+
+        let toggleBox (str : string) (state : IMod<bool>) (toggle : 'msg) =
+            let attributes = 
+                amap {
+                        yield attribute "type" "checkbox"
+                        yield onChange (fun _ -> System.Diagnostics.Debugger.Break(); toggle)
+                        let! check = state
+                        if check then
+                            yield attribute "checked" "checked"
+                }
+
+            let boot = 
+                String.concat "\r\n" [
+                    sprintf "$('#__ID__').checkbox(%b?'check':'uncheck')" (Mod.force state)
+                    "current.onmessage = function(v) { debugger; if(v) $('#__ID__').checkbox('set checked'); else $('#__ID__').checkbox('set unchecked');  };"
+                ]
+
+
+            onBoot' ["current", Mod.channel state] boot (
+                div [clazz "ui small toggle checkbox"] [
+                    Incremental.input (AttributeMap.ofAMap attributes)
+                    label [] [text str]
+                ]
+            )

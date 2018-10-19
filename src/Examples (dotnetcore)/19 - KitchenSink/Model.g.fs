@@ -19,6 +19,7 @@ module Mutable =
         let _stringValue = ResetMod.Create(__initial.stringValue)
         let _enumValue = ResetMod.Create(__initial.enumValue)
         let _unionValue = ResetMod.Create(__initial.unionValue)
+        let _boolean = ResetMod.Create(__initial.boolean)
         
         member x.cameraState = _cameraState
         member x.floatValue = _floatValue :> IMod<_>
@@ -26,6 +27,7 @@ module Mutable =
         member x.stringValue = _stringValue :> IMod<_>
         member x.enumValue = _enumValue :> IMod<_>
         member x.unionValue = _unionValue :> IMod<_>
+        member x.boolean = _boolean :> IMod<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : RenderControl.Model.Model) =
@@ -38,6 +40,7 @@ module Mutable =
                 ResetMod.Update(_stringValue,v.stringValue)
                 ResetMod.Update(_enumValue,v.enumValue)
                 ResetMod.Update(_unionValue,v.unionValue)
+                ResetMod.Update(_boolean,v.boolean)
                 
         
         static member Create(__initial : RenderControl.Model.Model) : MModel = MModel(__initial)
@@ -89,4 +92,10 @@ module Mutable =
                     override x.Get(r) = r.unionValue
                     override x.Set(r,v) = { r with unionValue = v }
                     override x.Update(r,f) = { r with unionValue = f r.unionValue }
+                }
+            let boolean =
+                { new Lens<RenderControl.Model.Model, System.Boolean>() with
+                    override x.Get(r) = r.boolean
+                    override x.Set(r,v) = { r with boolean = v }
+                    override x.Update(r,f) = { r with boolean = f r.boolean }
                 }
