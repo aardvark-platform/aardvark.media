@@ -15,7 +15,7 @@ type Message =
   | Camera       of FreeFlyController.Message
   | KeyUp        of key : Keys
   | KeyDown      of key : Keys
-  | HitSurface   of SceneHit
+  | HitSurface   of Box3d*SceneHit
     //| KeyDown    of key : Aardvark.Application.Keys
     //| KeyUp      of key : Aardvark.Application.Keys  
 
@@ -63,7 +63,7 @@ type Model =
         [<NonIncremental>]
         kdTrees2             : hmap<Box3d, Level0KdTree>
         [<NonIncremental>]
-        opcInfos             : list<opcData>
+        opcInfos             : hmap<Box3d, opcData>
         
         boxes                : list<Box3d>
         lines                : list<Line3d>
@@ -75,3 +75,5 @@ type Model =
 
         threads : ThreadPool<Message>
     }
+  
+   

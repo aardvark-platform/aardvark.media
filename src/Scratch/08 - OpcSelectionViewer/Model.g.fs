@@ -295,7 +295,7 @@ module Mutable =
                     override x.Update(r,f) = { r with kdTrees2 = f r.kdTrees2 }
                 }
             let opcInfos =
-                { new Lens<OpcSelectionViewer.Model, Microsoft.FSharp.Collections.List<OpcSelectionViewer.opcData>>() with
+                { new Lens<OpcSelectionViewer.Model, Aardvark.Base.hmap<Aardvark.Base.Box3d,OpcSelectionViewer.opcData>>() with
                     override x.Get(r) = r.opcInfos
                     override x.Set(r,v) = { r with opcInfos = v }
                     override x.Update(r,f) = { r with opcInfos = f r.opcInfos }

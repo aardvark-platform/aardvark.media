@@ -108,8 +108,8 @@ module App =
         Report.Error "Intersection was hit"; model      
       | Message.KeyUp m ->
         Report.Error "Intersection was released"; model
-      | HitSurface sceneHit -> 
-        let fray = sceneHit.globalRay.Ray  
+      | HitSurface (box, sceneHit) -> 
+        IntersectionController.intersect model sceneHit box
         
         
 
@@ -130,11 +130,7 @@ module App =
         //          teleportTrafo  = None
         //          finalTransform = model.finalTransform * trafo //* Trafo3d.Translation(V3d.OOI * 0.4)
         //    }
-        model
-  
-  let pickable' (pick :IMod<Pickable>) (sg: ISg) =
-        Sg.PickableApplicator (pick, Mod.constant sg)
-      
+    
   let view (m : MModel) =
               
       //state.runtime.PrepareGlyphs(font, [0..127] |> Seq.map char)
@@ -152,22 +148,11 @@ module App =
         }  
 
       let scene = 
-        Sg.opcSg m m.finalTransform
-          |> Sg.fillMode m.fillMode            
-          |> Sg.shader {
-              do! DefaultSurfaces.trafo
-              do! DefaultSurfaces.diffuseTexture
-              do! DefaultSurfaces.simpleLighting
-          } 
-          |> Sg.noEvents
-          |> pickable' pickable
-          |> Sg.noEvents
-          |> Sg.withEvents [
-              SceneEventKind.Down, (
-                fun sceneHit -> 
-                  true, Seq.ofList[HitSurface sceneHit]                  
-              )
-          ]
+        m.opcInfos
+          |> HMap.toList
+          |> List.map(fun info -> SceneObjectHandling.createSingleOpcSg m (snd info))
+          |> ASet.ofList
+          |> ``F# Sg``.Sg.set
           
       
           
@@ -240,8 +225,9 @@ module App =
               localBB        = rootTree.info.LocalBoundingBox 
               globalBB       = rootTree.info.GlobalBoundingBox
             }
-
         ]
+        |> List.map (fun info -> info.localBB, info)
+        |> HMap.ofList
 
       let totalKdTrees = kdTreesPerHierarchy.Length
       Log.line "creating %d kdTrees" totalKdTrees

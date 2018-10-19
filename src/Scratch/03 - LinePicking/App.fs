@@ -67,7 +67,7 @@ module App =
           let r = hit.globalRay.Ray.Ray
           match r |> intersect model with
           | Some (_,h) -> 
-            let hitpoint = r.GetPointOnRay(h.T)             
+            let hitpoint = r.GetPointOnRay(h.T)
             { model with hitPoint = Some hitpoint }
           | None -> 
             Log.error "no hit"
