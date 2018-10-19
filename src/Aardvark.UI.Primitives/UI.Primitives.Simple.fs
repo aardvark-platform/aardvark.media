@@ -34,9 +34,8 @@ module Simple =
         Array.zip values names |> Map.ofArray
 
     module Html5 =
-        open Aardvark.Base.MultimethodTest
 
-        let labeledIntegerInput' (containerAttributes : AttributeMap<'msg>) (labelAttributes : AttributeMap<'msg>) (labelSize : Option<int>) (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : IMod<int>) =
+        let labeledIntegerInput' (containerAttributes : AttributeMap<'msg>) (labelAttributes : AttributeMap<'msg>) (inputAttributes : AttributeMap<'msg>) (labelSize : Option<int>) (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : IMod<int>) =
             let defaultValue = max 0 minValue
             let labelSize = Option.defaultValue name.Length labelSize
             let parse (str : string) =
@@ -66,28 +65,30 @@ module Simple =
                             | _ -> Seq.empty
                 }
 
+            let attributes = 
+                AttributeMap.ofListCond [
+                    yield always <| attribute "type" "number"
+                    yield always <| attribute "step" "1"
+                    if minValue > System.Int32.MinValue then yield always <| attribute "min" (string minValue)
+                    if maxValue < System.Int32.MaxValue then yield always <| attribute "max" (string maxValue)
+
+                    yield always <| attribute "placeholder" name
+                    yield always <| attribute "size" (string labelSize)
+                    
+                    yield always <| ("oninput", changed)
+                    yield always <| ("onchange", changed)
+
+                    yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
+
+                ]
+
             Incremental.div containerAttributes <| 
                 alist {
                     yield Incremental.span labelAttributes (AList.ofList [ text name ])
-                    yield Incremental.input <|
-                        AttributeMap.ofListCond [
-                            yield always <| attribute "type" "number"
-                            yield always <| attribute "step" "1"
-                            if minValue > System.Int32.MinValue then yield always <| attribute "min" (string minValue)
-                            if maxValue < System.Int32.MaxValue then yield always <| attribute "max" (string maxValue)
-
-                            yield always <| attribute "placeholder" name
-                            yield always <| attribute "size" (string labelSize)
-                    
-                            yield always <| ("oninput", changed)
-                            yield always <| ("onchange", changed)
-
-                            yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
-
-                        ]
+                    yield Incremental.input (AttributeMap.union attributes inputAttributes)
                 }
 
-        let labeledFloatInput' (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) (labelSize : Option<int>) (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>)  =
+        let labeledFloatInput' (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) (inputAttributes : AttributeMap<'msg>) (labelSize : Option<int>) (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>)  =
             let labelSize = Option.defaultValue name.Length labelSize
             let changed =
                 AttributeValue.Event  {
@@ -111,26 +112,29 @@ module Simple =
                             | _ -> Seq.empty
                 }
 
+            let attributes =
+                AttributeMap.ofListCond [
+                        yield always <| attribute "type" "number"
+                        yield always <| attribute "step" (string step)
+                        yield always <| attribute "min" (string minValue)
+                        yield always <| attribute "max" (string maxValue)
+
+                        yield always <| attribute "placeholder" name
+                        yield always <| attribute "size" (string labelSize)
+                    
+                        yield always <| ("oninput", changed)
+                        yield always <| ("onchange", changed)
+
+                        yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
+
+                    ]
+
             Incremental.div containerAttribs <|
                 AList.ofList [
                     Incremental.span labelAttribs (AList.ofList [ text name ])
-                    Incremental.input <|
-                        AttributeMap.ofListCond [
-                            yield always <| attribute "type" "number"
-                            yield always <| attribute "step" (string step)
-                            yield always <| attribute "min" (string minValue)
-                            yield always <| attribute "max" (string maxValue)
-
-                            yield always <| attribute "placeholder" name
-                            yield always <| attribute "size" (string labelSize)
-                    
-                            yield always <| ("oninput", changed)
-                            yield always <| ("onchange", changed)
-
-                            yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
-
-                        ]
+                    Incremental.input (AttributeMap.union attributes inputAttributes)
                 ]
+
 
         let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : AttributeMap<'msg>) 
                 (current : IMod<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
@@ -223,10 +227,10 @@ module Simple =
             ]
 
         let labeledIntegerInput (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : IMod<int>) =
-            labeledIntegerInput' (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) None name minValue maxValue changed value
+            labeledIntegerInput' (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) AttributeMap.empty None name minValue maxValue changed value
 
         let labeledFloatInput (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>) =
-            labeledFloatInput' (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) None name minValue maxValue step changed value 
+            labeledFloatInput' (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) AttributeMap.empty None name minValue maxValue step changed value 
 
         let modal (id : string) (name : string) (ok : 'msg) (attributes : list<string * AttributeValue<'msg>>) (content : list<DomNode<'msg>>) =
             require Html.semui (
@@ -252,7 +256,7 @@ module Simple =
             else
                 str
 
-        let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : list<string * AttributeValue<'msg>>) (current : IMod<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
+        let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : AttributeMap<'msg>) (current : IMod<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
         
             let mutable back = Map.empty
             let forth = 
@@ -270,15 +274,22 @@ module Simple =
                     "current.onmessage = function(v) { $('#__ID__').dropdown('set selected', v); };"
                 ]
 
+            let attributes = AttributeMap.union att (AttributeMap.ofList [onChange (fun str -> Map.find (str |> int) back |> update)])
+
             onBoot' ["current", Mod.channel selectedValue] boot  (
-                select ((onChange (fun str -> Map.find (str |> int) back |> update))::att) [
-                    for (value, name) in Map.toSeq names do
-                        let v = Map.find value forth
-                        yield option [attribute "value" (string v)] [ text name ]
-                ]
+                Incremental.select attributes <|
+                    alist {
+                        for (value, name) in Map.toSeq names do
+                            let v = Map.find value forth
+                            yield option [attribute "value" (string v)] [ text name ]
+                    }
             )
 
-        let allValues<'a when 'a : comparison> =
-            FSharpType.GetUnionCases(typeof<'a>,true) |> Array.map (fun c -> unbox<'a>(FSharpValue.MakeUnion(c, [||], true)), c.Name) |> Map.ofArray
-
-
+        let dropDownAuto (att : AttributeMap<'msg>) (current : IMod<'a>) (update : 'a -> 'msg) =
+            let map = 
+                if FSharpType.IsUnion typeof<'a> then 
+                    unionToCases
+                elif typeof<'a>.IsEnum then
+                    enumToCases
+                else failwithf "[Media] dropDownAuto. type %s is neither union nor enum type." typeof<'a>.FullName
+            dropDown att current update map

@@ -60,16 +60,30 @@ let view (model : MModel) =
         br []
         text "simple float input: "
         br []
-        Html5.labeledFloatInput' AttributeMap.empty (AttributeMap.ofList [style "width:100px;display:inline-block;"])
+        Html5.labeledFloatInput' AttributeMap.empty (AttributeMap.ofList [style "width:100px;display:inline-block;"]) 
+            (AttributeMap.ofList [style "width:100px"])
             None "float value: " 0.0 10.0 0.01 SetFloat model.floatValue
-        Html5.labeledIntegerInput' AttributeMap.empty (AttributeMap.ofList [style "width:100px;display:inline-block;"])
+        Html5.labeledIntegerInput' AttributeMap.empty (AttributeMap.ofList [style "width:100px;display:inline-block;"]) 
+            (AttributeMap.ofList [style "width:100px"])
             None "int value:   " 0 10 SetInt model.intValue
         text "automatic dropdown for enums: "
-        Html5.dropDownAuto AttributeMap.empty model.enumValue SetEnum
+        Html5.dropDownAuto (AttributeMap.ofList [style "width:60px"])  model.enumValue SetEnum
         br []
         text "automatic dropdown for enums: "
-        Html5.dropDownAuto AttributeMap.empty model.unionValue SetUnion
+        Html5.dropDownAuto (AttributeMap.ofList [style "width:60px"]) model.unionValue SetUnion
         br []
+        br []
+        br []
+
+        require Html.semui (
+            div [clazz "ui"] [
+                span [clazz "ui label"] [text "predefined semantic ui controls"]
+                br []
+                SemUi.labeledFloatInput "semui float input" 0.0 10.0 0.1 SetFloat model.floatValue
+                br []
+                SemUi.dropDownAuto AttributeMap.empty model.enumValue SetEnum 
+            ]
+        )
     ]
 
 let threads (model : Model) = 
