@@ -9,9 +9,10 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
+open Aardvark.SceneGraph.Opc
+open Aardvark.SceneGraph.SgPrimitives
 open Aardvark.Rendering.Text
 open Aardvark.UI.Primitives
-open Aardvark.SceneGraph.Opc
 open FShade
 open Aardvark.Base.Geometry
 open Aardvark.Geometry
@@ -20,6 +21,8 @@ open Aardvark.Geometry
 
 
 module App = 
+  open SceneObjectHandling
+
   //let intersectController (ci : int) (model : Model) (s : VrState) = 
   //      let ray = Ray3d(V3d.Zero, V3d.OIO)
   //      let ray = ray.Transformed(s.devices.[ci].pose.deviceToWorld.Forward)
@@ -105,9 +108,9 @@ module App =
       | Camera m -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
       | Message.KeyDown m ->
-        Report.Error "Intersection was hit"; model      
+        model
       | Message.KeyUp m ->
-        Report.Error "Intersection was released"; model
+        model
       | HitSurface (box, sceneHit) -> 
         IntersectionController.intersect model sceneHit box
         
@@ -147,12 +150,14 @@ module App =
           return { shape = PickShape.Box box; trafo = Trafo3d.Identity }
         }  
 
+      
       let scene = 
         m.opcInfos
           |> HMap.toList
           |> List.map(fun info -> SceneObjectHandling.createSingleOpcSg m (snd info))
           |> ASet.ofList
           |> ``F# Sg``.Sg.set
+          |> ``F# Sg``.Sg.effect [ Aardvark.UI.Trafos.Shader.stableTrafo |> toEffect]
           
       
           
@@ -166,9 +171,11 @@ module App =
            attribute "showFPS" "true";       // optional, default is false
            attribute "useMapping" "true"
            attribute "data-renderalways" "true"
-           attribute "data-samples" "8"
+           attribute "data-samples" "4"
            onKeyDown (Message.KeyDown)
            onKeyUp (Message.KeyUp)
+           onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
+           onEvent "onRendered" [] (fun _ -> Camera FreeFlyController.Message.Rendered)
            //onKeyDown (KeyDown)
            //onKeyUp (KeyUp)
          ]) 
@@ -226,7 +233,7 @@ module App =
               globalBB       = rootTree.info.GlobalBoundingBox
             }
         ]
-        |> List.map (fun info -> info.localBB, info)
+        |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList
 
       let totalKdTrees = kdTreesPerHierarchy.Length
@@ -247,9 +254,9 @@ module App =
       
       let height = V3d.Distance(box.Center, box.Min)
       
-      let initialTransform = centerTransform * Trafo3d.Translation(V3d.OOI * 0.4)
+      let initialTransform = Trafo3d.Identity//centerTransform * Trafo3d.Translation(V3d.OOI * 0.4)
 
-      let camState = { FreeFlyController.initial with view = CameraView.lookAt V3d.III V3d.OOO V3d.OOI }
+      let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
 
       let initialModel : Model = 
         { 

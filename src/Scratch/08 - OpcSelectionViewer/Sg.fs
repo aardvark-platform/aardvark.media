@@ -12,6 +12,7 @@ open FShade
 module SceneObjectHandling = 
   open Aardvark.SceneGraph.Opc
   open Aardvark.UI
+  open Aardvark.UI
 
   //open Aardvark.Physics.Sky
   let transparent = RenderPass.after "transparent" RenderPassOrder.BackToFront RenderPass.main 
@@ -48,7 +49,7 @@ module SceneObjectHandling =
     
     let pickable = 
         adaptive {
-          return { shape = PickShape.Box opcD.localBB; trafo = Trafo3d.Identity }
+          return { shape = PickShape.Box opcD.globalBB; trafo = Trafo3d.Identity }
         } 
 
     sg
@@ -63,14 +64,13 @@ module SceneObjectHandling =
           do! DefaultSurfaces.diffuseTexture
           do! DefaultSurfaces.simpleLighting
       } 
-      |> Sg.noEvents
       |> pickable' pickable
-      |> Sg.noEvents
+      |> Sg.noEvents      
       |> Sg.withEvents [
           SceneEventKind.Down, (
             fun sceneHit -> 
-              true, Seq.ofList[HitSurface (opcD.localBB,sceneHit)]                  
-          )
+              true, Seq.ofList[HitSurface (opcD.globalBB,sceneHit)]                  
+          )      
       ]
         
 
