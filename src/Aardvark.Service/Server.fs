@@ -1597,6 +1597,9 @@ module Server =
                 | (true, v) -> Some v
                 | _ -> None
 
+        let (|C4f|_|) (str : string) =
+            try Some (C4f.Parse str) with e -> None
+
         let noState =
             {
                 viewTrafo = Trafo3d.Identity
@@ -1754,6 +1757,14 @@ module Server =
                 | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
                     let scene = content signature sceneName
 
+                    let clearColor = 
+                        match Map.tryFind "background" args with // fmt: C4f.Parse("[1.0,2.0,0.2,0.2]") 
+                            | Some (C4f c) -> c
+                            | Some bg -> 
+                                Log.warn "[render service] could not parse background color: %s (format should be e.g. [1.0,2.0,0.2,0.2])" bg
+                                C4f.Black
+                            | None -> C4f.Black
+
                     let clientInfo = 
                         {
                             token = AdaptiveToken.Top
@@ -1764,7 +1775,7 @@ module Server =
                             size = V2i(w,h)
                             samples = samples
                             time = MicroTime.Now
-                            clearColor = C4f.Black
+                            clearColor = clearColor
                         }
 
                     let state = getState clientInfo
