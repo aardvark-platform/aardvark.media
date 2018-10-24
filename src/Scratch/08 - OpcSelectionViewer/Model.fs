@@ -36,9 +36,12 @@ type DipAndStrike = {
   points  : plist<V3d>
 }
 
-type opcData = {
+[<DomainType>]
+type OpcData = {
+  [<NonIncremental>]
   patchHierarchy : PatchHierarchy
   kdTree         : hmap<Box3d, Level0KdTree>
+
   localBB        : Box3d
   globalBB       : Box3d
 }
@@ -55,25 +58,27 @@ type Model =
         showRay              : Option<int>
         teleportTrafo        : Option<Trafo3d>                
         teleportBeacon       : Option<V3d>        
-        picked               : hmap<int, V3d>
+        picked               : hmap<int, V3d>  
+        opcInfos             : hmap<Box3d, OpcData>
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>
         [<NonIncremental>]
         kdTrees              : list<KdTree<Triangle3d> * Trafo3d>
         [<NonIncremental>]
         kdTrees2             : hmap<Box3d, Level0KdTree>
-        [<NonIncremental>]
-        opcInfos             : hmap<Box3d, opcData>
+        
         
         boxes                : list<Box3d>
         lines                : list<Line3d>
 
-        workingDns : option<DipAndStrike>
+        workingDns           : option<DipAndStrike>
 
-        initialTransform : Trafo3d        
-        finalTransform   : Trafo3d
+        initialTransform     : Trafo3d        
+        finalTransform       : Trafo3d
 
-        threads : ThreadPool<Message>
+        threads              : ThreadPool<Message>
+
+        intersection         : bool
     }
   
    

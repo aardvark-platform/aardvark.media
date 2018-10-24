@@ -6,8 +6,8 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
-
 open FShade
+open Aardvark.UI.``F# Sg``
 
 module SceneObjectHandling = 
   open Aardvark.SceneGraph.Opc
@@ -23,7 +23,9 @@ module SceneObjectHandling =
   let pickable' (pick :IMod<Pickable>) (sg: ISg) =
     Sg.PickableApplicator (pick, Mod.constant sg)
 
-  let createSingleOpcSg (m : MModel) (opcD : opcData) =
+  let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
+    let boundingBox, opcD = data
+    
     let leaves = 
       opcD.patchHierarchy.tree
         |> QTree.getLeaves 
@@ -45,33 +47,33 @@ module SceneObjectHandling =
               |> Sg.trafo (Mod.constant info.Local2Global)             
               |> Sg.diffuseTexture (Mod.constant tex)             
           )
-        |> Sg.ofList        
+        |> Sg.ofList   
     
     let pickable = 
-        adaptive {
-          return { shape = PickShape.Box opcD.globalBB; trafo = Trafo3d.Identity }
-        } 
-
-    sg
-      |> Sg.trafo m.finalTransform
-      |> Sg.shader {
-            do! DefaultSurfaces.diffuseTexture
-            do! DefaultSurfaces.trafo
-         }
-      |> Sg.fillMode m.fillMode            
-      |> Sg.shader {
-          do! DefaultSurfaces.trafo
-          do! DefaultSurfaces.diffuseTexture
-          do! DefaultSurfaces.simpleLighting
+      adaptive {
+        let! bb = opcD.globalBB
+        return { shape = PickShape.Box bb; trafo = Trafo3d.Identity }
       } 
+      
+    
+    sg
+      //|> Sg.trafo m.finalTransform
       |> pickable' pickable
       |> Sg.noEvents      
       |> Sg.withEvents [
           SceneEventKind.Down, (
             fun sceneHit -> 
-              true, Seq.ofList[HitSurface (opcD.globalBB,sceneHit)]                  
+              let intersect = m.intersection |> Mod.force
+              if intersect then              
+                true, Seq.ofList[HitSurface (boundingBox,sceneHit)]
+              else 
+                false, Seq.ofList[]
           )      
       ]
+    
+    
+    
+    
         
 
   //let boxes (m:MModel) =              

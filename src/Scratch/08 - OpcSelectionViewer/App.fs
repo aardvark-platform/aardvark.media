@@ -16,12 +16,13 @@ open Aardvark.UI.Primitives
 open FShade
 open Aardvark.Base.Geometry
 open Aardvark.Geometry
-
+open ``F# Sg``
 
 
 
 module App = 
   open SceneObjectHandling
+  open Aardvark.Application
 
   //let intersectController (ci : int) (model : Model) (s : VrState) = 
   //      let ray = Ray3d(V3d.Zero, V3d.OIO)
@@ -108,9 +109,15 @@ module App =
       | Camera m -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
       | Message.KeyDown m ->
-        model
+        match m with
+          | Keys.I -> 
+            { model with intersection = true }
+          | _ -> model
       | Message.KeyUp m ->
-        model
+        match m with
+          | Keys.I -> 
+            { model with intersection = false }
+          | _ -> model
       | HitSurface (box, sceneHit) -> 
         IntersectionController.intersect model sceneHit box
         
@@ -144,28 +151,27 @@ module App =
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.LocalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
-    
-      let pickable = 
-        adaptive {
-          return { shape = PickShape.Box box; trafo = Trafo3d.Identity }
-        }  
-
       
       let scene = 
         m.opcInfos
-          |> HMap.toList
-          |> List.map(fun info -> SceneObjectHandling.createSingleOpcSg m (snd info))
-          |> ASet.ofList
-          |> ``F# Sg``.Sg.set
-          |> ``F# Sg``.Sg.effect [ Aardvark.UI.Trafos.Shader.stableTrafo |> toEffect]
-          
-      
+          |> AMap.toASet
+          |> ASet.map(fun info -> SceneObjectHandling.createSingleOpcSg m info)
+          |> Sg.set
+          |> Sg.effect [ 
+            toEffect Aardvark.UI.Trafos.Shader.stableTrafo
+            toEffect DefaultSurfaces.diffuseTexture       
+            ]
           
           //|> wrap
           //|> Semantic.renderObjects
       
+      let sg = 
+        [
+          scene
+        ] |> Sg.ofList
+
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "true";       // optional, default is false
@@ -174,18 +180,14 @@ module App =
            attribute "data-samples" "4"
            onKeyDown (Message.KeyDown)
            onKeyUp (Message.KeyUp)
-           onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
-           onEvent "onRendered" [] (fun _ -> Camera FreeFlyController.Message.Rendered)
-           //onKeyDown (KeyDown)
-           //onKeyUp (KeyUp)
+           //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
          ]) 
-         (scene)
+         (sg)
 
 
-      let frustum = Frustum.perspective 60.0 0.01 50000.0 1.0 |> Mod.constant          
+      let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
         
       let cam = Mod.map2 Camera.create m.cameraState.view frustum 
-
 
       require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
           div [clazz "ui"; style "background: #1B1C1E"] [
@@ -260,28 +262,29 @@ module App =
 
       let initialModel : Model = 
         { 
-          cameraState          = camState
-          distance             = None
-          line                 = None
-          fillMode             = FillMode.Fill
-          renderLine           = false 
-          showRay              = None
-          teleportBeacon       = None
-          teleportTrafo        = None
-          patchHierarchies     = patchHierarchies
-          kdTrees              = List.empty // Opc.getLeafKdTrees Opc.mars.preTransform  patchHierarchies |> Array.toList
-          kdTrees2             = kdTrees
-          opcInfos             = opcInfos
-          picked               = HMap.empty
+          cameraState      = camState
+          distance         = None
+          line             = None
+          fillMode         = FillMode.Fill
+          renderLine       = false 
+          showRay          = None
+          teleportBeacon   = None
+          teleportTrafo    = None
+          patchHierarchies = patchHierarchies
+          kdTrees          = List.empty // Opc.getLeafKdTrees Opc.mars.preTransform  patchHierarchies |> Array.toList
+          kdTrees2         = kdTrees
+          opcInfos         = opcInfos
+          picked           = HMap.empty
           
 
-          workingDns           = None
+          workingDns       = None
           
-          lines                = List.empty
-          threads              = FreeFlyController.threads camState |> ThreadPool.map Camera
-          boxes                = [] //kdTrees |> HMap.toList |> List.map fst
-          initialTransform     = initialTransform
-          finalTransform       = initialTransform
+          lines            = List.empty
+          threads          = FreeFlyController.threads camState |> ThreadPool.map Camera
+          boxes            = [] //kdTrees |> HMap.toList |> List.map fst
+          initialTransform = initialTransform
+          finalTransform   = initialTransform
+          intersection     = false
         }
 
 
