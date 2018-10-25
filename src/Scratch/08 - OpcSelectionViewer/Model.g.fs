@@ -224,6 +224,7 @@ module Mutable =
         let _opcInfos = MMap.Create(__initial.opcInfos, (fun v -> MOpcData.Create(v)), (fun (m,v) -> MOpcData.Update(m, v)), (fun v -> v))
         let _boxes = ResetMod.Create(__initial.boxes)
         let _lines = ResetMod.Create(__initial.lines)
+        let _intersectionPoints = ResetMod.Create(__initial.intersectionPoints)
         let _workingDns = MOption.Create(__initial.workingDns, (fun v -> MDipAndStrike.Create(v)), (fun (m,v) -> MDipAndStrike.Update(m, v)), (fun v -> v))
         let _initialTransform = ResetMod.Create(__initial.initialTransform)
         let _finalTransform = ResetMod.Create(__initial.finalTransform)
@@ -245,6 +246,7 @@ module Mutable =
         member x.kdTrees2 = __current.Value.kdTrees2
         member x.boxes = _boxes :> IMod<_>
         member x.lines = _lines :> IMod<_>
+        member x.intersectionPoints = _intersectionPoints :> IMod<_>
         member x.workingDns = _workingDns :> IMod<_>
         member x.initialTransform = _initialTransform :> IMod<_>
         member x.finalTransform = _finalTransform :> IMod<_>
@@ -268,6 +270,7 @@ module Mutable =
                 MMap.Update(_opcInfos, v.opcInfos)
                 ResetMod.Update(_boxes,v.boxes)
                 ResetMod.Update(_lines,v.lines)
+                ResetMod.Update(_intersectionPoints,v.intersectionPoints)
                 MOption.Update(_workingDns, v.workingDns)
                 ResetMod.Update(_initialTransform,v.initialTransform)
                 ResetMod.Update(_finalTransform,v.finalTransform)
@@ -378,6 +381,12 @@ module Mutable =
                     override x.Get(r) = r.lines
                     override x.Set(r,v) = { r with lines = v }
                     override x.Update(r,f) = { r with lines = f r.lines }
+                }
+            let intersectionPoints =
+                { new Lens<OpcSelectionViewer.Model, Aardvark.Base.V3f[]>() with
+                    override x.Get(r) = r.intersectionPoints
+                    override x.Set(r,v) = { r with intersectionPoints = v }
+                    override x.Update(r,f) = { r with intersectionPoints = f r.intersectionPoints }
                 }
             let workingDns =
                 { new Lens<OpcSelectionViewer.Model, Microsoft.FSharp.Core.Option<OpcSelectionViewer.DipAndStrike>>() with

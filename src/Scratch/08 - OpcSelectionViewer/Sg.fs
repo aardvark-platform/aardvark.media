@@ -70,6 +70,24 @@ module SceneObjectHandling =
                 false, Seq.ofList[]
           )      
       ]
+
+  let drawColoredPoints (pointArray : IMod<V3f[]>) = 
+    let colors = 
+      adaptive {
+        let! points = pointArray
+        return points |>
+                 Array.map (fun p -> C4f.Red)
+      }
+
+    Sg.draw IndexedGeometryMode.PointList
+      |> Sg.vertexAttribute DefaultSemantic.Positions pointArray
+      |> Sg.vertexAttribute DefaultSemantic.Colors colors
+      |> Sg.effect [
+         toEffect Aardvark.UI.Trafos.Shader.stableTrafo
+         toEffect DefaultSurfaces.vertexColor
+         Shader.PointSprite.Effect
+      ]
+      |> Sg.uniform "PointSize" (Mod.constant 10.0)
     
     
     

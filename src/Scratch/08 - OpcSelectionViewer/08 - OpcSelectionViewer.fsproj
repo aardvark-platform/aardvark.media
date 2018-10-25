@@ -16,6 +16,7 @@
     <Compile Include="Utils.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="Opc.fs" />
+    <Compile Include="Shaders.fs" />
     <Compile Include="Sg.fs" />
     <Compile Include="IntersectionController.fs" />
     <Compile Include="App.fs" />

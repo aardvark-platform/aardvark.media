@@ -13,6 +13,7 @@ open Aardvark.SceneGraph.Opc
 open Aardvark.SceneGraph.SgPrimitives
 open Aardvark.Rendering.Text
 open Aardvark.UI.Primitives
+open Aardvark.UI.Trafos
 open FShade
 open Aardvark.Base.Geometry
 open Aardvark.Geometry
@@ -23,6 +24,7 @@ open ``F# Sg``
 module App = 
   open SceneObjectHandling
   open Aardvark.Application
+  open Aardvark.Base.DynamicLinkerTypes
 
   //let intersectController (ci : int) (model : Model) (s : VrState) = 
   //      let ray = Ray3d(V3d.Zero, V3d.OIO)
@@ -111,12 +113,19 @@ module App =
       | Message.KeyDown m ->
         match m with
           | Keys.I -> 
-            { model with intersection = true }
+            { model with intersection = true }          
           | _ -> model
       | Message.KeyUp m ->
         match m with
           | Keys.I -> 
             { model with intersection = false }
+          | Keys.O ->
+            let splitPoint = Math.Max(Array.length model.intersectionPoints-1, 0)
+
+            { model with intersectionPoints = 
+                           model.intersectionPoints 
+                             |> Array.splitAt splitPoint
+                             |> fst}
           | _ -> model
       | HitSurface (box, sceneHit) -> 
         IntersectionController.intersect model sceneHit box
@@ -152,22 +161,26 @@ module App =
           |> List.map(fun x -> x.info.LocalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
       
-      let scene = 
+      let opcs = 
         m.opcInfos
           |> AMap.toASet
           |> ASet.map(fun info -> SceneObjectHandling.createSingleOpcSg m info)
           |> Sg.set
           |> Sg.effect [ 
-            toEffect Aardvark.UI.Trafos.Shader.stableTrafo
+            toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture       
             ]
-          
+        
           //|> wrap
           //|> Semantic.renderObjects
       
-      let sg = 
+      let intersectionPoints =
+        drawColoredPoints m.intersectionPoints
+
+      let scene = 
         [
-          scene
+          opcs
+          intersectionPoints
         ] |> Sg.ofList
 
       let renderControl =
@@ -182,7 +195,7 @@ module App =
            onKeyUp (Message.KeyUp)
            //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
          ]) 
-         (sg)
+         (scene)
 
 
       let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
@@ -262,29 +275,30 @@ module App =
 
       let initialModel : Model = 
         { 
-          cameraState      = camState
-          distance         = None
-          line             = None
-          fillMode         = FillMode.Fill
-          renderLine       = false 
-          showRay          = None
-          teleportBeacon   = None
-          teleportTrafo    = None
-          patchHierarchies = patchHierarchies
-          kdTrees          = List.empty // Opc.getLeafKdTrees Opc.mars.preTransform  patchHierarchies |> Array.toList
-          kdTrees2         = kdTrees
-          opcInfos         = opcInfos
-          picked           = HMap.empty
-          
-
-          workingDns       = None
-          
-          lines            = List.empty
-          threads          = FreeFlyController.threads camState |> ThreadPool.map Camera
-          boxes            = [] //kdTrees |> HMap.toList |> List.map fst
-          initialTransform = initialTransform
-          finalTransform   = initialTransform
-          intersection     = false
+          cameraState        = camState
+          distance           = None
+          line               = None
+          fillMode           = FillMode.Fill
+          renderLine         = false 
+          showRay            = None
+          teleportBeacon     = None
+          teleportTrafo      = None
+          patchHierarchies   = patchHierarchies
+          kdTrees            = List.empty // Opc.getLeafKdTrees Opc.mars.preTransform  patchHierarchies |> Array.toList
+          kdTrees2           = kdTrees
+          opcInfos           = opcInfos
+          picked             = HMap.empty
+                             
+                             
+          workingDns         = None
+                             
+          lines              = List.empty
+          threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
+          boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
+          intersectionPoints = Array.empty
+          initialTransform   = initialTransform
+          finalTransform     = initialTransform
+          intersection       = false
         }
 
 

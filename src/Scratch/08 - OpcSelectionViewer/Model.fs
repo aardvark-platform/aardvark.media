@@ -70,6 +70,7 @@ type Model =
         
         boxes                : list<Box3d>
         lines                : list<Line3d>
+        intersectionPoints   : V3f[]
 
         workingDns           : option<DipAndStrike>
 

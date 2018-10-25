@@ -89,12 +89,6 @@
     let intersect (m : Model) (hit : SceneHit) (boxId : Box3d) = 
       let fray = hit.globalRay.Ray
 
-      //let hitPointClouds = 
-      //       m.sgSurfaces.pointCloudSG
-      //       |> HMap.filter(fun _ v -> fray.Intersects(v.boundingBox, ref 0.0, ref Double.MaxValue)) 
-      //       |> HMap.map(fun _ v -> Tsid.PointClouds.PointIntersection.intersectBasedonISg fray v.sg)
-
-      //get respective kdintersection tree
       let o = 
         m.opcInfos.TryFind boxId 
 
@@ -112,9 +106,9 @@
 
               //let sketchingModel = 
               //  SketchingApp.update m.sketching send (SketchingApp.Action.PointPicked (hitpoint, sketching.Value, hitFunction m fray.Ray))
-              m 
+              { m with intersectionPoints = m.intersectionPoints |> Array.append [|V3f(hitpoint)|] }  
               //{ m with intersection = true; sketching = sketchingModel }
-            | None -> m                                                                      
+            | None -> m                                                                  
         | None -> m  
       
       
