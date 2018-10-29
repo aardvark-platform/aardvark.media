@@ -96,12 +96,13 @@ module ClientApp =
                 Rect.ofBox b |> Some
             | None -> None
 
-    let dependencies = Html.semui @ [
+    let dependencies = 
+      Html.semui @ [
         { name = "drawRects.css"; url = "drawRects.css"; kind = Stylesheet }
         { name = "drawRects.js";  url = "drawRects.js";  kind = Script     }
         { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
         { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
-    ] 
+      ] 
 
     let myMouseCbRel (evtName : string) (containerClass : string) (cb : V2d -> 'msg) =
         let cb = function None -> Seq.empty | Some v -> Seq.singleton (cb v)

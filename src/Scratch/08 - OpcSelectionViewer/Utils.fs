@@ -1,4 +1,5 @@
-﻿namespace OpcSelectionViewer
+﻿#nowarn "8989"
+namespace OpcSelectionViewer
 
   open Aardvark.Geometry
 
