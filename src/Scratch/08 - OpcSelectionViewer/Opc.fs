@@ -10,7 +10,6 @@ module Opc =
   open System.IO
   
   let createFlatISg (patchHierarchies : list<PatchHierarchy>) : ISg =
-    
     let leaves = 
       patchHierarchies 
       |> List.collect(fun x ->  
@@ -20,7 +19,7 @@ module Opc =
       let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
     
       leaves 
-        |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
+        |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info, dir, patch.info)) 
         |> List.map(fun ((a,_),c,d) -> (a,c,d))
         |> List.map (fun (g,dir,info) -> 
         
