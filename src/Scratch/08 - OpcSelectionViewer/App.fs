@@ -261,43 +261,20 @@ module App =
             Log.stop()
             r
            )
-          |> Array.fold (fun a b -> HMap.union a b) HMap.empty
-
-      let centerTransform = 
-        Trafo3d.Translation(-box.Center) *
-        Trafo3d.RotateInto(box.Center.Normalized, V3d.OIO)
-      
-      let height = V3d.Distance(box.Center, box.Min)
-      
-      let initialTransform = Trafo3d.Identity//centerTransform * Trafo3d.Translation(V3d.OOI * 0.4)
+          |> Array.fold (fun a b -> HMap.union a b) HMap.empty                  
 
       let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
 
       let initialModel : Model = 
         { 
-          cameraState        = camState
-          distance           = None
-          line               = None
-          fillMode           = FillMode.Fill
-          renderLine         = false 
-          showRay            = None
-          teleportBeacon     = None
-          teleportTrafo      = None
-          patchHierarchies   = patchHierarchies
-          kdTrees            = List.empty // Opc.getLeafKdTrees Opc.mars.preTransform  patchHierarchies |> Array.toList
+          cameraState        = camState          
+          fillMode           = FillMode.Fill                    
+          patchHierarchies   = patchHierarchies          
           kdTrees2           = kdTrees
-          opcInfos           = opcInfos
-          picked             = HMap.empty
-                             
-                             
-          workingDns         = None
-                             
-          lines              = List.empty
+          opcInfos           = opcInfos             
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
-          intersectionPoints = Array.empty
-          initialTransform   = initialTransform
-          finalTransform     = initialTransform
+          intersectionPoints = Array.empty          
           intersection       = false
         }
 

@@ -178,11 +178,12 @@ let update (model : Model) (msg : Message) =
         | Camera c -> { model with cameraState = FreeFlyController.update model.cameraState c }
         | _ -> model
 
-let dependencies = Html.semui @ [
+let dependencies = 
+  Html.semui @ [
     { name = "drawRects.css"; url = "drawRects.css"; kind = Stylesheet }
     { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
     { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
-] 
+  ] 
 
 
 let viewBox (box : IMod<Box2d>) (colors : IMod<array<C4f>>) =
@@ -473,9 +474,10 @@ let app =
         threads = threads 
         initial = 
             { 
-                objects = HMap.ofList [
+                objects = 
+                  HMap.ofList [
                      (ObjectId.freshId(), Rect(Box2d.FromMinAndSize(V2d(0.0,0.0),V2d(0.7,0.7)), Color.initial))
-                ] 
+                  ] 
                 selectedObject = None
                 cameraState = { FreeFlyController.initial with view = CameraView.lookAt (V3d(0.5,0.5,0.5)) (V3d(0.5,0.5,0.0)) V3d.OIO }
                 
