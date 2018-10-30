@@ -64,35 +64,36 @@ module IntersectionController =
         Log.error "null ref exception in kdtree intersection" 
         None 
  
-  let intersectSingleWithCoords ray (hitObject : 'a) (kdTree:ConcreteKdIntersectionTree) = 
-    let kdi = kdTree.KdIntersectionTree 
-    let mutable hit = ObjectRayHit.MaxRange
-    let objFilter _ _ = true              
-    try           
-      if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then              
-          Some (hit.RayHit.T, hit.RayHit.Coord)
-      else            
-          None
-    with 
-      | _ -> 
-        Log.error "null ref exception in kdtree intersection" 
-        None 
+  let intersectSingleForIndex ray (hitObject : 'a) (kdTree:ConcreteKdIntersectionTree) = 
+      let kdi = kdTree.KdIntersectionTree 
+      let mutable hit = ObjectRayHit.MaxRange
+      let objFilter _ _ = true              
+      try           
+        if kdi.Intersect(ray, Func<_,_,_>(objFilter), null, 0.0, Double.MaxValue, &hit) then            
+            Some (hit.RayHit.T, hit.SetObject.Index)
+        else            
+            None
+      with 
+        | _ -> 
+          Log.error "null ref exception in kdtree intersection" 
+          None 
 
   let intersectKdTrees bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
       let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
       let hit = intersectSingle ray hitObject kdtree
       hit,c
 
-  let intersectKdTreeswithTexCoords bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+  let intersectKdTreeswithObjectIndex bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
       let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
-      let hit = intersectSingleWithCoords ray hitObject kdtree
+      //let triangleSet = kdtree.KdIntersectionTree.
+      let hit = intersectSingleForIndex ray hitObject kdtree
       hit,c
 
 
   let mutable cache = HMap.empty
 
   let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) (hitObject : 'a) ray =
-    kdTree0 
+    kdTree0
       |> Option.bind(fun kd ->
           let boxes = hitBoxes kd ray Trafo3d.Identity
           
@@ -100,7 +101,7 @@ module IntersectionController =
             boxes 
               |> List.choose(
                   fun bb -> 
-                    let treeHit,c = kd |> intersectKdTrees bb hitObject cache ray
+                    let treeHit,c = kd |> intersectKdTreeswithObjectIndex bb hitObject cache ray
                     cache <- c
                     treeHit)
               |> List.sortBy(fun (t,_)-> t)
@@ -125,7 +126,4 @@ module IntersectionController =
         | None -> m      
     | None -> m
       
-      
-      
-      
-
+  
