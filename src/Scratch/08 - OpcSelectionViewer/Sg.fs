@@ -9,6 +9,8 @@ open Aardvark.Rendering.Text
 open FShade
 open Aardvark.UI.``F# Sg``
 
+open OpcSelectionViewer.Picking
+
 module SceneObjectHandling = 
   open Aardvark.SceneGraph.Opc
   open Aardvark.UI
@@ -24,13 +26,13 @@ module SceneObjectHandling =
     Sg.PickableApplicator (pick, Mod.constant sg)
 
   let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
-    let boundingBox, opcD = data
+    let boundingBox, opcData = data
     
     let leaves = 
-      opcD.patchHierarchy.tree
+      opcData.patchHierarchy.tree
         |> QTree.getLeaves 
         |> Seq.toList 
-        |> List.map(fun y -> (opcD.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
+        |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
     
     let sg = 
       let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
@@ -51,7 +53,7 @@ module SceneObjectHandling =
     
     let pickable = 
       adaptive {
-        let! bb = opcD.globalBB
+        let! bb = opcData.globalBB
         return { shape = PickShape.Box bb; trafo = Trafo3d.Identity }
       }       
     
@@ -61,7 +63,7 @@ module SceneObjectHandling =
       |> Sg.withEvents [
           SceneEventKind.Down, (
             fun sceneHit -> 
-              let intersect = m.intersection |> Mod.force
+              let intersect = m.pickingActive |> Mod.force
               if intersect then              
                 true, Seq.ofList[HitSurface (boundingBox,sceneHit)]
               else 

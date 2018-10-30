@@ -19,37 +19,38 @@ open Aardvark.Base.Geometry
 open Aardvark.Geometry
 open ``F# Sg``
 
+open OpcSelectionViewer.Picking
+
 
 
 module App = 
   open SceneObjectHandling
   open Aardvark.Application
-  open Aardvark.Base.DynamicLinkerTypes
+  open Aardvark.Base.DynamicLinkerTypes  
   
   let update (model : Model) (msg : Message) =   
     match msg with
-      | Camera m when model.intersection = false -> 
+      | Camera m when model.pickingActive = false -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
       | Message.KeyDown m ->
         match m with
           | Keys.LeftCtrl -> 
-            { model with intersection = true }          
+            { model with pickingActive = true }
           | _ -> model
       | Message.KeyUp m ->
         match m with
           | Keys.LeftCtrl -> 
-            { model with intersection = false }
-          | Keys.Delete ->
-            { model with intersectionPoints = PList.empty }
+            { model with pickingActive = false }
+          | Keys.Delete ->            
+            { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
           | Keys.Back ->
-            let points = 
-              match model.intersectionPoints.AsList with
-              | [] -> []
-              | _ :: rest -> rest
-            { model with intersectionPoints = points |> PList.ofList }
+            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }            
           | _ -> model
-      | HitSurface (box, sceneHit) -> 
-        IntersectionController.intersect model sceneHit box
+      | PickingAction msg -> 
+        { model with picking = PickingApp.update model.picking msg }        
+        ////IntersectionController.intersect model sceneHit box
+        //failwith "panike"
+        //model 
       | UpdateDockConfig cfg ->
         { model with dockConfig = cfg }
       | _ -> model
@@ -73,13 +74,13 @@ module App =
             ]
                         
       let intersectionPoints =
-        drawColoredPoints m.intersectionPoints
+        drawColoredPoints m.picking.intersectionPoints
 
       let scene = 
         [
           opcs
           intersectionPoints
-        ] |> Sg.ofList
+        ] |> Sg.ofList |> Sg.map PickingAction
 
       let renderControl =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
@@ -93,7 +94,7 @@ module App =
            onKeyUp (Message.KeyUp)
            //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
          ]) 
-         (scene)
+         (scene) 
             
       let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
         
@@ -118,7 +119,7 @@ module App =
           ]  
         | None -> 
           m.dockConfig
-            |> docking [                                           
+            |> docking [
               style "width:100%; height:100%; background:#F00"
               onLayoutChanged UpdateDockConfig ]
         )
@@ -139,13 +140,7 @@ module App =
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.GlobalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
-                
-      let kdTreesPerHierarchy =
-        [|
-          for h in patchHierarchies do                
-            yield KdTrees.loadKdTrees' h Trafo3d.Identity true ViewerModality.XYZ Serialization.binarySerializer
-        |]
-
+                      
       let opcInfos = 
         [
           for h in patchHierarchies do
@@ -162,18 +157,8 @@ module App =
         |> List.map (fun info -> info.globalBB, info)
         |> HMap.ofList
 
-      let totalKdTrees = kdTreesPerHierarchy.Length
-      Log.line "creating %d kdTrees" totalKdTrees
-      let kdTrees = 
-        kdTreesPerHierarchy
-          |> Array.Parallel.mapi (fun i e ->
-            Log.start "creating kdtree #%d of %d" i totalKdTrees
-            let r = e
-            Log.stop()
-            r
-           )
-          |> Array.fold (fun a b -> HMap.union a b) HMap.empty                  
-
+      let pickingInfos = opcInfos |> HMap.map(fun _ v -> v.kdTree)
+                      
       let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
 
       let initialModel : Model = 
@@ -181,12 +166,13 @@ module App =
           cameraState        = camState          
           fillMode           = FillMode.Fill                    
           patchHierarchies   = patchHierarchies          
-          kdTrees2           = kdTrees
-          opcInfos           = opcInfos             
+                    
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
-          intersectionPoints = PList.empty          
-          intersection       = false
+      
+          pickingActive      = false
+          opcInfos           = opcInfos
+          picking            = { PickingModel.initial with pickingInfos = opcInfos }
           dockConfig         =
             config {
                 content (

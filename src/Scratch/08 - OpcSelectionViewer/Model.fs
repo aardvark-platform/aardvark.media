@@ -8,41 +8,31 @@ open Aardvark.SceneGraph.Opc
 open Aardvark.Geometry
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open KdTrees
 open Aardvark.Application
+
+open OpcSelectionViewer.Picking
 
 type Message =
   | Camera           of FreeFlyController.Message
   | KeyUp            of key : Keys
-  | KeyDown          of key : Keys
-  | HitSurface       of Box3d*SceneHit    
+  | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
-
-[<DomainType>]
-type OpcData = {
-  [<NonIncremental>]
-  patchHierarchy : PatchHierarchy
-  kdTree         : hmap<Box3d, Level0KdTree>
-
-  localBB        : Box3d
-  globalBB       : Box3d
-}
+  | PickingAction    of PickingAction
 
 [<DomainType>]
 type Model =
     {
         cameraState          : CameraControllerState                       
         fillMode             : FillMode                                
-        opcInfos             : hmap<Box3d, OpcData>
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
-        [<NonIncremental>]
-        kdTrees2             : hmap<Box3d, Level0KdTree>
+        
         boxes                : list<Box3d>
-        intersectionPoints   : plist<V3d>
+        opcInfos             : hmap<Box3d, OpcData>
         threads              : ThreadPool<Message>
-        intersection         : bool
         dockConfig           : DockConfig
+        picking              : PickingModel
+        pickingActive        : bool
     }
   
    
