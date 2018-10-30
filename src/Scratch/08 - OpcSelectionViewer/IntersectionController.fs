@@ -106,7 +106,8 @@
 
               //let sketchingModel = 
               //  SketchingApp.update m.sketching send (SketchingApp.Action.PointPicked (hitpoint, sketching.Value, hitFunction m fray.Ray))
-              { m with intersectionPoints = m.intersectionPoints |> Array.append [|V3f(hitpoint)|] }  
+          //    { m with intersectionPoints = m.intersectionPoints |> Array.append [|V3f(hitpoint)|] }  
+              { m with intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint  }
               //{ m with intersection = true; sketching = sketchingModel }
             | None -> m                                                                  
         | None -> m  

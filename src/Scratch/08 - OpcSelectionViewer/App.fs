@@ -119,42 +119,19 @@ module App =
         match m with
           | Keys.I -> 
             { model with intersection = false }
-          | Keys.O ->
-            let splitPoint = Math.Max(Array.length model.intersectionPoints-1, 0)
+          | Keys.O -> model
+            //let splitPoint = Math.Max(Array.length model.intersectionPoints-1, 0)
 
-            { model with intersectionPoints = 
-                           model.intersectionPoints 
-                             |> Array.splitAt splitPoint
-                             |> fst}
+            //{ model with intersectionPoints = 
+            //               model.intersectionPoints 
+            //                 |> Array.splitAt splitPoint
+            //                 |> fst}
           | _ -> model
       | HitSurface (box, sceneHit) -> 
         IntersectionController.intersect model sceneHit box
-        
-        
-
-        //match model.measureMode with 
-        //| Tele ->
-        //  Log.line "[Program] received teleport message %A" hitPoint           
-        //  if hitPoint.IsNaN then
-        //    { model with teleportBeacon = None }            
-        //  else
-        //    let trafo = -hitPoint |> Trafo3d.Translation
-        //    Log.line "[Program] compute target trafo %A" (trafo.Forward.TransformPos hitPoint)
-            
-        //    let newBeacon = Some V3d.Zero // model.teleportBeacon |> Option.map(trafo.Forward.TransformPos)
-          
-        //    { 
-        //      model with
-        //          teleportBeacon = newBeacon
-        //          teleportTrafo  = None
-        //          finalTransform = model.finalTransform * trafo //* Trafo3d.Translation(V3d.OOI * 0.4)
-        //    }
-    
+                    
   let view (m : MModel) =
-              
-      //state.runtime.PrepareGlyphs(font, [0..127] |> Seq.map char)
-      //state.runtime.PrepareTextShaders(font, state.signature)                                   
-      
+                                                 
       let box = 
         m.patchHierarchies
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
@@ -170,10 +147,7 @@ module App =
             toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture       
             ]
-        
-          //|> wrap
-          //|> Semantic.renderObjects
-      
+                        
       let intersectionPoints =
         drawColoredPoints m.intersectionPoints
 
@@ -187,9 +161,9 @@ module App =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
-           attribute "showFPS" "true";       // optional, default is false
+           attribute "showFPS" "false";       // optional, default is false
            attribute "useMapping" "true"
-           attribute "data-renderalways" "true"
+           attribute "data-renderalways" "false"
            attribute "data-samples" "4"
            onKeyDown (Message.KeyDown)
            onKeyUp (Message.KeyUp)
@@ -211,15 +185,12 @@ module App =
   let app dir =
       Serialization.registry.RegisterFactory (fun _ -> KdTrees.level0KdTreePickler)
 
-      let phDirs = Directory.GetDirectories(dir)
-
-      //let box = 
-      //  Box3d.Parse("[[-2486972.923809925, 2288926.293124544, -275794.479790366], [-2486972.675580427, 2288926.581096648, -275793.402162172]]") 
+      let phDirs = Directory.GetDirectories(dir) |> Array.head |> Array.singleton
 
       let patchHierarchies =
         [ 
-            //for h in phDirs do
-                yield PatchHierarchy.load Serialization.binarySerializer.Pickle Serialization.binarySerializer.UnPickle (phDirs.[0] |> OpcPaths)
+          for h in phDirs do
+            yield PatchHierarchy.load Serialization.binarySerializer.Pickle Serialization.binarySerializer.UnPickle (h |> OpcPaths)
         ]    
 
       let box = 
@@ -227,8 +198,7 @@ module App =
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.GlobalBoundingBox)
           |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
-      
-          
+                
       let kdTreesPerHierarchy =
         [|
           for h in patchHierarchies do                
@@ -274,54 +244,15 @@ module App =
           opcInfos           = opcInfos             
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
-          intersectionPoints = Array.empty          
+          intersectionPoints = PList.empty          
           intersection       = false
         }
 
-
       {
-          initial = initialModel
-             
+          initial = initialModel             
           update = update
-          view   = view
-          
+          view   = view          
           threads = fun m -> m.threads
           unpersist = Unpersist.instance<Model, MModel>
       }
-        
-
-//let update (model : Model) (msg : Message) =
-//    match msg with
-//        Inc -> { model with value = model.value + 1 }
-
-//let view (model : MModel) =
-//    div [] [
-//        text "Hello World"
-//        br []
-//        button [onClick (fun _ -> Inc)] [text "Increment"]
-//        text "    "
-//        Incremental.text (model.value |> Mod.map string)
-//        br []
-//        img [
-//            attribute "src" "https://upload.wikimedia.org/wikipedia/commons/6/67/SanWild17.jpg"; 
-//            attribute "alt" "aardvark"
-//            style "max-width: 80%; max-height: 80%"
-//        ]
-//    ]
-
-
-//let threads (model : Model) = 
-//    ThreadPool.empty
-
-
-//let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
-//    {
-//        unpersist = Unpersist.instance     
-//        threads = threads 
-//        initial = 
-//            { 
-//               value = 0
-//            }
-//        update = update 
-//        view = view
-//    }
+       

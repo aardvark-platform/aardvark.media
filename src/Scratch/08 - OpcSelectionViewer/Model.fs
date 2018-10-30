@@ -36,9 +36,9 @@ type Model =
         [<NonIncremental>]
         patchHierarchies     : list<PatchHierarchy>        
         [<NonIncremental>]
-        kdTrees2             : hmap<Box3d, Level0KdTree>                
-        boxes                : list<Box3d>        
-        intersectionPoints   : V3f[]                                
+        kdTrees2             : hmap<Box3d, Level0KdTree>
+        boxes                : list<Box3d>
+        intersectionPoints   : plist<V3d>
         threads              : ThreadPool<Message>
         intersection         : bool
     }
