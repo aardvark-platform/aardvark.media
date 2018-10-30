@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "08 - OpcSelectionViewer": {
-      "commandName": "Project",
-      "commandLineArgs": "\"C:\\Temp\\1257_Perjen_Demo\\Perjen_Ost\\10_AU\\Surface\\OPC\""
-    }
-  }
-}

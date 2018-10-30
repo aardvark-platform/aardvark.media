@@ -30,6 +30,9 @@ let update (model : Model) (msg : Message) =
         | ToggleFill ->
             { model with fill = not model.fill; past = Some model }
 
+        | SetFiles files -> 
+            { model with files = PList.ofList files }
+
         | Undo ->
             match model.past with
                 | Some p -> { p with future = Some model; cameraState = model.cameraState }
@@ -39,6 +42,8 @@ let update (model : Model) (msg : Message) =
             match model.future with
                 | Some f -> { f with past = Some model; cameraState = model.cameraState }
                 | None -> model
+
+          
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -94,8 +99,8 @@ let view (model : MModel) =
                         br []
                         br []
                         button [
-                            onChooseFiles (fun files -> printfn "%A" files; ToggleFill)
-                            clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
+                            onChooseFiles SetFiles
+                            clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoosefile', top.aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
                         ] [text "open directory"]
                         button [style "position: absolute; bottom: 5px; left: 5px;"; clazz "ui small button"; onClick (fun _ -> CenterScene)] [text "Center Scene"]
                     ]
@@ -109,6 +114,8 @@ let view (model : MModel) =
             | Some "meta" ->
                 body [] [
                     button [onClick (fun _ -> Undo)] [text "Undo"]
+                    br []
+                    Incremental.div AttributeMap.empty <| AList.map text model.files
                 ]
 
             | Some other ->
@@ -138,19 +145,20 @@ let app =
                 cameraState = initialCamera
                 cullMode = CullMode.None
                 fill = true
+                files = PList.empty
                 dockConfig =
                     config {
                         content (
                             horizontal 10.0 [
-                                element { id "render"; title "Render View"; weight 20 }
+                                element { id "render"; title "Render View"; weight 20; isCloseable true }
                                 vertical 5.0 [
                                     element { id "controls"; title "Controls"; weight 5 }
-                                    element { id "meta"; title "Layout Controls"; weight 5 }
+                                    element { id "meta"; title "Layout Controls"; weight 5; isCloseable false }
                                 ]
                             ]
                         )
                         appName "PagesExample"
-                        useCachedConfig true
+                        useCachedConfig false
                     }
             }
         update = update 

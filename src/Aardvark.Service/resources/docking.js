@@ -132,13 +132,16 @@ var Docking;
         var cfg = state.config;
         var root = state.root;
         var layouter = root.parent;
-        var closeButton = document.createElement("a");
-        closeButton.innerText = "";
         var text = document.createElement("div");
+        text.style.cssFloat = "left";
         text.innerHTML = cfg.title || cfg.id;
         element.appendChild(text);
+        if (!cfg.isCloseable) {
+            return;
+        }
+        var closeButton = document.createElement("a");
+        closeButton.innerText = "";
         element.appendChild(closeButton);
-        text.style.cssFloat = "left";
         closeButton.className = "icon close";
         closeButton.style.cursor = "pointer";
         closeButton.style.marginLeft = "10pt";

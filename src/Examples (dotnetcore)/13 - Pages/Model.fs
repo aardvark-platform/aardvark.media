@@ -11,9 +11,10 @@ type Message =
     | CenterScene
     | UpdateConfig of DockConfig
     | Undo
-    | Redo
+    | Redo    
     | SetCullMode of CullMode
     | ToggleFill
+    | SetFiles of list<string>
 
 [<DomainType>]
 type Model = 
@@ -30,4 +31,6 @@ type Model =
         fill : bool
 
         dockConfig : DockConfig
+
+        files : plist<string>
     }

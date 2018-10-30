@@ -12,13 +12,10 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="resources\style.css" />
+    <EmbeddedResource Include="resources\force.js" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Utils.fs" />
     <Compile Include="Model.fs" />
-    <Compile Include="Opc.fs" />
-    <Compile Include="Shaders.fs" />
-    <Compile Include="Sg.fs" />
-    <Compile Include="IntersectionController.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
