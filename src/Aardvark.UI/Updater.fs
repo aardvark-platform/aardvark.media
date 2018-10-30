@@ -372,7 +372,7 @@ module Updaters =
                                         | _ ->
                                             yield n.Destroy(state, JSExpr.Nop)
                                 | None ->
-                                    failwith "sadasdlnsajdnmsad"
+                                    failwith "[Media] UI Updater. trying to remove non existent objects (locking issue?)"
 
                         | ElementOperation.Set newElement ->
                             let (l,s,r) = neighbours i
@@ -507,7 +507,8 @@ module Updaters =
                     seq {
                         for msg in messages do
                             yield m.Mapping msg
-                            subject.OnNext msg
+                            if subject.IsDisposed then Log.warn "[media] updater subj disposed."
+                            else subject.OnNext msg // if already destroyed, subapp does not receive msg any more...
                     }
                 | _ ->
                     Seq.empty

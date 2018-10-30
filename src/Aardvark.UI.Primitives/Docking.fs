@@ -9,6 +9,7 @@ type DockElement =
         weight : float
         title : Option<string>
         deleteInvisible : Option<bool>
+        isCloseable : Option<bool>
     }
 
 
@@ -55,8 +56,9 @@ module DockNodeConfig =
                         let id : string = o.["id"] |> JToken.op_Explicit
                         let title : Option<string> = match o.TryGetValue "title" with | (true, value) -> Some (JToken.op_Explicit value) | _ -> None
                         let deleteInvisible : Option<bool> = match o.TryGetValue "deleteInvisible" with | (true, value) -> Some (JToken.op_Explicit value) | _ -> None
+                        let isCloseable : Option<bool> = match o.TryGetValue "isCloseable" with (true,value) -> Some (JToken.op_Explicit value) | _ -> None
 
-                        Some (Element { DockElement.id = id; DockElement.weight = weight; DockElement.title = title; DockElement.deleteInvisible = deleteInvisible })
+                        Some (Element { DockElement.id = id; DockElement.weight = weight; DockElement.title = title; DockElement.deleteInvisible = deleteInvisible; DockElement.isCloseable = isCloseable })
 
                     | _ ->
                         None
@@ -98,9 +100,9 @@ module DockNodeConfig =
                 o.["kind"] <- JToken.op_Implicit "element"
                 o.["id"] <- JToken.op_Implicit e.id
                 o.["weight"] <- JToken.op_Implicit e.weight
+                match e.isCloseable with | Some v -> o.["isCloseable"] <- JToken.op_Implicit v | None -> ()
                 match e.title with | Some v -> o.["title"] <- JToken.op_Implicit v | None -> ()
                 match e.deleteInvisible with | Some v -> o.["deleteInvisible"] <- JToken.op_Implicit v | None -> ()
-
                 o
 
 
@@ -170,7 +172,7 @@ module DockingBuilder =
         DockNodeConfig.Stack(weight, active, children)
 
     type DockElementBuilder<'a>(run : DockElement -> 'a) =
-        member x.Yield(()) = { id = ""; title = None; weight = 1.0; deleteInvisible = None }
+        member x.Yield(()) = { id = ""; title = None; weight = 1.0; deleteInvisible = None; isCloseable = None }
 
         [<CustomOperation("id")>]
         member x.Id(cfg : DockElement, id : string) =
@@ -187,6 +189,10 @@ module DockingBuilder =
         [<CustomOperation("deleteInvisible")>]
         member x.DeleteIfInvisible(cfg : DockElement) =
             { cfg with deleteInvisible = Some true }
+            
+        [<CustomOperation("isCloseable")>]
+        member x.IsCloseable(cfg : DockElement, v : bool) =
+            { cfg with isCloseable = Some v }
 
         member x.Run(v : DockElement) = run v
 

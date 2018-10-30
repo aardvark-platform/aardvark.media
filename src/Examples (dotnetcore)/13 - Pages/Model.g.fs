@@ -17,6 +17,7 @@ module Mutable =
         let _cullMode = ResetMod.Create(__initial.cullMode)
         let _fill = ResetMod.Create(__initial.fill)
         let _dockConfig = ResetMod.Create(__initial.dockConfig)
+        let _files = MList.Create(__initial.files)
         
         member x.past = __current.Value.past
         member x.future = __current.Value.future
@@ -24,6 +25,7 @@ module Mutable =
         member x.cullMode = _cullMode :> IMod<_>
         member x.fill = _fill :> IMod<_>
         member x.dockConfig = _dockConfig :> IMod<_>
+        member x.files = _files :> alist<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : Model.Model) =
@@ -34,6 +36,7 @@ module Mutable =
                 ResetMod.Update(_cullMode,v.cullMode)
                 ResetMod.Update(_fill,v.fill)
                 ResetMod.Update(_dockConfig,v.dockConfig)
+                MList.Update(_files, v.files)
                 
         
         static member Create(__initial : Model.Model) : MModel = MModel(__initial)
@@ -85,4 +88,10 @@ module Mutable =
                     override x.Get(r) = r.dockConfig
                     override x.Set(r,v) = { r with dockConfig = v }
                     override x.Update(r,f) = { r with dockConfig = f r.dockConfig }
+                }
+            let files =
+                { new Lens<Model.Model, Aardvark.Base.plist<System.String>>() with
+                    override x.Get(r) = r.files
+                    override x.Set(r,v) = { r with files = v }
+                    override x.Update(r,f) = { r with files = f r.files }
                 }

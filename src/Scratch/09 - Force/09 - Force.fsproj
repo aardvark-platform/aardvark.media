@@ -11,18 +11,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
-  <ItemGroup>    
+  <ItemGroup>
+    <EmbeddedResource Include="resources\style.css" />
+    <EmbeddedResource Include="resources\force.js" />
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="Serialization.fs" />
-    <Compile Include="KdTrees.fs" />
-    <Compile Include="Shaders.fs" />
-    <Compile Include="Picking/Picking-Model.fs" />
-    <Compile Include="Picking/Picking-Utils.fs" />
-    <Compile Include="Picking/IntersectionController.fs" />
-    <Compile Include="Picking/Picking.fs" />
     <Compile Include="Model.fs" />
-    <Compile Include="Sg.fs" />
-    <Compile Include="Opc.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />

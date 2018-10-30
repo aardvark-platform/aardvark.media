@@ -387,7 +387,7 @@ class Renderer {
 
 		var screenshot = function () {
 			var name = "screenshot"; 
-			if (self.useMapping) {
+			if (self.useMapping || true) {
 				//name += ".png";
 				//var dataurl = self.img.toDataURL("image/png");
 				//download(dataurl, name);
@@ -396,10 +396,10 @@ class Renderer {
 				name += ".jpg";
 				var url3 = window.top.location.href + "rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8&fmt=png" ;
 				downloadURI(url3, name);
-			}
+			} 
 			else {
 				name += ".jpg";
-				download(self.img.src, name);
+				downloadURI(self.img.src, name);
 			}
 		};
 		var ctrlDown = false;

@@ -4,13 +4,11 @@ Aardvark.Base.FSharp
 
 Aardvark.Base.Rendering
 Aardvark.Rendering.Vulkan
-Aardvark.Rendering.Text
 Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
 Aardvark.SceneGraph.IO
-Aardvark.SceneGraph.Opc
+Aardvark.Rendering.Text
 Aardvark.Compiler.DomainTypes.MSBuild
-Aardvark.Geometry.Intersection
 
 FsPickler
 FsPickler.Json
