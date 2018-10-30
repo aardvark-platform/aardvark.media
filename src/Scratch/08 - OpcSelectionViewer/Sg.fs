@@ -65,7 +65,7 @@ module SceneObjectHandling =
             fun sceneHit -> 
               let intersect = m.pickingActive |> Mod.force
               if intersect then              
-                true, Seq.ofList[HitSurface (boundingBox,sceneHit)]
+                true, Seq.ofList[(HitSurface (boundingBox,sceneHit)) |> PickingAction]
               else 
                 false, Seq.ofList[]
           )      

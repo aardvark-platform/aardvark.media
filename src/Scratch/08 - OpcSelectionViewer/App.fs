@@ -77,7 +77,7 @@ module App =
         [
           opcs
           PickingApp.view m.picking
-        ] |> Sg.ofList |> Sg.map PickingAction
+        ] |> Sg.ofList
 
       let renderControl =
        FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
