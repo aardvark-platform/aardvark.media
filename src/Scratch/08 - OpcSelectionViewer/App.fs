@@ -25,110 +25,34 @@ module App =
   open SceneObjectHandling
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes
-
-  //let intersectController (ci : int) (model : Model) (s : VrState) = 
-  //      let ray = Ray3d(V3d.Zero, V3d.OIO)
-  //      let ray = ray.Transformed(s.devices.[ci].pose.deviceToWorld.Forward)
-
-  //      let hits = 
-  //          model.kdTrees |> List.choose (fun (tree, trafo : Trafo3d) ->
-  //              let ray = ray.Transformed(trafo.Backward) |> FastRay3d
-
-  //              let tryIntersect (r : RayPart) (tri : Triangle3d) =
-  //                  let mutable t = 0.0
-  //                  if tri.Intersects(r.Ray.Ray, &t) && t >= r.TMin - 0.0001 && t <= r.TMax + 0.0001 then
-  //                      Some (RayHit(t,tri))
-  //                  else
-  //                      None
-
-  //              KdTree.intersect tryIntersect (RayPart(ray, 0.0, 0.5)) tree
-
-  //          )
-
-  //      match hits with
-  //          | [] ->
-  //              None
-  //          | hits ->
-  //              let h = hits |> List.minBy (fun h -> h.T)
-  //              let pt = ray.GetPointOnRay h.T
-  //              Some pt
-
   
-  //let intersectKdTrees' = KdTrees.intersectKdTrees computeIndices
-
-  //let mutable cache = hmap.Empty
-  //let intersectController' (ci : int) (model : Model) (s : VrState) = 
-  //    let ray = Ray3d(V3d.Zero, V3d.OIO)
-  //    let ray = ray.Transformed(s.devices.[ci].pose.deviceToWorld.Forward)
-
-  //    let hitBoxes =
-  //      model.kdTrees2
-  //        |> HMap.toList 
-  //        |> List.map fst
-  //        |> List.choose(
-  //            fun x -> 
-  //               let mutable t = 0.0                 
-  //               let ray = ray.Transformed(model.finalTransform.Backward)
-  //               match x.Intersects(ray, &t) with
-  //               | true -> Some x
-  //               | false -> None
-  //        )          
-
-  //    Log.warn "[Program] found %A hits" hitBoxes.Length
-      
-  //    let hit =
-  //      hitBoxes
-  //        |> Seq.choose(
-  //            fun bb ->                                                                
-  //                let ray' = ray.Transformed(model.finalTransform.Backward) |> FastRay3d  //combine pre and current transform?            
-  //                let hit, c = 
-  //                   model.kdTrees2 
-  //                     |> intersectKdTrees' bb 0 cache ray'
-          
-  //                cache <- c                    
-  //                hit |> Option.map(fun (t,_) -> 
-  //                  let hitpoitn = ray'.Ray.GetPointOnRay t
-  //                  Log.line "[program] hit in kdtree space %A %A" t hitpoitn
-  //                  t, hitpoitn)
-  //                )                                
-  //        |> Seq.sortBy(fun (t,_)-> t)
-  //        |> Seq.tryHead                                               
-      
-  //    hit |> Option.map(fun (t,x) -> Log.error "%A" t; model.finalTransform.Forward.TransformPos(x)) // |> Option.map ray.GetPointOnRay        
-                    
-  // let cycleMode (mode : InteractionMode) : InteractionMode =
-  //   match mode with
-  //     | Direct   -> Tele
-  //     | Tele     -> Poly
-  //     | Poly     -> DnS
-  //     | DnS      -> Reset
-  //     | Reset    -> Direct
-  ////     | Tele   -> Direct
-  //     | _  -> mode
-
   let update (model : Model) (msg : Message) =   
     match msg with
-      | Camera m -> 
+      | Camera m when model.intersection = false -> 
         { model with cameraState = FreeFlyController.update model.cameraState m; }
       | Message.KeyDown m ->
         match m with
-          | Keys.I -> 
+          | Keys.LeftCtrl -> 
             { model with intersection = true }          
           | _ -> model
       | Message.KeyUp m ->
         match m with
-          | Keys.I -> 
+          | Keys.LeftCtrl -> 
             { model with intersection = false }
-          | Keys.O -> model
-            //let splitPoint = Math.Max(Array.length model.intersectionPoints-1, 0)
-
-            //{ model with intersectionPoints = 
-            //               model.intersectionPoints 
-            //                 |> Array.splitAt splitPoint
-            //                 |> fst}
+          | Keys.Delete ->
+            { model with intersectionPoints = PList.empty }
+          | Keys.Back ->
+            let points = 
+              match model.intersectionPoints.AsList with
+              | [] -> []
+              | _ :: rest -> rest
+            { model with intersectionPoints = points |> PList.ofList }
           | _ -> model
       | HitSurface (box, sceneHit) -> 
         IntersectionController.intersect model sceneHit box
+      | UpdateDockConfig cfg ->
+        { model with dockConfig = cfg }
+      | _ -> model
                     
   let view (m : MModel) =
                                                  
@@ -170,16 +94,33 @@ module App =
            //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
          ]) 
          (scene)
-
-
+            
       let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
         
       let cam = Mod.map2 Camera.create m.cameraState.view frustum 
 
-      require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-          div [clazz "ui"; style "background: #1B1C1E"] [
-              yield 
-                  renderControl]              
+      page (fun request -> 
+        match Map.tryFind "page" request.queryParams with
+        | Some "render" ->
+          require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
+              div [clazz "ui"; style "background: #1B1C1E"] [renderControl]
+          )
+        | Some "controls" -> 
+          require Html.semui (
+            body [style "width: 100%; height:100%; background: transparent";] [
+               div[style "color:white"][text "UI COMES HERE"]
+            ]
+          )
+        | Some other -> 
+          let msg = sprintf "Unknown page: %A" other
+          body [] [
+              div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
+          ]  
+        | None -> 
+          m.dockConfig
+            |> docking [                                           
+              style "width:100%; height:100%; background:#F00"
+              onLayoutChanged UpdateDockConfig ]
         )
 
   let app dir =
@@ -246,6 +187,17 @@ module App =
           boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
           intersectionPoints = PList.empty          
           intersection       = false
+          dockConfig         =
+            config {
+                content (
+                    horizontal 10.0 [
+                        element { id "render"; title "Render View"; weight 7.0 }                        
+                        element { id "controls"; title "Controls"; weight 3.0 }                                                    
+                    ]
+                )
+                appName "OpcSelectionViewer"
+                useCachedConfig true
+            }
         }
 
       {

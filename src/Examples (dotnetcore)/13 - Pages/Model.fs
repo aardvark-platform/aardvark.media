@@ -11,7 +11,7 @@ type Message =
     | CenterScene
     | UpdateConfig of DockConfig
     | Undo
-    | Redo
+    | Redo    
     | SetCullMode of CullMode
     | ToggleFill
 

@@ -12,10 +12,11 @@ open KdTrees
 open Aardvark.Application
 
 type Message =
-  | Camera       of FreeFlyController.Message
-  | KeyUp        of key : Keys
-  | KeyDown      of key : Keys
-  | HitSurface   of Box3d*SceneHit    
+  | Camera           of FreeFlyController.Message
+  | KeyUp            of key : Keys
+  | KeyDown          of key : Keys
+  | HitSurface       of Box3d*SceneHit    
+  | UpdateDockConfig of DockConfig    
 
 [<DomainType>]
 type OpcData = {
@@ -41,6 +42,7 @@ type Model =
         intersectionPoints   : plist<V3d>
         threads              : ThreadPool<Message>
         intersection         : bool
+        dockConfig           : DockConfig
     }
   
    

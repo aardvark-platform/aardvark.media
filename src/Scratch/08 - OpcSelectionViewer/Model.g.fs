@@ -82,6 +82,7 @@ module Mutable =
         let _intersectionPoints = MList.Create(__initial.intersectionPoints)
         let _threads = ResetMod.Create(__initial.threads)
         let _intersection = ResetMod.Create(__initial.intersection)
+        let _dockConfig = ResetMod.Create(__initial.dockConfig)
         
         member x.cameraState = _cameraState
         member x.fillMode = _fillMode :> IMod<_>
@@ -92,6 +93,7 @@ module Mutable =
         member x.intersectionPoints = _intersectionPoints :> alist<_>
         member x.threads = _threads :> IMod<_>
         member x.intersection = _intersection :> IMod<_>
+        member x.dockConfig = _dockConfig :> IMod<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : OpcSelectionViewer.Model) =
@@ -105,6 +107,7 @@ module Mutable =
                 MList.Update(_intersectionPoints, v.intersectionPoints)
                 ResetMod.Update(_threads,v.threads)
                 ResetMod.Update(_intersection,v.intersection)
+                ResetMod.Update(_dockConfig,v.dockConfig)
                 
         
         static member Create(__initial : OpcSelectionViewer.Model) : MModel = MModel(__initial)
@@ -174,4 +177,10 @@ module Mutable =
                     override x.Get(r) = r.intersection
                     override x.Set(r,v) = { r with intersection = v }
                     override x.Update(r,f) = { r with intersection = f r.intersection }
+                }
+            let dockConfig =
+                { new Lens<OpcSelectionViewer.Model, Aardvark.UI.Primitives.DockConfig>() with
+                    override x.Get(r) = r.dockConfig
+                    override x.Set(r,v) = { r with dockConfig = v }
+                    override x.Update(r,f) = { r with dockConfig = f r.dockConfig }
                 }
