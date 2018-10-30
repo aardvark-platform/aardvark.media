@@ -72,14 +72,11 @@ module App =
             toEffect Shader.stableTrafo
             toEffect DefaultSurfaces.diffuseTexture       
             ]
-                        
-      let intersectionPoints =
-        drawColoredPoints m.picking.intersectionPoints
 
       let scene = 
         [
           opcs
-          intersectionPoints
+          PickingApp.view m.picking
         ] |> Sg.ofList |> Sg.map PickingAction
 
       let renderControl =
@@ -155,9 +152,7 @@ module App =
             }
         ]
         |> List.map (fun info -> info.globalBB, info)
-        |> HMap.ofList
-
-      let pickingInfos = opcInfos |> HMap.map(fun _ v -> v.kdTree)
+        |> HMap.ofList      
                       
       let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
 

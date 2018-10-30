@@ -71,18 +71,4 @@ module SceneObjectHandling =
           )      
       ]
 
-  let drawColoredPoints (points : alist<V3d>) =
-    let pointsF = 
-      points 
-        |> AList.map V3f
-        |> AList.toMod 
-        |> Mod.map PList.toArray
-
-    Sg.draw IndexedGeometryMode.PointList
-      |> Sg.vertexAttribute DefaultSemantic.Positions pointsF
-      |> Sg.effect [
-         toEffect Aardvark.UI.Trafos.Shader.stableTrafo
-         toEffect (DefaultSurfaces.constantColor C4f.Red)
-         Shader.PointSprite.Effect
-      ]
-      |> Sg.uniform "PointSize" (Mod.constant 10.0)
+  
