@@ -79,7 +79,7 @@ module Mutable =
         let _fillMode = ResetMod.Create(__initial.fillMode)
         let _opcInfos = MMap.Create(__initial.opcInfos, (fun v -> MOpcData.Create(v)), (fun (m,v) -> MOpcData.Update(m, v)), (fun v -> v))
         let _boxes = ResetMod.Create(__initial.boxes)
-        let _intersectionPoints = ResetMod.Create(__initial.intersectionPoints)
+        let _intersectionPoints = MList.Create(__initial.intersectionPoints)
         let _threads = ResetMod.Create(__initial.threads)
         let _intersection = ResetMod.Create(__initial.intersection)
         
@@ -89,7 +89,7 @@ module Mutable =
         member x.patchHierarchies = __current.Value.patchHierarchies
         member x.kdTrees2 = __current.Value.kdTrees2
         member x.boxes = _boxes :> IMod<_>
-        member x.intersectionPoints = _intersectionPoints :> IMod<_>
+        member x.intersectionPoints = _intersectionPoints :> alist<_>
         member x.threads = _threads :> IMod<_>
         member x.intersection = _intersection :> IMod<_>
         
@@ -102,7 +102,7 @@ module Mutable =
                 ResetMod.Update(_fillMode,v.fillMode)
                 MMap.Update(_opcInfos, v.opcInfos)
                 ResetMod.Update(_boxes,v.boxes)
-                ResetMod.Update(_intersectionPoints,v.intersectionPoints)
+                MList.Update(_intersectionPoints, v.intersectionPoints)
                 ResetMod.Update(_threads,v.threads)
                 ResetMod.Update(_intersection,v.intersection)
                 
@@ -158,7 +158,7 @@ module Mutable =
                     override x.Update(r,f) = { r with boxes = f r.boxes }
                 }
             let intersectionPoints =
-                { new Lens<OpcSelectionViewer.Model, Aardvark.Base.V3f[]>() with
+                { new Lens<OpcSelectionViewer.Model, Aardvark.Base.plist<Aardvark.Base.V3d>>() with
                     override x.Get(r) = r.intersectionPoints
                     override x.Set(r,v) = { r with intersectionPoints = v }
                     override x.Update(r,f) = { r with intersectionPoints = f r.intersectionPoints }
