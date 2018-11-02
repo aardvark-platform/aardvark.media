@@ -11,18 +11,7 @@ open Aardvark.Base.Geometry
 open Model
 open Aardvark.UI.Trafos
 
-type Action = 
-    | PlaceBox 
-    | Select        of string
-    | SetKind       of TrafoKind
-    | SetMode       of TrafoMode
-    | Translate     of string * TrafoController.Action
-    | Rotate        of string * TrafoController.Action
-    | Scale         of string * TrafoController.Action
-    | CameraMessage of CameraController.Message
-    | KeyDown       of key : Aardvark.Application.Keys
-    | Unselect
-    | Nop
+
 
 let isGrabbed (world : World) =
     world.selectedObjects |> HSet.exists (fun name -> 
@@ -47,6 +36,8 @@ let update (m : Scene) (a : Action) =
         | CameraMessage a -> 
             if isGrabbed m.world then m 
             else { m with camera = CameraController.update m.camera a }
+        | UpdateConfig cfg ->
+            { m with dockConfig = cfg }
         | PlaceBox -> 
             let name = System.Guid.NewGuid() |> string
             let newObject = { name = name; objectType = ObjectType.Box Box3d.Unit; transformation = TrafoController.initial }
@@ -60,7 +51,7 @@ let update (m : Scene) (a : Action) =
             //_selected(n).Update(m, fun t -> { t with pivotTrafo = t.trafo })
                 
         | Translate(name, a) ->
-            _selected(name).Update(m, fun t -> TranslateController.updateController t a)
+            _selected(name).Update(m, fun t -> TranslateController.updateController t m.camera.view a)
         | Rotate(name, a) ->                 
             _selected(name).Update(m, fun t -> RotationController.updateController t a)
         | Scale(name,a) ->                 
@@ -87,65 +78,68 @@ let update (m : Scene) (a : Action) =
         | Nop -> m
 
 
-    
+let noDepthPass = RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main    
 
 let viewScene (m : MScene) =
         
     let objects =
-        aset {
-            for (name,obj) in m.world.objects |> AMap.toASet do
-                let selected = ASet.contains name m.world.selectedObjects
-                let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
-                                                                                  
-                let controller =
-                    adaptive {
-
-                        let! sel  = selected
-                        let! kind = m.kind                                              
+      aset {
+        for (name,obj) in m.world.objects |> AMap.toASet do
+          let selected = ASet.contains name m.world.selectedObjects
+          let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
+                                                                            
+          let controller =
+              adaptive {
+                
+                let! sel  = selected
+                let! kind = m.kind                                              
+                    
+                let sg =
+                    match sel with 
+                        | true ->
+                            match kind with
+                                | TrafoKind.Translate -> 
+                                    TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) m.camera.view obj.transformation
+                                | TrafoKind.Rotate    -> 
+                                    RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) m.camera.view obj.transformation
+                                | TrafoKind.Scale     -> 
+                                    ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) m.camera.view obj.transformation
+                                | _ -> Sg.empty
                             
-                        let sg =
-                            match sel with 
-                                | true ->
-                                    match kind with
-                                        | TrafoKind.Translate -> 
-                                            TranslateController.viewController (fun t -> Translate(obj.name |> Mod.force, t)) m.camera.view obj.transformation
-                                        | TrafoKind.Rotate    -> 
-                                            RotationController.viewController (fun r -> Rotate(obj.name |> Mod.force, r)) m.camera.view obj.transformation
-                                        | TrafoKind.Scale     -> 
-                                            ScaleController.viewController (fun s -> Scale(obj.name |> Mod.force, s)) m.camera.view obj.transformation
-                                        | _ -> Sg.empty
-                                    
-                                | false -> Sg.ofList []
+                        | false -> Sg.ofList []
+                
+                return sg
+              } 
+            |> Sg.dynamic 
+            |> Sg.pass noDepthPass
+            |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                  
+          let box = 
+              obj.objectType 
+                  |> Mod.map(fun x -> 
+                  match x with
+                      | ObjectType.Box b -> b
+                      | _ -> failwith "object type not supported"                            
+                  )
+          yield 
+              Sg.box color box
+              |> Sg.requirePicking 
+              |> Sg.noEvents
+              |> Sg.Incremental.withEvents (
+                  amap {
+                      let! selected = selected
+                      if not selected then
+                          yield Sg.onDoubleClick (fun _ -> Select name)
+                  } )                                                       
+              |> Sg.trafo (obj.objectType |> Mod.map(fun x -> 
+                  match x with 
+                      | ObjectType.Box b -> Trafo3d.Translation -b.Center
+                      | _ -> failwith "object type not supported"))
+              |> Sg.trafo obj.transformation.previewTrafo
+              |> Sg.andAlso controller                        
+      } |> Sg.set
 
-                        return sg
-                    } |> Sg.dynamic 
-                        
-                let box = 
-                    obj.objectType 
-                        |> Mod.map(fun x -> 
-                        match x with
-                            | ObjectType.Box b -> b
-                            | _ -> failwith "object type not supported"                            
-                        )
-                yield 
-                    Sg.box color box
-                    |> Sg.requirePicking 
-                    |> Sg.noEvents
-                    |> Sg.Incremental.withEvents (
-                        amap {
-                            let! selected = selected
-                            if not selected then
-                                yield Sg.onDoubleClick (fun _ -> Select name)
-                        } )                                                       
-                    |> Sg.trafo (obj.objectType |> Mod.map(fun x -> 
-                        match x with 
-                            | ObjectType.Box b -> Trafo3d.Translation -b.Center
-                            | _ -> failwith "object type not supported"))
-                    |> Sg.trafo obj.transformation.previewTrafo
-                    |> Sg.andAlso controller                        
-        } |> Sg.set
-
-    Sg.ofSeq [ objects; ]
+    Sg.ofSeq [ objects; m.world.otherObjects]
     |> Sg.Incremental.withGlobalEvents (
             amap {
                 let! selected = m.world.selectedObjects |> ASet.count
@@ -162,29 +156,44 @@ let viewScene (m : MScene) =
 
 
 let view (m : MScene) =
-    body [ style "background: #1B1C1E"] [
-        require (Html.semui) (
-            div [clazz "ui"; style "background: #1B1C1E"] [
-                CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [onKeyDown KeyDown; attribute "style" "width:85%; height: 100%; float: left;"; attribute "data-samples" "8"]) (viewScene m)
-
-                div [style "width:15%; height: 100%; float:right"] [
-                    Html.SemUi.stuffStack [
-                        button [clazz "ui button"; onClick (fun _ ->  PlaceBox )] [text "Add Box"]
-                        button [clazz "ui button"; onClick (fun _ ->  Unselect )] [text "Unselect"]
-                        Html.SemUi.dropDown m.kind SetKind
-                        Html.SemUi.dropDown m.mode SetMode
-                    ]
-                ]
-            ]
-        )
-    ]
+  page (fun request -> 
+    match Map.tryFind "page" request.queryParams with
+    | Some "controls" ->
+      require (Html.semui) (
+        body [ style "background: #1B1C1E"] [     
+          div [style "width: 100%; height: 100%"] [
+            Html.SemUi.stuffStack [
+                button [clazz "ui button"; onClick (fun _ ->  PlaceBox )] [text "Add Box"]
+                button [clazz "ui button"; onClick (fun _ ->  Unselect )] [text "Unselect"]
+                Html.SemUi.dropDown m.kind SetKind
+                Html.SemUi.dropDown m.mode SetMode
+            ]                 
+          ]
+        ]      )
+    | Some "render" -> 
+      require (Html.semui) (
+        body [ style "background: #1B1C1E"] [
+          CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+            (AttributeMap.ofList [onKeyDown KeyDown; attribute "style" "width:100%; height: 100%"; attribute "data-samples" "8"]) 
+            (viewScene m)        
+        ]
+      )
+    | Some other ->
+      let msg = sprintf "Unknown page: %A" other
+      body [] [
+          div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
+      ]
+    | None -> 
+      m.dockConfig |> Mod.force |> Mod.constant |> docking [
+          style "width:100%;height:100%;"
+          onLayoutChanged UpdateConfig
+      ])
 
 let many = 
     HMap.ofList [
-        for i in 0 .. 2 do 
-            for j in 0 .. 2 do
-                for z in 0 .. 2 do
+        for i in -1 .. 1 do 
+            for j in -1 .. 1 do
+                for z in -1 .. 1 do
                     let name = System.Guid.NewGuid() |> string
                     let pos = V3d(float i, float j, float z)
                     let box = Box3d.FromCenterAndSize(pos, V3d.One * 0.5)
@@ -202,11 +211,12 @@ let many =
 let singleGuid = System.Guid.NewGuid() |> string
 
 let one =
-    let pos = V3d.OII
+    let pos = V3d.OII * 1.5
     let box = Box3d.FromCenterAndSize(pos, V3d.One * 0.5)
     let pose = Pose.translate pos
     let name = singleGuid
 //        let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
+    let pose' = { Pose.identity with rotation = Rot3d(V3d.OOI, V3d.OII) }
     let newObject = { 
         name           = name
         objectType     = ObjectType.Box box
@@ -214,10 +224,17 @@ let one =
         { 
             TrafoController.initial with 
                 pose         = pose
-                previewTrafo = Pose.toTrafo pose
+                previewTrafo = Pose.toTrafo pose                
+                preTransform = pose'
         } 
     }
     [ name, newObject ] |>  HMap.ofList
+
+let spherical : ISg<Action>= 
+  let radius = 1.5
+  let sphere = Sg.sphere 10 (C4b.Gray |> Mod.constant) (1.5 |> Mod.constant)
+  
+  sphere
 
 let app =
     {
@@ -225,10 +242,21 @@ let app =
         threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
         initial = 
             { 
-                world = { objects = many; selectedObjects = HSet.empty }
-                camera = CameraController.initial' 20.0
-                kind = TrafoKind.Rotate 
+                world = { objects = one; selectedObjects = HSet.empty; otherObjects = spherical }
+                camera = CameraController.initial' 5.0
+                kind = TrafoKind.Translate 
                 mode = TrafoMode.Local
+                dockConfig = 
+                  config {
+                    content (
+                        horizontal 10.0 [
+                            element { id "render";   title "Render View"; weight 15; isCloseable false }              
+                            element { id "controls"; title "Controls"; weight 5; isCloseable false }                                    
+                        ]
+                    )
+                    appName "MayaControls"
+                    useCachedConfig false
+                  }
             } |> updateMode TrafoMode.Local
         update = update
         view = view

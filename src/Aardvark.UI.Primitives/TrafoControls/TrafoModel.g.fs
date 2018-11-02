@@ -17,6 +17,7 @@ module Mutable =
         let _pose = ResetMod.Create(__initial.pose)
         let _previewTrafo = ResetMod.Create(__initial.previewTrafo)
         let _scale = ResetMod.Create(__initial.scale)
+        let _preTransform = ResetMod.Create(__initial.preTransform)
         let _mode = ResetMod.Create(__initial.mode)
         let _hovered = MOption.Create(__initial.hovered)
         let _grabbed = MOption.Create(__initial.grabbed)
@@ -25,6 +26,7 @@ module Mutable =
         member x.pose = _pose :> IMod<_>
         member x.previewTrafo = _previewTrafo :> IMod<_>
         member x.scale = _scale :> IMod<_>
+        member x.preTransform = _preTransform :> IMod<_>
         member x.mode = _mode :> IMod<_>
         member x.hovered = _hovered :> IMod<_>
         member x.grabbed = _grabbed :> IMod<_>
@@ -38,6 +40,7 @@ module Mutable =
                 ResetMod.Update(_pose,v.pose)
                 ResetMod.Update(_previewTrafo,v.previewTrafo)
                 ResetMod.Update(_scale,v.scale)
+                ResetMod.Update(_preTransform,v.preTransform)
                 ResetMod.Update(_mode,v.mode)
                 MOption.Update(_hovered, v.hovered)
                 MOption.Update(_grabbed, v.grabbed)
@@ -80,6 +83,12 @@ module Mutable =
                     override x.Get(r) = r.scale
                     override x.Set(r,v) = { r with scale = v }
                     override x.Update(r,f) = { r with scale = f r.scale }
+                }
+            let preTransform =
+                { new Lens<Aardvark.UI.Trafos.Transformation, Aardvark.UI.Trafos.Pose>() with
+                    override x.Get(r) = r.preTransform
+                    override x.Set(r,v) = { r with preTransform = v }
+                    override x.Update(r,f) = { r with preTransform = f r.preTransform }
                 }
             let mode =
                 { new Lens<Aardvark.UI.Trafos.Transformation, Aardvark.UI.Trafos.TrafoMode>() with

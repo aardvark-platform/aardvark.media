@@ -73,6 +73,7 @@ module Mutable =
         
         member x.objects = _objects :> amap<_,_>
         member x.selectedObjects = _selectedObjects :> aset<_>
+        member x.otherObjects = __current.Value.otherObjects
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : Model.World) =
@@ -109,6 +110,12 @@ module Mutable =
                     override x.Set(r,v) = { r with selectedObjects = v }
                     override x.Update(r,f) = { r with selectedObjects = f r.selectedObjects }
                 }
+            let otherObjects =
+                { new Lens<Model.World, Aardvark.UI.ISg<Model.Action>>() with
+                    override x.Get(r) = r.otherObjects
+                    override x.Set(r,v) = { r with otherObjects = v }
+                    override x.Update(r,f) = { r with otherObjects = f r.otherObjects }
+                }
     
     
     type MScene(__initial : Model.Scene) =
@@ -118,11 +125,13 @@ module Mutable =
         let _kind = ResetMod.Create(__initial.kind)
         let _mode = ResetMod.Create(__initial.mode)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
+        let _dockConfig = ResetMod.Create(__initial.dockConfig)
         
         member x.world = _world
         member x.kind = _kind :> IMod<_>
         member x.mode = _mode :> IMod<_>
         member x.camera = _camera
+        member x.dockConfig = _dockConfig :> IMod<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : Model.Scene) =
@@ -133,6 +142,7 @@ module Mutable =
                 ResetMod.Update(_kind,v.kind)
                 ResetMod.Update(_mode,v.mode)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
+                ResetMod.Update(_dockConfig,v.dockConfig)
                 
         
         static member Create(__initial : Model.Scene) : MScene = MScene(__initial)
@@ -172,4 +182,10 @@ module Mutable =
                     override x.Get(r) = r.camera
                     override x.Set(r,v) = { r with camera = v }
                     override x.Update(r,f) = { r with camera = f r.camera }
+                }
+            let dockConfig =
+                { new Lens<Model.Scene, Aardvark.UI.Primitives.DockConfig>() with
+                    override x.Get(r) = r.dockConfig
+                    override x.Set(r,v) = { r with dockConfig = v }
+                    override x.Update(r,f) = { r with dockConfig = f r.dockConfig }
                 }

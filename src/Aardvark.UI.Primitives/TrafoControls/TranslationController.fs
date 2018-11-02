@@ -35,13 +35,14 @@ module TranslateController =
         r.Ray.Ray.GetMinimalDistanceTo(other,&unused,&t) |> ignore
         t
 
-    let updateController (m : Transformation) (a : TrafoController.Action) =
+    let updateController (m : Transformation) (v : CameraView) (a : TrafoController.Action) =
         match a with
             | Hover axis -> 
                 { m with hovered = Some axis }
             | Unhover -> 
                 { m with hovered = None }
-            | Grab (rp, axis) ->
+            | Grab (rp, axis) ->                
+                let rp = rp.Transformed m.preTransform.Trafo.Backward
                 let offset = closestT rp axis
                 { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }; workingPose = Pose.identity }
             | Release ->
@@ -65,14 +66,10 @@ module TranslateController =
                 match m.grabbed with
                 | Some { offset = offset; axis = axis } ->
 
-                     let other =
-                        match axis with
-                        | X -> V3d.IOO
-                        | Y -> V3d.OIO
-                        | Z -> V3d.OOI                     
-
+                     let axis' = axis |> Axis.toV3d |> m.preTransform.Trafo.Forward.TransformDir     
+                  
                      let closestPoint = closestT rp axis
-                     let shift = (closestPoint - offset) * other         
+                     let shift = (closestPoint - offset) * axis'
 
                      let workingPose = { m.workingPose with position = shift }
 
@@ -126,7 +123,7 @@ module TranslateController =
                                 yield Global.onMouseUp   (fun _ -> Release)
                         }
                     )                
-                |> Sg.trafo (m.pose |> Pose.toTrafo' |> TrafoController.getTranslation |> scaleTrafo)
+                //|> Sg.trafo (m.pose |> Pose.toTrafo' |> TrafoController.getTranslation |> scaleTrafo)
                 |> Sg.trafo (TrafoController.pickingTrafo m)
                 |> Sg.map liftMessage
 
@@ -137,12 +134,16 @@ module TranslateController =
         let currentTrafo : IMod<Trafo3d> =
             adaptive {
                 let! mode = m.mode
+            //    let! pre = m.preTransform
+                let! p = m.previewTrafo
+
+              //  let p = pre.Trafo * p
+
                 match mode with
                     | TrafoMode.Local -> 
-                        return! m.previewTrafo
-                    | TrafoMode.Global -> 
-                        let! a = m.previewTrafo
-                        return Trafo3d.Translation(a.Forward.TransformPos(V3d.Zero))
+                        return p
+                    | TrafoMode.Global ->                         
+                        return Trafo3d.Translation(p.Forward.TransformPos(V3d.Zero))
                     | _ -> 
                         return failwith ""
             }
@@ -150,7 +151,7 @@ module TranslateController =
         let scene =      
             Sg.ofList [arrowX; arrowY; arrowZ ]
             |> Sg.effect [ Shader.stableTrafo |> toEffect; Shader.hoverColor |> toEffect]
-            |> Sg.trafo (currentTrafo |> TrafoController.getTranslation |> scaleTrafo)
+         //   |> Sg.trafo (currentTrafo  |> TrafoController.getTranslation  |> scaleTrafo)
             |> Sg.trafo currentTrafo            
             |> Sg.map liftMessage   
         
