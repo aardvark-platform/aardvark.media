@@ -90,11 +90,8 @@ module TrafoController =
     let pickingTrafo (m:MTransformation) : IMod<Trafo3d> =
         adaptive {
             let! mode = m.mode
-            let! p = m.pose    
-            let! pre = m.preTransform
-            
-            let p = Pose.transform p pre.Trafo
-
+            let! p = m.pose                
+           
             match mode with
                 | TrafoMode.Local -> 
                     return p.Trafo

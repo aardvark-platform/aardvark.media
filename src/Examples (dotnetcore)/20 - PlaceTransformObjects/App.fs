@@ -216,7 +216,7 @@ let one =
     let pose = Pose.translate pos
     let name = singleGuid
 //        let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
-    let pose' = { Pose.identity with rotation = Rot3d(V3d.OOI, V3d.OII) }
+    let pose' = { Pose.identity with rotation = Rot3d(V3d.OOI, V3d.III); position = V3d.OOI }
     let newObject = { 
         name           = name
         objectType     = ObjectType.Box box

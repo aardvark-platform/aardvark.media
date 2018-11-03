@@ -33,6 +33,7 @@ module TranslateController =
         let mutable unused = 0.0
         let mutable t = 0.0
         r.Ray.Ray.GetMinimalDistanceTo(other,&unused,&t) |> ignore
+        Log.line "[TranslateCtrl] picked %A" t
         t
 
     let updateController (m : Transformation) (v : CameraView) (a : TrafoController.Action) =
@@ -41,10 +42,6 @@ module TranslateController =
                 { m with hovered = Some axis }
             | Unhover -> 
                 { m with hovered = None }
-            | Grab (rp, axis) ->                
-                let rp = rp.Transformed m.preTransform.Trafo.Backward
-                let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }; workingPose = Pose.identity }
             | Release ->
                 match m.grabbed with
                 | Some _ ->                     
@@ -62,13 +59,20 @@ module TranslateController =
 
                     { m with grabbed = None; workingPose = Pose.identity; pose = resultPose; previewTrafo = preview }
                 | None   -> m
+            | Grab (rp, axis) ->                
+
+             //   let rp = rp.Transformed m.preTransform.Trafo.Backward
+                let offset = closestT rp axis
+
+                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }; workingPose = Pose.identity }
             | MoveRay rp ->
                 match m.grabbed with
-                | Some { offset = offset; axis = axis } ->
+                | Some { offset = offset; axis = axis } ->                  
 
-                     let axis' = axis |> Axis.toV3d |> m.preTransform.Trafo.Forward.TransformDir     
-                  
+               //      let rp = rp.Transformed m.preTransform.Trafo.Backward
                      let closestPoint = closestT rp axis
+
+                     let axis' = axis |> Axis.toV3d |> m.preTransform.Trafo.Forward.TransformDir
                      let shift = (closestPoint - offset) * axis'
 
                      let workingPose = { m.workingPose with position = shift }
@@ -134,10 +138,10 @@ module TranslateController =
         let currentTrafo : IMod<Trafo3d> =
             adaptive {
                 let! mode = m.mode
-            //    let! pre = m.preTransform
+                let! pre = m.preTransform
                 let! p = m.previewTrafo
 
-              //  let p = pre.Trafo * p
+                let p = pre.Trafo * p
 
                 match mode with
                     | TrafoMode.Local -> 
