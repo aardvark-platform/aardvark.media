@@ -19,5 +19,5 @@ module KdTrees =
     }
   
   type Level0KdTree = 
-      | LazyKdTree of LazyKdTree
+      | LazyKdTree   of LazyKdTree
       | InCoreKdTree of InCoreKdTree
