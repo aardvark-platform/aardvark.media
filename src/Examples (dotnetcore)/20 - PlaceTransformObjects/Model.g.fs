@@ -126,12 +126,14 @@ module Mutable =
         let _mode = ResetMod.Create(__initial.mode)
         let _camera = Aardvark.UI.Primitives.Mutable.MCameraControllerState.Create(__initial.camera)
         let _dockConfig = ResetMod.Create(__initial.dockConfig)
+        let _pivot = MOption.Create(__initial.pivot)
         
         member x.world = _world
         member x.kind = _kind :> IMod<_>
         member x.mode = _mode :> IMod<_>
         member x.camera = _camera
         member x.dockConfig = _dockConfig :> IMod<_>
+        member x.pivot = _pivot :> IMod<_>
         
         member x.Current = __current :> IMod<_>
         member x.Update(v : Model.Scene) =
@@ -143,6 +145,7 @@ module Mutable =
                 ResetMod.Update(_mode,v.mode)
                 Aardvark.UI.Primitives.Mutable.MCameraControllerState.Update(_camera, v.camera)
                 ResetMod.Update(_dockConfig,v.dockConfig)
+                MOption.Update(_pivot, v.pivot)
                 
         
         static member Create(__initial : Model.Scene) : MScene = MScene(__initial)
@@ -188,4 +191,10 @@ module Mutable =
                     override x.Get(r) = r.dockConfig
                     override x.Set(r,v) = { r with dockConfig = v }
                     override x.Update(r,f) = { r with dockConfig = f r.dockConfig }
+                }
+            let pivot =
+                { new Lens<Model.Scene, Microsoft.FSharp.Core.Option<Aardvark.Base.V3d>>() with
+                    override x.Get(r) = r.pivot
+                    override x.Set(r,v) = { r with pivot = v }
+                    override x.Update(r,f) = { r with pivot = f r.pivot }
                 }

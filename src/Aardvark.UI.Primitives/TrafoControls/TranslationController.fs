@@ -105,7 +105,7 @@ module TranslateController =
                  |> Sg.ofIndexedGeometry 
                  |> Sg.noEvents
                 )
-            |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI + V3d(0.0,0.0,0.1),cylinderRadius + 0.1) |> PickShape.Cylinder)
+            |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI,cylinderRadius) |> PickShape.Cylinder)
             |> Sg.transform rot       
             |> Sg.uniform "HoverColor" col           
             |> Sg.withEvents [ 

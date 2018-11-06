@@ -8,7 +8,7 @@ open Aardvark.UI.Trafos
 
 type Action = 
     | PlaceBox 
-    | Select        of string
+    | Select        of string * V3d
     | SetKind       of TrafoKind
     | SetMode       of TrafoMode
     | Translate     of string * TrafoController.Action
@@ -50,4 +50,5 @@ type Scene =
         mode   : TrafoMode
         camera : CameraControllerState
         dockConfig : DockConfig
+        pivot : Option<V3d>
     }

@@ -43,10 +43,10 @@ let update (m : Scene) (a : Action) =
             let newObject = { name = name; objectType = ObjectType.Box Box3d.Unit; transformation = TrafoController.initial }
             let world = { m.world with objects = HMap.add name newObject m.world.objects }
             { m with world = world }
-        | Select n -> 
+        | Select(n,centerPoint) -> 
             let world = { m.world with selectedObjects = HSet.add n HSet.empty }
 
-            { m with world = world }
+            { m with world = world; pivot = Some centerPoint }
 
             //_selected(n).Update(m, fun t -> { t with pivotTrafo = t.trafo })
                 
@@ -82,12 +82,17 @@ let noDepthPass = RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.
 
 let viewScene (m : MScene) =
         
+    let preTrafo = Trafo3d.Rotation(V3d.III,0.7) |> Mod.constant
+
+
     let objects =
       aset {
         for (name,obj) in m.world.objects |> AMap.toASet do
           let selected = ASet.contains name m.world.selectedObjects
           let color = selected |> Mod.map (function | true -> C4b.Red | false -> C4b.Gray)
-                                                                            
+             
+
+
           let controller =
               adaptive {
                 
@@ -112,7 +117,9 @@ let viewScene (m : MScene) =
               } 
             |> Sg.dynamic 
             |> Sg.pass noDepthPass
+            //|> Sg.trafo preTrafo
             |> Sg.depthTest (Mod.constant DepthTestMode.None)
+            
                   
           let box = 
               obj.objectType 
@@ -128,18 +135,26 @@ let viewScene (m : MScene) =
               |> Sg.Incremental.withEvents (
                   amap {
                       let! selected = selected
+                      
                       if not selected then
-                          yield Sg.onDoubleClick (fun _ -> Select name)
+                          yield Sg.on SceneEventKind.DoubleClick (fun p -> printfn "dobule"; Select(name,p.localPosition))
+                      
                   } )                                                       
-              |> Sg.trafo (obj.objectType |> Mod.map(fun x -> 
-                  match x with 
-                      | ObjectType.Box b -> Trafo3d.Translation -b.Center
-                      | _ -> failwith "object type not supported"))
-              |> Sg.trafo obj.transformation.previewTrafo
-              |> Sg.andAlso controller                        
+              //|> Sg.trafo (obj.objectType |> Mod.map(fun x -> 
+              //    match x with 
+              //        | ObjectType.Box b -> Trafo3d.Identity //Trafo3d.Translation -b.Center
+              //        | _ -> failwith "object type not supported"))
+              |> Sg.trafo (preTrafo |> Mod.map (fun a -> a.Inverse))
+              |> Sg.trafo (obj.transformation.previewTrafo |> Mod.map (fun a -> Trafo3d.Translation(a.Forward.TransformPos(V3d.Zero))))
+              |> Sg.trafo (preTrafo)
+              |> Sg.andAlso (
+                    controller
+                        |> Sg.trafo preTrafo 
+                        |> Sg.trafo (m.pivot |> Mod.map (Option.defaultValue V3d.Zero) |> Mod.map Trafo3d.Translation)
+                 )                      
       } |> Sg.set
 
-    Sg.ofSeq [ objects; m.world.otherObjects]
+    Sg.ofSeq [ objects; m.world.otherObjects; ]
     |> Sg.Incremental.withGlobalEvents (
             amap {
                 let! selected = m.world.selectedObjects |> ASet.count
@@ -211,12 +226,12 @@ let many =
 let singleGuid = System.Guid.NewGuid() |> string
 
 let one =
-    let pos = V3d.OII * 1.5
+    let pos =  V3d.Zero //V3d.OII * 1.5
     let box = Box3d.FromCenterAndSize(pos, V3d.One * 0.5)
     let pose = Pose.translate pos
     let name = singleGuid
-//        let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
-    let pose' = { Pose.identity with rotation = Rot3d(V3d.OOI, V3d.III); position = V3d.OOI }
+//    let pose = { Pose.identity with position = pos; rotation = Rot3d(V3d.III,0.4) }
+    let pose' = Pose.identity //  { Pose.identity with rotation = Rot3d(V3d.OOI, V3d.III); position = V3d.OOI }
     let newObject = { 
         name           = name
         objectType     = ObjectType.Box box
@@ -242,7 +257,8 @@ let app =
         threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
         initial = 
             { 
-                world = { objects = one; selectedObjects = HSet.empty; otherObjects = spherical }
+                pivot = None
+                world = { objects = one; selectedObjects = HSet.empty; otherObjects = Sg.empty }
                 camera = CameraController.initial' 5.0
                 kind = TrafoKind.Translate 
                 mode = TrafoMode.Local
