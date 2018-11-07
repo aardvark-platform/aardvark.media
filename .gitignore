@@ -17,3 +17,5 @@ bin/Debug
 /src/Aardvark.Service.Demo/*.TMP
 /src/Scratch/03 - LinePicking/.domaincache
 /src/Scratch/03 - LinePicking/Model.g.fs
+*.domaincache
+*.g.fs
