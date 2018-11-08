@@ -21,5 +21,5 @@ type Model =
   {
     boundingBox : Box2d
     typus       : Typus
-    feature     : list<Feature>
+    features    : list<Feature>
   }
