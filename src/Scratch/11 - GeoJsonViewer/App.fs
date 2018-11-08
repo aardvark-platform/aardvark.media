@@ -10,7 +10,7 @@ open Aardvark.Base.Rendering
 module App =
   let update (model : Model) (msg : Message) =
       match msg with
-          Inc -> { model with value = model.value + 1 }
+          Inc -> model
   
   let view (model : MModel) =
       div [] [
@@ -32,9 +32,11 @@ module App =
           unpersist = Unpersist.instance     
           threads = threads 
           initial = 
-              { 
-                 value = 0
-              }
+            { 
+               boundingBox = Box2d.Invalid
+               typus       = Typus.Feature
+               features    = list.Empty
+            }
           update = update 
           view = view
       }
