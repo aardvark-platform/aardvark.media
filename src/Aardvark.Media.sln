@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - Outline", "Scratch\12 - Outline\12 - Outline.fsproj", "{012AB7E4-ABFD-4DA1-8149-A28DECDB8011}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - GeoJsonViewer", "Scratch\11 - GeoJsonViewer\12 - GeoJsonViewer.fsproj", "{40B368B8-E0CF-432B-828A-881322171CD7}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "11 - ChatClient", "Scratch\11 - ChatClient\11 - ChatClient.fsproj", "{FB92A6E1-6402-46A8-93B7-B8B53585A114}"
@@ -104,6 +106,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{012AB7E4-ABFD-4DA1-8149-A28DECDB8011}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{012AB7E4-ABFD-4DA1-8149-A28DECDB8011}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{012AB7E4-ABFD-4DA1-8149-A28DECDB8011}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{012AB7E4-ABFD-4DA1-8149-A28DECDB8011}.Release|Any CPU.Build.0 = Release|Any CPU
 		{40B368B8-E0CF-432B-828A-881322171CD7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{40B368B8-E0CF-432B-828A-881322171CD7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{40B368B8-E0CF-432B-828A-881322171CD7}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -111,6 +117,7 @@ Global
 		{FB92A6E1-6402-46A8-93B7-B8B53585A114}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FB92A6E1-6402-46A8-93B7-B8B53585A114}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FB92A6E1-6402-46A8-93B7-B8B53585A114}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB92A6E1-6402-46A8-93B7-B8B53585A114}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E87EFEEE-4CD7-46CA-9E14-14FBB47DDC85}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E87EFEEE-4CD7-46CA-9E14-14FBB47DDC85}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E87EFEEE-4CD7-46CA-9E14-14FBB47DDC85}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -260,6 +267,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{012AB7E4-ABFD-4DA1-8149-A28DECDB8011} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{40B368B8-E0CF-432B-828A-881322171CD7} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{FB92A6E1-6402-46A8-93B7-B8B53585A114} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{E87EFEEE-4CD7-46CA-9E14-14FBB47DDC85} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
