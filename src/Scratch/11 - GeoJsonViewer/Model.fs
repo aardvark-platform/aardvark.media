@@ -41,9 +41,15 @@ type Feature =
   }
 
 [<DomainType>]
-type Model = 
+type FeatureCollection = 
   {
     typus       : Typus
-    boundingBox : Box2d
-    features    : list<Feature>
+    boundingBox : Box2d    
+    features    : plist<Feature>
+  }
+
+[<DomainType>]
+type Model = 
+  {
+     data : FeatureCollection
   }

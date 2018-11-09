@@ -8,34 +8,37 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 
 module App =
-  let update (model : Model) (msg : Message) =
+  let update (model : Model) (msg : Message) : Model =
       match msg with
           Inc -> model
   
   let view (model : MModel) =
-      div [] [
-          text "Hello World"
-          br []
-          button [onClick (fun _ -> Inc)] [text "Increment"]
-          br []        
-      ]
-  
-  
+
+      let content =
+        alist {
+          for f in model.data.features do
+            let t = f.properties.id |> sprintf "Hello %A"
+            yield div[] [text t]
+        }
+
+      Incremental.div AttributeMap.empty content
+      
   let threads (model : Model) = 
       ThreadPool.empty
   
+  let initialData = 
+    { 
+      boundingBox = Box2d.Invalid
+      typus       = Typus.Feature
+      features    = PList.empty
+    }
   
-  let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
-      {
-          unpersist = Unpersist.instance     
-          threads = threads 
-          initial = 
-            { 
-               boundingBox = Box2d.Invalid
-               typus       = Typus.Feature
-               features    = list.Empty
-            }
-          update = update 
-          view = view
-      }
+  let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+    {
+        unpersist = Unpersist.instance     
+        threads   = threads 
+        initial   = { data = GeoJSON.load @"..\..\..\data\eox.json" }
+        update    = update 
+        view      = view
+    }
   

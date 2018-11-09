@@ -14,12 +14,7 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
     Aardium.init()
-
-    let model = GeoJSON.load @"..\..\..\data\eox.json"
-    Log.line "%A" model
-    Console.Read() |> ignore
-    Environment.Exit(0)
-
+            
     use app = new OpenGlApplication()
     let instance = App.app |> App.start
 
@@ -38,7 +33,7 @@ let main argv =
 
     Aardium.run {
         url "http://localhost:4321/"
-        width 1024
+        width 320
         height 768
         debug true
     }

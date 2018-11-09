@@ -61,14 +61,14 @@ module GeoJSON =
   let parseFeatures (features : array<EoxModel.Feature>) : list<Feature> = 
     features |> Array.toList |> List.map parseFeature    
 
-  let parseRoot(root : EoxModel.Root) : Model = 
+  let parseRoot(root : EoxModel.Root) : FeatureCollection = 
     {
       typus       = root.Type     |> parseTypus
       boundingBox = root.Bbox     |> parseBoundingBox
-      features    = root.Features |> parseFeatures
+      features    = root.Features |> parseFeatures |> PList.ofList
     }
 
-  let load (jsonFile : string) : Model = 
+  let load (jsonFile : string) : FeatureCollection = 
     EoxModel.Load(jsonFile) |> parseRoot                
 
     
