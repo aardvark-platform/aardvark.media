@@ -17,8 +17,6 @@ module App =
           text "Hello World"
           br []
           button [onClick (fun _ -> Inc)] [text "Increment"]
-          text "    "
-          Incremental.text (model.value |> Mod.map string)
           br []        
       ]
   

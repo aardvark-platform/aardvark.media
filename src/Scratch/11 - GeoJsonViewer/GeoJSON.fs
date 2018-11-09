@@ -6,7 +6,7 @@ open FSharp.Data.JsonExtensions
 
 module GeoJSON =
   
-  type EoxModel = JsonProvider<"..\..\..\data\eox.json">
+  type EoxModel = JsonProvider<"../../../data/eox.json">
 
   let parseBoundingBox (bb : array<decimal>) : Box2d = failwith ""
   let parseTypus (typus : string) : Typus = failwith ""
