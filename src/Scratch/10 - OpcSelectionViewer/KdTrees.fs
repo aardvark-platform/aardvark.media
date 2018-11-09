@@ -6,11 +6,13 @@ open Aardvark.Base
 
 module KdTrees = 
   type LazyKdTree = {
-      kdTree        : option<ConcreteKdIntersectionTree>
-      affine        : Trafo3d
-      boundingBox   : Box3d        
-      kdtreePath    : string
-      objectSetPath : string
+      kdTree          : option<ConcreteKdIntersectionTree>
+      affine          : Trafo3d
+      boundingBox     : Box3d        
+      kdtreePath      : string
+      objectSetPath   : string
+      coordinatesPath : string
+      texturePath     : string
     }
   
   type InCoreKdTree = {
