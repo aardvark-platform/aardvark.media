@@ -2,7 +2,7 @@
   "profiles": {
     "10 - OpcSelectionViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"C:\\Temp\\1285_TSC_Selzthaltunnel_2017\\Selzthaltunnel_RFB-Graz\\2017_Bestandsaufnahme\\OPC\\OPC\""
+      "commandLineArgs": "\"D:\\_WORK\\Aardwork\\Exomars\\Cape Desire\\Surface\\Cape_Desire_RGB\""
     }
   }
 }
