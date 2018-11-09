@@ -15,7 +15,8 @@ let main argv =
     Aardvark.Init()
     Aardium.init()
 
-    GeoJSON.load @"..\..\..\data\eox.json" |> ignore
+    let model = GeoJSON.load @"..\..\..\data\eox.json"
+    Log.line "%A" model
     Console.Read() |> ignore
     Environment.Exit(0)
 
