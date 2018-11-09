@@ -8,6 +8,7 @@ module IntersectionController =
   open KdTrees
   open Aardvark.Geometry
   open System
+  open System.Drawing
   open Aardvark.SceneGraph.Opc
 
   let hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
@@ -20,13 +21,46 @@ module IntersectionController =
           let r' = r.Ray.Transformed(trafo.Backward) //combine pre and current transform
           x.Intersects(r', &t)
       )
+
+
+  let loadTrianglesFromFileWithIndices (aaraFile : string) (matrix : M44d) =
+    let positions = aaraFile |> fromFile<V3f>
+    
+    let data = 
+      positions.Data |> Array.map (fun x ->  x.ToV3d() |> matrix.TransformPos)
+ 
+    let invalidIndices = getInvalidIndices data
+    let index = computeIndexArray (positions.Size.XY.ToV2i()) false (Set.ofArray invalidIndices)
+    
+    
+    let triangleIndices = 
+      index
+        |> Seq.chunkBySize 3
+
+    let triangles =         
+      triangleIndices
+        |> Seq.choose(fun x -> 
+          if x.Length = 3 then Some [|data.[x.[0]]; data.[x.[1]]; data.[x.[2]]|]
+          else None)
+        |> Seq.map (fun x -> Triangle3d(x))
+        |> Seq.toArray
+      //index 
+      //  |> Seq.map(fun x -> data.[x])
+      //  |> Seq.chunkBySize 3
+      //  |> Seq.map(fun x -> Triangle3d(x))
+      //  |> Seq.toArray
+    
+    (triangles, (Seq.toArray triangleIndices))
   
+  let loadTrianglesWithIndices (kd : LazyKdTree) =
+    loadTrianglesFromFileWithIndices kd.objectSetPath kd.affine.Forward
+
   let loadTriangles (kd : LazyKdTree) = 
     loadTrianglesFromFile kd.objectSetPath kd.affine.Forward
     
   let loadTriangleSet (kd : LazyKdTree) =
     kd |> loadTriangles |> TriangleSet
-
+    
   let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =           
     match lvl0Tree with
       | InCoreKdTree kd -> 
@@ -101,14 +135,32 @@ module IntersectionController =
 
     
   let findCoordinates (kdTree : LazyKdTree) (index : int) (position : V3d) =
-    let triangles = kdTree |> loadTriangles
-    let triangle  = triangles.[index]
+    let triangles, triangleIndices = kdTree |> loadTrianglesWithIndices
+    let triangle                   = triangles.[index]
     
     let baryCentricCoords = calculateBarycentricCoordinates triangle position
 
     Log.line "barycentricCoords: u: %f, v: %f, w: %f" baryCentricCoords.X baryCentricCoords.Y baryCentricCoords.Z 
+    
+    let coordinates = kdTree.coordinatesPath |> fromFile<V2f>
 
-    baryCentricCoords
+    let coordinateIndices = triangleIndices.[index]
+
+    let p0 = coordinates.Data.[coordinateIndices.[0]] * (float32 baryCentricCoords.X)
+    let p1 = coordinates.Data.[coordinateIndices.[1]] * (float32 baryCentricCoords.Y)
+    let p2 = coordinates.Data.[coordinateIndices.[2]] * (float32 baryCentricCoords.Z)
+    
+    let exactUV = p0+p1+p2
+    
+    let image = PixImage.Create(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
+    
+    let changePos = V2i (((float32 image.Size.X) * exactUV.X),((float32 image.Size.Y) * exactUV.Y))
+
+    image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
+
+    image.SaveAsImage (@".\testcoordSelect.png")
+
+    exactUV
 
   let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
       let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
