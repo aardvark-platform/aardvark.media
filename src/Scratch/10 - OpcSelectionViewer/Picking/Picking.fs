@@ -2,11 +2,11 @@ namespace OpcSelectionViewer.Picking
 
 open Aardvark.UI
 open Aardvark.Base
+open Aardvark.Base.Rendering
+open Aardvark.Base.Incremental
 open OpcSelectionViewer
 
 module PickingApp =
-  open Aardvark.Base.Incremental
-  open Aardvark.Base.Rendering
 
   let update (model : PickingModel) (msg : PickingAction) = 
     match msg with
@@ -22,20 +22,32 @@ module PickingApp =
       { model with intersectionPoints = PList.empty }
     //| _ -> model
 
+  let toV3f (input:V3d) : V3f= input |> V3f
+
   let drawColoredPoints (points : alist<V3d>) =
+    
+    let head = 
+      points 
+        |> AList.toMod 
+        |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
+      
     let pointsF = 
       points 
-        |> AList.map V3f
         |> AList.toMod 
-        |> Mod.map PList.toArray
+        |> Mod.map2(
+          fun h points -> 
+            points |> PList.map(fun (x:V3d) -> (x-h) |> toV3f) |> PList.toArray
+            ) head
+       
 
     Sg.draw IndexedGeometryMode.PointList
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF
       |> Sg.effect [
-         toEffect Aardvark.UI.Trafos.Shader.stableTrafo
+         toEffect DefaultSurfaces.stableTrafo
          toEffect (DefaultSurfaces.constantColor C4f.Red)
          Shader.PointSprite.Effect
       ]
+      |> Sg.translate' head
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
 
   let view (model : MPickingModel) =
