@@ -133,8 +133,8 @@ var Docking;
         var root = state.root;
         var layouter = root.parent;
         var text = document.createElement("div");
-        text.style.cssFloat = "left";
         text.innerHTML = cfg.title || cfg.id;
+        text.style.cssFloat = "left";
         element.appendChild(text);
         if (!cfg.isCloseable) {
             return;
@@ -243,18 +243,31 @@ var Docking;
                     var i = 0;
                     var last = null;
                     this.children.forEach(function (element) {
+                        var h = element.weight * heightPerWeight;
+                        element.updateLayout(x, y, w, h, px, py);
                         if (i > 0) {
                             var prev = last;
                             var next = element;
-                            var splitter = _this.root.createSplitter(true);
+                            var splitter = element["splitter"];
+                            if (!element["splitter"]) {
+                                splitter = _this.root.createSplitter(true);
+                                element["splitter"] = splitter;
+                                splitter["root"] = _this.root;
+                                splitter.onpointerdown = function (e) { _this.root.setPointerCapture(splitter, e.pointerId); _this.root.startResize(true, prev, next, e, splitter); e.preventDefault(); };
+                                splitter.onpointermove = function (e) { _this.root.mouseMove(e.screenX, e.screenY, e, window, false); e.preventDefault(); };
+                                splitter.onpointerup = function (e) { _this.root.releasePointerCapture(splitter, e.pointerId); _this.root.pointerUp(e.pointerId, e.screenX, e.screenY, window, false); e.preventDefault(); };
+                            }
                             py = 0;
                             _this.updateStyle(splitter.style, x, y, w, undefined, px, py);
-                            splitter.onmousedown = function (e) { _this.root.startResize(true, prev, next, e, splitter); return false; };
                             splitter.style.display = "";
                             py += splitterSize;
                         }
-                        var h = element.weight * heightPerWeight;
-                        element.updateLayout(x, y, w, h, px, py);
+                        else {
+                            if (element["splitter"]) {
+                                _this.root.deleteSplitter(element["splitter"]);
+                                delete element["splitter"];
+                            }
+                        }
                         y += h;
                         last = element;
                         i++;
@@ -267,18 +280,31 @@ var Docking;
                     var last = null;
                     var i = 0;
                     this.children.forEach(function (element) {
+                        var w = element.weight * widthPerWeight;
+                        element.updateLayout(x, y, w, h, px, py);
                         if (i > 0) {
                             var prev = last;
                             var next = element;
-                            var splitter = _this.root.createSplitter(false);
+                            var splitter = element["splitter"];
+                            if (!element["splitter"]) {
+                                splitter = _this.root.createSplitter(false);
+                                element["splitter"] = splitter;
+                                splitter["root"] = _this.root;
+                                splitter.onpointerdown = function (e) { _this.root.setPointerCapture(splitter, e.pointerId); _this.root.startResize(false, prev, next, e, splitter); e.preventDefault(); };
+                                splitter.onpointermove = function (e) { _this.root.mouseMove(e.screenX, e.screenY, e, window, false); e.preventDefault(); };
+                                splitter.onpointerup = function (e) { _this.root.releasePointerCapture(splitter, e.pointerId); _this.root.pointerUp(e.pointerId, e.screenX, e.screenY, window, false); e.preventDefault(); };
+                            }
                             px = 0;
                             splitter.style.display = "";
                             _this.updateStyle(splitter.style, x, y, undefined, h, px, py);
-                            splitter.onmousedown = function (e) { _this.root.startResize(false, prev, next, e, splitter); return false; };
                             px += splitterSize;
                         }
-                        var w = element.weight * widthPerWeight;
-                        element.updateLayout(x, y, w, h, px, py);
+                        else {
+                            if (element["splitter"]) {
+                                _this.root.deleteSplitter(element["splitter"]);
+                                delete element["splitter"];
+                            }
+                        }
                         x += w;
                         last = element;
                         i++;
@@ -295,12 +321,29 @@ var Docking;
                 case Kind.Stack:
                     var e = this._element;
                     var activeId = this.config.activeTabId || this.config.children[0].id;
+                    var i = 0;
+                    this.children.forEach(function (element) {
+                        element.updateLayout(x, y, w, h, px, py);
+                        if (element.config.id == activeId)
+                            element.show();
+                        else
+                            element.hide();
+                        i++;
+                    });
                     if (!e) {
                         var frag = document.createDocumentFragment();
                         var newHeader = document.createElement("div");
                         frag.appendChild(newHeader);
                         newHeader.className = "dock-element-tab-header";
                         this.root.parent.element.appendChild(newHeader);
+                        newHeader["destroy"] = function () {
+                            _this.children.forEach(function (state) {
+                                if (state._element) {
+                                    var realHeader = state._element.getElementsByClassName("dock-element-header")[0];
+                                    realHeader.style.display = "";
+                                }
+                            });
+                        };
                         e = newHeader;
                         this._element = e;
                         var activeArr = this.children.filter(function (e) { return e.config.id === activeId; });
@@ -338,22 +381,26 @@ var Docking;
                             e.className = "dock-header-tab " + activeClass;
                             createHeaderContent(state, e);
                             var self = _this.root;
-                            e.onmousedown = function (e) { self.startDrag(self.getState(id), e, window); return false; };
-                            e.onclick = function () { changeActive(id, self.getState(id)); return false; };
+                            var realHeader = state._element.getElementsByClassName("dock-element-header")[0];
+                            realHeader.style.display = "none";
+                            var fakeHeader = e;
+                            var cloneEvent = function (e) {
+                                var c = new PointerEvent(e.type, e);
+                                // c.initEvent(e.type, true, true);
+                                // e.stopImmediatePropagation();
+                                // e.stopPropagation();
+                                // e.preventDefault();
+                                return c;
+                            };
+                            fakeHeader.onpointerdown = function (e) { realHeader.dispatchEvent(cloneEvent(e)); return false; };
+                            fakeHeader.onpointermove = function (e) { realHeader.dispatchEvent(cloneEvent(e)); return false; };
+                            fakeHeader.onpointerup = function (e) { realHeader.dispatchEvent(cloneEvent(e)); return false; };
+                            fakeHeader.onclick = function () { changeActive(id, self.getState(id)); return false; };
                             headers[id] = e;
                             newHeader.appendChild(e);
                         });
                     }
                     this.updateStyle(e.style, x, y, w, undefined, px, py);
-                    var i = 0;
-                    this.children.forEach(function (element) {
-                        element.updateLayout(x, y, w, h, px, py);
-                        if (element.config.id == activeId)
-                            element.show();
-                        else
-                            element.hide();
-                        i++;
-                    });
                     break;
                 default:
                     console.warn("[Docking] unknown kind: " + this.config.kind);
@@ -416,6 +463,14 @@ var Docking;
             }
         };
         DockNodeState.prototype.remove = function () {
+            if (this["splitter"]) {
+                this.root.deleteSplitter(this["splitter"]);
+                delete this["splitter"];
+            }
+            if (this._element) {
+                var realHeader = this._element.getElementsByClassName("dock-element-header")[0];
+                realHeader.style.display = "";
+            }
             if (this.parent) {
                 if (this.parent.children.length == 1) {
                     return this.parent.remove();
@@ -432,6 +487,10 @@ var Docking;
                             var r = this.parent.children[0];
                             r.config.weight = this.parent.weight;
                             if (this.parent._element) {
+                                if (this.parent._element["destroy"]) {
+                                    this.parent._element["destroy"]();
+                                    delete this.parent._element["destroy"];
+                                }
                                 this.parent._element.remove();
                                 delete this.parent._element;
                             }
@@ -457,7 +516,13 @@ var Docking;
             this._element.classList.remove("moving");
         };
         DockNodeState.prototype.kill = function () {
+            if (this["splitter"]) {
+                this.root.deleteSplitter(this["splitter"]);
+                delete this["splitter"];
+            }
             if (this._element) {
+                if (this._element["destroy"])
+                    this._element["destroy"]();
                 this.root.freeElement(this._element, this.config);
                 delete this._element;
             }
@@ -480,7 +545,8 @@ var Docking;
         return DockNodeState;
     }());
     var ResizeState = /** @class */ (function () {
-        function ResizeState(horizontal, prev, next, startValue) {
+        function ResizeState(splitter, horizontal, prev, next, startValue) {
+            this.splitter = splitter;
             this.horizontal = horizontal;
             this.prev = prev;
             this.next = next;
@@ -525,15 +591,15 @@ var Docking;
                 this._rootLayouter = this;
             }
             var self = this._rootLayouter;
-            window.addEventListener("mousemove", function (e) {
-                self.mouseMove(e.screenX, e.screenY, e, window, true);
-            });
+            // window.addEventListener("mousemove", (e) => {
+            //     self.mouseMove(e.screenX, e.screenY, e, window, true);
+            // });
             window.addEventListener("scroll", function (e) {
                 self.scrollChanged();
             });
-            window.addEventListener("mouseup", function (e) {
-                self.mouseUp(e.screenX, e.screenY, window, true);
-            });
+            // window.addEventListener("pointerup", (e) => {
+            //     self.pointerUp(e.pointerId, e.screenX, e.screenY, window, true);
+            // });
             this._otherWindows = [];
             this.parent = parent;
             this.config = config;
@@ -543,9 +609,17 @@ var Docking;
             this._unused = {};
             this.root = new DockNodeState(this, config.content);
         }
+        DockState.prototype.setPointerCapture = function (element, pointerId) {
+            element.setPointerCapture(pointerId);
+            this.parent.element.classList.add("captured");
+        };
+        DockState.prototype.releasePointerCapture = function (element, pointerId) {
+            element.releasePointerCapture(pointerId);
+            this.parent.element.classList.remove("captured");
+        };
         DockState.prototype.updateLayout = function (raiseEvents) {
-            this._splitters.forEach(function (s) { return s.remove(); });
-            this._splitters = [];
+            // this._splitters.forEach(s => s.remove());
+            // this._splitters = [];
             this.root.updateLayout(0, 0, 100, 100, 0, 0);
             if (raiseEvents) {
                 this.parent.triggerLayoutChange();
@@ -588,6 +662,9 @@ var Docking;
                 element.style.display = "none";
             }
         };
+        DockState.prototype.deleteSplitter = function (s) {
+            s.remove();
+        };
         DockState.prototype.createSplitter = function (horizontal) {
             var frag = document.createDocumentFragment();
             var splitter = document.createElement("div");
@@ -624,7 +701,10 @@ var Docking;
                     content.className = "dock-element-content";
                     createHeader(headerContent);
                     var self = this;
-                    header.onmousedown = function (e) { self.startDrag(self._states[id], e, window); return false; };
+                    header.onpointerdown = function (e) { self.setPointerCapture(header, e.pointerId); self.startDrag(self._states[id], e, window); return false; };
+                    header.onpointermove = function (e) { self.mouseMove(e.screenX, e.screenY, e, window, true); return false; };
+                    header.onpointerup = function (e) { self.releasePointerCapture(header, e.pointerId); self.pointerUp(e.pointerId, e.screenX, e.screenY, window, true); return false; };
+                    //header.onmousedown = function(e) { self.startDrag(self._states[id], e, window); return false;};
                     this.parent.initElement(content, id, info);
                     this.parent.element.appendChild(container);
                     e = container;
@@ -669,9 +749,9 @@ var Docking;
         DockState.prototype.startResize = function (horizontal, prev, next, e, splitter) {
             var pos = this.makeRelative(e.pageX, e.pageY);
             if (pos) {
-                this.parent.element.classList.add("noevents");
+                //this.parent.element.classList.add("noevents");
                 var startValue = horizontal ? pos.y : pos.x;
-                this._resize = new ResizeState(horizontal, prev, next, startValue);
+                this._resize = new ResizeState(splitter, horizontal, prev, next, startValue);
                 splitter.classList.add("dragging");
             }
         };
@@ -697,16 +777,16 @@ var Docking;
             resize.next.config.weight = nWeight;
             this.updateLayout(false);
         };
-        DockState.prototype.stopResize = function () {
+        DockState.prototype.stopResize = function (splitter) {
+            splitter.classList.remove("dragging");
             this.parent.triggerLayoutChange();
         };
         DockState.prototype.startDrag = function (state, e, w) {
             if (state.parent) {
                 this._drag = new DragState(state, undefined, e.pageX, e.pageY, w, undefined);
-                state.root.parent.element.classList.add("noevents");
+                //state.root.parent.element.classList.add("noevents");
             }
             else if (window["root-layouter"]) {
-                this.log("asdasdsad");
                 this._drag = new DragState(state, undefined, e.pageX, e.pageY, w, w);
             }
         };
@@ -815,6 +895,7 @@ var Docking;
             w.moveTo(screen.x, screen.y);
         };
         DockState.prototype.stopDrag = function (target, mode, screen) {
+            console.warn("stop drag");
             var kind = null;
             var children = null;
             var drag = this._drag;
@@ -902,7 +983,16 @@ var Docking;
                 return DockMode.On;
         };
         DockState.prototype.update = function (windowX, windowY) {
-            if ((windowX < 0 || windowY < 0 || windowX >= window.innerWidth || windowY >= window.innerHeight)) {
+            var pageX = windowX + window.pageXOffset;
+            var pageY = windowY + window.pageYOffset;
+            var pos = this.makeRelative(pageX, pageY);
+            if (this._resize) {
+                if (pos) {
+                    this.updateResize(pos);
+                    return false;
+                }
+            }
+            else if ((windowX < 0 || windowY < 0 || windowX >= window.innerWidth || windowY >= window.innerHeight)) {
                 if (this._drag) {
                     var drag = this._drag;
                     drag.state.unpin();
@@ -914,57 +1004,49 @@ var Docking;
                 }
                 return true;
             }
-            else {
-                var pageX = windowX + window.pageXOffset;
-                var pageY = windowY + window.pageYOffset;
-                var pos = this.makeRelative(pageX, pageY);
-                if (this._resize) {
-                    if (pos) {
-                        this.updateResize(pos);
-                        return false;
-                    }
-                }
-                else if (this._drag && pos) {
-                    var dx = pageX - this._drag.startX;
-                    var dy = pageY - this._drag.startY;
-                    var len = Math.sqrt(dx * dx + dy * dy);
-                    if (len > 10 || this._drag.isRemoved) {
-                        var drag = this._drag;
-                        var el = this.getElementAt(pos.x, pos.y);
-                        if (el) {
-                            var abs = el.getClientPosition(pos.x, pos.y);
-                            var mode = null;
-                            if (abs && abs.y >= 0 && abs.y < this.parent.headerSize) {
-                                mode = DockMode.Header;
+            else if (this._drag && pos) {
+                var dx = pageX - this._drag.startX;
+                var dy = pageY - this._drag.startY;
+                var len = Math.sqrt(dx * dx + dy * dy);
+                if (len > 15 || this._drag.isRemoved) {
+                    var drag = this._drag;
+                    var el = this.getElementAt(pos.x, pos.y);
+                    if (el) {
+                        var abs = el.getClientPosition(pos.x, pos.y);
+                        var mode = null;
+                        if (abs && abs.y >= 0 && abs.y < this.parent.headerSize) {
+                            mode = DockMode.Header;
+                        }
+                        else {
+                            var cfg = this.config.content;
+                            var specialDockSize = this.config.specialDockSize || 0.05;
+                            if ((pos.x < specialDockSize && hasLeftRootSplit(cfg)) ||
+                                (pos.x > (1 - specialDockSize) && hasRightRootSplit(cfg)) ||
+                                (pos.y < specialDockSize && hasTopRootSplit(cfg)) ||
+                                (pos.y > (1 - specialDockSize) && hasBottomRootSplit(cfg))) {
+                                mode = this.getDockMode(pos.x, pos.y);
+                                el = this.root;
                             }
                             else {
-                                var cfg = this.config.content;
-                                var specialDockSize = this.config.specialDockSize || 0.05;
-                                if ((pos.x < specialDockSize && hasLeftRootSplit(cfg)) ||
-                                    (pos.x > (1 - specialDockSize) && hasRightRootSplit(cfg)) ||
-                                    (pos.y < specialDockSize && hasTopRootSplit(cfg)) ||
-                                    (pos.y > (1 - specialDockSize) && hasBottomRootSplit(cfg))) {
-                                    mode = this.getDockMode(pos.x, pos.y);
-                                    el = this.root;
-                                }
-                                else {
-                                    var rx = (100 * pos.x - el.left) / el.width;
-                                    var ry = (100 * pos.y - el.top) / el.height;
-                                    mode = this.getDockMode(rx, ry);
-                                }
+                                var rx = (100 * pos.x - el.left) / el.width;
+                                var ry = (100 * pos.y - el.top) / el.height;
+                                mode = this.getDockMode(rx, ry);
                             }
-                            drag.mode = mode;
-                            drag.state.pin(windowX, windowY);
-                            this.updateDrag(el, mode);
-                            return false;
                         }
+                        drag.mode = mode;
+                        drag.state.pin(windowX, windowY);
+                        this.updateDrag(el, mode);
+                        return false;
                     }
                 }
             }
             return true;
         };
         DockState.prototype.mouseMove = function (screenX, screenY, e, w, dispatch) {
-            if (dispatch) {
+            if (this._rootLayouter != this && dispatch) {
+                this._rootLayouter.mouseMove(screenX, screenY, e, w, dispatch);
+            }
+            else if (dispatch) {
                 var srcState = this;
                 if (w["root-layouter"]) {
                     srcState = w["root-layouter"]["state"];
@@ -983,9 +1065,6 @@ var Docking;
                                     otherState.updateLayout(0, 0, 50, 50, 0, 0);
                                     l.state._drag = new DragState(otherState, undefined, 0, 0, wc, drag.closeOriginal);
                                     l.state._drag.isRemoved = true;
-                                }
-                                else {
-                                    this.log("already has drag");
                                 }
                             }
                             l.state.mouseMove(screenX, screenY, e, wc, false);
@@ -1019,7 +1098,7 @@ var Docking;
             w.console.warn(str);
         };
         DockState.prototype.killDragAndResize = function () {
-            this.parent.element.classList.remove("noevents");
+            //this.parent.element.classList.remove("noevents");
             this._lastMove = null;
             if (this._resize) {
                 delete this._resize;
@@ -1035,7 +1114,7 @@ var Docking;
             }
         };
         DockState.prototype.hideDragAndResize = function () {
-            this.parent.element.classList.remove("noevents");
+            //this.parent.element.classList.remove("noevents");
             this._lastMove = null;
             if (this._resize) {
                 delete this._resize;
@@ -1050,77 +1129,86 @@ var Docking;
                 }
             }
         };
-        DockState.prototype.mouseUp = function (screenX, screenY, w, dispatch) {
-            var srcState = this;
-            if (w["root-layouter"]) {
-                srcState = w["root-layouter"]["state"];
+        DockState.prototype.pointerUp = function (pointerId, screenX, screenY, w, dispatch) {
+            if (this._rootLayouter != this && dispatch) {
+                this._rootLayouter.pointerUp(pointerId, screenX, screenY, w, dispatch);
             }
-            var drag = this._drag || srcState._drag;
-            if (dispatch) {
-                var worked = false;
-                for (var i = -1; i < this._otherWindows.length; i++) {
-                    var wc = i < 0 ? window : this._otherWindows[i];
-                    var l = i < 0 ? this.parent : this._otherWindows[i]["layouter"];
-                    if (l) {
-                        var clientX = screenX - (wc.screenLeft + (wc.outerWidth - wc.innerWidth - 8));
-                        var clientY = screenY - (wc.screenTop + (wc.outerHeight - wc.innerHeight - 8));
-                        if (clientX >= 0 && clientY >= 0 && clientX < wc.innerWidth && clientY < wc.innerHeight) {
-                            l.state.mouseUp(screenX, screenY, wc, false);
-                            worked = true;
-                            break;
-                        }
-                    }
+            else {
+                var srcState = this;
+                if (w["root-layouter"]) {
+                    srcState = w["root-layouter"]["state"];
                 }
-                if (worked) {
+                var drag = this._drag || srcState._drag;
+                if (dispatch) {
+                    var worked = false;
                     for (var i = -1; i < this._otherWindows.length; i++) {
                         var wc = i < 0 ? window : this._otherWindows[i];
                         var l = i < 0 ? this.parent : this._otherWindows[i]["layouter"];
-                        l.state.killDragAndResize();
+                        if (l) {
+                            var clientX = screenX - (wc.screenLeft + (wc.outerWidth - wc.innerWidth - 8));
+                            var clientY = screenY - (wc.screenTop + (wc.outerHeight - wc.innerHeight - 8));
+                            if (clientX >= 0 && clientY >= 0 && clientX < wc.innerWidth && clientY < wc.innerHeight) {
+                                l.state.pointerUp(pointerId, screenX, screenY, wc, false);
+                                worked = true;
+                                break;
+                            }
+                        }
                     }
-                    return true;
-                }
-                else {
-                    if (drag) {
-                        this._drag = drag;
-                        drag.mode = DockMode.Window;
-                        this.mouseUp(screenX, screenY, window, false);
+                    if (worked) {
                         for (var i = -1; i < this._otherWindows.length; i++) {
                             var wc = i < 0 ? window : this._otherWindows[i];
                             var l = i < 0 ? this.parent : this._otherWindows[i]["layouter"];
-                            l.state.killDragAndResize();
+                            if (l)
+                                l.state.killDragAndResize();
                         }
                         return true;
                     }
                     else {
-                        for (var i = -1; i < this._otherWindows.length; i++) {
-                            var wc = i < 0 ? window : this._otherWindows[i];
-                            var l = i < 0 ? this.parent : this._otherWindows[i]["layouter"];
-                            l.state.killDragAndResize();
+                        if (drag) {
+                            this._drag = drag;
+                            drag.mode = DockMode.Window;
+                            this.pointerUp(pointerId, screenX, screenY, window, false);
+                            for (var i = -1; i < this._otherWindows.length; i++) {
+                                var wc = i < 0 ? window : this._otherWindows[i];
+                                var l = i < 0 ? this.parent : this._otherWindows[i]["layouter"];
+                                if (l)
+                                    l.state.killDragAndResize();
+                            }
+                            return true;
                         }
-                        return false;
+                        else {
+                            for (var i = -1; i < this._otherWindows.length; i++) {
+                                var wc = i < 0 ? window : this._otherWindows[i];
+                                var l = i < 0 ? this.parent : this._otherWindows[i]["layouter"];
+                                if (l)
+                                    l.state.killDragAndResize();
+                            }
+                            return false;
+                        }
                     }
                 }
-            }
-            else {
-                var clientX = screenX - (w.screenLeft + (w.outerWidth - w.innerWidth - 8));
-                var clientY = screenY - (w.screenTop + (w.outerHeight - w.innerHeight - 8));
-                this.parent.element.classList.remove("noevents");
-                this._lastMove = null;
-                if (this._resize) {
-                    this.stopResize();
-                    delete this._resize;
-                }
-                if (this._drag) {
-                    if (this._drag.target && this._drag.mode) {
-                        this._drag.closeIfWasLast();
-                        this.stopDrag(this._drag.target, this._drag.mode, { x: screenX, y: screenY });
+                else {
+                    var clientX = screenX - (w.screenLeft + (w.outerWidth - w.innerWidth - 8));
+                    var clientY = screenY - (w.screenTop + (w.outerHeight - w.innerHeight - 8));
+                    //this.parent.element.classList.remove("noevents");
+                    this._lastMove = null;
+                    if (this._resize) {
+                        //this.parent.element.releasePointerCapture(pointerId);
+                        this.stopResize(this._resize.splitter);
+                        delete this._resize;
                     }
-                    if (this._drag.hover) {
-                        this._drag.hover.remove();
+                    if (this._drag) {
+                        if (this._drag.target && this._drag.mode && this._drag.isRemoved) {
+                            this._drag.closeIfWasLast();
+                            this.stopDrag(this._drag.target, this._drag.mode, { x: screenX, y: screenY });
+                        }
+                        if (this._drag.hover) {
+                            this._drag.hover.remove();
+                        }
+                        delete this._drag;
                     }
-                    delete this._drag;
+                    return true;
                 }
-                return true;
             }
         };
         return DockState;
@@ -1147,6 +1235,7 @@ var Docking;
             this._initElement = createElement;
             this.root = root;
             this.state = new DockState(this, root);
+            window["layouter"] = this;
             this.state.updateLayout(false);
         }
         Object.defineProperty(DockLayout.prototype, "currentConfig", {
