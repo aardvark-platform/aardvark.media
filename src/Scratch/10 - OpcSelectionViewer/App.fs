@@ -28,6 +28,11 @@ module App =
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
   
+  let cameraFilePath = @".\camera"
+  let _view_        = Model.Lens.cameraState |. CameraControllerState.Lens.view
+  let _mSensitivity_ = Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.moveSensitivity
+  let _pSensitivity_ = Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.panMouseSensitivity
+
   let update (model : Model) (msg : Message) =   
     match msg with
       | Camera m when model.pickingActive = false -> 
@@ -37,14 +42,31 @@ module App =
           | Keys.LeftCtrl -> 
             { model with pickingActive = true }
           | _ -> model
-      | Message.KeyUp m ->
+      | Message.KeyUp m ->        
         match m with
           | Keys.LeftCtrl -> 
             { model with pickingActive = false }
           | Keys.Delete ->            
             { model with picking = PickingApp.update model.picking (PickingAction.ClearPoints) }
           | Keys.Back ->
-            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }            
+            { model with picking = PickingApp.update model.picking (PickingAction.RemoveLastPoint) }     
+          | Keys.PageUp ->              
+            let s' = model.cameraState.freeFlyConfig.moveSensitivity + 1.0
+            Log.line "increasing sensitivity %A" s'
+            s' |> Lenses.set' _mSensitivity_ model
+          | Keys.PageDown ->
+            let s' = model.cameraState.freeFlyConfig.moveSensitivity - 1.0
+            Log.line "increasing sensitivity %A" s'
+            s' |> Lenses.set' _mSensitivity_ model
+          | Keys.Home ->
+             match cameraFilePath |> Serialization.tryLoadAs<Trafo3d> with
+             | Some v ->                                  
+               CameraView.ofTrafo v |> Lenses.set' _view_ model               
+             | None -> model
+          | Keys.Space ->            
+            Log.line "Saving current CameraView to %A" cameraFilePath
+            model.cameraState.view.ViewTrafo |> Serialization.save cameraFilePath |> ignore
+            model
           | _ -> model
       | PickingAction msg -> 
         { model with picking = PickingApp.update model.picking msg }        

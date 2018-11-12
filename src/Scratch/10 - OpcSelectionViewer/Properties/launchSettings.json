@@ -2,7 +2,7 @@
   "profiles": {
     "10 - OpcSelectionViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"D:\\_WORK\\Aardwork\\Exomars\\Cape Desire\\Surface\\Cape_Desire_RGB\""
+      "commandLineArgs": "\"I:\\20181011_ExofitTesing\\dtm_utm_z30_2\""
     }
   }
 }
