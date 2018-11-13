@@ -1,8 +1,8 @@
 {
   "profiles": {
-    "08 - OpcSelectionViewer": {
+    "10 - OpcSelectionViewer": {
       "commandName": "Project",
-      "commandLineArgs": "\"e:\\Aardwork\\Dibit\\1257_Perjen_Ost_West_QS\\Ost\\10_RA\\OPC\""
+      "commandLineArgs": "\"I:\\20181011_ExofitTesing\\dtm_utm_z30_2\""
     }
   }
 }

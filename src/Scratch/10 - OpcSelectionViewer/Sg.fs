@@ -44,7 +44,7 @@ module SceneObjectHandling =
         
           let texPath = Patch.extractTexturePath (OpcPaths dir) info 0
           let tex = FileTexture(texPath,config) :> ITexture
-        
+                    
           Sg.ofIndexedGeometry g
               |> Sg.trafo (Mod.constant info.Local2Global)             
               |> Sg.diffuseTexture (Mod.constant tex)             

@@ -17,13 +17,15 @@ module KdTrees =
       boundingBox = a
     }
 
-  let makeLazyTree a b c d =
+  let makeLazyTree a b c d e f =
     {
-      kdTree = None
-      affine    = a
-      boundingBox  = b
-      kdtreePath   = c
-      objectSetPath  = d    
+      kdTree          = None
+      affine          = a
+      boundingBox     = b
+      kdtreePath      = c
+      objectSetPath   = d    
+      coordinatesPath = e
+      texturePath     = f
     }
 
   let incorePickler : Pickler<InCoreKdTree> =
@@ -35,7 +37,9 @@ module KdTrees =
       ^+ Pickler.field (fun (s:LazyKdTree) -> s.affine)       Pickler.auto<Trafo3d>
       ^+ Pickler.field (fun (s:LazyKdTree) -> s.boundingBox)  Pickler.auto<Box3d>
       ^+ Pickler.field (fun s -> s.kdtreePath)                Pickler.string
-      ^. Pickler.field (fun s -> s.objectSetPath)             Pickler.string
+      ^+ Pickler.field (fun s -> s.objectSetPath)             Pickler.string
+      ^+ Pickler.field (fun s -> s.coordinatesPath)           Pickler.string
+      ^. Pickler.field (fun s -> s.texturePath)               Pickler.string
 
   let level0KdTreePickler : Pickler<Level0KdTree> =
       Pickler.sum (fun x k1 k2->
@@ -117,12 +121,16 @@ module KdTrees =
                       match mode with
                       | XYZ -> info.Positions
                       | SvBR -> info.Positions2d.Value
-            
+                    
+                    let dir = h.opcPaths.Patches_DirAbsPath +/ info.Name
+                        
                     let lazyTree : LazyKdTree = {
-                        kdTree        = None
-                        objectSetPath = h.opcPaths.Patches_DirAbsPath +/ info.Name +/ pos
-                        kdtreePath    = kdPath
-                        affine        = 
+                        kdTree          = None
+                        objectSetPath   = dir +/ pos
+                        coordinatesPath = dir +/ (List.head info.Coordinates)
+                        texturePath     = Patch.extractTexturePath (OpcPaths h.opcPaths.Opc_DirAbsPath) info 0 
+                        kdtreePath      = kdPath
+                        affine          = 
                           mode 
                             |> ViewerModality.matchy info.Local2Global info.Local2Global2d
                         boundingBox   = t.KdIntersectionTree.BoundingBox3d.Transformed(trafo)
