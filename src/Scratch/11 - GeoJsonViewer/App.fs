@@ -12,39 +12,54 @@ module App =
 
   let update (model : Model) (msg : Message) : Model =
       match msg with
-          Inc -> model
+      | Inc -> model
+      | UpdateConfig cfg ->
+          { model with docking = cfg; }
 
   let semui = 
     [ 
-        { kind = Stylesheet; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.css" }
-        { kind = Script; name = "semui"; url = "https://cdn.jsdelivr.net/semantic-ui/2.2.6/semantic.min.js" }
+      { kind = Stylesheet; name = "semui"; url = "./rendering/semantic.css" }
+      { kind = Script;     name = "semui"; url = "./rendering/semantic.js" }
     ]
   
   let view (model : MModel) =
-                   
-      let content =
-        alist {
-          for f in model.data.features do
-
+                 
+    let content =
+      alist {
+        for f in model.data.features do
           let (FeatureId id) = f.properties.id           
+          let id = id.Replace('_',' ')
           let item = 
-            div [clazz "item"][
-              i [clazz "large map pin middle aligned icon"] []
-              div [clazz "content"] [
-                a [clazz "header"][text "Feature"]
-                div [clazz "description"] [text id]
-
+            div [clazz "ui inverted item"][
+              i [clazz "ui large map pin inverted middle aligned icon"] []
+              div [clazz "ui content"] [
+                a [clazz "ui header small"][text "Feature"]
+                div [clazz "ui description"] [text id]
               ]            
             ]
           yield item 
+      }
 
-        }
-
-      require (semui)(
-        body [] [
-          Incremental.div ([clazz "ui relaxed divided list"] |> AttributeMap.ofList) content
-        ]
-      )
+    page (fun request ->
+      match Map.tryFind "page" request.queryParams with
+        | Some "list" ->
+            require (semui)(
+              body [ style "width: 100%; height:100%; background: transparent; overflow: hidden"] [
+                Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) content
+              ]
+            )
+        | Some other -> 
+          let msg = sprintf "Unknown page: %A" other
+          body [] [
+              div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
+          ] 
+        | None -> 
+          model.docking 
+            |> docking [
+              style "width:100%;height:100%;"
+              onLayoutChanged UpdateConfig
+            ]
+    )
       
   let threads (model : Model) = 
       ThreadPool.empty
@@ -60,7 +75,21 @@ module App =
     {
         unpersist = Unpersist.instance     
         threads   = threads 
-        initial   = { data = GeoJSON.load @"..\..\..\data\eox.json" }
+        initial   = 
+          { 
+            data = GeoJSON.load @"..\..\..\data\eox.json" 
+            docking =
+              config {
+                  content (
+                      horizontal 10.0 [
+                          element { id "map";  title "2D Overview"; weight 3; isCloseable false }
+                          element { id "list"; title "Features";    weight 2; isCloseable false }
+                      ]
+                  )
+                  appName "GeoJSON"
+                  useCachedConfig false
+              }
+          }
         update    = update 
         view      = view
     }

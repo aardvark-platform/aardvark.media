@@ -10,6 +10,7 @@ open FSharp.Data.JsonExtensions
 
 type Message = 
   | Inc
+  | UpdateConfig of DockConfig
 
 
 type Typus = 
@@ -51,5 +52,6 @@ type FeatureCollection =
 [<DomainType>]
 type Model = 
   {
-     data : FeatureCollection
+     data    : FeatureCollection
+     docking : DockConfig
   }

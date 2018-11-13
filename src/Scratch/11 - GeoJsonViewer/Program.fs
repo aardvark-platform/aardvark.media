@@ -33,7 +33,7 @@ let main argv =
 
     Aardium.run {
         url "http://localhost:4321/"
-        width 320
+        width 1024
         height 768
         debug true
     }
