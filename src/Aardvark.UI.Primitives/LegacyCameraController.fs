@@ -51,6 +51,8 @@ module CameraController =
             scrollSensitivity = 0.8
             scrolling = false
 
+            targetJump = None
+
             targetPhiTheta = V2d.Zero
             targetDolly = 0.0
             animating = false

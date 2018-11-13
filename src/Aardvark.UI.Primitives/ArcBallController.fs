@@ -61,6 +61,8 @@ module ArcBallController =
             panSpeed = 0.0
             targetZoom = 0.0
 
+            targetJump = None
+
             freeFlyConfig = FreeFlyConfig.initial
         }
 
