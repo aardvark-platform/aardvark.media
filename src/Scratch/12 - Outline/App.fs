@@ -59,7 +59,7 @@ let viewScene (model : MModel) =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
 
     let write a =
-        StencilMode(StencilOperationFunction.Replace, StencilOperationFunction.Replace, StencilOperationFunction.Keep, StencilCompareFunction.Always, a, 0xffu)
+        StencilMode(StencilOperationFunction.Replace, StencilOperationFunction.Replace, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
 
     let geom1 =
         [
@@ -77,11 +77,24 @@ let viewScene (model : MModel) =
     let pass1 = RenderPass.after "outlineRed" RenderPassOrder.Arbitrary pass0
     let pass2 = RenderPass.after "outlineYellow" RenderPassOrder.Arbitrary pass1
 
-    let regular sg v = 
+    let regular sg = 
+        sg
+         |> Sg.pass pass0
+         |> Sg.trafo model.trafo
+         |> Sg.cullMode (Mod.constant CullMode.Clockwise)
+         |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+         |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! DefaultSurfaces.vertexColor
+                do! DefaultSurfaces.simpleLighting
+            }
+
+    let mask sg v = 
         sg
          |> Sg.pass pass0
          |> Sg.trafo model.trafo
          |> Sg.stencilMode (Mod.constant (write v))
+         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -104,13 +117,15 @@ let viewScene (model : MModel) =
                 do! DefaultSurfaces.constantColor colour
             }
 
-    let redRegular = regular geom1 1
-    let yellowRegular = regular geom2 2
+    let redMask = mask geom1 1
+    let yellowMask = mask geom2 2
+
+    let regular = regular ([geom1; geom2] |> Sg.ofList)
 
     let redOutline = outline geom1 1 pass1 C4f.Red
     let yellowOutline = outline geom2 2 pass2 C4f.Yellow
 
-    Sg.ofSeq [redRegular; yellowRegular; redOutline; yellowOutline] |> Sg.noEvents
+    Sg.ofSeq [regular; redMask; yellowMask; redOutline; yellowOutline] |> Sg.noEvents
 
 let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
     let app =
