@@ -11,16 +11,18 @@ open RenderControl.Model
 open Aardvark.Base.LensOperators
 
 let initialCamera = { 
-        FreeFlyController.initial with 
+        CameraControllerState.initial with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
     }
 
-let update (model : Model) (msg : Message) =
+let rec update (model : Model) (msg : Message) =
     match msg with
         | Camera m -> 
             { model with cameraState = FreeFlyController.update model.cameraState m; rot = model.rot + 0.01 }
         | CenterScene -> 
             { model with cameraState = initialCamera }
+        | JumpToOrigin ->
+            update model (Camera (FreeFlyController.Message.JumpTo (CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI)))
         | SetLookAtSensitivity s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.lookAtMouseSensitivity <== (model,s)
         | SetLookAtConstant    s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.lookAtConstant <== (model,s)
         | SetLookAtSmoothing   s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.lookAtDamping  <== (model,s)
@@ -71,6 +73,7 @@ let view (model : MModel) =
             ]
             div [style "width:30%;height:100%;"] [
                 button [onClick (fun _ -> CenterScene)] [text "center scene"]
+                button [onClick (fun _ -> JumpToOrigin)] [text "Animated center"]
                 br []
                 br []
                 Simple.labeledFloatInput "lookAtMouseSensitiviy" 0.0 1.0 0.001 SetLookAtSensitivity model.cameraState.freeFlyConfig.lookAtMouseSensitivity

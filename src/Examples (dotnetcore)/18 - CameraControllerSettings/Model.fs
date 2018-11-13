@@ -7,6 +7,7 @@ open Aardvark.UI.Primitives
 type Message = 
     | Camera of FreeFlyController.Message
     | CenterScene
+    | JumpToOrigin
 
     | SetLookAtSensitivity of float
     | SetLookAtConstant    of float

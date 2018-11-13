@@ -15,9 +15,35 @@ open Aardvark.UI.Primitives
 
 module FreeFlyController =
     open Aardvark.Base.Incremental.Operators    
+        open Aardvark.Base.Incremental.Operators    
+                        
+    let md (f : float) (state : CameraControllerState) =
+        (state.freeFlyConfig.dollyConstant + abs f * exp (state.freeFlyConfig.dollyDamping )) * float (sign f)
+    let rd (f : float) (state : CameraControllerState) =
+        (state.freeFlyConfig.jumpAtConstant + abs f * state.freeFlyConfig.jumpAtDamping) * float (sign f)
     
-    type CameraMotion = { dPos : V3d; dRot : V3d; dMoveSpeed : float; dZoom : float; dPan : V2d; dDolly : float } with
-        static member Zero = { dPos = V3d.Zero; dRot = V3d.Zero; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
+    let rd3 (v : V3d) (state : CameraControllerState) =
+        let rd v = rd v state
+        V3d(rd v.X, rd v.Y, rd v.Z)
+
+    let vectorFromTo (p : V3d) (q : V3d) (state : CameraControllerState) =
+        rd3 (p - q) state
+
+    let angleFromTo (x1 : V3d) (y1 : V3d) (z1 : V3d) (x2 : V3d) (y2 : V3d) (z2 : V3d) (state : CameraControllerState) =
+        let aa = (Rot3d.FromFrame(x2,y2,z2)).ToAngleAxis()
+        Rot3d.FromAngleAxis(rd3 aa state)
+
+    let transformRot (cv : CameraView) (r : Rot3d) =
+        if r.GetEulerAngles().AllSmallerOrEqual(1E-9) then
+            cv
+        else
+            let fw = r.TransformDir cv.Forward
+            let up = r.TransformDir cv.Up
+            (cv.WithForward fw).WithUp up
+        
+
+    type CameraMotion = { dWorldPos : V3d; dPos : V3d; dRot : V3d; dWorldForward : V3d; dWorldUp : V3d; dMoveSpeed : float; dZoom : float; dPan : V2d; dDolly : float } with
+        static member Zero = { dWorldPos = V3d.Zero; dPos = V3d.Zero; dRot = V3d.Zero; dWorldForward = V3d.Zero; dWorldUp = V3d.Zero; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
 
         static member (+) (cam : CameraView, motion : CameraMotion) =
             let cam = 
@@ -55,8 +81,53 @@ module FreeFlyController =
                     
                 if trafo.IsIdentity(Double.Epsilon) then cam
                 else
+                    let forbidden = V3d.OOI |> Vec.normalize
+                    
                     let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
+
+                    let newForward =
+                        if abs (Vec.dot forbidden newForward) > 0.99 then
+                            let trafo2 =
+                                M44d.Rotation(cam.Right, 0.0) *
+                                M44d.Rotation(cam.Sky, motion.dRot.Y) *
+                                M44d.Rotation(cam.Forward, motion.dRot.Z)
+                    
+                            trafo2.TransformDir cam.Forward |> Vec.normalize
+                        else
+                            newForward
+
                     cam.WithForward newForward
+                    
+            let cam = 
+
+                if Fun.IsTiny(motion.dWorldForward.Length,(1E-4)) &&
+                   Fun.IsTiny(motion.dWorldUp.Length,(1E-4)) &&
+                   Fun.IsTiny(motion.dWorldPos.Length,(1E-4))
+                then
+                    cam
+                else
+                    //let location = cam.Location + motion.dWorldPos
+                    //let center = cam.Location + cam.Forward + motion.dWorldForward
+                    //let sky = 
+                    //    let upPoint = cam.Location + cam.Up + motion.dWorldUp
+                    //    (upPoint - cam.Location).Normalized
+                        
+                    //CameraView.lookAt location center sky
+
+                    let location = cam.Location + motion.dWorldPos
+                    let centerPoint = cam.Location + cam.Forward + motion.dWorldForward
+                    let upPoint = cam.Location + cam.Up + motion.dWorldUp
+                        
+                    let fw = (centerPoint - location).Normalized
+                    let up = (upPoint - location).Normalized
+                    let ri = Vec.cross fw up |> Vec.normalize
+
+                    //gram schmidt
+                    let up1 = up - Vec.dot fw up * fw |> Vec.normalize
+                    let ri1 = ri - Vec.dot fw ri * fw - Vec.dot up1 ri * up1 |> Vec.normalize
+
+                    CameraView(V3d.OOI,location,fw,up1,ri1)
+
 
             cam
 
@@ -66,10 +137,13 @@ module FreeFlyController =
                 M44d.Rotation(V3d.IOO, l.dRot.X) *
                 M44d.Rotation(V3d.OIO, l.dRot.Y) *
                 M44d.Rotation(V3d.OOI, l.dRot.Z)
-                    
+
             {
+                dWorldPos = l.dWorldPos + r.dWorldPos
                 dPos = l.dPos + trafo.TransformDir r.dPos
                 dRot = l.dRot + r.dRot
+                dWorldForward = l.dWorldForward + r.dWorldForward
+                dWorldUp = l.dWorldUp + r.dWorldUp
                 dMoveSpeed = l.dMoveSpeed + r.dMoveSpeed
                 dZoom = l.dZoom + r.dZoom
                 dPan = l.dPan + r.dPan
@@ -77,15 +151,10 @@ module FreeFlyController =
             }
 
         static member (*) (motion : CameraMotion, f : float) =
-            { dPos = motion.dPos * f; dRot = motion.dRot * f; dMoveSpeed = motion.dMoveSpeed * f; dZoom = motion.dZoom * f; dPan = motion.dPan * f; dDolly = motion.dDolly * f}
+            { dWorldPos = motion.dWorldPos * f; dPos = motion.dPos * f; dRot = motion.dRot * f; dWorldForward = motion.dWorldForward * f; dWorldUp = motion.dWorldUp * f; dMoveSpeed = motion.dMoveSpeed * f; dZoom = motion.dZoom * f; dPan = motion.dPan * f; dDolly = motion.dDolly * f}
 
         static member (*) (f : float, motion : CameraMotion) = motion * f
             
-
-        static member Move(dPos : V3d) = { dPos = dPos; dRot = V3d.Zero; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
-        static member Rotate(dRot : V3d) = { dPos = V3d.Zero; dRot = dRot; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
-
-
         static member (+) (state : CameraControllerState, motion : CameraMotion) =
             let clamping (max : float) (v : float) =
                 if max < 0.0 then
@@ -95,10 +164,60 @@ module FreeFlyController =
                     if v > max then max
                     else v
                 
+            let clampedV3d (origin : V3d) (dtarget : V3d) (dendpoint : V3d) =
+                let dir = dtarget.Normalized
+                let ray = Ray3d(origin, dir)
+                let tO = ray.GetTOfProjectedPoint (origin + dtarget)
+                let tS = ray.GetTOfProjectedPoint (origin + dendpoint)
+                if tS > tO then 
+                    dtarget
+                else 
+                    dendpoint
+
+            let dWorldPos = 
+                let loc = CameraView.location state.view
+                match state.targetJump with
+                | Some jump ->
+                    clampedV3d loc (CameraView.location jump - loc) (motion.dWorldPos)
+                | None ->
+                    V3d.Zero
+
+            let dWorldForward =
+                let fwp = (CameraView.location state.view) + (CameraView.forward state.view)
+                match state.targetJump with
+                | Some jump ->
+                    clampedV3d fwp (CameraView.location jump + CameraView.forward jump - fwp) (motion.dWorldForward)
+                | None ->
+                    V3d.Zero
+                    
+            let dWorldUp =
+                let upp = (CameraView.location state.view) + (CameraView.up state.view)
+                match state.targetJump with
+                | Some jump ->
+                    clampedV3d upp (CameraView.location jump + CameraView.up jump - upp) (motion.dWorldUp)
+                | None ->
+                    V3d.Zero
+
             let motion = 
                 { motion with 
                     dRot = V3d(clamping state.targetPhiTheta.Y motion.dRot.X, clamping state.targetPhiTheta.X motion.dRot.Y , motion.dRot.Z)
+                    dWorldPos = dWorldPos
+                    dWorldForward = dWorldForward
+                    dWorldUp = dWorldUp
                 }
+                
+            let tj = 
+                state.targetJump |> Option.bind ( fun j ->
+                    if 
+                       Vec.length ((CameraView.location j) - (CameraView.location state.view)) < 1E-4 &&
+                       Vec.length ((CameraView.location j + CameraView.forward j) - (CameraView.location state.view + CameraView.forward state.view)) > 1E-4 &&
+                       Vec.length ((CameraView.location j + CameraView.up j) -      (CameraView.location state.view + CameraView.up state.view)     ) > 1E-4 then
+                        None
+                    elif (state.pan || state.look || state.dolly || (abs state.targetZoom > 0.05)) then
+                        None
+                    else
+                        Some j
+                )
 
             { state with 
                 view = state.view + motion
@@ -107,6 +226,7 @@ module FreeFlyController =
                 targetZoom = state.targetZoom - motion.dZoom
                 targetPan = state.targetPan - motion.dPan
                 targetDolly = state.targetDolly - motion.dDolly
+                targetJump = tj
             }
 
     type Message =     
@@ -119,42 +239,10 @@ module FreeFlyController =
         | Blur
         | Interpolate
         | Rendered
-
-    let initial =
-        {
-            view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
-                                    
-            orbitCenter = None
-            stash = None
-            sensitivity = 1.0
-            panFactor  = 0.01
-            zoomFactor = 0.01
-            rotationFactor = 0.01            
-            dolly = false
-
-            lastTime = None
-            moveVec = V3i.Zero
-            dragStart = V2i.Zero
-            movePos = V2i.Zero
-            look = false; zoom = false; pan = false                    
-            forward = false; backward = false; left = false; right = false
-            isWheel = false;
-            moveSpeed = 0.0
-            scrollSensitivity = 0.8
-            scrolling = false
-
-            freeFlyConfig = FreeFlyConfig.initial
-
-            targetPhiTheta = V2d.Zero
-            targetZoom = 0.0
-            targetDolly = 0.0
-            animating = false
-            targetPan = V2d.Zero
-            panSpeed = 0.0
-        }
+        | JumpTo of CameraView
 
     let initial' (dist:float) =
-        { initial with view = CameraView.lookAt (dist * V3d.III) V3d.Zero V3d.OOI }
+        { CameraControllerState.initial with view = CameraView.lookAt (dist * V3d.III) V3d.Zero V3d.OOI }
 
     let sw = System.Diagnostics.Stopwatch()
     do sw.Start()
@@ -188,8 +276,6 @@ module FreeFlyController =
     
     let update (model : CameraControllerState) (message : Message) =
         match message with
-            //| Rendered -> 
-            //    if model.animating then dummyChange model else model
             | Blur ->
                 { model with 
                     lastTime = None
@@ -200,12 +286,6 @@ module FreeFlyController =
                 }
             | Interpolate | Rendered ->
                 let now = sw.Elapsed.TotalSeconds
-              
-                let clampAbs (maxAbs : float) (v : float) =
-                    if abs v > maxAbs then
-                        float (sign v) * maxAbs
-                    else
-                        v
 
                 let move (state : CameraControllerState) =
                     if state.moveVec <> V3i.Zero then
@@ -254,19 +334,48 @@ module FreeFlyController =
                         }
                     else
                         CameraMotion.Zero
+                
+                let jump (state : CameraControllerState) =
+                    match state.targetJump with
+                    | None -> 
+                        CameraMotion.Zero,true
+                    | Some cv ->
+                        let dpos = 
+                            let tgt = (CameraView.location cv) - (CameraView.location model.view)
+                            rd3 tgt state
+                            
+                        let dWorldForward = 
+                            let tgt = (CameraView.location cv + CameraView.forward cv) - (CameraView.location model.view + CameraView.forward model.view)
+                            rd3 tgt state
+
+                        let dWorldUp = 
+                            let tgt = (CameraView.location cv + CameraView.up cv) - (CameraView.location model.view + CameraView.up model.view)
+                            rd3 tgt state
+                        
+                        let dl = Fun.IsTiny(dpos.Length,1E-4)
+                        let df = Fun.IsTiny(dWorldForward.Length,1E-4)
+                        let du = Fun.IsTiny(dWorldUp.Length,1E-4)
+                        
+                        let shouldNotAnimate = dl && df && du
+
+                        { CameraMotion.Zero with
+                            dWorldPos = dpos
+                            dWorldForward = dWorldForward
+                            dWorldUp =      dWorldUp
+                        }, shouldNotAnimate
 
                 let model = 
                     match model.lastTime with
                         | Some last ->
                             let dt = now - last
-                            let step = Integrator.rungeKutta (fun t s -> move s + look s + pan s + dolly s + zoom s)
+                            let step = Aardvark.UI.Primitives.Integrator.rungeKutta (fun t s -> move s + look s + pan s + dolly s + zoom s + (jump s |> fst))
 
-                            Integrator.integrate 0.0166666 step model dt
+                            Aardvark.UI.Primitives.Integrator.integrate 0.0166666 step model dt
 
                         | None -> 
                             model
                      
-                if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) && (abs model.targetZoom <= 0.05) then
+                if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) && (abs model.targetZoom <= 0.05) && (jump model |> snd) then
                     stopAnimation model
                 else
                     let model = 
@@ -277,25 +386,25 @@ module FreeFlyController =
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    startAnimation { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
+                    startAnimation { model with forward = true; moveVec = model.moveVec + V3i.OOI }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    startAnimation { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
+                    startAnimation { model with forward = false; moveVec = model.moveVec - V3i.OOI }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    startAnimation { model with backward = true; moveVec = model.moveVec - V3i.OOI  }
+                    startAnimation { model with backward = true; moveVec = model.moveVec - V3i.OOI }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    startAnimation { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
+                    startAnimation { model with backward = false; moveVec = model.moveVec + V3i.OOI }
                 else
                     model
 
@@ -307,19 +416,19 @@ module FreeFlyController =
 
             | KeyDown Keys.A ->
                 if not model.left then
-                    startAnimation { model with left = true; moveVec = model.moveVec - V3i.IOO  }
+                    startAnimation { model with left = true; moveVec = model.moveVec - V3i.IOO }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    startAnimation { model with left = false; moveVec = model.moveVec + V3i.IOO  }
+                    startAnimation { model with left = false; moveVec = model.moveVec + V3i.IOO }
                 else
                     model
 
             | KeyDown Keys.D ->
                 if not model.right then
-                    startAnimation { model with right = true; moveVec = model.moveVec + V3i.IOO}
+                    startAnimation { model with right = true; moveVec = model.moveVec + V3i.IOO }
                 else
                     model
 
@@ -347,6 +456,9 @@ module FreeFlyController =
                     | MouseButtons.Right -> { model with dolly = false }
                     | _ -> model   
                     
+            | JumpTo cv ->
+                startAnimation { model with targetJump = Some cv }
+
             | Move pos  ->
                 let delta = pos - model.dragStart
 
@@ -385,28 +497,51 @@ module FreeFlyController =
                     |> look
                     |> pan
                     |> dolly
-
-
+                    
     let update' = flip update
 
-
+    let onPointerEvent name (needButton : bool) (useCapture : Option<bool>) (f : MouseButtons -> V2i -> 'msg) =
+        name, AttributeValue.Event {
+                clientSide = fun send src -> 
+                    String.concat ";" [
+                        yield "var rect = getBoundingClientRect(this)"
+                        yield "var x = (event.clientX - rect.left)"
+                        yield "var y = (event.clientY - rect.top)"
+                        match useCapture with | None -> () | Some b -> if b then yield "this.setPointerCapture(event.pointerId)" else yield "this.releasePointerCapture(event.pointerId)"
+                        yield send src ["event.which"; "x|0"; "y|0"]
+                        
+                    ]
+                serverSide = fun client src args -> 
+                    match args with
+                        | which :: x :: y :: _ ->
+                            let v : V2i = V2i(int x, int y)
+                            let button = if needButton then Aardvark.UI.Helpers.button which else MouseButtons.None
+                            Seq.singleton (f button v)
+                        | _ ->
+                            Seq.empty      
+            }
+            
+    let onCapturedPointerDown (cb : MouseButtons -> V2i -> 'msg) = onPointerEvent "onpointerdown" true (Some true) cb
+    let onCapturedPointerUp cb = onPointerEvent "onpointerup" true (Some false) cb
+    let onCapturedPointerMove cb = onPointerEvent "onpointermove" false None (fun _ v -> cb v)
 
     let attributes (state : MCameraControllerState) (f : Message -> 'msg) = 
-         AttributeMap.ofListCond [
+        AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
-            always (onMouseDown (fun b p -> f (Down(b,p))))
+            always (onCapturedPointerDown (fun b p -> f (Down(b,p))))
             onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))           
             always (onWheel(fun x -> f (Wheel x)))
-            onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseMove (Move >> f))
-            //always (onEvent "preRender" [] (fun _ -> f Interpolate))
+            always (onCapturedPointerUp (fun b p -> f (Up(b))))
+            onlyWhen 
+                (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
+                (onCapturedPointerMove (Move >> f))
             always <| onEvent "onRendered" [] (fun _ -> f Rendered)
         ]
 
     let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) =
         attributes state f |> AttributeMap.toAMap
-
     let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
         let cam = Mod.map2 Camera.create state.view frustum 
@@ -465,6 +600,6 @@ module FreeFlyController =
             view = view
             threads = threads
             update = update
-            initial = initial
+            initial = CameraControllerState.initial
         }
 

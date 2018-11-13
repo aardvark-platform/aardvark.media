@@ -256,6 +256,32 @@ module Events =
                     | _ ->
                         Seq.empty      
         }
+        
+    let onPointerEvent name (needButton : bool) (useCapture : Option<bool>) (f : MouseButtons -> V2i -> 'msg) =
+        name, AttributeValue.Event {
+                clientSide = fun send src -> 
+                    String.concat ";" [
+                        yield "var rect = getBoundingClientRect(this)"
+                        yield "var x = (event.clientX - rect.left)"
+                        yield "var y = (event.clientY - rect.top)"
+                        match useCapture with | None -> () | Some b -> if b then yield "this.setPointerCapture(event.pointerId)" else yield "this.releasePointerCapture(event.pointerId)"
+                        yield send src ["event.which"; "x|0"; "y|0"]
+                        
+                    ]
+                serverSide = fun client src args -> 
+                    match args with
+                        | which :: x :: y :: _ ->
+                            let v : V2i = V2i(int x, int y)
+                            let button = if needButton then button which else MouseButtons.None
+                            Seq.singleton (f button v)
+                        | _ ->
+                            Seq.empty      
+            }
+            
+    let onCapturedPointerDown (cb : MouseButtons -> V2i -> 'msg) = onPointerEvent "onpointerdown" true (Some true) cb
+    let onCapturedPointerUp cb = onPointerEvent "onpointerup" true (Some false) cb
+    let onCapturedPointerMove cb = onPointerEvent "onpointermove" false None (fun _ v -> cb v)
+
 
 
 module Operators =
