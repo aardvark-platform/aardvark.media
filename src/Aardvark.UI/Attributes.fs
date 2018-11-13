@@ -80,13 +80,20 @@ module Events =
     /// for continous updates (e.g. see http://stackoverflow.com/questions/18544890/onchange-event-on-input-type-range-is-not-triggering-in-firefox-while-dragging)
     let onInput' (cb : string -> seq<'msg>) = 
         onEvent' "oninput" ["event.target.value"] (List.head >> Pickler.json.UnPickleOfString >> cb)
-
-    let onWheel (f : Aardvark.Base.V2d -> 'msg) =
+        
+    let onWheelPrevent (prevent : bool) (f : Aardvark.Base.V2d -> 'msg) =
         let serverClick (args : list<string>) : Aardvark.Base.V2d = 
             let delta = List.head args |> Pickler.json.UnPickleOfString
             delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
 
-        onEvent "onwheel" ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"] (serverClick >> f)
+        let args =
+            {
+                clientSide = fun send id -> (if prevent then "event.preventDefault();" else "")+send id ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"]
+                serverSide = fun session id args -> (serverClick >> f >> Seq.singleton) args
+            }
+        "onwheel" , AttributeValue.Event(args)
+
+    let onWheel (f : Aardvark.Base.V2d -> 'msg) = onWheelPrevent false f
 
     let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
         onEvent 
@@ -257,13 +264,14 @@ module Events =
                         Seq.empty      
         }
         
-    let onPointerEvent name (needButton : bool) (useCapture : Option<bool>) (f : MouseButtons -> V2i -> 'msg) =
+    let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : MouseButtons -> V2i -> 'msg) =
         name, AttributeValue.Event {
                 clientSide = fun send src -> 
                     String.concat ";" [
                         yield "var rect = getBoundingClientRect(this)"
                         yield "var x = (event.clientX - rect.left)"
                         yield "var y = (event.clientY - rect.top)"
+                        match preventDefault with | None -> () | Some i -> yield (sprintf "if(event.which==%d){event.preventDefault();};" i)
                         match useCapture with | None -> () | Some b -> if b then yield "this.setPointerCapture(event.pointerId)" else yield "this.releasePointerCapture(event.pointerId)"
                         yield send src ["event.which"; "x|0"; "y|0"]
                         
@@ -278,9 +286,9 @@ module Events =
                             Seq.empty      
             }
             
-    let onCapturedPointerDown (cb : MouseButtons -> V2i -> 'msg) = onPointerEvent "onpointerdown" true (Some true) cb
-    let onCapturedPointerUp cb = onPointerEvent "onpointerup" true (Some false) cb
-    let onCapturedPointerMove cb = onPointerEvent "onpointermove" false None (fun _ v -> cb v)
+    let onCapturedPointerDown (preventDefault : Option<int>) (cb : MouseButtons -> V2i -> 'msg)  = onPointerEvent "onpointerdown" true preventDefault (Some true) cb
+    let onCapturedPointerUp (preventDefault : Option<int>) cb = onPointerEvent "onpointerup" true preventDefault (Some false) cb
+    let onCapturedPointerMove (preventDefault : Option<int>) cb = onPointerEvent "onpointermove" false preventDefault None (fun _ v -> cb v)
 
 
 

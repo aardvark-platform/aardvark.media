@@ -536,43 +536,18 @@ module FreeFlyController =
                     
     let update' = flip update
 
-    let onPointerEvent name (needButton : bool) (useCapture : Option<bool>) (f : MouseButtons -> V2i -> 'msg) =
-        name, AttributeValue.Event {
-                clientSide = fun send src -> 
-                    String.concat ";" [
-                        yield "var rect = getBoundingClientRect(this)"
-                        yield "var x = (event.clientX - rect.left)"
-                        yield "var y = (event.clientY - rect.top)"
-                        match useCapture with | None -> () | Some b -> if b then yield "this.setPointerCapture(event.pointerId)" else yield "this.releasePointerCapture(event.pointerId)"
-                        yield send src ["event.which"; "x|0"; "y|0"]
-                        
-                    ]
-                serverSide = fun client src args -> 
-                    match args with
-                        | which :: x :: y :: _ ->
-                            let v : V2i = V2i(int x, int y)
-                            let button = if needButton then Aardvark.UI.Helpers.button which else MouseButtons.None
-                            Seq.singleton (f button v)
-                        | _ ->
-                            Seq.empty      
-            }
-            
-    let onCapturedPointerDown (cb : MouseButtons -> V2i -> 'msg) = onPointerEvent "onpointerdown" true (Some true) cb
-    let onCapturedPointerUp cb = onPointerEvent "onpointerup" true (Some false) cb
-    let onCapturedPointerMove cb = onPointerEvent "onpointermove" false None (fun _ v -> cb v)
-
     let attributes (state : MCameraControllerState) (f : Message -> 'msg) = 
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
-            always (onCapturedPointerDown (fun b p -> f (Down(b,p))))
+            always (onCapturedPointerDown (Some 2) (fun b p -> f (Down(b,p))))
             onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))           
-            always (onWheel(fun x -> f (Wheel x)))
-            always (onCapturedPointerUp (fun b p -> f (Up(b))))
+            always (onWheelPrevent true (fun x -> f (Wheel x)))
+            always (onCapturedPointerUp (Some 2) (fun b p -> f (Up(b))))
             onlyWhen 
                 (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
-                (onCapturedPointerMove (Move >> f))
+                (onCapturedPointerMove (Some 2) (Move >> f))
             always <| onEvent "onRendered" [] (fun _ -> f Rendered)
         ]
 
