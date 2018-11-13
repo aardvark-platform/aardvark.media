@@ -17,6 +17,42 @@ module FreeFlyController =
     open Aardvark.Base.Incremental.Operators    
         open Aardvark.Base.Incremental.Operators    
                         
+
+    let initial =
+        {
+            view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
+                                    
+            orbitCenter = None
+            stash = None
+            sensitivity = 1.0
+            panFactor  = 0.01
+            zoomFactor = 0.01
+            rotationFactor = 0.01            
+            dolly = false
+
+            lastTime = None
+            moveVec = V3i.Zero
+            dragStart = V2i.Zero
+            movePos = V2i.Zero
+            look = false; zoom = false; pan = false                    
+            forward = false; backward = false; left = false; right = false
+            isWheel = false;
+            moveSpeed = 0.0
+            scrollSensitivity = 0.8
+            scrolling = false
+
+            freeFlyConfig = FreeFlyConfig.initial
+
+            targetJump = None
+
+            targetPhiTheta = V2d.Zero
+            targetZoom = 0.0
+            targetDolly = 0.0
+            animating = false
+            targetPan = V2d.Zero
+            panSpeed = 0.0
+        }
+
     let md (f : float) (state : CameraControllerState) =
         (state.freeFlyConfig.dollyConstant + abs f * exp (state.freeFlyConfig.dollyDamping )) * float (sign f)
     let rd (f : float) (state : CameraControllerState) =
@@ -242,7 +278,7 @@ module FreeFlyController =
         | JumpTo of CameraView
 
     let initial' (dist:float) =
-        { CameraControllerState.initial with view = CameraView.lookAt (dist * V3d.III) V3d.Zero V3d.OOI }
+        { initial with view = CameraView.lookAt (dist * V3d.III) V3d.Zero V3d.OOI }
 
     let sw = System.Diagnostics.Stopwatch()
     do sw.Start()
@@ -592,14 +628,12 @@ module FreeFlyController =
 
     let threads (state : CameraControllerState) = ThreadPool.empty
 
-
-
     let start () =
         App.start {
             unpersist = Unpersist.instance
             view = view
             threads = threads
             update = update
-            initial = CameraControllerState.initial
+            initial = initial
         }
 

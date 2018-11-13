@@ -11,7 +11,7 @@ open RenderControl.Model
 open Aardvark.Base.LensOperators
 
 let initialCamera = { 
-        CameraControllerState.initial with 
+        FreeFlyController.initial with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
     }
 
