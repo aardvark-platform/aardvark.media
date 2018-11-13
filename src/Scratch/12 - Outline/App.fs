@@ -11,7 +11,7 @@ open Aardvark.UI
 open Aardvark.SceneGraph
 
 let initialCamera = { 
-    FreeFlyController.initial with 
+    FreeFlyController.initial' 3.0 with 
         view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
 }
 
@@ -143,7 +143,7 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
 let view (model : MModel) =
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ attribute "showFPS" "true"; attribute "data-renderalways" "1"; style "width: 100%; height:80%; "]) 
+                    (AttributeMap.ofList [ attribute "showFPS" "true"; attribute "data-renderalways" "1"; attribute "data-sample" "8"; style "width: 100%; height:80%; "]) 
                     (viewScene model)
 
     body [] [
