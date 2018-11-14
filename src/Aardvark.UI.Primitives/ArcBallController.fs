@@ -42,7 +42,8 @@ module ArcBallController =
             dolly       = false
             forward     = false; backward = false; left = false; right = false; isWheel = false
 
-            moveVec         = V3i.Zero
+            moveVec         = V3d.Zero
+            rotateVec       = V3d.Zero
             lastTime        = None
             orbitCenter     = Some V3d.Zero
             stash           = None
@@ -101,7 +102,7 @@ module ArcBallController =
                           cam.Right * float model.moveVec.X +
                           cam.Sky * float model.moveVec.Y
 
-                      if model.moveVec = V3i.Zero then
+                      if model.moveVec.AllTiny then
                           printfn "useless time %A" now
 
                       let step = dir * (exp model.sensitivity) * dt                      
@@ -120,60 +121,60 @@ module ArcBallController =
                   | None -> 
                       cam, model.orbitCenter
 
-              let model = if model.isWheel then { model with moveVec = V3i.Zero; isWheel = false} else model                
+              let model = if model.isWheel then { model with moveVec = V3d.Zero; isWheel = false} else model                
 
               { model with lastTime = Some now; view = cam; orbitCenter = center }
 
             | KeyDown Keys.W ->                
                 if not model.forward then
-                    withTime { model with forward = true; moveVec = model.moveVec + V3i.OOI  }
+                    withTime { model with forward = true; moveVec = model.moveVec + V3d.OOI  }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    withTime { model with forward = false; moveVec = model.moveVec - V3i.OOI  }
+                    withTime { model with forward = false; moveVec = model.moveVec - V3d.OOI  }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    withTime { model with backward = true; moveVec = model.moveVec - V3i.OOI  }
+                    withTime { model with backward = true; moveVec = model.moveVec - V3d.OOI  }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    withTime { model with backward = false; moveVec = model.moveVec + V3i.OOI  }
+                    withTime { model with backward = false; moveVec = model.moveVec + V3d.OOI  }
                 else
                     model
 
             | KeyDown Keys.A ->
                 if not model.left then
-                    withTime { model with left = true; moveVec = model.moveVec - V3i.IOO  }
+                    withTime { model with left = true; moveVec = model.moveVec - V3d.IOO  }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    withTime { model with left = false; moveVec = model.moveVec + V3i.IOO }
+                    withTime { model with left = false; moveVec = model.moveVec + V3d.IOO }
                 else
                     model
 
             | KeyDown Keys.D ->
                 if not model.right then
-                    withTime { model with right = true; moveVec = model.moveVec + V3i.IOO  }
+                    withTime { model with right = true; moveVec = model.moveVec + V3d.IOO  }
                 else
                     model
 
             | KeyUp Keys.D ->
                 if model.right then
-                    withTime { model with right = false; moveVec = model.moveVec - V3i.IOO}
+                    withTime { model with right = false; moveVec = model.moveVec - V3d.IOO}
                 else
                     model
 
             | Wheel delta ->
-                withTime { model with isWheel = true; moveVec = model.moveVec + V3i.OOI * int delta.Y * 10 }
+                withTime { model with isWheel = true; moveVec = model.moveVec + V3d.OOI * float (int delta.Y) * 10.0 }
 
             | KeyDown _ | KeyUp _ ->
                 model
@@ -298,7 +299,7 @@ module ArcBallController =
                 yield! time()
             }
 
-        if state.moveVec <> V3i.Zero then
+        if state.moveVec.AllTiny |> not then
             ThreadPool.add "timer" (time()) pool
 
         else

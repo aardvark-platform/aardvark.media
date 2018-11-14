@@ -73,7 +73,10 @@ type CameraControllerState =
         backward    : bool
         left        : bool
         right       : bool
-        moveVec     : V3i
+
+        moveVec     : V3d
+        rotateVec   : V3d
+
         moveSpeed   : float
         panSpeed    : float
         orbitCenter : Option<V3d>
