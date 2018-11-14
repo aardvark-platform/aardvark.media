@@ -1,0 +1,3 @@
+.notouch {
+    touch-action: none !important;
+  }

@@ -69,7 +69,7 @@ module Event =
 
     let private processEvent (name : string) (id : string) (args : list<string>) =
         let args = sprintf "'%s'" id :: sprintf "'%s'" name :: args
-        sprintf "aardvark.processEvent(%s); event.preventDefault();" (String.concat ", " args)
+        sprintf "aardvark.processEvent(%s);" (String.concat ", " args)
         
     let toString (id : string) (name : string) (evt : Event<'msg>) =
         let send = processEvent name
@@ -765,7 +765,7 @@ and DomNode private() =
                 else ["event.offsetX"; "event.offsetY"]
 
             {
-                clientSide = fun send id -> send id args + "; event.preventDefault();"
+                clientSide = fun send id -> send id args + ";"
                 serverSide = fun session id args ->
                     match args with
                         | x :: y :: which :: _ ->
