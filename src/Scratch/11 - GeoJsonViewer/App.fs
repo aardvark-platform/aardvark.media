@@ -33,7 +33,7 @@ module App =
             div [clazz "ui inverted item"][
               i [clazz "ui large map pin inverted middle aligned icon"] []
               div [clazz "ui content"] [
-                a [clazz "ui header small"][text "Feature"]
+                div [clazz "ui header small"][text "Feature"]
                 div [clazz "ui description"] [text id]
               ]            
             ]
@@ -91,7 +91,7 @@ module App =
           //let! bb = bb
           yield "width" ==> sprintf "%f" canvasSize.X
           yield "height" ==> sprintf "%f" canvasSize.Y
-          yield "viewBox" ==> sprintf ("%f %f %f %f") 0.0 (-canvasSize.Y) canvasSize.X canvasSize.Y
+        //  yield "viewBox" ==> sprintf ("%f %f %f %f") 0.0 (-canvasSize.Y) canvasSize.X canvasSize.Y
           yield clazz "svgRoot"
           yield style "border: 2px dashed black"
 
@@ -112,7 +112,7 @@ module App =
       match Map.tryFind "page" request.queryParams with
         | Some "list" ->
             require (semui)(
-              body [ style "width: 100%; height:100%; background: transparent; overflow: hidden"] [
+              body [ style "width: 100%; height:100%; background: transparent; overflow-x: hidden; overflow-y: scroll"] [
                 Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) content
               ]
             )
