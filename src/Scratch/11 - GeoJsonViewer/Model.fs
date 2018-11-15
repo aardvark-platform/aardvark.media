@@ -8,8 +8,11 @@ open Aardvark.UI.Primitives
 open FSharp.Data
 open FSharp.Data.JsonExtensions
 
+type FeatureId = FeatureId of string
+
 type Message = 
-  | Inc
+  | Select       of Guid
+  | Deselect
   | UpdateConfig of DockConfig
 
 
@@ -18,7 +21,6 @@ type Typus =
   | Feature
   | Polygon
 
-type FeatureId = FeatureId of string
 
 type Properties =
   {
@@ -35,6 +37,7 @@ type Geometry =
 
 type Feature =
   { 
+    id          : Guid
     typus       : Typus
     properties  : Properties
     boundingBox : Box2d
@@ -52,6 +55,7 @@ type FeatureCollection =
 [<DomainType>]
 type Model = 
   {
-     data    : FeatureCollection
-     docking : DockConfig
+     data     : FeatureCollection
+     docking  : DockConfig
+     selected : option<Guid>
   }

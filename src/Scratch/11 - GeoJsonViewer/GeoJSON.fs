@@ -35,7 +35,7 @@ module GeoJSON =
     
   let parseSingleCoord (c : array<decimal>) : V2d =
     if c.Length <> 2 then failwith "invalid coordinate of size other than 2"
-    V2d(float c.[0], float c.[1])
+    V2d(float c.[1], float c.[0])
 
   let parseCoordinates (coordinateSet : array<array<array<decimal>>>) : list<V2d> =
     [
@@ -52,6 +52,7 @@ module GeoJSON =
 
   let parseFeature (feature : EoxModel.Feature) : Feature =
     {
+      id          = System.Guid.NewGuid()
       typus       = feature.Type       |> parseTypus
       boundingBox = feature.Bbox       |> parseBoundingBox
       properties  = feature.Properties |> parseProperties
@@ -61,11 +62,24 @@ module GeoJSON =
   let parseFeatures (features : array<EoxModel.Feature>) : list<Feature> = 
     features |> Array.toList |> List.map parseFeature    
 
+  let distanceFilter (dist : float) (features : list<Feature>) : list<Feature> =
+      let boxes = features |> List.map(fun x -> x.boundingBox)
+
+      let sum = boxes |> List.fold (fun a b -> b.Center + a) (V2d.Zero)
+      let com = sum / (float boxes.Length)
+
+      features |> List.filter(fun x -> V2d.Distance(x.boundingBox.Center, com) < dist ) //|> List.take 1
+
+  let computeBb (features : list<Feature>) : Box2d = 
+    features |> List.fold (fun a b -> a.ExtendedBy(b.boundingBox)) Box2d.Invalid
+
   let parseRoot(root : EoxModel.Root) : FeatureCollection = 
+    let features = root.Features |> parseFeatures |> distanceFilter 10.0
+
     {
       typus       = root.Type     |> parseTypus
-      boundingBox = root.Bbox     |> parseBoundingBox
-      features    = root.Features |> parseFeatures |> PList.ofList
+      boundingBox = features      |> computeBb //root.Bbox     |> parseBoundingBox
+      features    = features      |> PList.ofList
     }
 
   let load (jsonFile : string) : FeatureCollection = 
