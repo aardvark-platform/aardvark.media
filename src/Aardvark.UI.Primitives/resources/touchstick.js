@@ -132,19 +132,21 @@ function destroycircle(id) {
 }
 
 function panstart(e) {
-  if (!(e.pointerType == "mouse")) {
-    clicky.classList.add("notouch");
-    dragging = true;
-    var left = e.center.x;
-    var top = e.center.y;
-    startleft = left;
-    starttop = top;
-    pointerdistance = Math.min(e.distance,maxr);
-    pointerangle = e.angle;
-    aardvark.processEvent(id,"touchstickstart", { distance : (pointerdistance/maxr), angle : pointerangle });
-    createcircle(globalid, 35);
-    createline(globalid);
-  }
+    if (!(e.pointerType == "mouse")) {
+        clicky.classList.add("notouch");
+        dragging = true;
+        var left = e.center.x;
+        var top = e.center.y;
+        startleft = left;
+        starttop = top;
+        pointerdistance = Math.min(e.distance, maxr);
+        pointerangle = e.angle;
+        var d = e.srcEvent.screenX;
+        var a = e.srcEvent.screenY;
+        aardvark.processEvent(id, "touchstickstart", d, a);
+        createcircle(globalid, 35);
+        createline(globalid);
+    }
 };
 
 function panmove(e) {
@@ -152,8 +154,10 @@ function panmove(e) {
     if (dragging) {
       pointerdistance = Math.min(e.distance,maxr);
       //output.innerHTML = "distance:" + (pointerdistance/maxr) + " angle:" + e.angle;
-      pointerangle = e.angle;
-      aardvark.processEvent(id,"touchstickmove", { distance : (pointerdistance/maxr), angle : pointerangle });
+        pointerangle = e.angle;
+        var d = (pointerdistance / maxr);
+        var a = pointerangle;
+      aardvark.processEvent(id,"touchstickmove", d,a);
       updatecircle(globalid);
       updateline(globalid);
     } else {

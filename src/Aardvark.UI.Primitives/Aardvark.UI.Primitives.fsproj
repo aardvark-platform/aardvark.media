@@ -30,6 +30,8 @@
     <Compile Include="Docking.fs" />
 		<EmbeddedResource Include="resources\spectrum.css" />
 		<EmbeddedResource Include="resources\spectrum.js" />
+    <EmbeddedResource Include="resources\touchstick.js" />
+    <EmbeddedResource Include="resources\touch.css" />
     <None Include="paket.references" />
     <Content Include="d3Test.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

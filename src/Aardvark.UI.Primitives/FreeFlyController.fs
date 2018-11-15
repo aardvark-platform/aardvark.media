@@ -31,7 +31,8 @@ module FreeFlyController =
             dolly = false
 
             lastTime = None
-            moveVec = V3i.Zero
+            moveVec = V3d.Zero
+            rotateVec = V3d.Zero
             dragStart = V2i.Zero
             movePos = V2i.Zero
             look = false; zoom = false; pan = false                    
@@ -249,14 +250,14 @@ module FreeFlyController =
                        Vec.length ((CameraView.location j + CameraView.forward j) - (CameraView.location state.view + CameraView.forward state.view)) > 1E-4 &&
                        Vec.length ((CameraView.location j + CameraView.up j) -      (CameraView.location state.view + CameraView.up state.view)     ) > 1E-4 then
                         None
-                    elif (state.pan || state.look || state.dolly || (abs state.targetZoom > 0.05)) then
+                    elif (state.pan || state.look || state.dolly || (abs state.targetZoom > 0.05)) || not state.rotateVec.AllTiny then
                         None
                     else
                         Some j
                 )
 
             { state with 
-                view = state.view + motion
+                view = state.view + { motion with dRot = motion.dRot + state.rotateVec }
                 moveSpeed = state.moveSpeed + motion.dMoveSpeed 
                 targetPhiTheta = state.targetPhiTheta - V2d(motion.dRot.Y, motion.dRot.X)
                 targetZoom = state.targetZoom - motion.dZoom
@@ -315,7 +316,7 @@ module FreeFlyController =
             | Blur ->
                 { model with 
                     lastTime = None
-                    moveVec = V3i.Zero
+                    moveVec = V3d.Zero
                     dragStart = V2i.Zero
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
@@ -324,7 +325,7 @@ module FreeFlyController =
                 let now = sw.Elapsed.TotalSeconds
 
                 let move (state : CameraControllerState) =
-                    if state.moveVec <> V3i.Zero then
+                    if state.moveVec.AllTiny |> not then
                         { CameraMotion.Zero with
                             dPos = V3d state.moveVec * exp state.freeFlyConfig.moveSensitivity
                         }
@@ -411,7 +412,7 @@ module FreeFlyController =
                         | None -> 
                             model
                      
-                if model.moveVec = V3i.Zero && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) && (abs model.targetZoom <= 0.05) && (jump model |> snd) then
+                if model.rotateVec.AllTiny && model.moveVec.AllTiny && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) && (abs model.targetZoom <= 0.05) && (jump model |> snd) then
                     stopAnimation model
                 else
                     let model = 
@@ -422,25 +423,25 @@ module FreeFlyController =
 
             | KeyDown Keys.W ->
                 if not model.forward then
-                    startAnimation { model with forward = true; moveVec = model.moveVec + V3i.OOI }
+                    startAnimation { model with forward = true; moveVec = model.moveVec + V3d.OOI }
                 else
                     model
 
             | KeyUp Keys.W ->
                 if model.forward then
-                    startAnimation { model with forward = false; moveVec = model.moveVec - V3i.OOI }
+                    startAnimation { model with forward = false; moveVec = model.moveVec - V3d.OOI }
                 else
                     model
 
             | KeyDown Keys.S ->
                 if not model.backward then
-                    startAnimation { model with backward = true; moveVec = model.moveVec - V3i.OOI }
+                    startAnimation { model with backward = true; moveVec = model.moveVec - V3d.OOI }
                 else
                     model
 
             | KeyUp Keys.S ->
                 if model.backward then
-                    startAnimation { model with backward = false; moveVec = model.moveVec + V3i.OOI }
+                    startAnimation { model with backward = false; moveVec = model.moveVec + V3d.OOI }
                 else
                     model
 
@@ -452,25 +453,26 @@ module FreeFlyController =
 
             | KeyDown Keys.A ->
                 if not model.left then
-                    startAnimation { model with left = true; moveVec = model.moveVec - V3i.IOO }
+                    startAnimation { model with left = true; moveVec = model.moveVec - V3d.IOO }
                 else
                     model
 
             | KeyUp Keys.A ->
                 if model.left then
-                    startAnimation { model with left = false; moveVec = model.moveVec + V3i.IOO }
+                    startAnimation { model with left = false; moveVec = model.moveVec + V3d.IOO }
                 else
                     model
 
+
             | KeyDown Keys.D ->
                 if not model.right then
-                    startAnimation { model with right = true; moveVec = model.moveVec + V3i.IOO }
+                    startAnimation { model with right = true; moveVec = model.moveVec + V3d.IOO }
                 else
                     model
 
             | KeyUp Keys.D ->
                 if model.right then
-                    startAnimation { model with right = false; moveVec = model.moveVec - V3i.IOO }
+                    startAnimation { model with right = false; moveVec = model.moveVec - V3d.IOO }
                 else
                     model
 

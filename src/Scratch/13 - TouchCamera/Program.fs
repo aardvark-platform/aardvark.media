@@ -4,7 +4,7 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
-open Inc
+open TouchStick
 
 open Suave
 open Suave.WebPart
@@ -16,7 +16,7 @@ let main argv =
     Aardium.init()
 
     use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    let instance = TouchStickApp.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 
@@ -26,10 +26,14 @@ let main argv =
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-    WebPart.startServerLocalhost 4321 [ 
+    let t = typeof<Aardvark.UI.Primitives.EmbeddedResources>
+
+    let supa = Reflection.assemblyWebPart (t.Assembly)
+    WebPart.startServer 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
-        Suave.Files.browseHome
-    ]  
+        //Suave.Files.browseHome
+        supa
+    ]   
 
     Aardium.run {
         url "http://localhost:4321/"
