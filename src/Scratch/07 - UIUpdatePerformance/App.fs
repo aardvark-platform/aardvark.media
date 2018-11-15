@@ -31,8 +31,19 @@ let dependencies =
         { url = "support.js"; name = "support"; kind = Script }
     ]
 
+let illegalString = """
+abc 
+new line then \²³²]³\nsuper2929
+k' " , . / \ ; : & % $ # @ *
+"""
+
 let view (model : MModel) =
     div [] [
+        br []
+        text illegalString
+        br []
+        text (sprintf "%A" (Some dependencies))
+        br []
         onBoot "doIt(__ID__)" (div [clazz "jsUpdater"] [text "nothing"])
         text "Hello World"
         br []

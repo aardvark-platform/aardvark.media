@@ -21,3 +21,4 @@ bin/Debug
 *.g.fs
 /.vs/aardvark.media/v15/*.suo
 /.vs
+/src/Scratch/11 - GeoJsonViewer/*.user
