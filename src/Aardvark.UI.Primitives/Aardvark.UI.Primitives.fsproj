@@ -14,6 +14,7 @@
   <ItemGroup>
     <Compile Include="UI.Primitives.Models.fs" />
     <Compile Include="UI.Primitives.fs" />
+    <Compile Include="UI.Primitives.Simple.fs" />
     <Compile Include="TrafoControls\TrafoModel.fs" />
     <Compile Include="TrafoControls\TrafoController.fs" />
     <Compile Include="TrafoControls\TranslationController.fs" />

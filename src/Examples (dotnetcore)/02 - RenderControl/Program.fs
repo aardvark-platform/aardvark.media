@@ -18,7 +18,7 @@ let main argv =
 
     // media apps require a runtime, which serves as renderer for your render controls.
     // you can use OpenGL or VulkanApplication.
-    let useVulkan = false
+    let useVulkan = true
 
     let runtime, disposable =
         if useVulkan then

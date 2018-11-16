@@ -101,7 +101,7 @@ if (!aardvark.getRelativeUrl) {
         if (!dir.endsWith("/")) dir = dir + "/";
 
         var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
-        console.warn(path);
+        console.log(path);
 
         return path;
     }
@@ -121,9 +121,15 @@ class Renderer {
         if (!samples) samples = 1;
         this.samples = samples;
 
-        var showFPS = this.div.getAttribute("showFPS");
-        if (showFPS == "true") showFPS = true;
-        this.showFPS = showFPS;
+		debugger;
+		var showFPS = this.div.getAttribute("showFPS");
+		if (showFPS === "true") showFPS = true; else showFPS = false;
+		this.showFPS = showFPS;
+
+
+		var showLoader = this.div.getAttribute("showLoader");
+		if (showLoader === "false") showLoader = false; else showLoader = true;
+		this.showLoader = showLoader;
 
         this.buffer = [];
         this.isOpen = false;
@@ -178,7 +184,9 @@ class Renderer {
         this.div.appendChild(img);
         img.setAttribute("class", "rendercontrol");
 
-        this.createLoader();
+		debugger;
+		if (this.showLoader) this.createLoader();
+
         this.img = img;
 
         var overlay = document.createElement("span")
@@ -912,13 +920,17 @@ if (!aardvark.getCursor) {
         return el;
     }
 
-    aardvark.getCursor = function (evt) {
+    aardvark.getCursor = function (evt,containerClassName) {
         var source = evt.target || evt.srcElement;
-        var svg = findAncestor(source, "svgRoot");
-        var pt = svg.createSVGPoint();
-        pt.x = evt.clientX;
-        pt.y = evt.clientY;
-        return pt.matrixTransform(svg.getScreenCTM().inverse());
+        var svg = findAncestor(source, containerClassName);
+        if (svg) {
+            var pt = svg.createSVGPoint();
+            pt.x = evt.clientX;
+            pt.y = evt.clientY;
+            return pt.matrixTransform(svg.getScreenCTM().inverse());
+        } else {
+            return { x: NaN, y: NaN };
+        }
     };
 
 }
@@ -929,11 +941,15 @@ if (!aardvark.getRelativeCoords) {
 
     aardvark.getRelativeCoords = function relativeCoords(event,container) {
         var source = event.target || event.srcElement;
-        var container = findAncestor(source, container);
-        var bounds = container.getBoundingClientRect();
-        var x = event.clientX - bounds.left;
-        var y = event.clientY - bounds.top;
-        return { x: x, y: y };
+        var containers = document.getElementsByClassName(container);
+        if (container && container.length > 0) {
+            var container = containers[0];
+            var bounds = container.getBoundingClientRect();
+            var x = event.clientX - bounds.left;
+            var y = event.clientY - bounds.top;
+            return { x: x, y: y };
+        } else
+            return { x: NaN, y: NaN };
     }
 
 }
@@ -943,9 +959,28 @@ var getRelativeCoords = aardvark.getRelativeCoords;
 if (!aardvark.toFixedV2d) {
 
     aardvark.toFixedV2d = function toFixedV2d(v) {
-        return { X: v.x.toFixed(), Y: v.y.toFixed() };
+        return { X: v.x.toFixed(10), Y: v.y.toFixed(10) };
     }
 
 }
 
 var toFixedV2d = aardvark.toFixedV2d;
+
+if (!aardvark.getRelativePercent) {
+
+    aardvark.getRelativeCoords = function relativeCoords(event, container) {
+        var source = event.target || event.srcElement;
+        var containers = document.getElementsByClassName(container);
+        if (container && container.length > 0) {
+            var container = containers[0];
+            var bounds = container.getBoundingClientRect();
+            var x = event.clientX - bounds.left;
+            var y = event.clientY - bounds.top;
+            return { x: x / container.width, y: y / container.height };
+        } else
+            return { x: NaN, y: NaN };
+    }
+
+}
+
+var getRelativePercent = aardvark.getRelativeCoords;

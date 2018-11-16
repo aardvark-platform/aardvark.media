@@ -24,6 +24,8 @@ open Suave.Sockets.Control
 open Suave.Sockets
 open Suave.State.CookieStateStore
 
+type EmbeddedResources = EmbeddedResources
+
 [<AutoOpen>]
 module private Tools =
     type WebSocket with
@@ -40,6 +42,7 @@ module private Tools =
 
 module MutableApp =
     open System.Reactive.Subjects
+    open Aardvark.UI.Internal.Updaters
     
     let private template = 
         let ass = typeof<DomNode<_>>.Assembly
@@ -100,10 +103,12 @@ module MutableApp =
 
                     let updater = app.ui.NewUpdater(request)
                     
-                    let state =
+                    let handlers = Dictionary()
+
+                    let state : UpdateState<'msg> =
                         {
                             scenes          = Dictionary()
-                            handlers        = Dictionary()
+                            handlers        = ContraDict.ofDictionary handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
                             messages        = app.messages
@@ -130,17 +135,17 @@ module MutableApp =
                             while running do
                                 let! cont = MVar.takeAsync update
                                 if cont then
-                                    o.EvaluateAlways AdaptiveToken.Top (fun t ->
-                                        if Config.shouldTimeJsCodeGeneration then 
-                                            Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
+                                    lock app.lock (fun () ->
+                                        o.EvaluateAlways AdaptiveToken.Top (fun t ->
+                                            if Config.shouldTimeJsCodeGeneration then 
+                                                Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
 
-                                        let code = 
-                                            lock app.lock (fun () ->
+                                            let code = 
                                                 let expr = 
                                                     lock state (fun () -> 
                                                         state.references.Clear()
                                                         if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                        let r = updater.Update(t, JSExpr.Body, state)
+                                                        let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
                                                         if Config.shouldTimeUIUpdate then Log.stop ()
                                                         r
                                                     )
@@ -163,40 +168,40 @@ module MutableApp =
                                                     sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
                                                 else
                                                     code
-                                            )
 
-                                        if Config.shouldTimeJsCodeGeneration then 
-                                            Log.line "[Aardvark.UI] code length: %d" (code.Length); Log.stop()
+                                            if Config.shouldTimeJsCodeGeneration then 
+                                                Log.line "[Aardvark.UI] code length: %d" (code.Length); Log.stop()
 
-                                        if code <> "" then
-                                            lock app (fun () -> 
-                                                if Config.shouldPrintDOMUpdates then
-                                                    let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
-                                                    Log.start "update"
-                                                    for l in lines do Log.line "%s" l
-                                                    Log.stop()
-                                            )
+                                            if code <> "" then
+                                                lock app (fun () -> 
+                                                    if Config.shouldPrintDOMUpdates then
+                                                        let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
+                                                        Log.start "update"
+                                                        for l in lines do Log.line "%s" l
+                                                        Log.stop()
+                                                )
 
-                                            send (Text.Encoding.UTF8.GetBytes("x" + code))
+                                                send (Text.Encoding.UTF8.GetBytes("x" + code))
     
                                                 
-                                        let mutable o = oldChannels
-                                        let mutable c = Set.empty
-                                        for (KeyValue((id,name), cr)) in state.activeChannels do
-                                            match cr.GetMessages(t) with
-                                                | [] -> ()
-                                                | messages ->
-                                                    let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
-                                                    send message
+                                            let mutable o = oldChannels
+                                            let mutable c = Set.empty
+                                            for (KeyValue((id,name), cr)) in state.activeChannels do
+                                                match cr.GetMessages(t) with
+                                                    | [] -> ()
+                                                    | messages ->
+                                                        let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
+                                                        send message
 
-                                            c <- Set.add (id, name) c
-                                            o <- Set.remove (id, name) o
+                                                c <- Set.add (id, name) c
+                                                o <- Set.remove (id, name) o
 
-                                        for (id, name) in o do
-                                            let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
-                                            send message
+                                            for (id, name) in o do
+                                                let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
+                                                send message
                                             
-                                        oldChannels <- c
+                                            oldChannels <- c
+                                        )
                                     )
 
                         }
@@ -218,7 +223,7 @@ module MutableApp =
                                                     Log.warn "bad opcode: %A" str
                                         else
                                             let evt : EventMessage = Pickler.json.UnPickle data
-                                            match lock state (fun () -> state.handlers.TryGetValue((evt.sender, evt.name))) with
+                                            match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
                                                 | (true, handler) ->
                                                     let msgs = handler sessionId evt.sender (Array.toList evt.args)
                                                     app.update sessionId msgs
@@ -247,6 +252,7 @@ module MutableApp =
 
         choose [            
             prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
+            Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
             path "/events" >=> handShake events
             path "/" >=> OK template 
         ]

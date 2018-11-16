@@ -8,14 +8,16 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Model
 
+type WrappedMessage =
+    | Wrapped of Message
 
-let update (model : Model) (msg : Message) =
+let update (model : Model) (msg : WrappedMessage) =
     match msg with
-        | Increment ->
+        | Wrapped Increment ->
             { model with dummy = model.dummy + 1 }
-        | ResetAll ->
+        | Wrapped ResetAll ->
             { model with dummy = 0 }
-        | Ping ->
+        | Wrapped Ping ->
             model
 
 let view (model : MModel) =
@@ -63,7 +65,7 @@ let app =
     let rec inc() =
         proclist {
             do! Async.Sleep 2000
-            yield Ping
+            yield Wrapped Ping
             yield! inc()
         }
     {
@@ -71,5 +73,5 @@ let app =
         threads = fun _ -> ThreadPool.empty |> ThreadPool.add "inc" (inc())
         initial =  { dummy = 0 }
         update = update 
-        view = view
+        view = view >> UI.map Wrapped
     }

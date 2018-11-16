@@ -36,20 +36,32 @@ let view (model : MModel) =
                     (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"]) 
                     (viewScene model)
 
-    div [] [
-        text "Hello 3D"
-        br []
-        button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
-        br []
-        renderControl
-    ]
+    let channel = model.cameraState.view
+                    |> Mod.map (fun v -> v.Forward)
+                    |> Mod.channel
+
+    let updateData = "foo.onmessage = function (data) { console.log(data); }"
+
+    onBoot' ["foo", channel] updateData (
+        div [] [
+            text "Hello 3D"
+            br []
+            button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
+            br []
+            renderControl
+        ]
+    )
 
 // variant with html5 grid layouting (currently not working in our cef)
 let view2 (model : MModel) =
 
     let renderControl =
         CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 100%; grid-row: 2"]) 
+                    (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
+                                           //attribute "showFPS" "true";       // optional, default is false
+                                           //attribute "showLoader" "false"    // optional, default is true
+                                           //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                         ]) 
                     (viewScene model)
 
 
@@ -77,5 +89,5 @@ let app =
                cameraState = initialCamera
             }
         update = update 
-        view = view
+        view = view2
     }

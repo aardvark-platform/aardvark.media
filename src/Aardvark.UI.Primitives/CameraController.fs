@@ -221,33 +221,32 @@ module CameraController =
 
     let withControls (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (node : DomNode<'msg>) =
         let cam = Mod.map2 Camera.create state.view frustum 
-        let content =
-            match node.Content with
-                | DomContent.Scene(scene,_) ->
-                    let getState(c : Aardvark.Service.ClientInfo) =
-                        let cam = cam.GetValue(c.token)
-                        let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
+        match node with
+            | :? SceneNode<'msg> as node ->
+                let getState(c : Aardvark.Service.ClientInfo) =
+                    let cam = cam.GetValue(c.token)
+                    let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
 
-                        {
-                            viewTrafo = CameraView.viewTrafo cam.cameraView
-                            projTrafo = Frustum.projTrafo cam.frustum
-                        }
-                    DomContent.Scene(scene,getState)
-                | _ -> failwith "[Aardvark.UI] cannot added controls to none scene node"
-        let attributes =
-            AttributeMap.ofListCond [
-                always (onBlur (fun _ -> f Blur))
-                always (onMouseDown (fun b p -> f (Down(b,p))))
-                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
-                always (onKeyDown (KeyDown >> f))
-                always (onKeyUp (KeyUp >> f))
-                always (onWheel(fun x -> f (Wheel x)))
-                onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
-            ]
+                    {
+                        viewTrafo = CameraView.viewTrafo cam.cameraView
+                        projTrafo = Frustum.projTrafo cam.frustum
+                    }
 
-        node.WithAttributes(AttributeMap.union node.Attributes attributes)
-            .WithContent(content)
+                let attributes =
+                    AttributeMap.ofListCond [
+                        always (onBlur (fun _ -> f Blur))
+                        always (onMouseDown (fun b p -> f (Down(b,p))))
+                        onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
+                        always (onKeyDown (KeyDown >> f))
+                        always (onKeyUp (KeyUp >> f))
+                        always (onWheel(fun x -> f (Wheel x)))
+                        onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
+                    ]
 
+                DomNode.Scene(AttributeMap.union node.Attributes attributes, node.Scene, getState).WithAttributesFrom node
+            | _ ->
+                failwith "[UI] cannot add camera controllers to non-scene node"
+                
 
 
     let view (state : MCameraControllerState) =

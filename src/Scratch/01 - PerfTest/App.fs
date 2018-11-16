@@ -69,6 +69,18 @@ let viewScene (model : MModel) =
         }
 
 
+let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
+    let app =
+        {
+            initial = ()
+            update = fun () _ -> ()
+            view = fun () -> ui
+            unpersist = { create = id; update = constF ignore }
+            threads = fun () -> ThreadPool.empty
+        }
+
+    subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) [] app
+
 // variant with html5 grid layouting (currently not working in our cef)
 let view (model : MModel) =
     let renderControl =

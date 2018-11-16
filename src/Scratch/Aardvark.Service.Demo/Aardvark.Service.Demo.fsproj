@@ -125,22 +125,22 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj">
+    <ProjectReference Include="..\..\Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj">
       <Name>Aardvark.Cef.WinForms.Process</Name>
       <Project>{ede32464-755b-415a-b0ca-cda89f49f6f5}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">
+    <ProjectReference Include="..\..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj">
       <Name>Aardvark.Cef.WinForms</Name>
       <Project>{f20c78dd-06cb-44e8-90db-6de144863078}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj">
+    <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj">
       <Name>Aardvark.UI.Primitives</Name>
       <Project>{f0d88aca-53db-492c-88cf-080f67fef6b8}</Project>
       <Private>True</Private>
     </ProjectReference>
-    <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj">
+    <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj">
       <Name>Aardvark.UI</Name>
       <Project>{222260e2-428b-485d-89fb-bfbf1d87cd06}</Project>
       <Private>True</Private>
