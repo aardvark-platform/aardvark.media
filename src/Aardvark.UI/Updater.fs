@@ -586,6 +586,8 @@ module Updaters =
                     state.messages.Subscribe(fun msg -> 
                         let msgs = n.App.ToInner(m.model.GetValue(), msg)
                         m.update Guid.Empty msgs
+                        for m in msgs do subject.OnNext m
+
                     )
 
                 cache <- Some (innerState, subject, subscription)
