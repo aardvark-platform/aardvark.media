@@ -1,39 +1,35 @@
-namespace TouchStick
+namespace TouchCamera
 
 open System
 open Aardvark.Base
 open Aardvark.Base.Incremental
 
-open Aardvark.UI.Primitives
 
-type TouchStickState =
-    {
-        distance : float
-        angle : float
-    }
+open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.TouchStick
+
 
 [<DomainType>]
 type TouchStickModel =
     {
-        leftstick : Option<TouchStickState>  
-        ritestick : Option<TouchStickState>  
-
+        rotStick   : Option<TouchStickState>
+        movStick   : Option<TouchStickState>
         cameraState : CameraControllerState
     }
 
 module TouchStickModel =
     let initial =
         {
-            leftstick = None
-            ritestick = None
+            rotStick = None
+            movStick = None
             cameraState = FreeFlyController.initial
         }
 
 type TouchStickMessage =
-    | LeftTouchStart of TouchStickState
-    | LeftTouchUpdate of TouchStickState
-    | LeftTouchEnd
-    | RiteTouchStart of TouchStickState
-    | RiteTouchUpdate of TouchStickState
-    | RiteTouchEnd
     | Camera of FreeFlyController.Message
+    | StartMovStick of TouchStickState
+    | StartRotStick of TouchStickState
+    | MoveRotStick of TouchStickState
+    | MoveMovStick of TouchStickState
+    | EndRotStick
+    | EndMovStick

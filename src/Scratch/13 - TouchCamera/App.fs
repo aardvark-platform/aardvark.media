@@ -1,7 +1,8 @@
-﻿namespace TouchStick
+﻿namespace TouchCamera
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.TouchStick
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
@@ -11,41 +12,50 @@ module TouchStickApp =
     open Aardvark.Application
     open Aardvark.Base
 
+        //let rec update (m : TouchStickModel) (msg : TouchStickMessage) =
+        //match msg with
+        //   | RiteTouchStart s 
+        //   | RiteTouchUpdate s -> 
+        //        let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * sin(s.angle * Constant.RadiansPerDegree))
+
+        //        { m with ritestick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with rotateVec = V3d(-pos.Y,-pos.X,0.0) * 0.01 }) }
+        //   | RiteTouchEnd -> 
+        //        { m with ritestick = None; cameraState = (FreeFlyController.startAnimation { m.cameraState with rotateVec = V3d.Zero }) }
+
+
+        //   | LeftTouchStart s 
+        //   | LeftTouchUpdate s -> 
+        //        let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * -sin(s.angle * Constant.RadiansPerDegree))
+
+        //        { m with leftstick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with moveVec = V3d(pos.X,0.0,pos.Y) }) }
+        //   | LeftTouchEnd -> 
+        //        { m with leftstick = None; cameraState = (FreeFlyController.startAnimation { m.cameraState with moveVec = V3d.Zero }) }
+        //   | Camera im -> { m with cameraState = FreeFlyController.update m.cameraState im}
+
+
     let rec update (m : TouchStickModel) (msg : TouchStickMessage) =
         match msg with
-           | RiteTouchStart s 
-           | RiteTouchUpdate s -> 
-                let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * sin(s.angle * Constant.RadiansPerDegree))
+            | Camera im -> { m with cameraState = FreeFlyController.update m.cameraState im}
 
-                { m with ritestick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with rotateVec = V3d(-pos.Y,-pos.X,0.0) * 0.01 }) }
-           | RiteTouchEnd -> 
-                { m with ritestick = None; cameraState = (FreeFlyController.startAnimation { m.cameraState with rotateVec = V3d.Zero }) }
-
-
-           | LeftTouchStart s 
-           | LeftTouchUpdate s -> 
+            | StartMovStick s ->
+                { m with movStick = Some s}
+            | MoveMovStick s ->
                 let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * -sin(s.angle * Constant.RadiansPerDegree))
 
-                { m with leftstick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with moveVec = V3d(pos.X,0.0,pos.Y) }) }
-           | LeftTouchEnd -> 
-                { m with leftstick = None; cameraState = (FreeFlyController.startAnimation { m.cameraState with moveVec = V3d.Zero }) }
-           | Camera im -> { m with cameraState = FreeFlyController.update m.cameraState im}
+                { m with movStick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with moveVec = V3d(pos.X,0.0,pos.Y) }) }
+            | EndMovStick ->
+                { m with movStick = None }
 
+            | StartRotStick s ->
+                { m with rotStick = Some s}
+            | MoveRotStick s ->
+                let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * sin(s.angle * Constant.RadiansPerDegree))
 
-    let withTouchStick el =
-        let rs = 
-            [
-                { name = "touchstick.js"; url = "touchstick.js"; kind = Script }
-                { name = "touch.css"; url = "touch.css"; kind = Stylesheet }
-                { name = "hammerjs"; url = "https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.js"; kind = Script }
-            ]       
-        require rs (
-            onBoot ("initTouchStick('__ID__', 100);") (
-                el
-            )
-        )
-        
+                { m with rotStick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with rotateVec = V3d(-pos.X,-pos.Y,0.0) * 0.01 }) }
+            | EndRotStick ->
+                { m with rotStick = None }
 
+           
     let viewScene (model : MTouchStickModel) =
         IndexedGeometryPrimitives.solidCoordinateBox 100.0
             |> Sg.ofIndexedGeometry
@@ -62,50 +72,34 @@ module TouchStickApp =
                     })
         
     let view (m : MTouchStickModel) =
-        div [] [
-            //text "stick:"
-            //text "    "
-            ////Incremental.text (m.stick |> Mod.map (fun o -> match o with | None -> "nothing" | Some v -> "dist="+string v.distance+" ang="+string v.angle))
-            //br []
-            
-            
-            FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.1 1000.0 1.0 |> Mod.constant) 
-                        (AttributeMap.ofList [ style "width: 100vw; height:100vh"; 
-                                                attribute "showFPS" "true";       // optional, default is false
-                                                attribute "data-samples" "8"
-                                                //onEvent "onRendered" [] (fun _ -> SetTime)
-                                                ]) 
-                        (viewScene m)
+        let sticks =
+            [
+                { name="leftstick"; area=Box2d(V2d(-1.0,-1.0),V2d(0.0,1.0)); radius = 100.0 }
+                { name="ritestick"; area=Box2d(V2d( 0.0,-1.0),V2d(1.0,1.0)); radius = 100.0 }
+            ]
 
-            withTouchStick (div [
-                style "position:fixed;top:0;left:0;width:50vw;height:100vh;padding:0;margin:0;border:0;z-index:2;background-color:rgba(255,255,0,0.3);"
-                onEvent "touchstickstart" [] (( fun args -> 
-                    match args with
-                    | [d;a] -> { distance = float d; angle = float a } |> LeftTouchStart
-                    | _ -> failwith ""
-                ))
-                onEvent "touchstickmove" [] (( fun args -> 
-                    match args with
-                    | [d;a] -> { distance = float d; angle = float a } |> LeftTouchUpdate
-                    | _ -> failwith ""
-                ))
-                onEvent "touchstickstop" [] ( fun _ -> LeftTouchEnd)
-            ] [])
-            
-            withTouchStick (div [
-                style "position:fixed;top:0;left:50vw;width:50vw;height:100vh;padding:0;margin:0;border:0;z-index:2;background-color:rgba(255,0,255,0.3);"
-                onEvent "touchstickstart" [] (( fun args -> 
-                    match args with
-                    | [d;a] -> { distance = float d; angle = float a } |> RiteTouchStart
-                    | _ -> failwith ""
-                ))
-                onEvent "touchstickmove" [] (( fun args -> 
-                    match args with
-                    | [d;a] -> { distance = float d; angle = float a } |> RiteTouchUpdate
-                    | _ -> failwith ""
-                ))
-                onEvent "touchstickstop" [] ( fun _ -> RiteTouchEnd)
-            ] [])
+                
+        div [] [
+            withTouchSticks sticks (
+                FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.1 1000.0 1.0 |> Mod.constant) 
+                    (AttributeMap.ofList [  
+                        style "width: 100vw; height:100vh"
+                                                        
+                        onTouchStickStart "leftstick" (fun stick pos -> StartMovStick stick)
+                        onTouchStickStart "ritestick" (fun stick pos -> StartRotStick stick)
+
+                        onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick)
+                        onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick)
+
+                        onTouchStickStop "leftstick" (fun _ -> EndMovStick)
+                        onTouchStickStop "ritestick" (fun _ -> EndRotStick)
+
+                        attribute "showFPS" "true";
+                        attribute "data-samples" "8"
+                    ]
+                    ) 
+                    (viewScene m)
+            )
         ]
     let threads (m : TouchStickModel) = 
         ThreadPool.empty

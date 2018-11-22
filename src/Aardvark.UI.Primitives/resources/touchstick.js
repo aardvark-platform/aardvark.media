@@ -1,4 +1,4 @@
-function initTouchStick(id, maxr) {
+function initTouchStick(id, name, minx, maxx, miny, maxy, maxr) {
 
 var clicky = document.getElementById(id);
 var globalid = id;
@@ -10,6 +10,9 @@ var starttop = 0;
 var pointerangle = -999.0;
 var pointerdistance = -999.0;
 var cr = 0;
+
+var basex = 0;
+var basey = 0;
 
 function pointerleft() {
  return Math.round(pointerdistance * Math.cos(pointerangle*0.0174533));
@@ -44,7 +47,7 @@ function getScroll() {
 }
 
 function updatecircle(id) {
-  var el = document.getElementById("touch_circle_" + id);
+  var el = document.getElementById("touch_circle_" + name + "_" + id);
   var pos = getPosition(clicky),
     scroll = getScroll(),
     diff = {
@@ -63,7 +66,7 @@ function updatecircle(id) {
 
 function createcircle(id, r) {
   var el = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  el.setAttributeNS(null, "id", "touch_circle_" + id);
+  el.setAttributeNS(null, "id", "touch_circle_" + name + "_" + id);
   el.setAttributeNS(null, "viewBox", "" + 0 + " " + 0 + " " + 2 * r + " " + 2 * r);
   el.setAttributeNS(null, "width", 2 * r);
   el.setAttributeNS(null, "height", 2 * r);
@@ -91,7 +94,7 @@ function createline(id) {
   var bottomest = Math.max(starttop, starttop + pointertop());
   var width = rightest - leftest;
   var height = bottomest - toppest;
-  el.setAttributeNS(null, "id", "touch_line_" + id);
+  el.setAttributeNS(null, "id", "touch_line_" + name + "_" + id);
   el.setAttributeNS(null, "viewBox", 0 + " " + 0 + " " + width + " " + height);
   el.setAttributeNS(null, "width", width);
   el.setAttributeNS(null, "height", height);
@@ -115,7 +118,7 @@ function createline(id) {
 }
 
 function destroyline(id) {
-  var e = document.getElementById("touch_line_" + id);
+  var e = document.getElementById("touch_line_" + name + "_" + id);
   if (e) {
     e.parentNode.removeChild(e);
   }
@@ -127,7 +130,7 @@ function updateline(id) {
 }
 
 function destroycircle(id) {
-  var e = document.getElementById("touch_circle_" + id);
+  var e = document.getElementById("touch_circle_" + name + "_" + id);
   e.parentNode.removeChild(e);
 }
 
@@ -141,9 +144,21 @@ function panstart(e) {
         starttop = top;
         pointerdistance = Math.min(e.distance, maxr);
         pointerangle = e.angle;
-        var d = e.srcEvent.screenX;
-        var a = e.srcEvent.screenY;
-        aardvark.processEvent(id, "touchstickstart", d, a);
+        var d = (pointerdistance / maxr);
+        var a = pointerangle;
+
+        var rect = clicky.getBoundingClientRect();
+        var pos = getPosition(clicky);
+        var xp = e.x - pos.x - rect.x;
+        var yp = e.y - pos.y - rect.y;
+        var x = xp / rect.width * 2.0 - 1.0;
+        var y = (yp / rect.height * 2.0 - 1.0) * -1.0;
+        basex = x;
+        basey = y;
+
+        if(basex >= minx && basex < maxx && basey >= miny && basey < maxy) {
+          aardvark.processEvent(id, "touchstickstart_" + name, d, a, x, y);
+        }
         createcircle(globalid, 35);
         createline(globalid);
     }
@@ -153,15 +168,14 @@ function panmove(e) {
   if (!(e.pointerType == "mouse")) {
     if (dragging) {
       pointerdistance = Math.min(e.distance,maxr);
-      //output.innerHTML = "distance:" + (pointerdistance/maxr) + " angle:" + e.angle;
         pointerangle = e.angle;
         var d = (pointerdistance / maxr);
         var a = pointerangle;
-      aardvark.processEvent(id,"touchstickmove", d,a);
+      if(basex >= minx && basex < maxx && basey >= miny && basey < maxy) {
+        aardvark.processEvent(id,"touchstickmove_" + name, d,a);
+      }
       updatecircle(globalid);
       updateline(globalid);
-    } else {
-      output.innerHTML = "text";
     }
   }
 };
@@ -170,7 +184,9 @@ function panmove(e) {
 function panstop(e) {
   if (!(e.pointerType == "mouse")) {
     clicky.classList.remove("notouch");
-    aardvark.processEvent(id,"touchstickstop", 0);
+    if(basex >= minx && basex < maxx && basey >= miny && basey < maxy) {
+      aardvark.processEvent(id,"touchstickstop_" + name, 0);
+    }
     dragging = false;
     pointerangle = -999.0;
     pointerdistance = -999.0;

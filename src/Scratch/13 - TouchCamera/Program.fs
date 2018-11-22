@@ -4,7 +4,7 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
-open TouchStick
+open TouchCamera
 
 open Suave
 open Suave.WebPart

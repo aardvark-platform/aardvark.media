@@ -9,13 +9,11 @@ open Aardvark.Application
 open Aardvark.SceneGraph
 open Aardvark.UI
 open Aardvark.Service
-
 open Aardvark.UI.Primitives
 
 
 module FreeFlyController =
-    open Aardvark.Base.Incremental.Operators    
-        open Aardvark.Base.Incremental.Operators    
+    open Aardvark.Base.Incremental.Operators
                         
 
     let initial =
@@ -277,6 +275,7 @@ module FreeFlyController =
         | Interpolate
         | Rendered
         | JumpTo of CameraView
+        | Nop
 
     let initial' (dist:float) =
         { initial with view = CameraView.lookAt (dist * V3d.III) V3d.Zero V3d.OOI }
@@ -313,6 +312,7 @@ module FreeFlyController =
     
     let update (model : CameraControllerState) (message : Message) =
         match message with
+            | Nop -> model
             | Blur ->
                 { model with 
                     lastTime = None
@@ -541,15 +541,15 @@ module FreeFlyController =
     let attributes (state : MCameraControllerState) (f : Message -> 'msg) = 
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
-            always (onCapturedPointerDown (Some 2) (fun b p -> f (Down(b,p))))
+            always (onCapturedPointerDown (Some 2) (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f Nop))
             onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))           
             always (onWheelPrevent true (fun x -> f (Wheel x)))
-            always (onCapturedPointerUp (Some 2) (fun b p -> f (Up(b))))
+            always (onCapturedPointerUp (Some 2) (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f Nop))
             onlyWhen 
                 (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
-                (onCapturedPointerMove (Some 2) (Move >> f))
+                (onCapturedPointerMove (Some 2) (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
             always <| onEvent "onRendered" [] (fun _ -> f Rendered)
         ]
 
@@ -558,6 +558,7 @@ module FreeFlyController =
     let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
         let cam = Mod.map2 Camera.create state.view frustum 
+        
         Incremental.renderControlWithClientValues' cam attributes config sg
 
     let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =

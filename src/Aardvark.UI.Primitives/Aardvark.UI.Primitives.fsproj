@@ -23,6 +23,7 @@
     <Compile Include="Animation\Model.fs" />
     <Compile Include="Animation\AnimationBase.fs" />
     <Compile Include="IntegrationHelpers.fs" />
+    <Compile Include="TouchStick.fs" />
     <Compile Include="CameraModel.fs" />
     <Compile Include="FreeFlyController.fs" />
     <Compile Include="ArcBallController.fs" />

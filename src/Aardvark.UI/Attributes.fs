@@ -264,7 +264,12 @@ module Events =
                         Seq.empty      
         }
         
-    let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : MouseButtons -> V2i -> 'msg) =
+    type PointerType =
+        | Mouse
+        | Touch
+        | Pen
+
+    let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : PointerType -> MouseButtons -> V2i -> 'msg) =
         name, AttributeValue.Event {
                 clientSide = fun send src -> 
                     String.concat ";" [
@@ -273,22 +278,24 @@ module Events =
                         yield "var y = (event.clientY - rect.top)"
                         match preventDefault with | None -> () | Some i -> yield (sprintf "if(event.which==%d){event.preventDefault();};" i)
                         match useCapture with | None -> () | Some b -> if b then yield "this.setPointerCapture(event.pointerId)" else yield "this.releasePointerCapture(event.pointerId)"
-                        yield send src ["event.which"; "x|0"; "y|0"]
+                        yield send src ["event.pointerType";"event.which"; "x|0"; "y|0"]
                         
                     ]
                 serverSide = fun client src args -> 
                     match args with
-                        | which :: x :: y :: _ ->
+                        | pointertypestr :: which :: x :: y :: _ ->
                             let v : V2i = V2i(int x, int y)
                             let button = if needButton then button which else MouseButtons.None
-                            Seq.singleton (f button v)
+                            let pointertypestrp = pointertypestr.Trim('\"').Trim('\\')
+                            let pointertype = match pointertypestrp with | "mouse" -> Mouse | "pen" -> Pen | "touch" -> Touch | _ -> failwith "PointerType not supported"
+                            Seq.singleton (f pointertype button v)
                         | _ ->
                             Seq.empty      
             }
             
-    let onCapturedPointerDown (preventDefault : Option<int>) (cb : MouseButtons -> V2i -> 'msg)  = onPointerEvent "onpointerdown" true preventDefault (Some true) cb
+    let onCapturedPointerDown (preventDefault : Option<int>) cb  = onPointerEvent "onpointerdown" true preventDefault (Some true) cb
     let onCapturedPointerUp (preventDefault : Option<int>) cb = onPointerEvent "onpointerup" true preventDefault (Some false) cb
-    let onCapturedPointerMove (preventDefault : Option<int>) cb = onPointerEvent "onpointermove" false preventDefault None (fun _ v -> cb v)
+    let onCapturedPointerMove (preventDefault : Option<int>) cb = onPointerEvent "onpointermove" false preventDefault None (fun t _ v -> cb t v)
 
 
 
