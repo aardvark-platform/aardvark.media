@@ -149,8 +149,8 @@ function panstart(e) {
 
         var rect = clicky.getBoundingClientRect();
         var pos = getPosition(clicky);
-        var xp = e.x - pos.x - rect.x;
-        var yp = e.y - pos.y - rect.y;
+        var xp = e.srcEvent.x - pos.x - rect.x;
+        var yp = e.srcEvent.y - pos.y - rect.y;
         var x = xp / rect.width * 2.0 - 1.0;
         var y = (yp / rect.height * 2.0 - 1.0) * -1.0;
         basex = x;
