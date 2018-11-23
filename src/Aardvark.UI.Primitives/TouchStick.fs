@@ -16,7 +16,7 @@ module TouchStick =
     let withTouchSticks ( configs : list<StickConfig> ) el =
         let rs = 
             [
-                { name = "touchstick.js"; url = "touchstick.js"; kind = Script }
+                { name = "touchstick.js"; url = "./rendering/touchstick.js"; kind = Script }
             ]       
 
         let str =

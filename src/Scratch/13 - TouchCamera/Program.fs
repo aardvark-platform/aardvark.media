@@ -26,13 +26,13 @@ let main argv =
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-    let t = typeof<Aardvark.UI.Primitives.EmbeddedResources>
+    //let t = typeof<Aardvark.UI.Primitives.EmbeddedResources>
 
-    let supa = Reflection.assemblyWebPart (t.Assembly)
+    //let supa = Reflection.assemblyWebPart (t.Assembly)
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         //Suave.Files.browseHome
-        supa
+        //supa
     ]   
 
     Aardium.run {

@@ -29,6 +29,7 @@
     <EmbeddedResource Include="resources\docking.js" />
     <EmbeddedResource Include="resources\semantic.js" />
 	<EmbeddedResource Include="resources\jquery-3-3-1.js" />
+    <EmbeddedResource Include="resources\touchstick.js" />
     <Compile Include="aardfs\FileSystem.fs" />
     <EmbeddedResource Include="aardfs\aardfs.css" />
     <EmbeddedResource Include="aardfs\aardfs.js" />
