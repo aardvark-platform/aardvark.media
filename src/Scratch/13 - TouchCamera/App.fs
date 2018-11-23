@@ -8,45 +8,30 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 
+open Aardvark.SceneGraph.IO
+
 module TouchStickApp =
     open Aardvark.Application
     open Aardvark.Base
 
     let rec update (m : TouchStickModel) (msg : TouchStickMessage) =
-        let exponential s scale =
-            if m.expo then
-                { s with 
-                    distance = s.distance ** 1.75 * scale
-                }
-            else
-                { s with 
-                    distance = s.distance * (scale * 1.25)
-                }
-               
-            
+    
         match msg with
-            | SwitchExpo -> { m with expo = not m.expo }
+            | SwitchExpo -> { m with cameraState = { m.cameraState with freeFlyConfig = { m.cameraState.freeFlyConfig with touchScalesExponentially = not m.cameraState.freeFlyConfig.touchScalesExponentially }}}
 
             | Camera im -> { m with cameraState = FreeFlyController.update m.cameraState im}
-            
-            | MoveMovStick s ->
-                let s = exponential s 2.5
-                let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * -sin(s.angle * Constant.RadiansPerDegree))
 
-                { m with movStick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with moveVec = V3d(pos.X,0.0,pos.Y) }) }
-            | EndMovStick ->
-                { m with movStick = None; cameraState = (FreeFlyController.startAnimation { m.cameraState with moveVec = V3d(0.0,0.0,0.0) }) }
-                
-            | MoveRotStick s ->
-                let s = exponential s 0.75
-                let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * sin(s.angle * Constant.RadiansPerDegree))
-
-                { m with rotStick = Some s; cameraState = (FreeFlyController.startAnimation { m.cameraState with rotateVec = V3d(-pos.Y,-pos.X,0.0) * 0.01 }) }
-            | EndRotStick ->
-                { m with rotStick = None; cameraState = (FreeFlyController.startAnimation { m.cameraState with rotateVec = V3d(0.0,0.0,0.0) }) }
-
-           
     let viewScene (model : MTouchStickModel) =
+        let sponza() =
+            Loader.Assimp.load @"D:\temp\sponza\sponza_cm.obj"
+                |> Sg.adapter
+                |> Sg.transform (Trafo3d.FromBasis(V3d.IOO, V3d.OOI, -V3d.OIO, V3d.OOO))
+                |> Sg.scale 0.01
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.diffuseTexture
+                    do! DefaultSurfaces.simpleLighting
+                }
         IndexedGeometryPrimitives.solidCoordinateBox 100.0
             |> Sg.ofIndexedGeometry
             |> Sg.shader {
@@ -62,35 +47,22 @@ module TouchStickApp =
                     })
         
     let view (m : MTouchStickModel) =
-        let sticks =
-            [
-                { name="leftstick"; area=Box2d(V2d(-1.0,-1.0),V2d(0.0,1.0)); radius = 100.0 }
-                { name="ritestick"; area=Box2d(V2d( 0.0,-1.0),V2d(1.0,1.0)); radius = 100.0 }
-            ]
             
         div [] [
             div [] [
-                Incremental.text (m.expo |> Mod.map (fun e -> if e then "Exponential" else "Linear"))
+                Incremental.text (m.cameraState.freeFlyConfig.touchScalesExponentially |> Mod.map (fun e -> if e then "Exponential" else "Linear"))
                 button [onClick (fun _ -> SwitchExpo); attribute "style" "width:20vw;height:5vh"] [text "SWITCH"]
             ]
+            
+            FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 80.0 0.1 1000.0 1.0 |> Mod.constant) 
+                (AttributeMap.ofList [  
+                    style "width: 100vw; height:100vh"
 
-            withTouchSticks sticks (
-                FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 80.0 0.1 1000.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [  
-                        style "width: 100vw; height:100vh"
-
-                        onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick)
-                        onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick)
-
-                        onTouchStickStop "leftstick" (fun _ -> EndMovStick)
-                        onTouchStickStop "ritestick" (fun _ -> EndRotStick)
-
-                        attribute "showFPS" "true";
-                        attribute "data-samples" "8"
-                    ]
-                    ) 
-                    (viewScene m)
-            )
+                    attribute "showFPS" "true";
+                    attribute "data-samples" "8"
+                ]
+                ) 
+                (viewScene m)
         ]
     let threads (m : TouchStickModel) = 
         ThreadPool.empty

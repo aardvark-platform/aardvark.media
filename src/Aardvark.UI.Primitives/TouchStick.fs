@@ -17,7 +17,6 @@ module TouchStick =
         let rs = 
             [
                 { name = "touchstick.js"; url = "touchstick.js"; kind = Script }
-                { name = "touch.css"; url = "touch.css"; kind = Stylesheet }
             ]       
 
         let str =
@@ -47,6 +46,16 @@ module TouchStick =
             distance : float
             angle : float
         }
+
+    let scaleStick (exp : bool) (scale : float) (s : TouchStickState) =
+        if exp then
+            { s with 
+                distance = s.distance ** 1.75 * scale
+            }
+        else
+            { s with 
+                distance = s.distance * (scale * 1.25)
+            }
 
     let onTouchStickStart name f =
         onEvent ("touchstickstart_"+name) [] (( fun args -> 

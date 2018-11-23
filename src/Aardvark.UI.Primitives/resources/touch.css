@@ -1,7 +1,0 @@
-.notouch {
-    touch-action: none !important;
-  }
-
-.noevents {
-  pointer-events:none !important;
-}

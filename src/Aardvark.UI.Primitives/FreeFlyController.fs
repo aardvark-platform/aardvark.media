@@ -10,6 +10,7 @@ open Aardvark.SceneGraph
 open Aardvark.UI
 open Aardvark.Service
 open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.TouchStick
 
 
 module FreeFlyController =
@@ -275,6 +276,10 @@ module FreeFlyController =
         | Interpolate
         | Rendered
         | JumpTo of CameraView
+        | MoveMovStick of TouchStickState
+        | ReleaseMovStick
+        | MoveRotStick of TouchStickState
+        | ReleaseRotStick
         | Nop
 
     let initial' (dist:float) =
@@ -536,6 +541,21 @@ module FreeFlyController =
                     |> pan
                     |> dolly
                     
+            | MoveMovStick s ->
+                let s = scaleStick model.freeFlyConfig.touchScalesExponentially 2.5 s
+                let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * -sin(s.angle * Constant.RadiansPerDegree))
+                startAnimation { model with moveVec = V3d(pos.X,0.0,pos.Y) }
+            | ReleaseMovStick ->
+                startAnimation { model with moveVec = V3d(0.0,0.0,0.0) }   
+                
+            | MoveRotStick s ->
+                let s = scaleStick model.freeFlyConfig.touchScalesExponentially 0.75 s
+                let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * sin(s.angle * Constant.RadiansPerDegree))
+
+                startAnimation { model with rotateVec = V3d(-pos.Y,-pos.X,0.0) * 0.01 }
+            | ReleaseRotStick ->
+                startAnimation { model with rotateVec = V3d(0.0,0.0,0.0) }
+
     let update' = flip update
 
     let attributes (state : MCameraControllerState) (f : Message -> 'msg) = 
@@ -551,6 +571,10 @@ module FreeFlyController =
                 (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
                 (onCapturedPointerMove (Some 2) (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
             always <| onEvent "onRendered" [] (fun _ -> f Rendered)
+            always <| onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick |> f)
+            always <| onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick |> f)
+            always <| onTouchStickStop "leftstick" (fun _ -> ReleaseMovStick |> f)
+            always <| onTouchStickStop "ritestick" (fun _ -> ReleaseRotStick |> f)
         ]
 
     let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) =
@@ -559,7 +583,15 @@ module FreeFlyController =
         let attributes = AttributeMap.union att (attributes state f)
         let cam = Mod.map2 Camera.create state.view frustum 
         
-        Incremental.renderControlWithClientValues' cam attributes config sg
+        let sticks =
+            [
+                { name="leftstick"; area=Box2d(V2d(-1.0,-1.0),V2d(0.0,1.0)); radius = 100.0 }
+                { name="ritestick"; area=Box2d(V2d( 0.0,-1.0),V2d(1.0,1.0)); radius = 100.0 }
+            ]
+
+        withTouchSticks sticks (
+            Incremental.renderControlWithClientValues' cam attributes config sg
+        )
 
     let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         controlledControlWithClientValues state f frustum att RenderControlConfig.standard (constF sg)

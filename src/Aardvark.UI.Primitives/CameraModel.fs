@@ -27,6 +27,8 @@ type FreeFlyConfig =
         zoomDamping                : float
 
         moveSensitivity : float
+
+        touchScalesExponentially : bool
     }
 
 module FreeFlyConfig =
@@ -51,6 +53,8 @@ module FreeFlyConfig =
         zoomDamping                  = 3.25
 
         moveSensitivity = 1.0
+
+        touchScalesExponentially = true
     }
 
 
