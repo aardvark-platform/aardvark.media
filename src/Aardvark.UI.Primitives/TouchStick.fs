@@ -18,13 +18,23 @@ module TouchStick =
             [
                 { name = "touchstick.js"; url = "touchstick.js"; kind = Script }
                 { name = "touch.css"; url = "touch.css"; kind = Stylesheet }
-                { name = "hammerjs"; url = "https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.js"; kind = Script }
             ]       
 
-        let str = 
-            configs |> List.map ( fun cfg -> 
-                sprintf "initTouchStick('__ID__', '%s', %f, %f, %f, %f, %f)" cfg.name cfg.area.Min.X cfg.area.Max.X cfg.area.Min.Y cfg.area.Max.Y cfg.radius
-            )|> String.concat ";"
+        let str =
+            sprintf
+                "initTouchSticks('__ID__',[%s]);"
+                (configs 
+                    |> List.map ( fun cfg -> 
+                        sprintf "{name:'%s',minx:%f,maxx:%f,miny:%f,maxy:%f,maxr:%f}" 
+                            cfg.name 
+                            cfg.area.Min.X 
+                            cfg.area.Max.X  
+                            cfg.area.Min.Y 
+                            cfg.area.Max.Y 
+                            cfg.radius
+                        )
+                    |> String.concat ","
+                )
 
         require rs (
             onBoot str (
@@ -41,10 +51,9 @@ module TouchStick =
     let onTouchStickStart name f =
         onEvent ("touchstickstart_"+name) [] (( fun args -> 
             match args with
-            | [d;a;x;y] -> 
-                let stick = { distance = float d; angle = float a }
+            | [x;y] -> 
                 let pos = V2d(float x,float y)
-                f stick pos
+                f pos
             | _ -> failwith ""
         ))
 
