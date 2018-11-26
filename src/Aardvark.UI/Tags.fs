@@ -82,7 +82,7 @@ module Incremental =
     let inline main x = elem "main" x
     let inline ol x = elem "ol" x
     let inline p x = elem "p" x
-    let inline pre x = elem "pre" x
+    let inline pre a x = DomNode.Text("pre", None, a, x)
     let inline section x = elem "section" x
     let inline ul x = elem "ul" x
 
@@ -152,7 +152,7 @@ module Incremental =
     let inline output x = elem "output" x
     let inline progress x = elem "progress" x
     let inline select x = elem "select" x
-    let inline textarea x = elem "textarea" x
+    let inline textarea a x = DomNode.Text("textarea", None, a, x)
 
     // Interactive elements
     let inline details x = elem "details" x
@@ -314,7 +314,7 @@ module Static =
     let inline main x = elem "main" x
     let inline ol x = elem "ol" x
     let inline p x = elem "p" x
-    let inline pre x = elem "pre" x
+    let inline pre a x = DomNode.Text("pre", None, AttributeMap.ofList a, Mod.constant x)
     let inline section x = elem "section" x
     let inline ul x = elem "ul" x
 
@@ -384,7 +384,7 @@ module Static =
     let inline output x = elem "output" x
     let inline progress x = elem "progress" x
     let inline select x = elem "select" x
-    let inline textarea x = elem "textarea" x
+    let inline textarea a x = DomNode.Text("textarea", None, AttributeMap.ofList a, Mod.constant x)
 
     // Interactive elements
     let inline details x = elem "details" x
