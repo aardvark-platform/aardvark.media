@@ -9,6 +9,7 @@ open Aardvark.Base.Rendering
 open DiscoverOpcs.Model
 
 
+
 module App =
 
   module Dialogs = 
@@ -20,6 +21,15 @@ module App =
                   | _ -> chosen []//failwithf "onChooseFiles: %A" xs
           onEvent "onchoose" [] cb   
   
+  let importFolders (paths : list<string>) : list<OpcFolder> = 
+    paths
+      |> List.map(fun x ->
+        if x |> Discover.isOpcFolder then x |> Opc
+        elif x |> Discover.isSurface then x |> Surface
+        elif x |> Discover.isSurfaceFolder then x |> SurfaceFolder
+        else x |> Other
+      )    
+
   let update (model : Model) (msg : Message) =
       match msg with
       | SetPaths paths -> 
@@ -30,26 +40,35 @@ module App =
             |> List.map DiscoverOpcs.Discover.discoverOpcs 
             |> List.concat            
 
-        { model with selectedPaths = selectedPaths |> PList.ofList; opcPaths = opcPaths |> PList.ofList }
-      | Discover -> 
-        let opcPaths = 
-          model.selectedPaths 
-            |> PList.toList 
-            |> List.map DiscoverOpcs.Discover.discoverOpcs 
-            |> List.concat
-            |> PList.ofList
-  
-        { model with opcPaths = opcPaths }
+        { model with 
+           selectedPaths = selectedPaths |> importFolders |> PList.ofList
+           opcPaths = opcPaths |> PList.ofList 
+        }
+      | Discover -> failwith ""
           
   
+  let folderText (folder:OpcFolder) =
+    match folder with
+    | SurfaceFolder s -> s
+    | Surface s -> s
+    | Opc s -> s
+    | Other s -> s
+
+  let createTag (folder:OpcFolder) =
+      match folder with
+      | SurfaceFolder _ -> div [clazz "ui middle aligned tiny label yellow"][text "SurfaceFolder"]
+      | Surface       _ -> div [clazz "ui middle aligned tiny label orange"][text "Surface"]
+      | Opc           _ -> div [clazz "ui middle aligned tiny label red"][text "Opc"]
+      | Other         _ -> div [clazz "ui middle aligned tiny label blue"][text "SurfaceFolder"]
+
   let viewPaths (model:MModel) = 
+
     Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
       alist {
         for p in model.selectedPaths do
-          yield div [clazz "ui inverted item"][
-              i [clazz "ui middle aligned file icon"] []
+          yield div [clazz "ui inverted item"][              
               div [clazz "ui content"] [
-                div [clazz "ui header tiny"] [text p]
+                div [clazz "ui header tiny"] [p |> createTag; p |> folderText |> text]
               ]
             ]
       }
@@ -62,7 +81,7 @@ module App =
           yield div [clazz "ui inverted item"][
               i [clazz "ui middle aligned box icon"] []
               div [clazz "ui content"] [
-                div [clazz "ui header tiny"] [text p]
+                div [clazz "ui header tiny"] [text p]                
               ]
             ]
       }
@@ -93,14 +112,21 @@ module App =
       ThreadPool.empty
   
   
+  let initPaths = @"I:\Dibit\1285_TSC_Selzthaltunnel_2017\Selzthaltunnel_RFB-Graz\2017_Bestandsaufnahme\OPC\OPC" |> List.singleton
+
+  let opcPaths = 
+    initPaths      
+      |> List.map DiscoverOpcs.Discover.discoverOpcs 
+      |> List.concat    
+
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
       {
           unpersist = Unpersist.instance     
           threads = threads 
           initial = 
               { 
-                 selectedPaths = PList.empty
-                 opcPaths = PList.empty
+                 selectedPaths = initPaths |> importFolders  |> PList.ofList
+                 opcPaths = opcPaths |> PList.ofList
               }
           update = update 
           view = view
