@@ -273,7 +273,6 @@ module FreeFlyController =
         | KeyDown of key : Keys
         | KeyUp of key : Keys
         | Blur
-        | Interpolate
         | Rendered
         | JumpTo of CameraView
         | MoveMovStick of TouchStickState
@@ -326,7 +325,7 @@ module FreeFlyController =
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
                 }
-            | Interpolate | Rendered ->
+            | Rendered ->
                 let now = sw.Elapsed.TotalSeconds
 
                 let move (state : CameraControllerState) =
