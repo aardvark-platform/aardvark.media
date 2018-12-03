@@ -8,6 +8,7 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Model
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Aardvark.SceneGraph
 
 let initialCamera = { 
@@ -25,8 +26,10 @@ let update (model : Model) (msg : Message) =
             { model with cameraState = initialCamera }
         | Tick t -> 
             { model with trafo = Trafo3d.RotationZ(t * 0.1) }
+        | ChangeThickness t -> 
+          { model with thickness = Numeric.update model.thickness t }
         | ToggleAnimation -> 
-            { model with animationEnabled = not model.animationEnabled }
+          { model with animationEnabled = not model.animationEnabled }
 
 
 module Shader =
@@ -108,7 +111,7 @@ let viewScene (model : MModel) =
          |> Sg.depthTest (Mod.constant DepthTestMode.None)
          |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
          |> Sg.pass pass
-         |> Sg.uniform "LineWidth" (Mod.constant 5.0)
+         |> Sg.uniform "LineWidth" model.thickness.value
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! Shader.lines
@@ -142,24 +145,31 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
 // variant with html5 grid layouting (currently not working in our cef)
 let view (model : MModel) =
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ attribute "showFPS" "true"; attribute "data-renderalways" "1"; attribute "data-sample" "8"; style "width: 100%; height:80%; "]) 
-                    (viewScene model)
+      FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+        (AttributeMap.ofList [ 
+            attribute "showFPS" "true"; 
+            attribute "data-renderalways" "1"; 
+            attribute "data-samples" "8"; 
+            style "width: 100%; height:80%"])
+        (viewScene model)
 
     body [] [
-        require Html.semui (
-            div [] [
-                div [] [
-                    text "Hello 3D Contour"
-                    br []
-                    button [onClick (fun _ -> CenterScene)] [text "Center Scene.."]
-                ]
-                renderControl
-                br []
-                text "Animate: "
-                Html.SemUi.toggleBox model.animationEnabled ToggleAnimation
+      require Html.semui (
+        div [clazz "ui inverted"] [
+          div [] [
+            text "Hello 3D Contour"
+            br []
+            button [onClick (fun _ -> CenterScene)] [text "Center Scene.."]
+          ]
+          renderControl
+          div[style "width:400px"][
+            Html.table [
+              Html.row "Animate:"   [Html.SemUi.iconCheckBox model.animationEnabled ToggleAnimation]
+              Html.row "Thickness:" [Numeric.view' [NumericInputType.Slider] model.thickness |> UI.map ChangeThickness ]                  
             ]
-        )
+          ]
+        ]
+      )
     ]
 
 let totalTime = System.Diagnostics.Stopwatch.StartNew()
@@ -176,6 +186,14 @@ let threads (model : Model) =
         ThreadPool.union cameraController (ThreadPool.add "timeroida" (time()) ThreadPool.empty)
     else cameraController
 
+let initLineThickness = 
+  {
+    min    = 0.0
+    max    = 100.0
+    step   = 1.0
+    format = "{0:0.0}"
+    value  = 2.0
+  }
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
     {
@@ -183,9 +201,10 @@ let app =
         threads = threads 
         initial = 
             { 
-               cameraState = initialCamera
-               trafo = Trafo3d.Identity
+               cameraState      = initialCamera
+               trafo            = Trafo3d.Identity
                animationEnabled = true
+               thickness        = initLineThickness
             }
         update = update 
         view = view
