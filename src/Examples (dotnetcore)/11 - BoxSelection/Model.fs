@@ -7,7 +7,7 @@ open Aardvark.UI.Primitives
 open RenderingParametersModel
 
 type BoxSelectionDemoAction =
-    | CameraMessage    of CameraControllerMessage     
+    | CameraMessage    of FreeFlyController.Message     
     | RenderingAction  of RenderingParametersModel.Action
     | Select of string     
     | Enter of string

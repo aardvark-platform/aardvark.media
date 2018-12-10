@@ -3,6 +3,8 @@
 open Aardvark.Base.Incremental
 open Aardvark.UI
 
+type EmbeddedResources = EmbeddedResources
+
 [<AutoOpen>]
 module Simple =
     open Microsoft.FSharp.Reflection
@@ -102,7 +104,7 @@ module Simple =
                 ]
         ]
 
-    let labeledFloatInput (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>) =
+    let labeledFloatInput' (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>) (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) =
         let defaultValue = max 0.0 minValue
         let parse (str : string) =
             match System.Double.TryParse str with
@@ -126,26 +128,29 @@ module Simple =
                         | _ -> Seq.empty
             }
 
-        div [ clazz "ui small labeled input"; style "width: 60pt"] [
-            div [ clazz "ui label" ] [ text name ]
-            Incremental.input <|
-                AttributeMap.ofListCond [
-                    yield always <| attribute "type" "number"
-                    yield always <| attribute "step" (string step)
-                    yield always <| attribute "min" (string minValue)
-                    yield always <| attribute "max" (string maxValue)
+        Incremental.div containerAttribs <|
+            AList.ofList [
+                Incremental.div labelAttribs (AList.ofList [ text name ])
+                Incremental.input <|
+                    AttributeMap.ofListCond [
+                        yield always <| attribute "type" "number"
+                        yield always <| attribute "step" (string step)
+                        yield always <| attribute "min" (string minValue)
+                        yield always <| attribute "max" (string maxValue)
 
-                    yield always <| attribute "placeholder" name
-                    yield always <| attribute "size" "4"
+                        yield always <| attribute "placeholder" name
+                        yield always <| attribute "size" "4"
                     
-                    yield always <| ("oninput", changed)
-                    yield always <| ("onchange", changed)
+                        yield always <| ("oninput", changed)
+                        yield always <| ("onchange", changed)
 
-                    yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
+                        yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
 
+                    ]
+            ]
 
-                ]
-        ]
+    let labeledFloatInput (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>) =
+        labeledFloatInput' name minValue maxValue step changed value (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) 
 
 
     let modal (id : string) (name : string) (ok : 'msg) (attributes : list<string * AttributeValue<'msg>>) (content : list<DomNode<'msg>>) =

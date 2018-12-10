@@ -39,6 +39,26 @@ module private Tools =
                     return (t, Array.append d rest)
             }
 
+// https://github.com/aardvark-platform/aardvark.media/issues/19
+module ThreadPoolAdjustment =
+
+    let mutable shouldAdjust = true
+    
+    let adjust () =
+        if shouldAdjust then
+            let mutable maxThreads,maxIOThreads = 0,0
+            System.Threading.ThreadPool.GetMaxThreads(&maxThreads,&maxIOThreads)
+            let mutable minThreads, minIOThreads = 0,0
+            System.Threading.ThreadPool.GetMinThreads(&minThreads,&minIOThreads)
+            if minThreads < 12 || minIOThreads < 12 then
+                Log.warn "[aardvark.media] currently ThreadPool.MinThreads is (%d,%d)" minThreads minIOThreads
+                let minThreads   = max 12 minThreads
+                let minIOThreads = max 12 minIOThreads
+                Log.warn "[aardvark.media] unfortunately, currently we need to adjust this to at least (12,12) due to an open issue https://github.com/aardvark-platform/aardvark.media/issues/19"
+                if not <| System.Threading.ThreadPool.SetMinThreads(minThreads, minIOThreads) then Log.warn "could not set min threads"
+                if maxThreads < 12 || maxIOThreads < 12 then
+                    Log.warn "[aardvark.media] detected less than 12 threadpool threads: (%d,%d). Be aware that this will result in severe stutters... Consider switching back to the default (65537,1000)." maxThreads maxIOThreads
+
 
 module MutableApp =
     open System.Reactive.Subjects
@@ -66,25 +86,37 @@ module MutableApp =
 
     let toWebPart' (runtime : IRuntime) (useGpuCompression : bool) (app : MutableApp<'model, 'msg>) =
         
+        ThreadPoolAdjustment.adjust ()
+
         let sceneStore =
-            ConcurrentDictionary<string, Scene * (ClientInfo -> ClientState)>()
+            ConcurrentDictionary<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>()
 
         let compressor =
             if useGpuCompression then new JpegCompressor(runtime) |> Some
             else None
-        
+         
         let renderer =
             {
                 runtime = runtime
                 content = fun sceneName ->
                     match sceneStore.TryGetValue sceneName with
-                        | (true, (scene, cam)) -> Some scene
+                        | (true, (scene, _, _)) -> Some scene
                         | _ -> None
 
                 getState = fun clientInfo ->
                     match sceneStore.TryGetValue clientInfo.sceneName with
-                        | (true, (scene, cam)) -> Some (cam clientInfo)
-                        | _ -> None
+                        | (true, (scene, update, cam)) -> 
+                            match update with
+                                | Some update -> 
+                                    let msgs = update clientInfo
+                                    if not (Seq.isEmpty msgs) then
+                                        app.updateSync clientInfo.session msgs
+                                | None ->
+                                    ()
+
+                            Some (cam clientInfo)
+                        | _ -> 
+                            None
 
                 compressor = compressor
 
@@ -104,10 +136,11 @@ module MutableApp =
                     let updater = app.ui.NewUpdater(request)
                     
                     let handlers = Dictionary()
+                    let scenes = Dictionary()
 
                     let state : UpdateState<'msg> =
                         {
-                            scenes          = Dictionary()
+                            scenes          = ContraDict.ofDictionary scenes
                             handlers        = ContraDict.ofDictionary handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
@@ -130,16 +163,16 @@ module MutableApp =
                             | Choice2Of2 err ->
                                 failwithf "[WS] error: %A" err
                                                 
-                    let updateThread =
-                        async {
+                    let updateFunction () =
+                        try
                             while running do
-                                let! cont = MVar.takeAsync update
+                                let cont = MVar.take update
                                 if cont then
                                     lock app.lock (fun () ->
                                         o.EvaluateAlways AdaptiveToken.Top (fun t ->
                                             if Config.shouldTimeJsCodeGeneration then 
                                                 Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
-
+   
                                             let code = 
                                                 let expr = 
                                                     lock state (fun () -> 
@@ -150,14 +183,15 @@ module MutableApp =
                                                         r
                                                     )
 
-                                                for (name, sd) in Dictionary.toSeq state.scenes do
+                                                for (name, sd) in Dictionary.toSeq scenes do
                                                     sceneStore.TryAdd(name, sd) |> ignore
 
                                                 let newReferences = state.references.Values |> Seq.toArray
                             
-
+                                                if Config.showTimeJsAssembly then Log.startTimed "[Aardvark.UI] JS assembler"
                                                 let code = expr |> JSExpr.toString
                                                 let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
+                                                if Config.showTimeJsAssembly then Log.stop()
                                             
                                                 if newReferences.Length > 0 then
                                                     let args = 
@@ -203,10 +237,16 @@ module MutableApp =
                                             oldChannels <- c
                                         )
                                     )
+                          with e -> 
+                            Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
+                            raise e
 
-                        }
 
-                    Async.Start updateThread
+                    let updateThread = Thread(ThreadStart updateFunction)
+                    updateThread.IsBackground <- true
+                    updateThread.Name <- "[media] UpdateThread"
+                    updateThread.Start()
+                    
 
                     socket {
                         while running do

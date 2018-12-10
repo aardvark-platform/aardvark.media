@@ -10,14 +10,14 @@ open RenderControl.Model
 
 
 let initialCamera = { 
-        CameraController.initial with 
+        FreeFlyController.initial with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
     }
 
 let update (model : Model) (msg : Message) =
     match msg with
         | Camera m -> 
-            { model with cameraState = CameraController.update model.cameraState m }
+            { model with cameraState = FreeFlyController.update model.cameraState m }
         | CenterScene -> 
             { model with cameraState = initialCamera }
 
@@ -32,15 +32,15 @@ let viewScene (model : MModel) =
 let view (model : MModel) =
 
     let renderControl =
-        CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"]) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
                     (viewScene model)
 
     let channel = model.cameraState.view
                     |> Mod.map (fun v -> v.Forward)
                     |> Mod.channel
 
-    let updateData = "foo.onmessage = function (data) { console.log(data); }"
+    let updateData = "foo.onmessage = function (data) { console.log('got camera view update: ' + data); }"
 
     onBoot' ["foo", channel] updateData (
         div [] [
@@ -56,11 +56,12 @@ let view (model : MModel) =
 let view2 (model : MModel) =
 
     let renderControl =
-        CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
-                                           //attribute "showFPS" "true";       // optional, default is false
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                    (AttributeMap.ofList [ style "width: 100%; grid-row: 2; height:100%"; 
+                                           attribute "showFPS" "true";       // optional, default is false
                                            //attribute "showLoader" "false"    // optional, default is true
                                            //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                                           attribute "data-samples" "8"
                                          ]) 
                     (viewScene model)
 
@@ -77,7 +78,7 @@ let view2 (model : MModel) =
     ]
 
 let threads (model : Model) = 
-    CameraController.threads model.cameraState |> ThreadPool.map Camera
+    FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
@@ -89,5 +90,5 @@ let app =
                cameraState = initialCamera
             }
         update = update 
-        view = view2
+        view = view
     }

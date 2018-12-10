@@ -10,14 +10,14 @@ open Model
 
 
 let initialCamera = { 
-        CameraController.initial with 
+        FreeFlyController.initial with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
     }
 
 let update (model : Model) (msg : Message) =
     match msg with
         | Camera m -> 
-            { model with cameraState = CameraController.update model.cameraState m }
+            { model with cameraState = FreeFlyController.update model.cameraState m }
         | CenterScene -> 
             { model with cameraState = initialCamera }
         | LoadFiles s -> 
@@ -50,30 +50,44 @@ let onSaveFile (chosen : string -> 'msg) =
             | _ -> failwithf "onSaveFile: %A" xs
     onEvent "onsave" [] cb
 
+
+
+let dependencies = [
+    { name = "helpers"; url = "helper.js"; kind = Script }
+]
+
 let view (model : MModel) =
 
     let renderControl =
-        CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 100%; "]) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                    (AttributeMap.ofList [ style "width: 50%;height:50%;"; clazz "myRenderControl"]) 
                     (viewScene model)
 
-    body [] [
-        div [] [
-            button [
-                onChooseFiles (fun files -> printfn "%A" files; LoadFiles files)
-                clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
-            ] [text "open directory"]
-            br []
-            button [
-                onSaveFile SaveFile
-                clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onsave', aardvark.dialog.showSaveDialog({properties: []}));") 
-            ] [text "save file"]
-
+    require dependencies (
+        body [] [
+            div [] [
+                button [
+                    onChooseFiles (fun files -> printfn "%A" files; LoadFiles files)
+                    clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
+                ] [text "open directory"]
+                br []
+                button [
+                    onSaveFile SaveFile
+                    clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onsave', aardvark.dialog.showSaveDialog({properties: []}));") 
+                ] [text "save file"]
+                renderControl
+                button [
+                    clientEvent "onclick" "screenit('myRenderControl')"
+                ] [text "screenshot"]
+                onBoot "installScreenshotPath(__ID__,'myRenderControl')" (
+                    input []
+                )
+            ]
         ]
-    ]
+    )
 
 let threads (model : Model) = 
-    CameraController.threads model.cameraState |> ThreadPool.map Camera
+    FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
 let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

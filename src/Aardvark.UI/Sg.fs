@@ -62,7 +62,7 @@ type SceneEvent =
 type SceneHit = 
     { 
         event : SceneEvent
-        rayT : float 
+        rayT  : float 
     }
     member inline x.kind = x.event.kind
     member inline x.localRay = x.event.localRay
@@ -99,16 +99,6 @@ module SgTools =
     module MessageProcessor =
         [<AutoOpen>]
         module Implementation =
-
-            //let rec collectOption (f : 'a -> Option<list<'b>>) (l : list<'a>) =
-            //    match l with
-            //        | [] -> Some []
-            //        | h :: t ->
-            //            match f h, collectOption f t with
-            //                | Some h, Some t -> Some (h @ t)
-            //                | Some h, None -> Some h
-            //                | None, Some t -> Some t
-            //                | None, None -> None
 
             type HitProcessor<'a>(needed : aset<SceneEventKind>, mapping : SceneHit -> bool * seq<'a>) =
                 member x.Process(msg : SceneHit) =
@@ -262,6 +252,9 @@ module ``F# Sg`` =
 
         let pickable (p : PickShape) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickable p)
+
+        let pickable' (p : IMod<PickShape>) (sg : ISg<'msg>) =
+            sg |> unboxed (fun s -> new Sg.PickableApplicator(Mod.map Pickable.ofShape p, Mod.constant s) :> ISg)
 
         let pickBoundingBox (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickBoundingBox)

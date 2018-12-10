@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "10 - OpcSelectionViewer": {
+      "commandName": "Project",
+      "commandLineArgs": "\"I:\\20181011_ExofitTesing\\dtm_utm_z30_2\""
+    }
+  }
+}

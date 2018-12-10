@@ -1,9 +1,9 @@
-.dock-root.noevents .dock-element-content {
-  pointer-events: none; }
-
 .dock-root {
   position: relative;
   background: #1e1e1e; }
+
+.dock-root.captured .dock-element-content {
+  pointer-events: none !important; }
 
 .dock-root.changing > * {
   display: none; }
@@ -32,7 +32,6 @@
   width: 100%;
   background: #243d4c;
   vertical-align: middle;
-  z-index: 100;
   overflow: hidden; }
 
 .dock-header-title {
@@ -48,7 +47,12 @@
   float: left;
   line-height: 16pt; }
 
+.dock-header-tab > div {
+  line-height: 16pt;
+  padding-right: 8pt; }
+
 .dock-header-tab {
+  height: 100%;
   box-sizing: border-box;
   padding-left: 4pt;
   border-right: 2px solid #828282;
@@ -74,7 +78,7 @@
 
 .dock-hover-box {
   box-sizing: border-box;
-  z-index: 1000;
+  z-index: 1;
   position: absolute;
   background: rgba(0, 0, 0, 0.3);
   border: dashed 2px rgba(65, 65, 65, 0.5); }
@@ -91,7 +95,7 @@
 .dock-container.moving {
   position: fixed;
   cursor: default !important;
-  z-index: 2000;
+  z-index: 2;
   overflow: auto;
   border: solid 2px #414141;
   pointer-events: none;
@@ -99,8 +103,7 @@
 
 .dock-splitter {
   position: absolute;
-  background: #414141;
-  z-index: 100; }
+  background: #414141; }
 
 .dock-splitter.dragging {
   background: #387194; }

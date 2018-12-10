@@ -12,7 +12,7 @@ open Aardvark.UI
 
 
 let initialCamera = { 
-    CameraController.initial with 
+    FreeFlyController.initial with 
         view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
 }
 
@@ -22,7 +22,7 @@ let update (model : Model) (msg : Message) =
     if rnd.NextDouble() * 1000.0 < model.updateLoad.value then System.Threading.Thread.Sleep 100
     match msg with
         | Camera m -> 
-            { model with cameraState = CameraController.update model.cameraState m }
+            { model with cameraState = FreeFlyController.update model.cameraState m }
         | CenterScene -> 
             { model with cameraState = initialCamera }
         | Tick t -> 
@@ -84,7 +84,7 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
 // variant with html5 grid layouting (currently not working in our cef)
 let view (model : MModel) =
     let renderControl =
-        CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
                     (AttributeMap.ofList [ attribute "showFPS" "true"; attribute "data-renderalways" "1"; style "width: 100%; height:80%; "]) 
                     (viewScene model)
 
@@ -123,7 +123,7 @@ let rec time() =
     }
 
 let threads (model : Model) = 
-    let cameraController = CameraController.threads model.cameraState |> ThreadPool.map Camera
+    let cameraController = FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
     if model.animationEnabled then
         ThreadPool.union cameraController (ThreadPool.add "timeroida" (time()) ThreadPool.empty)
     else cameraController

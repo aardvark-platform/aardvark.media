@@ -14,7 +14,7 @@ open Model
 
 type Action =
     | ArcBallAction     of ArcBallController.Message
-    | FreeFlyAction     of CameraController.Message
+    | FreeFlyAction     of FreeFlyController.Message
     | RenderingAction   of RenderingParametersModel.Action        
     | NavigationAction  of NavigationProperties.Action
     | ChangeSensitivity of Numeric.Action
@@ -35,7 +35,7 @@ let update (model : NavigationModeDemoModel) (act : Action) =
                         
             { model with camera = ArcBallController.update model.camera a }
         | FreeFlyAction a ->
-            { model with camera = CameraController.update model.camera a }
+            { model with camera = FreeFlyController.update model.camera a }
         | RenderingAction a ->
             { model with rendering = RenderingParameters.update model.rendering a }       
         | NavigationAction a ->
@@ -71,9 +71,9 @@ let view (model : MNavigationModeDemoModel) =
     //let controller = 
     //    model.navigation.navigationMode 
     //        |> Mod.map (function 
-    //            | NavigationMode.FreeFly -> CameraController.controlledControl model.camera FreeFlyAction frustum
+    //            | NavigationMode.FreeFly ->FreeFlyController.controlledControl model.camera FreeFlyAction frustum
     //            | NavigationMode.ArcBall -> ArcBallController.controlledControl model.camera ArcBallAction frustum
-    //            | _ -> CameraController.controlledControl model.camera FreeFlyAction frustum
+    //            | _ ->FreeFlyController.controlledControl model.camera FreeFlyAction frustum
     //        )
 
     let scene =
@@ -121,8 +121,8 @@ let view (model : MNavigationModeDemoModel) =
         amap {
             let! state = model.navigation.navigationMode 
             match state with
-                | NavigationMode.FreeFly -> yield! CameraController.extractAttributes model.camera FreeFlyAction frustum
-                | NavigationMode.ArcBall -> yield! ArcBallController.extractAttributes model.camera ArcBallAction frustum
+                | NavigationMode.FreeFly -> yield! FreeFlyController.extractAttributes model.camera FreeFlyAction
+                | NavigationMode.ArcBall -> yield! ArcBallController.extractAttributes model.camera ArcBallAction 
                 | _ -> failwith "Invalid NavigationMode"
         } |> AttributeMap.ofAMap
         
@@ -138,6 +138,7 @@ let view (model : MNavigationModeDemoModel) =
                                 attribute "style" "width:65%; height: 100%; float: left"
                                 attribute "data-renderalways" "true"
                                 attribute "showFPS" "true"
+                                attribute "data-samples" "8"
                                 onKeyDown (KeyDown)
                                 onKeyUp (KeyUp) ] |> AttributeMap.ofList
                         ])
@@ -208,7 +209,7 @@ let initial : NavigationModeDemoModel =
 
 let threads model =  
   match model.navigation.navigationMode with
-    | NavigationMode.FreeFly -> CameraController.threads model.camera |> ThreadPool.map FreeFlyAction
+    | NavigationMode.FreeFly -> FreeFlyController.threads model.camera |> ThreadPool.map FreeFlyAction
     | NavigationMode.ArcBall -> ArcBallController.threads model.camera |> ThreadPool.map ArcBallAction
     | _ -> failwith "invalid navmode"
 

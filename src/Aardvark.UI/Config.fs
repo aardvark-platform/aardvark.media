@@ -9,3 +9,5 @@ module Config =
     let mutable shouldTimeJsCodeGeneration = false
 
     let mutable shouldTimeUIUpdate = false
+
+    let mutable showTimeJsAssembly = false

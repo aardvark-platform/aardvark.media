@@ -33,6 +33,7 @@ type App<'model, 'mmodel, 'msg> =
         let subject = new Subject<'msg>()
 
         let mutable currentThreads = ThreadPool.empty
+        
 
         let update (source : Guid) (msgs : seq<'msg>) =
             //use mri = new System.Threading.ManualResetEventSlim()
@@ -42,7 +43,10 @@ type App<'model, 'mmodel, 'msg> =
             )
           //  mri.Wait()
 
-        let rec adjustThreads (newThreads : ThreadPool<'msg>) =
+        let rec updateSync (source : Guid) (msgs : seq<'msg>) =
+            doit [{ msgs = msgs; processed = None }] // TODO: gh, what can we do about this deadlock problem agains render service thread.
+
+        and adjustThreads (newThreads : ThreadPool<'msg>) =
             let merge (id : string) (oldThread : Option<Command<'msg>>) (newThread : Option<Command<'msg>>) : Option<Command<'msg>> =
                 match oldThread, newThread with
                     | Some o, None ->
@@ -128,6 +132,7 @@ type App<'model, 'mmodel, 'msg> =
             model = state
             ui = node
             update = update
+            updateSync = updateSync
             shutdown = shutdown
             messages = subject
         }

@@ -155,7 +155,8 @@ module JSExpr =
                     | l -> l |> String.concat "\r\n"
 
             | InnerText(target,text) -> 
-                sprintf "%s.textContent = \"%s\";" (toStringInternal target) (escape text)
+                let base64 = System.Text.Encoding.UTF8.GetBytes text |> System.Convert.ToBase64String
+                sprintf "%s.textContent = top.window.atob(\"%s\");" (toStringInternal target) base64
 
             | AppendChild(parent,inner) -> 
                 let parent = toStringInternal parent
