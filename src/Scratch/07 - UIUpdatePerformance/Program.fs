@@ -22,7 +22,7 @@ let main argv =
 
     Aardvark.UI.Config.shouldTimeJsCodeGeneration <- true
     Aardvark.UI.Config.shouldTimeUIUpdate <- true
-    Aardvark.UI.Config.shouldTimeUnpersistCalls <- true
+    //Aardvark.UI.Config.shouldTimeUnpersistCalls <- true
     Aardvark.UI.Config.showTimeJsAssembly <- true
     Aardvark.UI.Config.shouldPrintDOMUpdates <- true
 
