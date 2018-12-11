@@ -441,9 +441,14 @@ module Updaters =
             ]
 
         override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
+            let inner = 
+                elemReader.State 
+                |> Seq.map (fun elemState -> elemState.Destroy(state,JSExpr.GetElementById(elemState.Id.Value))) 
+                |> Seq.toList
+                |> JSExpr.Sequential
             elemReader.Dispose()
             att.Dispose()
-            JSExpr.Nop
+            inner
             
     and SceneUpdater<'msg>(e : SceneNode<'msg>) as this =
         inherit AbstractUpdater<'msg>(e)
