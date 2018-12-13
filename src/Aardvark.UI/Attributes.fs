@@ -53,8 +53,14 @@ module Events =
         onEvent "onmouseenter" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
     let onMouseLeave (cb : V2i -> 'msg) =
+        onEvent "onmouseleave" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+    
+    let onMouseOver (cb : V2i -> 'msg) =
+        onEvent "onmouseover" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
+    let onMouseOut (cb : V2i -> 'msg) =
         onEvent "onmouseout" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
-        
+            
     let onMouseMove (cb : V2i -> 'msg) = 
         onEvent "onmousemove" ["{ X: event.clientX, Y: event.clientY  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
 
