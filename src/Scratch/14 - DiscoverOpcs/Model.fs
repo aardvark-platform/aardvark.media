@@ -1,14 +1,17 @@
-﻿namespace Inc.Model
+﻿namespace DiscoverOpcs.Model
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
+open DiscoverOpcs
 
 type Message = 
-    | Inc
+    | SetPaths of list<string>
+    | Discover
 
 [<DomainType>]
 type Model = 
     {
-        value : int
+        selectedPaths : plist<OpcFolder>
+        opcPaths      : plist<string>
     }

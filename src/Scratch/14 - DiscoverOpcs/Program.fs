@@ -4,7 +4,6 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
-open Inc
 
 open Suave
 open Suave.WebPart
@@ -16,7 +15,7 @@ let main argv =
     Aardium.init()
 
     use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    let instance = DiscoverOpcs.App.app|> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 
