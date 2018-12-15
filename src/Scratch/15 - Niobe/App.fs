@@ -1,77 +1,107 @@
 ﻿namespace Niobe
 
+open System
+
+open Aardvark.Base
+open Aardvark.Base.Incremental
+open Aardvark.Base.Rendering
+open Aardvark.SceneGraph
+
+open Aardvark.Application
+open Aardvark.UI
+open Aardvark.UI.Primitives
+open Niobe.Sketching
+
 module App = 
-  open Aardvark.UI
-  open Aardvark.UI.Primitives
-  
-  open Aardvark.Base
-  open Aardvark.Base.Incremental
-  open Aardvark.Base.Rendering
-  
-  
+     
   let update (model : Model) (msg : Message) =
       match msg with        
-        | Camera m ->
+        | Camera m when model.picking = false ->
           { model with cameraState = FreeFlyController.update model.cameraState m; }
         | UpdateDockConfig cfg ->
           { model with dockConfig = cfg }
-        | Message.KeyDown k -> model
-        | Message.KeyUp k -> model
-        //| _ -> model 
+        | HitSurface p when model.picking = true ->
+          Log.line "hit %A" p
+          { model with sketching = SketchingApp.update model.sketching (AddPoint p) }          
+        | Message.KeyDown k -> 
+          match k with
+          | Keys.LeftCtrl -> 
+            Log.line "start picking"
+            { model with picking = true }
+          | _ -> model
+        | Message.KeyUp k ->
+          match k with
+          | Keys.LeftCtrl -> 
+            Log.line "stop picking"
+            { model with picking = false }
+          | _ -> model
+        | _ -> model
   
   let view (m : MModel) =
-                                                 
-
-      let box = 
-        Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
-          |> Sg.shader {
-                do! DefaultSurfaces.trafo
-                do! DefaultSurfaces.simpleLighting
-            }
-
-      let scene = 
-        [
-          box
-          //PickingApp.view m.picking
-        ] |> Sg.ofList
-
-      let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
-         (AttributeMap.ofList [ 
-           style "width: 100%; height:100%"; 
-           attribute "showFPS" "false";       // optional, default is false
-           attribute "useMapping" "true"
-           attribute "data-renderalways" "false"
-           attribute "data-samples" "4"
-           onKeyDown (Message.KeyDown)
-           onKeyUp (Message.KeyUp)
-           //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
-         ]) 
-         (scene) 
-                  
-      page (fun request -> 
-        match Map.tryFind "page" request.queryParams with
-        | Some "render" ->
-          require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
-              div [clazz "ui"; style "background: #1B1C1E"] [renderControl]
-          )
-        | Some "controls" -> 
-          require Html.semui (
-            body [style "width: 100%; height:100%; background: transparent";] [
-               div[style "color:white"][text "UI COMES HERE"]
+                                               
+    let box = 
+      Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
+        |> Sg.shader {
+              do! DefaultSurfaces.trafo
+              do! DefaultSurfaces.simpleLighting
+          }        
+        |> Sg.requirePicking
+            |> Sg.noEvents
+            |> Sg.withEvents [
+                Sg.onClick HitSurface
             ]
-          )
-        | Some other -> 
-          let msg = sprintf "Unknown page: %A" other
-          body [] [
-              div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
-          ]  
-        | None -> 
-          m.dockConfig
-            |> docking [
-              style "width:100%; height:100%; background:#F00"
-              onLayoutChanged UpdateDockConfig ]
+
+    let linePass = RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main
+
+    let scene = 
+      [
+        box
+        SketchingApp.viewSg m.sketching 
+          |> Sg.map SketchingMessage 
+          |> Sg.pass linePass 
+          |> Sg.depthTest (Mod.constant DepthTestMode.None)
+      ] |> Sg.ofList
+
+    let renderControl =
+     FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       (AttributeMap.ofList [ 
+         style "width: 100%; height:100%"; 
+         attribute "showFPS" "false";       // optional, default is false
+         attribute "useMapping" "true"
+         attribute "data-renderalways" "false"
+         attribute "data-samples" "4"
+         onKeyDown (Message.KeyDown)
+         onKeyUp (Message.KeyUp)
+         //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
+       ]) 
+       (scene)
+                
+    page (fun request ->
+      match Map.tryFind "page" request.queryParams with
+      | Some "render" ->
+        require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
+            div [clazz "ui"; style "background: #1B1C1E"] [renderControl]
         )
+      | Some "controls" -> 
+        require Html.semui (
+          body [style "width: 100%; height:100%; background: transparent";] [
+             div[style "color:white; margin: 25px 25px 0px 25px"] [
+               h3[][text "NIOBE"]
+               p[][text "unified sketching"]
+             ]
+          ]
+        )
+      | Some other -> 
+        let msg = sprintf "Unknown page: %A" other
+        body [] [
+            div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
+        ]  
+      | None -> 
+        m.dockConfig
+          |> docking [
+            style "width:100%; height:100%; background:#F00"
+            onLayoutChanged UpdateDockConfig ]
+      )
   
   
   let threads (model : Model) = 
@@ -94,6 +124,8 @@ module App =
             appName "OpcSelectionViewer"
             useCachedConfig true
         }
+      picking = false
+      sketching = Sketching.Initial.sketchingModel
     }
   
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
