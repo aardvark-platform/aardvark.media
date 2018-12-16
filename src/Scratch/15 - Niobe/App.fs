@@ -37,7 +37,7 @@ module App =
           | _ -> model
         | _ -> model
   
-  let view (m : MModel) =
+  let view (model : MModel) =
                                                
     let box = 
       Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
@@ -53,17 +53,17 @@ module App =
 
     let linePass = RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main
 
-    let scene = 
+    let viewSg = 
       [
         box
-        SketchingApp.viewSg m.sketching 
+        SketchingApp.viewSg model.sketching 
           |> Sg.map SketchingMessage 
           |> Sg.pass linePass 
           |> Sg.depthTest (Mod.constant DepthTestMode.None)
       ] |> Sg.ofList
 
     let renderControl =
-     FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+     FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
        (AttributeMap.ofList [ 
          style "width: 100%; height:100%"; 
          attribute "showFPS" "false";       // optional, default is false
@@ -74,8 +74,14 @@ module App =
          onKeyUp (Message.KeyUp)
          //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
        ]) 
-       (scene)
-                
+       (viewSg)
+                        
+    let dependencies = 
+      Html.semui @ [        
+        { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
+        { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
+      ] 
+
     page (fun request ->
       match Map.tryFind "page" request.queryParams with
       | Some "render" ->
@@ -83,11 +89,12 @@ module App =
             div [clazz "ui"; style "background: #1B1C1E"] [renderControl]
         )
       | Some "controls" -> 
-        require Html.semui (
-          body [style "width: 100%; height:100%; background: transparent";] [
-             div[style "color:white; margin: 25px 25px 0px 25px"] [
+        require dependencies (
+          body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
+             div[style "color:white; margin: 5px 15px 5px 5px"] [
                h3[][text "NIOBE"]
                p[][text "unified sketching"]
+               SketchingApp.viewGui model.sketching |> UI.map SketchingMessage
              ]
           ]
         )
@@ -97,7 +104,7 @@ module App =
             div [style "color: white; font-size: large; background-color: red; width: 100%; height: 100%"] [text msg]
         ]  
       | None -> 
-        m.dockConfig
+        model.dockConfig
           |> docking [
             style "width:100%; height:100%; background:#F00"
             onLayoutChanged UpdateDockConfig ]

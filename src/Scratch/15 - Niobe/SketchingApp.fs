@@ -11,26 +11,7 @@ open Aardvark.UI.Primitives
 
 open Niobe
 
-module SketchingApp =   
-  
-
-  let emptyBrush = 
-    {
-      points = PList.empty
-      color = C4b.VRVisGreen
-    }
-
-  let update (model : SketchingModel) (action : SketchingAction) : SketchingModel =
-    match action with
-    | AddPoint p ->
-      let b' =
-        match model.working with
-        | Some b -> Some { b with points = b.points |> PList.prepend p }
-        | None -> Some { emptyBrush with points = p |> PList.single }
-      { model with working = b' }
-    | Undo -> model
-    | Redo -> model
-
+module Sg = 
   let v3f (input:V3d) : V3f= input |> V3f
 
   let pointsGetHead points =    
@@ -98,16 +79,56 @@ module SketchingApp =
       |> Sg.translate' head
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
 
+module SketchingApp =   
+    
+  let emptyBrush = 
+    {
+      points = PList.empty
+      color = C4b.VRVisGreen
+    }
+
+  let update (model : SketchingModel) (action : SketchingAction) : SketchingModel =
+    match action with
+    | AddPoint p ->
+      let b' =
+        match model.working with
+        | Some b -> Some { b with points = b.points |> PList.prepend p }
+        | None -> Some { emptyBrush with points = p |> PList.single }
+      { model with working = b' }
+    | Undo -> model
+    | Redo -> model
+    | ChangeColor a ->
+      let c = ColorPicker.update model.selectedColor a
+      let b' = model.working |> Option.map(fun b -> { b with color = c.c})
+      { model with working = b'; selectedColor = c }
+  
   let viewSg (model : MSketchingModel) : ISg<SketchingAction> = 
     let brush = 
       model.working 
       |> Mod.map(function
         | Some brush -> 
           [ 
-            viewColoredPoints brush.points brush.color 
-            viewLines brush.points brush.color
+            Sg.viewColoredPoints brush.points brush.color
+            Sg.viewLines brush.points brush.color
           ] |> Sg.ofSeq
         | None -> Sg.empty
         )
 
     brush |> Sg.dynamic
+
+  let dependencies = 
+    Html.semui @ [        
+      { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
+      { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
+    ] 
+
+  let viewGui (model : MSketchingModel) =
+    require dependencies (
+      Html.SemUi.accordion "Brush" "paint brush" true [          
+          Html.table [  
+              Html.row "Color:"  [ColorPicker.view model.selectedColor |> UI.map ChangeColor ]
+              Html.row "Width:"  [text "Width"]                  
+              Html.row "Width:"  [text "Width"]
+          ]          
+      ]
+    )
