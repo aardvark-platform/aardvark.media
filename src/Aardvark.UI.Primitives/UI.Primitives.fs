@@ -154,7 +154,7 @@ module Html =
                 div [clazz "ui inverted segment"] [
                     div [clazz "ui inverted accordion fluid"] [
                         div [clazz title] [
-                                i [clazz (icon + " large icon circular")][] 
+                                i [clazz (icon + " icon circular")][] 
                                 text text'
                                 //Static.a [clazz "ui label"] [
                                 //    i [clazz (icon + " icon circular inverted")] []
