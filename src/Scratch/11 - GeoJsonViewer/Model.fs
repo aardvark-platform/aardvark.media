@@ -11,7 +11,7 @@ open FSharp.Data.JsonExtensions
 type FeatureId = FeatureId of string
 
 type Message = 
-  | Select       of Guid
+  | Select       of string
   | Deselect
   | UpdateConfig of DockConfig
 
@@ -20,6 +20,7 @@ type Typus =
   | FeatureCollection
   | Feature
   | Polygon
+  | Point
 
 
 type Properties =
@@ -37,7 +38,7 @@ type Geometry =
 
 type Feature =
   { 
-    id          : Guid
+    id          : string
     typus       : Typus
     properties  : Properties
     boundingBox : Box2d
@@ -57,5 +58,5 @@ type Model =
   {
      data     : FeatureCollection
      docking  : DockConfig
-     selected : option<Guid>
+     selected : option<string>
   }

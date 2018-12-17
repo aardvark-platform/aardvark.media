@@ -14,7 +14,7 @@ module App =
   let update (model : Model) (msg : Message) : Model =
       match msg with
       | Select s -> 
-        Log.line "selected %A" s; 
+       // Log.line "selected %A" s; 
         { model with selected = Some s }
       | Deselect -> model // { model with selected = None }
       | UpdateConfig cfg ->
@@ -49,7 +49,7 @@ module App =
 
           let attr2 = 
             if isSelected then
-              Log.line "coloring %A blue" f.properties.id
+             // Log.line "coloring %A blue" f.properties.id
               [clazz "ui large map pin inverted middle aligned icon"; style "color:blue"]
             else 
               [clazz "ui large map pin inverted middle aligned icon"]
@@ -80,6 +80,14 @@ module App =
     let v2dToString (v : V2d) =
       sprintf "%f,%f" v.X -v.Y
 
+    let svgDrawPoint attributes (coord : V2d) =
+
+      Svg.circle <| attributes @ [
+        "cx" ==> coord.X.ToString()
+        "cy" ==> (-coord.Y).ToString()
+        "r"  ==> (25.0f).ToString()
+      ]
+      
     let svgDrawPolygon attributes (coords : list<V2d>) =
       let coordString : string = 
         coords |> List.fold(fun (a : string) b -> a + " " + (b |> v2dToString)) ""
@@ -130,35 +138,38 @@ module App =
     //  let(FeatureId s) = id
     //  s
 
+    let normTrafo (bb:Box2d) (canvas:V2d) = 
+      (Trafo2d.Translation -bb.Min) *
+        (Trafo2d.Scale (canvas / bb.Size))
+
     let svgDrawBoundingBoxNorm attributes (globalBox : Box2d) (canvasSize : V2d) (box : Box2d) =
-      let trafo = 
-        (Trafo2d.Translation -globalBox.Min) *
-        (Trafo2d.Scale (canvasSize / globalBox.Size))
+      let trafo = normTrafo globalBox canvasSize        
 
       let b = box.Transformed(trafo)
       b|> svgDrawBoundingBox attributes
 
     let svgDrawPolyNorm attributes (globalBox : Box2d) (canvasSize : V2d) (coords : list<V2d>) =
-      let trafo = 
-        (Trafo2d.Translation -globalBox.Min) *
-        (Trafo2d.Scale (canvasSize / globalBox.Size)) 
-
-      let coords1 = coords |> List.map(trafo.Forward.TransformPos)
-      Log.line "%A" coords1
-      
+      let trafo = normTrafo globalBox canvasSize
+           
       coords |> List.map(trafo.Forward.TransformPos) |> svgDrawPolygon attributes
+
+    let svgDrawPointNorm attributes (globalBox : Box2d) (canvasSize : V2d) (coords : list<V2d>) =
+      let trafo = normTrafo globalBox canvasSize
+           
+      coords |> List.map(trafo.Forward.TransformPos) |> List.head |> svgDrawPoint attributes
       
     let svgDrawFeature (globalBox : Box2d) (scale : V2d) (isSelected : bool) (feature : Feature) =
       let style = if isSelected then svgBBStyleSelected else svgBBStyle
       let attr =[onMouseEnter (fun _ -> feature.id |> Select); onMouseLeave (fun _ -> Deselect) ] @ style
       [ 
         //feature.boundingBox |> svgDrawBoundingBoxNorm attr globalBox scale
-        feature.geometry.coordinates |> svgDrawPolyNorm attr globalBox scale
+        //feature.geometry.coordinates |> svgDrawPolyNorm attr globalBox scale
+        feature.geometry.coordinates |> svgDrawPointNorm attr globalBox scale
       ]
                 
     let svg = 
       
-      let canvasSize = V2d(1280.0, 800.0)
+      let canvasSize = V2d(600.0, 600.0)
       
       let svgAttr = 
         amap {
@@ -173,7 +184,7 @@ module App =
       
       let content =
         alist {
-          let! bb = model.data.boundingBox
+          let! bb = model.data.boundingBox          
           yield bb |> svgDrawBoundingBoxNorm svgGlobalBBStyle bb canvasSize
 
           for f in model.data.features do
@@ -216,14 +227,14 @@ module App =
       typus       = Typus.Feature
       features    = PList.empty
     }
-  
+    
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
     {
         unpersist = Unpersist.instance     
         threads   = threads 
         initial   = 
           { 
-            data = GeoJSON.load @"..\..\..\data\eox.json" 
+            data = GeoJSON.load
             selected = None
             docking =
               config {

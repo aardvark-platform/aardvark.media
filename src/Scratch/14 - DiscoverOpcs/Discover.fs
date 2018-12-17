@@ -59,7 +59,7 @@ module Discover =
   let discoverOpcs path = 
     discover isOpcFolder path
 
-  let decideFolder 
+  //let decideFolder 
 
   //let rec visitDirectories path : list<string> =
   //  match path |> toDiscoverFolder with

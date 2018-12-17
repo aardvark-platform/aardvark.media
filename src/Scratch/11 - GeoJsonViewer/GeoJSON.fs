@@ -6,7 +6,7 @@ open FSharp.Data.JsonExtensions
 
 module GeoJSON =
   
-  type EoxModel = JsonProvider<"../../../data/eox.json">
+  type EoxModel = JsonProvider<"http://minerva1.eox.at:8600/opensearch/collections/FrontHazcam/json/">
 
   let parseBoundingBox (bb : array<decimal>) : Box2d =
 
@@ -24,7 +24,8 @@ module GeoJSON =
       | "featurecollection" -> Typus.FeatureCollection
       | "feature"           -> Typus.Feature
       | "polygon"           -> Typus.Polygon
-      | s -> s |> sprintf "string %A unknown" |> failwith
+      | "point"             -> Typus.Point
+      | s -> s |> sprintf "[parseTypus] string %A unknown" |> failwith
 
   let parseProperties (properties : EoxModel.Properties) : Properties = 
     {
@@ -37,22 +38,24 @@ module GeoJSON =
     if c.Length <> 2 then failwith "invalid coordinate of size other than 2"
     V2d(float c.[1], float c.[0])
 
-  let parseCoordinates (coordinateSet : array<array<array<decimal>>>) : list<V2d> =
+  let parseCoordinates (coordinateSet :  array<array<array<decimal>>>) : list<V2d> =
     [
       for set in coordinateSet do
         for c in set do
           yield c |> parseSingleCoord              
     ]
+
+  
     
   let parseGeometry (geometry : EoxModel.Geometry) : GeoJsonViewer.Geometry = 
     {
       typus       = geometry.Type        |> parseTypus
-      coordinates = geometry.Coordinates |> parseCoordinates
+      coordinates = geometry.Coordinates |> parseSingleCoord |> List.singleton
     }        
 
   let parseFeature (feature : EoxModel.Feature) : Feature =
     {
-      id          = System.Guid.NewGuid()
+      id          = feature.Properties.Id
       typus       = feature.Type       |> parseTypus
       boundingBox = feature.Bbox       |> parseBoundingBox
       properties  = feature.Properties |> parseProperties
@@ -74,7 +77,7 @@ module GeoJSON =
     features |> List.fold (fun a b -> a.ExtendedBy(b.boundingBox)) Box2d.Invalid
 
   let parseRoot(root : EoxModel.Root) : FeatureCollection = 
-    let features = root.Features |> parseFeatures |> distanceFilter 10.0
+    let features = root.Features |> parseFeatures //|> distanceFilter 10.0
 
     {
       typus       = root.Type     |> parseTypus
@@ -82,8 +85,34 @@ module GeoJSON =
       features    = features      |> PList.ofList
     }
 
-  let load (jsonFile : string) : FeatureCollection = 
-    EoxModel.Load(jsonFile) |> parseRoot                
+  let sites = [
+    @"http://minerva1.eox.at:8600/opensearch/collections/MAHLI/json/"
+    @"http://minerva1.eox.at:8600/opensearch/collections/FrontHazcam/json/"
+    @"http://minerva1.eox.at:8600/opensearch/collections/Mastcam/json/"
+   // @"http://minerva1.eox.at:8600/opensearch/collections/APXS/json/"
+  ]
+
+  let combineFeatureCollections (collections : seq<FeatureCollection>) : FeatureCollection =
+    {
+      typus = FeatureCollection
+      boundingBox = collections |> Seq.fold (fun (a:Box2d) (fc:FeatureCollection) -> a.ExtendedBy(fc.boundingBox)) Box2d.Invalid
+      features = collections |> Seq.map(fun x -> x.features) |> PList.concat
+    }
+
+  let load : FeatureCollection = 
+    let request = "http://minerva1.eox.at:8600/opensearch/collections/Mastcam/json/"
+    Log.startTimed "fetching data from %A" request
+    let result = 
+      sites 
+        |> List.map EoxModel.AsyncLoad         
+        |> Async.Parallel
+        |> Async.RunSynchronously 
+        |> Array.map parseRoot
+        |> combineFeatureCollections
+    Log.stop()
+    result
+
+    //EoxModel.Load(jsonFile) |> parseRoot                
 
     
 
