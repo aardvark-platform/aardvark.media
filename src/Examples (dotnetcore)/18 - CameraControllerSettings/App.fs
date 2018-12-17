@@ -46,7 +46,7 @@ let rec update (model : Model) (msg : Message) =
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
-     |> Sg.trafo (model.rot |> Mod.map (fun a -> Trafo3d.RotationZ a))
+     //|> Sg.trafo (model.rot |> Mod.map (fun a -> Trafo3d.RotationZ a))
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -76,23 +76,23 @@ let view (model : MModel) =
                 button [onClick (fun _ -> JumpToOrigin)] [text "Animated center"]
                 br []
                 br []
-                Simple.labeledFloatInput "lookAtMouseSensitiviy" 0.0 1.0 0.001 SetLookAtSensitivity model.cameraState.freeFlyConfig.lookAtMouseSensitivity
+                Simple.labeledFloatInput "lookAtMouseSensitiviy (LMB)" 0.0 1.0 0.001 SetLookAtSensitivity model.cameraState.freeFlyConfig.lookAtMouseSensitivity
                 Simple.labeledFloatInput "lookAtConstant"        0.0 1.0 0.001 SetLookAtConstant    model.cameraState.freeFlyConfig.lookAtConstant
                 Simple.labeledFloatInput "lookAtDamping  "       0.0 100.0 1.0 SetLookAtSmoothing   model.cameraState.freeFlyConfig.lookAtDamping 
                                                                                                
-                Simple.labeledFloatInput "panMouseSensitivity"   0.0 1.0 0.001 SetPanSensitiviy     model.cameraState.freeFlyConfig.panMouseSensitivity
+                Simple.labeledFloatInput "panMouseSensitivity (MMB)"   0.0 1.0 0.001 SetPanSensitiviy     model.cameraState.freeFlyConfig.panMouseSensitivity
                 Simple.labeledFloatInput "panConstant"           0.0 1.0 0.001 SetPanConstant       model.cameraState.freeFlyConfig.panConstant
                 Simple.labeledFloatInput "panDamping"            0.0 10.0 0.10 SetPanSmoothing      model.cameraState.freeFlyConfig.panDamping 
                                                                                                 
-                Simple.labeledFloatInput "dollyMouseSensitivity" 0.0 1.0 0.001 SetDollySensitiviy   model.cameraState.freeFlyConfig.dollyMouseSensitivity
+                Simple.labeledFloatInput "dollyMouseSensitivity (RMB)" 0.0 1.0 0.001 SetDollySensitiviy   model.cameraState.freeFlyConfig.dollyMouseSensitivity
                 Simple.labeledFloatInput "dollyConstant"         0.0 1.0 0.001 SetDollyConstant     model.cameraState.freeFlyConfig.dollyConstant
                 Simple.labeledFloatInput "dollyDamping"          0.0 10.00 0.1 SetDollySmoothing    model.cameraState.freeFlyConfig.dollyDamping 
                                                                                                
-                Simple.labeledFloatInput "zooomAtMouseSensitiviy" 0.0 5.0 0.001 SetZoomSensitiviy    model.cameraState.freeFlyConfig.zoomMouseWheelSensitivity
+                Simple.labeledFloatInput "zooomAtMouseSensitiviy (wheel)" 0.0 5.0 0.001 SetZoomSensitiviy    model.cameraState.freeFlyConfig.zoomMouseWheelSensitivity
                 Simple.labeledFloatInput "zooomAtConstant"        0.0 1.0 0.001 SetZoomConstant      model.cameraState.freeFlyConfig.zoomConstant
                 Simple.labeledFloatInput "zooomAtDamping"         0.0 10.0 0.10 SetZoomSmoothing     model.cameraState.freeFlyConfig.zoomDamping 
                                                                                                
-                Simple.labeledFloatInput "moveSensitivity"       0.0 10.0 0.01 SetMoveSensitivity   model.cameraState.freeFlyConfig.moveSensitivity
+                Simple.labeledFloatInput "moveSensitivity (wasd)"       0.0 10.0 0.01 SetMoveSensitivity   model.cameraState.freeFlyConfig.moveSensitivity
             ]
         ]
     ]

@@ -1,5 +1,8 @@
 ﻿namespace DiscoverOpcs
 
+open System
+open System.IO
+
 open Aardvark.UI
 open Aardvark.UI.Primitives
   
@@ -30,10 +33,13 @@ module App =
         else x |> Other
       )    
 
+  let tryFileExists path = 
+    if File.Exists path then Some path else None
+
   let update (model : Model) (msg : Message) =
       match msg with
       | SetPaths paths -> 
-        let selectedPaths = paths
+        let selectedPaths = paths |> List.choose tryFileExists
         
         let opcPaths = 
           selectedPaths            
@@ -117,17 +123,19 @@ module App =
   let opcPaths = 
     initPaths      
       |> List.map DiscoverOpcs.Discover.discoverOpcs 
-      |> List.concat    
+      |> List.concat
+
+  let initial = 
+    { 
+       selectedPaths = PList.empty // initPaths |> importFolders  |> PList.ofList
+       opcPaths = PList.empty // opcPaths |> PList.ofList
+    }
 
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
       {
           unpersist = Unpersist.instance     
           threads = threads 
-          initial = 
-              { 
-                 selectedPaths = initPaths |> importFolders  |> PList.ofList
-                 opcPaths = opcPaths |> PList.ofList
-              }
+          initial = initPaths |> SetPaths |> update initial
           update = update 
           view = view
       }

@@ -9,8 +9,13 @@ type OpcFolder =
   | Opc           of string
   | Other         of string
 
+type DiscoverFolder = 
+  | OpcFolder of string
+  | Directory of string  
+
 module Discover = 
   
+
   /// <summary>
   /// checks if "path" is a valid opc folder containing "images", "patches", and patchhierarchy.xml
   /// </summary>
@@ -21,6 +26,13 @@ module Discover =
       (Directory.Exists patchPath) && 
        File.Exists(patchPath + "\\patchhierarchy.xml")
   
+  let toDiscoverFolder path = 
+    if path |> isOpcFolder then
+      OpcFolder path
+    else
+      Directory path
+
+
   /// <summary>
   /// checks if "path" is a valid surface folder
   /// </summary>        
@@ -46,3 +58,9 @@ module Discover =
   
   let discoverOpcs path = 
     discover isOpcFolder path
+
+  let decideFolder 
+
+  //let rec visitDirectories path : list<string> =
+  //  match path |> toDiscoverFolder with
+  //  | 
