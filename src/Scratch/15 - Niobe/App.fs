@@ -21,7 +21,6 @@ module App =
   
   let view (m : MModel) =
                                                  
-
       let box = 
         Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
           |> Sg.shader {

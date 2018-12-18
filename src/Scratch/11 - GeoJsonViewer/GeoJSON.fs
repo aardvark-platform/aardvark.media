@@ -99,9 +99,8 @@ module GeoJSON =
       features = collections |> Seq.map(fun x -> x.features) |> PList.concat
     }
 
-  let load : FeatureCollection = 
-    let request = "http://minerva1.eox.at:8600/opensearch/collections/Mastcam/json/"
-    Log.startTimed "fetching data from %A" request
+  let load : FeatureCollection =     
+    Log.startTimed "fetching data from sites"
     let result = 
       sites 
         |> List.map EoxModel.AsyncLoad         

@@ -7,10 +7,14 @@ open Aardvark.UI.Primitives
 
 open FSharp.Data
 open FSharp.Data.JsonExtensions
+open Aardvark.Application
 
 type FeatureId = FeatureId of string
 
 type Message = 
+  | Camera       of FreeFlyController.Message
+  | KeyUp        of key : Keys
+  | KeyDown      of key : Keys
   | Select       of string
   | Deselect
   | UpdateConfig of DockConfig
@@ -56,6 +60,7 @@ type FeatureCollection =
 [<DomainType>]
 type Model = 
   {
+     camera   : CameraControllerState
      data     : FeatureCollection
      docking  : DockConfig
      selected : option<string>
