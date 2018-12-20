@@ -31,7 +31,7 @@ module Sg =
         //|> Array.pairwise
         //|> Array.map (fun (a,b) -> (new Line3d(a,b), color))
 
-  let drawColoredEdges width edges = 
+  let drawColoredEdges (width:IMod<float>) edges = 
     edges
       |> IndexedGeometryPrimitives.lines
       |> Sg.ofIndexedGeometry
@@ -40,15 +40,15 @@ module Sg =
         toEffect DefaultSurfaces.vertexColor
         toEffect DefaultSurfaces.thickLine
       ]
-      |> Sg.uniform "LineWidth" (Mod.constant width)
+      |> Sg.uniform "LineWidth" width
 
-  let viewLines points (color : IMod<C4b>) =           
+  let viewLines points (color : IMod<C4b>) (width : IMod<float>) =           
     let head = pointsGetHead points
     adaptive {
       let! c = color
       let! h = head
       let! edges = toColoredEdges h c points |> AList.toMod
-      return edges |> PList.toList |> drawColoredEdges 2.0
+      return edges |> PList.toList |> drawColoredEdges width
     } |> Sg.dynamic
     
   let getPointsAndColors points (color : IMod<C4b>) = 
@@ -95,6 +95,8 @@ module SketchingApp =
         | Some b -> Some { b with points = b.points |> PList.prepend p }
         | None -> Some { emptyBrush with points = p |> PList.single }
       { model with working = b' }
+    | SetThickness a ->
+      { model with selectedThickness = Numeric.update model.selectedThickness a }
     | Undo -> model
     | Redo -> model
     | ChangeColor a ->
@@ -109,7 +111,7 @@ module SketchingApp =
         | Some brush -> 
           [ 
             Sg.viewColoredPoints brush.points brush.color
-            Sg.viewLines brush.points brush.color
+            Sg.viewLines brush.points brush.color model.selectedThickness.value
           ] |> Sg.ofSeq
         | None -> Sg.empty
         )
@@ -127,8 +129,7 @@ module SketchingApp =
       Html.SemUi.accordion "Brush" "paint brush" true [          
           Html.table [  
               Html.row "Color:"  [ColorPicker.view model.selectedColor |> UI.map ChangeColor ]
-              Html.row "Width:"  [text "Width"]                  
-              Html.row "Width:"  [text "Width"]
+              Html.row "Width:"  [Numeric.view model.selectedThickness |> UI.map SetThickness]                             
           ]          
       ]
     )

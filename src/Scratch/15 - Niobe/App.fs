@@ -20,6 +20,8 @@ module App =
           { model with cameraState = FreeFlyController.update model.cameraState m; }
         | UpdateDockConfig cfg ->
           { model with dockConfig = cfg }
+        | SketchingMessage a ->
+          { model with sketching = SketchingApp.update model.sketching a }
         | HitSurface p when model.picking = true ->
           Log.line "hit %A" p
           { model with sketching = SketchingApp.update model.sketching (AddPoint p) }          

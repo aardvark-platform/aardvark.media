@@ -12,7 +12,7 @@ open Aardvark.Application
 open Niobe.Sketching
 
 type Message =
-  | Camera           of FreeFlyController.Message
+  | Camera           of FreeFlyController.Message  
   | KeyUp            of key : Keys
   | KeyDown          of key : Keys  
   | UpdateDockConfig of DockConfig    
