@@ -7,7 +7,8 @@ open Aardvark.UI.Primitives
 
 type SketchingAction = 
   | AddPoint of V3d
-  | ChangeColor of ColorPicker.Action
+  | ChangeColor  of ColorPicker.Action
+  | SetThickness of Numeric.Action
   | Undo
   | Redo
 
