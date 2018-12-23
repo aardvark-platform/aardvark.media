@@ -24,48 +24,55 @@ module App =
                   | _ -> chosen []//failwithf "onChooseFiles: %A" xs
           onEvent "onchoose" [] cb   
   
-  let importFolders (paths : list<string>) : list<OpcFolder> = 
-    paths
-      |> List.map(fun x ->
-        if x |> Discover.isOpcFolder then x |> Opc
-        elif x |> Discover.isSurface then x |> Surface
-        elif x |> Discover.isSurfaceFolder then x |> SurfaceFolder
-        else x |> Other
-      )    
+  //let importFolders (paths : list<string>) : list<OpcFolder> = 
+  //  paths
+  //    |> List.map(fun x ->
+  //      if x |> Discover.isOpcFolder then x |> Opc
+  //      elif x |> Discover.isSurface then x |> Surface
+  //      elif x |> Discover.isSurfaceFolder then x |> SurfaceFolder
+  //      else x |> Other
+  //    )    
 
   let tryFileExists path = 
     if File.Exists path then Some path else None
 
+  let tryDirectoryExists path = 
+    if Directory.Exists path then Some path else None
+
   let update (model : Model) (msg : Message) =
       match msg with
       | SetPaths paths -> 
-        let selectedPaths = paths |> List.choose tryFileExists
+        let selectedPaths = paths |> List.choose tryDirectoryExists
         
-        let opcPaths = 
-          selectedPaths            
-            |> List.map DiscoverOpcs.Discover.discoverOpcs 
-            |> List.concat            
+        Log.startTimed "Discovering Opcs"
 
+        let opcs = 
+          selectedPaths 
+            |> List.map Discover.superDiscovery            
+            |> HMap.ofList
+
+        Log.stop()
+        
         { model with 
-           selectedPaths = selectedPaths |> importFolders |> PList.ofList
-           opcPaths = opcPaths |> PList.ofList 
+           selectedPaths = selectedPaths |> PList.ofList
+           opcPaths = opcs
         }
       | Discover -> failwith ""
           
   
-  let folderText (folder:OpcFolder) =
-    match folder with
-    | SurfaceFolder s -> s
-    | Surface s -> s
-    | Opc s -> s
-    | Other s -> s
+  //let folderText (folder:OpcFolder) =
+  //  match folder with
+  //  | SurfaceFolder s -> s
+  //  | Surface s -> s
+  //  | Opc s -> s
+  //  | Other s -> s
 
-  let createTag (folder:OpcFolder) =
-      match folder with
-      | SurfaceFolder _ -> div [clazz "ui middle aligned tiny label yellow"][text "SurfaceFolder"]
-      | Surface       _ -> div [clazz "ui middle aligned tiny label orange"][text "Surface"]
-      | Opc           _ -> div [clazz "ui middle aligned tiny label red"][text "Opc"]
-      | Other         _ -> div [clazz "ui middle aligned tiny label blue"][text "SurfaceFolder"]
+  //let createTag (folder:OpcFolder) =
+  //    match folder with
+  //    | SurfaceFolder _ -> div [clazz "ui middle aligned tiny label yellow"][text "SurfaceFolder"]
+  //    | Surface       _ -> div [clazz "ui middle aligned tiny label orange"][text "Surface"]
+  //    | Opc           _ -> div [clazz "ui middle aligned tiny label red"][text "Opc"]
+  //    | Other         _ -> div [clazz "ui middle aligned tiny label blue"][text "Other"]
 
   let viewPaths (model:MModel) = 
 
@@ -74,7 +81,7 @@ module App =
         for p in model.selectedPaths do
           yield div [clazz "ui inverted item"][              
               div [clazz "ui content"] [
-                div [clazz "ui header tiny"] [p |> createTag; p |> folderText |> text]
+                div [clazz "ui header tiny"] [p |> text]
               ]
             ]
       }
@@ -83,13 +90,17 @@ module App =
   let viewOpcPaths (model:MModel) = 
     Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
       alist {
-        for p in model.opcPaths do
-          yield div [clazz "ui inverted item"][
-              i [clazz "ui middle aligned box icon"] []
-              div [clazz "ui content"] [
-                div [clazz "ui header tiny"] [text p]                
+        for (folder,opclist) in model.opcPaths |> AMap.toASet |> ASet.toAList do
+          //yield Html.SemUi.accordion "blub" "boxes" true [
+          yield h3 [][text (Path.GetFileName folder)]
+          for opc in opclist do
+            yield div [clazz "ui inverted item"][
+                i [clazz "ui middle aligned box icon"] []
+                div [clazz "ui content"] [
+                  div [clazz "ui header tiny"] [text opc]                
+                ]
               ]
-            ]
+          //]
       }
     )
   
@@ -105,11 +116,12 @@ module App =
               clientEvent "onclick" ("parent.aardvark.processEvent('__ID__', 'onchoose', parent.aardvark.dialog.showOpenDialog({properties: ['openDirectory', 'multiSelections']}));") ][
               text "Select Path"
             ]
-            Html.SemUi.accordion "Paths" "files" true [viewPaths model]
+           // Html.SemUi.accordion "Paths" "files" true [viewPaths model]
                                 
            // button [clazz "ui button tiny"; onClick (fun _ -> Discover)] [text "DiscoverOpcs" ]                
   
-            Html.SemUi.accordion "Opcs" "boxes" true [viewOpcPaths model]
+            //Html.SemUi.accordion "Opcs" "boxes" true [viewOpcPaths model]
+            viewOpcPaths model
         ]
       ])
   
@@ -118,7 +130,7 @@ module App =
       ThreadPool.empty
   
   
-  let initPaths = @"I:\Dibit\1285_TSC_Selzthaltunnel_2017\Selzthaltunnel_RFB-Graz\2017_Bestandsaufnahme\OPC\OPC" |> List.singleton
+  let initPaths = [] // @"G:\New_3D_Data\New_MSL_Data_jan_2018" |> List.singleton
 
   let opcPaths = 
     initPaths      
@@ -127,8 +139,8 @@ module App =
 
   let initial = 
     { 
-       selectedPaths = PList.empty // initPaths |> importFolders  |> PList.ofList
-       opcPaths = PList.empty // opcPaths |> PList.ofList
+       selectedPaths = initPaths |> PList.ofList
+       opcPaths = HMap.empty // opcPaths |> PList.ofList
     }
 
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

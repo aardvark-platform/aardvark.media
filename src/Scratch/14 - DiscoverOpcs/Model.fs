@@ -12,6 +12,6 @@ type Message =
 [<DomainType>]
 type Model = 
     {
-        selectedPaths : plist<OpcFolder>
-        opcPaths      : plist<string>
+        selectedPaths : plist<string>
+        opcPaths      : hmap<string, list<string>>
     }

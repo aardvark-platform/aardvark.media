@@ -3,11 +3,11 @@
 open System.IO
 open Aardvark.Base
 
-type OpcFolder =
-  | SurfaceFolder of string //contains surfaces
-  | Surface       of string //contains OPCs
-  | Opc           of string
-  | Other         of string
+//type OpcFolder =
+//  | SurfaceFolder of string //contains surfaces
+//  | Surface       of string //contains OPCs
+//  | Opc           of string
+//  | Other         of string
 
 type DiscoverFolder = 
   | OpcFolder of string
@@ -32,6 +32,17 @@ module Discover =
     else
       Directory path
 
+
+  let rec superDiscovery (input : string) :  string * list<string> =
+    match input |> toDiscoverFolder with
+    | Directory path -> 
+      let opcs = 
+        path 
+          |> Directory.EnumerateDirectories 
+          |> Seq.toList 
+          |> List.map(fun x -> superDiscovery x |> snd) |> List.concat 
+      input, opcs
+    | OpcFolder p -> input,[p]
 
   /// <summary>
   /// checks if "path" is a valid surface folder
