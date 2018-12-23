@@ -219,27 +219,26 @@ module App =
   
   let initialData = 
     { 
+      name = "initial"
       boundingBox = Box2d.Invalid
       typus       = Typus.Feature
       features    = PList.empty
     }
-
-  let data = GeoJSON.load
-    
+      
   let camPosition (bb : Box2d) =
     bb.Max |> withZ 2.0
 
-  let initialCamera = { 
+  let initialCamera data = { 
     FreeFlyController.initial with 
       view = CameraView.lookAt (camPosition data.boundingBox) (data.boundingBox.Center |> withZ 0.0) V3d.OOI; }
 
-  let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
+  let app data =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         
     {
         unpersist = Unpersist.instance     
         threads   = threads 
         initial   = 
           { 
-            camera   = initialCamera
+            camera   = initialCamera data
             data     = data
             selected = None
             docking  =

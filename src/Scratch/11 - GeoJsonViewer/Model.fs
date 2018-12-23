@@ -27,12 +27,44 @@ type Typus =
   | Point
 
 
-type Properties =
+type MAHLI_Properties =
   {
     id        : FeatureId
     beginTime : DateTime
     endTime   : DateTime
   }
+
+type FrontHazcam_Properties =
+  {
+    id        : FeatureId
+    beginTime : DateTime
+    endTime   : DateTime
+  }
+
+type Mastcam_Properties =
+  {
+    id        : FeatureId
+    beginTime : DateTime
+    endTime   : DateTime
+  }
+
+type APXS_Properties =
+  {
+    id        : FeatureId
+  }
+
+type Properties =
+  | MAHLI       of MAHLI_Properties
+  | FrontHazcam of FrontHazcam_Properties
+  | Mastcam     of Mastcam_Properties
+  | APXS        of APXS_Properties
+  member this.id =
+    match this with
+    | MAHLI       k -> k.id
+    | FrontHazcam k -> k.id
+    | Mastcam     k -> k.id
+    | APXS        k -> k.id
+
 
 type Geometry = 
   {
@@ -52,6 +84,7 @@ type Feature =
 [<DomainType>]
 type FeatureCollection = 
   {
+    name : string
     typus       : Typus
     boundingBox : Box2d    
     features    : plist<Feature>
