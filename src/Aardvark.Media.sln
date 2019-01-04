@@ -2,6 +2,10 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "15 - Niobe", "Scratch\15 - Niobe\15 - Niobe.fsproj", "{2AD67055-824F-4159-92ED-D6806EC1ABC1}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "14 - DiscoverOpcs", "Scratch\14 - DiscoverOpcs\14 - DiscoverOpcs.fsproj", "{66E573F8-BAAF-4382-BE7A-CD6582197937}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "13 - TouchCamera", "Scratch\13 - TouchCamera\13 - TouchCamera.fsproj", "{C9F1B2ED-AAA3-4E3E-AB98-55252BE458A6}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - Outline", "Scratch\12 - Outline\12 - Outline.fsproj", "{012AB7E4-ABFD-4DA1-8149-A28DECDB8011}"
@@ -108,6 +112,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2AD67055-824F-4159-92ED-D6806EC1ABC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2AD67055-824F-4159-92ED-D6806EC1ABC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2AD67055-824F-4159-92ED-D6806EC1ABC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2AD67055-824F-4159-92ED-D6806EC1ABC1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{66E573F8-BAAF-4382-BE7A-CD6582197937}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{66E573F8-BAAF-4382-BE7A-CD6582197937}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{66E573F8-BAAF-4382-BE7A-CD6582197937}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{66E573F8-BAAF-4382-BE7A-CD6582197937}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C9F1B2ED-AAA3-4E3E-AB98-55252BE458A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C9F1B2ED-AAA3-4E3E-AB98-55252BE458A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C9F1B2ED-AAA3-4E3E-AB98-55252BE458A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -273,6 +285,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{2AD67055-824F-4159-92ED-D6806EC1ABC1} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
+		{66E573F8-BAAF-4382-BE7A-CD6582197937} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{C9F1B2ED-AAA3-4E3E-AB98-55252BE458A6} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{012AB7E4-ABFD-4DA1-8149-A28DECDB8011} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{40B368B8-E0CF-432B-828A-881322171CD7} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}

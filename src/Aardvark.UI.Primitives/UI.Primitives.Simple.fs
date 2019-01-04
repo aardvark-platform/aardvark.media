@@ -177,6 +177,38 @@ module Simple =
         else
             str
 
+    let largeTextArea' (changed : string -> 'msg) (value : IMod<string>) (attributes : AttributeMap<'msg>) =
+
+        let changed =
+            AttributeValue.Event  {
+                clientSide = fun send src -> send src ["event.target.value"] + ";"
+                serverSide = fun client src args ->
+                    match args with
+                        | a :: _ -> 
+                            let str : string = Pickler.unpickleOfJson a 
+                            str.Trim('\"') |> changed |> Seq.singleton
+                        | _ -> Seq.empty
+            }
+
+        let atts = 
+            AttributeMap.union
+                attributes
+                (AttributeMap.ofListCond [
+                    always <| ("oninput", changed)
+                    "value", value |> Mod.map (AttributeValue.String >> Some)
+                ])
+        
+        let req = 
+            [
+                { name = "metro-all.min.css"; url = "https://cdnjs.cloudflare.com/ajax/libs/metro/4.2.30/css/metro-all.min.css"; kind = Stylesheet }
+                { name = "metro.min.js";  url = "https://cdnjs.cloudflare.com/ajax/libs/metro/4.2.30/js/metro.min.js";  kind = Script     }
+            ]
+
+        require req (Incremental.textarea atts (Mod.constant ""))
+
+    let largeTextArea (changed : string -> 'msg) (value : IMod<string>) =
+        largeTextArea' changed value AttributeMap.empty
+
     let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : list<string * AttributeValue<'msg>>) (current : IMod<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
         
         let mutable back = Map.empty

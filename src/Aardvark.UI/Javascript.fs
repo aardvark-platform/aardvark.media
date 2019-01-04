@@ -29,16 +29,16 @@ type JSExpr =
     | Let of JSVar * JSExpr * JSExpr
     | Var of JSVar
     | Nop
-
+    
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module JSExpr =
     open Aardvark.Base.Monads.State
-
+    
     type UsedState =
         {
             usedVariables : Set<string>
         }
-
+        
     let rx = System.Text.RegularExpressions.Regex "\\\"|\\\\"
 
     let escape (str : string) =
@@ -155,8 +155,8 @@ module JSExpr =
                     | l -> l |> String.concat "\r\n"
 
             | InnerText(target,text) -> 
-                let base64 = System.Text.Encoding.UTF8.GetBytes text |> System.Convert.ToBase64String
-                sprintf "%s.textContent = top.window.atob(\"%s\");" (toStringInternal target) base64
+                let o = text |> System.Web.HttpUtility.JavaScriptStringEncode
+                sprintf "%s.textContent = \"%s\";" (toStringInternal target) o
 
             | AppendChild(parent,inner) -> 
                 let parent = toStringInternal parent

@@ -81,7 +81,6 @@ module Html =
         open Aardvark.Base.AMD64.Compiler
         open Aardvark.Base.Geometry.RayHit
         
-        
         let menu (c : string )(entries : list<string * list<DomNode<'msg>>>) =
             div [ clazz c ] (
                 entries |> List.map (fun (name, children) ->
@@ -128,8 +127,8 @@ module Html =
                             ]
                 ]
             ]
-        open Microsoft.FSharp.Reflection
-    
+
+        open Microsoft.FSharp.Reflection    
         let private fields r =
             try 
                 let t = r.GetType()
@@ -211,7 +210,6 @@ module Html =
                     |> AList.mapi(fun i x -> Incremental.option (attributes (f x)) (AList.ofList [text (f x)]))
                 )
                   
-        
         let textBox (text : IMod<string>) (set : string -> 'msg) =          
             
             let attributes = 
@@ -221,10 +219,8 @@ module Html =
                     let! t = text
                     yield "value" => t 
                 }
-
-          //  div [clazz "ui input"] [
-            Incremental.input (AttributeMap.ofAMap attributes)
-            //]
+          
+            Incremental.input (AttributeMap.ofAMap attributes)            
 
         let toggleBox (state : IMod<bool>) (toggle : 'msg) =
 
@@ -239,9 +235,7 @@ module Html =
                 }
 
       //      div [clazz "ui toggle checkbox"] [
-            Incremental.input (AttributeMap.ofAMap attributes)
-        //        label [] [text ""]
-            //]
+            Incremental.input (AttributeMap.ofAMap attributes)        
 
         let toggleImage (state : IMod<bool>) (toggle : unit -> 'msg) = 0
 
@@ -260,6 +254,21 @@ module Html =
                         yield div [clazz active; attribute "data-tab" name] [ch]         
                 ]
             )
+
+        let iconToggle (dings : IMod<bool>) onIcon offIcon action =
+          let toggleIcon = dings |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
+        
+          let attributes = 
+            amap {
+                let! icon = toggleIcon
+                yield clazz icon
+                yield onClick (fun _ -> action)
+            } |> AttributeMap.ofAMap
+        
+          Incremental.i attributes AList.empty
+        
+        let iconCheckBox (dings : IMod<bool>) action =
+          iconToggle dings "check square outline icon" "square icon" action
 
     module IO =
 

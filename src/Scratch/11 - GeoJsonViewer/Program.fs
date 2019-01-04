@@ -15,8 +15,17 @@ let main argv =
     Aardvark.Init()
     Aardium.init()
             
+    let sites = [
+      @"http://minerva1.eox.at:8600/opensearch/collections/MAHLI/json/"
+      @"http://minerva1.eox.at:8600/opensearch/collections/FrontHazcam/json/"
+      @"http://minerva1.eox.at:8600/opensearch/collections/Mastcam/json/"
+      @"http://minerva1.eox.at:8600/opensearch/collections/APXS/json/"
+    ]
+
+    let data = sites |> MinervaGeoJSON.loadMultiple
+
     use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    let instance = App.app data |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 

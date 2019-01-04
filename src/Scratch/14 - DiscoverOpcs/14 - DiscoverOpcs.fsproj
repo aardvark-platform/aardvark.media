@@ -13,10 +13,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Discover.fs" />
     <Compile Include="Model.fs" />
-    <Compile Include="GeoJSON.fs" />
-    <Compile Include="GeoJSON2.fs" />
-    <Compile Include="SvgDrawing.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
