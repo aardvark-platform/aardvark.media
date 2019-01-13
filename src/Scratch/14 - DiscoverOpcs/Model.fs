@@ -14,4 +14,5 @@ type Model =
     {
         selectedPaths : plist<string>
         opcPaths      : hmap<string, list<string>>
+        surfaceFolder : list<string>
     }
