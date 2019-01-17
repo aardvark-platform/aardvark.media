@@ -67,7 +67,6 @@ module Sg =
 
   let viewColoredPoints points (color : IMod<C4b>)= 
     let pointsF, colors, head = getPointsAndColors points color
-
     Sg.draw IndexedGeometryMode.PointList
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF      
       |> Sg.vertexAttribute DefaultSemantic.Colors colors      
@@ -89,16 +88,45 @@ module SketchingApp =
 
   let update (model : SketchingModel) (action : SketchingAction) : SketchingModel =
     match action with
+    | CreateShadowPolygon ->
+      //let model.finishedPolygons |> PList.map (fun (poly, volume) ->
+      //  match volume with
+      //    | true -> (poly, volume)
+      //    | false ->(poly, true)
+      //  )
+
+      model
+    | ClosePolygon -> 
+      match model.working with
+        | Some b -> 
+          let closedPolygon = { b with points = b.points |> PList.prepend (b.points |> PList.last) }  // add starting point to end
+          
+          let polygon3d = Polygon3d(closedPolygon.points)
+          let polygonNormal = Polygon3dExtensions.ComputeNormal polygon3d
+          Report.Line ("Polyline-Normal: {0}",  polygonNormal)
+
+          // TODO...extrude polygon3d along normal into both direction
+          //     ...limit extrusion by bounding box
+          //     ...create watertight (poly) mesh
+
+          { model with past = Some model; working = Some closedPolygon }
+        | None -> model
     | AddPoint p ->
       let b' =
         match model.working with
         | Some b -> Some { b with points = b.points |> PList.prepend p }
         | None -> Some { emptyBrush with points = p |> PList.single }
-      { model with working = b' }
+      { model with working = b'; past = Some model }
     | SetThickness a ->
       { model with selectedThickness = Numeric.update model.selectedThickness a }
-    | Undo -> model
-    | Redo -> model
+    | Undo _ -> 
+      match model.past with
+        | None -> model // if we have no past our history is empty, so just return our current model
+        | Some p -> { p with future = Some model }
+    | Redo _ -> 
+      match model.future with
+        | None -> model
+        | Some f -> f
     | ChangeColor a ->
       let c = ColorPicker.update model.selectedColor a
       let b' = model.working |> Option.map(fun b -> { b with color = c.c})
