@@ -22,16 +22,7 @@ module App =
                   | [] -> chosen []
                   | x::[] when x <> null -> x |> Aardvark.Service.Pickler.json.UnPickleOfString |> List.map Aardvark.Service.PathUtils.ofUnixStyle |> chosen
                   | _ -> chosen []//failwithf "onChooseFiles: %A" xs
-          onEvent "onchoose" [] cb   
-  
-  //let importFolders (paths : list<string>) : list<OpcFolder> = 
-  //  paths
-  //    |> List.map(fun x ->
-  //      if x |> Discover.isOpcFolder then x |> Opc
-  //      elif x |> Discover.isSurface then x |> Surface
-  //      elif x |> Discover.isSurfaceFolder then x |> SurfaceFolder
-  //      else x |> Other
-  //    )    
+          onEvent "onchoose" [] cb     
 
   let tryFileExists path = 
     if File.Exists path then Some path else None
@@ -58,24 +49,8 @@ module App =
            opcPaths = opcs
         }
       | Discover -> failwith ""
-          
-  
-  //let folderText (folder:OpcFolder) =
-  //  match folder with
-  //  | SurfaceFolder s -> s
-  //  | Surface s -> s
-  //  | Opc s -> s
-  //  | Other s -> s
-
-  //let createTag (folder:OpcFolder) =
-  //    match folder with
-  //    | SurfaceFolder _ -> div [clazz "ui middle aligned tiny label yellow"][text "SurfaceFolder"]
-  //    | Surface       _ -> div [clazz "ui middle aligned tiny label orange"][text "Surface"]
-  //    | Opc           _ -> div [clazz "ui middle aligned tiny label red"][text "Opc"]
-  //    | Other         _ -> div [clazz "ui middle aligned tiny label blue"][text "Other"]
-
+              
   let viewPaths (model:MModel) = 
-
     Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
       alist {
         for p in model.selectedPaths do
@@ -99,8 +74,7 @@ module App =
                 div [clazz "ui content"] [
                   div [clazz "ui header tiny"] [text opc]                
                 ]
-              ]
-          //]
+              ]          
       }
     )
   
@@ -115,12 +89,7 @@ module App =
               Dialogs.onChooseFiles SetPaths;
               clientEvent "onclick" ("parent.aardvark.processEvent('__ID__', 'onchoose', parent.aardvark.dialog.showOpenDialog({properties: ['openDirectory', 'multiSelections']}));") ][
               text "Select Path"
-            ]
-           // Html.SemUi.accordion "Paths" "files" true [viewPaths model]
-                                
-           // button [clazz "ui button tiny"; onClick (fun _ -> Discover)] [text "DiscoverOpcs" ]                
-  
-            //Html.SemUi.accordion "Opcs" "boxes" true [viewOpcPaths model]
+            ]           
             viewOpcPaths model
         ]
       ])
