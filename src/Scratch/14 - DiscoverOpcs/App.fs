@@ -39,14 +39,20 @@ module App =
 
         let opcs = 
           selectedPaths 
-            |> List.map Discover.superDiscovery            
+            |> List.map Discover.superDiscovery
             |> HMap.ofList
+
+        let surfacePaths = 
+          selectedPaths
+            |> List.map Discover.superDiscoveryMultipleSurfaceFolder
+            |> List.concat
 
         Log.stop()
         
         { model with 
            selectedPaths = selectedPaths |> PList.ofList
            opcPaths = opcs
+           surfaceFolder = surfacePaths
         }
       | Discover -> failwith ""
               
@@ -77,6 +83,15 @@ module App =
               ]          
       }
     )
+
+  let viewSurfacePaths (model:MModel) = 
+    Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
+      alist {
+        let! test = model.surfaceFolder
+        for surf in test do
+          yield h3 [][text (surf)]
+      }
+    )
   
   let view (model : MModel) =
     require Html.semui (
@@ -91,6 +106,11 @@ module App =
               text "Select Path"
             ]           
             viewOpcPaths model
+        ]
+        div [clazz "ui inverted segment"] [
+            h1 [clazz "ui"][text "Discovered Surface Folder"]
+            br []
+            viewSurfacePaths model
         ]
       ])
   
@@ -109,7 +129,8 @@ module App =
   let initial = 
     { 
        selectedPaths = initPaths |> PList.ofList
-       opcPaths = HMap.empty // opcPaths |> PList.ofList
+       opcPaths = HMap.empty //opcPaths |> PList.ofList
+       surfaceFolder = List.empty
     }
 
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

@@ -19,11 +19,23 @@ module Discover =
       (Directory.Exists patchPath) && 
        File.Exists(patchPath + "\\patchhierarchy.xml")
   
+  
   let toDiscoverFolder path = 
     if path |> isOpcFolder then
       OpcFolder path
     else
       Directory path
+
+  /// <summary>
+  /// checks if "path" is a valid surface folder
+  /// </summary>        
+  let isSurfaceFolder (path : string) =
+    let subdirs = Directory.GetDirectories(path)
+    match subdirs.IsEmptyOrNull() with
+        | true -> false
+        | _ -> subdirs |> Seq.forall isOpcFolder
+
+         
 
   let rec superDiscovery (input : string) :  string * list<string> =
     match input |> toDiscoverFolder with
@@ -36,17 +48,26 @@ module Discover =
       input, opcs
     | OpcFolder p -> input,[p]
 
-  /// <summary>
-  /// checks if "path" is a valid surface folder, has at least 1 opc
-  /// </summary>        
+  let rec superDiscoveryMultipleSurfaceFolder (input : string) : list<string> =
+    let isSurfFolder = input |> isSurfaceFolder
+    match isSurfFolder with
+        | true -> [input]
+        | _-> input 
+                |> Directory.EnumerateDirectories 
+                |> Seq.toList 
+                |> List.map(fun x -> superDiscoveryMultipleSurfaceFolder x ) |> List.concat
+
+  ///// <summary>
+  ///// checks if "path" is a valid surface folder
+  ///// </summary>        
   let isSurface (path : string) =
       Directory.GetDirectories(path) |> Seq.exists isOpcFolder
 
-  /// <summary>
-  /// checks if "path" is a valid surface folder
-  /// </summary>        
-  let isSurfaceFolder (path : string) =
-      Directory.GetDirectories(path) |> Seq.exists isSurface
+  ///// <summary>
+  ///// checks if "path" is a valid surface folder
+  ///// </summary>        
+  //let isSurfaceFolder (path : string) =
+  //    Directory.GetDirectories(path) |> Seq.exists isSurface
   
   let discover (p : string -> bool) path : list<string> =
     if Directory.Exists path then
