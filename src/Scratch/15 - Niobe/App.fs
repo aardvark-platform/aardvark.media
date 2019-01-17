@@ -30,6 +30,7 @@ module App =
           | Keys.LeftCtrl -> 
             Log.line "start picking"
             { model with picking = true }
+          | Keys.Enter -> { model with sketching = SketchingApp.update model.sketching (ClosePolygon) }
           | _ -> model
         | Message.KeyUp k ->
           match k with
@@ -96,6 +97,11 @@ module App =
              div[style "color:white; margin: 5px 15px 5px 5px"] [
                h3[][text "NIOBE"]
                p[][text "unified sketching"]
+               p[][text "Hold Ctrl-Left to add Point"]
+               p[][text "Press Enter to close Polygon"]
+               button[onClick (fun _ -> SketchingAction.Undo); style "background:white; color:black"][text "Undo"] |> UI.map SketchingMessage
+               button[onClick (fun _ -> SketchingAction.Redo); style "background:white; color:black"][text "Redo"] |> UI.map SketchingMessage
+               button[onClick (fun _ -> SketchingAction.CreateShadowPolygon); style "background:white; color:black"][text "Shadow Volume"] |> UI.map SketchingMessage
                SketchingApp.viewGui model.sketching |> UI.map SketchingMessage
              ]
           ]

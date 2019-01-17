@@ -7,6 +7,8 @@ open Aardvark.UI.Primitives
 
 type SketchingAction = 
   | AddPoint of V3d
+  | CreateShadowPolygon
+  | ClosePolygon
   | ChangeColor  of ColorPicker.Action
   | SetThickness of Numeric.Action
   | Undo
@@ -25,7 +27,9 @@ type SketchingModel =
     working : option<Brush>
     selectedColor : ColorInput
     selectedThickness : NumericInput
+    [<TreatAsValue>]
     future  : option<SketchingModel>
+    [<TreatAsValue>]
     past    : option<SketchingModel>
   }
 
