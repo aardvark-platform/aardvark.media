@@ -78,16 +78,19 @@ module Sg =
       |> Sg.translate' head
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
 
+  let projectedPointAndPlaneNormal points =
+    points |> Mod.map(fun x -> 
+      let plane = Plane3d()               // todo... generate plane from points
+      let extrudeNormal = plane.Normal
+      let projectedPointsOnPlane = x |> PList.map(fun p -> plane.Project p)
+      //projectedPointsOnPlane, extrudeNormal // TODO!!
+      x, V3d.ZAxis
+     )
+
   let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
     points 
      |> AList.toMod
-     |> Mod.map(fun x -> 
-        let plane = Plane3d()               // todo... generate plane from points
-        let extrudeNormal = plane.Normal
-        let projectedPointsOnPlane = x |> PList.map(fun p -> plane.Project p)
-        //(projectedPointsOnPlane, extrudeNormal) // TODO!!
-        (x, V3d.ZAxis)
-        )
+     |> projectedPointAndPlaneNormal
      |> Mod.map(fun (points, extrusionDir) -> 
        let list = points |> PList.toList
        
@@ -96,35 +99,38 @@ module Sg =
        let startPos = startPoint + extrusionDir * offset
        let startNeg = startPoint - extrusionDir * offset
        
-       list
-        |> List.pairwise    // Tuples for each edge
-        |> List.mapi (fun i (a,b) -> 
-           // Shift points 
-           let aPos = a + extrusionDir * offset
-           let bPos = b + extrusionDir * offset
-           let aNeg = a - extrusionDir * offset
-           let bNeg = b - extrusionDir * offset
-           
-           // Generate Triangles for watertight polygon
-           [
+       if list |> List.length < 3 then
+         []
+       else 
+         list
+           |> List.pairwise    // TODO PLIST.pairwise only reason to change type
+           |> List.mapi (fun i (a,b) -> 
+             // Shift points 
+             let aPos = a + extrusionDir * offset
+             let bPos = b + extrusionDir * offset
+             let aNeg = a - extrusionDir * offset
+             let bNeg = b - extrusionDir * offset
+             
+             // Generate Triangles for watertight polygon
+             [
                if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
                    yield Triangle3d(startPos, bPos, aPos), C4b.DarkBlue  // top
                    yield Triangle3d(startNeg, aNeg, bNeg), C4b.DarkGreen // bottom
-
+           
                yield Triangle3d(aPos, bNeg, aNeg), color // side1
                yield Triangle3d(aPos, bPos, bNeg), color // side2
-           ] |> List.toSeq
-           ) |> PList.ofList
-        )
+             ]
+           )|> List.reduce (fun x y -> x @ y)
+     )
 
   let drawColoredPolygon sides =
     sides 
-      |> Seq.map (fun x -> x |> IndexedGeometryPrimitives.triangles |> Sg.ofIndexedGeometry)
-      |> Sg.ofSeq
-      |> Sg.effect [
-        toEffect DefaultSurfaces.trafo
-        toEffect DefaultSurfaces.vertexColor
-      ]
+     |> IndexedGeometryPrimitives.triangles 
+     |> Sg.ofIndexedGeometry
+     |> Sg.effect [
+       toEffect DefaultSurfaces.trafo
+       toEffect DefaultSurfaces.vertexColor
+     ]
 
   let viewPolygon points (color :IMod<C4b>) =
     adaptive {
@@ -188,14 +194,7 @@ module SketchingApp =
     let brush = 
       model.working 
       |> Mod.map(function
-        | Some brush ->
-          brush.points
-          |> AList.count 
-          |> Mod.map(fun x -> 
-             if x > 2 then
-               Sg.viewPolygon brush.points brush.color           
-             else Sg.empty
-          ) |> Sg.dynamic
+        | Some brush -> Sg.viewPolygon brush.points brush.color           
         | None -> Sg.empty
         )
     brush |> Sg.dynamic
