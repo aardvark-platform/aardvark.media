@@ -18,6 +18,7 @@ type Message =
   | UpdateDockConfig of DockConfig    
   | HitSurface       of V3d
   | SketchingMessage of SketchingAction
+  | ToggleShadowVolumeVis
 
 [<DomainType>]
 type Model = 
@@ -27,5 +28,6 @@ type Model =
       dockConfig           : DockConfig
       picking              : bool
       sketching            : SketchingModel
+      shadowVolumeVis      : bool
   }
 
