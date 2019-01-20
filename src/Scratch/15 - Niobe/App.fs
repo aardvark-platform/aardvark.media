@@ -48,8 +48,14 @@ module App =
     
     let writeZFailBack =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
+
+    let writeZPassFront =
+        StencilMode(StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
     
-    let readZFail = 
+    let writeZPassBack =
+        StencilMode(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
+    
+    let read = 
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Replace, StencilCompareFunction.NotEqual, 0, 0xffu)
 
     let sceneSG = 
@@ -91,6 +97,7 @@ module App =
     // Back = Clockwise
 
     // TODO...ask harri || georg: EXT_stencil_two_side -> to render mask in one pass instead of two seperate!
+    // NV_depth_clamp enabled?
 
     let maskFrontSG sv = 
       sv
@@ -109,7 +116,7 @@ module App =
     let fillSG sv =
       sv
        |> Sg.pass areaPass
-       |> Sg.stencilMode (Mod.constant (readZFail))
+       |> Sg.stencilMode (Mod.constant (read))
        //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // backface-culling for zpass-case
        //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // active depth-test to reduce clipp area for zpass-case
        |> Sg.blendMode (Mod.constant BlendMode.Blend)
