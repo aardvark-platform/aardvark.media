@@ -67,23 +67,15 @@ module App =
             ]
 
     let shadowvolume = 
-      Sg.box (Mod.constant C4b.Blue) (Mod.constant (Box3d(V3d(0.0), V3d(0.5))))
-        |> Sg.translate 0.75 0.75 0.8 
-        |> Sg.shader {
-              do! DefaultSurfaces.trafo
-              do! DefaultSurfaces.vertexColor
-          }
+      SketchingApp.areaSg model.sketching 
+        |> Sg.map SketchingMessage 
 
     let shodowvolumeVis =
-      Sg.box (Mod.constant C4b.Blue) (Mod.constant (Box3d(V3d(0.0), V3d(0.5))))
-        |> Sg.translate 0.75 0.75 0.8 
-        |> Sg.depthTest (Mod.constant DepthTestMode.Less)   // depth test active
+      shadowvolume
+        |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+        |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise)) // only for testing
         |> Sg.onOff model.shadowVolumeVis
         |> Sg.pass RenderPass.main
-        |> Sg.shader {
-              do! DefaultSurfaces.trafo
-              do! DefaultSurfaces.constantColor (C4f(1.0f, 1.0f, 0.0f, 0.3f))
-          }
 
     let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
     let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
@@ -95,41 +87,46 @@ module App =
        |> Sg.pass linePass 
        |> Sg.depthTest (Mod.constant DepthTestMode.None)
 
-    // Front = Clockwise
-    // Back = CounterClockwise
+    // Front = CounterClockwise
+    // Back = Clockwise
 
-    // TODO...ask harri || georg: EXT_stencil_tow_side -> to render mask in one pass instead of two seperate!
+    // TODO...ask harri || georg: EXT_stencil_two_side -> to render mask in one pass instead of two seperate!
 
-    let maskFrontSG = 
-      shadowvolume
+    let maskFrontSG sv = 
+      sv
        |> Sg.pass maskPass
        |> Sg.stencilMode (Mod.constant (writeZFailFront))
-       |> Sg.cullMode (Mod.constant (CullMode.Clockwise))
-       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
-
-    let maskBackSG = 
-      shadowvolume
-       |> Sg.pass maskPass
-       |> Sg.stencilMode (Mod.constant (writeZFailBack))
        |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise))
        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
-    let areaSG =
-      shadowvolume
+    let maskBackSG sv = 
+      sv
+       |> Sg.pass maskPass
+       |> Sg.stencilMode (Mod.constant (writeZFailBack))
+       |> Sg.cullMode (Mod.constant (CullMode.Clockwise))
+       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
+
+    let fillSG sv =
+      sv
        |> Sg.pass areaPass
        |> Sg.stencilMode (Mod.constant (readZFail))
-       |> Sg.cullMode (Mod.constant CullMode.Clockwise)  // backface-culling
-       |> Sg.depthTest (Mod.constant DepthTestMode.Less) // active depth-test to reduce clipp area 
+       //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // backface-culling for zpass-case
+       //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // active depth-test to reduce clipp area for zpass-case
        |> Sg.blendMode (Mod.constant BlendMode.Blend)
        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+
+    let areaSG sv =
+      [
+        maskFrontSG sv
+        maskBackSG sv
+        fillSG sv
+      ] |> Sg.ofList
 
     let viewSg = 
       [
         sceneSG
         lineSG
-        maskFrontSG
-        maskBackSG
-        areaSG
+        areaSG shadowvolume
         shodowvolumeVis
       ] |> Sg.ofList
 

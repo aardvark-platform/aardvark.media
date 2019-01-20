@@ -7,7 +7,6 @@ open Aardvark.UI.Primitives
 
 type SketchingAction = 
   | AddPoint of V3d
-  | CreateShadowPolygon
   | ClosePolygon
   | ChangeColor  of ColorPicker.Action
   | SetThickness of Numeric.Action

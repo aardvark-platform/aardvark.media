@@ -12,7 +12,7 @@ open Aardvark.UI.Primitives
 open Niobe
 
 module Sg = 
-  let v3f (input:V3d) : V3f= input |> V3f
+  let v3f (input:V3d) : V3f = input |> V3f
 
   let pointsGetHead points =    
       points 
@@ -78,6 +78,61 @@ module Sg =
       |> Sg.translate' head
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
 
+  let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
+    points 
+     |> AList.toMod
+     |> Mod.map(fun x -> 
+        let plane = Plane3d()               // todo... generate plane from points
+        let extrudeNormal = plane.Normal
+        let projectedPointsOnPlane = x |> PList.map(fun p -> plane.Project p)
+        //(projectedPointsOnPlane, extrudeNormal) // TODO!!
+        (x, V3d.ZAxis)
+        )
+     |> Mod.map(fun (points, extrusionDir) -> 
+       let list = points |> PList.toList
+       
+       // Top and Bottom triangle-fan startPoint
+       let startPoint = list |> List.head
+       let startPos = startPoint + extrusionDir * offset
+       let startNeg = startPoint - extrusionDir * offset
+       
+       list
+        |> List.pairwise    // Tuples for each edge
+        |> List.mapi (fun i (a,b) -> 
+           // Shift points 
+           let aPos = a + extrusionDir * offset
+           let bPos = b + extrusionDir * offset
+           let aNeg = a - extrusionDir * offset
+           let bNeg = b - extrusionDir * offset
+           
+           // Generate Triangles for watertight polygon
+           [
+               if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
+                   yield Triangle3d(startPos, bPos, aPos), C4b.DarkBlue  // top
+                   yield Triangle3d(startNeg, aNeg, bNeg), C4b.DarkGreen // bottom
+
+               yield Triangle3d(aPos, bNeg, aNeg), color // side1
+               yield Triangle3d(aPos, bPos, bNeg), color // side2
+           ] |> List.toSeq
+           ) |> PList.ofList
+        )
+
+  let drawColoredPolygon sides =
+    sides 
+      |> Seq.map (fun x -> x |> IndexedGeometryPrimitives.triangles |> Sg.ofIndexedGeometry)
+      |> Sg.ofSeq
+      |> Sg.effect [
+        toEffect DefaultSurfaces.trafo
+        toEffect DefaultSurfaces.vertexColor
+      ]
+
+  let viewPolygon points (color :IMod<C4b>) =
+    adaptive {
+        let! c = color
+        let! sides = generatePolygonTriangles c 2.0 points
+        return sides |> drawColoredPolygon
+    } |> Sg.dynamic
+
 module SketchingApp =   
     
   let emptyBrush = 
@@ -88,29 +143,12 @@ module SketchingApp =
 
   let update (model : SketchingModel) (action : SketchingAction) : SketchingModel =
     match action with
-    | CreateShadowPolygon ->
-      //let model.finishedPolygons |> PList.map (fun (poly, volume) ->
-      //  match volume with
-      //    | true -> (poly, volume)
-      //    | false ->(poly, true)
-      //  )
-
-      model
     | ClosePolygon -> 
-      match model.working with
-        | Some b -> 
-          let closedPolygon = { b with points = b.points |> PList.prepend (b.points |> PList.last) }  // add starting point to end
-          
-          let polygon3d = Polygon3d(closedPolygon.points)
-          let polygonNormal = Polygon3dExtensions.ComputeNormal polygon3d
-          Report.Line ("Polyline-Normal: {0}",  polygonNormal)
-
-          // TODO...extrude polygon3d along normal into both direction
-          //     ...limit extrusion by bounding box
-          //     ...create watertight (poly) mesh
-
-          { model with past = Some model; working = Some closedPolygon }
-        | None -> model
+      let b' =
+        match model.working with
+        | Some b -> Some { b with points = b.points |> PList.prepend (b.points |> PList.last) }  // add starting point to end
+        | None -> None
+      { model with working = b'; past = Some model }
     | AddPoint p ->
       let b' =
         match model.working with
@@ -144,6 +182,22 @@ module SketchingApp =
         | None -> Sg.empty
         )
 
+    brush |> Sg.dynamic
+
+  let areaSg (model : MSketchingModel) : ISg<SketchingAction> = 
+    let brush = 
+      model.working 
+      |> Mod.map(function
+        | Some brush ->
+          brush.points
+          |> AList.count 
+          |> Mod.map(fun x -> 
+             if x > 2 then
+               Sg.viewPolygon brush.points brush.color           
+             else Sg.empty
+          ) |> Sg.dynamic
+        | None -> Sg.empty
+        )
     brush |> Sg.dynamic
 
   let dependencies = 
