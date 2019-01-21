@@ -11,6 +11,7 @@ type SketchingAction =
   | ChangeColor  of ColorPicker.Action
   | SetThickness of Numeric.Action
   | SetOffset of Numeric.Action
+  | SetAlphaArea of Numeric.Action
   | Undo
   | Redo
 
@@ -28,6 +29,7 @@ type SketchingModel =
     selectedColor : ColorInput
     selectedThickness : NumericInput
     volumeOffset : NumericInput
+    alphaArea : NumericInput
     [<TreatAsValue>]
     future  : option<SketchingModel>
     [<TreatAsValue>]
@@ -54,6 +56,15 @@ module Initial =
      format = "{0:0.00}"
     }
 
+  let alpha =
+    {
+     min = 0.0
+     max = 1.0
+     value = 0.6
+     step = 0.05
+     format = "{0:0.00}"
+    }
+
   let sketchingModel = 
     {
       working = None
@@ -62,5 +73,6 @@ module Initial =
       selectedColor = { c = C4b.VRVisGreen}
       selectedThickness = thickness
       volumeOffset = offset
+      alphaArea = alpha
     }
 

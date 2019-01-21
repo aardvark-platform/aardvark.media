@@ -159,11 +159,13 @@ module Sg =
        toEffect DefaultSurfaces.vertexColor
      ]
 
-  let viewPolygon points (color :IMod<C4b>) (offset:IMod<float>) =
+  let viewPolygon points (color:IMod<C4b>) (offset:IMod<float>) (alpha:IMod<float>) =
     adaptive {
         let! c = color
         let! o = offset
-        let! sides = generatePolygonTriangles c o points
+        let! a = alpha
+        let colorAlpha = c.ToC4d() |> (fun x -> C4d(x.R, x.G, x.B, a).ToC4b())
+        let! sides = generatePolygonTriangles colorAlpha o points
         return sides |> drawColoredPolygon
     } |> Sg.dynamic
 
@@ -193,6 +195,8 @@ module SketchingApp =
       { model with selectedThickness = Numeric.update model.selectedThickness a }
     | SetOffset a -> 
       { model with volumeOffset = Numeric.update model.volumeOffset a }
+    | SetAlphaArea a -> 
+      { model with alphaArea = Numeric.update model.alphaArea a }
     | Undo _ -> 
       match model.past with
         | None -> model // if we have no past our history is empty, so just return our current model
@@ -224,7 +228,7 @@ module SketchingApp =
     let brush = 
       model.working 
       |> Mod.map(function
-        | Some brush -> Sg.viewPolygon brush.points brush.color model.volumeOffset.value         
+        | Some brush -> Sg.viewPolygon brush.points brush.color model.volumeOffset.value model.alphaArea.value    
         | None -> Sg.empty
         )
     brush |> Sg.dynamic
@@ -242,6 +246,7 @@ module SketchingApp =
               Html.row "Color:"  [ColorPicker.view model.selectedColor |> UI.map ChangeColor ]
               Html.row "Width:"  [Numeric.view model.selectedThickness |> UI.map SetThickness]                             
               Html.row "Offset:"  [Numeric.view model.volumeOffset |> UI.map SetOffset]                             
+              Html.row "AlphaArea:" [Numeric.numericField (SetAlphaArea >> Seq.singleton) AttributeMap.empty model.alphaArea Slider]                            
           ]          
       ]
     )
