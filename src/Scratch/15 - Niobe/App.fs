@@ -49,13 +49,22 @@ module App =
     let writeZFailBack =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
 
+    let writeZFail = 
+        StencilMode(
+               IsEnabled      = true,
+               CompareFront   = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu),
+               CompareBack    = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu),
+               OperationFront = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep),
+               OperationBack  = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
+            )
+
     let writeZPassFront =
         StencilMode(StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
     
     let writeZPassBack =
         StencilMode(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
     
-    let read = 
+    let readMaskAndReset = 
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Replace, StencilCompareFunction.NotEqual, 0, 0xffu)
 
     let sceneSG = 
@@ -96,8 +105,12 @@ module App =
     // Front = CounterClockwise
     // Back = Clockwise
 
-    // TODO...ask harri || georg: EXT_stencil_two_side -> to render mask in one pass instead of two seperate!
-    // NV_depth_clamp enabled?
+    let maskSG sv = 
+      sv
+       |> Sg.pass maskPass
+       |> Sg.stencilMode (Mod.constant (writeZFail))
+       |> Sg.cullMode (Mod.constant (CullMode.None))
+       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
     let maskFrontSG sv = 
       sv
@@ -116,18 +129,19 @@ module App =
     let fillSG sv =
       sv
        |> Sg.pass areaPass
-       |> Sg.stencilMode (Mod.constant (read))
-       //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // backface-culling for zpass-case
-       //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // active depth-test to reduce clipp area for zpass-case
+       |> Sg.stencilMode (Mod.constant (readMaskAndReset))
+       //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
+       //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // for zpass -> active depth-test
        |> Sg.cullMode (Mod.constant CullMode.None)
        |> Sg.depthTest (Mod.constant DepthTestMode.None)
        |> Sg.blendMode (Mod.constant BlendMode.Blend)
-       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
     let areaSG sv =
       [
-        maskFrontSG sv
-        maskBackSG sv
+        //maskFrontSG sv    // two passes -> unnecessary
+        //maskBackSG sv     // two passes -> unnecessary
+        maskSG sv           // one pass by using EXT_stencil_two_side :)
         fillSG sv
       ] |> Sg.ofList
 
