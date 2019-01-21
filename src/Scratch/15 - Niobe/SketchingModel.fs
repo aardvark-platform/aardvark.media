@@ -10,6 +10,7 @@ type SketchingAction =
   | ClosePolygon
   | ChangeColor  of ColorPicker.Action
   | SetThickness of Numeric.Action
+  | SetOffset of Numeric.Action
   | Undo
   | Redo
 
@@ -26,6 +27,7 @@ type SketchingModel =
     working : option<Brush>
     selectedColor : ColorInput
     selectedThickness : NumericInput
+    volumeOffset : NumericInput
     [<TreatAsValue>]
     future  : option<SketchingModel>
     [<TreatAsValue>]
@@ -43,6 +45,15 @@ module Initial =
       format = "{0}"
     }
 
+  let offset =
+    {
+     min = 0.1
+     max = 20.0
+     value = 1.0
+     step = 0.1
+     format = "{0:0.00}"
+    }
+
   let sketchingModel = 
     {
       working = None
@@ -50,5 +61,6 @@ module Initial =
       past = None  
       selectedColor = { c = C4b.VRVisGreen}
       selectedThickness = thickness
+      volumeOffset = offset
     }
 

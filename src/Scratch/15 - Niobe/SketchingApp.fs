@@ -11,6 +11,8 @@ open Aardvark.UI.Primitives
 
 open Niobe
 
+open Uncodium
+
 module Sg = 
   let v3f (input:V3d) : V3f = input |> V3f
 
@@ -78,13 +80,38 @@ module Sg =
       |> Sg.translate' head
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
 
+  let planeFit (points:seq<V3d>) : Plane3d =
+    let length = points |> Seq.length |> float
+
+    let c = 
+        let sum = points |> Seq.reduce (fun x y -> V3d.Add(x,y))
+        sum / length
+
+    let pDiffAvg = points |> Seq.map(fun x -> x - c)
+    
+    let mutable matrix = M33d.Zero
+    pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
+    matrix <- matrix / length
+     
+    let mutable q = M33d.Zero
+    let mutable w = V3d.Zero
+    let passed = Eigensystems.Dsyevh3(&matrix, &q, &w)
+    
+    let n = 
+        if w.X < w.Y then
+            if w.X < w.Z then q.C0
+            else q.C2
+        else if w.Y < w.Z then q.C1
+        else q.C2
+
+    Plane3d(n, c)
+
   let projectedPointAndPlaneNormal points =
     points |> Mod.map(fun x -> 
-      let plane = Plane3d()               // todo... generate plane from points
+      let plane = planeFit x
       let extrudeNormal = plane.Normal
       let projectedPointsOnPlane = x |> PList.map(fun p -> plane.Project p)
-      //projectedPointsOnPlane, extrudeNormal // TODO!!
-      x, V3d.ZAxis
+      projectedPointsOnPlane, extrudeNormal
      )
 
   let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
@@ -114,8 +141,8 @@ module Sg =
              // Generate Triangles for watertight polygon
              [
                if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
-                   yield Triangle3d(startPos, bPos, aPos), C4b.DarkBlue  // top
-                   yield Triangle3d(startNeg, aNeg, bNeg), C4b.DarkGreen // bottom
+                   yield Triangle3d(startPos, bPos, aPos), color // top
+                   yield Triangle3d(startNeg, aNeg, bNeg), color // bottom
            
                yield Triangle3d(aPos, bNeg, aNeg), color // side1
                yield Triangle3d(aPos, bPos, bNeg), color // side2
@@ -132,10 +159,11 @@ module Sg =
        toEffect DefaultSurfaces.vertexColor
      ]
 
-  let viewPolygon points (color :IMod<C4b>) =
+  let viewPolygon points (color :IMod<C4b>) (offset:IMod<float>) =
     adaptive {
         let! c = color
-        let! sides = generatePolygonTriangles c 2.0 points
+        let! o = offset
+        let! sides = generatePolygonTriangles c o points
         return sides |> drawColoredPolygon
     } |> Sg.dynamic
 
@@ -163,6 +191,8 @@ module SketchingApp =
       { model with working = b'; past = Some model }
     | SetThickness a ->
       { model with selectedThickness = Numeric.update model.selectedThickness a }
+    | SetOffset a -> 
+      { model with volumeOffset = Numeric.update model.volumeOffset a }
     | Undo _ -> 
       match model.past with
         | None -> model // if we have no past our history is empty, so just return our current model
@@ -194,7 +224,7 @@ module SketchingApp =
     let brush = 
       model.working 
       |> Mod.map(function
-        | Some brush -> Sg.viewPolygon brush.points brush.color           
+        | Some brush -> Sg.viewPolygon brush.points brush.color model.volumeOffset.value         
         | None -> Sg.empty
         )
     brush |> Sg.dynamic
@@ -211,6 +241,7 @@ module SketchingApp =
           Html.table [  
               Html.row "Color:"  [ColorPicker.view model.selectedColor |> UI.map ChangeColor ]
               Html.row "Width:"  [Numeric.view model.selectedThickness |> UI.map SetThickness]                             
+              Html.row "Offset:"  [Numeric.view model.volumeOffset |> UI.map SetOffset]                             
           ]          
       ]
     )

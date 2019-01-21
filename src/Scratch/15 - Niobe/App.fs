@@ -17,6 +17,7 @@ module App =
   let update (model : Model) (msg : Message) =
       match msg with        
         | ToggleShadowVolumeVis -> {model with shadowVolumeVis = not model.shadowVolumeVis }
+        | ToggleLineVis -> {model with showLines = not model.showLines }
         | Camera m when model.picking = false ->
           { model with cameraState = FreeFlyController.update model.cameraState m; }
         | UpdateDockConfig cfg ->
@@ -61,7 +62,13 @@ module App =
         StencilMode(operation, compare)
 
     let sceneSG = 
-      Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
+      //Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
+      [
+          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
+          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
+          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
+          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
+      ] |> Sg.ofSeq
         |> Sg.shader {
               do! DefaultSurfaces.trafo
               do! DefaultSurfaces.simpleLighting
@@ -125,7 +132,7 @@ module App =
     let viewSg = 
       [
         sceneSG
-        lineSG
+        lineSG |> Sg.onOff model.showLines
         areaSG shadowvolume
         shodowvolumeVis
       ] |> Sg.ofList
@@ -165,6 +172,7 @@ module App =
                p[][text "Hold Ctrl-Left to add Point"]
                p[][text "Press Enter to close Polygon"]
                p[][text "ShadowVolumeVisualization "; Html.SemUi.iconCheckBox model.shadowVolumeVis ToggleShadowVolumeVis]
+               p[][text "Show Lines "; Html.SemUi.iconCheckBox model.showLines ToggleLineVis]
                button[onClick (fun _ -> SketchingAction.Undo); style "background:white; color:black"][text "Undo"] |> UI.map SketchingMessage
                button[onClick (fun _ -> SketchingAction.Redo); style "background:white; color:black"][text "Redo"] |> UI.map SketchingMessage
                //button[onClick (fun _ -> SketchingAction.CreateShadowPolygon); style "background:white; color:black"][text "Shadow Volume"] |> UI.map SketchingMessage
@@ -207,6 +215,7 @@ module App =
       picking = false
       sketching = Sketching.Initial.sketchingModel
       shadowVolumeVis = false
+      showLines = true
     }
   
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       

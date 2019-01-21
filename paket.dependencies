@@ -32,6 +32,8 @@ nuget Suave                                 ~> 2.2.1
 
 nuget Aardium                               ~> 1.0.18
 
+nuget Uncodium.Eigensystems                 ~> 1.0.1
+
 nuget Chiron
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.2.2
