@@ -120,7 +120,7 @@ module Sg =
                yield Triangle3d(aPos, bNeg, aNeg), color // side1
                yield Triangle3d(aPos, bPos, bNeg), color // side2
              ]
-           )|> List.reduce (fun x y -> x @ y)
+           )|> List.concat
      )
 
   let drawColoredPolygon sides =
