@@ -119,6 +119,8 @@ module App =
        |> Sg.stencilMode (Mod.constant (read))
        //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // backface-culling for zpass-case
        //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // active depth-test to reduce clipp area for zpass-case
+       |> Sg.cullMode (Mod.constant CullMode.None)
+       |> Sg.depthTest (Mod.constant DepthTestMode.None)
        |> Sg.blendMode (Mod.constant BlendMode.Blend)
        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
 
