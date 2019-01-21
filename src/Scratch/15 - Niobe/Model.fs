@@ -19,6 +19,7 @@ type Message =
   | HitSurface       of V3d
   | SketchingMessage of SketchingAction
   | ToggleShadowVolumeVis
+  | ToggleLineVis
 
 [<DomainType>]
 type Model = 
@@ -29,5 +30,6 @@ type Model =
       picking              : bool
       sketching            : SketchingModel
       shadowVolumeVis      : bool
+      showLines            : bool
   }
 
