@@ -43,29 +43,22 @@ module App =
   
   let view (model : MModel) =
      
-    let writeZFailFront =
-        StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
-    
-    let writeZFailBack =
-        StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
+    let writeZFail =
+        let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
+        let front   = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep)
+        let back    = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
+        StencilMode(front, compare, back, compare)
 
-    let writeZFail = 
-        StencilMode(
-               IsEnabled      = true,
-               CompareFront   = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu),
-               CompareBack    = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu),
-               OperationFront = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep),
-               OperationBack  = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
-            )
+    let writeZPass =
+        let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
+        let front   = new StencilOperation(StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
+        let back    = new StencilOperation(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
+        StencilMode(front, compare, back, compare)
 
-    let writeZPassFront =
-        StencilMode(StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
-    
-    let writeZPassBack =
-        StencilMode(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Always, 0, 0xffu)
-    
     let readMaskAndReset = 
-        StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Replace, StencilCompareFunction.NotEqual, 0, 0xffu)
+        let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
+        let operation = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Replace)
+        StencilMode(operation, compare)
 
     let sceneSG = 
       Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
@@ -112,20 +105,6 @@ module App =
        |> Sg.cullMode (Mod.constant (CullMode.None))
        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
-    let maskFrontSG sv = 
-      sv
-       |> Sg.pass maskPass
-       |> Sg.stencilMode (Mod.constant (writeZFailFront))
-       |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise))
-       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
-
-    let maskBackSG sv = 
-      sv
-       |> Sg.pass maskPass
-       |> Sg.stencilMode (Mod.constant (writeZFailBack))
-       |> Sg.cullMode (Mod.constant (CullMode.Clockwise))
-       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
-
     let fillSG sv =
       sv
        |> Sg.pass areaPass
@@ -139,9 +118,7 @@ module App =
 
     let areaSG sv =
       [
-        //maskFrontSG sv    // two passes -> unnecessary
-        //maskBackSG sv     // two passes -> unnecessary
-        maskSG sv           // one pass by using EXT_stencil_two_side :)
+        maskSG sv   // one pass by using EXT_stencil_two_side :)
         fillSG sv
       ] |> Sg.ofList
 
