@@ -64,10 +64,10 @@ module App =
     let sceneSG = 
       //Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
       [
-          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
-          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
-          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
-          Sg.sphere' 5 C4b.Red 0.75 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
+          Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
+          Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
+          Sg.sphere' 8 C4b.DarkGreen 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
+          Sg.sphere' 8 C4b.DarkMagenta 0.55 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
       ] |> Sg.ofSeq
         |> Sg.shader {
               do! DefaultSurfaces.trafo

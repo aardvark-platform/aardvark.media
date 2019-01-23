@@ -77,7 +77,7 @@ module Sg =
          DefaultSurfaces.vertexColor |> toEffect
          Shader.PointSprite.Effect
       ]
-      |> Sg.translate' head
+      |> Sg.trafo(head |> Mod.map(fun x -> Trafo3d.Translation x))
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
 
   let planeFit (points:seq<V3d>) : Plane3d =
@@ -90,7 +90,10 @@ module Sg =
     let pDiffAvg = points |> Seq.map(fun x -> x - c)
     
     let mutable matrix = M33d.Zero
-    pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
+    pDiffAvg |> Seq.iter(
+      fun x -> 
+        let mutable bla = x; 
+        (&matrix).AddOuterProduct(&bla))
     matrix <- matrix / length
      
     let mutable q = M33d.Zero
@@ -110,7 +113,7 @@ module Sg =
     points |> Mod.map(fun x -> 
       let plane = planeFit x
       let extrudeNormal = plane.Normal
-      let projectedPointsOnPlane = x |> PList.map(fun p -> plane.Project p)
+      let projectedPointsOnPlane = x |> PList.map(plane.Project)
       projectedPointsOnPlane, extrudeNormal
      )
 
