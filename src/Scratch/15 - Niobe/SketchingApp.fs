@@ -90,10 +90,7 @@ module Sg =
     let pDiffAvg = points |> Seq.map(fun x -> x - c)
     
     let mutable matrix = M33d.Zero
-    pDiffAvg |> Seq.iter(
-      fun x -> 
-        let mutable bla = x; 
-        (&matrix).AddOuterProduct(&bla))
+    pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
     matrix <- matrix / length
      
     let mutable q = M33d.Zero
