@@ -58,7 +58,7 @@ module App =
 
     let readMaskAndReset = 
         let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
-        let operation = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Replace)
+        let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
         StencilMode(operation, compare)
 
     let sceneSG = 
