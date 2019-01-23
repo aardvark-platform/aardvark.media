@@ -81,12 +81,12 @@ module App =
                 Sg.onClick HitSurface
             ]
 
-    let shadowvolume = 
+    let shadowVolume = 
       SketchingApp.areaSg model.sketching 
         |> Sg.map SketchingMessage 
 
     let shodowvolumeVis =
-      shadowvolume
+      shadowVolume
         |> Sg.depthTest (Mod.constant DepthTestMode.Less)
         |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise)) // only for testing
         |> Sg.onOff model.shadowVolumeVis
@@ -129,11 +129,17 @@ module App =
         fillSG sv
       ] |> Sg.ofList
 
+    let stress = 
+        [
+            for i in 0 .. 100 do
+                yield areaSG shadowVolume
+        ] |> Sg.ofList
+
     let viewSg = 
       [
         sceneSG
         lineSG |> Sg.onOff model.showLines
-        areaSG shadowvolume
+        stress //areaSG shadowVolume
         shodowvolumeVis
       ] |> Sg.ofList
 
@@ -141,7 +147,7 @@ module App =
      FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
        (AttributeMap.ofList [ 
          style "width: 100%; height:100%"; 
-         attribute "showFPS" "false";       // optional, default is false
+         attribute "showFPS" "true";       // optional, default is false
          attribute "useMapping" "true"
          attribute "data-renderalways" "false"
          attribute "data-samples" "4"
