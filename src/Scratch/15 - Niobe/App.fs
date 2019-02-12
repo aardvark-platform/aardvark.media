@@ -13,6 +13,8 @@ open Aardvark.UI.Primitives
 open Niobe.Sketching
 
 module App = 
+  open Niobe.Utilities
+  open System
      
   let update (model : Model) (msg : Message) =
       match msg with        
@@ -33,6 +35,10 @@ module App =
             Log.line "start picking"
             { model with picking = true }
           | Keys.Enter -> { model with sketching = SketchingApp.update model.sketching (ClosePolygon) }
+          | Keys.Space ->    
+            Log.line "[App] saving camstate"
+            model.cameraState.view |> Camera.toCameraStateLean |> Serialization.save ".\camstate" |> ignore
+            model
           | _ -> model
         | Message.KeyUp k ->
           match k with
@@ -64,10 +70,11 @@ module App =
     let sceneSG = 
       //Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
       [
-          Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
-          Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
-          Sg.sphere' 8 C4b.DarkGreen 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
-          Sg.sphere' 8 C4b.DarkMagenta 0.55 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
+          //Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
+          //Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
+          //Sg.sphere' 8 C4b.DarkGreen 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
+          //Sg.sphere' 8 C4b.DarkMagenta 0.55 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
+          Sg.box' C4b.DarkMagenta Box3d.Unit |> Sg.noEvents
       ] |> Sg.ofSeq
         |> Sg.shader {
               do! DefaultSurfaces.trafo
@@ -99,8 +106,8 @@ module App =
     let lineSG = 
       SketchingApp.viewSg model.sketching 
        |> Sg.map SketchingMessage 
-       |> Sg.pass linePass 
-       |> Sg.depthTest (Mod.constant DepthTestMode.None)
+       //|> Sg.pass linePass 
+       //|> Sg.depthTest (Mod.constant DepthTestMode.None)
 
     // Front = CounterClockwise
     // Back = Clockwise
@@ -142,7 +149,7 @@ module App =
         stress //areaSG shadowVolume
         shodowvolumeVis
       ] |> Sg.ofList
-
+    
     let renderControl =
      FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
        (AttributeMap.ofList [ 
@@ -201,12 +208,20 @@ module App =
   let threads (model : Model) = 
       ThreadPool.empty
   
-  let initialCamera = { FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 2.0) V3d.OOO V3d.OOI; }
+  let restoreCamState : CameraControllerState =
+        if System.IO.File.Exists ".\camstate" then          
+          Log.warn "[App] restoring camstate"
+          let csLight : CameraStateLean = Serialization.loadAs ".\camstate"
+          { FreeFlyController.initial with view = csLight |> Camera.fromCameraStateLean }
+        else 
+          { FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 2.0) V3d.OOO V3d.OOI; }      
+  
+  let cam = restoreCamState
 
   let initialModel : Model = 
     { 
-      cameraState        = initialCamera                                
-      threads            = FreeFlyController.threads initialCamera |> ThreadPool.map Camera                            
+      cameraState        = cam
+      threads            = FreeFlyController.threads cam |> ThreadPool.map Camera        
       dockConfig         =
         config {
             content (
