@@ -14,6 +14,7 @@
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Shaders.fs" />
+    <Compile Include="Utilities.fs" />
     <Compile Include="SketchingModel.fs" />
     <Compile Include="SketchingApp.fs" />
     <Compile Include="Model.fs" />

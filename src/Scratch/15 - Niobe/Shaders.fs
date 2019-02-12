@@ -34,14 +34,16 @@ module Shader =
         let pos = p.Value.pos
         let pxyz = pos.XYZ / pos.W
 
-        let p00 = V3d(pxyz + V3d( -s.X*0.33, -s.Y, 0.0 ))
-        let p01 = V3d(pxyz + V3d(  s.X*0.33, -s.Y, 0.0 ))
-        let p10 = V3d(pxyz + V3d( -s.X,      -s.Y*0.33, 0.0 ))
-        let p11 = V3d(pxyz + V3d(  s.X,      -s.Y*0.33, 0.0 ))
-        let p20 = V3d(pxyz + V3d( -s.X,       s.Y*0.33, 0.0 ))
-        let p21 = V3d(pxyz + V3d(  s.X,       s.Y*0.33, 0.0 ))
-        let p30 = V3d(pxyz + V3d( -s.X*0.33,  s.Y, 0.0 ))
-        let p31 = V3d(pxyz + V3d(  s.X*0.33,  s.Y, 0.0 ))
+        let offset = (uniform?depthOffset) / pos.W
+
+        let p00 = V3d(pxyz + V3d( -s.X*0.33, -s.Y,      offset ))
+        let p01 = V3d(pxyz + V3d(  s.X*0.33, -s.Y,      offset ))
+        let p10 = V3d(pxyz + V3d( -s.X,      -s.Y*0.33, offset ))
+        let p11 = V3d(pxyz + V3d(  s.X,      -s.Y*0.33, offset ))
+        let p20 = V3d(pxyz + V3d( -s.X,       s.Y*0.33, offset ))
+        let p21 = V3d(pxyz + V3d(  s.X,       s.Y*0.33, offset ))
+        let p30 = V3d(pxyz + V3d( -s.X*0.33,  s.Y,      offset ))
+        let p31 = V3d(pxyz + V3d(  s.X*0.33,  s.Y,      offset ))
 
         yield { p.Value with pos = V4d(p00 * pos.W, pos.W); tc = V2d (0.33, 0.00); }
         yield { p.Value with pos = V4d(p01 * pos.W, pos.W); tc = V2d (0.66, 0.00); }

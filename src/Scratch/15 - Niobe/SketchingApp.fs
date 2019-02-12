@@ -67,7 +67,7 @@ module Sg =
 
     pointsF, colors, head
 
-  let viewColoredPoints points (color : IMod<C4b>)= 
+  let viewColoredPoints points (offset : IMod<float>) (color : IMod<C4b>)= 
     let pointsF, colors, head = getPointsAndColors points color
     Sg.draw IndexedGeometryMode.PointList
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF      
@@ -79,6 +79,7 @@ module Sg =
       ]
       |> Sg.trafo(head |> Mod.map(fun x -> Trafo3d.Translation x))
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
+      |> Sg.uniform "depthOffset" offset
 
   let planeFit (points:seq<V3d>) : Plane3d =
     let length = points |> Seq.length |> float
@@ -195,6 +196,8 @@ module SketchingApp =
       { model with selectedThickness = Numeric.update model.selectedThickness a }
     | SetOffset a -> 
       { model with volumeOffset = Numeric.update model.volumeOffset a }
+    | SetDepthOffset a -> 
+      { model with depthOffset = Numeric.update model.depthOffset a }
     | SetAlphaArea a -> 
       { model with alphaArea = Numeric.update model.alphaArea a }
     | Undo _ -> 
@@ -216,7 +219,7 @@ module SketchingApp =
       |> Mod.map(function
         | Some brush -> 
           [ 
-            Sg.viewColoredPoints brush.points brush.color
+            Sg.viewColoredPoints brush.points model.depthOffset.value  brush.color
             Sg.viewLines brush.points brush.color model.selectedThickness.value
           ] |> Sg.ofSeq
         | None -> Sg.empty
@@ -246,6 +249,7 @@ module SketchingApp =
               Html.row "Color:"  [ColorPicker.view model.selectedColor |> UI.map ChangeColor ]
               Html.row "Width:"  [Numeric.view model.selectedThickness |> UI.map SetThickness]                             
               Html.row "Offset:"  [Numeric.view model.volumeOffset |> UI.map SetOffset]                             
+              Html.row "DOffset:"  [Numeric.view model.depthOffset |> UI.map SetDepthOffset]                 
               Html.row "AlphaArea:" [Numeric.numericField (SetAlphaArea >> Seq.singleton) AttributeMap.empty model.alphaArea Slider]                            
           ]          
       ]

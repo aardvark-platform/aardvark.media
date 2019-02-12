@@ -11,6 +11,7 @@ type SketchingAction =
   | ChangeColor  of ColorPicker.Action
   | SetThickness of Numeric.Action
   | SetOffset of Numeric.Action
+  | SetDepthOffset of Numeric.Action
   | SetAlphaArea of Numeric.Action
   | Undo
   | Redo
@@ -19,7 +20,7 @@ type SketchingAction =
 type Brush =
   {
     points : plist<V3d>
-    color  : C4b
+    color  : C4b    
   }
 
 [<DomainType>]
@@ -29,6 +30,7 @@ type SketchingModel =
     selectedColor : ColorInput
     selectedThickness : NumericInput
     volumeOffset : NumericInput
+    depthOffset : NumericInput
     alphaArea : NumericInput
     [<TreatAsValue>]
     future  : option<SketchingModel>
@@ -56,6 +58,15 @@ module Initial =
      format = "{0:0.00}"
     }
 
+  let depthOffset =
+    {
+     min = -1.0
+     max = 0.0
+     value = -0.001
+     step = 0.001
+     format = "{0:0.000}"
+    }
+
   let alpha =
     {
      min = 0.0
@@ -73,6 +84,7 @@ module Initial =
       selectedColor = { c = C4b.VRVisGreen}
       selectedThickness = thickness
       volumeOffset = offset
+      depthOffset = depthOffset
       alphaArea = alpha
     }
 
