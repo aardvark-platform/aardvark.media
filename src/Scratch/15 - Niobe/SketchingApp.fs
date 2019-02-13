@@ -14,6 +14,8 @@ open Niobe
 open Uncodium
 
 module Sg = 
+  open Niobe.Shader
+
   let v3f (input:V3d) : V3f = input |> V3f
 
   let pointsGetHead points =    
@@ -33,24 +35,25 @@ module Sg =
         //|> Array.pairwise
         //|> Array.map (fun (a,b) -> (new Line3d(a,b), color))
 
-  let drawColoredEdges (width:IMod<float>) edges = 
+  let drawColoredEdges (offset:IMod<float>) (width:IMod<float>) edges = 
     edges
       |> IndexedGeometryPrimitives.lines
       |> Sg.ofIndexedGeometry
       |> Sg.effect [
         toEffect DefaultSurfaces.trafo
         toEffect DefaultSurfaces.vertexColor
-        toEffect DefaultSurfaces.thickLine
+        toEffect LineRendering.thickLine
       ]
       |> Sg.uniform "LineWidth" width
+      |> Sg.uniform "DepthOffset" offset
 
-  let viewLines points (color : IMod<C4b>) (width : IMod<float>) =           
+  let viewLines points (color : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
     let head = pointsGetHead points
     adaptive {
       let! c = color
       let! h = head
       let! edges = toColoredEdges h c points |> AList.toMod
-      return edges |> PList.toList |> drawColoredEdges width
+      return edges |> PList.toList |> drawColoredEdges offset width
     } |> Sg.dynamic
     
   let getPointsAndColors points (color : IMod<C4b>) = 
@@ -220,7 +223,7 @@ module SketchingApp =
         | Some brush -> 
           [ 
             Sg.viewColoredPoints brush.points model.depthOffset.value  brush.color
-            Sg.viewLines brush.points brush.color model.selectedThickness.value
+            Sg.viewLines brush.points brush.color model.depthOffset.value model.selectedThickness.value
           ] |> Sg.ofSeq
         | None -> Sg.empty
         )
