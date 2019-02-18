@@ -838,7 +838,7 @@ if (!aardvark.addReferences) {
     aardvark.addReferences = function (refs, cont) {
         function acc(i) {
 
-            if (i >= refs.length) {
+			if (i >= refs.length) {
                 return cont;
             }
             else {
@@ -848,26 +848,43 @@ if (!aardvark.addReferences) {
                 var url = ref.url;
                 if (kind === "script") {
                     if (!aardvark.referencedScripts[name]) {
-                        console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
                         aardvark.referencedScripts[name] = true;
                         return function () {
-                            var script = document.createElement("script");
-                            script.setAttribute("src", url);
-                            script.onload = acc(i + 1);
-                            document.head.appendChild(script);
+							var script = document.createElement("script");
+							var cc = function (evt) {
+								console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
+								acc(i+1)();
+							};
+							var err = function (evt) {
+								console.warn("[Aardvark] failed to referenced script \"" + name + "\" (" + url + ")");
+								acc(i + 1)();
+							};
+							script.src = url;
+							script.async = true;
+							script.addEventListener("load", cc);
+							script.addEventListener("error", err);
+							document.getElementsByTagName("script")[0].parentNode.appendChild(script);
                         };
                     }
                     else return acc(i + 1);
                 }
                 else {
                     if (!aardvark.referencedStyles[name]) {
-                        console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
                         aardvark.referencedStyles[name] = true;
                         return function () {
-                            var script = document.createElement("link");
+							var script = document.createElement("link");
+							var cc = function (evt) {
+								console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
+								acc(i + 1)();
+							};
+							var err = function (evt) {
+								console.warn("[Aardvark] failed to reference stylesheet \"" + name + "\" (" + url + ")");
+								acc(i + 1)();
+							};
+							script.addEventListener("load", cc);
+							script.addEventListener("error", err);
                             script.setAttribute("rel", "stylesheet");
-                            script.setAttribute("href", url);
-                            script.onload = acc(i + 1);
+							script.setAttribute("href", url);
                             document.head.appendChild(script);
                         };
                     }
@@ -891,15 +908,15 @@ if (!aardvark.openFileDialog) {
 
     var refs =
         [
-            { kind: "stylesheet", name: "semui-css", url: "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.css" },
-            { kind: "script", name: "semui-js", url: "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.js" },
+            { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
+			{ kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
             { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
             { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
             { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
             { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
             { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
             { kind: "stylesheet", name: "aardfs-css", url: aardvark.getScriptRelativeUrl("http", "aardfs.css") },
-            { kind: "script", name: "aardfs-js", url: aardvark.getScriptRelativeUrl("http", "aardfs.js") },
+            { kind: "script", name: "aardfs-js", url: aardvark.getScriptRelativeUrl("http", "aardfs.js") }
         ]
 
     $(document).ready(function () {
