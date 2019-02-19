@@ -38,6 +38,7 @@ module App =
           | Keys.Space ->    
             Log.line "[App] saving camstate"
             model.cameraState.view |> Camera.toCameraStateLean |> Serialization.save ".\camstate" |> ignore
+            model.sketching.working |> Serialization.save ".\working" |> ignore
             model
           | _ -> model
         | Message.KeyUp k ->
@@ -209,14 +210,22 @@ module App =
       ThreadPool.empty
   
   let restoreCamState : CameraControllerState =
-        if System.IO.File.Exists ".\camstate" then          
-          Log.warn "[App] restoring camstate"
-          let csLight : CameraStateLean = Serialization.loadAs ".\camstate"
-          { FreeFlyController.initial with view = csLight |> Camera.fromCameraStateLean }
-        else 
-          { FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 2.0) V3d.OOO V3d.OOI; }      
+    if System.IO.File.Exists ".\camstate" then          
+      Log.warn "[App] restoring camstate"
+      let csLight : CameraStateLean = Serialization.loadAs ".\camstate"
+      { FreeFlyController.initial with view = csLight |> Camera.fromCameraStateLean }
+    else 
+      { FreeFlyController.initial with view = CameraView.lookAt (V3d.III * 2.0) V3d.OOO V3d.OOI; }      
   
   let cam = restoreCamState
+
+  let sketching = 
+    if System.IO.File.Exists ".\working" then          
+      Log.warn "[App] restoring working"
+      let working : option<Brush> = Serialization.loadAs ".\working"
+      { Sketching.Initial.sketchingModel with working = working }
+    else 
+      Sketching.Initial.sketchingModel    
 
   let initialModel : Model = 
     { 
@@ -234,7 +243,7 @@ module App =
             useCachedConfig true
         }
       picking = false
-      sketching = Sketching.Initial.sketchingModel
+      sketching = sketching
       shadowVolumeVis = false
       showLines = true
     }

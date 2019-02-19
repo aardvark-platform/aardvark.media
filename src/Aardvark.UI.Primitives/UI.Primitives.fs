@@ -257,8 +257,8 @@ module Html =
                 ]
             )
 
-        let iconToggle (dings : IMod<bool>) onIcon offIcon action =
-          let toggleIcon = dings |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
+        let iconToggle (state : IMod<bool>) onIcon offIcon action =
+          let toggleIcon = state |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
         
           let attributes = 
             amap {
