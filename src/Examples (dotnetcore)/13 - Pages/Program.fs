@@ -5,6 +5,7 @@ open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
+open System.Threading
 
 open Suave
 open Suave.WebPart
@@ -38,6 +39,7 @@ let main argv =
         MutableApp.toWebPart' runtime false instance
         Suave.Files.browseHome
     ]  
+
 
     Aardium.run {
         url "http://localhost:4321/"

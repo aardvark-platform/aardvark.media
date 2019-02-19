@@ -20,6 +20,9 @@ let update (model : Model) (msg : Message) =
             { model with cameraState = FreeFlyController.update model.cameraState m }
         | CenterScene -> 
             { model with cameraState = initialCamera }
+        | SetFiles s -> 
+            printfn "open file: %A" s
+            model
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -47,6 +50,8 @@ let view (model : MModel) =
             text "Hello 3D"
             br []
             button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
+            br []
+            button (Html.IO.fileDialog (fun s -> SetFiles [s])) [text "abc"]
             br []
             renderControl
         ]

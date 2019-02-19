@@ -44,6 +44,10 @@ let update (model : Model) (msg : Message) =
                 | None -> model
 
           
+let deps = [
+    { name = "failing"; kind = Stylesheet; url = "notfound"}
+    { name = "failing2"; kind = Script; url = "notfound"}
+]
 
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
@@ -112,11 +116,13 @@ let view (model : MModel) =
                 ]
 
             | Some "meta" ->
-                body [] [
-                    button [onClick (fun _ -> Undo)] [text "Undo"]
-                    br []
-                    Incremental.div AttributeMap.empty <| AList.map text model.files
-                ]
+                require deps (
+                    body [] [
+                        button [onClick (fun _ -> Undo)] [text "Undo"]
+                        br []
+                        Incremental.div AttributeMap.empty <| AList.map text model.files
+                    ]
+                )
 
             | Some other ->
                 let msg = sprintf "Unknown page: %A" other
