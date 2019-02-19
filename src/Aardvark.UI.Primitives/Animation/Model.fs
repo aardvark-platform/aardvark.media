@@ -134,4 +134,4 @@ module CameraAnimations =
 
             Some (state,view)
           else None
-    }
+    }  
