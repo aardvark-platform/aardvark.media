@@ -41,11 +41,13 @@ module Sg =
       |> Sg.ofIndexedGeometry
       |> Sg.effect [
         toEffect DefaultSurfaces.trafo
+        //toEffect PointSprite.specialTrafo
+        toEffect LineRendering.thickLine2
         toEffect DefaultSurfaces.vertexColor
-        toEffect LineRendering.thickLine
+       // toEffect PointSprite.colorDepth        
       ]
       |> Sg.uniform "LineWidth" width
-      |> Sg.uniform "DepthOffset" offset
+      |> Sg.uniform "depthOffset" offset
 
   let viewLines points (color : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
     let head = pointsGetHead points
@@ -76,9 +78,11 @@ module Sg =
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF      
       |> Sg.vertexAttribute DefaultSemantic.Colors colors      
       |> Sg.effect [
+       //  PointSprite.specialTrafo    |> toEffect
          DefaultSurfaces.trafo |> toEffect
-         DefaultSurfaces.vertexColor |> toEffect
          Shader.PointSprite.Effect
+         DefaultSurfaces.vertexColor |> toEffect
+        // PointSprite.colorDepth |> toEffect
       ]
       |> Sg.trafo(head |> Mod.map(fun x -> Trafo3d.Translation x))
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
