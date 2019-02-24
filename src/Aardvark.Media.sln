@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27428.2027
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "22 - Orbit", "Examples (dotnetcore)\22 - Orbit\22 - Orbit.fsproj", "{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "21 - SimpleAsync", "Examples (dotnetcore)\21 - SimpleAsync\21 - SimpleAsync.fsproj", "{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "15 - Niobe", "Scratch\15 - Niobe\15 - Niobe.fsproj", "{2AD67055-824F-4159-92ED-D6806EC1ABC1}"
@@ -114,6 +116,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Release|Any CPU.Build.0 = Release|Any CPU
 		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -291,6 +297,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{2AD67055-824F-4159-92ED-D6806EC1ABC1} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{66E573F8-BAAF-4382-BE7A-CD6582197937} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
