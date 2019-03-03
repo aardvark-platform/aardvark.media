@@ -1,10 +1,14 @@
 ﻿var urlCreator = window.URL;
 
-if (!document.aardvark) {
-    console.debug("[Aardvark] creating aardvark-value");
-    document.aardvark = {};
-}
 var aardvark = document.aardvark;
+if (!aardvark) {
+    console.debug("[Aardvark] creating aardvark-value");
+    aardvark = {};
+    document.aardvark = aardvark;
+    //top.aardvark = aardvark;
+    //window.aardvark = aardvark;
+}
+
 
 if (!aardvark.newguid) {
     aardvark.newguid = function() {
@@ -902,101 +906,105 @@ if (!aardvark.addReferences) {
 
 if (!aardvark.openFileDialog) {
 
-    aardvark.openFileDialog = function () {
-        alert("Aardvark openFileDialog is not yet available");
-    };
+    if (top.aardvark.openFileDialog) {
+        aardvark.openFileDialog = top.aardvark.openFileDialog;
+    }
+    else {
+        aardvark.openFileDialog = function () {
+            alert("Aardvark openFileDialog is not yet available");
+        };
 
-    var refs =
-        [
-            { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
-			{ kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
-            { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
-            { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
-            { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
-            { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
-            { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
-            { kind: "stylesheet", name: "aardfs-css", url: aardvark.getScriptRelativeUrl("http", "aardfs.css") },
-            { kind: "script", name: "aardfs-js", url: aardvark.getScriptRelativeUrl("http", "aardfs.js") }
-        ]
+        var refs =
+            [
+                { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
+                { kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
+                { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
+                { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
+                { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
+                { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
+                { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
+                { kind: "stylesheet", name: "aardfs-css", url: aardvark.getScriptRelativeUrl("http", "aardfs.css") },
+                { kind: "script", name: "aardfs-js", url: aardvark.getScriptRelativeUrl("http", "aardfs.js") }
+            ]
 
-    $(document).ready(function () {
-
-
-        aardvark.addReferences(refs, function () {
-            var modal = document.getElementById("filebrowser-modal");
-            if (!modal) {
-                var root = document.createElement("div");
-                root.setAttribute("id", "filebrowser-modal");
-                root.setAttribute("class", "ui modal");
-                $(root).html(
-                    "<div class='content'>" +
-                    "	<div id='filebrowser-browser'>" +
-                    "	</div>" +
-                    "</div>" +
-                    "	<div class='actions'>" +
-                    "		<div class='ui approve button'>OK</div>" +
-                    "		<div class='ui cancel button'>Cancel</div>" +
-                    "	</div>" +
-                    "</div>"
-                );
-
-                document.body.appendChild(root);
+        $(document).ready(function () {
 
 
-                modal = root;
+            aardvark.addReferences(refs, function () {
+                var modal = document.getElementById("filebrowser-modal");
+                if (!modal) {
+                    var root = document.createElement("div");
+                    root.setAttribute("id", "filebrowser-modal");
+                    root.setAttribute("class", "ui modal");
+                    $(root).html(
+                        "<div class='content'>" +
+                        "	<div id='filebrowser-browser'>" +
+                        "	</div>" +
+                        "</div>" +
+                        "	<div class='actions'>" +
+                        "		<div class='ui approve button'>OK</div>" +
+                        "		<div class='ui cancel button'>Cancel</div>" +
+                        "	</div>" +
+                        "</div>"
+                    );
 
-            }
+                    document.body.appendChild(root);
 
-            console.debug("[FS] filebrowser installed")
-            aardvark.openFileDialog = function (openFileConfig, callback) {
 
-                // if only one argument
-                if (!callback) {
-                    callback = openFileConfig;
-                    openFileConfig = {};
+                    modal = root;
+
                 }
 
-                if (!openFileConfig.mode) openFileConfig.mode = "file";
-                if (!openFileConfig.startPath) openFileConfig.startPath = "/";
-                if (!openFileConfig.title) openFileConfig.title = "Open File";
-                if (!openFileConfig.filters) openFileConfig.filters = [];
-                if (!openFileConfig.activeFilter) openFileConfig.activeFilter = -1;
-                if (!openFileConfig.allowMultiple) openFileConfig.allowMultiple = false;
+                console.debug("[FS] filebrowser installed")
+                aardvark.openFileDialog = function (openFileConfig, callback) {
 
-                var config =
-                {
-                    url: aardvark.getScriptRelativeUrl("http", "fs"),
-                    caching: true,
-                    folderSelect: (openFileConfig.mode === "folder"),
-                    fileSelect: (openFileConfig.mode === "file"),
-                    hideFiles: false,
-                    onselect: function (path) {  },
-                    submit: function (path) { callback([path]); $(modal).modal('hide'); },
-                    cancel: function () { console.log("[FS] cancel"); }
-                };
-
-                var browser = new FileBrowser(config);
-                var $browser = $('#filebrowser-browser');
-                $browser.filebrowser(browser);
-                $browser.height(screen.height - 600);
-
-                $(modal).modal({
-                    keyboardShortcuts: true,
-                    blurring: true,
-                    onDeny: function () {
-                        browser.cancel();
-                        return true;
-                    },
-                    onApprove: function () {
-                        browser.submit();
+                    // if only one argument
+                    if (!callback) {
+                        callback = openFileConfig;
+                        openFileConfig = {};
                     }
-                });
-                $(modal).modal('show');
 
-            };
+                    if (!openFileConfig.mode) openFileConfig.mode = "file";
+                    if (!openFileConfig.startPath) openFileConfig.startPath = "/";
+                    if (!openFileConfig.title) openFileConfig.title = "Open File";
+                    if (!openFileConfig.filters) openFileConfig.filters = [];
+                    if (!openFileConfig.activeFilter) openFileConfig.activeFilter = -1;
+                    if (!openFileConfig.allowMultiple) openFileConfig.allowMultiple = false;
+
+                    var config =
+                    {
+                        url: aardvark.getScriptRelativeUrl("http", "fs"),
+                        caching: true,
+                        folderSelect: (openFileConfig.mode === "folder"),
+                        fileSelect: (openFileConfig.mode === "file"),
+                        hideFiles: false,
+                        onselect: function (path) { },
+                        submit: function (path) { callback([path]); $(modal).modal('hide'); },
+                        cancel: function () { console.log("[FS] cancel"); }
+                    };
+
+                    var browser = new FileBrowser(config);
+                    var $browser = $('#filebrowser-browser');
+                    $browser.filebrowser(browser);
+                    $browser.height(screen.height - 600);
+
+                    $(modal).modal({
+                        keyboardShortcuts: true,
+                        blurring: true,
+                        onDeny: function () {
+                            browser.cancel();
+                            return true;
+                        },
+                        onApprove: function () {
+                            browser.submit();
+                        }
+                    });
+                    $(modal).modal('show');
+
+                };
+            });
         });
-    });
-
+    }
 }
 
 class Channel {
