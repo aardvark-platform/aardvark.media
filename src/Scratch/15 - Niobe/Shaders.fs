@@ -63,14 +63,14 @@ module Shader =
           }
       }
 
+       // let off : float = uniform?depthOffset
+        
+       // //let pOff  = v.vPos + V4d.OOIO * off
+       //// let pvp   = uniform.ProjTrafo * v.viewPos //* pOff
+
     let internal colorDepth (v : MegaVertex) =
       fragment {
-        let off : float = uniform?depthOffset
-        
-        //let pOff  = v.vPos + V4d.OOIO * off
-       // let pvp   = uniform.ProjTrafo * v.viewPos //* pOff
         let depth = 0.5 * v.viewPos.Z / v.viewPos.W + 0.5
-
         return { color = v.c; d = depth }
       }
       
