@@ -9,6 +9,11 @@ if (!aardvark) {
     //window.aardvark = aardvark;
 }
 
+if (!aardvark.promise)
+{
+    aardvark.promise = new Promise(function (succ, fail) { succ(); });
+}
+
 
 if (!aardvark.newguid) {
     aardvark.newguid = function() {
@@ -839,67 +844,72 @@ class Renderer {
 }
 
 if (!aardvark.addReferences) {
-    aardvark.addReferences = function (refs, cont) {
-        function acc(i) {
+    aardvark.addReferences = function (refs, realCont) {
+        
+        aardvark.promise = aardvark.promise.then(function () {
+            return new Promise(function (s, e) {
+                var cont = function () { realCont(); s(); };
 
-			if (i >= refs.length) {
-                return cont;
-            }
-            else {
-                var ref = refs[i];
-                var kind = ref.kind;
-                var name = ref.name;
-                var url = ref.url;
-                if (kind === "script") {
-                    if (!aardvark.referencedScripts[name]) {
-                        aardvark.referencedScripts[name] = true;
-                        return function () {
-							var script = document.createElement("script");
-							var cc = function (evt) {
-								console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
-								acc(i+1)();
-							};
-							var err = function (evt) {
-								console.warn("[Aardvark] failed to referenced script \"" + name + "\" (" + url + ")");
-								acc(i + 1)();
-							};
-							script.src = url;
-							script.async = true;
-							script.addEventListener("load", cc);
-							script.addEventListener("error", err);
-							document.getElementsByTagName("script")[0].parentNode.appendChild(script);
-                        };
+                function acc(i) {
+                    if (i >= refs.length) {
+                        return cont;
                     }
-                    else return acc(i + 1);
-                }
-                else {
-                    if (!aardvark.referencedStyles[name]) {
-                        aardvark.referencedStyles[name] = true;
-                        return function () {
-							var script = document.createElement("link");
-							var cc = function (evt) {
-								console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
-								acc(i + 1)();
-							};
-							var err = function (evt) {
-								console.warn("[Aardvark] failed to reference stylesheet \"" + name + "\" (" + url + ")");
-								acc(i + 1)();
-							};
-							script.addEventListener("load", cc);
-							script.addEventListener("error", err);
-                            script.setAttribute("rel", "stylesheet");
-							script.setAttribute("href", url);
-                            document.head.appendChild(script);
-                        };
+                    else {
+                        var ref = refs[i];
+                        var kind = ref.kind;
+                        var name = ref.name;
+                        var url = ref.url;
+                        if (kind === "script") {
+                            if (!aardvark.referencedScripts[name]) {
+                                aardvark.referencedScripts[name] = true;
+                                return function () {
+                                    var script = document.createElement("script");
+                                    var cc = function (evt) {
+                                        console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    var err = function (evt) {
+                                        console.warn("[Aardvark] failed to referenced script \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    script.src = url;
+                                    script.async = true;
+                                    script.addEventListener("load", cc);
+                                    script.addEventListener("error", err);
+                                    document.getElementsByTagName("script")[0].parentNode.appendChild(script);
+                                };
+                            }
+                            else return acc(i + 1);
+                        }
+                        else {
+                            if (!aardvark.referencedStyles[name]) {
+                                aardvark.referencedStyles[name] = true;
+                                return function () {
+                                    var script = document.createElement("link");
+                                    var cc = function (evt) {
+                                        console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    var err = function (evt) {
+                                        console.warn("[Aardvark] failed to reference stylesheet \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    script.addEventListener("load", cc);
+                                    script.addEventListener("error", err);
+                                    script.setAttribute("rel", "stylesheet");
+                                    script.setAttribute("href", url);
+                                    document.head.appendChild(script);
+                                };
+                            }
+                            else return acc(i + 1);
+                        }
+
                     }
-                    else return acc(i + 1);
                 }
-
-            }
-        }
-
-        var real = acc(0);
-        real();
+                var real = acc(0);
+                real();
+            });
+        });
     };
 }
 
@@ -1135,22 +1145,40 @@ if (!aardvark.connect) {
             doPing();
         };
 
+        var exectutedCode = "";
+
         eventSocket.onmessage = function (m) {
             var c = m.data.substring(0, 1);
             if (c === "x") {
                 var data = m.data.substring(1, m.data.length);
-                eval("{\r\n" + data + "\r\n}");
+                aardvark.promise = aardvark.promise.then(function () {
+                    try {
+                        //exectutedCode = exectutedCode + "\r\n\r\n\r\n" + data;
+                        eval("{\r\n" + data + "\r\n}");
+                    } catch (e) {
+                        console.warn("could not execute event message with exn " + e + ":\n" + data);
+                        debugger;
+                    }
+                });
             }
             else {
                 var data = m.data;
                 // { targetId : string; channel : string; data : 'a }
                 var message = JSON.parse(data);
                 var channelName = message.targetId + "_" + message.channel;
-                var channel = aardvark.channels[channelName];
 
-                if (channel && channel.onmessage) {
-                    channel.onmessage(message.data);
-                }
+                aardvark.promise = aardvark.promise.then(function () {
+                    try{
+                        var channel = aardvark.channels[channelName];
+
+                        if (channel && channel.onmessage) {
+                            channel.onmessage(message.data);
+                        }
+                    } catch (e) {
+                        console.warn("channel onmessage faulted: " + e);
+                        debugger;
+                    }
+                });
             }
         };
 
