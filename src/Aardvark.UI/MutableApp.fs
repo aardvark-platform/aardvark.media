@@ -213,6 +213,13 @@ module MutableApp =
                                                         Log.start "update"
                                                         for l in lines do Log.line "%s" l
                                                         Log.stop()
+                                                    match Config.dumpJsCodeFile with
+                                                        | None -> ()
+                                                        | Some file -> 
+                                                            try
+                                                                System.IO.File.AppendAllText(file,code)
+                                                            with e -> 
+                                                                printfn "%A" e
                                                 )
 
                                                 send (Text.Encoding.UTF8.GetBytes("x" + code))
