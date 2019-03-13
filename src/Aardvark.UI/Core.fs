@@ -219,7 +219,8 @@ module AttributeValue =
             | "class", AttributeValue.String l, AttributeValue.String r -> 
                 AttributeValue.String (l + " " + r)
 
-
+            | "style", AttributeValue.String l, AttributeValue.String r -> 
+                AttributeValue.String (l + "; " + r)
 
             | _ -> 
                 r
@@ -534,6 +535,7 @@ and [<AbstractClass>] DomNode<'msg>() =
         x
 
     abstract member Visit : DomNodeVisitor<'msg, 'r> -> 'r
+    abstract member NodeTag : Option<string>
 
     member x.Clone() =
         x.Visit {
@@ -603,6 +605,8 @@ and [<AbstractClass>] DomNode<'msg>() =
 and EmptyNode<'msg>() =
     inherit DomNode<'msg>()
     override x.Visit v = v.Empty x
+    override x.NodeTag = None
+
 
 and InnerNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, children : alist<DomNode<'msg>>) =
     inherit DomNode<'msg>()
@@ -611,6 +615,7 @@ and InnerNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap
     member x.Attributes = attributes
     member x.Children = children
     override x.Visit v = v.Inner x
+    override x.NodeTag = Some tag
 
 and VoidNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>) =
     inherit DomNode<'msg>()
@@ -618,6 +623,7 @@ and VoidNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
     member x.Namespace = ns
     member x.Attributes = attributes
     override x.Visit v = v.Void x
+    override x.NodeTag = Some tag
 
 and SceneNode<'msg>(attributes : AttributeMap<'msg>, scene : Aardvark.Service.Scene, getClientState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState) =
     inherit DomNode<'msg>()
@@ -625,6 +631,7 @@ and SceneNode<'msg>(attributes : AttributeMap<'msg>, scene : Aardvark.Service.Sc
     member x.Scene = scene
     member x.GetClientState i = getClientState i
     override x.Visit v = v.Scene x
+    override x.NodeTag = None
 
 and TextNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, text : IMod<string>) =
     inherit DomNode<'msg>()
@@ -633,22 +640,26 @@ and TextNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
     member x.Attributes = attributes
     member x.Text = text
     override x.Visit v = v.Text x
+    override x.NodeTag = Some tag
 
 and PageNode<'msg>(content : Request -> DomNode<'msg>) =
     inherit DomNode<'msg>()
     member x.Content = content
     override x.Visit v = v.Page x
+    override x.NodeTag = None
 
 and SubAppNode<'model, 'inner, 'outer>(app : IApp<'model, 'inner, 'outer>) =
     inherit DomNode<'outer>()
     member x.App : IApp<'model, 'inner, 'outer> = app
     override x.Visit v = v.SubApp x
+    override x.NodeTag = None
 
 and MapNode<'inner, 'outer>(mapping : 'inner -> 'outer, node : DomNode<'inner>) =
     inherit DomNode<'outer>()
     member x.Mapping : 'inner -> 'outer = mapping
     member x.Node : DomNode<'inner> = node
     override x.Visit v = v.Map x
+    override x.NodeTag = node.NodeTag
     
 and DomNodeVisitor<'msg, 'r> =
     abstract member Empty                   : EmptyNode<'msg> -> 'r

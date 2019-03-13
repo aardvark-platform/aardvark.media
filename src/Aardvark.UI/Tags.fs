@@ -476,6 +476,13 @@ module HigherOrderTags =
 
 module Generic =
 
+    type AttributeCreator =
+        static member inline AttributeMap(attributes : AttributeMap<'msg>) = attributes
+        static member inline AttributeMap(attributes : list<string * AttributeValue<'msg>>) = AttributeMap.ofList attributes
+        static member inline AttributeMap(attributes : list<string * IMod<Option<AttributeValue<'msg>>>>) = AttributeMap.ofListCond attributes
+        
+
+
     type Creator =
         // Children and dynamic attributes
         static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : alist<DomNode<'msg>>) =
@@ -586,6 +593,9 @@ module Generic =
         static member inline Void(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>) =
             DomNode.Void(tag, ns, AttributeMap.ofList attributes)
 
+    let inline private attributes (dummy : ^a) (attrs : ^b) =
+        ((^a or ^b) : (static member AttributeMap : ^b -> AttributeMap<'msg>) (attrs))
+    
 
     let inline private node (dummy : ^a) (tagName : ^b) (attrs : ^c) (children : ^d) =
         ((^a or ^b or ^c or ^d) : (static member Node : ^b * ^c * ^d -> DomNode<'msg>) (tagName, attrs, children))
@@ -599,6 +609,8 @@ module Generic =
     let inline private leafNS (dummy : ^a) (tagName : ^b) (ns : ^c) (attrs : ^d)=
         ((^a or ^b or ^c or ^d) : (static member Node : ^b * ^c * ^d -> DomNode<'msg>) (tagName, ns, attrs))
         
+    let inline att a = attributes Unchecked.defaultof<AttributeCreator> a
+
     let inline elem tag atts children = node Unchecked.defaultof<Creator> tag atts children
     let inline voidElem tag atts = leaf Unchecked.defaultof<Creator> tag atts
     
