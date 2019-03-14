@@ -66,17 +66,22 @@ type App<'model, 'mmodel, 'msg> =
         and doit(msgs : list<Message<'msg>>) =
             lock l (fun () ->
                 if Config.shouldTimeUnpersistCalls then Log.startTimed "[Aardvark.UI] update/adjustThreads/unpersist"
-                for msg in msgs do
-                    for msg in msg.msgs do
-                        let newState = app.update state.Value msg
-                        let newThreads = app.threads newState
-                        adjustThreads newThreads
-                        transact (fun () ->
-                            state.Value <- newState
-                            app.unpersist.update mstate newState
-                        )
-                    // if somebody awaits message processing, trigger it
-                    msg.processed |> Option.iter (fun mri -> mri.Set())
+
+                if not (List.isEmpty msgs) then
+                    transact (fun () ->
+                        for msg in msgs do
+                            for msg in msg.msgs do
+                                let newState = app.update state.Value msg
+                                let newThreads = app.threads newState
+                                adjustThreads newThreads
+                        
+                                state.Value <- newState
+                                app.unpersist.update mstate newState
+                        
+                            // if somebody awaits message processing, trigger it
+                            msg.processed |> Option.iter (fun mri -> mri.Set())
+                    )
+
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
             for m in msgs do 

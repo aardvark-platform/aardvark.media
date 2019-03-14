@@ -38,6 +38,7 @@
     <Compile Include="Server.fs" />
     <EmbeddedResource Include="resources\fonts.css" />
     <None Include="paket.references" />
+    <EmbeddedResource Include="resources\essentialstuff.js" />
     <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAUi-qJCY.woff2" />
     <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAXC-q.woff2" />
     <EmbeddedResource Include="resources\S6u9w4BMUTPHh6UVSwaPGR_p.woff2" />

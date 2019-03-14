@@ -30950,7 +30950,12 @@ a.ui.card:hover,
   -webkit-transition: color 0.1s ease;
   transition: color 0.1s ease;
 }
-
+.ui.inverted.checkbox label,
+.ui.inverted.checkbox + label {
+    color: rgba(255, 255, 255, 0.85);
+    -webkit-transition: color 0.1s ease;
+    transition: color 0.1s ease;
+}
 /* Outside */
 
 .ui.checkbox + label {
@@ -30974,6 +30979,11 @@ a.ui.card:hover,
 .ui.checkbox label:hover,
 .ui.checkbox + label:hover {
   color: rgba(0, 0, 0, 0.8);
+}
+
+.ui.inverted.checkbox label:hover,
+.ui.inverted.checkbox + label:hover {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 /*--------------
@@ -31349,6 +31359,13 @@ a.ui.card:hover,
   padding-left: 4.5rem;
   color: rgba(0, 0, 0, 0.87);
 }
+.ui.inverted.toggle.checkbox .box,
+.ui.inverted.toggle.checkbox label {
+    min-height: 1.5rem;
+    padding-left: 4.5rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
 
 .ui.toggle.checkbox label {
   padding-top: 0.15em;
@@ -31425,6 +31442,10 @@ a.ui.card:hover,
 .ui.toggle.checkbox input:checked ~ .box,
 .ui.toggle.checkbox input:checked ~ label {
   color: rgba(0, 0, 0, 0.95) !important;
+}
+.ui.inverted.toggle.checkbox input:checked ~ .box,
+.ui.inverted.toggle.checkbox input:checked ~ label {
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .ui.toggle.checkbox input:checked ~ .box:before,
