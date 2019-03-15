@@ -65,37 +65,36 @@ let view (model : MModel) =
                                          ]) 
                     (viewScene model)
 
+
     body [style "background-color: white"] [
-        require Html.semui (
-            div [style "display: flex; flex-direction: row; width: 100%; height: 100%" ] [
-                div [style "width:70%; height:100%"] [
-                    renderControl
-                ]
-                div [style "width:30%;height:100%;"] [
-                    button [onClick (fun _ -> CenterScene)] [text "center scene"]
-                    button [onClick (fun _ -> JumpToOrigin)] [text "Animated center"]
-                    br []
-                    br []
-                    Simple.labeledFloatInput "lookAtMouseSensitiviy (LMB)" 0.0 1.0 0.001 SetLookAtSensitivity model.cameraState.freeFlyConfig.lookAtMouseSensitivity
-                    Simple.labeledFloatInput "lookAtConstant"        0.0 1.0 0.001 SetLookAtConstant    model.cameraState.freeFlyConfig.lookAtConstant
-                    Simple.labeledFloatInput "lookAtDamping  "       0.0 100.0 1.0 SetLookAtSmoothing   model.cameraState.freeFlyConfig.lookAtDamping 
-                                                                                               
-                    Simple.labeledFloatInput "panMouseSensitivity (MMB)"   0.0 1.0 0.001 SetPanSensitiviy     model.cameraState.freeFlyConfig.panMouseSensitivity
-                    Simple.labeledFloatInput "panConstant"           0.0 1.0 0.001 SetPanConstant       model.cameraState.freeFlyConfig.panConstant
-                    Simple.labeledFloatInput "panDamping"            0.0 10.0 0.10 SetPanSmoothing      model.cameraState.freeFlyConfig.panDamping 
-                                                                                                
-                    Simple.labeledFloatInput "dollyMouseSensitivity (RMB)" 0.0 1.0 0.001 SetDollySensitiviy   model.cameraState.freeFlyConfig.dollyMouseSensitivity
-                    Simple.labeledFloatInput "dollyConstant"         0.0 1.0 0.001 SetDollyConstant     model.cameraState.freeFlyConfig.dollyConstant
-                    Simple.labeledFloatInput "dollyDamping"          0.0 10.00 0.1 SetDollySmoothing    model.cameraState.freeFlyConfig.dollyDamping 
-                                                                                               
-                    Simple.labeledFloatInput "zooomAtMouseSensitiviy (wheel)" 0.0 5.0 0.001 SetZoomSensitiviy    model.cameraState.freeFlyConfig.zoomMouseWheelSensitivity
-                    Simple.labeledFloatInput "zooomAtConstant"        0.0 1.0 0.001 SetZoomConstant      model.cameraState.freeFlyConfig.zoomConstant
-                    Simple.labeledFloatInput "zooomAtDamping"         0.0 10.0 0.10 SetZoomSmoothing     model.cameraState.freeFlyConfig.zoomDamping 
-                                                                                               
-                    Simple.labeledFloatInput "moveSensitivity (wasd)"       0.0 10.0 0.01 SetMoveSensitivity   model.cameraState.freeFlyConfig.moveSensitivity
-                ]
+        div [style "display: flex; flex-direction: row; width: 100%; height: 100%" ] [
+            div [style "width:70%; height:100%"] [
+                renderControl
             ]
-        )
+            div [style "width:30%;height:100%;"] [
+                button [onClick (fun _ -> CenterScene)] [text "center scene"]
+                button [onClick (fun _ -> JumpToOrigin)] [text "Animated center"]
+                br []
+                br []
+                Simple.labeledFloatInput "lookAtMouseSensitiviy (LMB)" 0.0 1.0 0.001 SetLookAtSensitivity model.cameraState.freeFlyConfig.lookAtMouseSensitivity
+                Simple.labeledFloatInput "lookAtConstant"        0.0 1.0 0.001 SetLookAtConstant    model.cameraState.freeFlyConfig.lookAtConstant
+                Simple.labeledFloatInput "lookAtDamping  "       0.0 100.0 1.0 SetLookAtSmoothing   model.cameraState.freeFlyConfig.lookAtDamping 
+                                                                                               
+                Simple.labeledFloatInput "panMouseSensitivity (MMB)"   0.0 1.0 0.001 SetPanSensitiviy     model.cameraState.freeFlyConfig.panMouseSensitivity
+                Simple.labeledFloatInput "panConstant"           0.0 1.0 0.001 SetPanConstant       model.cameraState.freeFlyConfig.panConstant
+                Simple.labeledFloatInput "panDamping"            0.0 10.0 0.10 SetPanSmoothing      model.cameraState.freeFlyConfig.panDamping 
+                                                                                                
+                Simple.labeledFloatInput "dollyMouseSensitivity (RMB)" 0.0 1.0 0.001 SetDollySensitiviy   model.cameraState.freeFlyConfig.dollyMouseSensitivity
+                Simple.labeledFloatInput "dollyConstant"         0.0 1.0 0.001 SetDollyConstant     model.cameraState.freeFlyConfig.dollyConstant
+                Simple.labeledFloatInput "dollyDamping"          0.0 10.00 0.1 SetDollySmoothing    model.cameraState.freeFlyConfig.dollyDamping 
+                                                                                               
+                Simple.labeledFloatInput "zooomAtMouseSensitiviy (wheel)" 0.0 5.0 0.001 SetZoomSensitiviy    model.cameraState.freeFlyConfig.zoomMouseWheelSensitivity
+                Simple.labeledFloatInput "zooomAtConstant"        0.0 1.0 0.001 SetZoomConstant      model.cameraState.freeFlyConfig.zoomConstant
+                Simple.labeledFloatInput "zooomAtDamping"         0.0 10.0 0.10 SetZoomSmoothing     model.cameraState.freeFlyConfig.zoomDamping 
+                                                                                               
+                Simple.labeledFloatInput "moveSensitivity (wasd)"       0.0 10.0 0.01 SetMoveSensitivity   model.cameraState.freeFlyConfig.moveSensitivity
+            ]
+        ]
     ]
 
 let threads (model : Model) = 
