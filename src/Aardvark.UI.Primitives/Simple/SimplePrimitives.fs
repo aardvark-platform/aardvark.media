@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.UI.Primitives
 
+open Aardvark.Base
 open Aardvark.UI
 open Aardvark.Base.Incremental
 open Aardvark.UI.Generic
@@ -40,6 +41,13 @@ module SimplePrimitives =
         {
             regex       : Option<string>
             maxLength   : Option<int>
+        }
+        
+        
+    type DropdownConfig =
+        {
+            allowEmpty  : bool
+            placeholder : string
         }
 
     module TextConfig =
@@ -138,7 +146,6 @@ module SimplePrimitives =
                 AttributeMap.ofList [
                     clazz "ui input"
                     onEvent' "data-event" [] (function (str :: _) -> Seq.delay (fun () -> Seq.singleton (update (Pickler.unpickleOfJson str))) | _ -> Seq.empty)
-            
                 ]
 
             let boot =
@@ -148,11 +155,13 @@ module SimplePrimitives =
                         yield "var validate = function(a) { if(/" + rx + "/.test(a)) { return a; } else { return null; }};"
                     | None ->
                         yield "var validate = function(a) { return a });"
-
-                    yield "var $__ID__ = $('#__ID__ > input');"
-                    yield "var old = $__ID__.val();"
-                    yield "$__ID__.change(function(e) { var v = validate(e.target.value); if(v) { old = v; aardvark.processEvent('__ID__', 'data-event', v); } else { $__ID__.val(old); } });"
-                    yield "valueCh.onmessage = function(v) {  old = v.value; $__ID__.val(v.value); };"
+                        
+                    yield "var $self = $('#__ID__');"
+                    yield "var $input = $('#__ID__ > input');"
+                    yield "var old = $input.val();"
+                    yield "$input.on('input', function(e) { var v = validate(e.target.value); if(v) { $self.removeClass('error'); } else { $self.addClass('error'); } });"
+                    yield "$input.change(function(e) { var v = validate(e.target.value); if(v) { old = v; aardvark.processEvent('__ID__', 'data-event', v); } else { $input.val(old); $self.removeClass('error'); } });"
+                    yield "valueCh.onmessage = function(v) {  old = v.value; $input.val(v.value); };"
                 ]
                        
             require semui (
@@ -172,6 +181,76 @@ module SimplePrimitives =
                 )
             )
 
+        let dropdown (cfg : DropdownConfig) (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : IMod<Option<'a>>) (update : Option<'a> -> 'msg) =
+
+            let mutable id = 0
+
+            let valuesWithKeys = 
+                values 
+                |> AMap.map (fun k v -> 
+                    let hash = System.Threading.Interlocked.Increment(&id) |> string
+                    hash, v
+                )
+
+            let m =
+                valuesWithKeys
+                |> AMap.toMod
+                |> Mod.map (HMap.map (fun k (v,_) -> v))
+                |> Mod.map (fun m -> m, HMap.ofSeq (Seq.map (fun (a,b) -> b,a) m))
+
+            let update (k : string) =
+                let _fw, bw = Mod.force m
+                selected.MarkOutdated()
+                match HMap.tryFind k bw with
+                | Some v -> update (Some v)
+                | None -> update None
+
+            let selection = 
+                selected |> Mod.bind (function Some v -> m |> Mod.map (fun (fw,_) -> HMap.tryFind v fw) | None -> Mod.constant None) 
+
+            let myAtts =
+                AttributeMap.ofList [
+                    clazz "ui dropdown"
+                    onEvent' "data-event" [] (function (str :: _) -> Seq.delay (fun () -> Seq.singleton (update (Pickler.unpickleOfJson str))) | _ -> Seq.empty)
+                ]
+
+            let initial =
+                match selection.GetValue() with
+                | Some v -> sprintf ".dropdown('set selected', '%s');" v
+                | None -> ".dropdown('clear');"
+
+
+            let boot =
+                String.concat ";" [
+                    "var $self = $('#__ID__');"
+                    "$self.dropdown({ onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
+                    "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
+                ]
+
+
+            require semui (
+                onBoot' ["selectedCh", Mod.channel (Mod.map thing selection)] boot (
+                    Incremental.div (AttributeMap.union atts myAtts) (
+                        alist {
+                            yield input [ attribute "type" "hidden" ]
+                            yield i [ clazz "dropdown icon" ] []
+                            yield div [ clazz "default text"] cfg.placeholder
+                            yield
+                                Incremental.div (AttributeMap.ofList [clazz "menu"]) (
+                                    alist {
+                                        if cfg.allowEmpty then
+                                            yield div [ clazz "item"; attribute "data-value" "" ] [ div [ style "color: rgba(191, 191, 191, 0.87) !important;" ] [ i [ clazz "x icon" ] []; text "None" ] ]
+                                        for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortBy (snd >> fst) do
+                                            yield div [ clazz "item"; attribute "data-value" value] [node]
+                                    }
+                                )
+                        }
+                    )
+                )
+            )
+
+
+
 
     let inline checkbox atts (state : IMod<bool>) (toggle : 'msg) content =
         Incremental.checkbox (att atts) state toggle [label [] content]
@@ -181,6 +260,10 @@ module SimplePrimitives =
 
     let inline textbox (cfg : TextConfig) atts (state : IMod<string>) (update : string -> 'msg) =
         Incremental.textbox cfg (att atts) state update 
+        
+    let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : IMod<Option<'a>>) (update : Option<'a> -> 'msg) =
+        Incremental.dropdown cfg (att atts) values selected update
+
 
 
 
