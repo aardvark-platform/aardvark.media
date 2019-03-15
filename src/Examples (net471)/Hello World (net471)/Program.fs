@@ -32,7 +32,7 @@ let main argv =
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
-    ]  
+    ] |> ignore
 
     use form = new Form()
     form.Width <- 800

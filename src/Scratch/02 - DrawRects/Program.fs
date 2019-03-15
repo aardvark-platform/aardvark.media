@@ -29,7 +29,7 @@ let main argv =
         Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
         Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
         Suave.Files.browseHome
-    ]  
+    ] |> ignore  
 
     Aardium.run {
         url "http://localhost:4321/"

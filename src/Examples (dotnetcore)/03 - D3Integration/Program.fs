@@ -23,7 +23,7 @@ let main argv =
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
-    ]  
+    ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"

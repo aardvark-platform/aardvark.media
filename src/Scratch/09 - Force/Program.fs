@@ -21,18 +21,18 @@ let main argv =
     let instance = App.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
-    // startServerLocalhost is one of the convinience functions which sets up 
+    // startServerLocalhost is one of the convenience functions which sets up 
     // a server without much boilerplate.
     // there is also WebPart.startServer and WebPart.runServer. 
     // look at their implementation here: https://github.com/aardvark-platform/aardvark.media/blob/master/src/Aardvark.Service/Suave.fs#L10
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
-    // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
+    // the non localhost variant runs in 127.0.0.1 which enables remote access (e.g. via your mobile phone)
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
         Suave.Files.browseHome
-    ]  
+    ] |> ignore   
 
     Aardium.run {
         url "http://localhost:4321/"

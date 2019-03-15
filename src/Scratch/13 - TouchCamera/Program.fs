@@ -33,7 +33,7 @@ let main argv =
         MutableApp.toWebPart' app.Runtime false instance
         //Suave.Files.browseHome
         //supa
-    ]   
+    ]  |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
