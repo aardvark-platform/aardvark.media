@@ -22,7 +22,7 @@ let main argv =
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
-    ]  
+    ] |> ignore
      
     
     Aardium.run {
