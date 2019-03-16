@@ -927,6 +927,7 @@ if (!aardvark.openFileDialog) {
         var refs =
             [
                 { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
+                { kind: "stylesheet", name: "semui-overrides-css", url: "./rendering/semantic-overrides.css" },
                 { kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
                 { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
                 { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },

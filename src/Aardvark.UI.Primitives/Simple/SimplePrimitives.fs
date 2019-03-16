@@ -19,6 +19,7 @@ module SimplePrimitives =
     let private semui = 
         [ 
             { kind = Stylesheet; name = "semui"; url = "./rendering/semantic.css" }
+            { kind = Stylesheet; name = "semui-overrides"; url = "./rendering/semantic-overrides.css" }
             { kind = Script; name = "semui"; url = "./rendering/semantic.js" }
             { kind = Script; name = "essential"; url = "./rendering/essentialstuff.js" }
         ]      
@@ -197,6 +198,11 @@ module SimplePrimitives =
         
             let selected = if selected.IsConstant then Mod.custom (fun t -> selected.GetValue t) else selected
 
+            let compare =
+                if typeof<System.IComparable>.IsAssignableFrom typeof<'a> then Some Unchecked.compare<'a>
+                else None
+
+
             let mutable id = 0
 
             let valuesWithKeys = 
@@ -236,11 +242,15 @@ module SimplePrimitives =
 
 
             let boot =
+                let clear = if cfg.allowEmpty then "true" else "false"
                 String.concat ";" [
                     "var $self = $('#__ID__');"
-                    "$self.dropdown({ onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
+                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
                     "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
                 ]
+
+
+
 
 
             require semui (
@@ -253,10 +263,13 @@ module SimplePrimitives =
                             yield
                                 Incremental.div (AttributeMap.ofList [clazz "menu"]) (
                                     alist {
-                                        if cfg.allowEmpty then
-                                            yield div [ clazz "item"; attribute "data-value" "" ] [ div [ style "color: rgba(191, 191, 191, 0.87) !important;" ] [ i [ clazz "x icon" ] []; text "None" ] ]
-                                        for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortBy (snd >> fst) do
-                                            yield div [ clazz "item"; attribute "data-value" value] [node]
+                                        match compare with
+                                        | Some cmp -> 
+                                            for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortWith (fun (a,_) (b,_) -> cmp a b) do
+                                                yield div [ clazz "item"; attribute "data-value" value] [node]
+                                        | None ->
+                                            for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortBy (snd >> fst) do
+                                                yield div [ clazz "item"; attribute "data-value" value] [node]
                                     }
                                 )
                         }

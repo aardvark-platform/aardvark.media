@@ -1,92 +1,93 @@
 ﻿<html>
-    <head>
-        <title>Aardvark rocks \o/</title>
-        <script src="./jquery-3-3-1.js"></script>
-        <link rel="stylesheet" href="./semantic.css" />
-        <script src="./semantic.js"></script>
-        <script>
+<head>
+    <title>Aardvark rocks \o/</title>
+    <script src="./jquery-3-3-1.js"></script>
+    <link rel="stylesheet" href="./semantic.css" />
+    <link rel="stylesheet" href="./semantic-overrides.css" />
+    <script src="./semantic.js"></script>
+    <script>
 
-            function splitPath(path) {
-                var dirPart, filePart;
-                path.replace(/^(.*\/)?([^/]*)$/, function (_, dir, file) {
-                    dirPart = dir; filePart = file;
-                });
-                return { dirPart: dirPart, filePart: filePart };
-            }
-
-            var getRelativeUrl = function (protocol, relativePath) {
-                var location = window.location;
-                var path = splitPath(location.pathname);
-                var dir = path.dirPart;
-
-                if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
-                if (!dir.startsWith("/")) dir = "/" + dir;
-                if (!dir.endsWith("/")) dir = dir + "/";
-
-                var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
-                console.warn(path);
-
-                return path;
-            }
-
-            $(document).ready(function () {
-                var url = getRelativeUrl("http", "stats.json");
-
-                function updateStats(cont) {
-                    var request = new XMLHttpRequest();
-                    request.open("GET", url, true);
-                    request.setRequestHeader('Access-Control-Allow-Headers', '*');
-                    request.setRequestHeader('Access-Control-Allow-Origin', '*');
-
-                    request.onload = function (e) {
-                        var entries = JSON.parse(request.responseText);
-                        cont(entries);
-                    };
-
-                    request.onerror = function (e) {
-                        cont([]);
-                    };
-
-                    request.send(null);
-                }
-
-                var template = $('#template table').html();
-
-                function display() {
-                    updateStats(function (entries) {
-
-                        var code = ""
-
-                        for (var i = 0; i < entries.length; i++) {
-                            var e = entries[i];
-
-                            code +=
-                                template
-                                    .replace("__NAME__", e.name)
-                                    .replace("__GUID__", e.session)
-                                    .replace("__FRAME_COUNT__", e.frameCount)
-                                    .replace("__FRAME_TIME__", e.frameTime.toFixed(2) + "s")
-                                    .replace("__FPS__", (e.frameCount / e.frameTime).toFixed(2) + "fps")
-                                    .replace("__INVALIDATION__", (100.0 * e.invalidateTime / e.frameTime).toFixed(2) + "%")
-                                    .replace("__COMPRESSION__", (100.0 * e.compressTime / e.frameTime).toFixed(2) + "%")
-                                    .replace("__RENDERING__", (100.0 * e.renderTime / e.frameTime).toFixed(2) + "%");
-
-                        }
-
-
-                        $('#stats').html(code);
-
-                        setTimeout(display, 500);
-                    });
-                }
-
-                display();
-
+        function splitPath(path) {
+            var dirPart, filePart;
+            path.replace(/^(.*\/)?([^/]*)$/, function (_, dir, file) {
+                dirPart = dir; filePart = file;
             });
+            return { dirPart: dirPart, filePart: filePart };
+        }
 
-        </script>
+        var getRelativeUrl = function (protocol, relativePath) {
+            var location = window.location;
+            var path = splitPath(location.pathname);
+            var dir = path.dirPart;
 
-    </head>
+            if (relativePath.startsWith("/")) relativePath = relativePath.substring(1);
+            if (!dir.startsWith("/")) dir = "/" + dir;
+            if (!dir.endsWith("/")) dir = dir + "/";
+
+            var path = protocol + "://" + window.location.host + path.dirPart + relativePath;
+            console.warn(path);
+
+            return path;
+        }
+
+        $(document).ready(function () {
+            var url = getRelativeUrl("http", "stats.json");
+
+            function updateStats(cont) {
+                var request = new XMLHttpRequest();
+                request.open("GET", url, true);
+                request.setRequestHeader('Access-Control-Allow-Headers', '*');
+                request.setRequestHeader('Access-Control-Allow-Origin', '*');
+
+                request.onload = function (e) {
+                    var entries = JSON.parse(request.responseText);
+                    cont(entries);
+                };
+
+                request.onerror = function (e) {
+                    cont([]);
+                };
+
+                request.send(null);
+            }
+
+            var template = $('#template table').html();
+
+            function display() {
+                updateStats(function (entries) {
+
+                    var code = ""
+
+                    for (var i = 0; i < entries.length; i++) {
+                        var e = entries[i];
+
+                        code +=
+                            template
+                                .replace("__NAME__", e.name)
+                                .replace("__GUID__", e.session)
+                                .replace("__FRAME_COUNT__", e.frameCount)
+                                .replace("__FRAME_TIME__", e.frameTime.toFixed(2) + "s")
+                                .replace("__FPS__", (e.frameCount / e.frameTime).toFixed(2) + "fps")
+                                .replace("__INVALIDATION__", (100.0 * e.invalidateTime / e.frameTime).toFixed(2) + "%")
+                                .replace("__COMPRESSION__", (100.0 * e.compressTime / e.frameTime).toFixed(2) + "%")
+                                .replace("__RENDERING__", (100.0 * e.renderTime / e.frameTime).toFixed(2) + "%");
+
+                    }
+
+
+                    $('#stats').html(code);
+
+                    setTimeout(display, 500);
+                });
+            }
+
+            display();
+
+        });
+
+    </script>
+
+</head>
     <body style="height: initial">
         <table class="ui celled striped table inverted" style="margin: 6pt;" id="stats">
         </table>
