@@ -76,18 +76,21 @@ let view (model : MModel) =
                     attributes [clazz "ui inverted input"]
                     value model.value
                     update SetValue
-                    step 0.01
-                    largeStep 0.1
-                    min Constant.E
-                    max Constant.Pi
+                    step 0.1
+                    largeStep 1.0
+                    min 1.0
+                    max 100.0
                 }
                 //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
+            ]
+            div [ clazz "item" ] [ 
+                slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
             ]
             div [ clazz "item" ] [ 
                 textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
             ]
             div [ clazz "item" ] [ 
-                dropdown { placeholder = "Thingy"; allowEmpty = true } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
+                dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
             ]
         ]
     ]

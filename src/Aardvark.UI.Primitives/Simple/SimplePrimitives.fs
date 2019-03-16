@@ -30,7 +30,12 @@ module SimplePrimitives =
 
     let inline private thing a = { value = a }
 
-
+    type SliderConfig =
+        {
+            min         : float
+            max         : float
+            step        : float
+        }
     type NumericConfig =
         {
             min         : float
@@ -38,6 +43,7 @@ module SimplePrimitives =
             smallStep   : float
             largeStep   : float
         }
+
 
     type TextConfig =
         {
@@ -141,6 +147,42 @@ module SimplePrimitives =
                                 ])
                         }
                     )
+                )
+            )
+
+        
+        let slider (cfg : SliderConfig) (atts : AttributeMap<'msg>) (value : IMod<float>) (update : float -> 'msg) =
+
+            let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
+            let inline pickle (v : float) = v.ToString(System.Globalization.CultureInfo.InvariantCulture)
+
+            let inline unpickle (v : string) = 
+                match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
+                | (true, v) -> Some v
+                | _ -> None
+                
+            let update v =
+                value.MarkOutdated()
+                update v
+
+            let myAtts =
+                AttributeMap.ofList [
+                    "class", AttributeValue.String "ui slider"
+                    onEvent' "data-event" [] (function (str :: _) -> str |> unpickle |> Option.toList |> Seq.map update | _ -> Seq.empty)
+                ]
+
+
+            let boot =
+                String.concat ";" [
+                    "var $__ID__ = $('#__ID__');"
+                    sprintf "var cfg = { decimalPlaces: 10, min: %s, max: %s, step: %s, start: %s, onMove: function(v) { aardvark.processEvent('__ID__', 'data-event', v);} };" (pickle cfg.min) (pickle cfg.max) (pickle cfg.step) (pickle (Mod.force value))
+                    sprintf "$__ID__.slider(cfg);"  
+                    "valueCh.onmessage = function(v) { $__ID__.slider('update position', v.value); };"
+                ]
+    
+            require semui (
+                onBoot' ["valueCh", Mod.channel (Mod.map thing value)] boot (
+                    Incremental.div (AttributeMap.union atts myAtts) AList.empty
                 )
             )
 
@@ -249,10 +291,6 @@ module SimplePrimitives =
                     "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
                 ]
 
-
-
-
-
             require semui (
                 onBoot' ["selectedCh", Mod.channel (Mod.map thing selection)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
@@ -316,18 +354,18 @@ module SimplePrimitives =
 
         
             [<CustomOperation("step")>]
-            member inline x.Step((a,v,cfg,m), s) = (a,v, { cfg with smallStep = s }, m)
+            member inline x.Step((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.smallStep = s }, m)
          
          
             [<CustomOperation("largeStep")>]
-            member inline x.LargeStep((a,v,cfg,m), s) = (a,v, { cfg with largeStep = s }, m)
+            member inline x.LargeStep((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.largeStep = s }, m)
 
          
             [<CustomOperation("min")>]
-            member inline x.Min((a,v,cfg,m), s) = (a,v, { cfg with min = s }, m)
+            member inline x.Min((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.min = s }, m)
          
             [<CustomOperation("max")>]
-            member inline x.Max((a,v,cfg,m), s) = (a,v, { cfg with max = s }, m)
+            member inline x.Max((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.max = s }, m)
 
 
             member inline x.Run((a,v,cfg,msg)) =
@@ -399,6 +437,9 @@ module SimplePrimitives =
         
     let inline numeric (cfg : NumericConfig) atts (state : IMod<float>) (update : float -> 'msg) =
         Incremental.numeric cfg (att atts) state update 
+        
+    let inline slider (cfg : SliderConfig) atts (state : IMod<float>) (update : float -> 'msg) =
+        Incremental.slider cfg (att atts) state update 
 
     let inline textbox (cfg : TextConfig) atts (state : IMod<string>) (update : string -> 'msg) =
         Incremental.textbox cfg (att atts) state update 
