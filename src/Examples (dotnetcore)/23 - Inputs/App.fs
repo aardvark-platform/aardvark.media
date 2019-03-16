@@ -25,7 +25,7 @@ let rand = System.Random()
 let update (model : Model) (msg : Message) =
     match msg with
         | ToggleActive ->
-            { model with active = not model.active; alt = if model.active then None else model.alt }
+            { model with active = not model.active }
             //if rand.NextDouble() > 0.5 then
             //    { model with active = not model.active }
             //else
@@ -42,9 +42,11 @@ let update (model : Model) (msg : Message) =
             else
                 model
         | SetAlternative a ->
-            Log.warn "%A" a
-            { model with alt = a }
-
+            if model.active then
+                Log.warn "%A" a
+                { model with alt = a }
+            else 
+                model
 //let values =
 //    AMap.ofList [
 //        A, div [] [ text "A"; i [ clazz "icon rocket" ] []; i [ clazz "icon thermometer three quarters" ] [] ]
@@ -58,19 +60,34 @@ let view (model : MModel) =
     div [clazz "ui inverted segment"; style "width: 100%; height: 100%"] [
         div [ clazz "ui vertical inverted menu" ] [
             div [ clazz "item" ] [ 
-                checkbox [clazz "ui inverted checkbox"] model.active ToggleActive "Is the thing active?"
+                simplecheckbox { 
+                    attributes [clazz "ui inverted checkbox"]
+                    state model.active
+                    toggle ToggleActive
+                    content [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ] 
+                }
+                //checkbox [clazz "ui inverted checkbox"] model.active ToggleActive [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
             ]
             div [ clazz "item" ] [ 
                 checkbox [clazz "ui inverted toggle checkbox"] model.active ToggleActive "Is the thing active?"
             ]
             div [ clazz "item" ] [ 
-                numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
+                simplenumeric {
+                    attributes [clazz "ui inverted input"]
+                    value model.value
+                    update SetValue
+                    step 0.01
+                    largeStep 0.1
+                    min Constant.E
+                    max Constant.Pi
+                }
+                //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
             ]
             div [ clazz "item" ] [ 
-                textbox { regex = Some "^[a-z]*$"; maxLength = Some 4 } [clazz "ui inverted input"] model.name SetName
+                textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
             ]
             div [ clazz "item" ] [ 
-                dropdown { placeholder = "Alternative"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
+                dropdown { placeholder = "Thingy"; allowEmpty = true } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
             ]
         ]
     ]

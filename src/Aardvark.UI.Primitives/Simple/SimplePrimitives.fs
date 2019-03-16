@@ -8,6 +8,7 @@ open Aardvark.UI.Generic
 [<AutoOpen>]
 module SimplePrimitives =
 
+
     let private bootCheckBox =
         String.concat "" [
             "$('#__ID__').checkbox().checkbox('__INITIALSTATE__');"
@@ -54,9 +55,13 @@ module SimplePrimitives =
         let empty = { regex = None; maxLength = None }
 
 
+
+
     module Incremental =
     
         let checkbox (atts : AttributeMap<'msg>) (state : IMod<bool>) (toggle : 'msg) (l : list<DomNode<'msg>>) =
+            let state = if state.IsConstant then Mod.custom (fun t -> state.GetValue t) else state
+
             let ev =
                 {
                     clientSide = fun _ _ -> ""
@@ -92,6 +97,8 @@ module SimplePrimitives =
 
 
         let numeric (cfg : NumericConfig) (atts : AttributeMap<'msg>) (value : IMod<float>) (update : float -> 'msg) =
+            
+            let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
             let inline pickle (v : float) = v.ToString(System.Globalization.CultureInfo.InvariantCulture)
             
             let inline unpickle (v : string) = 
@@ -138,6 +145,8 @@ module SimplePrimitives =
 
 
         let textbox (cfg : TextConfig) (atts : AttributeMap<'msg>) (value : IMod<string>) (update : string -> 'msg) =
+        
+            let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
             let update v =
                 value.MarkOutdated()
                 update v
@@ -181,14 +190,20 @@ module SimplePrimitives =
                 )
             )
 
+
+        let private pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
+
         let dropdown (cfg : DropdownConfig) (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : IMod<Option<'a>>) (update : Option<'a> -> 'msg) =
+        
+            let selected = if selected.IsConstant then Mod.custom (fun t -> selected.GetValue t) else selected
 
             let mutable id = 0
 
             let valuesWithKeys = 
                 values 
                 |> AMap.map (fun k v -> 
-                    let hash = System.Threading.Interlocked.Increment(&id) |> string
+                    let hash = pickler.ComputeHash(k).Hash |> System.Convert.ToBase64String
+                    //let hash = System.Threading.Interlocked.Increment(&id) |> string
                     hash, v
                 )
 
@@ -249,7 +264,121 @@ module SimplePrimitives =
                 )
             )
 
+    [<AutoOpen>]
+    module ``Primtive Builders`` =
+        type CheckBuilder() =
 
+            member inline x.Yield(()) =
+                (AttributeMap.empty, [], (Mod.constant true, ()))
+
+            [<CustomOperation("attributes")>]
+            member inline x.Attributes((a,c,u), na) = (AttributeMap.union a (att na), c, u)
+
+            [<CustomOperation("content")>]
+            member inline x.Content((a,c,u), nc : list<DomNode<'msg>>) = (a, nc, u)
+         
+            [<CustomOperation("toggle")>]
+            member inline x.Toggle((a,c,(v,m)), msg) = (a,c,(v,msg))
+        
+            [<CustomOperation("state")>]
+            member inline x.State((a,c,(v,m)), vv) = (a,c,(vv, m))
+
+            member inline x.Run((a,c,(v,msg))) =
+                Incremental.checkbox a v msg c
+
+        type NumericBuilder() =
+
+            member inline x.Yield(()) =
+                (AttributeMap.empty, Mod.constant 0.0, { min = -1E100; max = 1E100; smallStep = 1.0; largeStep = 10.0; }, (fun _ -> ()))
+
+            [<CustomOperation("attributes")>]
+            member inline x.Attributes((a,u,c,m), na) = (AttributeMap.union a (att na), u, c, m)
+
+            [<CustomOperation("value")>]
+            member inline x.Value((a,_,cfg,m), vv) = (a, vv, cfg, m)
+
+            [<CustomOperation("update")>]
+            member inline x.Update((a,v,cfg,_), msg) = (a,v, cfg, msg)
+         
+
+        
+            [<CustomOperation("step")>]
+            member inline x.Step((a,v,cfg,m), s) = (a,v, { cfg with smallStep = s }, m)
+         
+         
+            [<CustomOperation("largeStep")>]
+            member inline x.LargeStep((a,v,cfg,m), s) = (a,v, { cfg with largeStep = s }, m)
+
+         
+            [<CustomOperation("min")>]
+            member inline x.Min((a,v,cfg,m), s) = (a,v, { cfg with min = s }, m)
+         
+            [<CustomOperation("max")>]
+            member inline x.Max((a,v,cfg,m), s) = (a,v, { cfg with max = s }, m)
+
+
+            member inline x.Run((a,v,cfg,msg)) =
+                Incremental.numeric cfg a v msg
+        
+        type TextBuilder() =
+
+            member inline x.Yield(()) =
+                (AttributeMap.empty, Mod.constant "", { regex = None; maxLength = None }, (fun _ -> ()))
+
+            [<CustomOperation("attributes")>]
+            member inline x.Attributes((a,u,c,m), na) = (AttributeMap.union a (att na), u, c, m)
+
+            [<CustomOperation("value")>]
+            member inline x.Value((a,_,cfg,m), vv) = (a, vv, cfg, m)
+
+            [<CustomOperation("update")>]
+            member inline x.Update((a,v,cfg,_), msg) = (a,v, cfg, msg)
+         
+
+        
+            [<CustomOperation("regex")>]
+            member inline x.Regex((a,v,cfg,m), s) = (a,v, { cfg with regex = Some s }, m)
+         
+         
+            [<CustomOperation("maxLength")>]
+            member inline x.MaxLength((a,v,cfg,m), s) = (a,v, { cfg with maxLength = Some s }, m)
+
+            member inline x.Run((a,v : IMod<_>,cfg,msg)) =
+                Incremental.textbox cfg a v msg
+        
+        type DropdownBuilder() =
+
+            member inline x.Yield(()) =
+                (AttributeMap.empty, AMap.empty, Mod.constant None, { allowEmpty = true; placeholder = "" }, (fun _ -> ()))
+
+            [<CustomOperation("attributes")>]
+            member inline x.Attributes((a,u,s,c,m), na) = (AttributeMap.union a (att na), u, s, c, m)
+
+            [<CustomOperation("options")>]
+            member inline x.Options((a,_,s,cfg,m), vv) = (a, vv, s, cfg, m)
+            
+            [<CustomOperation("value")>]
+            member inline x.Value((a,v,_,cfg,m), s) = (a, v, s, cfg, m)
+
+            [<CustomOperation("update")>]
+            member inline x.Update((a,v,s,cfg,_), msg) = (a,v, s,cfg, msg)
+         
+
+        
+            [<CustomOperation("allowEmpty")>]
+            member inline x.AllowEmpty((a,v,s,cfg,m), e) = (a,v, s,{ cfg with allowEmpty = e }, m)
+         
+         
+            [<CustomOperation("placeholder")>]
+            member inline x.PlaceHolder((a,v,s,cfg,m), e) = (a,v, s,{ cfg with placeholder = e }, m)
+
+            member inline x.Run((a,v : amap<_,_>,s,cfg,msg)) =
+                Incremental.dropdown cfg a v s msg
+        
+        let simplecheckbox = CheckBuilder()
+        let simplenumeric = NumericBuilder()
+        let simpletextbox = TextBuilder()
+        let simpledropdown = DropdownBuilder()
 
 
     let inline checkbox atts (state : IMod<bool>) (toggle : 'msg) content =

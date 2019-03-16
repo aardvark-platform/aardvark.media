@@ -481,6 +481,20 @@ module Generic =
         static member inline AttributeMap(attributes : list<string * AttributeValue<'msg>>) = AttributeMap.ofList attributes
         static member inline AttributeMap(attributes : list<string * IMod<Option<AttributeValue<'msg>>>>) = AttributeMap.ofListCond attributes
         
+    type IDomContent<'msg> =
+        abstract member Create : tag : string * attributes : AttributeMap<'msg> -> DomNode<'msg>
+
+    type ContentCreator =
+        static member inline Content(l : list<DomNode<'msg>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofList l) }
+        static member inline Content(l : IMod<list<DomNode<'msg>>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofMod (Mod.map PList.ofList l)) }
+        static member inline Content(l : plist<DomNode<'msg>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofList (PList.toList l)) }
+        static member inline Content(l : IMod<plist<DomNode<'msg>>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofMod l) }
+        static member inline Content(l : alist<DomNode<'msg>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, l) }
+
+        static member inline Content(l : IMod<string>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Text(t, None, a, l) }
+        static member inline Content(l : string) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Text(t, None, a, Mod.constant l) }
+
+            
 
 
     type Creator =
@@ -596,6 +610,9 @@ module Generic =
     let inline private attributes (dummy : ^a) (attrs : ^b) =
         ((^a or ^b) : (static member AttributeMap : ^b -> AttributeMap<'msg>) (attrs))
     
+    let inline private contentInternal (dummy : ^a) (attrs : ^b) =
+        ((^a or ^b) : (static member Content : ^b -> IDomContent<'msg>) (attrs))
+    
 
     let inline private node (dummy : ^a) (tagName : ^b) (attrs : ^c) (children : ^d) =
         ((^a or ^b or ^c or ^d) : (static member Node : ^b * ^c * ^d -> DomNode<'msg>) (tagName, attrs, children))
@@ -610,6 +627,7 @@ module Generic =
         ((^a or ^b or ^c or ^d) : (static member Node : ^b * ^c * ^d -> DomNode<'msg>) (tagName, ns, attrs))
         
     let inline att a = attributes Unchecked.defaultof<AttributeCreator> a
+    let inline content a = contentInternal Unchecked.defaultof<ContentCreator> a
 
     let inline elem tag atts children = node Unchecked.defaultof<Creator> tag atts children
     let inline voidElem tag atts = leaf Unchecked.defaultof<Creator> tag atts
