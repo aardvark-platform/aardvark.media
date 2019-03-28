@@ -852,6 +852,9 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
             host.WasResized()
             //host.Invalidate(CefPaintElementType.View)
         )
+   
+    member x.IsInitialized
+        with get() = not (isNull browser)
 
     member internal x.SetBrowser(b : CefBrowser, f : CefFrame) =
         if isNull browser then
