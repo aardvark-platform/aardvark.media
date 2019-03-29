@@ -1,7 +1,13 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27428.2027
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.28705.295
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "23 - Inputs", "Examples (dotnetcore)\23 - Inputs\23 - Inputs.fsproj", "{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "22 - Orbit", "Examples (dotnetcore)\22 - Orbit\22 - Orbit.fsproj", "{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "21 - SimpleAsync", "Examples (dotnetcore)\21 - SimpleAsync\21 - SimpleAsync.fsproj", "{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "15 - Niobe", "Scratch\15 - Niobe\15 - Niobe.fsproj", "{2AD67055-824F-4159-92ED-D6806EC1ABC1}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "14 - DiscoverOpcs", "Scratch\14 - DiscoverOpcs\14 - DiscoverOpcs.fsproj", "{66E573F8-BAAF-4382-BE7A-CD6582197937}"
@@ -112,6 +118,18 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{2AD67055-824F-4159-92ED-D6806EC1ABC1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2AD67055-824F-4159-92ED-D6806EC1ABC1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2AD67055-824F-4159-92ED-D6806EC1ABC1}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -285,6 +303,9 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{2AD67055-824F-4159-92ED-D6806EC1ABC1} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{66E573F8-BAAF-4382-BE7A-CD6582197937} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{C9F1B2ED-AAA3-4E3E-AB98-55252BE458A6} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}

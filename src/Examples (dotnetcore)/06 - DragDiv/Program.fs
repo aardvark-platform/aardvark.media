@@ -27,7 +27,7 @@ let main argv =
         MutableApp.toWebPart' app.Runtime false instance
         prefix "/resources" >=> Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
         Suave.Files.browseHome
-    ]  
+    ] |> ignore
      
     
     Aardium.run {

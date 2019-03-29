@@ -75,6 +75,11 @@ let viewScene (model : MModel) =
             IndexedGeometryPrimitives.Torus.solidTorus (Torus3d(V3d(0.0, 0.0, 0.0), V3d.OOI, 1.0, 0.25)) C4b.Blue 20 20 |> Sg.ofIndexedGeometry
             IndexedGeometryPrimitives.Torus.solidTorus (Torus3d(V3d(0.0, 1.0, 2.0), V3d.OOI, 1.0, 0.25)) C4b.Blue 20 20 |> Sg.ofIndexedGeometry
         ] |> Sg.ofList
+    
+    let testLines = [|Line3d(V3d(1.0, 0.0, 0.0), V3d(2.0, 0.0, 0.0)); Line3d(V3d(2.0, 0.0, 0.0), V3d(3.0, 2.0, 0.0))|] |> Mod.constant
+
+    //let sgLine = Sg.lines (C4b.DarkMagenta |> Mod.constant) testLines 
+   
 
     let pass0 = RenderPass.main
     let pass1 = RenderPass.after "outlineRed" RenderPassOrder.Arbitrary pass0
@@ -120,15 +125,32 @@ let viewScene (model : MModel) =
                 do! DefaultSurfaces.constantColor colour
             }
 
+    let outLine sg v pass colour = 
+        sg
+         |> Sg.trafo model.trafo
+         |> Sg.stencilMode (Mod.constant (read v))
+         |> Sg.depthTest (Mod.constant DepthTestMode.None)
+         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+         |> Sg.pass pass
+         |> Sg.uniform "LineWidth" (Mod.constant 5.0)
+         |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! Shader.lines
+                do! DefaultSurfaces.thickLine
+                do! DefaultSurfaces.thickLineRoundCaps
+                do! DefaultSurfaces.constantColor colour
+            }
+
+    let regular = regular ([geom1; geom2] |> Sg.ofList)
     let redMask = mask geom1 1
     let yellowMask = mask geom2 2
 
-    let regular = regular ([geom1; geom2] |> Sg.ofList)
+    
 
     let redOutline = outline geom1 1 pass1 C4f.Red
     let yellowOutline = outline geom2 2 pass2 C4f.Yellow
 
-    Sg.ofSeq [regular; redMask; yellowMask; redOutline; yellowOutline] |> Sg.noEvents
+    Sg.ofSeq [regular] |> Sg.noEvents //regular; redMask; yellowMask; ; redMask; yellowMask; redOutline; yellowOutline
 
 let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
     let app =

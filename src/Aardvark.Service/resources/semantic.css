@@ -8,7 +8,7 @@
  * http://opensource.org/licenses/MIT
  *
  */
-@import url('https://fonts.googleapis.com/css?family=Lato:400,700,400italic,700italic&subset=latin');
+@import url('./fonts.css');
 /*!
  * # Semantic UI 2.3.3 - Reset
  * http://github.com/semantic-org/semantic-ui/
@@ -14176,13 +14176,19 @@ img.ui.bordered.image {
   box-shadow: none;
 }
 
-/*--------------------
+
+.ui.inverted.input > input {
+    background: rgba(48, 49, 51, 0.85);
+    color: rgba(255, 255, 255, 0.87);
+}
+.ui.inverted.input > input::selection {
+    background: #CCE2FF;
+}
+        /*--------------------
       Placeholder
 ---------------------*/
-
-/* browsers require these rules separate */
-
-.ui.input > input::-webkit-input-placeholder {
+        /* browsers require these rules separate */
+        .ui.input > input::-webkit-input-placeholder {
   color: rgba(191, 191, 191, 0.87);
 }
 
@@ -14274,6 +14280,16 @@ img.ui.bordered.image {
   box-shadow: none;
 }
 
+
+.ui.inverted.input.focus > input,
+.ui.inverted.input > input:focus {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(48, 49, 51, 0.85);
+    color: rgba(255, 255, 255, 0.95);
+    -webkit-box-shadow: none;
+    box-shadow: none;
+}
+
 .ui.input.focus > input::-webkit-input-placeholder,
 .ui.input > input:focus::-webkit-input-placeholder {
   color: rgba(115, 115, 115, 0.87);
@@ -14299,6 +14315,14 @@ img.ui.bordered.image {
   color: #9F3A38;
   -webkit-box-shadow: none;
   box-shadow: none;
+}
+
+.ui.inverted.input.error > input {
+    background: rgba(48, 49, 51, 0.85);
+    border-color: #E0B4B4;
+    color: #9F3A38;
+    -webkit-box-shadow: none;
+    box-shadow: none;
 }
 
 /* Error Placeholder */
@@ -14637,11 +14661,6 @@ img.ui.bordered.image {
        Inverted
 ---------------------*/
 
-/* Standard */
-
-.ui.inverted.input > input {
-  border: none;
-}
 
 /*--------------------
         Fluid
@@ -23530,21 +23549,41 @@ ol.ui.horizontal.list li:before,
   transition: none !important;
 }
 
+.ui.menu .ui.inverted.dropdown .menu > .item {
+    color: rgba(255, 255, 255, 0.87) !important;
+}
+
 .ui.menu .ui.dropdown .menu > .item:hover {
   background: rgba(0, 0, 0, 0.05) !important;
   color: rgba(0, 0, 0, 0.95) !important;
+}
+.ui.menu .ui.inverted.dropdown .menu > .item:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .ui.menu .ui.dropdown .menu > .selected.item {
   background: rgba(0, 0, 0, 0.05) !important;
   color: rgba(0, 0, 0, 0.95) !important;
 }
+.ui.menu .ui.inverted.dropdown .menu > .selected.item {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+}
+
 
 .ui.menu .ui.dropdown .menu > .active.item {
   background: rgba(0, 0, 0, 0.03) !important;
   font-weight: bold !important;
   color: rgba(0, 0, 0, 0.95) !important;
 }
+
+.ui.menu .ui.inverted.dropdown .menu > .active.item {
+    background: rgba(255, 255, 255, 0.03) !important;
+    font-weight: bold !important;
+    color: rgba(255, 255,255, 0.95) !important;
+}
+
 
 .ui.menu .ui.dropdown.item .menu .item:not(.filtered) {
   display: block;
@@ -30950,7 +30989,12 @@ a.ui.card:hover,
   -webkit-transition: color 0.1s ease;
   transition: color 0.1s ease;
 }
-
+.ui.inverted.checkbox label,
+.ui.inverted.checkbox + label {
+    color: rgba(255, 255, 255, 0.85);
+    -webkit-transition: color 0.1s ease;
+    transition: color 0.1s ease;
+}
 /* Outside */
 
 .ui.checkbox + label {
@@ -30974,6 +31018,11 @@ a.ui.card:hover,
 .ui.checkbox label:hover,
 .ui.checkbox + label:hover {
   color: rgba(0, 0, 0, 0.8);
+}
+
+.ui.inverted.checkbox label:hover,
+.ui.inverted.checkbox + label:hover {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 /*--------------
@@ -31012,6 +31061,9 @@ a.ui.card:hover,
 
 .ui.checkbox input:focus ~ label {
   color: rgba(0, 0, 0, 0.95);
+}
+.ui.inverted.checkbox input:focus ~ label {
+    color: rgba(255, 255, 255, 0.95);
 }
 
 /*--------------
@@ -31349,6 +31401,13 @@ a.ui.card:hover,
   padding-left: 4.5rem;
   color: rgba(0, 0, 0, 0.87);
 }
+.ui.inverted.toggle.checkbox .box,
+.ui.inverted.toggle.checkbox label {
+    min-height: 1.5rem;
+    padding-left: 4.5rem;
+    color: rgba(255, 255, 255, 0.85);
+}
+
 
 .ui.toggle.checkbox label {
   padding-top: 0.15em;
@@ -31404,6 +31463,12 @@ a.ui.card:hover,
   box-shadow: 0px 1px 2px 0 rgba(34, 36, 38, 0.15), 0px 0px 0px 1px rgba(34, 36, 38, 0.15) inset;
 }
 
+.ui.inverted.toggle.checkbox .box::before,
+.ui.inverted.toggle.checkbox label::before {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+}
+
 /* Focus */
 
 .ui.toggle.checkbox input:focus ~ .box:before,
@@ -31411,6 +31476,13 @@ a.ui.card:hover,
   background-color: rgba(0, 0, 0, 0.15);
   border: none;
 }
+
+.ui.inverted.toggle.checkbox input:focus ~ .box:before,
+.ui.inverted.toggle.checkbox input:focus ~ label:before {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: none;
+}
+
 
 /* Hover */
 
@@ -31420,11 +31492,22 @@ a.ui.card:hover,
   border: none;
 }
 
+.ui.inverted.toggle.checkbox .box:hover::before,
+.ui.inverted.toggle.checkbox label:hover::before {
+    background-color: rgba(255, 255, 255, 0.15);
+    border: none;
+}
+
+
 /* Active */
 
 .ui.toggle.checkbox input:checked ~ .box,
 .ui.toggle.checkbox input:checked ~ label {
   color: rgba(0, 0, 0, 0.95) !important;
+}
+.ui.inverted.toggle.checkbox input:checked ~ .box,
+.ui.inverted.toggle.checkbox input:checked ~ label {
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .ui.toggle.checkbox input:checked ~ .box:before,
@@ -31444,6 +31527,11 @@ a.ui.card:hover,
 .ui.toggle.checkbox input:focus:checked ~ .box,
 .ui.toggle.checkbox input:focus:checked ~ label {
   color: rgba(0, 0, 0, 0.95) !important;
+}
+
+.ui.inverted.toggle.checkbox input:focus:checked ~ .box,
+.ui.inverted.toggle.checkbox input:focus:checked ~ label {
+    color: rgba(255, 255, 255, 0.95) !important;
 }
 
 .ui.toggle.checkbox input:focus:checked ~ .box:before,
@@ -31827,6 +31915,13 @@ body.dimmable > .dimmer {
   will-change: transform, opacity;
 }
 
+
+.ui.inverted.dropdown .menu {
+    background: rgba(48, 49, 51, 0.85);
+    color: rgba(255, 255, 255, 0.87);
+}
+
+
 .ui.dropdown .menu > * {
   white-space: nowrap;
 }
@@ -31893,6 +31988,12 @@ body.dimmable > .dimmer {
   box-shadow: none;
   -webkit-touch-callout: none;
 }
+
+
+.ui.inverted.dropdown .menu > .item {
+    color: rgba(255, 255, 255, 0.87);
+}
+
 
 .ui.dropdown .menu > .item:first-child {
   border-top-width: 0px;
@@ -32150,6 +32251,11 @@ body.dimmable > .dimmer {
   transition: box-shadow 0.1s ease, width 0.1s ease, -webkit-box-shadow 0.1s ease;
 }
 
+.ui.inverted.selection.dropdown {
+    background: rgba(48, 49, 51, 0.85);
+    color: rgba(255, 255, 255, 0.87);
+}
+
 .ui.selection.dropdown.visible,
 .ui.selection.dropdown.active {
   z-index: 10;
@@ -32253,6 +32359,15 @@ select.ui.dropdown {
   word-wrap: normal;
 }
 
+
+.ui.inverted.selection.dropdown .menu > .item {
+    border-top: 1px solid rgba(255,255,255,0.4);
+    padding: 0.78571429rem 1.14285714rem !important;
+    white-space: normal;
+    word-wrap: normal;
+}
+
+
 /* User Item */
 
 .ui.selection.dropdown .menu > .hidden.addition.item {
@@ -32281,12 +32396,29 @@ select.ui.dropdown {
   box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
 }
 
+.ui.inverted.selection.active.dropdown {
+    border-color: rgba(255,255,255,0.2);
+    -webkit-box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+    box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+}
+
+.ui.inverted.selection.active.dropdown .menu {
+    border-color: rgba(255,255,255,0.2);
+    -webkit-box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+    box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+}
+
 /* Focus */
 
 .ui.selection.dropdown:focus {
   border-color: #96C8DA;
   -webkit-box-shadow: none;
   box-shadow: none;
+}
+.ui.inverted.selection.dropdown:focus {
+    border-color: rgba(255,255,255,0.2);
+    -webkit-box-shadow: none;
+    box-shadow: none;
 }
 
 .ui.selection.dropdown:focus .menu {
@@ -32295,11 +32427,21 @@ select.ui.dropdown {
   box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
 }
 
+.ui.selection.dropdown:focus .menu {
+    border-color: rgba(255,255,255,0.2);
+    -webkit-box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+    box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+}
+
 /* Visible */
 
 .ui.selection.visible.dropdown > .text:not(.default) {
   font-weight: normal;
   color: rgba(0, 0, 0, 0.8);
+}
+.ui.inverted.selection.visible.dropdown > .text:not(.default) {
+    font-weight: normal;
+    color: rgba(255, 255, 255, 0.8);
 }
 
 /* Visible Hover */
@@ -32310,10 +32452,21 @@ select.ui.dropdown {
   box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
 }
 
+.ui.inverted.selection.active.dropdown:hover {
+    border-color: rgba(255,255,255,0.2);
+    -webkit-box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+    box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+}
+
 .ui.selection.active.dropdown:hover .menu {
   border-color: #96C8DA;
   -webkit-box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
   box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+}
+.ui.inverted.selection.active.dropdown:hover .menu {
+    border-color: rgba(255,255,255,0.2);
+    -webkit-box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
+    box-shadow: 0px 2px 3px 0px rgba(34, 36, 38, 0.15);
 }
 
 /* Dropdown Icon */
@@ -32596,6 +32749,17 @@ select.ui.dropdown {
   z-index: 12;
 }
 
+
+.ui.inverted.dropdown .menu .active.item {
+    background: transparent;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.95);
+    -webkit-box-shadow: none;
+    box-shadow: none;
+    z-index: 12;
+}
+
+
 /*--------------------
         Hover
 ----------------------*/
@@ -32608,6 +32772,11 @@ select.ui.dropdown {
   z-index: 13;
 }
 
+.ui.inverted.dropdown .menu > .item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.95);
+    z-index: 13;
+}
 /*--------------------
        Loading
 ---------------------*/

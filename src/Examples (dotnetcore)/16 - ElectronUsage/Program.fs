@@ -39,7 +39,7 @@ let main argv =
         MutableApp.toWebPart' runtime false instance
         Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
         Suave.Files.browseHome
-    ]  
+    ] |> ignore
     
 
     Aardium.run {

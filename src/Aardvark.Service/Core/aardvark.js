@@ -1,10 +1,19 @@
 ﻿var urlCreator = window.URL;
 
-if (!document.aardvark) {
-    console.debug("[Aardvark] creating aardvark-value");
-    document.aardvark = {};
-}
 var aardvark = document.aardvark;
+if (!aardvark) {
+    console.debug("[Aardvark] creating aardvark-value");
+    aardvark = {};
+    document.aardvark = aardvark;
+    //top.aardvark = aardvark;
+    //window.aardvark = aardvark;
+}
+
+if (!aardvark.promise)
+{
+    aardvark.promise = new Promise(function (succ, fail) { succ(); });
+}
+
 
 if (!aardvark.newguid) {
     aardvark.newguid = function() {
@@ -835,151 +844,177 @@ class Renderer {
 }
 
 if (!aardvark.addReferences) {
-    aardvark.addReferences = function (refs, cont) {
-        function acc(i) {
+    aardvark.addReferences = function (refs, realCont) {
+        
+        aardvark.promise = aardvark.promise.then(function () {
+            return new Promise(function (s, e) {
+                var cont = function () { realCont(); s(); };
 
-            if (i >= refs.length) {
-                return cont;
-            }
-            else {
-                var ref = refs[i];
-                var kind = ref.kind;
-                var name = ref.name;
-                var url = ref.url;
-                if (kind === "script") {
-                    if (!aardvark.referencedScripts[name]) {
-                        console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
-                        aardvark.referencedScripts[name] = true;
-                        return function () {
-                            var script = document.createElement("script");
-                            script.setAttribute("src", url);
-                            script.onload = acc(i + 1);
-                            document.head.appendChild(script);
-                        };
+                function acc(i) {
+                    if (i >= refs.length) {
+                        return cont;
                     }
-                    else return acc(i + 1);
-                }
-                else {
-                    if (!aardvark.referencedStyles[name]) {
-                        console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
-                        aardvark.referencedStyles[name] = true;
-                        return function () {
-                            var script = document.createElement("link");
-                            script.setAttribute("rel", "stylesheet");
-                            script.setAttribute("href", url);
-                            script.onload = acc(i + 1);
-                            document.head.appendChild(script);
-                        };
+                    else {
+                        var ref = refs[i];
+                        var kind = ref.kind;
+                        var name = ref.name;
+                        var url = ref.url;
+                        if (kind === "script") {
+                            if (!aardvark.referencedScripts[name]) {
+                                aardvark.referencedScripts[name] = true;
+                                return function () {
+                                    var script = document.createElement("script");
+                                    var cc = function (evt) {
+                                        console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    var err = function (evt) {
+                                        console.warn("[Aardvark] failed to referenced script \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    script.src = url;
+                                    script.async = true;
+                                    script.addEventListener("load", cc);
+                                    script.addEventListener("error", err);
+                                    document.getElementsByTagName("script")[0].parentNode.appendChild(script);
+                                };
+                            }
+                            else return acc(i + 1);
+                        }
+                        else {
+                            if (!aardvark.referencedStyles[name]) {
+                                aardvark.referencedStyles[name] = true;
+                                return function () {
+                                    var script = document.createElement("link");
+                                    var cc = function (evt) {
+                                        console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    var err = function (evt) {
+                                        console.warn("[Aardvark] failed to reference stylesheet \"" + name + "\" (" + url + ")");
+                                        acc(i + 1)();
+                                    };
+                                    script.addEventListener("load", cc);
+                                    script.addEventListener("error", err);
+                                    script.setAttribute("rel", "stylesheet");
+                                    script.setAttribute("href", url);
+                                    document.head.appendChild(script);
+                                };
+                            }
+                            else return acc(i + 1);
+                        }
+
                     }
-                    else return acc(i + 1);
                 }
-
-            }
-        }
-
-        var real = acc(0);
-        real();
+                var real = acc(0);
+                real();
+            });
+        });
     };
 }
 
 
 if (!aardvark.openFileDialog) {
 
-    aardvark.openFileDialog = function () {
-        alert("Aardvark openFileDialog is not yet available");
-    };
+    if (top.aardvark.openFileDialog) {
+        aardvark.openFileDialog = top.aardvark.openFileDialog;
+    }
+    else {
+        aardvark.openFileDialog = function () {
+            alert("Aardvark openFileDialog is not yet available");
+        };
 
-    var refs =
-        [
-            { kind: "stylesheet", name: "semui-css", url: "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.css" },
-            { kind: "script", name: "semui-js", url: "https://cdnjs.cloudflare.com/ajax/libs/semantic-ui/2.2.9/semantic.min.js" },
-            { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
-            { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
-            { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
-            { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
-            { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
-            { kind: "stylesheet", name: "aardfs-css", url: aardvark.getScriptRelativeUrl("http", "aardfs.css") },
-            { kind: "script", name: "aardfs-js", url: aardvark.getScriptRelativeUrl("http", "aardfs.js") },
-        ]
+        var refs =
+            [
+                { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
+                { kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
+                { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
+                { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
+                { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
+                { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
+                { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
+                { kind: "stylesheet", name: "aardfs-css", url: aardvark.getScriptRelativeUrl("http", "aardfs.css") },
+                { kind: "script", name: "aardfs-js", url: aardvark.getScriptRelativeUrl("http", "aardfs.js") }
+            ]
 
-    $(document).ready(function () {
-
-
-        aardvark.addReferences(refs, function () {
-            var modal = document.getElementById("filebrowser-modal");
-            if (!modal) {
-                var root = document.createElement("div");
-                root.setAttribute("id", "filebrowser-modal");
-                root.setAttribute("class", "ui modal");
-                $(root).html(
-                    "<div class='content'>" +
-                    "	<div id='filebrowser-browser'>" +
-                    "	</div>" +
-                    "</div>" +
-                    "	<div class='actions'>" +
-                    "		<div class='ui approve button'>OK</div>" +
-                    "		<div class='ui cancel button'>Cancel</div>" +
-                    "	</div>" +
-                    "</div>"
-                );
-
-                document.body.appendChild(root);
+        $(document).ready(function () {
 
 
-                modal = root;
+            aardvark.addReferences(refs, function () {
+                var modal = document.getElementById("filebrowser-modal");
+                if (!modal) {
+                    var root = document.createElement("div");
+                    root.setAttribute("id", "filebrowser-modal");
+                    root.setAttribute("class", "ui modal");
+                    $(root).html(
+                        "<div class='content'>" +
+                        "	<div id='filebrowser-browser'>" +
+                        "	</div>" +
+                        "</div>" +
+                        "	<div class='actions'>" +
+                        "		<div class='ui approve button'>OK</div>" +
+                        "		<div class='ui cancel button'>Cancel</div>" +
+                        "	</div>" +
+                        "</div>"
+                    );
 
-            }
+                    document.body.appendChild(root);
 
-            console.debug("[FS] filebrowser installed")
-            aardvark.openFileDialog = function (openFileConfig, callback) {
 
-                // if only one argument
-                if (!callback) {
-                    callback = openFileConfig;
-                    openFileConfig = {};
+                    modal = root;
+
                 }
 
-                if (!openFileConfig.mode) openFileConfig.mode = "file";
-                if (!openFileConfig.startPath) openFileConfig.startPath = "/";
-                if (!openFileConfig.title) openFileConfig.title = "Open File";
-                if (!openFileConfig.filters) openFileConfig.filters = [];
-                if (!openFileConfig.activeFilter) openFileConfig.activeFilter = -1;
-                if (!openFileConfig.allowMultiple) openFileConfig.allowMultiple = false;
+                console.debug("[FS] filebrowser installed")
+                aardvark.openFileDialog = function (openFileConfig, callback) {
 
-                var config =
-                {
-                    url: aardvark.getScriptRelativeUrl("http", "fs"),
-                    caching: true,
-                    folderSelect: (openFileConfig.mode === "folder"),
-                    fileSelect: (openFileConfig.mode === "file"),
-                    hideFiles: false,
-                    onselect: function (path) {  },
-                    submit: function (path) { callback([path]); $(modal).modal('hide'); },
-                    cancel: function () { console.log("[FS] cancel"); }
-                };
-
-                var browser = new FileBrowser(config);
-                var $browser = $('#filebrowser-browser');
-                $browser.filebrowser(browser);
-                $browser.height(screen.height - 600);
-
-                $(modal).modal({
-                    keyboardShortcuts: true,
-                    blurring: true,
-                    onDeny: function () {
-                        browser.cancel();
-                        return true;
-                    },
-                    onApprove: function () {
-                        browser.submit();
+                    // if only one argument
+                    if (!callback) {
+                        callback = openFileConfig;
+                        openFileConfig = {};
                     }
-                });
-                $(modal).modal('show');
 
-            };
+                    if (!openFileConfig.mode) openFileConfig.mode = "file";
+                    if (!openFileConfig.startPath) openFileConfig.startPath = "/";
+                    if (!openFileConfig.title) openFileConfig.title = "Open File";
+                    if (!openFileConfig.filters) openFileConfig.filters = [];
+                    if (!openFileConfig.activeFilter) openFileConfig.activeFilter = -1;
+                    if (!openFileConfig.allowMultiple) openFileConfig.allowMultiple = false;
+
+                    var config =
+                    {
+                        url: aardvark.getScriptRelativeUrl("http", "fs"),
+                        caching: true,
+                        folderSelect: (openFileConfig.mode === "folder"),
+                        fileSelect: (openFileConfig.mode === "file"),
+                        hideFiles: false,
+                        onselect: function (path) { },
+                        submit: function (path) { callback([path]); $(modal).modal('hide'); },
+                        cancel: function () { console.log("[FS] cancel"); }
+                    };
+
+                    var browser = new FileBrowser(config);
+                    var $browser = $('#filebrowser-browser');
+                    $browser.filebrowser(browser);
+                    $browser.height(screen.height - 600);
+
+                    $(modal).modal({
+                        keyboardShortcuts: true,
+                        blurring: true,
+                        onDeny: function () {
+                            browser.cancel();
+                            return true;
+                        },
+                        onApprove: function () {
+                            browser.submit();
+                        }
+                    });
+                    $(modal).modal('show');
+
+                };
+            });
         });
-    });
-
+    }
 }
 
 class Channel {
@@ -1110,22 +1145,40 @@ if (!aardvark.connect) {
             doPing();
         };
 
+        var exectutedCode = "";
+
         eventSocket.onmessage = function (m) {
             var c = m.data.substring(0, 1);
             if (c === "x") {
                 var data = m.data.substring(1, m.data.length);
-                eval("{\r\n" + data + "\r\n}");
+                aardvark.promise = aardvark.promise.then(function () {
+                    try {
+                        //exectutedCode = exectutedCode + "\r\n\r\n\r\n" + data;
+                        eval("{\r\n" + data + "\r\n}");
+                    } catch (e) {
+                        console.warn("could not execute event message with exn " + e + ":\n" + data);
+                        debugger;
+                    }
+                });
             }
             else {
                 var data = m.data;
                 // { targetId : string; channel : string; data : 'a }
                 var message = JSON.parse(data);
                 var channelName = message.targetId + "_" + message.channel;
-                var channel = aardvark.channels[channelName];
 
-                if (channel && channel.onmessage) {
-                    channel.onmessage(message.data);
-                }
+                aardvark.promise = aardvark.promise.then(function () {
+                    try{
+                        var channel = aardvark.channels[channelName];
+
+                        if (channel && channel.onmessage) {
+                            channel.onmessage(message.data);
+                        }
+                    } catch (e) {
+                        console.warn("channel onmessage faulted: " + e);
+                        debugger;
+                    }
+                });
             }
         };
 

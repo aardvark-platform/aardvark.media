@@ -12,6 +12,7 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+	<Compile Include="Simple\SimplePrimitives.fs" />
     <Compile Include="UI.Primitives.Models.fs" />
     <Compile Include="UI.Primitives.fs" />
     <Compile Include="UI.Primitives.Simple.fs" />
@@ -27,6 +28,7 @@
     <Compile Include="CameraModel.fs" />
     <Compile Include="FreeFlyController.fs" />
     <Compile Include="ArcBallController.fs" />
+    <Compile Include="OrbitController.fs" />
     <Compile Include="LegacyCameraController.fs" />
     <Compile Include="Docking.fs" />
 	<EmbeddedResource Include="resources\spectrum.css" />

@@ -47,7 +47,7 @@ module ScaleController =
                 match m.grabbed with
                   | Some _ ->                     
                     let scale = Trafo3d.Scale m.workingPose.scale
-                    let p = { m.pose with scale = m.workingPose.scale }
+                    let p = { m.pose with scale = m.pose.scale * m.workingPose.scale }
                     { m with grabbed = None; pose = p; workingPose = Pose.identity }
                   | None   -> m
             | MoveRay rp ->

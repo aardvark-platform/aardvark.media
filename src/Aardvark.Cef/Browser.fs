@@ -24,6 +24,7 @@ type Browser(signature : IFramebufferSignature, time : IMod<System.DateTime>, ru
     member x.Texture = client.Texture
     member x.Version = client.Version
     member x.Size = client.Size
+    member x.IsInitialized = client.IsInitialized
     
     member x.LoadUrlAsync (url : string) = client.LoadUrlAsync url
     member x.LoadUrl (url : string) = client.LoadUrl url

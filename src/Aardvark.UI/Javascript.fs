@@ -118,7 +118,7 @@ module JSExpr =
     let rec toStringInternal (e : JSExpr) =
         match e with
             | Raw code ->
-                code
+                "(function() { " + code + "})();"
 
             | Body ->
                 "document.body"
