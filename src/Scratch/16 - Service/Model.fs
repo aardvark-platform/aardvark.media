@@ -14,7 +14,7 @@ type Endpoint =
         url              : int -> string
     }
 
-type Id = int
+type Id = string
 
 type InstanceMessage = 
     | Stdout of Id * string 
@@ -32,7 +32,7 @@ type Instance =
         [<NonIncremental>]
         p : Process
         [<NonIncremental>]
-        id : int
+        id : string
         [<NonIncremental>]
         port : int
         [<NonIncremental>]
@@ -42,7 +42,6 @@ type Instance =
 [<DomainType>]
 type Model = 
     {
-        nextClientId : int
         executables : plist<Endpoint>
-        running : hmap<int,Instance>
+        running : hmap<string,Instance>
     }

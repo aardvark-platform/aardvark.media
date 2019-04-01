@@ -11,6 +11,8 @@ open Inc.Model
 open Suave
 open Suave.WebPart
 open System.Collections.Concurrent
+open Suave
+open Suave.Operators
 
 [<EntryPoint; STAThread>]
 let main argv = 
@@ -36,16 +38,12 @@ let main argv =
     backThread.IsBackground <- true
     backThread.Start()
 
-    WebPart.startServerLocalhost 4321 [ 
+    let outputDir = System.Environment.CurrentDirectory
+
+    WebPart.runServer 4321 [ 
+        Suave.Files.browse outputDir
         MutableApp.toWebPart' app.Runtime false instance
-        Suave.Files.browseHome
     ] |> ignore
 
-    Aardium.run {
-        url "http://localhost:4321/"
-        width 1024
-        height 768
-        debug true
-    }
 
     0 

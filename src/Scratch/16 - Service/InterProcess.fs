@@ -15,9 +15,14 @@ let runService (assembly : string)
                (stdout : string -> unit)
                (stderr : string -> unit)
                (died : unit -> unit)
-               (id : int) =
+               (id : string) =
+    if Directory.Exists id then failwith "[Service] output dir already exists"
+    Directory.CreateDirectory id |> ignore
+    let stdoutFile = File.CreateText(Path.Combine(id,"stdout.txt"))
+    let stderrFile = File.CreateText(Path.Combine(id,"stderr.txt"))
+    let parentProcessId = Process.GetCurrentProcess().Id
     let psi = ProcessStartInfo()
-    psi.Arguments <- sprintf "\"%s\" %d" assembly port
+    psi.Arguments <- sprintf "\"%s\" %d %d" assembly port parentProcessId
     psi.CreateNoWindow <- true
     psi.FileName <- "C:\Program Files\dotnet\dotnet.exe"
     psi.WorkingDirectory <- workingDirectory
@@ -26,21 +31,15 @@ let runService (assembly : string)
     psi.UseShellExecute <- false
     let p = new Process()
     p.StartInfo <- psi
-    //p.OutputDataReceived.Add(fun dre -> dre.Data |> stdout)
-    p.ErrorDataReceived.Add(fun dre -> dre.Data |> stderr)
+    p.OutputDataReceived.Add(fun dre -> stdoutFile.WriteLine dre.Data; stdoutFile.Flush(); dre.Data |> stdout)
+    p.ErrorDataReceived.Add(fun dre -> stderrFile.WriteLine dre.Data; stderrFile.Flush(); dre.Data |> stderr)
     p.Exited.Add(fun _ -> died ())
     p.EnableRaisingEvents <- true
-   
     let ok = p.Start()
-    let t = 
-        new Thread(ThreadStart(fun _ -> 
-            while true do 
-                let l = p.StandardOutput.ReadLine()
-                stdout l
-            )
-        )
-    printfn "ok?: %A" ok
-    t.Start()
+    p.BeginOutputReadLine()
+    p.BeginErrorReadLine()
+   
+    if not ok then failwith "could not start process."
     p
 
 let test () =
@@ -50,4 +49,3 @@ let test () =
                (fun s -> printfn "%A" s)
                (fun s -> printfn "%A" s)
                (fun s -> printfn "died")
-               0

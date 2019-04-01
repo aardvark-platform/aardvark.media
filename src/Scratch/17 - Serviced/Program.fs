@@ -9,21 +9,31 @@ open Inc
 open Suave
 open Suave.WebPart
 
+open System.Threading
+
 [<EntryPoint; STAThread>]
 let main argv = 
-    let port = 
+    let port,processId = 
         match argv with
-            | [|port|] -> 
-                match System.Int32.TryParse port with
-                    | (true,v) -> v
+            | [|port;processId|] -> 
+                match System.Int32.TryParse port, System.Int32.TryParse processId with
+                    | (true,v), (true, pId) -> v, pId
                     | _ -> 
-                        Log.warn "could not parse port."
-                        4321
-            | _ -> 4321
+                        failwith "usage: port parentProcessId"
+            | _ -> failwith "usage: port parentProcessId"
 
-    
+    let killThread = 
+        Thread(ThreadStart(fun _ -> 
+            let p = System.Diagnostics.Process.GetProcessById processId
+            p.WaitForExit()
+            System.Environment.Exit(2)
+        ))
+    killThread.Start()
+
+
     let uri = sprintf "http://localhost:%d/" port
     Log.line "Service will run here: %s" uri
+
 
     Ag.initialize()
     Aardvark.Init()

@@ -24,12 +24,12 @@ module Support =
 let update (send : InstanceMessage -> unit) (model : Model) (msg : Message) =
     match msg with
         | Start e -> 
-            let id, model = model.nextClientId, { model with nextClientId = model.nextClientId + 1}
+            let id = System.Guid.NewGuid() |> string
             let port = Support.getFreePort()
             let stdout s = send (InstanceMessage.Stdout(id,s))
             let stderr s = send (InstanceMessage.Stdout(id,s))
             let dead () = send (InstanceMessage.Exit id)
-            let p = InterProcess.runService e.assembly e.workingDirectory port stdout stderr dead id 
+            let p = InterProcess.runService e.assembly e.workingDirectory port stdout stderr dead id
             let instance = 
                 {                   
                     p = p
@@ -42,10 +42,10 @@ let update (send : InstanceMessage -> unit) (model : Model) (msg : Message) =
             printfn "removing instance: %A" e
             { model with running = HMap.remove e model.running }
         | InstanceStatus (InstanceMessage.Stderr(id,e)) -> 
-            printfn "instance %d errors: %s" id e
+            printfn "instance %A errors: %s" id e
             model
         | InstanceStatus (InstanceMessage.Stdout(id,e)) -> 
-            printfn "instance %d says: %s" id e 
+            printfn "instance %A says: %s" id e 
             model
         | Kill i -> 
             match HMap.tryFind i model.running with
@@ -59,22 +59,41 @@ let update (send : InstanceMessage -> unit) (model : Model) (msg : Message) =
 
 let view (model : MModel) =
     let runningInstances = model.running |> AMap.toASet |> ASet.sortBy fst
-    div [] [
-        Incremental.div AttributeMap.empty <|
-            alist {
-                for endpoint in model.executables do
-                    yield 
-                        button [onClick (fun _ -> Start endpoint)] [
-                            text endpoint.prettyName
-                        ]
+    require Html.semui (
+        page (fun request -> 
+            match Map.tryFind "page" request.queryParams with
+                | Some "client" -> 
+                    match Map.tryFind "id" request.queryParams with
+                        | Some id -> 
+                            let link = sprintf "./%s/stdout.txt" id
+                            div [] [
+                                a [attribute "href" link] [text "Output"]
+                                a [attribute "href" "javascript:history.back()"] [text "Back"]  
+                            ]
+                        | None -> text "id not found"
+                | _ -> 
+                    div [] [
+                        Incremental.div AttributeMap.empty <|
+                            alist {
+                                for endpoint in model.executables do
+                                    yield 
+                                        button [onClick (fun _ -> Start endpoint)] [
+                                            text endpoint.prettyName
+                                        ]
 
-            }
-        Incremental.div AttributeMap.empty <|
-            alist {
-                for (id,i) in runningInstances do
-                    yield button [onClick (fun _ -> Kill id)] [text (sprintf "%A" i)]
-            }
-    ]
+                            }
+                        Incremental.div AttributeMap.empty <| 
+                            alist {
+                                for (id,i) in runningInstances do
+                                    yield div [] [
+                                        let link = sprintf ".?page=client&id=%s" id
+                                        yield a [attribute "href" link] [text "super"]
+                                        yield button [onClick (fun _ -> Kill id)] [text "kill"]
+                                    ]
+                            }
+                    ]
+        )
+    )
 
 
 let threads (model : Model) = 
@@ -101,7 +120,6 @@ let app send =
         threads = threads 
         initial = 
             { 
-               nextClientId = 0
                executables = 
                     Discovery.discoverApps() |> PList.ofList
                running = HMap.empty
