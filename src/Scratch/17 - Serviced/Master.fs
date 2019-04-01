@@ -1,4 +1,4 @@
-﻿module Inc.App
+﻿module Inc.Master
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
@@ -8,21 +8,22 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Inc.Model
 
-let update (model : Model) (msg : Message) =
+let update (model : MasterModel) (msg : MasterMessage) =
     match msg with
-        Inc -> { model with value = model.value + 1 }
+        | ResetAll -> model
 
-let view (model : MModel) =
+let view (model : MMasterModel) =
     div [] [
         br []
-        button [onClick (fun _ -> Inc)] [text "Increment"]
-        text "    "
-        Incremental.text (model.value |> Mod.map string)
-        br []
+        onBoot "console.log('boot')" (
+            onShutdown "console.log('shtudown')" (
+                subApp Inc.App.app
+            )
+        )
     ]
 
 
-let threads (model : Model) = 
+let threads (model : MasterModel) = 
     ThreadPool.empty
 
 
@@ -32,7 +33,7 @@ let app =
         threads = threads 
         initial = 
             { 
-               value = 0
+               clients = HMap.empty
             }
         update = update 
         view = view

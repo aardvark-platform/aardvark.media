@@ -22,13 +22,14 @@ let main argv =
                         failwith "usage: port parentProcessId"
             | _ -> failwith "usage: port parentProcessId"
 
-    let killThread = 
-        Thread(ThreadStart(fun _ -> 
-            let p = System.Diagnostics.Process.GetProcessById processId
-            p.WaitForExit()
-            System.Environment.Exit(2)
-        ))
-    killThread.Start()
+    if processId > 0 then
+        let killThread = 
+            Thread(ThreadStart(fun _ -> 
+                let p = System.Diagnostics.Process.GetProcessById processId
+                p.WaitForExit()
+                System.Environment.Exit(2)
+            ))
+        killThread.Start()
 
 
     let uri = sprintf "http://localhost:%d/" port
@@ -40,7 +41,7 @@ let main argv =
     Aardium.init()
 
     use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    let instance = Inc.Master.app |> App.start
 
     WebPart.runServer port [ 
         MutableApp.toWebPart' app.Runtime false instance

@@ -8,7 +8,16 @@ type Message =
     | Inc
 
 [<DomainType>]
-type Model = 
+type Model = {
+    value : int
+}
+
+type MasterMessage =
+    | ResetAll
+
+[<DomainType>]
+type MasterModel = 
     {
-        value : int
+        clients : hmap<string,int>
     }
+
