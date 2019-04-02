@@ -997,8 +997,10 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
         )
 
     member x.ReadPixel(pos : V2i) =
-        x.Init()
-        renderHandler.GetPixelValue(pos).ToC4f()
+        lock lockObj (fun () ->
+            x.Init()
+            renderHandler.GetPixelValue(pos).ToC4f()
+        )
         //texture.ReadPixel(pos)
 
     member x.Events = eventSink :> IObservable<_>
