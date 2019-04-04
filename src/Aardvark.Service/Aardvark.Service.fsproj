@@ -36,6 +36,7 @@
     <Compile Include="TurboJpeg.fs" />
     <Compile Include="Suave.fs" />
     <Compile Include="Server.fs" />
+    <EmbeddedResource Include="resources\semantic-overrides.css" />
     <EmbeddedResource Include="resources\fonts.css" />
     <None Include="paket.references" />
     <EmbeddedResource Include="resources\essentialstuff.js" />
