@@ -43,9 +43,16 @@ let main argv =
     use app = new OpenGlApplication()
     let instance = Inc.Master.app |> App.start
 
-    WebPart.runServer port [ 
+    WebPart.startServer port [ 
         MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
     ] |> ignore
+
+    Aardium.run {
+        url "http://localhost:4321/"
+        width 1024
+        height 768
+        debug true
+    }
 
     0 

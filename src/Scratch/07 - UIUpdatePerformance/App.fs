@@ -7,6 +7,7 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Inc.Model
 open System.Net
+open Aardvark.Base.Ag
 
 
 let rec time() =
@@ -20,6 +21,8 @@ let sw = System.Diagnostics.Stopwatch.StartNew()
 
 let update (model : Model) (msg : Message) =
     match msg with
+        | Camera m -> 
+            { model with cameraState = FreeFlyController.update model.cameraState m }
         | Inc -> 
             let s = sprintf "%d" (model.value + 1)
             { model with value = model.value + 1; updateStart = sw.Elapsed.TotalSeconds; things = model.things |> PList.map (fun _ -> s); 
@@ -48,22 +51,114 @@ let create () =
     wc.DownloadData url
         
 
-let view (model : MModel) =
+type RO(xs : aset<IRenderObject>) = 
+    interface Aardvark.SceneGraph.ISg
+    member x.RenderObjects = xs
+
+[<Semantic>]
+type RoSem() =
+    member x.RenderObjects(a : RO) =
+        a.RenderObjects
+
+open System.Threading
+open Aardvark.SceneGraph.Semantics
+open System.Collections.Generic
+
+let view (runtime : IRuntime) (model : MModel) =
+
+
+    let cobjects = CSet.empty
+    let hobjects = List<_>()
+
+    let theHatefulThread = 
+
+        let rnd = new System.Random()
+        let template =
+            Sg.sphere 10 (Mod.constant C4b.White) (Mod.constant 1.0)
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.constantColor C4f.Red
+
+                }
+
+        // extract the render object using the scene graph semantics
+        let template =
+            template.RenderObjects() |> ASet.toList |> List.head |> unbox<RenderObject>
+
+        Thread(ThreadStart (fun _ -> 
+            let viewTrafo = 
+                model.cameraState.view |> Mod.map CameraView.viewTrafo
+            let projTrafo = 
+                Frustum.perspective 60.0 0.1 150.0 1.0 |> Frustum.projTrafo |> Mod.constant
+
+            let signature =
+                runtime.CreateFramebufferSignature [
+                    DefaultSemantic.Colors, { format = RenderbufferFormat.Rgba32f; samples = 1 }
+                    DefaultSemantic.Depth, { format = RenderbufferFormat.Depth24Stencil8; samples = 1 }
+                ]
+
+            let mkTrafo = 
+                let rnd = new System.Random()
+                fun _ -> Trafo3d.Translation(rnd.NextDouble()*5.0,rnd.NextDouble()*5.0,rnd.NextDouble()*5.0)
+
+
+            while true do 
+                if rnd.NextDouble() < 0.5 then
+                    let uniforms (t : Trafo3d) =
+                        UniformProvider.ofList [
+                            "ModelTrafo", Mod.constant t :> IMod
+                            "ViewTrafo", viewTrafo :> IMod
+                            "ProjTrafo", projTrafo :> IMod
+                        ]
+
+                    let trafo = mkTrafo () 
+
+                    let newRo = 
+                        { template with
+                            Id = newId()
+                            Uniforms = uniforms trafo
+                        } :> IRenderObject
+
+                    //use r = runtime.
+                    let p = runtime.PrepareRenderObject(signature,newRo)
+
+                    System.Threading.Thread.Sleep 1
+
+                    transact (fun _ -> 
+                        cobjects.Add (p :> IRenderObject) |> ignore
+                        hobjects.Add(p :> IRenderObject) |> ignore
+                        printfn "cnt: %A" cobjects.Count
+                    )
+                else
+                    if hobjects.Count > 0 then
+                        transact (fun _ -> 
+                            let deadOne = hobjects.[rnd.Next(0,hobjects.Count - 1)]
+                            hobjects.Remove deadOne |> ignore
+                            cobjects.Remove deadOne |> ignore
+                        )
+
+                //System.Threading.Thread.Sleep(10)
+        ))
+    
+    theHatefulThread.Start()
+
+    let mega = RO(cobjects :> aset<_>)
 
     let scene = 
-        Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit) 
+         Sg.sphere 14 (Mod.constant C4b.White) (Mod.constant 1.0)
+        //Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit) 
             |> Sg.trafo (model.angle |> Mod.map Trafo3d.RotationZ)
+            |> Sg.andAlso (mega :> Aardvark.SceneGraph.ISg |> Sg.noEvents)
             |> Sg.shader {
                     do! DefaultSurfaces.trafo
-                    do! DefaultSurfaces.simpleLighting
+                    do! DefaultSurfaces.constantColor C4f.White
                }
      
 
     let renderControl =
-       let cameraView = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
-       let frustum = Frustum.perspective 50.0 0.1 10.0 1.0
-       renderControl (Camera.create cameraView frustum |> Mod.constant) [style "width:200;height:200"; attribute "data-samples" "8"; onEvent "onRendered" [] (fun _ -> Tick)] scene
-
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
+                    scene
     let superChannel = model.super |> Mod.channel
 
 
@@ -140,7 +235,13 @@ let threads (model : Model) =
     ThreadPool.add "screenshots" (proc()) model.threads
 
 
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+
+let initialCamera = { 
+        FreeFlyController.initial with 
+            view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+    }
+
+let app (runtime : IRuntime) =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
     {
         unpersist = Unpersist.instance     
         threads = threads 
@@ -154,7 +255,8 @@ let app =
                 super = 0
                 angle = 0.0
                 lastImage = System.DateTime.Now
+                cameraState = initialCamera
             }
         update = update 
-        view = view
+        view = view runtime
     }

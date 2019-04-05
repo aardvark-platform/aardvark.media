@@ -18,7 +18,7 @@ let main argv =
     Aardium.init()
 
     use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    let instance = App.app app.Runtime |> App.start
 
     Aardvark.UI.Config.shouldTimeJsCodeGeneration <- true
     Aardvark.UI.Config.shouldTimeUIUpdate <- true
