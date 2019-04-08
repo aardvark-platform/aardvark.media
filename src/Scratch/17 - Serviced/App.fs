@@ -50,7 +50,7 @@ let view (sg : ISg<_>) (model : MModel) =
         //body [style "background: rgb(27, 28, 29);"] [
         //    menu ()
         //]
-        onBoot "aardvark.processEvent('__ID__', 'createClient');" )(
+        onBoot "aardvark.processEvent('__ID__', 'createClient');" (
             onShutdown "" (
                 body [] [
                     renderControl
