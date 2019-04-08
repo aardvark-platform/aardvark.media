@@ -608,7 +608,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let getSceneAndTask (name : string) (signature : IFramebufferSignature) =
         match currentScene with
             | Some(sceneName, scene, clear) ->
-                if sceneName <> name || scene.FramebufferSignature <> signature then
+                if true || sceneName <> name || scene.FramebufferSignature <> signature then
                     match lastInfo with
                         | Some info -> scene.Scene.RemoveClientInfo(info.session, info.targetId)
                         | _ -> ()
@@ -961,9 +961,12 @@ module internal RawDownload =
                 device.perform {
                     if device.IsDeviceGroup then 
                         do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal)
+                        do! Command.SetDeviceMask(1u)
                     else
                         do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
+                    if device.IsDeviceGroup then
+                        do! Command.SetDeviceMask(3u)
                     do! Command.TransformLayout(image, l)
                 }
 
