@@ -20,7 +20,7 @@ let main argv =
                     | (true,v), (true, pId) -> v, pId
                     | _ -> 
                         failwith "usage: port parentProcessId"
-            | _ -> failwith "usage: port parentProcessId"
+            | _ -> 4321, -1
 
     if processId > 0 then
         let killThread = 
@@ -48,11 +48,12 @@ let main argv =
         Suave.Files.browseHome
     ] |> ignore
 
-    Aardium.run {
-        url "http://localhost:4321/"
-        width 1024
-        height 768
-        debug true
-    }
+    if processId < 0 then
+        Aardium.run {
+            url "http://localhost:4321/"
+            width 1024
+            height 768
+            debug true
+        }
 
     0 

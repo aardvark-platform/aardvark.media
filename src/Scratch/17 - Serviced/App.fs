@@ -1,16 +1,20 @@
 ﻿module Inc.App
 
-open Aardvark.UI
-open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
+
+open Aardvark.UI
+open Aardvark.UI.Primitives
+
 open Inc.Model
 
 let update (model : Model) (msg : Message) =
     match msg with
-        Inc -> { model with value = model.value + 1 }
+        | Inc -> { model with value = model.value + 1 }
+        | Camera m -> 
+            { model with cameraState = FreeFlyController.update model.cameraState m }
 
 let menu () =
     div [clazz "menu-bar"] [
@@ -35,26 +39,44 @@ let menu () =
         ]
     ]
 
-let view (model : MModel) =
+
+let view (sg : ISg<_>) (model : MModel) =
+    let renderControl =
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
+                    sg
+
     require Html.semui (
-        body [style "background: rgb(27, 28, 29);"] [
-            menu ()
-        ]
+        //body [style "background: rgb(27, 28, 29);"] [
+        //    menu ()
+        //]
+        onBoot "aardvark.processEvent('__ID__', 'createClient');" )(
+            onShutdown "" (
+                body [] [
+                    renderControl
+                ]
+            )
+        )
     )
 
 
 let threads (model : Model) = 
     ThreadPool.empty
 
+let initialCamera = { 
+        FreeFlyController.initial with 
+            view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
+    }
 
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app sg =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    
     {
         unpersist = Unpersist.instance     
         threads = threads 
         initial = 
             { 
                value = 0
+               cameraState = initialCamera
             }
         update = update 
-        view = view
+        view = view sg
     }
