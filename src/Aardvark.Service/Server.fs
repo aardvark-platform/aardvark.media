@@ -873,7 +873,7 @@ module internal RawDownload =
                     | Some t when t.Size.XY = size -> t
                     | _ ->
                         tempImage |> Option.iter device.Delete
-                        let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                        let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit ||| VkImageUsageFlags.ColorAttachmentBit) device
                         tempImage <- Some t
                         t
 
@@ -902,10 +902,12 @@ module internal RawDownload =
                 
                 let l = image.Layout
                 device.perform {
+                    do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal) // inefficient but needed. why? tempImage has peers
                     do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
                     do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, image.Size)
                     if device.IsDeviceGroup then 
+                        do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
                         do! Command.SyncPeersDefault(tempImage,VkImageLayout.TransferSrcOptimal)
                     else
                         do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)

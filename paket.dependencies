@@ -9,15 +9,15 @@ nuget Aardvark.Base.Incremental            ~> 4.4.0
 nuget Aardvark.Base.FSharp                 ~> 4.4.0
 nuget Aardvark.Base.Essentials             ~> 4.4.0
 
-nuget Aardvark.Base.Rendering              ~> 4.7.17
-nuget Aardvark.Application.WinForms.GL     ~> 4.7.17
-nuget Aardvark.Application.Slim.GL         ~> 4.7.17
-nuget Aardvark.SceneGraph                  ~> 4.7.17
-nuget Aardvark.SceneGraph.IO               ~> 4.7.17
-nuget Aardvark.Scenegraph.OPC              ~> 4.7.17
-nuget Aardvark.Rendering.Text              ~> 4.7.17
-nuget Aardvark.Rendering.Vulkan            ~> 4.7.17
-nuget Aardvark.GPGPU                       ~> 4.7.17
+nuget Aardvark.Base.Rendering              ~> 4.7.18
+nuget Aardvark.Application.WinForms.GL     ~> 4.7.18
+nuget Aardvark.Application.Slim.GL         ~> 4.7.18
+nuget Aardvark.SceneGraph                  ~> 4.7.18
+nuget Aardvark.SceneGraph.IO               ~> 4.7.18
+nuget Aardvark.Scenegraph.OPC              ~> 4.7.18
+nuget Aardvark.Rendering.Text              ~> 4.7.18
+nuget Aardvark.Rendering.Vulkan            ~> 4.7.18
+nuget Aardvark.GPGPU                       ~> 4.7.18
 
 nuget Aardvark.Compiler.DomainTypes         ~> 4.2.4
 nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.2.4
