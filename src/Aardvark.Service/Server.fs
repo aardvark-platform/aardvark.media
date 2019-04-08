@@ -905,7 +905,10 @@ module internal RawDownload =
                     do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
                     do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, image.Size)
-                    do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
+                    if device.IsDeviceGroup then 
+                        do! Command.SyncPeersDefault(tempImage,VkImageLayout.TransferSrcOptimal)
+                    else
+                        do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
                     do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                     do! Command.TransformLayout(image, l)
                 }
@@ -954,7 +957,10 @@ module internal RawDownload =
                 
                 let l = image.Layout
                 device.perform {
-                    do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
+                    if device.IsDeviceGroup then 
+                        do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal)
+                    else
+                        do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                     do! Command.TransformLayout(image, l)
                 }
@@ -1268,18 +1274,6 @@ module internal RawDownload =
             GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
             
         
-
-    let download (runtime : IRuntime) (fbo : IFramebuffer) (samples : int) (dst : nativeint) =  
-        match runtime with
-            | :? Aardvark.Rendering.Vulkan.Runtime ->
-                Vulkan.download runtime fbo samples dst
-
-            | :? Aardvark.Rendering.GL.Runtime ->
-                GL.download runtime fbo samples dst
-                
-            | _ ->
-                failwith "bad runtime"
-
 
 type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(server, getScene)
