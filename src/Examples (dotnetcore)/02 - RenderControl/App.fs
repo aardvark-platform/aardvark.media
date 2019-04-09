@@ -24,19 +24,35 @@ let update (model : Model) (msg : Message) =
             printfn "open file: %A" s
             model
 
+module Shader =
+    open FShade
+    open Aardvark.Base.Rendering.Effects
+
+    let fs (v : Vertex) =
+        fragment {
+            if v.pos.X / v.pos.W > 0.0 then
+                let mutable r = 1.0
+
+                for i in 0 .. 100000 do
+                    r <- r * sin (v.pos.X * r * cos (float i) * tan r)
+                return V4d(1.0,0.0,0.0,1.0+ r)
+            else return v.c
+        }
+
 let viewScene (model : MModel) =
     Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
             do! DefaultSurfaces.simpleLighting
+            do! Shader.fs
         }
 
 let view (model : MModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
+                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "1"]) 
                     (viewScene model)
 
     let channel = model.cameraState.view
