@@ -11,6 +11,7 @@ open Model
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.SceneGraph
+open Aardvark.SceneGraph.SgPrimitives
 
 module Footprint = 
     let getTrafo (trafo:Trafo3d) (model : MModel) =
@@ -124,7 +125,7 @@ module Shader =
       }
 
 module Drawing =
-
+  
   let drawColoredEdges (color : C4b) (points : alist<V3d>) = 
     points
         |> AList.toMod 
@@ -155,6 +156,11 @@ module Drawing =
         }
         |> Sg.noEvents
         |> Sg.trafo(trafo) 
+  
+  let drawPlane (color : C4b) (bounds : Box2d) = 
+    let points = bounds.ComputeCorners() |> Array.map (fun x -> V3d(x.X, x.Y, 0.0)) |> Array.take 4
+    
+    IndexedGeometryPrimitives.quad (points.[0], color) (points.[1], color) (points.[3], color) (points.[2], color)  |> Sg.ofIndexedGeometry    
 
 module Scene =
 
@@ -173,6 +179,12 @@ module Scene =
             |> Sg.uniform "footprintVisible" (Mod.constant true)
             |> Sg.uniform "instrumentMVP" (Footprint.getTrafo (Trafo3d.Translation(V3d(1.0, 0.0, 2.0))) model)
             //|> Sg.texture (Sym.ofString "FootPrintTexture") (Mod.constant Footprint.getTexture)
+
+            Drawing.drawPlane C4b.Green (Box2d(V2d(10.0), V2d(1.0)))
+            |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))))
+            |> Sg.uniform "footprintVisible" (Mod.constant true)
+            |> Sg.uniform "instrumentMVP" (Footprint.getTrafo (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))) model)
+
         ] |> Sg.ofList
     
     
@@ -215,9 +227,15 @@ module Scene =
             yield p
             yield p + up
         }
-
+        
     let upSg = Drawing.drawColoredEdges C4b.Blue up
-    Sg.ofSeq [scenesgs; camPoint; lookAtSg; upSg] |> Sg.noEvents 
+    let tSg = 
+        scenesgs
+            |> Sg.andAlso (
+                    Sg.frustum (C4b.Yellow |> Mod.constant) model.camera2.view model.frustumCam2
+                    |> Sg.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect]
+                  )
+    Sg.ofSeq [tSg; upSg] |> Sg.noEvents //scenesgs; camPoint; lookAtSg; upSg; frustum
 
   let camScene (model : MModel) =
     let scenesgs = scene model
