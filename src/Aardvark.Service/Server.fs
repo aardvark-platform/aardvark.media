@@ -255,6 +255,7 @@ type ClientInfo =
         session : Guid
         size : V2i
         samples : int
+        quality : int
         time : MicroTime
         clearColor : C4f
     }
@@ -1348,6 +1349,7 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
             | None ->
                 ()
 
+
 type internal ClientCreateInfo =
     {
         server          : Server
@@ -1355,6 +1357,7 @@ type internal ClientCreateInfo =
         id              : string
         sceneName       : string
         samples         : int
+        quality         : int       // 0-100
         socket          : WebSocket
         useMapping      : bool
         getSignature    : int -> IFramebufferSignature
@@ -1367,7 +1370,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         if info.useMapping then
             new MappedClientRenderTask(info.server, getContent) :> ClientRenderTask
         else
-            new JpegClientRenderTask(info.server, getContent) :> ClientRenderTask
+            new JpegClientRenderTask(info.server, getContent, createInfo.quality) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
     let sender = AdaptiveObject()
@@ -1406,6 +1409,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             sceneName = createInfo.sceneName
             session = createInfo.session
             samples = createInfo.samples
+            quality = createInfo.quality
             size = V2i.II
             time = MicroTime.Now
             clearColor = C4f.Black
@@ -1693,6 +1697,16 @@ module Server =
                     | Some "true" -> true
                     | _ -> false
 
+            let quality =
+                match Map.tryFind "quality" args with
+                    | Some q -> 
+                        match Int32.TryParse q with
+                            | (true,v) when v >=1 && v <= 100 -> v
+                            | _ -> 
+                                Log.warn "could not parse quality. should be int of range [1,100]"
+                                100
+                    | _ -> 100
+
             let createInfo =
                 {
                     server          = info
@@ -1700,6 +1714,7 @@ module Server =
                     id              = targetId
                     sceneName       = sceneName
                     samples         = samples
+                    quality         = quality
                     socket          = ws
                     useMapping      = useMapping
                     getSignature    = getSignature
