@@ -252,7 +252,7 @@ class Renderer {
                 var doPing = function () {
                     if (socket.readyState <= 1) {
                         socket.send("#ping");
-                        setTimeout(doPing, 50);
+                        setTimeout(doPing, 1000);
                     }
                 };
 
@@ -1155,7 +1155,7 @@ if (!aardvark.connect) {
                 aardvark.promise = aardvark.promise.then(function () {
                     try {
                         //exectutedCode = exectutedCode + "\r\n\r\n\r\n" + data;
-                        eval("{\r\n" + data + "\r\n}");
+                        (new Function("{\r\n" + data + "\r\n}"))();
                     } catch (e) {
                         console.warn("could not execute event message with exn " + e + ":\n" + data);
                         debugger;
