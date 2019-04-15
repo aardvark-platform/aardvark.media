@@ -827,14 +827,13 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
     let flags = ref CefEventFlags.None
     let mutable keyboard : Option<BrowserKeyboard> = None
     let mutable mouse : Option<BrowserMouse> = None
-
+    let mutable isDisposed = false
 
     let browserReady = new ManualResetEventSlim(false)
 
     let texture = runtime.CreateStreamingTexture(mipMaps)
     let version = Mod.init 0
     
-
     let loadHandler = LoadHandler(this)
     let renderHandler = RenderHandler(this, size, texture)
     let loadResult = MVar.empty()
@@ -849,15 +848,21 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
 
     let sizeSubscription =
         size.AddMarkingCallback (fun () ->
-            host.WasResized()
+            if host <> null then
+                host.WasResized()
             //host.Invalidate(CefPaintElementType.View)
         )
+
+    
    
     member x.IsInitialized
         with get() = not (isNull browser)
 
+    member x.IsDisposed
+        with get() = isDisposed
+
     member internal x.SetBrowser(b : CefBrowser, f : CefFrame) =
-        if isNull browser then
+        if not isDisposed && isNull browser then
             browser <- b
             frame <- f
             host <- b.GetHost()
@@ -868,26 +873,31 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
             browser <- b
 
     member internal x.LoadFinished(res : LoadResult) =
-        MVar.put loadResult res
+        lock lockObj (fun () ->
+            if not isDisposed then
+                MVar.put loadResult res
+            )
 
     member internal x.Render(f : unit -> Transaction) =
-        let t = f()
-        version.UnsafeCache <- version.UnsafeCache + 1
+        lock lockObj (fun () -> // NOTE: locking here might block when acquiring the graphics context when only 1 resource context is created
+            if not isDisposed then
+                let t = f()
+                version.UnsafeCache <- version.UnsafeCache + 1
 
-        t.Enqueue version
-        transactor.Enqueue (fun () -> t.Commit())
-        //transactor.Mark [texture :> IAdaptiveObject; version :> IAdaptiveObject]
-
+                t.Enqueue version
+                transactor.Enqueue (fun () -> t.Commit())
+                //transactor.Mark [texture :> IAdaptiveObject; version :> IAdaptiveObject]
+        )
+        
 
     member internal x.TryGetScreenLocation(pos : V2i) : Option<V2i> =
         None
 
     member private x.Init() =
         lock lockObj (fun () ->
-            if isNull browser then
-                CefBrowserHost.CreateBrowser(windowInfo, x, settings, "about:blank")
+            if not isDisposed && isNull browser then
+                CefBrowserHost.CreateBrowser(windowInfo, x, settings, "about:blank") // NOTE: if real url is used here LoadFinished is invoked but the webpage is not displayed
                 browserReady.Wait()
-
         )
 
     override x.OnProcessMessageReceived(browser : CefBrowser, sourceProcess : CefProcessId, message : CefProcessMessage) =
@@ -910,57 +920,63 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
         
     override x.GetRenderHandler() = renderHandler :> CefRenderHandler
 
-    member x.ExecuteAsync(js : string) =
+    member x.ExecuteAsync(js : string) : Async<string> =
         lock lockObj (fun () ->
-            x.Init()
-            async {
-                let token = IPC.MessageToken.New
-                let tcs = new System.Threading.Tasks.TaskCompletionSource<IPC.Reply>()
-                pending.[token] <- tcs
-                browser.Send(CefProcessId.Renderer, IPC.Execute(token, js))
+            if isDisposed then
+                async { return "disposed" }
+            else
+                x.Init()
+                async {
+                    let token = IPC.MessageToken.New
+                    let tcs = new System.Threading.Tasks.TaskCompletionSource<IPC.Reply>()
+                    pending.[token] <- tcs
+                    browser.Send(CefProcessId.Renderer, IPC.Execute(token, js))
 
-                let! res = Async.AwaitTask tcs.Task
-                match res with
-                    | IPC.Result(_,str) -> 
-                        return str
-                    | IPC.Exception(_,exn) ->
-                        return failf "%A" exn
-                    | IPC.NoFrame(_) ->
-                        return fail "no frame"
-            }
+                    let! res = Async.AwaitTask tcs.Task
+                    match res with
+                        | IPC.Result(_,str) -> 
+                            return str
+                        | IPC.Exception(_,exn) ->
+                            return failf "%A" exn
+                        | IPC.NoFrame(_) ->
+                            return fail "no frame"
+                }
         )
 
     member x.Execute(js : string) =
         x.ExecuteAsync js |> Async.RunSynchronously
 
-    member x.GetViewportAsync(id : string) =
+    member x.GetViewportAsync(id : string) : Async<Option<Box2i>> =
         lock lockObj (fun () ->
-            x.Init()
-            async {
-                let token = IPC.MessageToken.New
-                let tcs = new System.Threading.Tasks.TaskCompletionSource<IPC.Reply>()
-                pending.[token] <- tcs
-                browser.Send(CefProcessId.Renderer, IPC.GetViewport(token, id))
+            if isDisposed then
+                async { return None }
+            else
+                x.Init()
+                async {
+                    let token = IPC.MessageToken.New
+                    let tcs = new System.Threading.Tasks.TaskCompletionSource<IPC.Reply>()
+                    pending.[token] <- tcs
+                    browser.Send(CefProcessId.Renderer, IPC.GetViewport(token, id))
 
-                let! res = Async.AwaitTask tcs.Task
-                match res with
-                    | IPC.Result(_,str) -> 
-                        let o = JObject.Parse(str)
-                        let isValid : bool = o.GetValue("isValid") |> JToken.op_Explicit
-                        if isValid then
-                            let x : int = o.GetValue("x") |> JToken.op_Explicit
-                            let y : int = o.GetValue("y") |> JToken.op_Explicit
-                            let w : int = o.GetValue("w") |> JToken.op_Explicit
-                            let h : int = o.GetValue("h") |> JToken.op_Explicit
-                            return Box2i.FromMinAndSize(x, y, w, h) |> Some
-                        else
+                    let! res = Async.AwaitTask tcs.Task
+                    match res with
+                        | IPC.Result(_,str) -> 
+                            let o = JObject.Parse(str)
+                            let isValid : bool = o.GetValue("isValid") |> JToken.op_Explicit
+                            if isValid then
+                                let x : int = o.GetValue("x") |> JToken.op_Explicit
+                                let y : int = o.GetValue("y") |> JToken.op_Explicit
+                                let w : int = o.GetValue("w") |> JToken.op_Explicit
+                                let h : int = o.GetValue("h") |> JToken.op_Explicit
+                                return Box2i.FromMinAndSize(x, y, w, h) |> Some
+                            else
+                                return None
+
+                        | IPC.Exception(_,exn) ->
                             return None
-
-                    | IPC.Exception(_,exn) ->
-                        return None
-                    | IPC.NoFrame(_) ->
-                        return None
-            }
+                        | IPC.NoFrame(_) ->
+                            return None
+                }
         )
 
     member x.GetViewport(id : string) =
@@ -968,37 +984,49 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
 
     member x.SetFocus (v : bool) =
         lock lockObj (fun () ->
-            x.Init()
-            if !focus <> v then
-                focus := v
-                host.SendFocusEvent(v)
+            if not isDisposed then
+                x.Init()
+                if !focus <> v then
+                    focus := v
+                    host.SendFocusEvent(v)
         )
 
     member x.Keyboard =
         lock lockObj (fun () ->
-            x.Init()
-            match keyboard with
-                | Some k -> k :> EventKeyboard
-                | _ ->
-                    let k = BrowserKeyboard(focus, flags, host)
-                    keyboard <- Some k
-                    k :> EventKeyboard
+            if not isDisposed then
+                x.Init()
+                match keyboard with
+                    | Some k -> k :> EventKeyboard
+                    | _ ->
+                        let k = BrowserKeyboard(focus, flags, host)
+                        keyboard <- Some k
+                        k :> EventKeyboard
+            else
+                fail "Disposed"
         )
 
     member x.Mouse =
         lock lockObj (fun () ->
-            x.Init()
-            match mouse with
-                | Some m -> m :> EventMouse
-                | _ ->
-                    let m = BrowserMouse(focus, flags, host)
-                    mouse <- Some m
-                    m :> EventMouse
+            if not isDisposed then
+                x.Init()
+                match mouse with
+                    | Some m -> m :> EventMouse
+                    | _ ->
+                        let m = BrowserMouse(focus, flags, host)
+                        mouse <- Some m
+                        m :> EventMouse
+            else
+                fail "Disposed"
         )
 
     member x.ReadPixel(pos : V2i) =
-        x.Init()
-        renderHandler.GetPixelValue(pos).ToC4f()
+        lock lockObj (fun () ->
+            if not isDisposed then
+                x.Init()
+                renderHandler.GetPixelValue(pos).ToC4f()
+            else
+                C4f.Black
+        )
         //texture.ReadPixel(pos)
 
     member x.Events = eventSink :> IObservable<_>
@@ -1009,37 +1037,75 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
 
     member x.LoadUrlAsync (url : string) =
         lock lockObj (fun () ->
-            x.Init()
-            frame.LoadUrl url
-            MVar.takeAsync loadResult
+            if not isDisposed then
+                x.Init()
+                frame.LoadUrl url
+            else
+                fail "Disposed"
         )
+        MVar.takeAsync loadResult
 
     member x.LoadUrl (url : string) =
         lock lockObj (fun () ->
-            x.Init()
-            frame.LoadUrl url
-            MVar.take loadResult
+            if not isDisposed then
+                x.Init()
+                frame.LoadUrl url
+            else
+                fail "Disposed"
         )
+        MVar.take loadResult
 
     member x.LoadHtmlAsync (code : string) =
         lock lockObj (fun () ->
-            x.Init()
-            frame.LoadString(code, "http://aardvark.local/index.html")
-            MVar.takeAsync loadResult
+            if not isDisposed then
+                x.Init()
+                frame.LoadString(code, "http://aardvark.local/index.html")
+            else
+                fail "Disposed"
         )
+        MVar.takeAsync loadResult
 
     member x.LoadHtml (code : string) =
         lock lockObj (fun () ->
-            x.Init()
-            frame.LoadString(code, "http://aardvark.local/index.html")
-            MVar.take loadResult
+            if not isDisposed then
+                x.Init()
+                frame.LoadString(code, "http://aardvark.local/index.html")
+            else
+                fail "Disposed"
         )
+        MVar.take loadResult
 
     interface IDisposable with
         member x.Dispose() = 
-            if isNull browser |> not then browser.Dispose(); browser <- null
-            if isNull host |> not then host.Dispose(); host <- null
-            base.Dispose(true)
+            try
+                Monitor.Enter(lockObj)
+                
+                if isDisposed then
+                    Log.warn "Double Dispose"
+                else
+
+                    isDisposed <- true
+
+                    // NOTE: Cef/RenderProcess is only shut down when using CloseBrowser
+                    if isNull host |> not then 
+                        host.CloseBrowser(true) // proper shutdown of Client (don't know if Dispose of frame/browser/host is actually required, )
+                        host.Dispose() // this is the only thing we created our own using GetHost()
+                        host <- null
+
+                    // NOTE: only Dispose will crash if App.Model is changed afterwards
+                    //if isNull frame |> not then frame.Dispose(); frame <- null
+                    //if isNull browser |> not then browser.Dispose(); browser <- null
+                    frame <- null
+                    browser <- null
+
+                    // NOTE: do not Dispose anything... it crashes stuff sometimes
+                    //       Xilium seems to be using finalizers, lets hope they take care of this
+                    //       host is the only thing that has been created on our side using GetHost()
+
+                    //base.Dispose(true)
+            finally
+                Monitor.Exit(lockObj)
+                
 
        
 
@@ -1136,17 +1202,17 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
 
         if elementType = CefPaintElementType.View then
 
-            let size = V2i(width, height)
-            if size <> pixelSize then 
-                pixelData <- Array.zeroCreate(width * height * 4)
-                pixelSize <- size
-
-            Marshal.Copy(buffer, pixelData, 0, pixelData.Length)
+            // ?? pixelData is not used
+            //let size = V2i(width, height)
+            //if size <> pixelSize then 
+            //    pixelData <- Array.zeroCreate(width * height * 4)
+            //    pixelSize <- size
+            //Marshal.Copy(buffer, pixelData, 0, pixelData.Length)
 
             parent.Render(fun () ->
                 let size = V2i(width, height)
                 texture.UpdateAsync(PixFormat.ByteBGRA, V2i(width, height), buffer)
-            )     
+            ) 
 
     /// <summary>
     /// Notifies the "main" process to change the cursor-symbol (hovering over text/links/etc.)

@@ -64,6 +64,7 @@ type App<'model, 'mmodel, 'msg> =
 
 
         and doit(msgs : list<Message<'msg>>) =
+            let messagesForward = System.Collections.Generic.List<_>()
             lock l (fun () ->
                 if Config.shouldTimeUnpersistCalls then Log.startTimed "[Aardvark.UI] update/adjustThreads/unpersist"
 
@@ -77,6 +78,8 @@ type App<'model, 'mmodel, 'msg> =
                         
                                 state.Value <- newState
                                 app.unpersist.update mstate newState
+
+                                messagesForward.Add(msg)
                         
                             // if somebody awaits message processing, trigger it
                             msg.processed |> Option.iter (fun mri -> mri.Set())
@@ -84,8 +87,8 @@ type App<'model, 'mmodel, 'msg> =
 
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
-            for m in msgs do 
-                for m in m.msgs do subject.OnNext(m)
+            for m in messagesForward do 
+                subject.OnNext(m)
 
         and emit (msg : 'msg) =
             lock messageQueue (fun () ->
