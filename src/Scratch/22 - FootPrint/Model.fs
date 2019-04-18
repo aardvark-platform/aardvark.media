@@ -1,12 +1,14 @@
 ﻿namespace Model
 
+open Aardvark.Application
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open System
-open Aardvark.Base
-open Aardvark.Base
+
+
+
 
 type Message = 
     | Camera            of FreeFlyController.Message
@@ -16,23 +18,36 @@ type Message =
     | ChangeZoom        of Numeric.Action
     | ChangePosition    of Vector3d.Action
     | UpdateDockConfig  of DockConfig 
+    | KeyDown           of key : Keys  
+
+[<DomainType>]
+type ProjectionModel = 
+    {
+        frustum         : Frustum
+        cam             : CameraControllerState
+    }
 
 [<DomainType>]
 type Model = 
     {
-        cameraMain     : CameraControllerState
-        camera2        : CameraControllerState
-        pan            : NumericInput
-        tilt           : NumericInput
-        zoom           : NumericInput
-        position       : V3dInput
-        lookAt         : V3d
-        up             : V3d
-        frustumCam2    : Frustum
-        dockConfig     : DockConfig
+        cameraMain          : CameraControllerState
+        camera2             : CameraControllerState
+        pan                 : NumericInput
+        tilt                : NumericInput
+        zoom                : NumericInput
+        position            : V3dInput
+        lookAt              : V3d
+        up                  : V3d
+        textureProj         : ProjectionModel
+        footprintProj       : ProjectionModel
+        textureActive       : bool
+        dockConfig          : DockConfig
     }
 
 module Init =
+    //let bigVal value = value + 3000000.0
+    //let bigVec (value:V3d) = value + 3000000.0
+
     let pan = 
       {
         min    = 0.0
@@ -75,6 +90,8 @@ module Init =
             value = v    
         }
 
+    
+
     let initialCamera = { 
         FreeFlyController.initial' 3.0 with 
             view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
@@ -90,7 +107,36 @@ module Init =
     //<!-- angle (gon) for camera horizontal FoV-->
     //<HorizontalFoV>35.87</HorizontalFoV>
     //<Resolution>1024, 1024</Resolution>
-    let ifrustum = Frustum.perspective ((35.87).DegreesFromGons()) 0.001 100.0 1.0
+    let frustumFP = Frustum.perspective ((35.87).DegreesFromGons()) 0.001 100.0 1.0
+
+    let initialCameraFP = { 
+        FreeFlyController.initial' 3.0 with 
+            view = CameraView.lookAt (V3d(0.0, 2.0, 1.0)) V3d.OOO V3d.OOI
+    }
+
+    let projectionModelFP = {
+        frustum = frustumFP
+        cam     = initialCameraFP
+    }
+
+    //<HRC_PanCam>
+    //<!-- focal length in mm (PRo3D: as user information) -->
+    //                <FocalLength>180</FocalLength>
+    //<Resolution>1024, 1024</Resolution>
+    // <!-- angle (gon) for camera horizontal FoV-->
+    //<HorizontalFoV>5.42</HorizontalFoV>
+    
+    let frustumTex = Frustum.perspective ((35.87).DegreesFromGons()) 0.001 100.0 1.0
+
+    let initialCameraTex = { 
+        FreeFlyController.initial' 3.0 with 
+            view = CameraView.lookAt (V3d(0.0, -2.0, 1.0)) V3d.OOO V3d.OOI
+    }
+
+    let projectionModelTex = {
+        frustum = frustumTex
+        cam     = initialCameraTex
+    }
 
     let initialModel : Model = 
         { 
@@ -99,10 +145,13 @@ module Init =
             pan            = pan
             tilt           = tilt
             zoom           = zoom
-            position       = position (V3d(0.0, 2.0, 1.0))                       
+            position       = position (V3d(0.0, 2.0, 1.0))                      
             lookAt         = initialCamera2.view.Forward
             up             = initialCamera2.view.Up
-            frustumCam2    = ifrustum
+            //frustumCam2    = ifrustum
+            textureProj    = projectionModelFP
+            footprintProj  = projectionModelTex
+            textureActive  = false
             dockConfig     =
                 config {
                     content (

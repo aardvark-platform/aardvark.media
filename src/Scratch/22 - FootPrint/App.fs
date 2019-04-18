@@ -1,8 +1,5 @@
 ﻿module App
 
-open Aardvark.UI
-open Aardvark.UI.Primitives
-
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
@@ -21,7 +18,23 @@ let update2ndCam (model : Model) =
     let up = Rot3d(right, model.tilt.value.RadiansFromDegrees()).TransformDir(model.up)
 
     let view = CameraView.look model.position.value lookAt.Normalized up.Normalized 
-    { model with camera2 = { model.camera2 with view = view } }
+    match model.textureActive with
+     | true -> { model with camera2 = { model.camera2 with view = view };
+                             textureProj = {model.textureProj with cam = { model.textureProj.cam with view = view}}}
+     | false -> { model with camera2 = { model.camera2 with view = view };
+                            footprintProj = {model.footprintProj with cam = { model.footprintProj.cam with view = view}}}
+   
+
+let getFrustum (model : MModel) =
+    adaptive {
+        let! texActive = model.textureActive
+        let! tpf = model.textureProj.frustum
+        let! fppf = model.footprintProj.frustum 
+        match texActive with
+            | true -> return tpf
+            | false -> return fppf
+        
+    }
 
 let update (model : Model) (msg : Message) =
     match msg with
@@ -44,6 +57,21 @@ let update (model : Model) (msg : Message) =
             update2ndCam m'
         | UpdateDockConfig cfg ->
             { model with dockConfig = cfg }
+        | Message.KeyDown k ->
+            let position' =  Vector3d.updateV3d model.position model.cameraMain.view.Location
+            let cam2 = { model.camera2 with view = model.cameraMain.view }
+            match k with 
+                | Aardvark.Application.Keys.F1 -> 
+                    { model with camera2 = cam2
+                                 footprintProj = {model.footprintProj with cam = {model.footprintProj.cam with view = model.cameraMain.view}}; 
+                                 position = position';
+                                 textureActive = false}
+                | Aardvark.Application.Keys.F2 ->
+                    { model with camera2 = cam2
+                                 textureProj = {model.textureProj with cam = {model.textureProj.cam with view = model.cameraMain.view}}; 
+                                 position = position';
+                                 textureActive = true}
+                | _ -> model
 
 
 
@@ -62,7 +90,8 @@ let view (model : MModel) =
             attribute "showFPS" "true"; 
             attribute "data-renderalways" "1"; 
             attribute "data-samples" "8"; 
-            style "width: 100%; height:80%"])
+            style "width: 100%; height:80%";
+            onKeyDown (Message.KeyDown)])
         (Scene.fullScene model)
     
     // WACL
@@ -71,12 +100,13 @@ let view (model : MModel) =
     let width = "width:" + (1024/2).ToString() + ";" ///uint32(2)
 
     let renderControl2ndCam =
-      FreeFlyController.controlledControl model.camera2 Camera (model.frustumCam2) 
+      FreeFlyController.controlledControl model.camera2 Camera (getFrustum model) 
         (AttributeMap.ofList [ 
             attribute "showFPS" "true"; 
             attribute "data-renderalways" "1"; 
             attribute "data-samples" "8"; 
-            style ("background: #1B1C1E;" + height + width)])
+            style ("background: #1B1C1E;" + height + width)
+            onKeyDown (Message.KeyDown)])
         (Scene.camScene model)
 
     page (fun request -> 

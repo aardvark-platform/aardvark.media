@@ -8,26 +8,35 @@ open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
 open Model
 
-open Aardvark.UI
-open Aardvark.UI.Primitives
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.SgPrimitives
 
 module Footprint = 
-    let getTrafo (trafo:Trafo3d) (model : MModel) =
+    let getTrafo (view:IMod<CameraView>) (frustum : IMod<Frustum>) =
         adaptive {
-            let! cam = model.frustumCam2 
-            let projMatrix = (cam |> Frustum.projTrafo).Forward
-            let! view = model.camera2.view
+            let! fr = frustum 
+            let projMatrix = (fr |> Frustum.projTrafo).Forward
+            let! view = view
             let instViewMatrix = view.ViewTrafo.Forward
             return (projMatrix * instViewMatrix ) //* trafo.Forward
         } 
+
     let getTexture =
         let res = V2i(1024, 1024)
        
         let pi = PixImage<byte>(Col.Format.RGBA, res)
         pi.GetMatrix<C4b>().SetByCoord(fun (c : V2l) -> C4b.White) |> ignore
         PixTexture2d(PixImageMipMap [| (pi.ToPixImage(Col.Format.RGBA)) |], true) :> ITexture
+
+    let checkerboard = 
+        let res = V2i(1024, 1024)
+        let texture = PixImage<byte>(Col.Format.RGBA, res)
+        texture.GetMatrix<C4b>().SetByCoord(fun (c : V2l) -> let x' = c.X /(int64)32
+                                                             let y' = c.Y /(int64)32
+                                                             let i = x' + y'
+                                                             (if (i % (int64)2) = (int64)0 then C4b.White else C4b.Black)
+                                                             ) |> ignore   
+        PixTexture2d(PixImageMipMap [| (texture.ToPixImage(Col.Format.RGBA)) |], true) :> ITexture
 
 module Shader =
     open FShade
@@ -43,6 +52,7 @@ module Shader =
             [<Semantic("Scalar")>]      scalar  : float
             [<Semantic("LightDir")>]    ldir    : V3d
             [<Semantic("Tex0")>]        tc0     : V4d
+            [<Semantic("Tex1")>]        tc1     : V4d
 
         }
 
@@ -61,9 +71,12 @@ module Shader =
             //let vp = uniform.ModelViewTrafo * v.pos
             //let p = uniform.ProjTrafo * vp
             
-            let instrumentMatrix    : M44d   = uniform?instrumentMVP
+            let footprintProjM  : M44d   = uniform?footprintProj
+            let textureProjM    : M44d   = uniform?textureProj
             
-            return { v with tc0 = instrumentMatrix * v.wp; sv = 0 } //v.pos
+            return { v with tc0 = footprintProjM * v.wp; 
+                            tc1 = textureProjM   * v.wp; 
+                            sv = 0 } //v.pos
         }
 
     let footprintV2 (v : FootPrintVertex) =
@@ -86,12 +99,40 @@ module Shader =
     let footPrintF (v : FootPrintVertex) =
         fragment {           
             if uniform?footprintVisible then
+                let fpt = v.tc0.XY / v.tc0.W
+                let tt  = v.tc1.XY / v.tc1.W
+                let col = 
+                    if (fpt.X > -1.0 && fpt.X < 1.0 && fpt.Y > -1.0 && fpt.Y < 1.0 && tt.X > -1.0 && tt.X < 1.0 && tt.Y > -1.0 && tt.Y < 1.0 ) then
+                        let tt1 = (tt + 1.0)/2.0
+                        //let tt2 = (tt * 2.0) - 1.0
+                        V4d(1.0, 0.0, 0.0, 1.0) * (footprintmap.Sample(tt1))
+                    elif fpt.X > -1.0 && fpt.X < 1.0 && fpt.Y > -1.0 && fpt.Y < 1.0 then
+                        V4d(1.0, 0.0, 0.0, 1.0)
+                    elif tt.X > -1.0 && tt.X < 1.0 && tt.Y > -1.0 && tt.Y < 1.0 then
+                        let tt1 = (tt + 1.0)/2.0
+                        //let tt2 = (tt * 2.0) - 1.0
+                        footprintmap.Sample(tt1)
+                    else
+                        v.c 
+                        
+
+                if (v.tc0.Z <= 0.0) then
+                    return v.c
+                else
+                    return col 
+            else
+            return v.c
+        }
+
+    let textureF (v : FootPrintVertex) =
+        fragment {           
+            if uniform?footprintVisible then
                 let t = v.tc0.XY / v.tc0.W
-                //if t.X > -1.0 && t.X < 1.0 && t.Y > -1.0 && t.Y < 1.0 then
-                //    return V4d(1.0, 0.0, 0.0, 1.0)
                 let col = 
                     if t.X > -1.0 && t.X < 1.0 && t.Y > -1.0 && t.Y < 1.0 then
-                        V4d(1.0, 0.0, 0.0, 1.0)
+                        let t1 = (t + 1.0)/2.0
+                        //let t2 = (t * 2.0) - 1.0
+                        footprintmap.Sample(t1)
                     else
                         v.c 
                 if (v.tc0.Z <= 0.0) then
@@ -125,7 +166,7 @@ module Shader =
       }
 
 module Drawing =
-  
+
   let drawColoredEdges (color : C4b) (points : alist<V3d>) = 
     points
         |> AList.toMod 
@@ -163,27 +204,19 @@ module Drawing =
     IndexedGeometryPrimitives.quad (points.[0], color) (points.[1], color) (points.[3], color) (points.[2], color)  |> Sg.ofIndexedGeometry    
 
 module Scene =
-
+  
   let scene (model : MModel) =
 
     let geom1 =
         [
             Sg.box (Mod.constant C4b.Magenta) (Mod.constant Box3d.Unit) 
             |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))))
-            |> Sg.uniform "footprintVisible" (Mod.constant true)
-            |> Sg.uniform "instrumentMVP" (Footprint.getTrafo (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))) model)
-            //|> Sg.texture (Sym.ofString "FootPrintTexture") (Mod.constant Footprint.getTexture)
 
             Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) 
             |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(1.0, 0.0, 2.0))))
-            |> Sg.uniform "footprintVisible" (Mod.constant true)
-            |> Sg.uniform "instrumentMVP" (Footprint.getTrafo (Trafo3d.Translation(V3d(1.0, 0.0, 2.0))) model)
-            //|> Sg.texture (Sym.ofString "FootPrintTexture") (Mod.constant Footprint.getTexture)
 
             Drawing.drawPlane C4b.Green (Box2d(V2d(10.0), V2d(1.0)))
             |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))))
-            |> Sg.uniform "footprintVisible" (Mod.constant true)
-            |> Sg.uniform "instrumentMVP" (Footprint.getTrafo (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))) model)
 
         ] |> Sg.ofList
     
@@ -192,12 +225,17 @@ module Scene =
         sg
          |> Sg.cullMode (Mod.constant CullMode.Clockwise)
          |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+         |> Sg.uniform "footprintVisible" (Mod.constant true)
+         |> Sg.uniform "footprintProj" (Footprint.getTrafo model.footprintProj.cam.view model.footprintProj.frustum)
+         |> Sg.uniform "textureProj" (Footprint.getTrafo model.textureProj.cam.view model.textureProj.frustum)
+         |> Sg.texture (Sym.ofString "FootPrintTexture") (Mod.constant Footprint.checkerboard)
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
                 do! DefaultSurfaces.simpleLighting
                 do! Shader.footprintV
                 do! Shader.footPrintF
+                //do! Shader.textureF
             }
 
     regular ([geom1] |> Sg.ofList) 
@@ -214,7 +252,7 @@ module Scene =
             let! view = model.camera2.view
             let look = view.Forward * 5.0
             yield p
-            yield p + look
+            yield (p + look)
         }
 
     let lookAtSg = Drawing.drawColoredEdges C4b.Red lookAt
@@ -225,16 +263,22 @@ module Scene =
             let! view = model.camera2.view
             let up = view.Up * 5.0
             yield p
-            yield p + up
+            yield (p + up)
         }
         
     let upSg = Drawing.drawColoredEdges C4b.Blue up
+
+    let features = 
+      alist {
+            yield Sg.frustum (C4b.Yellow |> Mod.constant) model.footprintProj.cam.view model.footprintProj.frustum
+                    |> Sg.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect]
+            yield Sg.frustum (C4b.Cyan |> Mod.constant) model.textureProj.cam.view model.textureProj.frustum
+                    |> Sg.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect]
+      } |> AList.toASet |> Sg.set
+
     let tSg = 
         scenesgs
-            |> Sg.andAlso (
-                    Sg.frustum (C4b.Yellow |> Mod.constant) model.camera2.view model.frustumCam2
-                    |> Sg.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect]
-                  )
+            |> Sg.andAlso features
     Sg.ofSeq [tSg; upSg] |> Sg.noEvents //scenesgs; camPoint; lookAtSg; upSg; frustum
 
   let camScene (model : MModel) =
