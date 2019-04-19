@@ -110,16 +110,16 @@ module Shader =
                         V4d(1.0, 0.0, 0.0, 1.0)
                     elif tt.X > -1.0 && tt.X < 1.0 && tt.Y > -1.0 && tt.Y < 1.0 then
                         let tt1 = (tt + 1.0)/2.0
-                        //let tt2 = (tt * 2.0) - 1.0
                         footprintmap.Sample(tt1)
                     else
                         v.c 
                         
-
-                if (v.tc0.Z <= 0.0) then
+               
+                if (v.tc0.Z <= 0.0) || (v.tc1.Z <= 0.0) then
                     return v.c
                 else
                     return col 
+                        
             else
             return v.c
         }
