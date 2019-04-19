@@ -89,7 +89,7 @@ let viewScene (model : MModel) =
         sg
          |> Sg.pass pass0
          |> Sg.trafo model.trafo
-         |> Sg.cullMode (Mod.constant CullMode.Clockwise)
+         |> Sg.cullMode (Mod.constant CullMode.Back)
          |> Sg.depthTest (Mod.constant DepthTestMode.Less)
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
@@ -150,7 +150,7 @@ let viewScene (model : MModel) =
     let redOutline = outline geom1 1 pass1 C4f.Red
     let yellowOutline = outline geom2 2 pass2 C4f.Yellow
 
-    Sg.ofSeq [regular] |> Sg.noEvents //regular; redMask; yellowMask; ; redMask; yellowMask; redOutline; yellowOutline
+    Sg.ofSeq [regular; redMask; yellowMask; redMask; yellowMask; redOutline; yellowOutline] |> Sg.noEvents 
 
 let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
     let app =

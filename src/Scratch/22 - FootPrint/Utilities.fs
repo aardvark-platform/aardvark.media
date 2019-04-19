@@ -223,7 +223,7 @@ module Scene =
     
     let regular sg = 
         sg
-         |> Sg.cullMode (Mod.constant CullMode.Clockwise)
+         |> Sg.cullMode (Mod.constant CullMode.Back)
          |> Sg.depthTest (Mod.constant DepthTestMode.Less)
          |> Sg.uniform "footprintVisible" (Mod.constant true)
          |> Sg.uniform "footprintProj" (Footprint.getTrafo model.footprintProj.cam.view model.footprintProj.frustum)
