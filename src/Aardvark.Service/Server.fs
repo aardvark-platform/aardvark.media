@@ -755,7 +755,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
     inherit ClientRenderTask(server, getScene)
     
-    let quantization,quality = quality
+    let quantization, quality = quality
     let runtime = server.runtime
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
     let mutable resolved : Option<IBackendTexture> = None
@@ -1370,7 +1370,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         if info.useMapping then
             new MappedClientRenderTask(info.server, getContent) :> ClientRenderTask
         else
-            new JpegClientRenderTask(info.server, getContent, createInfo.quality) :> ClientRenderTask
+            let q = Quantization.ofQuality (float info.quality), info.quality
+            new JpegClientRenderTask(info.server, getContent, q) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
     let sender = AdaptiveObject()
@@ -1787,6 +1788,7 @@ module Server =
                             samples = samples
                             time = MicroTime.Now
                             clearColor = clearColor
+                            quality = 100
                         }
 
                     let state = getState clientInfo

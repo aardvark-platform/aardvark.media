@@ -134,6 +134,10 @@ class Renderer {
         if (!samples) samples = 1;
         this.samples = samples;
         
+        var quality = this.div.getAttribute("data-quality");
+        if (!quality) samples = 80;
+        this.quality = quality;
+
 		var showFPS = this.div.getAttribute("showFPS");
 		if (showFPS === "true") showFPS = true; else showFPS = false;
 		this.showFPS = showFPS;
@@ -310,9 +314,7 @@ class Renderer {
 
             img.style.cursor = "default";
 
-            var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples);
-
-
+            var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples + "&quality=" + this.quality);
 
             var self = this;
 
@@ -320,13 +322,7 @@ class Renderer {
                 if (event.target == self.div) self.div.focus();
             };
             document.addEventListener("click", onGlobalClick, false);
-            //if (this.div.onclick) {
-            //    var old = this.div.onclick;
-            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); old(); };
-            //}
-            //else {
-            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); };
-            //}
+
             connect = function () {
                 var socket = new WebSocket(url);
                 socket.binaryType = "blob";
@@ -1127,7 +1123,7 @@ if (!aardvark.connect) {
         var doPing = function () {
             if (eventSocket.readyState <= 1) {
                 eventSocket.send("#ping");
-                setTimeout(doPing, 50);
+                setTimeout(doPing, 500);
             }
         };
         

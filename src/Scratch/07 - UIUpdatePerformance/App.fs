@@ -157,7 +157,11 @@ let view (runtime : IRuntime) (model : MModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
+                    ( AttributeMap.ofList [ 
+                            style "width: 400px; height:400px; background: #222"; 
+                            attribute "data-samples" "8"; attribute "data-quality" "10"
+                            attribute "useMapping" "false"
+                     ]) 
                     scene
     let superChannel = model.super |> Mod.channel
 
