@@ -148,7 +148,8 @@ module Spectrum =
                     disabled: true,
                     change: function (c) { 
                         debugger;
-                        aardvark.processEvent('__ID__', 'changeColor', c.toHexString(), __INDEX__);
+                        aardvark.processEvent('__ID__', '
+                        ', c.toHexString(), __INDEX__);
                     },
                     color: '__COLOR__'
                 });

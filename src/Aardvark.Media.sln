@@ -1,7 +1,11 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27703.2035
+VisualStudioVersion = 15.0.28307.106
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "17 - Serviced", "Scratch\17 - Serviced\17 - Serviced.fsproj", "{A7FCD935-7B53-47BD-9E8C-F66868CA9DC6}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "16 - Service", "Scratch\16 - Service\16 - Service.fsproj", "{4C3DC39D-77DE-4145-8284-DD86775BA015}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "23 - Inputs", "Examples (dotnetcore)\23 - Inputs\23 - Inputs.fsproj", "{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "22 - Orbit", "Examples (dotnetcore)\22 - Orbit\22 - Orbit.fsproj", "{3E9ED423-575A-45C1-85C7-F69BB88DE4EF}"
@@ -120,6 +124,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A7FCD935-7B53-47BD-9E8C-F66868CA9DC6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7FCD935-7B53-47BD-9E8C-F66868CA9DC6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7FCD935-7B53-47BD-9E8C-F66868CA9DC6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7FCD935-7B53-47BD-9E8C-F66868CA9DC6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4C3DC39D-77DE-4145-8284-DD86775BA015}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4C3DC39D-77DE-4145-8284-DD86775BA015}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4C3DC39D-77DE-4145-8284-DD86775BA015}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4C3DC39D-77DE-4145-8284-DD86775BA015}.Release|Any CPU.Build.0 = Release|Any CPU
 		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -309,6 +321,8 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{A7FCD935-7B53-47BD-9E8C-F66868CA9DC6} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
+		{4C3DC39D-77DE-4145-8284-DD86775BA015} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{6337CAB4-C439-414E-8FF4-0D1A9C7B3F79} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{3E9ED423-575A-45C1-85C7-F69BB88DE4EF} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{B85A69E8-D3B1-46E4-AE00-D9CA42B8684B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}

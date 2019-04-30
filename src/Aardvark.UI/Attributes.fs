@@ -38,14 +38,14 @@ module Events =
     open Helpers
 
     let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = 
-        let doIt () = 
+        let e args () = 
             try 
                 args |> cb |> Seq.singleton
             with e -> 
-                Log.warn "[media] onEvent callback faulted"
+                Log.warn "[Media] onEvent callback faulted"
                 Seq.empty
 
-        eventType, AttributeValue.Event(Event.ofDynamicArgs args (fun args -> Seq.delay doIt))
+        eventType, AttributeValue.Event(Event.ofDynamicArgs args (fun args -> Seq.delay (e args)))
 
     let inline onEvent' (eventType : string) (args : list<string>) (cb : list<string> -> seq<'msg>) : Attribute<'msg> = 
         eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb))

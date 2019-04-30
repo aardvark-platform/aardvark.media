@@ -459,6 +459,12 @@ module HigherOrderTags =
     
     let require (refs : list<Reference>) (node : DomNode<'msg>) =
         node.WithRequired(refs @ node.Required)
+
+    let onShutdown (code : string) (node : DomNode<'msg>) =
+        let shutdown id = code.Replace("__ID__", id)
+        match node.Shutdown with
+            | None -> node.WithShutdown (Some shutdown)
+            | Some o -> node.WithShutdown (Some (fun id -> shutdown id + "; " + o id))
     
     let onBoot (code : string) (node : DomNode<'msg>) =
         let boot id = code.Replace("__ID__", id)

@@ -12,6 +12,7 @@ type Message =
     | Super
     | Tick
     | GotImage of DateTime
+    | Camera of FreeFlyController.Message
 
 [<DomainType>]
 type Model = 
@@ -24,4 +25,5 @@ type Model =
         things : plist<string>
         angle : float
         lastImage : DateTime
+        cameraState : CameraControllerState
     }

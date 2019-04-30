@@ -178,26 +178,20 @@ module Sg =
     } |> Sg.dynamic
 
 module SketchingApp =   
-    
-  let emptyBrush = 
-    {
-      points = PList.empty
-      color = C4b.VRVisGreen
-    }
 
   let update (model : SketchingModel) (action : SketchingAction) : SketchingModel =
     match action with
     | ClosePolygon -> 
-      let b' =
-        match model.working with
-        | Some b -> Some { b with points = b.points |> PList.prepend (b.points |> PList.last) }  // add starting point to end
-        | None -> None
-      { model with working = b'; past = Some model }
+      match model.working with
+      | None -> model
+      | Some b ->
+        let finishedBrush = { b with points = b.points |> PList.prepend (b.points |> PList.last) }
+        { model with working = None; past = Some model; finishedBrusheds = model.finishedBrusheds |> List.append [finishedBrush ]}
     | AddPoint p ->
       let b' =
         match model.working with
         | Some b -> Some { b with points = b.points |> PList.prepend p }
-        | None -> Some { emptyBrush with points = p |> PList.single }
+        | None -> Some { color = model.selectedColor.c; points = p |> PList.single }
       { model with working = b'; past = Some model }
     | SetThickness a ->
       { model with selectedThickness = Numeric.update model.selectedThickness a }
@@ -226,7 +220,7 @@ module SketchingApp =
       |> Mod.map(function
         | Some brush -> 
           [ 
-            Sg.viewColoredPoints brush.points model.depthOffset.value  brush.color
+            Sg.viewColoredPoints brush.points model.depthOffset.value brush.color
             Sg.viewLines brush.points brush.color model.depthOffset.value model.selectedThickness.value
           ] |> Sg.ofSeq
         | None -> Sg.empty
@@ -234,14 +228,23 @@ module SketchingApp =
 
     brush |> Sg.dynamic
 
-  let areaSg (model : MSketchingModel) : ISg<SketchingAction> = 
+  let polygonSg (model : MSketchingModel) : ISg<SketchingAction> = 
     let brush = 
       model.working 
       |> Mod.map(function
         | Some brush -> Sg.viewPolygon brush.points brush.color model.volumeOffset.value model.alphaArea.value    
         | None -> Sg.empty
         )
-    brush |> Sg.dynamic
+
+    let finishedB = 
+      model.finishedBrusheds 
+        |> Mod.map(fun x -> 
+          x |> List.map(fun br -> Sg.viewPolygon (br.points |> AList.ofPList) (Mod.constant(br.color)) model.volumeOffset.value model.alphaArea.value) |> Sg.ofList)
+
+    [
+      brush |> Sg.dynamic
+      finishedB |> Sg.dynamic
+    ] |> Sg.ofList
 
   let dependencies = 
     Html.semui @ [        

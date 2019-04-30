@@ -134,6 +134,10 @@ class Renderer {
         if (!samples) samples = 1;
         this.samples = samples;
         
+        var quality = this.div.getAttribute("data-quality");
+        if (!quality) samples = 80;
+        this.quality = quality;
+
 		var showFPS = this.div.getAttribute("showFPS");
 		if (showFPS === "true") showFPS = true; else showFPS = false;
 		this.showFPS = showFPS;
@@ -252,7 +256,7 @@ class Renderer {
                 var doPing = function () {
                     if (socket.readyState <= 1) {
                         socket.send("#ping");
-                        setTimeout(doPing, 50);
+                        setTimeout(doPing, 1000);
                     }
                 };
 
@@ -310,9 +314,7 @@ class Renderer {
 
             img.style.cursor = "default";
 
-            var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples);
-
-
+            var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples + "&quality=" + this.quality);
 
             var self = this;
 
@@ -320,13 +322,7 @@ class Renderer {
                 if (event.target == self.div) self.div.focus();
             };
             document.addEventListener("click", onGlobalClick, false);
-            //if (this.div.onclick) {
-            //    var old = this.div.onclick;
-            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); old(); };
-            //}
-            //else {
-            //    this.div.onclick = function () { console.warn("focus"); self.div.focus(); };
-            //}
+
             connect = function () {
                 var socket = new WebSocket(url);
                 socket.binaryType = "blob";
@@ -927,6 +923,7 @@ if (!aardvark.openFileDialog) {
         var refs =
             [
                 { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
+                { kind: "stylesheet", name: "semui-overrides-css", url: "./rendering/semantic-overrides.css" },
                 { kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
                 { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
                 { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
@@ -1126,7 +1123,7 @@ if (!aardvark.connect) {
         var doPing = function () {
             if (eventSocket.readyState <= 1) {
                 eventSocket.send("#ping");
-                setTimeout(doPing, 50);
+                setTimeout(doPing, 500);
             }
         };
         
@@ -1154,7 +1151,7 @@ if (!aardvark.connect) {
                 aardvark.promise = aardvark.promise.then(function () {
                     try {
                         //exectutedCode = exectutedCode + "\r\n\r\n\r\n" + data;
-                        eval("{\r\n" + data + "\r\n}");
+                        (new Function("{\r\n" + data + "\r\n}"))();
                     } catch (e) {
                         console.warn("could not execute event message with exn " + e + ":\n" + data);
                         debugger;

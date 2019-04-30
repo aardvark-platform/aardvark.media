@@ -50,6 +50,7 @@ module Html =
     let semui = 
         [ 
             { kind = Stylesheet; name = "semui"; url = "./rendering/semantic.css" }
+            { kind = Stylesheet; name = "semui-overrides"; url = "./rendering/semantic-overrides.css" }
             { kind = Script; name = "semui"; url = "./rendering/semantic.js" }
             { kind = Script; name = "essential"; url = "./rendering/essentialstuff.js" }
         ]      

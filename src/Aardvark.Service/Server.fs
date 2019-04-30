@@ -255,6 +255,7 @@ type ClientInfo =
         session : Guid
         size : V2i
         samples : int
+        quality : int
         time : MicroTime
         clearColor : C4f
     }
@@ -754,7 +755,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
     inherit ClientRenderTask(server, getScene)
     
-    let quantization,quality = quality
+    let quantization, quality = quality
     let runtime = server.runtime
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
     let mutable resolved : Option<IBackendTexture> = None
@@ -873,7 +874,7 @@ module internal RawDownload =
                     | Some t when t.Size.XY = size -> t
                     | _ ->
                         tempImage |> Option.iter device.Delete
-                        let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                        let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit ||| VkImageUsageFlags.ColorAttachmentBit) device
                         tempImage <- Some t
                         t
 
@@ -902,10 +903,15 @@ module internal RawDownload =
                 
                 let l = image.Layout
                 device.perform {
+                    do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal) // inefficient but needed. why? tempImage has peers
                     do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
                     do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, image.Size)
-                    do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
+                    if device.IsDeviceGroup then 
+                        do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
+                        do! Command.SyncPeersDefault(tempImage,VkImageLayout.TransferSrcOptimal)
+                    else
+                        do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
                     do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                     do! Command.TransformLayout(image, l)
                 }
@@ -954,7 +960,10 @@ module internal RawDownload =
                 
                 let l = image.Layout
                 device.perform {
-                    do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
+                    if device.IsDeviceGroup then 
+                        do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal)
+                    else
+                        do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                     do! Command.TransformLayout(image, l)
                 }
@@ -1269,18 +1278,6 @@ module internal RawDownload =
             
         
 
-    let download (runtime : IRuntime) (fbo : IFramebuffer) (samples : int) (dst : nativeint) =  
-        match runtime with
-            | :? Aardvark.Rendering.Vulkan.Runtime ->
-                Vulkan.download runtime fbo samples dst
-
-            | :? Aardvark.Rendering.GL.Runtime ->
-                GL.download runtime fbo samples dst
-                
-            | _ ->
-                failwith "bad runtime"
-
-
 type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(server, getScene)
     let runtime = server.runtime
@@ -1352,6 +1349,7 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
             | None ->
                 ()
 
+
 type internal ClientCreateInfo =
     {
         server          : Server
@@ -1359,6 +1357,7 @@ type internal ClientCreateInfo =
         id              : string
         sceneName       : string
         samples         : int
+        quality         : int       // 0-100
         socket          : WebSocket
         useMapping      : bool
         getSignature    : int -> IFramebufferSignature
@@ -1371,7 +1370,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         if info.useMapping then
             new MappedClientRenderTask(info.server, getContent) :> ClientRenderTask
         else
-            new JpegClientRenderTask(info.server, getContent) :> ClientRenderTask
+            let q = Quantization.ofQuality (float info.quality), info.quality
+            new JpegClientRenderTask(info.server, getContent, q) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
     let sender = AdaptiveObject()
@@ -1410,6 +1410,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             sceneName = createInfo.sceneName
             session = createInfo.session
             samples = createInfo.samples
+            quality = createInfo.quality
             size = V2i.II
             time = MicroTime.Now
             clearColor = C4f.Black
@@ -1697,6 +1698,16 @@ module Server =
                     | Some "true" -> true
                     | _ -> false
 
+            let quality =
+                match Map.tryFind "quality" args with
+                    | Some q -> 
+                        match Int32.TryParse q with
+                            | (true,v) when v >=1 && v <= 100 -> v
+                            | _ -> 
+                                Log.warn "could not parse quality. should be int of range [1,100]"
+                                100
+                    | _ -> 100
+
             let createInfo =
                 {
                     server          = info
@@ -1704,6 +1715,7 @@ module Server =
                     id              = targetId
                     sceneName       = sceneName
                     samples         = samples
+                    quality         = quality
                     socket          = ws
                     useMapping      = useMapping
                     getSignature    = getSignature
@@ -1776,6 +1788,7 @@ module Server =
                             samples = samples
                             time = MicroTime.Now
                             clearColor = clearColor
+                            quality = 100
                         }
 
                     let state = getState clientInfo

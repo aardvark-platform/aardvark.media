@@ -70,19 +70,27 @@ type App<'model, 'mmodel, 'msg> =
 
                 if not (List.isEmpty msgs) then
                     transact (fun () ->
+                        let mutable newState = state.Value
                         for msg in msgs do
                             for msg in msg.msgs do
-                                let newState = app.update state.Value msg
+                                newState <-
+                                    try 
+                                        app.update state.Value msg
+                                    with e -> 
+                                        Log.error "[media] update function failed with: %A" e
+                                        state.Value
+
                                 let newThreads = app.threads newState
                                 adjustThreads newThreads
                         
                                 state.Value <- newState
-                                app.unpersist.update mstate newState
 
                                 messagesForward.Add(msg)
                         
                             // if somebody awaits message processing, trigger it
                             msg.processed |> Option.iter (fun mri -> mri.Set())
+                        
+                        app.unpersist.update mstate newState
                     )
 
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
