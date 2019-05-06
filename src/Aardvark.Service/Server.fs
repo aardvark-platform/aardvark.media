@@ -411,7 +411,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
                 member x.FramebufferSignature = task.FramebufferSignature
                 member x.Runtime = task.Runtime
                 member x.PerformUpdate(t,rt) = task.Update(t, rt)
-                member x.Perform(t,rt,o) = task.Run(t, rt, o)
+                member x.Perform(t,rt,o) =  task.Run(t, rt, o)
                 
                 member x.Release() = 
                     lock x (fun () ->
