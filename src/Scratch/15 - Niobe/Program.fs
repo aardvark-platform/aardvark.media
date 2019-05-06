@@ -15,8 +15,21 @@ let main argv =
     Aardvark.Init()
     Aardium.init()
 
-    use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    let useVulkan = true
+
+    let runtime, disposable =
+        if useVulkan then
+            let app = new Aardvark.Rendering.Vulkan.HeadlessVulkanApplication(true)
+            app.Runtime :> IRuntime, app :> IDisposable
+        else
+            let app = new OpenGlApplication()
+            app.Runtime :> IRuntime, app :> IDisposable
+    use __ = disposable
+
+    let app = App.app
+
+    let instance = 
+        app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 
@@ -27,7 +40,7 @@ let main argv =
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
     WebPart.startServerLocalhost 4321 [ 
-        MutableApp.toWebPart' app.Runtime false instance
+        MutableApp.toWebPart' runtime false instance
         Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
         Suave.Files.browseHome
     ] |> ignore
