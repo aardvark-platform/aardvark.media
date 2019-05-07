@@ -12,7 +12,6 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Niobe.Sketching
 
-
 module StencilAreaMasking =
 
   let writeZFail =
@@ -64,7 +63,6 @@ module StencilAreaMasking =
 
 module App = 
   open Niobe.Utilities
-  open System
      
   let update (model : Model) (msg : Message) =
       match msg with        
@@ -122,27 +120,27 @@ module App =
                 Sg.onClick HitSurface
             ]
 
-    let shadowVolume = 
-      SketchingApp.polygonSg model.sketching 
+    let currentBrush = 
+      SketchingApp.currentBrushSg model.sketching 
         |> Sg.map SketchingMessage 
 
-    let shodowvolumeVis =
-      shadowVolume
+    let finishedBrushes = 
+      SketchingApp.finishedBrushSg model.sketching 
+        |> Sg.map SketchingMessage 
+
+    let shadowVolumeDebugVis brushes =
+      brushes
         |> Sg.depthTest (Mod.constant DepthTestMode.Less)
         |> Sg.cullMode (Mod.constant (CullMode.Back)) // only for testing
         |> Sg.onOff model.shadowVolumeVis
         |> Sg.pass RenderPass.main
 
-    let lineSG = 
-      SketchingApp.viewSg model.sketching 
-       |> Sg.map SketchingMessage 
-
     let viewSg = 
       [
         sceneSG
-        lineSG |> Sg.onOff model.showLines
-        StencilAreaMasking.stencilAreaSG shadowVolume
-        shodowvolumeVis
+        currentBrush |> Sg.onOff model.showLines
+        finishedBrushes |> StencilAreaMasking.stencilAreaSG 
+        finishedBrushes |> shadowVolumeDebugVis
       ] |> Sg.ofList
     
     let renderControl =
