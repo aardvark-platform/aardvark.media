@@ -244,7 +244,8 @@ module TimeExtensions =
     type MicroTime with
         static member Now = start + sw.MicroTime
 
-
+module Config =
+    let mutable deleteTimeout = 1000
 
 type ClientInfo =
     {
@@ -340,8 +341,6 @@ type Scene() =
 and internal ConcreteScene(name : string, signature : IFramebufferSignature, scene : Scene) as this =
     inherit AdaptiveObject()
 
-    static let deleteTimeout = 1000
-
     let mutable refCount = 0
     let mutable task : Option<IRenderTask> = None
 
@@ -395,7 +394,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
     let release() =
         refCount <- refCount - 1
         if refCount = 0 then
-            timer.Change(deleteTimeout, Timeout.Infinite) |> ignore
+            timer.Change(Config.deleteTimeout, Timeout.Infinite) |> ignore
             
     member x.Scene = scene
                     
@@ -697,10 +696,9 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 )
                 
             finally
-                //printfn "race here"
                 innerToken.Release()
                 if scene.State.viewTrafo.ReaderCount > 0 then
-                    printfn "[Media.Server] bad hate"
+                    printfn "[Media.Server] scene.State.viewTrafo.ReaderCount > 0"
 //                let real = scene.State.projTrafo |> Mod.force
 //                let should = state.projTrafo
 //                if real <> should then
