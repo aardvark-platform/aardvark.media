@@ -12,9 +12,57 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Niobe.Sketching
 
+module StencilAreaMasking =
+
+  let writeZFail =
+      let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
+      let front   = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep)
+      let back    = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
+      StencilMode(front, compare, back, compare)
+
+  //let writeZPass =
+  //    let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
+  //    let front   = new StencilOperation(StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
+  //    let back    = new StencilOperation(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
+  //    StencilMode(front, compare, back, compare)
+
+  let readMaskAndReset = 
+      let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
+      let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
+      StencilMode(operation, compare)
+
+  // Front = CounterClockwise
+  // Back = Clockwise
+
+  let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
+  let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+
+  let maskSG sg = 
+    sg
+      |> Sg.pass maskPass
+      |> Sg.stencilMode (Mod.constant (writeZFail))
+      |> Sg.cullMode (Mod.constant (CullMode.None))
+      |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
+
+  let fillSG sg =
+    sg
+      |> Sg.pass areaPass
+      |> Sg.stencilMode (Mod.constant (readMaskAndReset))
+      //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
+      //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // for zpass -> active depth-test
+      |> Sg.cullMode (Mod.constant CullMode.None)
+      |> Sg.depthTest (Mod.constant DepthTestMode.None)
+      |> Sg.blendMode (Mod.constant BlendMode.Blend)
+      |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
+
+  let stencilAreaSG sg =
+    [
+      maskSG sg   // one pass by using EXT_stencil_two_side :)
+      fillSG sg
+    ] |> Sg.ofList
+
 module App = 
   open Niobe.Utilities
-  open System
      
   let update (model : Model) (msg : Message) =
       match msg with        
@@ -89,26 +137,20 @@ module App =
                 Sg.onClick HitSurface
             ]
 
-    let shadowVolume = 
-      SketchingApp.areaSg model.sketching 
+    let currentBrush = 
+      SketchingApp.currentBrushSg model.sketching 
         |> Sg.map SketchingMessage 
 
-    let shodowvolumeVis =
-      shadowVolume
+    let finishedBrushes = 
+      SketchingApp.finishedBrushSg model.sketching 
+        |> Sg.map SketchingMessage 
+
+    let shadowVolumeDebugVis brushes =
+      brushes
         |> Sg.depthTest (Mod.constant DepthTestMode.Less)
         |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise)) // only for testing
         |> Sg.onOff model.shadowVolumeVis
         |> Sg.pass RenderPass.main
-
-    let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
-    let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
-    let linePass = RenderPass.after "lines" RenderPassOrder.Arbitrary areaPass
-
-    let lineSG = 
-      SketchingApp.viewSg model.sketching 
-       |> Sg.map SketchingMessage 
-       //|> Sg.pass linePass 
-       //|> Sg.depthTest (Mod.constant DepthTestMode.None)
 
     // Front = CounterClockwise
     // Back = Clockwise
@@ -146,9 +188,9 @@ module App =
     let viewSg = 
       [
         sceneSG
-        lineSG |> Sg.onOff model.showLines
-        stress //areaSG shadowVolume
-        shodowvolumeVis
+        currentBrush |> Sg.onOff model.showLines
+        finishedBrushes |> StencilAreaMasking.stencilAreaSG 
+        finishedBrushes |> shadowVolumeDebugVis
       ] |> Sg.ofList
     
     let renderControl =

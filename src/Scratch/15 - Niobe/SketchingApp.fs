@@ -16,73 +16,44 @@ open Uncodium
 module Sg = 
   open Niobe.Shader
 
-  let toV3f (input:V3d) : V3f = input |> V3f
-
-  let pointsGetHead points =    
-      points 
-        |> AList.toMod 
-        |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
-  
-  let drawColoredPoints points (offset : IMod<float>) (color : IMod<C4b>)= 
-
-    let head = pointsGetHead points
+  let drawWorkingBrush (points:alist<V3d>) (color : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
     
-    let pointsF = 
+    let pointsF =
       points 
       |> AList.toMod 
-      |> Mod.map2(
-        fun h points -> 
-          points |> PList.map(fun x -> (x-h) |> toV3f) |> PList.toArray
-          ) head
+      |> Mod.map(fun x -> x |> PList.toSeq |> Seq.map(fun y -> V3f y) |> Seq.toArray)
 
-    let colors = color |> Mod.map2(fun count c -> List.init count (fun _ -> c.ToC4f()) |> List.toArray ) (points |> AList.count)
-    
-    Sg.draw IndexedGeometryMode.PointList
-      |> Sg.vertexAttribute DefaultSemantic.Positions pointsF      
-      |> Sg.vertexAttribute DefaultSemantic.Colors colors      
+    let indexArray = 
+      pointsF |> Mod.map(fun x -> (Array.init (max 0 (x.Length * 2 - 1)) (fun a -> (a + 1)/ 2)))
+
+    let lines = 
+      Sg.draw IndexedGeometryMode.LineList
+      |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
+      |> Sg.index indexArray
+      |> Sg.uniform "Color" color
+      |> Sg.uniform "LineWidth" width
+      |> Sg.uniform "depthOffset" offset
       |> Sg.effect [
-       //  PointSprite.specialTrafo    |> toEffect
-         DefaultSurfaces.trafo |> toEffect
-         Shader.PointSprite.Effect
-         DefaultSurfaces.vertexColor |> toEffect
-        // PointSprite.colorDepth |> toEffect
-      ]
-      |> Sg.trafo(head |> Mod.map(fun x -> Trafo3d.Translation x))
+        toEffect DefaultSurfaces.trafo
+        toEffect LineRendering.thickLine2
+        toEffect DefaultSurfaces.sgColor
+        ]
+
+    let points = 
+      Sg.draw IndexedGeometryMode.PointList
+      |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
+      |> Sg.uniform "Color" (Mod.constant(C4b.Red))
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
       |> Sg.uniform "depthOffset" offset
-
-  let drawColoredConnectionLines points (color : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
-    
-    let toColoredEdges (color : C4b) (points : alist<V3d>) =
-      points
-        |> AList.toMod
-        |> Mod.map(fun x-> 
-          x |> PList.toList 
-            |> List.pairwise 
-            |> List.map(fun (a,b) -> (new Line3d(a,b), color)) |> PList.ofList)
-        |> AList.ofMod
-
-    let drawColoredEdges (offset:IMod<float>) (width:IMod<float>) edges = 
-      edges
-        |> IndexedGeometryPrimitives.lines
-        |> Sg.ofIndexedGeometry
-        |> Sg.effect [
-          toEffect DefaultSurfaces.trafo
-          //toEffect PointSprite.specialTrafo
-          toEffect LineRendering.thickLine2
-          toEffect DefaultSurfaces.vertexColor
-          // toEffect PointSprite.colorDepth        
+      |> Sg.effect [
+        toEffect DefaultSurfaces.trafo
+        Shader.PointSprite.Effect
+        toEffect DefaultSurfaces.sgColor
         ]
-        |> Sg.uniform "LineWidth" width
-        |> Sg.uniform "depthOffset" offset
 
-    adaptive {
-      let! c = color
-      let! edges = toColoredEdges c points |> AList.toMod
-      return edges |> PList.toList |> drawColoredEdges offset width
-    } |> Sg.dynamic
+    [ lines; points] |> Sg.ofSeq
     
-  let drawColoredPolygon points (color:IMod<C4b>) (offset:IMod<float>) (alpha:IMod<float>) :ISg<'a> =
+  let drawFinishedBrush points (color:IMod<C4b>) (alpha:IMod<float>) (offset:IMod<float>) :ISg<'a> =
     
     let planeFit (points:seq<V3d>) : Plane3d =
       let length = points |> Seq.length |> float
@@ -127,39 +98,44 @@ module Sg =
           []
         else 
           projPointsOnPlane
-            |> List.pairwise    // TODO PLIST.pairwise only reason to change type
-            |> List.mapi (fun i (a,b) -> 
-              // Shift points 
-              let aPos = a + extrudeNormal * offset
-              let bPos = b + extrudeNormal * offset
-              let aNeg = a - extrudeNormal * offset
-              let bNeg = b - extrudeNormal * offset
+          |> List.pairwise    // TODO PLIST.pairwise only reason to change type
+          |> List.mapi (fun i (a,b) -> 
+            // Shift points 
+            let aPos = a + extrudeNormal * offset
+            let bPos = b + extrudeNormal * offset
+            let aNeg = a - extrudeNormal * offset
+            let bNeg = b - extrudeNormal * offset
                
-              // Generate Triangles for watertight polygon
-              [
-                if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
-                    yield Triangle3d(startPos, bPos, aPos), color // top
-                    yield Triangle3d(startNeg, aNeg, bNeg), color // bottom
+            // Generate Triangles for watertight polygon
+            [
+              if i <> 0 then // first edge has to be skipped for top and bottom triangle generation
+                  yield Triangle3d(startPos, bPos, aPos), color // top
+                  yield Triangle3d(startNeg, aNeg, bNeg), color // bottom
              
-                yield Triangle3d(aPos, bNeg, aNeg), color // side1
-                yield Triangle3d(aPos, bPos, bNeg), color // side2
-              ]
-            )|> List.concat
+              yield Triangle3d(aPos, bNeg, aNeg), color // side1
+              yield Triangle3d(aPos, bPos, bNeg), color // side2
+            ]
+          ) |> List.concat
        )
 
+    let colorAlpha = Mod.map2(fun (c:C4b) a  -> 
+      let col = c.ToC4d() 
+      C4d(col.R, col.G, col.B, a).ToC4b()) color alpha
+
     adaptive {
-        let! c = color
+        let! colorAlpha = colorAlpha
         let! o = offset
-        let! a = alpha
-        let colorAlpha = c.ToC4d() |> (fun x -> C4d(x.R, x.G, x.B, a).ToC4b())
         let! polygon = generatePolygonTriangles colorAlpha o points
-        return polygon
-          |> IndexedGeometryPrimitives.triangles 
-          |> Sg.ofIndexedGeometry
-          |> Sg.effect [
-            toEffect DefaultSurfaces.trafo
-            toEffect DefaultSurfaces.vertexColor
-          ]
+        
+        return 
+          polygon
+            |> IndexedGeometryPrimitives.triangles 
+            |> Sg.ofIndexedGeometry
+            |> Sg.effect [
+              toEffect DefaultSurfaces.trafo
+              toEffect DefaultSurfaces.vertexColor
+            ]
+
     } |> Sg.dynamic
 
 module SketchingApp =   
@@ -178,7 +154,7 @@ module SketchingApp =
       | None -> model
       | Some b ->
         let finishedBrush = { b with points = b.points |> PList.prepend (b.points |> PList.last) }
-        { model with working = None; past = Some model; finishedBrusheds = model.finishedBrusheds |> PList.append finishedBrush }
+        { model with working = None; past = Some model; finishedBrushes = model.finishedBrushes |> PList.prepend finishedBrush }
     | AddPoint p ->
       let b' =
         match model.working with
@@ -206,44 +182,22 @@ module SketchingApp =
       let b' = model.working |> Option.map(fun b -> { b with color = c.c})
       { model with working = b'; selectedColor = c }
   
-  let viewSg (model : MSketchingModel) : ISg<SketchingAction> = 
-    let brush = 
-      model.working 
-      |> Mod.map(function
-        | Some brush -> 
-          [ 
-            Sg.drawColoredPoints brush.points model.depthOffset.value brush.color
-            Sg.drawColoredConnectionLines brush.points brush.color model.depthOffset.value model.selectedThickness.value
-          ] |> Sg.ofSeq
-        | None -> Sg.empty)
+  let currentBrushSg (model : MSketchingModel) : ISg<SketchingAction> = 
 
-    brush |> Sg.dynamic
+    let color = model.working |> Mod.bind (fun x -> match x with | None -> Mod.constant(C4b.Black) | Some a -> a.color)
+    let points = model.working |> AList.bind (fun x -> match x with | None -> AList.empty | Some a -> a.points)
 
-  let polygonSg (model : MSketchingModel) = 
-    
-    let brush = 
-      model.working 
-      |> Mod.map(function
-        | Some brush -> Sg.drawColoredPolygon brush.points brush.color model.volumeOffset.value model.alphaArea.value    
-        | None -> Sg.empty
-        ) 
-      |> Sg.dynamic
+    Sg.drawWorkingBrush points color model.depthOffset.value model.selectedThickness.value
 
-    let finishedB = 
-      model.finishedBrusheds 
-        |> AList.map(fun br -> 
-            //x |> AList.map(fun br -> 
-              Sg.drawColoredPolygon br.points br.color model.volumeOffset.value model.alphaArea.value)
-              //asd |> RenderCommand.SceneGraph)
-              
-          //let renderCommand = RenderCommand.Ordered asd
-          //Sg.execute(renderCommand)) 
-        //|> Sg.dynamic
+  let finishedBrushSg (model : MSketchingModel) = 
 
-    [
-      brush 
-      finishedB |> AList.toASet |> Sg.set
-    ] |> Sg.ofList
+    model.finishedBrushes 
+      |> AList.map(fun br -> Sg.drawFinishedBrush br.points br.color model.alphaArea.value model.volumeOffset.value )
+      |> AList.toASet 
+      |> Sg.set
+        //// try renderCommand for draw order (vulkan)
+        //RenderCommand.SceneGraph asd
+        //Sg.execute(RenderCommand.Ordered asd)
 
   let dependencies = 
     Html.semui @ [        

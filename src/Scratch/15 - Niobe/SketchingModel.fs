@@ -27,7 +27,7 @@ type Brush =
 type SketchingModel = 
   {
     working : option<Brush>
-    finishedBrusheds : plist<Brush>
+    finishedBrushes : plist<Brush>
     selectedColor : ColorInput
     selectedThickness : NumericInput
     volumeOffset : NumericInput
@@ -87,6 +87,6 @@ module Initial =
       volumeOffset = offset
       depthOffset = depthOffset
       alphaArea = alpha
-      finishedBrusheds = PList.empty
+      finishedBrushes = PList.empty
     }
 

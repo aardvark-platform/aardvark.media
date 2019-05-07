@@ -15,7 +15,7 @@ let main argv =
     Aardvark.Init()
     Aardium.init()
 
-    let useVulkan = true
+    let useVulkan = false
 
     let runtime, disposable =
         if useVulkan then
