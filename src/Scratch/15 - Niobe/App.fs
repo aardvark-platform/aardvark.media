@@ -98,32 +98,15 @@ module App =
         | _ -> model
   
   let view (model : MModel) =
-     
-    let writeZFail =
-        let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
-        let front   = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep)
-        let back    = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
-        StencilMode(front, compare, back, compare)
-
-    let writeZPass =
-        let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
-        let front   = new StencilOperation(StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
-        let back    = new StencilOperation(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
-        StencilMode(front, compare, back, compare)
-
-    let readMaskAndReset = 
-        let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
-        let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
-        StencilMode(operation, compare)
 
     let sceneSG = 
       //Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
       [
-          //Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
-          //Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
-          //Sg.sphere' 8 C4b.DarkGreen 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
-          //Sg.sphere' 8 C4b.DarkMagenta 0.55 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
-          Sg.box' C4b.DarkMagenta Box3d.Unit |> Sg.noEvents
+          Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
+          Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
+          Sg.sphere' 8 C4b.DarkGreen 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
+          Sg.sphere' 8 C4b.DarkMagenta 0.55 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
+          //Sg.box' C4b.DarkMagenta Box3d.Unit |> Sg.noEvents
       ] |> Sg.ofSeq
         |> Sg.shader {
               do! DefaultSurfaces.trafo
@@ -140,6 +123,7 @@ module App =
     let currentBrush = 
       SketchingApp.currentBrushSg model.sketching 
         |> Sg.map SketchingMessage 
+        |> Sg.onOff model.showLines
 
     let finishedBrushes = 
       SketchingApp.finishedBrushSg model.sketching 
@@ -148,47 +132,14 @@ module App =
     let shadowVolumeDebugVis brushes =
       brushes
         |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-        |> Sg.cullMode (Mod.constant (CullMode.CounterClockwise)) // only for testing
+        |> Sg.cullMode (Mod.constant (CullMode.Back)) // only for testing
         |> Sg.onOff model.shadowVolumeVis
         |> Sg.pass RenderPass.main
-
-    // Front = CounterClockwise
-    // Back = Clockwise
-
-    let maskSG sv = 
-      sv
-       |> Sg.pass maskPass
-       |> Sg.stencilMode (Mod.constant (writeZFail))
-       |> Sg.cullMode (Mod.constant (CullMode.None))
-       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
-
-    let fillSG sv =
-      sv
-       |> Sg.pass areaPass
-       |> Sg.stencilMode (Mod.constant (readMaskAndReset))
-       //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
-       //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // for zpass -> active depth-test
-       |> Sg.cullMode (Mod.constant CullMode.None)
-       |> Sg.depthTest (Mod.constant DepthTestMode.None)
-       |> Sg.blendMode (Mod.constant BlendMode.Blend)
-       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
-
-    let areaSG sv =
-      [
-        maskSG sv   // one pass by using EXT_stencil_two_side :)
-        fillSG sv
-      ] |> Sg.ofList
-
-    let stress = 
-        [
-            for i in 0 .. 100 do
-                yield areaSG shadowVolume
-        ] |> Sg.ofList
 
     let viewSg = 
       [
         sceneSG
-        currentBrush |> Sg.onOff model.showLines
+        currentBrush 
         finishedBrushes |> StencilAreaMasking.stencilAreaSG 
         finishedBrushes |> shadowVolumeDebugVis
       ] |> Sg.ofList
