@@ -9,12 +9,9 @@ open Aardvark.Application
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
-open Niobe
-
 open Uncodium
 
 module Sg = 
-  open Niobe.Shader
 
   let drawWorkingBrush (points:alist<V3d>) (color : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
     
@@ -30,12 +27,12 @@ module Sg =
       Sg.draw IndexedGeometryMode.LineList
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
       |> Sg.index indexArray
-
       |> Sg.uniform "Color" color
       |> Sg.uniform "LineWidth" width
-      //|> Sg.uniform "depthOffset" offset
+      |> Sg.uniform "depthOffset" offset
       |> Sg.effect [
         toEffect DefaultSurfaces.trafo
+        //Shader.PointSprite.EffectCameraShift  // shifts the whole geometry into camera direction (hacky)
         toEffect DefaultSurfaces.thickLine
         toEffect DefaultSurfaces.sgColor
         ]
@@ -45,14 +42,18 @@ module Sg =
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
       |> Sg.uniform "Color" (Mod.constant(C4b.Red))
       |> Sg.uniform "PointSize" (Mod.constant 10.0)
-      //|> Sg.uniform "depthOffset" offset
+      |> Sg.uniform "depthOffset" offset
       |> Sg.effect [
         toEffect DefaultSurfaces.trafo
-        Shader.PointSprite.Effect
+        //Shader.PointSprite.EffectCameraShift // shifts the whole geometry into camera direction (hacky)
+        toEffect DefaultSurfaces.pointSprite // quad-like
+        //Shader.PointSprite.EffectSprite // circle-like
         toEffect DefaultSurfaces.sgColor
         ]
 
-    [ lines; points] |> Sg.ofSeq
+    [ lines; points] 
+      |> Sg.ofSeq
+      |> Sg.depthBias (offset |> Mod.map (fun x -> DepthBiasState(x, 0.0, 0.0)))  // using this methode the bias depends on the near-far-plane ratio
     
   let drawFinishedBrush points (color:IMod<C4b>) (alpha:IMod<float>) (offset:IMod<float>) :ISg<'a> =
     

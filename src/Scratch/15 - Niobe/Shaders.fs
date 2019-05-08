@@ -63,32 +63,31 @@ module Shader =
           }
       }
 
-       // let off : float = uniform?depthOffset
-        
-       // //let pOff  = v.vPos + V4d.OOIO * off
-       //// let pvp   = uniform.ProjTrafo * v.viewPos //* pOff
-
     let internal colorDepth (v : MegaVertex) =
       fragment {
         let depth = 0.5 * v.viewPos.Z / v.viewPos.W + 0.5
         return { color = v.c; d = depth }
       }
       
+    let internal toCameraShift (p : Vertex) =
+      vertex {
+        let (offset : float) = (uniform?depthOffset)
+        
+        let wp = p.wp
+        let viewVec = ((wp.XYZ - uniform.CameraLocation).Normalized)
+        let viewVec = V4d(viewVec.X, viewVec.Y, viewVec.Z, 0.0)
+        let wpShift = wp + viewVec * offset
+        let posShift = uniform.ViewProjTrafo * wpShift
+
+      return { p with pos = posShift; wp = wpShift }
+      }
 
     let internal pointSprite (p : Point<Vertex>) =
       triangle {
-        let s = uniform.PointSize / V2d uniform.ViewportSize
-
-        let (offset : float) = (uniform?depthOffset) // * pos.W
-
-        let pos = p.Value.pos
         
-        let viewVec = ((pos.XYZ - uniform.CameraLocation).Normalized)
-        let viewVec = V4d(viewVec.X, viewVec.Y, viewVec.Z, 1.0)
-        let pos = viewVec * offset + pos
-
-
-        let pxyz = (pos.XYZ) / pos.W
+        let s = uniform.PointSize / V2d uniform.ViewportSize
+        let pos = p.Value.pos
+        let pxyz = pos.XYZ / pos.W
 
         let p00 = V3d(pxyz + V3d( -s.X*0.33, -s.Y,      0.0 ))
         let p01 = V3d(pxyz + V3d(  s.X*0.33, -s.Y,      0.0 ))
@@ -109,7 +108,10 @@ module Shader =
         yield { p.Value with pos = V4d(p31 * pos.W, pos.W); tc = V2d (0.66, 1.00); }
       }
 
-    let Effect = 
+    let EffectCameraShift = 
+        toEffect toCameraShift
+
+    let EffectSprite = 
         toEffect pointSprite
 
   module LineRendering =

@@ -362,7 +362,11 @@ module ``F# Sg`` =
         let modifySamplerState (sem : Symbol) (modifier : IMod<SamplerStateDescription -> SamplerStateDescription>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.modifySamplerState sem modifier)
 
-        
+        let depthBias (m : IMod<DepthBiasState>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.depthBias m)
+
+        let frontFace (m : IMod<WindingOrder>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.frontFace m)
 
         let fillMode (m : IMod<FillMode>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.fillMode m)
