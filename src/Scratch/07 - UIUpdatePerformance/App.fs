@@ -167,6 +167,9 @@ let view (runtime : IRuntime) (model : MModel) =
 
 
     div [] [
+        require (Html.semui) (
+            i [clazz "mars outline icon"] []
+        )
         button [onClick (fun _ -> Super)] [text "call super"]
         br []
         text illegalString
