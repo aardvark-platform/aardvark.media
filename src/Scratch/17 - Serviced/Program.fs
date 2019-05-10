@@ -10,6 +10,7 @@ open Suave
 open Suave.WebPart
 
 open System.Threading
+open Aardvark.Rendering.Vulkan
 
 [<EntryPoint; STAThread>]
 let main argv = 
@@ -25,9 +26,11 @@ let main argv =
     if processId > 0 then
         let killThread = 
             Thread(ThreadStart(fun _ -> 
-                let p = System.Diagnostics.Process.GetProcessById processId
-                p.WaitForExit()
-                System.Environment.Exit(2)
+                try
+                    let p = System.Diagnostics.Process.GetProcessById processId
+                    p.WaitForExit()
+                    System.Environment.Exit(2)
+                with e -> printfn "%A" e
             ))
         killThread.Start()
 
@@ -39,8 +42,9 @@ let main argv =
     Ag.initialize()
     Aardvark.Init()
     Aardium.init()
+    //System.Diagnostics.Debugger.Launch()
 
-    use app = new OpenGlApplication()
+    use app = new HeadlessVulkanApplication(true)
     let instance = Inc.Master.app |> App.start
 
     WebPart.startServer port [ 
@@ -55,5 +59,6 @@ let main argv =
             height 768
             debug true
         }
+    else Console.ReadLine() |> ignore
 
     0 

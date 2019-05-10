@@ -65,33 +65,56 @@ let view (model : MModel) =
                 | Some "client" -> 
                     match Map.tryFind "id" request.queryParams with
                         | Some id -> 
-                            let link = sprintf "./%s/stdout.txt" id
+                            let stdout = sprintf "./%s/stdout.txt" id
+                            let stderr = sprintf "./%s/stderr.txt" id
+                            let url =  AMap.tryFind id model.running  |> Mod.map (function None -> None | Some instance -> Some (instance.endpoint.url instance.port)) 
+                            let urlLink =
+                                amap {
+                                    let! url = url
+                                    match url with
+                                        | Some url -> 
+                                            yield attribute "href" url
+                                        | None -> ()
+                                }
                             div [] [
-                                a [attribute "href" link] [text "Output"]
+                                a [attribute "href" stdout] [text "stdout"]
+                                br []
+                                a [attribute "href" stderr] [text "stderr"]
+                                br []
+                                Incremental.a (AttributeMap.ofAMap urlLink) (AList.ofList [text "open"])
+                                br []
                                 a [attribute "href" "javascript:history.back()"] [text "Back"]  
                             ]
                         | None -> text "id not found"
-                | _ -> 
-                    div [] [
-                        Incremental.div AttributeMap.empty <|
-                            alist {
-                                for endpoint in model.executables do
-                                    yield 
-                                        button [onClick (fun _ -> Start endpoint)] [
-                                            text endpoint.prettyName
-                                        ]
+                | Some "admin" -> 
+                    match Map.tryFind "username" request.queryParams with
+                        | Some "rockstar" -> 
+                            div [] [
+                                Incremental.div AttributeMap.empty <|
+                                    alist {
+                                        for endpoint in model.executables do
+                                            yield 
+                                                button [onClick (fun _ -> Start endpoint)] [
+                                                    text endpoint.prettyName
+                                                ]
 
-                            }
-                        Incremental.div AttributeMap.empty <| 
-                            alist {
-                                for (id,i) in runningInstances do
-                                    yield div [] [
-                                        let link = sprintf ".?page=client&id=%s" id
-                                        yield a [attribute "href" link] [text "super"]
-                                        yield button [onClick (fun _ -> Kill id)] [text "kill"]
-                                    ]
-                            }
-                    ]
+                                    }
+                                Incremental.div AttributeMap.empty <| 
+                                    alist {
+                                        for (id,i) in runningInstances do
+                                            yield div [] [
+                                                let link = sprintf ".?page=client&id=%s" id
+                                                yield a [attribute "href" link] [text "super"]
+                                                yield button [onClick (fun _ -> Kill id)] [text "kill"]
+                                            ]
+                                    }
+                            ]
+                        | _ -> div [] [text "unauthorized."]
+                | _ -> 
+                    require Html.semui (
+                        div [] [
+                        ]
+                    )
         )
     )
 
@@ -106,8 +129,14 @@ module Discovery =
 
     let discoverApps () =  
         [ 
-            { assembly = "17 - Serviced.dll"         
+            { assembly = DotnetAssembly "17 - Serviced.dll"         
               workingDirectory = "."
+              prettyName = "Demo"       
+              url = (fun port -> sprintf "http://localhost:%d" port)
+            }
+
+            { assembly = DotnetAssembly "17 - Serviced.exe"         
+              workingDirectory = "publish"
               prettyName = "Demo"       
               url = (fun port -> sprintf "http://localhost:%d" port)
             }

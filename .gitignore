@@ -22,3 +22,6 @@ bin/Debug
 /.vs/aardvark.media/v15/*.suo
 /.vs
 /src/Scratch/11 - GeoJsonViewer/*.user
+/src/Scratch/17 - Serviced/17 - Serviced.fsproj.user
+/src/Scratch/17 - Serviced/Properties/PublishProfiles/FolderProfile.pubxml
+/src/Scratch/17 - Serviced/Properties/PublishProfiles/FolderProfile.pubxml.user

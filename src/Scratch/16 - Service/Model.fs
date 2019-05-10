@@ -6,9 +6,11 @@ open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.UI.Primitives
 
+type Exectuable = DotnetAssembly of string | Native of string
+
 type Endpoint = 
     {
-        assembly         : string
+        assembly         : Exectuable
         workingDirectory : string
         prettyName       : string
         url              : int -> string
@@ -38,6 +40,10 @@ type Instance =
         [<NonIncremental>]
         endpoint : Endpoint
     }
+
+module Instance = 
+    let getUrl (i : Instance) = 
+        i.endpoint.url i.port
 
 [<DomainType>]
 type Model = 
