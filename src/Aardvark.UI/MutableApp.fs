@@ -156,7 +156,16 @@ module MutableApp =
                     let mutable oldChannels : Set<string * string> = Set.empty
 
                     let send (arr : byte[]) =
-                        let res = ws.send Opcode.Text (ByteSegment(arr)) true |> Async.RunSynchronously
+                        let rec res retries = 
+                            async {
+                                try 
+                                    return! ws.send Opcode.Text (ByteSegment(arr)) true 
+                                with e -> 
+                                    Log.warn "[Media] send failed: %s (retries=%d)" e.Message retries
+                                    do! Async.Sleep 100
+                                    return! res (retries - 1)
+                            }
+                        let res = res 10 |> Async.RunSynchronously
                         match res with
                             | Choice1Of2 () ->
                                 ()
@@ -246,7 +255,7 @@ module MutableApp =
                                     )
                           with e -> 
                             Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
-                            raise e
+                            //raise e
 
 
                     let updateThread = Thread(ThreadStart updateFunction)
