@@ -701,9 +701,33 @@ var Docking;
                     content.className = "dock-element-content";
                     createHeader(headerContent);
                     var self = this;
-                    header.onpointerdown = function (e) { self.setPointerCapture(header, e.pointerId); self.startDrag(self._states[id], e, window); return false; };
-                    header.onpointermove = function (e) { self.mouseMove(e.screenX, e.screenY, e, window, true); return false; };
-                    header.onpointerup = function (e) { self.releasePointerCapture(header, e.pointerId); self.pointerUp(e.pointerId, e.screenX, e.screenY, window, true); return false; };
+                    var lastdown = undefined;
+                    header.onpointerdown = function (e) {
+                        //self.setPointerCapture(header, e.pointerId); // moved to onpointermove
+                        lastdown = { x: e.screenX, y: e.screenY };
+                        self.startDrag(self._states[id], e, window);
+                        return false;
+                    };
+                    header.onpointermove = function (e) {
+                        if (lastdown) {
+                            var dx = e.screenX - lastdown.x;
+                            var dy = e.screenY - lastdown.y;
+                            var len = Math.sqrt(dx * dx + dy * dy);
+                            if (len > 0.0) {
+                                console.log("capture");
+                                self.setPointerCapture(header, e.pointerId);
+                            }
+                            lastdown = undefined;
+                        }
+                        self.mouseMove(e.screenX, e.screenY, e, window, true);
+                        return false;
+                    };
+                    header.onpointerup = function (e) {
+                        self.releasePointerCapture(header, e.pointerId);
+                        lastdown = undefined;
+                        self.pointerUp(e.pointerId, e.screenX, e.screenY, window, true);
+                        return false;
+                    };
                     //header.onmousedown = function(e) { self.startDrag(self._states[id], e, window); return false;};
                     this.parent.initElement(content, id, info);
                     this.parent.element.appendChild(container);
