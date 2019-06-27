@@ -264,9 +264,12 @@ module SimplePrimitives =
             let update (k : string) =
                 let _fw, bw = Mod.force m
                 selected.MarkOutdated()
-                match HMap.tryFind k bw with
-                | Some v -> update (Some v)
-                | None -> update None
+                try
+                    match HMap.tryFind k bw with 
+                    | Some v -> update (Some v) |> Seq.singleton
+                    | None -> update None |> Seq.singleton
+                with _ ->
+                    Seq.empty
 
             let selection = 
                 selected |> Mod.bind (function Some v -> m |> Mod.map (fun (fw,_) -> HMap.tryFind v fw) | None -> Mod.constant None) 
@@ -274,7 +277,7 @@ module SimplePrimitives =
             let myAtts =
                 AttributeMap.ofList [
                     clazz "ui dropdown"
-                    onEvent' "data-event" [] (function (str :: _) -> Seq.delay (fun () -> Seq.singleton (update (Pickler.unpickleOfJson str))) | _ -> Seq.empty)
+                    onEvent' "data-event" [] (function (str :: _) -> Seq.delay (fun () -> update (Pickler.unpickleOfJson str)) | _ -> Seq.empty)
                 ]
 
             let initial =
@@ -287,7 +290,7 @@ module SimplePrimitives =
                 let clear = if cfg.allowEmpty then "true" else "false"
                 String.concat ";" [
                     "var $self = $('#__ID__');"
-                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
+                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  debugger; aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
                     "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
                 ]
 
@@ -314,6 +317,9 @@ module SimplePrimitives =
                     )
                 )
             )
+
+        let dropdown1 (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : IMod<'a>) (update : 'a -> 'msg) =
+            dropdown { allowEmpty = false; placeholder = "" } atts values (Mod.map Some selected) (Option.get >> update)
 
     [<AutoOpen>]
     module ``Primtive Builders`` =

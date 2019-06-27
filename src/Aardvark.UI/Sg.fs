@@ -48,10 +48,14 @@ type RayPartExtensions private() =
 
 type SceneEvent =
     {
-        evtKind    : SceneEventKind
-        evtRay     : RayPart
-        evtButtons : MouseButtons
-        evtTrafo   : IMod<Trafo3d>
+        evtKind         : SceneEventKind
+        evtRay          : RayPart
+        evtPixel        : V2i
+        evtView         : Trafo3d
+        evtProj         : Trafo3d
+        evtViewport     : V2i
+        evtButtons      : MouseButtons
+        evtTrafo        : IMod<Trafo3d>
     }
 
     member x.kind = x.evtKind

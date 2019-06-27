@@ -749,10 +749,14 @@ and DomNode private() =
 
                     let evt = 
                         {
-                            evtKind    = kind
-                            evtRay     = ray 
-                            evtButtons = buttons
-                            evtTrafo   = Mod.constant Trafo3d.Identity
+                            evtKind     = kind
+                            evtPixel    = pos
+                            evtRay      = ray 
+                            evtButtons  = buttons
+                            evtTrafo    = Mod.constant Trafo3d.Identity
+                            evtView     = state.viewTrafo
+                            evtProj     = state.projTrafo
+                            evtViewport = info.size
                         }
 
                     let procRes = processor.Process(sourceSession, evt)
