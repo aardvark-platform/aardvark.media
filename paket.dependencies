@@ -24,8 +24,8 @@ nuget Aardvark.Compiler.DomainTypes.MSBuild ~> 4.2.7
 
 nuget Aardvark.Geometry.Intersection        ~> 4.7.1
 
-nuget FsPickler                             ~> 5.2.0
-nuget FsPickler.Json                        ~> 5.2.0
+nuget FsPickler                             = 5.2.0
+nuget FsPickler.Json                        = 5.2.0
 
 nuget TurboJpegWrapper                      ~> 1.5.2
 nuget Suave                                 ~> 2.2.1
