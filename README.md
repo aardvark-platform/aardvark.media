@@ -5,6 +5,7 @@
 
 [The Aardvark Platform](https://aardvarkians.com/) |
 [Platform Wiki](https://github.com/aardvarkplatform/aardvark.docs/wiki) | 
+[The Platform Walkthrough Repository](https://github.com/aardvark-platform/walkthrough) |
 [Media Examples](https://github.com/aardvark-platform/aardvark.media/tree/master/src/Examples%20(dotnetcore)) |
 [Gallery](https://github.com/aardvarkplatform/aardvark.docs/wiki/Gallery) | 
 [Quickstart](https://github.com/aardvarkplatform/aardvark.docs/wiki/Quickstart-Windows) | 
