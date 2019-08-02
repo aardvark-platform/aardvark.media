@@ -11,7 +11,10 @@
 [Quickstart](https://github.com/aardvarkplatform/aardvark.docs/wiki/Quickstart-Windows) | 
 [Status](https://github.com/aardvarkplatform/aardvark.docs/wiki/Status)
 
-Aardvark.Media is part of the open-source [Aardvark platform](https://github.com/aardvark-platform/aardvark.docs/wiki) for visual computing, real-time graphics and visualization.
+Aardvark.Media is part of the open-source [Aardvark platform](https://github.com/aardvark-platform/aardvark.docs/wiki) for visual computing, real-time graphics and visualization. aardvark.media works on top of aardvark.base and uses aardvark.rendering as (3D)-rendering engine:
+
+![Alt text](./data/context.svg)
+
 
 3D graphics, user interfaces and complex interactions on top are challenging and time consuming in classical programming models. High-level abstraction, immutable data and functional programming concepts on the other hand boost productivity. aardvark.media brings together high-performance applications and purely functional application programming.
 The ELM architecture has become popular in web-development and for user interfaces (e.g. [ELM](https://elm-lang.org/), [Fabulous](https://fsprojects.github.io/Fabulous/), [Elmish](https://elmish.github.io/elmish/),...) and makes declarative, reliable UI and app development easier.
