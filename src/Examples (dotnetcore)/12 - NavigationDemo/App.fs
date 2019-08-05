@@ -108,8 +108,6 @@ let view (model : MNavigationModeDemoModel) =
                         }
                     |> Sg.noEvents
                     |> Sg.trafo trafo
-                    |> Sg.fillMode model.rendering.fillMode
-                    |> Sg.cullMode model.rendering.cullMode    
 
         [b; s]  |> Sg.ofList 
                 |> Sg.fillMode model.rendering.fillMode
