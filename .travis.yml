@@ -3,11 +3,15 @@ language: csharp
 before_install: 
   # Make sure mono is installed,
   # pipe stdout to dev/null because qq is still too chatty
+  - sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 3FA7E0328081BFF6A14DA29AA6A19B38D3D831EF
+  - sudo apt install apt-transport-https ca-certificates
+  - echo "deb https://download.mono-project.com/repo/ubuntu stable-xenial main" | sudo tee /etc/apt/sources.list.d/mono-official-stable.list
+  - sudo apt update
   - wget -q https://packages.microsoft.com/config/ubuntu/16.04/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
   - sudo dpkg -i packages-microsoft-prod.deb
   - sudo apt-get install apt-transport-https -qq > /dev/null
   - sudo apt-get update -qq > /dev/null
-  - sudo apt-get install -qq msbuild mono-devel dotnet-sdk-2.2 > /dev/null
+  - sudo apt-get install -qq msbuild mono-devel dotnet-sdk-2.2 fsharp > /dev/null
   - mozroots --import --sync 
   - mcs --version
 script:
