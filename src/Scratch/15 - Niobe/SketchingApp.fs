@@ -67,7 +67,10 @@ module Sg =
       let pDiffAvg = points |> Seq.map(fun x -> x - c)
       
       let mutable matrix = M33d.Zero
+      #if TRAVIS_CI
+      #else
       pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
+      #endif
       matrix <- matrix / length
        
       let mutable q = M33d.Zero
