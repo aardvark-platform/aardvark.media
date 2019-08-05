@@ -4,6 +4,9 @@ open Aardvark.Base.Incremental
 open Aardvark.UI
 
 type EmbeddedResources = EmbeddedResources
+module Resources =
+    open Suave
+    let WebPart = Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
 
 [<AutoOpen>]
 module Simple =
