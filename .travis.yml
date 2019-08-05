@@ -11,4 +11,4 @@ before_install:
   - mcs --version
 script:
   - sh ./build.sh Restore
-  - msbuild /t:Rebuild /p:DefineConstants="TRAVIS_CI" src/Aardvark.sln 
+  - msbuild /t:Rebuild /p:DefineConstants="TRAVIS_CI" src/Aardvark.Media.sln 
