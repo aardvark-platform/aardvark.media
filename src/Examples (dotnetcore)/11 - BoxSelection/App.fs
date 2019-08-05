@@ -84,6 +84,8 @@ let mkISg (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
                 }                
             |> Sg.requirePicking
             |> Sg.noEvents
+            |> Sg.fillMode model.rendering.fillMode
+            |> Sg.cullMode model.rendering.cullMode
             |> Sg.withEvents [
                 Sg.onClick (fun _ -> Select box.id)
                 Sg.onEnter (fun _ -> Enter box.id)
