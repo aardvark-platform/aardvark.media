@@ -41,7 +41,7 @@ let main argv =
         MutableApp.toWebPart' runtime false instance
         prefix "/resources" >=> Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
         //prefix "/resources" >=> Suave.Embedded.browse typeof<Self>.Assembly
-    ]  
+    ] |> ignore
     
 
     Aardium.run {
