@@ -9,20 +9,20 @@ nuget Aardvark.Base.Incremental  ~> 4.5.8
 nuget Aardvark.Base.FSharp       ~> 4.5.8
 nuget Aardvark.Base.Essentials   ~> 4.5.8
 
-nuget Aardvark.Base.Rendering           ~> 4.10.2
-nuget Aardvark.Application.WinForms.GL  ~> 4.10.2
-nuget Aardvark.Application.Slim.GL      ~> 4.10.2
-nuget Aardvark.SceneGraph               ~> 4.10.2
-nuget Aardvark.SceneGraph.IO            ~> 4.10.2
-nuget Aardvark.SceneGraph.Opc           ~> 4.10.2
-nuget Aardvark.Rendering.Text           ~> 4.10.2
-nuget Aardvark.Rendering.Vulkan         ~> 4.10.2
-nuget Aardvark.GPGPU                    ~> 4.10.2
+nuget Aardvark.Base.Rendering           ~> 4.11.0
+nuget Aardvark.Application.WinForms.GL  ~> 4.11.0
+nuget Aardvark.Application.Slim.GL      ~> 4.11.0
+nuget Aardvark.SceneGraph               ~> 4.11.0
+nuget Aardvark.SceneGraph.IO            ~> 4.11.0
+nuget Aardvark.SceneGraph.Opc           ~> 4.11.0
+nuget Aardvark.Rendering.Text           ~> 4.11.0
+nuget Aardvark.Rendering.Vulkan         ~> 4.11.0
+nuget Aardvark.GPGPU                    ~> 4.11.0
 
 nuget Aardvark.Compiler.DomainTypes           ~> 4.3.0
 nuget Aardvark.Compiler.DomainTypes.MSBuild   ~> 4.3.0
 
-nuget Aardvark.Geometry.Intersection         ~> 4.9.2
+nuget Aardvark.Geometry.Intersection         ~> 4.9.10
 
 nuget FsPickler                             ~> 5.2.2
 nuget FsPickler.Json                        ~> 5.2.2
