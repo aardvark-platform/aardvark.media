@@ -1,7 +1,6 @@
 ﻿open System
 open System.Threading
 open Aardvark.Base
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
@@ -9,10 +8,7 @@ open Inc
 open Inc.Model
 
 open Suave
-open Suave.WebPart
 open System.Collections.Concurrent
-open Suave
-open Suave.Operators
 
 [<EntryPoint; STAThread>]
 let main argv = 

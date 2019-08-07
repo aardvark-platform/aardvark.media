@@ -24,14 +24,12 @@ module Filters =
             else "/" + name
 
         fun (ctx : HttpContext) ->
-            let url = ctx.request.url
-            let path = url.AbsolutePath
+            let path = ctx.request.rawPath
             if path.StartsWith prefix then
                 let rest = path.Substring prefix.Length
                 if rest = "" || rest.StartsWith "/" then
                     let rest = if rest = "" then "/" else rest
-                    let newUri = url.WithPath rest
-                    choose parts { ctx with request = { ctx.request with rawPath = newUri.AbsolutePath } }
+                    choose parts { ctx with request = { ctx.request with rawPath = rest } }
                 else
                     never ctx
             else
@@ -42,17 +40,13 @@ module Filters =
         fun (ctx : HttpContext) ->
             async {
                 let request : HttpRequest = ctx.request
-                let url = request.url
-
-                if url.AbsolutePath.StartsWith path then
-                    let newUrl = new UriBuilder(url)
-                    let newPath = url.AbsolutePath.Substring(path.Length)
+                
+                if request.rawPath.StartsWith path then
+                    let newPath = request.rawPath.Substring(path.Length)
                     let newPath =
                         if newPath.StartsWith "/" then newPath
                         else "/" + newPath
-
-                    newUrl.Path <- newPath
-
+                        
                     let newHeaders = 
                         let mutable found = false
                         let newHeaders =
@@ -70,10 +64,7 @@ module Filters =
                         else
                             newHeaders
 
-
-
-
-                    let r = { request with rawPath = newUrl.Uri.AbsolutePath; headers = newHeaders }
+                    let r = { request with rawPath = newPath; headers = newHeaders }
                     let innerCtx = { ctx with request = r }
                     return Some innerCtx
                 else
