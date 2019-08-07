@@ -1,22 +1,5 @@
 ﻿namespace Suave
 
-open System
-
-[<AutoOpen>]
-module UriExtensions =
-    type Uri with
-        member x.WithPath(path : string) =
-            let path = 
-                if path.StartsWith "/" then path
-                else "/" + path
-
-            let portSuffix = 
-                if x.IsDefaultPort then ""
-                else sprintf ":%d" x.Port
-
-            Uri(sprintf "%s://%s%s%s%s" x.Scheme x.Host portSuffix path x.Query)
-        
-
 module Filters =
     let folder (name : string) (parts : list<WebPart>) : WebPart =
         let prefix =
