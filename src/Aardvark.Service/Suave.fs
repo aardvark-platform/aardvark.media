@@ -10,20 +10,18 @@ open Suave.Operators
 //[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module WebPart =
 
-    let runServer (port : int) (content : list<WebPart>) : IDisposable =
+    /// runs the server blocking / cannot be canceled
+    let runServer (port : int) (content : list<WebPart>) =
         let corsConfig = { defaultCORSConfig with allowedUris = InclusiveOption.All }
 
-        let cts = new CancellationTokenSource()
         let config =
             { defaultConfig with
                 bindings = [ HttpBinding.create HTTP IPAddress.Any (uint16 port) ] 
-                cancellationToken = cts.Token
             }
         let index = cors corsConfig >=> choose content
         startWebServer config index
 
-        Disposable.Create(fun () -> cts.Cancel())
-
+    /// starts the server asynchronously and returns Disposable to stop the server again
     let startServer (port : int) (content : list<WebPart>) : IDisposable =
         let corsConfig = { defaultCORSConfig with allowedUris = InclusiveOption.All }
 
@@ -37,9 +35,10 @@ module WebPart =
         let (_,s) = startWebServerAsync config index
         Async.Start s
 
-
         Disposable.Create(fun () -> cts.Cancel())
 
+    /// starts the server on localhost (does not allow access from the network) asynchronously 
+    /// and returns Disposable to stop the server again
     let startServerLocalhost (port : int) (content : list<WebPart>):  IDisposable =
         let corsConfig = { defaultCORSConfig with allowedUris = InclusiveOption.All }
 

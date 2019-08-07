@@ -31,7 +31,7 @@ module Filters =
                 if rest = "" || rest.StartsWith "/" then
                     let rest = if rest = "" then "/" else rest
                     let newUri = url.WithPath rest
-                    choose parts { ctx with request = { ctx.request with url = newUri } }
+                    choose parts { ctx with request = { ctx.request with rawPath = newUri.AbsolutePath } }
                 else
                     never ctx
             else
@@ -73,7 +73,7 @@ module Filters =
 
 
 
-                    let r = { request with url = newUrl.Uri; headers = newHeaders }
+                    let r = { request with rawPath = newUrl.Uri.AbsolutePath; headers = newHeaders }
                     let innerCtx = { ctx with request = r }
                     return Some innerCtx
                 else

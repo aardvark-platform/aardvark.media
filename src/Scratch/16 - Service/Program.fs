@@ -43,7 +43,6 @@ let main argv =
     WebPart.runServer 4321 [ 
         Suave.Files.browse outputDir
         MutableApp.toWebPart' app.Runtime false instance
-    ] |> ignore
-
+    ]
 
     0 
