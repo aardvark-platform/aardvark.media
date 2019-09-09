@@ -118,6 +118,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "20 - PlaceTransformObjects"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "22 - FootPrint", "Scratch\22 - FootPrint\22 - FootPrint.fsproj", "{1500E54C-852F-4AAD-97D9-E05DBE1C2BDA}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "23 - OrthographicCamera", "Scratch\23 - OrthographicCamera\23 - OrthographicCamera.fsproj", "{D00AB44D-EC60-48E4-B46F-792354AF4EC7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -316,6 +318,10 @@ Global
 		{1500E54C-852F-4AAD-97D9-E05DBE1C2BDA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1500E54C-852F-4AAD-97D9-E05DBE1C2BDA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1500E54C-852F-4AAD-97D9-E05DBE1C2BDA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D00AB44D-EC60-48E4-B46F-792354AF4EC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D00AB44D-EC60-48E4-B46F-792354AF4EC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D00AB44D-EC60-48E4-B46F-792354AF4EC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D00AB44D-EC60-48E4-B46F-792354AF4EC7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -369,6 +375,7 @@ Global
 		{4E6C04B5-53EC-4624-BFE3-2B2C3500ED90} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{26CF487C-2157-4752-8E30-C4F420588A8C} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{1500E54C-852F-4AAD-97D9-E05DBE1C2BDA} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
+		{D00AB44D-EC60-48E4-B46F-792354AF4EC7} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}
