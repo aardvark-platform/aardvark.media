@@ -1,16 +1,19 @@
 ﻿namespace OrthoCamera
 
-open Aardvark.UI
-open Aardvark.UI.Primitives
-
 open Aardvark.Base
 open Aardvark.Base.Incremental
 open Aardvark.Base.Rendering
+open Aardvark.SceneGraph
+
+open Aardvark.UI
+open Aardvark.UI.Primitives
+
 
 module OrthoCameraDemo =
 
     type Action =    
         | CameraAction of FreeFlyController.Message
+        | HitSurface   of V3d
 
     let orthoFrustumFromWidth (width : float) =      
         let halfwidth = width / 2.0      
@@ -22,6 +25,9 @@ module OrthoCameraDemo =
         match msg with
         | CameraAction a ->
             { model with cameraState = FreeFlyController.update model.cameraState a }
+        | HitSurface p -> 
+            Log.line "hitted %A" p
+            { model with point = p }
     
     let frustum = 
         orthoFrustumFromWidth 5.0
@@ -30,11 +36,27 @@ module OrthoCameraDemo =
     let view (model : MOrthoModel) =
 
         let sg =
-            Sg.box (Mod.constant C4b.Red) (Mod.constant (Box3d(-V3d.III, V3d.III)))                        
+            Sg.box (Mod.constant C4b.White) (Mod.constant (Box3d(-V3d.III, V3d.III)))                        
             |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.simpleLighting
             }        
+            |> Sg.requirePicking
+            |> Sg.noEvents            
+            |> Sg.withEvents [
+                Sg.onDoubleClick (fun p -> HitSurface p) 
+            ]
+
+        let s = 
+            Sg.sphere 4 (Mod.constant C4b.Red) (Mod.constant 0.15)
+            |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! DefaultSurfaces.vertexColor
+                do! DefaultSurfaces.simpleLighting
+                }
+            |> Sg.noEvents
+            |> Sg.trafo (model.point |> Mod.map(Trafo3d.Translation))
+            
 
         let attributes = 
           [            
@@ -51,7 +73,7 @@ module OrthoCameraDemo =
 
         body [] [
             //FreeFlyController.controlledControl model.camera Action.CameraAction frustum (AttributeMap.ofList att) sg
-            Incremental.renderControlWithClientValues' cam attributes RenderControlConfig.standard (constF sg)
+            Incremental.renderControlWithClientValues' cam attributes RenderControlConfig.standard ([sg; s] |> Sg.ofList |> constF)
         ]    
     
     let threads (model : OrthoModel) = 
@@ -63,7 +85,7 @@ module OrthoCameraDemo =
         {
             unpersist = Unpersist.instance     
             threads = threads 
-            initial = { cameraState = camState }
+            initial = { cameraState = camState; point = V3d.Zero }
               
             update = update
             view = view

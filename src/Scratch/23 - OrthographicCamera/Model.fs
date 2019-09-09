@@ -14,4 +14,5 @@ type OrthoModel =
     {
        // frustum         : Frustum        
         cameraState     : CameraControllerState
+        point           : V3d
     }
