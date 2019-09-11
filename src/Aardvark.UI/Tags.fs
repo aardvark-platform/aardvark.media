@@ -188,6 +188,7 @@ module Incremental =
         let inline feFuncR x = voidElemNS "feFuncR" svgNS x
         let inline feGaussianBlur x = voidElemNS "feGaussianBlur" svgNS x
         let inline feImage x = voidElemNS "feImage" svgNS x
+        let inline image x = voidElemNS "image" svgNS x
         let inline feMerge x = voidElemNS "feMerge" svgNS x
         let inline feMergeNode x = voidElemNS "feMergeNode" svgNS x
         let inline feMorphology x = voidElemNS "feMorphology" svgNS x
@@ -219,6 +220,10 @@ module Incremental =
         let inline strokeLinecap x = attribute "stroke-linecap" x
         let inline strokeDasharray x = attribute "stroke-dasharray" x
         let inline fill x = attribute "fill" x
+
+        let inline g x = elemNS "g" svgNS x
+        let inline marker x = elemNS "marker" svgNS x
+        let inline foreignObject x = elemNS "foreignObject" svgNS x
 
 [<AutoOpen>]
 module Static =
@@ -452,6 +457,10 @@ module Static =
         let inline strokeLinecap x = attribute "stroke-linecap" x
         let inline strokeDasharray x = attribute "stroke-dasharray" x
         let inline fill x = attribute "fill" x
+
+        let inline g x = elemNS "g" svgNS x
+        let inline marker x = elemNS "marker" svgNS x
+        let inline foreignObject x = elemNS "foreignObject" svgNS x
 
 
 [<AutoOpen>]
