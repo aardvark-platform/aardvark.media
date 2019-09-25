@@ -1202,12 +1202,12 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
 
         if elementType = CefPaintElementType.View then
 
-            // ?? pixelData is not used
-            //let size = V2i(width, height)
-            //if size <> pixelSize then 
-            //    pixelData <- Array.zeroCreate(width * height * 4)
-            //    pixelSize <- size
-            //Marshal.Copy(buffer, pixelData, 0, pixelData.Length)
+            let size = V2i(width, height)
+            if size <> pixelSize then 
+                pixelData <- Array.zeroCreate(width * height * 4)
+                pixelSize <- size
+
+            Marshal.Copy(buffer, pixelData, 0, pixelData.Length)
 
             parent.Render(fun () ->
                 let size = V2i(width, height)
