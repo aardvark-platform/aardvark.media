@@ -14,15 +14,21 @@ type Alternative =
 [<DomainType>]
 type Model =
     {
-        active  : bool
-        value   : float
-        name    : string
-        alt     : Option<Alternative>
-        options : hmap<Alternative, string>
+        active    : bool
+        value     : float
+        intValue  : int
+        decValue  : decimal
+        uintValue : uint32
+        name      : string
+        alt       : Option<Alternative>
+        options   : hmap<Alternative, string>
     }
 
 type Message = 
     | ToggleActive
     | SetValue of float
+    | SetInt of int
+    | SetDecimal of decimal
+    | SetUInt of uint32
     | SetName of string
     | SetAlternative of Option<Alternative>

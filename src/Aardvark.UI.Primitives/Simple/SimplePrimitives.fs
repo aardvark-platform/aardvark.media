@@ -7,6 +7,7 @@ open Aardvark.UI.Generic
 
 [<AutoOpen>]
 module SimplePrimitives =
+    open System
 
 
     let private bootCheckBox =
@@ -36,12 +37,13 @@ module SimplePrimitives =
             max         : float
             step        : float
         }
-    type NumericConfig =
+
+    type NumericConfig<'a> =
         {
-            min         : float
-            max         : float
-            smallStep   : float
-            largeStep   : float
+            min         : 'a
+            max         : 'a
+            smallStep   : 'a
+            largeStep   : 'a
         }
 
 
@@ -57,6 +59,58 @@ module SimplePrimitives =
             allowEmpty  : bool
             placeholder : string
         }
+
+    type NumberType =
+    | Int = 0
+    | Real = 1
+    | Float = 2
+
+    type NumericConfigDefaults<'a>() =
+        class
+            [<DefaultValue>] static val mutable private min : 'a 
+            [<DefaultValue>] static val mutable private max : 'a 
+            [<DefaultValue>] static val mutable private small : 'a 
+            [<DefaultValue>] static val mutable private large : 'a 
+            [<DefaultValue>] static val mutable private numType : NumberType
+
+            static member MinValue = NumericConfigDefaults<'a>.min
+            static member MaxValue = NumericConfigDefaults<'a>.max
+            static member SmallStep = NumericConfigDefaults<'a>.small
+            static member LargeStep = NumericConfigDefaults<'a>.large
+            static member NumType = NumericConfigDefaults<'a>.numType
+
+            static do
+                let at = typedefof<'a>
+                if at = typeof<int> then
+                    NumericConfigDefaults<'a>.min <- unbox<'a> Int32.MinValue
+                    NumericConfigDefaults<'a>.max <- unbox<'a> Int32.MaxValue
+                    NumericConfigDefaults<'a>.small <- unbox<'a> 1
+                    NumericConfigDefaults<'a>.large <- unbox<'a> 10
+                    NumericConfigDefaults<'a>.numType <- NumberType.Int
+                elif at = typeof<float> then 
+                    NumericConfigDefaults<'a>.min <- unbox<'a> Double.MinValue
+                    NumericConfigDefaults<'a>.max <- unbox<'a> Double.MaxValue
+                    NumericConfigDefaults<'a>.small <- unbox<'a> 1.0
+                    NumericConfigDefaults<'a>.large <- unbox<'a> 10.0
+                    NumericConfigDefaults<'a>.numType <- NumberType.Float
+                elif at = typeof<float32> then 
+                    NumericConfigDefaults<'a>.min <- unbox<'a> Single.MinValue
+                    NumericConfigDefaults<'a>.max <- unbox<'a> Single.MaxValue
+                    NumericConfigDefaults<'a>.small <- unbox<'a> 1.0f
+                    NumericConfigDefaults<'a>.large <- unbox<'a> 10.0f
+                    NumericConfigDefaults<'a>.numType <- NumberType.Float
+                elif at = typeof<decimal> then 
+                    NumericConfigDefaults<'a>.min <- unbox<'a> Decimal.MinValue
+                    NumericConfigDefaults<'a>.max <- unbox<'a> Decimal.MaxValue
+                    NumericConfigDefaults<'a>.small <- unbox<'a> 1m
+                    NumericConfigDefaults<'a>.large <- unbox<'a> 10m
+                    NumericConfigDefaults<'a>.numType <- NumberType.Real
+                else
+                    // user needs to fully specify min, max, small and large 
+                    // -> numType will be uninitialized !?
+                    Log.warn "NumericConfigDefaults of type %A not implemented" typeof<'a>
+                    //failwith "not supported type in NumericInput"
+        end
 
     module TextConfig =
         let empty = { regex = None; maxLength = None }
@@ -101,19 +155,28 @@ module SimplePrimitives =
                 )
             )
 
-
-
-        let numeric (cfg : NumericConfig) (atts : AttributeMap<'msg>) (value : IMod<float>) (update : float -> 'msg) =
+        let numeric (cfg : NumericConfig<'a>) (atts : AttributeMap<'msg>) (value : IMod<'a>) (update : 'a -> 'msg) =
             
             let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
-            let inline pickle (v : float) = v.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            let inline pickle (v : 'a) = System.Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture);
             
-            let inline unpickle (v : string) = 
-                match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
-                | (true, v) -> Some v
-                | _ -> None
+            let unpickle (v : string) = 
+                try
+                    if NumericConfigDefaults<'a>.NumType = NumberType.Int then
+                        match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
+                        | (true, v) -> let txt = Text(Math.Round(v).ToString())
+                                       let rv = Text<'a>.Parse.Invoke(txt)
+                                       Some rv
+                        | _ -> None
+                    else
+                        let value = Text<'a>.Parse.Invoke(Text(v))
+                        Some value
+                with 
+                | _ -> 
+                    Log.warn "[UI.Primitives.numeric] failed to parse user input"
+                    None
 
-            let update v =
+            let update (v : 'a) =
                 value.MarkOutdated()
                 update v
 
@@ -137,13 +200,14 @@ module SimplePrimitives =
                             yield 
                                 input (att [ 
                                     
-                                    attribute "value" (value.GetValue() |> sprintf "%f")
+                                    attribute "value" (value.GetValue() |> pickle)
                                     attribute "type" "text"
                                     attribute "min" (pickle cfg.min)
                                     attribute "max" (pickle cfg.max)
                                     attribute "step" (pickle cfg.smallStep) 
-                                    attribute "data-largestep" (pickle (cfg.largeStep / cfg.smallStep))
-                                    attribute "pattern" "[0-9]*(\.[0-9]*)?"
+                                    attribute "data-largestep" (pickle cfg.largeStep)
+                                    //attribute "data-numtype" (NumericConfigDefaults<'a>.NumType.ToString())
+                                    attribute "pattern" (match NumericConfigDefaults<'a>.NumType with | Int -> "[0-9]"; | _ -> "[0-9]*(\.[0-9]*)?")
                                 ])
                         }
                     )
@@ -321,8 +385,10 @@ module SimplePrimitives =
         let dropdown1 (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : IMod<'a>) (update : 'a -> 'msg) =
             dropdown { allowEmpty = false; placeholder = "" } atts values (Mod.map Some selected) (Option.get >> update)
 
+
     [<AutoOpen>]
     module ``Primtive Builders`` =
+
         type CheckBuilder() =
 
             member inline x.Yield(()) =
@@ -342,12 +408,13 @@ module SimplePrimitives =
 
             member inline x.Run((a,c,(v,msg))) =
                 Incremental.checkbox a v msg c
-
-        type NumericBuilder() =
+                
+            
+        type NumericBuilder<'a>() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, Mod.constant 0.0, { min = -1E100; max = 1E100; smallStep = 1.0; largeStep = 10.0; }, (fun _ -> ()))
-
+                (AttributeMap.empty, Mod.constant 0.0, { min = NumericConfigDefaults<'a>.MinValue; max = NumericConfigDefaults<'a>.MaxValue; smallStep = NumericConfigDefaults<'a>.SmallStep; largeStep = NumericConfigDefaults<'a>.LargeStep; }, (fun _ -> ()))
+        
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,u,c,m), na) = (AttributeMap.union a (att na), u, c, m)
 
@@ -357,16 +424,12 @@ module SimplePrimitives =
             [<CustomOperation("update")>]
             member inline x.Update((a,v,cfg,_), msg) = (a,v, cfg, msg)
          
-
-        
             [<CustomOperation("step")>]
             member inline x.Step((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.smallStep = s }, m)
-         
          
             [<CustomOperation("largeStep")>]
             member inline x.LargeStep((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.largeStep = s }, m)
 
-         
             [<CustomOperation("min")>]
             member inline x.Min((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.min = s }, m)
          
@@ -376,6 +439,7 @@ module SimplePrimitives =
 
             member inline x.Run((a,v,cfg,msg)) =
                 Incremental.numeric cfg a v msg
+
         
         type TextBuilder() =
 
@@ -433,7 +497,7 @@ module SimplePrimitives =
                 Incremental.dropdown cfg a v s msg
         
         let simplecheckbox = CheckBuilder()
-        let simplenumeric = NumericBuilder()
+        let simplenumeric<'a> = NumericBuilder<'a>()
         let simpletextbox = TextBuilder()
         let simpledropdown = DropdownBuilder()
 
@@ -441,7 +505,7 @@ module SimplePrimitives =
     let inline checkbox atts (state : IMod<bool>) (toggle : 'msg) content =
         Incremental.checkbox (att atts) state toggle [label [] content]
         
-    let inline numeric (cfg : NumericConfig) atts (state : IMod<float>) (update : float -> 'msg) =
+    let inline numeric (cfg : NumericConfig<'a>) atts (state : IMod<'a>) (update : 'a -> 'msg) =
         Incremental.numeric cfg (att atts) state update 
         
     let inline slider (cfg : SliderConfig) atts (state : IMod<float>) (update : float -> 'msg) =
