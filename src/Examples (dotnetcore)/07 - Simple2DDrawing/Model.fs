@@ -39,7 +39,7 @@ type Model =
     {
         finishedPolygons : plist<Polygon> // we use plist here, since plist is automatically mapped to alists in the adaptive version (See https://rawgit.com/vrvis/aardvark.media/base31/docs/DomainTypeGeneration.html)
 
-        workingPolygon : Option<Polygon> // maybe we have an (unfinished) polygon we are working on
+        workingPolygon : Polygon // the (unfinished) polygon we are working on
         cursor         : Option<V2d>     // the cursor
 
         [<TreatAsValue>]        // since we don't want to have automatically maintained incremental versions of the past, we treat this field as value (the adaptive version becoms IMod<Option<Model>> instead of MOption<MModel>)
