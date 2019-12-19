@@ -1,10 +1,9 @@
-  
 @echo off
 SETLOCAL
 PUSHD %~dp0
 
 IF NOT exist .paket\paket.exe (
-	dotnet tool install Paket --tool-path .paket
+	dotnet tool install Paket --tool-path .paket --version 6.0.0-alpha007
 )
 
 if NOT exist paket.lock (
@@ -12,9 +11,12 @@ if NOT exist paket.lock (
     .paket\paket.exe install
 )
 
-REM .paket\paket.exe restore
+.paket\paket.exe restore
 if errorlevel 1 (
   exit /b %errorlevel%
 )
 
 dotnet packages\build\fake-cli\tools\netcoreapp2.1\any\fake-cli.dll build %* 
+
+
+
