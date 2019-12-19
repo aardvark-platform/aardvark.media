@@ -15,6 +15,7 @@ let initialCamera = {
     }
 
 let update (model : Model) (msg : Message) =
+    printfn "%A" msg
     match msg with
         | Camera m -> 
             { model with cameraState = FreeFlyController.update model.cameraState m }
@@ -36,7 +37,7 @@ let view (model : MModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
+                    (AttributeMap.ofList [ style "width: 2400px; height:2400px; background: #222"; attribute "data-samples" "8"]) 
                     (viewScene model)
 
     let channel = model.cameraState.view

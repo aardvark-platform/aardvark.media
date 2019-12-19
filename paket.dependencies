@@ -42,9 +42,5 @@ nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.2.2
 
 
 group Build
-framework: net45
-content: none
 source https://api.nuget.org/v3/index.json
-
-nuget FSharp.Formatting.CommandTool
-github aardvark-platform/aardvark.fake:v4-temp
+github aardvark-platform/aardvark.fake:v5
