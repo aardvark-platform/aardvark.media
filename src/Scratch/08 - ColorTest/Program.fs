@@ -76,7 +76,8 @@ let dehateScene22 (s : Scene) : IMod<IScene> =
                 | Add(1,v) -> 
                     let i = v.trafo |> Mod.map (fun t -> { itrafo = t })
                     cache.[v] <- i
- 
+                | _ ->
+                    failwith "unexpected"
         { iobjects = r.State |> Seq.map (fun o -> cache.[o].GetValue t) |> HRefSet.ofSeq }
     )
 
