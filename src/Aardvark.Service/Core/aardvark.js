@@ -187,6 +187,9 @@ class Renderer {
                 "</div>"
             );
 
+            $(loader).css("background-image", "url('https://upload.wikimedia.org/wikipedia/commons/5/57/Fsharp_logo.png')");
+            $(loader).css("background-size", "100px");
+
 
             this.loader = loader;
         }
@@ -194,7 +197,7 @@ class Renderer {
     }
 
     destroyLoader() {
-        if (this.loader) {
+        if (this.loader && false) {
             var loader = this.loader;
             delete this.loader;
             this.div.removeChild(loader);
