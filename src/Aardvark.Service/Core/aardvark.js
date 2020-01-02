@@ -151,7 +151,10 @@ class Renderer {
 		this.useMapping = useMapping;
 
 		var onRendered = this.div.getAttribute("onRendered");
-		if (onRendered) this.onRendered = onRendered;
+        if (onRendered) this.onRendered = onRendered;
+
+        this.customLoaderImg = this.div.getAttribute("data-customLoaderImg");
+        this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
 
         this.buffer = [];
         this.isOpen = false;
@@ -174,7 +177,13 @@ class Renderer {
             this.div.appendChild(loader);
             loader.setAttribute("class", "loader");
 
-            $(loader).html(
+            let aardvarkHtml = 
+                "<div style='color: white; margin-top: 30px; text-align: center;>" +
+                "<center style='text-align: center;'>Powered by the Aardvark Platform</center>" +
+                "</div >";
+
+
+            let loaderHtml = 
                 "<div class='fountainG_0'>" +
                 "<div class='fountainG_1 fountainG'></div>" +
                 "<div class='fountainG_2 fountainG'></div>" +
@@ -184,11 +193,17 @@ class Renderer {
                 "<div class='fountainG_6 fountainG'></div>" +
                 "<div class='fountainG_7 fountainG'></div>" +
                 "<div class='fountainG_8 fountainG'></div>" +
-                "</div>"
-            );
+                (this.customLoaderImg ? aardvarkHtml : "") +
+                "</div>" 
 
-            $(loader).css("background-image", "url('https://upload.wikimedia.org/wikipedia/commons/5/57/Fsharp_logo.png')");
-            $(loader).css("background-size", "100px");
+            $(loader).html(loaderHtml);
+
+            if (this.customLoaderImg) {
+                $(loader).css("background-image", "url('https://upload.wikimedia.org/wikipedia/commons/5/57/Fsharp_logo.png')");
+            }
+            if (this.customLoaderImgSize) {
+                $(loader).css("background-size", this.customLoaderImgSize);
+            }
 
 
             this.loader = loader;
@@ -197,7 +212,7 @@ class Renderer {
     }
 
     destroyLoader() {
-        if (this.loader && false) {
+        if (this.loader) {
             var loader = this.loader;
             delete this.loader;
             this.div.removeChild(loader);

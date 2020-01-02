@@ -162,6 +162,8 @@ let view (runtime : IRuntime) (model : MModel) =
                             attribute "data-samples" "8"; attribute "data-quality" "10"
                             attribute "data-customLogo" "https://upload.wikimedia.org/wikipedia/commons/5/57/Fsharp_logo.png"
                             attribute "useMapping" "false"
+                            attribute "data-customLoaderImg" "url('https://upload.wikimedia.org/wikipedia/commons/5/57/Fsharp_logo.png')"
+                            attribute "data-customLoaderSize" "100px"
                      ]) 
                     scene
     let superChannel = model.super |> Mod.channel
