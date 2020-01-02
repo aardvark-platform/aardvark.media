@@ -44,16 +44,11 @@ open UtilitiesForThisDemoNowMergedToCore
 let update (m : Model) (msg : Message) =
     match msg with
         | ClosePolygon _ -> 
-            match m.workingPolygon with
-                | None -> m  // if we have no polygon, we cannot close one
-                | Some p ->  // if we have a working polygon, add it to the list of finished polygon an start a fresh working polygon
-                    { m with finishedPolygons = PList.append p m.finishedPolygons; workingPolygon = Some { points = [] }; past = Some m }
+            // add the working polygon to the list of finished polygon an start a fresh working polygon
+            { m with finishedPolygons = PList.append m.workingPolygon m.finishedPolygons; workingPolygon = { points = [] }; past = Some m }
         | AddPoint pt -> 
-            match m.workingPolygon with
-                | None -> m // if we have no working polygon we cannot add this point (actually this should not happen, but total functions are nice and it does not hurt here)
-                | Some p -> 
-                    // update the working polygon by prepending a point to the lsit of points. furthermore the past is our old model
-                    { m with workingPolygon = Some { points = pt :: p.points}; past = Some m }
+            // update the working polygon by prepending a point to the lsit of points. furthermore the past is our old model
+            { m with workingPolygon = { points = pt :: m.workingPolygon.points}; past = Some m }
         | MoveCursor v -> 
             // set the current cursor
             { m with cursor = Some v } 
@@ -124,15 +119,9 @@ let view (m : MModel) =
                 for polygon in m.finishedPolygons do
                     yield! viewPolygon (Mod.constant []) polygon.points
 
-                // let us check if we currently have a working polygon
-                let! currentPolygon = m.workingPolygon
-                // if so, emit the stuff
-                match currentPolygon with
-                    | None -> ()
-                    | Some p -> 
-                        // let us prepent our current cursor position in order to get a preview of the 
-                        // last point.
-                        yield! viewPolygon (Mod.map Option.toList m.cursor) p.points
+                // let us prepent our current cursor position in order to get a preview of the 
+                // last point.
+                yield! viewPolygon (Mod.map Option.toList m.cursor) m.workingPolygon.points
             }
 
     // body creates a html body
@@ -162,7 +151,7 @@ let app =
         threads = threads // not used here
         initial = // the initial model of our app after startup
             { 
-               finishedPolygons = PList.empty; workingPolygon = Some { points = [] }; 
+               finishedPolygons = PList.empty; workingPolygon = { points = [] }; 
                cursor = None; past = None; future = None 
             }
         update = update // use our update and view function
