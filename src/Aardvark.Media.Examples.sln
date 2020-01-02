@@ -1,8 +1,9 @@
-﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "24 - Channels", "Examples (dotnetcore)\24 - Channels\24 - Channels.fsproj", "{389F94B9-4093-4CB1-9B24-DF7115D1CE9D}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "03 - D3Integration", "Examples (dotnetcore)\03 - D3Integration\03 - D3Integration.fsproj", "{E1E09C2E-3304-47D2-90BC-94253D1589CB}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (dotnetcore)", "Examples (dotnetcore)", "{731AC2C4-6C70-497F-BB7E-7417CF93A00B}"
@@ -89,12 +90,18 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "22 - FootPrint", "Scratch\2
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "23 - OrthographicCamera", "Scratch\23 - OrthographicCamera\23 - OrthographicCamera.fsproj", "{4C1E890E-9116-4581-ADB1-3D449F3C22A7}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - RenderControl", "Examples (dotnetcore)\02 - RenderControl\02 - RenderControl.fsproj", "{026ED91D-8F89-4E8D-AB60-30FCBBF83C50}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{389F94B9-4093-4CB1-9B24-DF7115D1CE9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{389F94B9-4093-4CB1-9B24-DF7115D1CE9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{389F94B9-4093-4CB1-9B24-DF7115D1CE9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{389F94B9-4093-4CB1-9B24-DF7115D1CE9D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{E1E09C2E-3304-47D2-90BC-94253D1589CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{E1E09C2E-3304-47D2-90BC-94253D1589CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1E09C2E-3304-47D2-90BC-94253D1589CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -247,11 +254,16 @@ Global
 		{4C1E890E-9116-4581-ADB1-3D449F3C22A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4C1E890E-9116-4581-ADB1-3D449F3C22A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4C1E890E-9116-4581-ADB1-3D449F3C22A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{026ED91D-8F89-4E8D-AB60-30FCBBF83C50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{026ED91D-8F89-4E8D-AB60-30FCBBF83C50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{026ED91D-8F89-4E8D-AB60-30FCBBF83C50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{026ED91D-8F89-4E8D-AB60-30FCBBF83C50}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{389F94B9-4093-4CB1-9B24-DF7115D1CE9D} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 		{E1E09C2E-3304-47D2-90BC-94253D1589CB} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 		{7E71CC3C-655F-44D5-BC7F-5C7074FBB793} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 		{AE7713D1-A6EA-47AC-9CEF-29E7F0C92330} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
@@ -290,6 +302,7 @@ Global
 		{D9C7A7F3-B656-4A21-A529-F3ED20E13EED} = {15625EF2-D2BB-40F3-9F94-3E101FFD3366}
 		{690D95A2-F8C0-45C7-8D59-329B99E10C47} = {15625EF2-D2BB-40F3-9F94-3E101FFD3366}
 		{4C1E890E-9116-4581-ADB1-3D449F3C22A7} = {15625EF2-D2BB-40F3-9F94-3E101FFD3366}
+		{026ED91D-8F89-4E8D-AB60-30FCBBF83C50} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C5B5FEF4-03B1-4B3E-A31B-6ADDEC0A4259}
