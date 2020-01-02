@@ -23,7 +23,7 @@
     <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj" />
-		<ProjectReference Include="..\10 - Drawing3D\10 - Drawing3D.fsproj" />
+    <ProjectReference Include="..\10 - Drawing3D\10 - Drawing3D.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -55,6 +55,9 @@ type SceneEvent =
         evtProj         : Trafo3d
         evtViewport     : V2i
         evtButtons      : MouseButtons
+        evtAlt          : bool
+        evtShift        : bool
+        evtCtrl         : bool
         evtTrafo        : IMod<Trafo3d>
     }
 

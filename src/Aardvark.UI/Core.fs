@@ -741,7 +741,7 @@ and DomNode private() =
                                 scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
 
 
-        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, pos : V2i) : seq<'msg> =
+        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, alt: bool, shift: bool, ctrl: bool, pos : V2i) : seq<'msg> =
             match scene.TryGetClientInfo(sourceSession, sourceId) with
                 | Some (info, state) -> 
                     let pp = PixelPosition(pos.X, pos.Y, info.size.X, info.size.Y)
@@ -753,6 +753,9 @@ and DomNode private() =
                             evtPixel    = pos
                             evtRay      = ray 
                             evtButtons  = buttons
+                            evtAlt      = alt
+                            evtShift    = shift
+                            evtCtrl     = ctrl
                             evtTrafo    = Mod.constant Trafo3d.Identity
                             evtView     = state.viewTrafo
                             evtProj     = state.projTrafo
@@ -776,23 +779,29 @@ and DomNode private() =
 
         let rayEvent (includeButton : bool) (kind : SceneEventKind) =
             let args =
-                if includeButton then ["event.offsetX"; "event.offsetY"; "event.which"]
-                else ["event.offsetX"; "event.offsetY"]
+                if includeButton then ["event.offsetX"; "event.offsetY"; "event.altKey"; "event.shiftKey"; "event.ctrlKey"; "event.which"]
+                else ["event.offsetX"; "event.offsetY"; "event.altKey"; "event.shiftKey"; "event.ctrlKey" ]
 
             {
                 clientSide = fun send id -> send id args + ";"
                 serverSide = fun session id args ->
                     match args with
-                        | x :: y :: which :: _ ->
+                        | x :: y :: alt :: shift :: ctrl :: which :: _ ->
                             let x = round (float x) |> int
                             let y = round (float y) |> int
                             let button = int which |> button
-                            perform(session, id, kind, button, V2i(x,y))
+                            let alt = Boolean.Parse alt
+                            let shift = Boolean.Parse shift
+                            let ctrl = Boolean.Parse ctrl
+                            perform(session, id, kind, button, alt, shift, ctrl, V2i(x,y))
 
-                        | x :: y :: _ -> 
+                        | x :: y :: alt :: shift :: ctrl :: _ -> 
                             let vx = round (float x) |> int
                             let vy = round (float y) |> int
-                            perform(session, id, kind, MouseButtons.None, V2i(vx,vy))
+                            let alt = Boolean.Parse alt
+                            let shift = Boolean.Parse shift
+                            let ctrl = Boolean.Parse ctrl
+                            perform(session, id, kind, MouseButtons.None, alt, shift, ctrl, V2i(vx,vy))
 
                         | _ ->
                             Seq.empty

@@ -1,0 +1,3 @@
+We moved most of those scratch projects to a separate solution Aardvark.Media.Examples.sln. 
+
+More high-level examples are gradually moved to https://github.com/aardvark-platform/aardvark.docs.
