@@ -150,8 +150,8 @@ class Renderer {
 		if (useMapping === "false") useMapping = false; else useMapping = true;
 		this.useMapping = useMapping;
 
-		var onRendered = this.div.getAttribute("onRendered");
-        if (onRendered) this.onRendered = onRendered;
+        var onRendered = this.div.getEventListener("rendered");
+		if (onRendered) this.onRendered = onRendered;
 
         this.customLoaderImg = this.div.getAttribute("data-customLoaderImg");
         this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
@@ -720,9 +720,9 @@ class Renderer {
 			this.send(JSON.stringify({ Case: "Rendered" }));
 
 
-			var shouldSay = this.div.getAttribute("onRendered");
+            var shouldSay = this.div.getEventListener("rendered");
 			if (shouldSay) {
-				aardvark.processEvent(this.div.id, 'onRendered');
+				aardvark.processEvent(this.div.id, 'rendered', false);
 			}
 
             if (this.loading) {
@@ -824,9 +824,9 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-				var shouldSay = this.div.getAttribute("onRendered");
+                var shouldSay = this.div.getEventListener("rendered");
 				if (shouldSay) {
-					aardvark.processEvent(this.div.id, 'onRendered');
+                    aardvark.processEvent(this.div.id, 'rendered', false);
 				}
                 if (this.loading) {
                     this.fadeIn();
@@ -1150,11 +1150,12 @@ if (!aardvark.connect) {
             aardvark.processEvent = function () {
                 var sender = arguments[0];
                 var name = arguments[1];
+                var capture = arguments[2];
                 var args = [];
-                for (var i = 2; i < arguments.length; i++) {
+                for (var i = 3; i < arguments.length; i++) {
                     args.push(JSON.stringify(arguments[i]));
                 }
-                var message = JSON.stringify({ sender: sender, name: name, args: args });
+                var message = JSON.stringify({ sender: sender, name: name, capture: capture, args: args });
                 eventSocket.send(message);
             };
             doPing();
@@ -1228,6 +1229,34 @@ if (!aardvark.setAttribute) {
         }
     };
 }
+
+if (!EventTarget.prototype.setEventListener)
+{
+    EventTarget.prototype.setEventListener = function (name, listener, capture) {
+        name = name.toLowerCase();
+        const id = "__" + name + "_" + capture;
+        if (listener) {
+            const old = this[id];
+            if (old) { this.removeEventListener(name, old, capture); }
+
+            this.addEventListener(name, listener, capture);
+            this[id] = listener;
+        }
+        else {
+            const old = this[id];
+            if (old) { this.removeEventListener(name, old, capture); }
+            delete this[id];
+        }
+    }
+}
+if (!EventTarget.prototype.getEventListener) {
+    EventTarget.prototype.getEventListener = function (name, capture) {
+        name = name.toLowerCase();
+        const id = "__" + name + "_" + capture;
+        return this[id];
+    }
+}
+
 
 $(document).ready(function () {
     // initialize all aardvark-controls 

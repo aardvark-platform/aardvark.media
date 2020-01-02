@@ -17,7 +17,7 @@ module Attributes =
     
     let inline js (name : string) (code : string) : Attribute<'msg> =
         name, 
-        AttributeValue.Event { 
+        AttributeValue.Bubble { 
             clientSide = fun send id -> code.Replace("__ID__", id)
             serverSide = fun _ _ _ -> Seq.empty
         }
@@ -45,10 +45,10 @@ module Events =
                 Log.warn "[Media] onEvent callback faulted"
                 Seq.empty
 
-        eventType, AttributeValue.Event(Event.ofDynamicArgs args (fun args -> Seq.delay (e args)))
+        eventType, AttributeValue.Bubble(Event.ofDynamicArgs args (fun args -> Seq.delay (e args)))
 
     let inline onEvent' (eventType : string) (args : list<string>) (cb : list<string> -> seq<'msg>) : Attribute<'msg> = 
-        eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb))
+        eventType, AttributeValue.Bubble(Event.ofDynamicArgs args (cb))
 
     let onFocus (cb : unit -> 'msg) =
         onEvent "onfocus" [] (ignore >> cb)
@@ -104,7 +104,7 @@ module Events =
                 clientSide = fun send id -> (if prevent then "event.preventDefault();" else "")+send id ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"]
                 serverSide = fun session id args -> (serverClick >> f >> Seq.singleton) args
             }
-        "onwheel" , AttributeValue.Event(args)
+        "onwheel" , AttributeValue.Bubble(args)
 
     let onWheel (f : Aardvark.Base.V2d -> 'msg) = onWheelPrevent false f
 
@@ -144,7 +144,7 @@ module Events =
 
     let onKeyDown (cb : Keys -> 'msg) =
         "onkeydown" ,
-        AttributeValue.Event(
+        AttributeValue.Bubble(
             Event.ofDynamicArgs
                 ["event.repeat"; "event.keyCode"]
                 (fun args ->
@@ -163,7 +163,7 @@ module Events =
 
     let onKeyUp (cb : Keys -> 'msg) =
         "onkeyup" ,
-        AttributeValue.Event(
+        AttributeValue.Bubble(
             Event.ofDynamicArgs
                 ["event.keyCode"]
                 (fun args ->
@@ -187,7 +187,7 @@ module Events =
 
 
     let internal onMouseRel (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> 'msg) =
-        kind, AttributeValue.Event {
+        kind, AttributeValue.Bubble {
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
@@ -207,7 +207,7 @@ module Events =
         }
 
     let internal onMouseAbs (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> V2d -> 'msg) =
-        kind, AttributeValue.Event {
+        kind, AttributeValue.Bubble {
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
@@ -258,7 +258,7 @@ module Events =
 
     let onWheel' (f : V2d -> V2d -> 'msg) =
 
-        "onwheel", AttributeValue.Event {
+        "onwheel", AttributeValue.Bubble {
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
@@ -283,7 +283,7 @@ module Events =
         | Pen
 
     let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : PointerType -> MouseButtons -> V2i -> 'msg) =
-        name, AttributeValue.Event {
+        name, AttributeValue.Bubble {
                 clientSide = fun send src -> 
                     String.concat ";" [
                         yield "var rect = getBoundingClientRect(this)"

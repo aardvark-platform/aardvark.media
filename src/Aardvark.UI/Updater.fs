@@ -40,7 +40,7 @@ module Updaters =
     type UpdateState<'msg> =
         {
             scenes              : ContraDict<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>
-            handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
+            handlers            : ContraDict<string * string * bool, Guid -> string -> list<string> -> seq<'msg>>
             references          : Dictionary<string * ReferenceKind, Reference>
             activeChannels      : Dict<string * string, ChannelReader>
             messages            : IObservable<'msg>
@@ -65,7 +65,7 @@ module Updaters =
         let setup (state : UpdateState<'msg>) =
             if id.IsValueCreated then
                 for (name,cb) in Map.toSeq node.Callbacks do
-                    state.handlers.[(id.Value,name)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
+                    state.handlers.[(id.Value, name, false)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
 
             for r in node.Required do
                 state.references.[(r.name, r.kind)] <- r
@@ -266,25 +266,57 @@ module Updaters =
 
         member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) =
             JSExpr.Sequential [
+                let old = reader.State
                 let atts = reader.GetOperations token
                 for (name, op) in atts do
                     match op with
                         | Set value ->
-                            let value =
-                                match value with
-                                    | AttributeValue.String str -> 
-                                        str
-                                    | AttributeValue.Event evt ->
-                                        let key = (id, name)
+                            match value with
+                                | AttributeValue.String str -> 
+                                    yield JSExpr.SetAttribute(self, name, str)
+
+                                | AttributeValue.Event evts ->
+                                    let name =
+                                        if name.StartsWith "on" then name.Substring(2).ToLower()
+                                        else name
+
+                                    match evts.capture with
+                                    | Some evt -> 
+                                        let key = (id, name, true)
                                         state.handlers.[key] <- evt.serverSide
-                                        Event.toString id name evt
+                                        yield JSExpr.SetEventListener(self, name, Event.toString true id name evt, true)
+                                    | None ->
+                                        ()
+                                    match evts.bubble with
+                                    | Some evt -> 
+                                        let key = (id, name, false)
+                                        state.handlers.[key] <- evt.serverSide
+                                        yield JSExpr.SetEventListener(self, name, Event.toString false id name evt, false)
+                                    | None ->
+                                        ()
 
-                            yield JSExpr.SetAttribute(self, name, value)
 
-                        | Remove -> 
-                            let key = (id,name)
-                            state.handlers.Remove key |> ignore
-                            yield JSExpr.RemoveAttribute(self, name)
+                            //yield JSExpr.SetAttribute(self, name, value)
+
+                        | Remove ->
+                            match HMap.tryFind name old with
+                            | Some (AttributeValue.Event evts) ->
+                                match evts.capture with
+                                | Some evt -> 
+                                    let key = (id,name,true)
+                                    state.handlers.Remove key |> ignore
+                                    yield JSExpr.RemoveEventListener(self, name, true)
+                                | None ->
+                                    ()
+                                match evts.bubble with
+                                | Some evt -> 
+                                    let key = (id,name,false)
+                                    state.handlers.Remove key |> ignore
+                                    yield JSExpr.RemoveEventListener(self, name, false)
+                                | None ->
+                                    ()
+                            | _ -> 
+                                yield JSExpr.RemoveAttribute(self, name)
             ]
 
         member x.Dispose() =
@@ -460,7 +492,9 @@ module Updaters =
             let attributes = e.Attributes.Content.GetValue()
             match HMap.tryFind "preRender" attributes with
                 | Some (AttributeValue.Event evt) ->
-                    evt.serverSide info.session this.Id.Value []
+                    Seq.append 
+                        (evt.capture |> Option.toList |> Seq.collect (fun evt -> evt.serverSide info.session this.Id.Value []))
+                        (evt.bubble |> Option.toList |> Seq.collect (fun evt -> evt.serverSide info.session this.Id.Value []))
                 | _ ->
                     Seq.empty
                     

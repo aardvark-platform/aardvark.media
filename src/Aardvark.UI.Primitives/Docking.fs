@@ -245,7 +245,7 @@ module DockingUIExtensions =
         }
         if(__NEEDSEVENT__){
             layouter.onlayoutchanged = function(cfg) {
-                aardvark.processEvent('__ID__', 'onlayoutchanged', JSON.stringify(cfg));
+                aardvark.processEvent('__ID__', 'onlayoutchanged', false, JSON.stringify(cfg));
             };
         }
         """
@@ -267,7 +267,7 @@ module DockingUIExtensions =
                 | _ ->
                     Seq.empty
 
-        "onlayoutchanged", AttributeValue.Event(Event.ofDynamicArgs [] callback)
+        "onlayoutchanged", AttributeValue.Bubble(Event.ofDynamicArgs [] callback)
 
     [<AutoOpen>]
     module Static = 

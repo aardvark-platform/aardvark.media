@@ -60,19 +60,19 @@ module Pickler =
 
 type Event<'msg> =
     {
-        clientSide : (string -> list<string> -> string) -> string -> string
-        serverSide : Guid -> string -> list<string> -> seq<'msg>
+        clientSide  : (string -> list<string> -> string) -> string -> string
+        serverSide  : Guid -> string -> list<string> -> seq<'msg>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Event =
 
-    let private processEvent (name : string) (id : string) (args : list<string>) =
-        let args = sprintf "'%s'" id :: sprintf "'%s'" name :: args
+    let private processEvent (capture : bool) (name : string) (id : string) (args : list<string>) =
+        let args = sprintf "'%s'" id :: sprintf "'%s'" name :: sprintf "%A" capture :: args
         sprintf "aardvark.processEvent(%s);" (String.concat ", " args)
         
-    let toString (id : string) (name : string) (evt : Event<'msg>) =
-        let send = processEvent name
+    let toString (capture : bool) (id : string) (name : string) (evt : Event<'msg>) =
+        let send = processEvent capture name
         evt.clientSide send id
 
     let empty<'msg> : Event<'msg> =
@@ -199,11 +199,52 @@ module Event =
             serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
         }
 
+
+type EventValues<'msg> =
+    { 
+        capture: option<Event<'msg>> 
+        bubble: option<Event<'msg>>
+    }
+
+module EventValues =
+
+    let map (mapping: 'a -> 'b) (e : EventValues<'a>) =
+        {
+            capture = e.capture |> Option.map (Event.map mapping)
+            bubble = e.bubble |> Option.map (Event.map mapping)
+        }
+
+    let combine (l : EventValues<'msg>) (r : EventValues<'msg>) =
+        let capture =
+            match l.capture with
+            | None -> r.capture
+            | Some l ->
+                match r.capture with
+                | None -> Some l
+                | Some r -> Some (Event.combine l r)
+                
+        let bubble =
+            match l.bubble with
+            | None -> r.bubble
+            | Some l ->
+                match r.bubble with
+                | None -> Some l
+                | Some r -> Some (Event.combine l r)
+        {
+            capture = capture
+            bubble = bubble
+        }
+
+
 [<RequireQualifiedAccess>]
 type AttributeValue<'msg> =
     | String of string
-    | Event of Event<'msg>
+    | Event of EventValues<'msg>
     //| RenderControlEvent of (SceneEvent -> list<'msg>)
+
+    static member Bubble(e : Event<'msg>) = AttributeValue.Event { capture = None; bubble = Some e }
+    static member Capture(e : Event<'msg>) = AttributeValue.Event { capture = Some e; bubble = None }
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AttributeValue =
@@ -211,10 +252,7 @@ module AttributeValue =
     let combine (name : string) (l : AttributeValue<'msg>) (r : AttributeValue<'msg>) =
         match name, l, r with
             | _, AttributeValue.Event l, AttributeValue.Event r -> 
-                AttributeValue.Event (Event.combine l r)
-
-            //| _, AttributeValue.RenderControlEvent l,  AttributeValue.RenderControlEvent r ->
-            //     AttributeValue.RenderControlEvent (fun a -> l a @ r a)
+                AttributeValue.Event (EventValues.combine l r)
 
             | "class", AttributeValue.String l, AttributeValue.String r -> 
                 AttributeValue.String (l + " " + r)
@@ -227,7 +265,7 @@ module AttributeValue =
 
     let map (f : 'a -> 'b) (v : AttributeValue<'a>) = 
         match v with
-            | AttributeValue.Event e -> AttributeValue.Event (Event.map f e)
+            | AttributeValue.Event e -> AttributeValue.Event (EventValues.map f e)
             | AttributeValue.String s -> AttributeValue.String s
             //| AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
 
@@ -818,12 +856,12 @@ and DomNode private() =
 
                     
                     let button = needsButton kind
-                    eventNames.[kind], AttributeValue.Event(rayEvent button kind)
+                    eventNames.[kind], AttributeValue.Event { capture = Some (rayEvent button kind); bubble = None }
                 )
                 |> AMap.ofASet
                 |> AMap.map (fun k vs ->
                     match HSet.toList vs with
-                        | [] -> AttributeValue.Event Event.empty
+                        | [] -> AttributeValue.Event { capture = None; bubble = None }
                         | h :: rest ->
                             rest |> List.fold (AttributeValue.combine "urdar") h
                             
