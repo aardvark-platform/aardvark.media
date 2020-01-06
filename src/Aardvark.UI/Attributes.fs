@@ -19,7 +19,7 @@ module Attributes =
         name, 
         AttributeValue.Bubble { 
             clientSide = fun send id -> code.Replace("__ID__", id)
-            serverSide = fun _ _ _ -> Seq.empty
+            serverSide = fun _ _ _ -> Continue, Seq.empty
         }
     
 
@@ -102,7 +102,7 @@ module Events =
         let args =
             {
                 clientSide = fun send id -> (if prevent then "event.preventDefault();" else "")+send id ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"]
-                serverSide = fun session id args -> (serverClick >> f >> Seq.singleton) args
+                serverSide = fun session id args -> Continue, (serverClick >> f >> Seq.singleton) args
             }
         "onwheel" , AttributeValue.Bubble(args)
 
@@ -190,7 +190,7 @@ module Events =
         kind, AttributeValue.Bubble {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left) / rect.width"
                     "var y = (event.clientY - rect.top) / rect.height"
                     send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
@@ -201,16 +201,16 @@ module Events =
                     | which :: pos :: _ ->
                         let v : V2d = Pickler.json.UnPickleOfString pos
                         let button = if needButton then button which else MouseButtons.Left
-                        Seq.singleton (f button v)
+                        Continue, Seq.singleton (f button v)
                     | _ ->
-                        Seq.empty      
+                        Continue, Seq.empty      
         }
 
     let internal onMouseAbs (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> V2d -> 'msg) =
         kind, AttributeValue.Bubble {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left)"
                     "var y = (event.clientY - rect.top)"
                     send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"; "{ X: rect.width.toFixed(10), Y: rect.height.toFixed(10) }"]
@@ -222,9 +222,9 @@ module Events =
                         let pos : V2d = Pickler.json.UnPickleOfString pos
                         let size : V2d = Pickler.json.UnPickleOfString size
                         let button = if needButton then button which else MouseButtons.Left
-                        Seq.singleton (f button pos size)
+                        Continue, Seq.singleton (f button pos size)
                     | _ ->
-                        Seq.empty      
+                        Continue, Seq.empty      
         }
 
     let onMouseDownAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
@@ -261,7 +261,7 @@ module Events =
         "onwheel", AttributeValue.Bubble {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left) / rect.width"
                     "var y = (event.clientY - rect.top) / rect.height"
                     send src ["{ X: event.deltaX.toFixed(), Y : event.deltaY.toFixed() }"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
@@ -272,9 +272,9 @@ module Events =
                     | delta :: pos :: _ ->
                         let v : V2d = Pickler.json.UnPickleOfString pos
                         let delta : V2d = Pickler.json.UnPickleOfString delta
-                        Seq.singleton (f delta v)
+                        Continue, Seq.singleton (f delta v)
                     | _ ->
-                        Seq.empty      
+                        Continue, Seq.empty      
         }
         
     type PointerType =
@@ -286,7 +286,7 @@ module Events =
         name, AttributeValue.Bubble {
                 clientSide = fun send src -> 
                     String.concat ";" [
-                        yield "var rect = getBoundingClientRect(this)"
+                        yield "var rect = this.getBoundingClientRect()"
                         yield "var x = (event.clientX - rect.left)"
                         yield "var y = (event.clientY - rect.top)"
                         match preventDefault with | None -> () | Some i -> yield (sprintf "if(event.which==%d){event.preventDefault();};" i)
@@ -301,9 +301,9 @@ module Events =
                             let button = if needButton then button which else MouseButtons.None
                             let pointertypestrp = pointertypestr.Trim('\"').Trim('\\')
                             let pointertype = match pointertypestrp with | "mouse" -> Mouse | "pen" -> Pen | "touch" -> Touch | _ -> failwith "PointerType not supported"
-                            Seq.singleton (f pointertype button v)
+                            Continue, Seq.singleton (f pointertype button v)
                         | _ ->
-                            Seq.empty      
+                            Continue, Seq.empty      
             }
             
     let onCapturedPointerDown (preventDefault : Option<int>) cb  = onPointerEvent "onpointerdown" true preventDefault (Some true) cb

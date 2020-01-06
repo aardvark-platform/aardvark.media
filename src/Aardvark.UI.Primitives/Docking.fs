@@ -245,7 +245,7 @@ module DockingUIExtensions =
         }
         if(__NEEDSEVENT__){
             layouter.onlayoutchanged = function(cfg) {
-                aardvark.processEvent('__ID__', 'onlayoutchanged', false, JSON.stringify(cfg));
+                aardvark.processEvent('__ID__', 'onlayoutchanged', JSON.stringify(cfg));
             };
         }
         """

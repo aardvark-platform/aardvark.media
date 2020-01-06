@@ -150,7 +150,7 @@ class Renderer {
 		if (useMapping === "false") useMapping = false; else useMapping = true;
 		this.useMapping = useMapping;
 
-        var onRendered = this.div.getEventListener("rendered");
+        var onRendered = this.div.getEventListener("rendered", false);
 		if (onRendered) this.onRendered = onRendered;
 
         this.customLoaderImg = this.div.getAttribute("data-customLoaderImg");
@@ -720,9 +720,9 @@ class Renderer {
 			this.send(JSON.stringify({ Case: "Rendered" }));
 
 
-            var shouldSay = this.div.getEventListener("rendered");
+            var shouldSay = this.div.getEventListener("rendered", false);
 			if (shouldSay) {
-				aardvark.processEvent(this.div.id, 'rendered', false);
+				aardvark.processEvent(this.div.id, 'rendered');
 			}
 
             if (this.loading) {
@@ -824,9 +824,9 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-                var shouldSay = this.div.getEventListener("rendered");
+                var shouldSay = this.div.getEventListener("rendered", false);
 				if (shouldSay) {
-                    aardvark.processEvent(this.div.id, 'rendered', false);
+                    aardvark.processEvent(this.div.id, 'rendered');
 				}
                 if (this.loading) {
                     this.fadeIn();
@@ -1066,6 +1066,14 @@ class Channel {
 
 }
 
+class EventDispatchInfo {
+
+    constructor(capture, id) {
+        this.capture = capture;
+        this.id = id;
+    }
+}
+
 if (!aardvark.getChannel) {
     aardvark.getChannel = function (id, name) {
         var channelName = id + "_" + name;
@@ -1147,15 +1155,24 @@ if (!aardvark.connect) {
         
 
         eventSocket.onopen = function () {
+
+            aardvark.eventId = "";
+            aardvark.capture = false;
+
             aardvark.processEvent = function () {
+                if (arguments.length < 2) return;
+
                 var sender = arguments[0];
                 var name = arguments[1];
-                var capture = arguments[2];
+
+                var capture = aardvark.capture;
+                var id = aardvark.eventId;
+
                 var args = [];
-                for (var i = 3; i < arguments.length; i++) {
+                for (var i = 2; i < arguments.length; i++) {
                     args.push(JSON.stringify(arguments[i]));
                 }
-                var message = JSON.stringify({ sender: sender, name: name, capture: capture, args: args });
+                var message = JSON.stringify({ sender: sender, name: name, capture: capture, id: id, args: args });
                 eventSocket.send(message);
             };
             doPing();
@@ -1230,17 +1247,124 @@ if (!aardvark.setAttribute) {
     };
 }
 
+
 if (!EventTarget.prototype.setEventListener)
 {
+
+    var downEvents = {};
+    var downTimes = {};
+
+    window.addEventListener("pointerdown", function (event) {
+        console.warn("down " + event.button);
+        downEvents[event.which] = event;
+        downTimes[event.which] = performance.now()
+    }, true);
+
+    window.addEventListener("pointerup", function (event) {
+        const downEvent = downEvents[event.which];
+        if (downEvent) {
+            const downTime = downTimes[event.which];
+            const dt = performance.now() - downTime;
+            const dx = event.clientX - downEvent.clientX;
+            const dy = event.clientY - downEvent.clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dt < 300.0 && dist < 20.0) {
+                const evt = new MouseEvent("mouseclick", {
+                    bubbles: true,
+                    cancelable: true,
+                    altKey: event.altKey,
+                    button: event.button,
+                    buttons: downEvent.buttons,
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    ctrlKey: event.ctrlKey,
+                    metaKey: event.metaKey,
+                    shiftKey: event.shiftKey,
+                    offsetX: event.offsetX,
+                    offsetY: event.offsetY,
+                    pageX: event.pageX,
+                    pageY: event.pageY,
+                    screenX: event.screenX,
+                    screenY: event.screenY
+                });
+
+                event.target.dispatchEvent(evt);
+            }
+
+            delete downEvents[event.button];
+            delete downTimes[event.button];
+        }
+    }, true);
+
+    var clickEvents = {};
+    var clickTimes = {};
+    window.addEventListener("mouseclick", function (event) {    
+        
+        const lastClick = clickEvents[event.button];
+        if (lastClick) {
+            const clickTime = clickTimes[event.button];
+            const dt = performance.now() - clickTime;
+            const dx = event.clientX - lastClick.clientX;
+            const dy = event.clientY - lastClick.clientY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dt < 300.0 && dist < 20.0) {
+                const evt = new MouseEvent("mousedblclick", {
+                    bubbles: true,
+                    cancelable: true,
+                    altKey: event.altKey,
+                    button: event.button,
+                    buttons: lastClick.buttons,
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    ctrlKey: event.ctrlKey,
+                    metaKey: event.metaKey,
+                    shiftKey: event.shiftKey,
+                    offsetX: event.offsetX,
+                    offsetY: event.offsetY,
+                    pageX: event.pageX,
+                    pageY: event.pageY,
+                    screenX: event.screenX,
+                    screenY: event.screenY
+                });
+
+                event.target.dispatchEvent(evt);
+            }
+        }
+        clickEvents[event.button] = event;
+        clickTimes[event.button] = performance.now();
+
+    }, true);
+
+
     EventTarget.prototype.setEventListener = function (name, listener, capture) {
         name = name.toLowerCase();
         const id = "__" + name + "_" + capture;
+        const _self = this;
+        function myListener(event) {
+            if (!event.uniqueId) event.uniqueId = aardvark.newguid();
+
+            const oi = aardvark.eventId;
+            const oc = aardvark.capture;
+
+            aardvark.eventId = event.uniqueId;
+            aardvark.capture = capture;
+
+            const res = listener.bind(_self)(event)
+            aardvark.eventId = oi;
+            aardvark.capture = oc;
+
+            return res;
+        }
+
+     
         if (listener) {
             const old = this[id];
             if (old) { this.removeEventListener(name, old, capture); }
 
-            this.addEventListener(name, listener, capture);
-            this[id] = listener;
+            this.addEventListener(name, myListener, capture);
+            this[id] = myListener;
         }
         else {
             const old = this[id];
@@ -1252,6 +1376,7 @@ if (!EventTarget.prototype.setEventListener)
 if (!EventTarget.prototype.getEventListener) {
     EventTarget.prototype.getEventListener = function (name, capture) {
         name = name.toLowerCase();
+        capture = capture || false;
         const id = "__" + name + "_" + capture;
         return this[id];
     }

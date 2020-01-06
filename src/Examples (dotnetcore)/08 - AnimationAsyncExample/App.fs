@@ -101,7 +101,7 @@ let viewScene (m : MModel) =
 
 let view (m : MModel) =
     let doubleClick (callback : V3d -> seq<'msg>) =
-        "ondblclick", AttributeValue.Event {
+        "ondblclick", AttributeValue.Bubble {
             clientSide = fun send id -> 
                 "aardvark.getWorldPosition('" + id + "', {x : event.clientX, y: event.clientY }, function(d) { " + send id ["d"] + " })"
             serverSide = fun client id args -> 
@@ -109,9 +109,9 @@ let view (m : MModel) =
                     | h :: _ ->
                         let v : V3d = Pickler.json.UnPickleOfString h
                         Log.warn "wp: %A" v
-                        callback v
+                        Stop, callback v
                     | _ ->
-                        Seq.empty
+                        Continue, Seq.empty
         }   
 
     let callback (v : V3d) =

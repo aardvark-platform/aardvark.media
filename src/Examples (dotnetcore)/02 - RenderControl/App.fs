@@ -33,15 +33,29 @@ let viewScene (model : MModel) =
 let view (model : MModel) =
 
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
-                    (AttributeMap.ofList [ 
-                        style "width: 100%; grid-row: 2; height:100%"; 
-                        attribute "showFPS" "true";         // optional, default is false
-                        //attribute "showLoader" "false"    // optional, default is true
-                        //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                        attribute "data-samples" "8"        // optional, default is 1
-                    ]) 
-                    (viewScene model)
+        FreeFlyController.controlledControl 
+            model.cameraState Camera 
+            (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+            (
+                AttributeMap.ofList [ 
+                    "onpointerdown", AttributeValue.Capture {
+                        clientSide = fun send id -> send id []
+                        serverSide = fun _ _ _ -> Log.warn "capture"; Stop, Seq.empty
+                    }
+                        
+                    "onpointerdown", AttributeValue.Bubble {
+                        clientSide = fun send id -> send id []
+                        serverSide = fun _ _ _ -> Log.warn "bubble"; Continue, Seq.empty
+                    }
+
+                    style "width: 100%; grid-row: 2; height:100%"; 
+                    attribute "showFPS" "true";         // optional, default is false
+                    //attribute "showLoader" "false"    // optional, default is true
+                    //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                    attribute "data-samples" "8"        // optional, default is 1
+                ]
+            ) 
+            (viewScene model)
 
 
     div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [

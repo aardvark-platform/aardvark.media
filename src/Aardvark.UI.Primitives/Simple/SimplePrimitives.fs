@@ -12,7 +12,7 @@ module SimplePrimitives =
     let private bootCheckBox =
         String.concat "" [
             "$('#__ID__').checkbox().checkbox('__INITIALSTATE__');"
-            "$('#__ID__').get(0).addEventListener('click', function(e) { aardvark.processEvent('__ID__', 'onclick', false); e.stopPropagation(); }, true);"
+            "$('#__ID__').get(0).addEventListener('click', function(e) { aardvark.processEvent('__ID__', 'onclick'); e.stopPropagation(); }, true);"
             "isChecked.onmessage = function(s) { if (s) { $('#__ID__').checkbox('check'); } else { $('#__ID__').checkbox('uncheck'); } };"
         ]
         
@@ -72,7 +72,7 @@ module SimplePrimitives =
             let ev =
                 {
                     clientSide = fun _ _ -> ""
-                    serverSide = fun _ _ _ -> Seq.singleton toggle
+                    serverSide = fun _ _ _ -> Continue, Seq.singleton toggle
                 }
 
             let boot = bootCheckBox.Replace("__INITIALSTATE__", if state.GetValue() then "check" else "uncheck")
@@ -126,7 +126,7 @@ module SimplePrimitives =
             let boot =
                 String.concat ";" [
                     "var $__ID__ = $('#__ID__');"
-                    "$__ID__.numeric({ changed: function(v) { aardvark.processEvent('__ID__', 'data-event', false, v); } });"
+                    "$__ID__.numeric({ changed: function(v) { aardvark.processEvent('__ID__', 'data-event', v); } });"
                     "valueCh.onmessage = function(v) { $__ID__.numeric('set', v.value); };"
                 ]
                 
@@ -175,7 +175,7 @@ module SimplePrimitives =
             let boot =
                 String.concat ";" [
                     "var $__ID__ = $('#__ID__');"
-                    sprintf "var cfg = { decimalPlaces: 10, min: %s, max: %s, step: %s, start: %s, onMove: function(v) { aardvark.processEvent('__ID__', 'data-event', false, v);} };" (pickle cfg.min) (pickle cfg.max) (pickle cfg.step) (pickle (Mod.force value))
+                    sprintf "var cfg = { decimalPlaces: 10, min: %s, max: %s, step: %s, start: %s, onMove: function(v) { aardvark.processEvent('__ID__', 'data-event', v);} };" (pickle cfg.min) (pickle cfg.max) (pickle cfg.step) (pickle (Mod.force value))
                     sprintf "$__ID__.slider(cfg);"  
                     "valueCh.onmessage = function(v) { $__ID__.slider('update position', v.value); };"
                 ]
@@ -212,7 +212,7 @@ module SimplePrimitives =
                     yield "var $input = $('#__ID__ > input');"
                     yield "var old = $input.val();"
                     yield "$input.on('input', function(e) { var v = validate(e.target.value); if(v) { $self.removeClass('error'); } else { $self.addClass('error'); } });"
-                    yield "$input.change(function(e) { var v = validate(e.target.value); if(v) { old = v; aardvark.processEvent('__ID__', 'data-event', false, v); } else { $input.val(old); $self.removeClass('error'); } });"
+                    yield "$input.change(function(e) { var v = validate(e.target.value); if(v) { old = v; aardvark.processEvent('__ID__', 'data-event', v); } else { $input.val(old); $self.removeClass('error'); } });"
                     yield "valueCh.onmessage = function(v) {  old = v.value; $input.val(v.value); };"
                 ]
                        
@@ -290,7 +290,7 @@ module SimplePrimitives =
                 let clear = if cfg.allowEmpty then "true" else "false"
                 String.concat ";" [
                     "var $self = $('#__ID__');"
-                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  debugger; aardvark.processEvent('__ID__', 'data-event', false, value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
+                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  debugger; aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
                     "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
                 ]
 

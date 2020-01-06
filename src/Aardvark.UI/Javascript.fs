@@ -150,7 +150,7 @@ module JSExpr =
                 
             | SetEventListener(t, name, value, capture) ->
                 let t = toStringInternal t
-                sprintf "%s.setEventListener(\"%s\", (event) => { %s; }, %A);" t name value capture
+                sprintf "%s.setEventListener(\"%s\", function (event) { %s; }, %A);" t name value capture
                 
             | RemoveEventListener(t, name, capture) ->
                 let t = toStringInternal t

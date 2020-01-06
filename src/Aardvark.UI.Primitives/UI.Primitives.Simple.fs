@@ -35,8 +35,8 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            str |> int |> changed |> Seq.singleton
-                        | _ -> Seq.empty
+                            Continue, str |> int |> changed |> Seq.singleton
+                        | _ -> Continue, Seq.empty
             }
 
         div [ clazz "ui input"; style "width: 60pt"] [
@@ -81,8 +81,8 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            str |> int |> changed |> Seq.singleton
-                        | _ -> Seq.empty
+                            Continue, str |> int |> changed |> Seq.singleton
+                        | _ -> Continue, Seq.empty
             }
 
         div [ clazz "ui small labeled input"; style "width: 60pt"] [
@@ -127,8 +127,8 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            str |> float |> changed |> Seq.singleton
-                        | _ -> Seq.empty
+                            Continue, str |> float |> changed |> Seq.singleton
+                        | _ -> Continue, Seq.empty
             }
 
         Incremental.div containerAttribs <|
@@ -189,8 +189,8 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            str.Trim('\"') |> changed |> Seq.singleton
-                        | _ -> Seq.empty
+                            Continue, str.Trim('\"') |> changed |> Seq.singleton
+                        | _ -> Continue, Seq.empty
             }
 
         let atts = 

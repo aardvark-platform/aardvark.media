@@ -40,7 +40,7 @@ module Updaters =
     type UpdateState<'msg> =
         {
             scenes              : ContraDict<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>
-            handlers            : ContraDict<string * string * bool, Guid -> string -> list<string> -> seq<'msg>>
+            handlers            : ContraDict<string * string * bool, Guid -> string -> list<string> -> Continuation * seq<'msg>>
             references          : Dictionary<string * ReferenceKind, Reference>
             activeChannels      : Dict<string * string, ChannelReader>
             messages            : IObservable<'msg>
@@ -65,7 +65,7 @@ module Updaters =
         let setup (state : UpdateState<'msg>) =
             if id.IsValueCreated then
                 for (name,cb) in Map.toSeq node.Callbacks do
-                    state.handlers.[(id.Value, name, false)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
+                    state.handlers.[(id.Value, name, false)] <- fun _ _ v -> Continue, Seq.delay (fun () -> Seq.singleton (cb v))
 
             for r in node.Required do
                 state.references.[(r.name, r.kind)] <- r
@@ -284,14 +284,14 @@ module Updaters =
                                     | Some evt -> 
                                         let key = (id, name, true)
                                         state.handlers.[key] <- evt.serverSide
-                                        yield JSExpr.SetEventListener(self, name, Event.toString true id name evt, true)
+                                        yield JSExpr.SetEventListener(self, name, Event.toString id name evt, true)
                                     | None ->
                                         ()
                                     match evts.bubble with
                                     | Some evt -> 
                                         let key = (id, name, false)
                                         state.handlers.[key] <- evt.serverSide
-                                        yield JSExpr.SetEventListener(self, name, Event.toString false id name evt, false)
+                                        yield JSExpr.SetEventListener(self, name, Event.toString id name evt, false)
                                     | None ->
                                         ()
 
@@ -492,9 +492,9 @@ module Updaters =
             let attributes = e.Attributes.Content.GetValue()
             match HMap.tryFind "preRender" attributes with
                 | Some (AttributeValue.Event evt) ->
-                    Seq.append 
-                        (evt.capture |> Option.toList |> Seq.collect (fun evt -> evt.serverSide info.session this.Id.Value []))
-                        (evt.bubble |> Option.toList |> Seq.collect (fun evt -> evt.serverSide info.session this.Id.Value []))
+                    match evt.bubble with
+                    | Some b -> b.serverSide info.session this.Id.Value [] |> snd
+                    | None -> Seq.empty
                 | _ ->
                     Seq.empty
                     
@@ -542,15 +542,15 @@ module Updaters =
         let mapMsg handler (client : Guid) (name : string) (args : list<string>) =
             match cache with
                 | Some (_,subject) ->
-                    let messages = handler client name args
-                    seq {
+                    let cont, messages = handler client name args
+                    cont, seq {
                         for msg in messages do
                             yield m.Mapping msg
                             if subject.IsDisposed then Log.warn "[media] updater subj disposed."
                             else subject.OnNext msg // if already destroyed, subapp does not receive msg any more...
                     }
                 | _ ->
-                    Seq.empty
+                    Continue, Seq.empty
 
         let get (state : UpdateState<'outer>) =
             match cache with    
@@ -601,10 +601,10 @@ module Updaters =
         let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
             match cache with
                 | Some (_, subject, _) ->
-                    let messages = handler client bla args
-                    processMsgs client messages
+                    let cont, messages = handler client bla args
+                    cont, processMsgs client messages
                 | None ->
-                    Seq.empty
+                    Continue, Seq.empty
 
         let get (state : UpdateState<'outer>) =
             match cache with    

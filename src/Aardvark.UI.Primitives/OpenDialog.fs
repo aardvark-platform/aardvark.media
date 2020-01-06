@@ -67,7 +67,7 @@ module OpenFileDialogExtensions =
         let openDialogButton (config : OpenDialogConfig) (att : list<string * AttributeValue<'msg>>) (content : list<DomNode<'msg>>) =
             let cfg = OpenDialogConfig.toJSON config
             button [
-                yield clientEvent "onclick" ("aardvark.openFileDialog(" + cfg + ", function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoosefile', false, files); });")
+                yield clientEvent "onclick" ("aardvark.openFileDialog(" + cfg + ", function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoosefile', files); });")
                 yield! att
             ] content
 

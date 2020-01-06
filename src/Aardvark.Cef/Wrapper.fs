@@ -836,7 +836,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
     
     let loadHandler = LoadHandler(this)
     let renderHandler = RenderHandler(this, size, texture)
-    let loadResult = MVar.empty()
+    let mutable loadResult = System.Threading.Tasks.TaskCompletionSource<LoadResult>()
 
     let messagePump = MessagePump()
     let transactor = MessagePump()
@@ -875,7 +875,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
     member internal x.LoadFinished(res : LoadResult) =
         lock lockObj (fun () ->
             if not isDisposed then
-                MVar.put loadResult res
+                loadResult.SetResult res
+                //MVar.put loadResult res
             )
 
     member internal x.Render(f : unit -> Transaction) =
@@ -1038,42 +1039,50 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
     member x.LoadUrlAsync (url : string) =
         lock lockObj (fun () ->
             if not isDisposed then
+                let tcs = System.Threading.Tasks.TaskCompletionSource()
+                loadResult <- tcs
                 x.Init()
                 frame.LoadUrl url
+                tcs.Task
             else
                 fail "Disposed"
         )
-        MVar.takeAsync loadResult
 
     member x.LoadUrl (url : string) =
         lock lockObj (fun () ->
             if not isDisposed then
+                let tcs = System.Threading.Tasks.TaskCompletionSource()
+                loadResult <- tcs
                 x.Init()
                 frame.LoadUrl url
+                tcs.Task
             else
                 fail "Disposed"
         )
-        MVar.take loadResult
 
     member x.LoadHtmlAsync (code : string) =
         lock lockObj (fun () ->
             if not isDisposed then
                 x.Init()
+                let tcs = System.Threading.Tasks.TaskCompletionSource()
+                loadResult <- tcs
                 frame.LoadString(code, "http://aardvark.local/index.html")
+                tcs.Task
             else
                 fail "Disposed"
         )
-        MVar.takeAsync loadResult
 
     member x.LoadHtml (code : string) =
         lock lockObj (fun () ->
             if not isDisposed then
                 x.Init()
+                let tcs = System.Threading.Tasks.TaskCompletionSource()
+                loadResult <- tcs
                 frame.LoadString(code, "http://aardvark.local/index.html")
+                tcs.Task
             else
                 fail "Disposed"
         )
-        MVar.take loadResult
 
     interface IDisposable with
         member x.Dispose() = 

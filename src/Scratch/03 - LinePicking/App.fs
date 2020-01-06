@@ -112,9 +112,9 @@ module App =
            SceneEventKind.Down, (
              fun sceneHit ->
                if (picking |> Mod.force) then
-                 true, Seq.ofList[PickPolygon (sceneHit)]
+                 Stop, Seq.ofList[PickPolygon (sceneHit)]
                else
-                 false, Seq.ofList[])
+                 Continue, Seq.ofList[])
         ]
                 
     let box = Mod.constant (boxGeometry)

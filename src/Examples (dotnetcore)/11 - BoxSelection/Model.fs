@@ -15,6 +15,7 @@ type BoxSelectionDemoAction =
     | AddBox
     | RemoveBox
     | ClearSelection
+    | Nop
 
 [<DomainType>]
 type VisibleBox = {

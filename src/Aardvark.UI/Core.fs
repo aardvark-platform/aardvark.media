@@ -61,36 +61,36 @@ module Pickler =
 type Event<'msg> =
     {
         clientSide  : (string -> list<string> -> string) -> string -> string
-        serverSide  : Guid -> string -> list<string> -> seq<'msg>
+        serverSide  : Guid -> string -> list<string> -> Continuation * seq<'msg>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Event =
 
-    let private processEvent (capture : bool) (name : string) (id : string) (args : list<string>) =
-        let args = sprintf "'%s'" id :: sprintf "'%s'" name :: sprintf "%A" capture :: args
+    let private processEvent (name : string) (id : string) (args : list<string>) =
+        let args = sprintf "'%s'" id :: sprintf "'%s'" name :: args
         sprintf "aardvark.processEvent(%s);" (String.concat ", " args)
         
-    let toString (capture : bool) (id : string) (name : string) (evt : Event<'msg>) =
-        let send = processEvent capture name
+    let toString (id : string) (name : string) (evt : Event<'msg>) =
+        let send = processEvent name
         evt.clientSide send id
 
     let empty<'msg> : Event<'msg> =
         {
             clientSide = fun _ _ -> ""
-            serverSide = fun _ _ _ -> Seq.empty
+            serverSide = fun _ _ _ -> Continue, Seq.empty
         }
 
     let ofTrigger (reaction : unit -> 'msg) =
         {
             clientSide = fun send id -> send id []
-            serverSide = fun _ _ _ -> Seq.delay (reaction >> Seq.singleton)
+            serverSide = fun _ _ _ -> Continue, Seq.delay (reaction >> Seq.singleton)
         }
 
     let ofDynamicArgs (args : list<string>) (reaction : list<string> -> seq<'msg>) =
         {
             clientSide = fun send id -> send id args
-            serverSide = fun session id args -> reaction args
+            serverSide = fun session id args -> Continue, reaction args
         }
 
     let create1 (a : string) (reaction : 'a -> 'msg) =
@@ -100,14 +100,14 @@ module Event =
                 match args with
                     | [a] ->
                         try 
-                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a)))
+                            Continue, Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a)))
                         with e ->
                             Log.warn "[UI] expected args (%s) but got (%A)" typename<'a> a
-                            Seq.empty
+                            Continue, Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s) but got %A" typename<'a> args
-                        Seq.empty
+                        Continue, Seq.empty
         }
 
     let create2 (a : string) (b : string) (reaction : 'a -> 'b -> 'msg) =
@@ -117,14 +117,14 @@ module Event =
                 match args with
                     | [a; b] ->
                         try 
-                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) ))
+                            Continue, Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) ))
                         with e ->
                             Log.warn "[UI] expected args (%s, %s) but got (%A, %A)" typename<'a> typename<'b> a b
-                            Seq.empty
+                            Continue, Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s, %s) but got %A" typename<'a> typename<'b> args
-                        Seq.empty
+                        Continue, Seq.empty
         }
 
     let create3 (a : string) (b : string) (c : string) (reaction : 'a -> 'b -> 'c -> 'msg) =
@@ -134,14 +134,14 @@ module Event =
                 match args with
                     | [a; b; c] ->
                         try 
-                            Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) (Pickler.json.UnPickleOfString c)))
+                            Continue, Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) (Pickler.json.UnPickleOfString c)))
                         with e ->
                             Log.warn "[UI] expected args (%s, %s, %s) but got (%A, %A, %A)" typename<'a> typename<'b> typename<'c> a b c
-                            Seq.empty
+                            Continue, Seq.empty
 
                     | _ -> 
                         Log.warn "[UI] expected args (%s, %s, %s) but got %A" typename<'a> typename<'b> typename<'c> args
-                        Seq.empty
+                        Continue, Seq.empty
         }
 
     let combine (l : Event<'msg>) (r : Event<'msg>) =
@@ -156,7 +156,7 @@ module Event =
                     | "1" :: args -> r.serverSide session id args
                     | _ -> 
                         Log.warn "[UI] expected args ((1|2)::args) but got %A" args
-                        Seq.empty
+                        Continue, Seq.empty
                 
         }
 
@@ -184,10 +184,10 @@ module Event =
 
                                     | _ ->
                                         Log.warn "[UI] unexpected index for dispatcher: %A" index
-                                        Seq.empty
+                                        Continue, Seq.empty
                             | [] ->
                                 Log.warn "[UI] expected at least one arg for dispatcher"
-                                Seq.empty
+                                Continue, Seq.empty
                         
                         
                 
@@ -196,7 +196,9 @@ module Event =
     let map (f : 'a -> 'b) (e : Event<'a>) = 
         {
             clientSide = e.clientSide; 
-            serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
+            serverSide = fun session id args -> 
+                let cont, msgs = e.serverSide session id args
+                cont, Seq.map f msgs
         }
 
 
@@ -252,6 +254,7 @@ module AttributeValue =
     let combine (name : string) (l : AttributeValue<'msg>) (r : AttributeValue<'msg>) =
         match name, l, r with
             | _, AttributeValue.Event l, AttributeValue.Event r -> 
+                Log.line "merge event %s" name
                 AttributeValue.Event (EventValues.combine l r)
 
             | "class", AttributeValue.String l, AttributeValue.String r -> 
@@ -295,8 +298,8 @@ module AttributeMap =
         for (key, value) in seq do
             res <- res |> HMap.update key (fun o ->
                 match o with
-                    | Some ov -> AttributeValue.combine key ov value
-                    | _ -> value
+                | Some ov -> AttributeValue.combine key ov value
+                | _ -> value
             )
 
 
@@ -395,41 +398,41 @@ type SceneEventProcessor<'msg>() =
     static let empty =
         { new SceneEventProcessor<'msg>() with
             member x.NeededEvents = ASet.empty
-            member x.Process(_,_) = Seq.empty
+            member x.Process(_,_) = Continue, Seq.empty
         }
 
     static member Empty = empty
 
     abstract member NeededEvents : aset<SceneEventKind>
-    abstract member Process : source : Guid * evt : SceneEvent -> seq<'msg>
+    abstract member Process : source : Guid * evt : SceneEvent -> Continuation * seq<'msg>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module SceneEventProcessor =
     
-    [<AutoOpen>]
-    module Implementation =
-        type UnionProcessor<'msg>(inner : list<SceneEventProcessor<'msg>>) =
-            inherit SceneEventProcessor<'msg>()
+    //[<AutoOpen>]
+    //module Implementation =
+    //    type private UnionProcessor<'msg>(inner : list<SceneEventProcessor<'msg>>) =
+    //        inherit SceneEventProcessor<'msg>()
 
-            let needed =
-                lazy (
-                    inner |> List.map (fun i -> i.NeededEvents) |> ASet.unionMany'
-                )
+    //        let needed =
+    //            lazy (
+    //                inner |> List.map (fun i -> i.NeededEvents) |> ASet.unionMany'
+    //            )
 
-            override x.NeededEvents = needed.Value
-            override x.Process(sender, e) = 
-                seq {
-                    for p in inner do
-                        yield! p.Process(sender, e)
-                }
+    //        override x.NeededEvents = needed.Value
+    //        override x.Process(sender, e) = 
+    //            seq {
+    //                for p in inner do
+    //                    yield! p.Process(sender, e)
+    //            }
 
     let empty<'msg> = SceneEventProcessor<'msg>.Empty
 
-    let union (l : SceneEventProcessor<'msg>) (r : SceneEventProcessor<'msg>) =
-        UnionProcessor [l;r] :> SceneEventProcessor<'msg>
+    //let union (l : SceneEventProcessor<'msg>) (r : SceneEventProcessor<'msg>) =
+    //    UnionProcessor [l;r] :> SceneEventProcessor<'msg>
 
-    let unionMany (processors : seq<SceneEventProcessor<'msg>>) =
-        processors |> Seq.toList |> UnionProcessor :> SceneEventProcessor<'msg>
+    //let unionMany (processors : seq<SceneEventProcessor<'msg>>) =
+    //    processors |> Seq.toList |> UnionProcessor :> SceneEventProcessor<'msg>
 
 type Request =
     {
@@ -712,8 +715,8 @@ and DomNodeVisitor<'msg, 'r> =
 and DomNode private() =
     static let eventNames =
         Map.ofList [
-            SceneEventKind.Click,           "onclick"
-            SceneEventKind.DoubleClick,     "ondblclick"
+            SceneEventKind.Click,           "onmouseclick"
+            SceneEventKind.DoubleClick,     "onmousedblclick"
             SceneEventKind.Down,            "onmousedown"
             SceneEventKind.Up,              "onmouseup"
             SceneEventKind.Move,            "onmousemove"
@@ -722,9 +725,6 @@ and DomNode private() =
     static let needsButton =
         let needingButton = Set.ofList [SceneEventKind.Click; SceneEventKind.DoubleClick; SceneEventKind.Down; SceneEventKind.Up]
         fun k -> Set.contains k needingButton
-
-    static let eventKinds =
-        eventNames |> Map.toSeq |> Seq.map (fun (a,b) -> (b,a)) |> Map.ofSeq
 
     static let button (code : int) =
         match code with
@@ -779,7 +779,7 @@ and DomNode private() =
                                 scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
 
 
-        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, alt: bool, shift: bool, ctrl: bool, pos : V2i) : seq<'msg> =
+        let perform (sourceSession : Guid, sourceId : string, kind : SceneEventKind, buttons : MouseButtons, alt: bool, shift: bool, ctrl: bool, pos : V2i) : Continuation * seq<'msg> =
             match scene.TryGetClientInfo(sourceSession, sourceId) with
                 | Some (info, state) -> 
                     let pp = PixelPosition(pos.X, pos.Y, info.size.X, info.size.Y)
@@ -800,20 +800,11 @@ and DomNode private() =
                             evtViewport = info.size
                         }
 
-                    let procRes = processor.Process(sourceSession, evt)
-                    procRes
-
-                    //let renderControlName = "RenderControl." + eventNames.[kind]
-                    //match HMap.tryFind renderControlName (Mod.force controlEvents.Content) with
-                    //    | Some cb ->
-                    //        cb.s
-                    //        cb evt @ procRes
-                    //    | None -> 
-                    //        procRes
+                    processor.Process(sourceSession, evt)
 
                 | None ->
                     Log.warn "[UI] could not get client info for %A/%s" sourceSession sourceId
-                    Seq.empty
+                    Continue, Seq.empty
 
         let rayEvent (includeButton : bool) (kind : SceneEventKind) =
             let args =
@@ -842,37 +833,34 @@ and DomNode private() =
                             perform(session, id, kind, MouseButtons.None, alt, shift, ctrl, V2i(vx,vy))
 
                         | _ ->
-                            Seq.empty
+                            Continue, Seq.empty
                         
             }
 
         let events =
            processor.NeededEvents 
-                |> ASet.map (fun k -> 
-                    let kind = 
-                        match k with
-                            | SceneEventKind.Enter | SceneEventKind.Leave -> SceneEventKind.Move
-                            | _ -> k
+            |> ASet.map (fun k -> 
+                let kind = 
+                    match k with
+                    | SceneEventKind.Enter | SceneEventKind.Leave -> SceneEventKind.Move
+                    | _ -> k
 
-                    
-                    let button = needsButton kind
-                    eventNames.[kind], AttributeValue.Event { capture = Some (rayEvent button kind); bubble = None }
-                )
-                |> AMap.ofASet
-                |> AMap.map (fun k vs ->
-                    match HSet.toList vs with
-                        | [] -> AttributeValue.Event { capture = None; bubble = None }
-                        | h :: rest ->
-                            rest |> List.fold (AttributeValue.combine "urdar") h
-                            
-                )
-                |> AttributeMap.ofAMap
+                let button = needsButton kind
+                eventNames.[kind], AttributeValue.Event { capture = Some (rayEvent button kind); bubble = None }
+            )
+            |> AMap.ofASet
+            |> AMap.map (fun k vs ->
+                match HSet.toList vs with
+                | [] -> AttributeValue.Event { capture = None; bubble = None }
+                | h :: rest -> rest |> List.fold (AttributeValue.combine "urdar") h
+            )
+            |> AttributeMap.ofAMap
 
         let ownAttributes =
             AttributeMap.unionMany [
-                events
-                attributes
                 AttributeMap.single "class" (AttributeValue.String "aardvark")
+                attributes
+                events
             ]
 
         let boot (id : string) =
@@ -947,17 +935,16 @@ and DomNode private() =
                     }
 
                 member x.Process (source : Guid, evt : SceneEvent) = 
-                    seq {
-                        let consumed, msgs = tree.GetValue().Perform(evt)
-                        yield! msgs
+                    let tree = tree.GetValue()
+                    let cont, msgs = tree.Perform(evt)
 
+                    let msgs = 
                         let m = globalPicks.GetValue().Content |> Mod.force
                         match m |> HMap.tryFind evt.kind with
-                            | Some cb -> 
-                                yield! cb evt
-                            | None -> 
-                                ()
-                    }
+                        | Some cb ->  Seq.append msgs (cb evt)
+                        | None -> msgs
+
+                    cont, msgs
             }
             
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
@@ -1038,35 +1025,35 @@ and DomNode private() =
 
         let rec pickTrees (trees : list<PickTree<'msg>>) (evt) =
             match trees with
-                | [] -> false, Seq.empty
+                | [] -> 
+                    Continue, Seq.empty
+
                 | x::xs -> 
-                    let consumed,msgs = pickTrees xs evt
-                    if consumed then true,msgs
+                    let cont, msgs = pickTrees xs evt
+                    if cont = Stop then 
+                        Stop, msgs
                     else
-                        let consumed, other = x.Perform evt
-                        consumed, Seq.append msgs other
+                        let cont, other = x.Perform evt
+                        cont, Seq.append msgs other
 
         let proc =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = needed
                 member x.Process (source : Guid, evt : SceneEvent) = 
-                    seq {
-                        let trees = trees |> Mod.force
-                        let trees = trees.Content |> Mod.force |> PList.toList
+                    let trees = trees |> Mod.force
+                    let trees = trees.Content |> Mod.force |> PList.toList
+                    let globalPicks = globalPicks |> Mod.force
+                    let cont, msgs = pickTrees trees evt
+                    
+                    let mutable msgs = msgs
 
-                        let globalPicks = globalPicks |> Mod.force
+                    for perScene in globalPicks.Content |> Mod.force do
+                        let picks = perScene.Content |> Mod.force
+                        match picks |> HMap.tryFind evt.kind with
+                        | Some cb -> msgs <- Seq.append msgs (cb evt)
+                        | None -> ()
 
-                        let consumed, msgs = pickTrees trees evt
-                        yield! msgs
-
-                        for perScene in globalPicks.Content |> Mod.force do
-                            let picks = perScene.Content |> Mod.force
-                            match picks |> HMap.tryFind evt.kind with
-                                | Some cb -> 
-                                    yield! cb evt
-                                | None -> 
-                                    ()
-                    }
+                    cont, msgs
             }
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
@@ -1137,32 +1124,30 @@ and DomNode private() =
 
         let rec pickTrees (trees : list<PickTree<'msg>>) (evt) =
             match trees with
-                | [] -> false, Seq.empty
+                | [] -> 
+                    Continue, Seq.empty
                 | x::xs -> 
-                    let consumed,msgs = pickTrees xs evt
-                    if consumed then true,msgs
+                    let cont,msgs = pickTrees xs evt
+                    if cont = Stop then Stop, msgs
                     else
-                        let consumed, other = x.Perform evt
-                        consumed, Seq.append msgs other
+                        let cont, other = x.Perform evt
+                        cont, Seq.append msgs other
 
         let proc =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = needed
                 member x.Process (source : Guid, evt : SceneEvent) = 
-                    seq {
-                        let trees = trees.Content |> Mod.force |> PList.toList
+                    let trees = trees.Content |> Mod.force |> PList.toList
+                    let cont, msgs = pickTrees trees evt
+                    let mutable msgs = msgs
+                    for perScene in globalPicks.Content |> Mod.force do
+                        let picks = perScene.Content |> Mod.force
+                        match picks |> HMap.tryFind evt.kind with
+                        | Some cb -> msgs <- Seq.append msgs (cb evt)
+                        | None -> ()
 
-                        let consumed, msgs = pickTrees trees evt
-                        yield! msgs
 
-                        for perScene in globalPicks.Content |> Mod.force do
-                            let picks = perScene.Content |> Mod.force
-                            match picks |> HMap.tryFind evt.kind with
-                                | Some cb -> 
-                                    yield! cb evt
-                                | None -> 
-                                    ()
-                    }
+                    cont, msgs
             }
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
