@@ -24,7 +24,7 @@ nuget Aardvark.GPGPU                    ~> 4.12.0
 nuget Aardvark.Compiler.DomainTypes           ~> 4.3.0
 nuget Aardvark.Compiler.DomainTypes.MSBuild   ~> 4.3.0
 
-nuget Aardvark.Geometry.Intersection         ~> 4.9.10
+nuget Aardvark.Geometry.Intersection         ~> 4.10.0
 
 nuget FsPickler                             ~> 5.2.2
 nuget FsPickler.Json                        ~> 5.2.2
