@@ -285,6 +285,68 @@ type AttributeMap<'msg>(map : amap<string, AttributeValue<'msg>>) =
 
 module AttributeMap =
 
+    type private AListReader<'msg>(scope : Ag.Scope, input : alist<string * AttributeValue<'msg>>) =
+        inherit AbstractReader<hdeltamap<string, AttributeValue<'msg>>>(scope, HDeltaMap.monoid)
+
+        let reader = input.GetReader()
+
+        let mutable store : hmap<string, MapExt<Index, AttributeValue<'msg>>> = HMap.empty
+
+        override x.Compute(token: AdaptiveToken) =
+            let old = reader.State
+            let ops = reader.GetOperations(token)
+
+            let mutable deltas = HDeltaMap.empty
+
+            for index, op in PDeltaList.toSeq ops do
+                match op with
+                | Remove ->
+                    match PList.tryGet index old with
+                    | Some (ok, ov) ->
+                        store <- store |> HMap.alter ok (fun ovs ->
+                            match ovs with
+                            | Some ovs ->
+                                let vs = ovs |> MapExt.remove index
+                                if MapExt.isEmpty vs then   
+                                    deltas <- HMap.add ok Remove deltas
+                                    None
+                                else
+                                    deltas <- HMap.add ok (Set vs) deltas
+                                    Some vs
+                            | None ->
+                                None
+                        )
+                    | None ->
+                        ()
+                | Set(k, v) ->
+                    store <- store |> HMap.alter k (fun ovs ->
+                        let ovs = 
+                            match ovs with
+                            | None -> MapExt.empty
+                            | Some ovs -> ovs
+
+                        let vs = MapExt.add index v ovs
+                        deltas <- HMap.add k (Set vs) deltas
+                        Some vs
+                    )
+
+            deltas |> HMap.choose (fun k vs ->
+                match vs with
+                | Set vs -> 
+                    (None, vs) ||> MapExt.fold (fun s _ v ->
+                        match s with
+                        | None -> Some v
+                        | Some s -> AttributeValue.combine k s v |> Some
+                    ) |> Option.map Set
+                | Remove ->
+                    Some Remove
+            )
+
+        override x.Release() =
+            reader.Dispose()
+            store <- HMap.empty
+
+
     /// the empty attributes map
     let empty<'msg> = AttributeMap<'msg>.Empty
     
@@ -312,6 +374,12 @@ module AttributeMap =
     /// creates an attribute-map using all entries from the array (conflicts are merged)
     let ofArray (arr : array<string * AttributeValue<'msg>>) =
         ofSeq arr
+
+    let ofAList (list : alist<string * AttributeValue<'msg>>) =
+        if list.IsConstant then
+            list.Content.GetValue() |> ofSeq
+        else
+            AttributeMap(AMap.Implementation.amap(fun s -> new AListReader<_>(s, list)) :> amap<_,_>)
 
     let ofAMap (map : amap<string, AttributeValue<'msg>>) =
         AttributeMap(map)

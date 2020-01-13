@@ -38,15 +38,18 @@ let view (model : MModel) =
             (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
             (
                 AttributeMap.ofList [ 
-                    "onpointerdown", AttributeValue.Capture {
-                        clientSide = fun send id -> send id []
-                        serverSide = fun _ _ _ -> Log.warn "capture"; Stop, Seq.empty
-                    }
+                    //"onpointerdown", AttributeValue.Capture {
+                    //    clientSide = fun send id -> send id []
+                    //    serverSide = fun _ _ _ -> Log.warn "capture"; Stop, Seq.empty
+                    //}
                         
-                    "onpointerdown", AttributeValue.Bubble {
-                        clientSide = fun send id -> send id []
-                        serverSide = fun _ _ _ -> Log.warn "bubble"; Continue, Seq.empty
-                    }
+                    //"onpointerdown", AttributeValue.Bubble {
+                    //    clientSide = fun send id -> send id []
+                    //    serverSide = fun _ _ _ -> Log.warn "bubble"; Continue, Seq.empty
+                    //}
+
+                    Frontend.HTMLAttribute.OnPointerDown(fun e -> Log.warn "down %A %A %A" e.ClientLocation e.ViewportSize e.Ndc; Continue, None).Captured.WithPointerCapture.ToAttribute()
+                    //Frontend.HTMLAttribute.OnPointerUp(fun e -> Log.warn "up %A" e.Ndc; Continue, None).Captured.WithPointerCapture.ToAttribute()
 
                     style "width: 100%; grid-row: 2; height:100%"; 
                     attribute "showFPS" "true";         // optional, default is false
