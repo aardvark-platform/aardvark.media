@@ -14,6 +14,9 @@ let initial =
     { 
         active = true
         value = Constant.Pi
+        intValue = 13
+        decValue = 1.1m
+        uintValue = 1u
         name = "Pi"
         alt = Some A
         options = HMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
@@ -36,6 +39,9 @@ let update (model : Model) (msg : Message) =
                 { model with value = v }
             else
                 model
+        | SetInt v -> Log.warn "SetInt :%d" v; { model with intValue = v }
+        | SetDecimal v -> Log.warn "SetDecimal :%A" v; { model with decValue = v }
+        | SetUInt v -> Log.warn "SetUInt :%A" v; { model with uintValue = v }
         | SetName n ->
             if model.active then
                 { model with name = n; options = HMap.add (Custom n) n model.options }
@@ -82,6 +88,44 @@ let view (model : MModel) =
                     max 100.0
                 }
                 //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
+            ]
+            div [ clazz "item" ] [ 
+                simplenumeric {
+                    attributes [clazz "ui inverted input"]
+                    value model.intValue
+                    update SetInt
+                    step 1
+                    largeStep 5
+                    min -100000
+                    max 100000
+                }
+                //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
+            ]
+            div [ clazz "item" ] [ 
+                // not using the simplenumeric builder
+                numeric { min = 0; max = 10000; smallStep = 1; largeStep = 10 } [clazz "ui inverted input"] model.intValue SetInt
+            ]
+            div [ clazz "item" ] [ 
+                simplenumeric {
+                    attributes [clazz "ui inverted input"]
+                    value model.decValue
+                    update SetDecimal
+                    step 1m
+                    largeStep 5m
+                    min -100000m
+                    max 100000m
+                }
+            ]
+            div [ clazz "item" ] [ 
+                simplenumeric {
+                    attributes [clazz "ui inverted input"]
+                    value model.uintValue
+                    update SetUInt
+                    step 1u
+                    largeStep 5u
+                    min 0u
+                    max 100000u
+                }
             ]
             div [ clazz "item" ] [ 
                 slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
