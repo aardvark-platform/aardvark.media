@@ -3,7 +3,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Inc.Model
 open System.Net
@@ -25,7 +25,7 @@ let update (model : Model) (msg : Message) =
             { model with cameraState = FreeFlyController.update model.cameraState m }
         | Inc -> 
             let s = sprintf "%d" (model.value + 1)
-            { model with value = model.value + 1; updateStart = sw.Elapsed.TotalSeconds; things = model.things |> PList.map (fun _ -> s); 
+            { model with value = model.value + 1; updateStart = sw.Elapsed.TotalSeconds; things = model.things |> IndexList.map (fun _ -> s); 
                          angle = model.angle + 0.1   }
         | Go -> { model with threads = ThreadPool.add "anim" (time()) ThreadPool.empty;  }
         | Done -> { model with took = sw.Elapsed.TotalSeconds - model.updateStart }
@@ -74,7 +74,7 @@ let view (runtime : IRuntime) (model : MModel) =
 
         let rnd = new System.Random()
         let template =
-            Sg.sphere 10 (Mod.constant C4b.White) (Mod.constant 1.0)
+            Sg.sphere 10 (AVal.constant C4b.White) (AVal.constant 1.0)
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.constantColor C4f.Red
@@ -87,9 +87,9 @@ let view (runtime : IRuntime) (model : MModel) =
 
         Thread(ThreadStart (fun _ -> 
             let viewTrafo = 
-                model.cameraState.view |> Mod.map CameraView.viewTrafo
+                model.cameraState.view |> AVal.map CameraView.viewTrafo
             let projTrafo = 
-                Frustum.perspective 60.0 0.1 150.0 1.0 |> Frustum.projTrafo |> Mod.constant
+                Frustum.perspective 60.0 0.1 150.0 1.0 |> Frustum.projTrafo |> AVal.constant
 
             let signature =
                 runtime.CreateFramebufferSignature [
@@ -106,7 +106,7 @@ let view (runtime : IRuntime) (model : MModel) =
                 if rnd.NextDouble() < 0.5 then
                     let uniforms (t : Trafo3d) =
                         UniformProvider.ofList [
-                            "ModelTrafo", Mod.constant t :> IMod
+                            "ModelTrafo", AVal.constant t :> IMod
                             "ViewTrafo", viewTrafo :> IMod
                             "ProjTrafo", projTrafo :> IMod
                         ]
@@ -145,9 +145,9 @@ let view (runtime : IRuntime) (model : MModel) =
     let mega = RO(cobjects :> aset<_>)
 
     let scene = 
-         Sg.sphere 14 (Mod.constant C4b.White) (Mod.constant 1.0)
-        //Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit) 
-            |> Sg.trafo (model.angle |> Mod.map Trafo3d.RotationZ)
+         Sg.sphere 14 (AVal.constant C4b.White) (AVal.constant 1.0)
+        //Sg.box (AVal.constant C4b.Red) (AVal.constant Box3d.Unit) 
+            |> Sg.trafo (model.angle |> AVal.map Trafo3d.RotationZ)
             |> Sg.andAlso (mega :> Aardvark.SceneGraph.ISg |> Sg.noEvents)
             |> Sg.shader {
                     do! DefaultSurfaces.trafo
@@ -156,7 +156,7 @@ let view (runtime : IRuntime) (model : MModel) =
      
 
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     ( AttributeMap.ofList [ 
                             style "width: 400px; height:400px; background: #222"; 
                             attribute "data-samples" "8"; attribute "data-quality" "10"
@@ -166,7 +166,7 @@ let view (runtime : IRuntime) (model : MModel) =
                             attribute "data-customLoaderSize" "100px"
                      ]) 
                     scene
-    let superChannel = model.super |> Mod.channel
+    let superChannel = model.super |> AVal.channel
 
 
     div [] [
@@ -184,11 +184,11 @@ let view (runtime : IRuntime) (model : MModel) =
         br []
         button [onClick (fun _ -> Inc)] [text "Increment"]
         text "    "
-        Incremental.text (model.value |> Mod.map string)
+        Incremental.text (model.value |> AVal.map string)
         br []
         text "last update took: "
         br []
-        Incremental.text (model.took |> Mod.map string)
+        Incremental.text (model.took |> AVal.map string)
         br []
         require dependencies ( div [clazz "rotate-center"; style "width:50px;height:50px;background-color:red"] [text "abc"] )
         //Incremental.div AttributeMap.empty <|
@@ -227,7 +227,7 @@ let view (runtime : IRuntime) (model : MModel) =
 
         br []
 
-        Incremental.text (model.lastImage |> Mod.map string)
+        Incremental.text (model.lastImage |> AVal.map string)
 
         br []
     ]
@@ -261,7 +261,7 @@ let app (runtime : IRuntime) =
                 value = 0
                 took = 0.0
                 updateStart = 0.0
-                things = PList.ofList [for i in 1 .. 10 do yield sprintf "%d" i]
+                things = IndexList.ofList [for i in 1 .. 10 do yield sprintf "%d" i]
                 super = 0
                 angle = 0.0
                 lastImage = System.DateTime.Now

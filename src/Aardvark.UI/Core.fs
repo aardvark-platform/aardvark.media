@@ -5,7 +5,8 @@ open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Geometry
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
+open FSharp.Data.Traceable
 open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Semantics
@@ -285,33 +286,33 @@ type AttributeMap<'msg>(map : amap<string, AttributeValue<'msg>>) =
 
 module AttributeMap =
 
-    type private AListReader<'msg>(scope : Ag.Scope, input : alist<string * AttributeValue<'msg>>) =
-        inherit AbstractReader<hdeltamap<string, AttributeValue<'msg>>>(scope, HDeltaMap.monoid)
+    type private AListReader<'msg>(input : alist<string * AttributeValue<'msg>>) =
+        inherit AbstractReader<HashMapDelta<string, AttributeValue<'msg>>>(HashMapDelta.empty)
 
         let reader = input.GetReader()
 
-        let mutable store : hmap<string, MapExt<Index, AttributeValue<'msg>>> = HMap.empty
+        let mutable store : HashMap<string, MapExt<Index, AttributeValue<'msg>>> = HashMap.empty
 
         override x.Compute(token: AdaptiveToken) =
             let old = reader.State
-            let ops = reader.GetOperations(token)
+            let ops = reader.GetChanges(token)
 
-            let mutable deltas = HDeltaMap.empty
+            let mutable deltas = HashMap.empty
 
-            for index, op in PDeltaList.toSeq ops do
+            for index, op in IndexListDelta.toSeq ops do
                 match op with
                 | Remove ->
-                    match PList.tryGet index old with
+                    match IndexList.tryGet index old with
                     | Some (ok, ov) ->
-                        store <- store |> HMap.alter ok (fun ovs ->
+                        store <- store |> HashMap.alter ok (fun ovs ->
                             match ovs with
                             | Some ovs ->
                                 let vs = ovs |> MapExt.remove index
                                 if MapExt.isEmpty vs then   
-                                    deltas <- HMap.add ok Remove deltas
+                                    deltas <- HashMap.add ok Remove deltas
                                     None
                                 else
-                                    deltas <- HMap.add ok (Set vs) deltas
+                                    deltas <- HashMap.add ok (Set vs) deltas
                                     Some vs
                             | None ->
                                 None
@@ -319,18 +320,18 @@ module AttributeMap =
                     | None ->
                         ()
                 | Set(k, v) ->
-                    store <- store |> HMap.alter k (fun ovs ->
+                    store <- store |> HashMap.alter k (fun ovs ->
                         let ovs = 
                             match ovs with
                             | None -> MapExt.empty
                             | Some ovs -> ovs
 
                         let vs = MapExt.add index v ovs
-                        deltas <- HMap.add k (Set vs) deltas
+                        deltas <- HashMap.add k (Set vs) deltas
                         Some vs
                     )
 
-            deltas |> HMap.choose (fun k vs ->
+            deltas |> HashMap.choose (fun k vs ->
                 match vs with
                 | Set vs -> 
                     (None, vs) ||> MapExt.fold (fun s _ v ->
@@ -340,11 +341,7 @@ module AttributeMap =
                     ) |> Option.map Set
                 | Remove ->
                     Some Remove
-            )
-
-        override x.Release() =
-            reader.Dispose()
-            store <- HMap.empty
+            ) |> HashMapDelta.ofHashMap
 
 
     /// the empty attributes map
@@ -356,16 +353,16 @@ module AttributeMap =
 
     /// creates an attribute-map using all entries from the sequence (conflicts are merged)
     let ofSeq (seq : seq<string * AttributeValue<'msg>>) =
-        let mutable res = HMap.empty
+        let mutable res = HashMap.empty
         for (key, value) in seq do
-            res <- res |> HMap.update key (fun o ->
+            res <- res |> HashMap.update key (fun o ->
                 match o with
                 | Some ov -> AttributeValue.combine key ov value
                 | _ -> value
             )
 
 
-        AttributeMap(AMap.ofHMap res)
+        AttributeMap(AMap.ofHashMap res)
 
     /// creates an attribute-map using all entries from the list (conflicts are merged)
     let ofList (list : list<string * AttributeValue<'msg>>) =
@@ -379,7 +376,7 @@ module AttributeMap =
         if list.IsConstant then
             list.Content.GetValue() |> ofSeq
         else
-            AttributeMap(AMap.Implementation.amap(fun s -> new AListReader<_>(s, list)) :> amap<_,_>)
+            AttributeMap(AMap.ofReader (fun () -> new AListReader<_>(list)) :> amap<_,_>)
 
     let ofAMap (map : amap<string, AttributeValue<'msg>>) =
         AttributeMap(map)
@@ -398,22 +395,22 @@ module AttributeMap =
             | [a;b] -> union a b
             | a :: rest -> union a (unionMany rest)
 
-    let ofSeqCond (seq : seq<string * IMod<Option<AttributeValue<'msg>>>>) =
-        let mutable groups = HMap.empty
+    let ofSeqCond (seq : seq<string * aval<Option<AttributeValue<'msg>>>>) =
+        let mutable groups = HashMap.empty
 
         for (key, value) in seq do
-            groups <- groups |> HMap.update key (fun o ->
+            groups <- groups |> HashMap.update key (fun o ->
                 match o with
                     | Some l -> l @ [value]
                     | None -> [value]
             )
 
         let unique = 
-            groups |> HMap.map (fun key values ->
+            groups |> HashMap.map (fun key values ->
                 match values with
                     | [v] -> v
                     | many ->
-                        Mod.custom (fun token ->
+                        AVal.custom (fun token ->
                             let mutable final = None
                             for e in many do
                                 match e.GetValue token with
@@ -428,14 +425,14 @@ module AttributeMap =
                         )
             )
 
-        let map = AMap.ofHMap unique
+        let map = AMap.ofHashMap unique
+        map |> AMap.chooseA (fun _ v -> v) |> AttributeMap
 
-        AttributeMap(AMap.flattenM map)
 
-    let ofListCond (list : list<string * IMod<Option<AttributeValue<'msg>>>>) =
+    let ofListCond (list : list<string * aval<Option<AttributeValue<'msg>>>>) =
         ofSeqCond list
 
-    let ofArrayCond (list : array<string * IMod<Option<AttributeValue<'msg>>>>) =
+    let ofArrayCond (list : array<string * aval<Option<AttributeValue<'msg>>>>) =
         ofSeqCond list
 
 
@@ -534,7 +531,7 @@ type Channel() =
 
 [<AutoOpen>]
 module ChannelThings = 
-    type private ModChannelReader<'a>(m : IMod<'a>) =
+    type private ModChannelReader<'a>(m : aval<'a>) =
         inherit ChannelReader()
 
         let mutable last = None
@@ -554,16 +551,16 @@ module ChannelThings =
     type private ASetChannelReader<'a>(s : aset<'a>) =
         inherit ChannelReader()
 
-        let reader = s.GetReader()
-    
+        let mutable reader = s.GetReader()
+
         override x.Release() =
-            reader.Dispose()
+            reader <- Unchecked.defaultof<_>
 
         override x.ComputeMessages t =
-            let ops = reader.GetOperations t
-            ops |> HDeltaSet.toList |> List.map Pickler.json.PickleToString
+            let ops = reader.GetChanges t
+            ops |> HashSetDelta.toList |> List.map Pickler.json.PickleToString
    
-    type private ModChannel<'a>(m : IMod<'a>) =
+    type private AValChannel<'a>(m : aval<'a>) =
         inherit Channel()
         override x.GetReader() = new ModChannelReader<_>(m) :> ChannelReader
     
@@ -571,14 +568,14 @@ module ChannelThings =
         inherit Channel()
         override x.GetReader() = new ASetChannelReader<_>(m) :> ChannelReader
     
-    type IMod<'a> with
-        member x.Channel = ModChannel(x) :> Channel
+    type IAdaptiveValue<'a> with
+        member x.Channel = AValChannel(x) :> Channel
 
-    type aset<'a> with
+    type IAdaptiveHashSet<'a> with
         member x.Channel = ASetChannel(x) :> Channel
 
-    module Mod =
-        let inline channel (m : IMod<'a>) = m.Channel
+    module AVal =
+        let inline channel (m : aval<'a>) = m.Channel
 
     module ASet =
         let inline channel (m : aset<'a>) = m.Channel
@@ -586,7 +583,7 @@ module ChannelThings =
 open Aardvark.Service
 
 type RenderCommand<'msg> =
-    | Clear of color : Option<IMod<C4f>> * depth : Option<IMod<float>>
+    | Clear of color : Option<aval<C4f>> * depth : Option<aval<float>>
     | SceneGraph of sg : ISg<'msg>
     
 
@@ -599,7 +596,7 @@ type IApp<'model, 'msg, 'outer> =
 and MutableApp<'model, 'msg> =
     {
         lock        : obj
-        model       : IMod<'model>
+        model       : aval<'model>
         ui          : DomNode<'msg>
         update      : Guid -> seq<'msg> -> unit
         updateSync  : Guid -> seq<'msg> -> unit
@@ -742,7 +739,7 @@ and SceneNode<'msg>(attributes : AttributeMap<'msg>, scene : Aardvark.Service.Sc
     override x.Visit v = v.Scene x
     override x.NodeTag = None
 
-and TextNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, text : IMod<string>) =
+and TextNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, text : aval<string>) =
     inherit DomNode<'msg>()
     member x.Tag = tag
     member x.Namespace = ns
@@ -813,7 +810,7 @@ and DomNode private() =
     static member Scene<'msg>(attributes : AttributeMap<'msg>, scene : Aardvark.Service.Scene, getClientState : Aardvark.Service.ClientInfo -> Aardvark.Service.ClientState) : DomNode<'msg> =
         SceneNode(attributes, scene, getClientState) :> DomNode<_>
 
-    static member Text<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, text : IMod<string>) : DomNode<'msg> =
+    static member Text<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<'msg>, text : aval<string>) : DomNode<'msg> =
         TextNode(tag, ns, attributes, text) :> DomNode<_>
 
     static member Page<'msg>(content : Request -> DomNode<'msg>) : DomNode<'msg> =
@@ -825,10 +822,10 @@ and DomNode private() =
     static member SubApp<'model, 'inner, 'outer>(app : IApp<'model, 'inner, 'outer>) : DomNode<'outer> =
         SubAppNode<'model, 'inner, 'outer>(app) :> DomNode<_>
         
-    static member Text(content : IMod<string>) = 
+    static member Text(content : aval<string>) = 
         DomNode.Text("span", None, AttributeMap.empty, content)
         
-    static member SvgText(content : IMod<string>) = 
+    static member SvgText(content : aval<string>) = 
         DomNode.Text("tspan", Some "http://www.w3.org/2000/svg", AttributeMap.empty, content)
 
     static member Void(tag : string, attributes : AttributeMap<'msg>) =
@@ -862,7 +859,7 @@ and DomNode private() =
                             evtAlt      = alt
                             evtShift    = shift
                             evtCtrl     = ctrl
-                            evtTrafo    = Mod.constant Trafo3d.Identity
+                            evtTrafo    = AVal.constant Trafo3d.Identity
                             evtView     = state.viewTrafo
                             evtProj     = state.projTrafo
                             evtViewport = info.size
@@ -918,7 +915,7 @@ and DomNode private() =
             )
             |> AMap.ofASet
             |> AMap.map (fun k vs ->
-                match HSet.toList vs with
+                match HashSet.toList vs with
                 | [] -> AttributeValue.Event { capture = None; bubble = None }
                 | h :: rest -> rest |> List.fold (AttributeValue.combine "urdar") h
             )
@@ -948,7 +945,7 @@ and DomNode private() =
                                 scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
         DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene, htmlChildren)
     
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, scene : Aardvark.Service.Scene, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
             let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
@@ -964,7 +961,7 @@ and DomNode private() =
 
     
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ClientValues -> ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sg : ClientValues -> ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =
 
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
@@ -974,9 +971,9 @@ and DomNode private() =
                 projTrafo = Frustum.projTrafo cam.frustum
             }
 
-        let tree = Mod.init <| PickTree.ofSg (Sg.ofList [])
+        let tree = AVal.init <| PickTree.ofSg (Sg.ofList [])
 
-        let globalPicks = Mod.init AMap.empty
+        let globalPicks = AVal.init AMap.empty
         
         let scene =
             Scene.custom (fun values ->
@@ -1007,8 +1004,8 @@ and DomNode private() =
                     let cont, msgs = tree.Perform(evt)
 
                     let msgs = 
-                        let m = globalPicks.GetValue().Content |> Mod.force
-                        match m |> HMap.tryFind evt.kind with
+                        let m = globalPicks.GetValue().Content |> AVal.force
+                        match m |> HashMap.tryFind evt.kind with
                         | Some cb ->  Seq.append msgs (cb evt)
                         | None -> msgs
 
@@ -1017,10 +1014,10 @@ and DomNode private() =
             
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sg : ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sg : ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =
         DomNode.RenderControl(attributes, camera, constF sg, config, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sgs : ClientValues -> alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sgs : ClientValues -> alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
         
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
@@ -1031,8 +1028,8 @@ and DomNode private() =
                 projTrafo = Frustum.projTrafo cam.frustum
             }
 
-        let trees = Mod.init AList.empty
-        let globalPicks = Mod.init ASet.empty
+        let trees = AVal.init AList.empty
+        let globalPicks = AVal.init ASet.empty
 
         let scene =
             Scene.custom (fun values ->
@@ -1057,29 +1054,51 @@ and DomNode private() =
                         | RenderCommand.SceneGraph sg -> 
                             let sg =
                                 sg
-                                    |> Sg.viewTrafo values.viewTrafo
-                                    |> Sg.projTrafo values.projTrafo
-                                    |> Sg.uniform "ViewportSize" values.size
+                                |> Sg.viewTrafo values.viewTrafo
+                                |> Sg.projTrafo values.projTrafo
+                                |> Sg.uniform "ViewportSize" values.size
                             values.runtime.CompileRender(values.signature, sg)
 
-                let reader = new AList.Readers.MapUseReader<_,_>(Ag.getContext(), sgs,invoke, (fun d -> d.Dispose()))
-                let mutable state = PList.empty
+
+                let mutable reader : IOpReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>> = 
+                    let mutable state = IndexList.empty
+                    let input = sgs.GetReader()
+                    { new AbstractReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>>(IndexList.trace) with
+                        member x.Compute(token) =
+                            input.GetChanges token |> IndexListDelta.choose (fun index op ->
+                                match op with
+                                | Set v ->
+                                    match x.State.TryGet index with
+                                    | Some o -> o.Dispose()
+                                    | None -> ()
+                                    let task = invoke v
+                                    Some (Set task)
+
+                                | Remove ->
+                                    match x.State.TryGet index with
+                                    | Some o -> o.Dispose(); Some Remove
+                                    | None -> None
+
+                            )
+                    } :> _
+                    //new AList.Readers.MapUseReader<_,_>(Ag.getContext(), sgs,invoke, (fun d -> d.Dispose()))
+                //let mutable state = IndexList.empty
 
                 let update (t : AdaptiveToken) =
-                    let ops = reader.GetOperations t
-                    let s, _ = PList.applyDelta state ops
-                    state <- s
+                    let ops = reader.GetChanges t
+                    ()
 
                 { new AbstractRenderTask() with
                     override x.PerformUpdate(t,rt) = 
                         update t
                     override x.Perform(t,rt,o) = 
                         update t
-                        for task in state do
+                        for task in reader.State do
                             task.Run(t,rt,o)
                     override x.Release() = 
-                        reader.Dispose()
-                        state <- PList.empty
+                        for task in reader.State do 
+                            task.Dispose()
+                        reader <- Unchecked.defaultof<_>
 
                     override x.Use f = f ()
                     override x.FramebufferSignature = Some values.signature
@@ -1108,16 +1127,16 @@ and DomNode private() =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = needed
                 member x.Process (source : Guid, evt : SceneEvent) = 
-                    let trees = trees |> Mod.force
-                    let trees = trees.Content |> Mod.force |> PList.toList
-                    let globalPicks = globalPicks |> Mod.force
+                    let trees = trees |> AVal.force
+                    let trees = trees.Content |> AVal.force |> IndexList.toList
+                    let globalPicks = globalPicks |> AVal.force
                     let cont, msgs = pickTrees trees evt
                     
                     let mutable msgs = msgs
 
-                    for perScene in globalPicks.Content |> Mod.force do
-                        let picks = perScene.Content |> Mod.force
-                        match picks |> HMap.tryFind evt.kind with
+                    for perScene in globalPicks.Content |> AVal.force do
+                        let picks = perScene.Content |> AVal.force
+                        match picks |> HashMap.tryFind evt.kind with
                         | Some cb -> msgs <- Seq.append msgs (cb evt)
                         | None -> ()
 
@@ -1126,7 +1145,7 @@ and DomNode private() =
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : IMod<Camera>, sgs : alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
+    static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sgs : alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
         let getState(c : Aardvark.Service.ClientInfo) =
             let cam = camera.GetValue(c.token)
             let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
@@ -1156,24 +1175,47 @@ and DomNode private() =
                                     |> Sg.uniform "ViewportSize" values.size
                             values.runtime.CompileRender(values.signature, sg)
 
-                let reader = new AList.Readers.MapUseReader<_,_>(Ag.getContext(), sgs,invoke, (fun d -> d.Dispose()))
-                let mutable state = PList.empty
+
+                
+
+                let mutable reader : IOpReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>> = 
+                    let mutable state = IndexList.empty
+                    let input = sgs.GetReader()
+                    { new AbstractReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>>(IndexList.trace) with
+                        member x.Compute(token) =
+                            input.GetChanges token |> IndexListDelta.choose (fun index op ->
+                                match op with
+                                | Set v ->
+                                    match x.State.TryGet index with
+                                    | Some o -> o.Dispose()
+                                    | None -> ()
+                                    let task = invoke v
+                                    Some (Set task)
+
+                                | Remove ->
+                                    match x.State.TryGet index with
+                                    | Some o -> o.Dispose(); Some Remove
+                                    | None -> None
+
+                            )
+                    } :> _
 
                 let update (t : AdaptiveToken) =
-                    let ops = reader.GetOperations t
-                    let s, _ = PList.applyDelta state ops
-                    state <- s
+                    let ops = reader.GetChanges t
+                    ()
 
                 { new AbstractRenderTask() with
                     override x.PerformUpdate(t,rt) = 
                         update t
                     override x.Perform(t,rt,o) = 
                         update t
-                        for task in state do
+                        for task in reader.State do
                             task.Run(t,rt,o)
                     override x.Release() = 
-                        reader.Dispose()
-                        state <- PList.empty
+                        for t in reader.State do 
+                            t.Dispose()
+                        reader <- Unchecked.defaultof<_>
+
 
                     override x.Use f = f ()
                     override x.FramebufferSignature = Some values.signature
@@ -1205,12 +1247,12 @@ and DomNode private() =
             { new SceneEventProcessor<'msg>() with
                 member x.NeededEvents = needed
                 member x.Process (source : Guid, evt : SceneEvent) = 
-                    let trees = trees.Content |> Mod.force |> PList.toList
+                    let trees = trees.Content |> AVal.force |> IndexList.toList
                     let cont, msgs = pickTrees trees evt
                     let mutable msgs = msgs
-                    for perScene in globalPicks.Content |> Mod.force do
-                        let picks = perScene.Content |> Mod.force
-                        match picks |> HMap.tryFind evt.kind with
+                    for perScene in globalPicks.Content |> AVal.force do
+                        let picks = perScene.Content |> AVal.force
+                        match picks |> HashMap.tryFind evt.kind with
                         | Some cb -> msgs <- Seq.append msgs (cb evt)
                         | None -> ()
 
@@ -1220,10 +1262,10 @@ and DomNode private() =
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
-    static member RenderControl(camera : IMod<Camera>, scene : ISg<'msg>, config : RenderControlConfig, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+    static member RenderControl(camera : aval<Camera>, scene : ISg<'msg>, config : RenderControlConfig, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
         DomNode.RenderControl(AttributeMap.empty, camera, constF scene, config, htmlChildren)
 
-    static member RenderControl(camera : IMod<Camera>, scene : ClientValues -> ISg<'msg>, config : RenderControlConfig, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
+    static member RenderControl(camera : aval<Camera>, scene : ClientValues -> ISg<'msg>, config : RenderControlConfig, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
         DomNode.RenderControl(AttributeMap.empty, camera, scene, config, htmlChildren)
 
 

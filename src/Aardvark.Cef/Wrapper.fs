@@ -1,7 +1,7 @@
 ﻿namespace Aardvark.Cef.Internal
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open System
 open System.Net
 open System.Collections.Concurrent
@@ -800,14 +800,14 @@ type BrowserMouse(focus : ref<bool>, flags : ref<CefEventFlags>, host : CefBrows
 
 
 
-type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
+type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     inherit CefClient()
 
     let windowInfo = 
         let info = CefWindowInfo.Create()
         
         info.SetAsWindowless(0n, true)
-        let s = Mod.force size
+        let s = AVal.force size
         info.Width <- s.X
         info.Height <- s.Y
 
@@ -832,7 +832,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
     let browserReady = new ManualResetEventSlim(false)
 
     let texture = runtime.CreateStreamingTexture(mipMaps)
-    let version = Mod.init 0
+    let version = AVal.init 0
     
     let loadHandler = LoadHandler(this)
     let renderHandler = RenderHandler(this, size, texture)
@@ -1032,8 +1032,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
 
     member x.Events = eventSink :> IObservable<_>
 
-    member x.Texture = texture :> IMod<ITexture>
-    member x.Version = version :> IMod<_>
+    member x.Texture = texture :> aval<ITexture>
+    member x.Version = version :> aval<_>
     member x.Size = size
 
     member x.LoadUrlAsync (url : string) =
@@ -1132,7 +1132,7 @@ and LoadHandler(parent : Client) =
     override x.OnLoadError(browser : CefBrowser, frame : CefFrame, errorCode : CefErrorCode, errorText : string, failedUrl : string) =
         parent.LoadFinished(Error(errorText, failedUrl))
 
-and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture) =
+and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture) =
     inherit CefRenderHandler()
 
 
@@ -1185,7 +1185,7 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
     /// Initializes the view-rectangle and returns a boolean indicating whether the rectangle is valid.
     /// </summary>
     override x.GetViewRect(browser : CefBrowser, rect : byref<CefRectangle>) =
-        let s = Mod.force size
+        let s = AVal.force size
         rect <- CefRectangle(0, 0, s.X, s.Y)
         true
 

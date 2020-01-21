@@ -1,5 +1,5 @@
 Aardvark.Base
-Aardvark.Base.Incremental
+FSharp.Data.Adaptive
 Aardvark.Base.FSharp
 
 Aardvark.Base.Rendering
@@ -10,7 +10,7 @@ Aardvark.SceneGraph.IO
 Aardvark.Rendering.Text
 Aardvark.GPGPU
 
-Aardvark.Compiler.DomainTypes.MSBuild
+Adaptify.MSBuild
 
 
 FsPickler

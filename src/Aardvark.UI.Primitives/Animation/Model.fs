@@ -1,7 +1,8 @@
 ﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base                 
-open Aardvark.Base.Incremental 
+open FSharp.Data.Adaptive 
+open Adaptify
 
 type Time = float
 type RelativeTime = Time
@@ -18,14 +19,14 @@ type Animate = On = 0 | Off = 1
 
 type TaskId = string
 
-[<DomainType>]
-type TaskProgress = { percentage : float; [<NonIncremental>] startTime : System.DateTime }
+[<ModelType>]
+type TaskProgress = { percentage : float; [<NonAdaptive>] startTime : System.DateTime }
 
-[<DomainType>]
+[<ModelType>]
 type AnimationModel = {
    cam        : CameraView
    animation  : Animate
-   animations : plist<Animation<AnimationModel,CameraView,CameraView>>
+   animations : IndexList<Animation<AnimationModel,CameraView,CameraView>>
 }
 
 type AnimationAction = 

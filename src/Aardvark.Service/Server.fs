@@ -22,7 +22,7 @@ open Suave.WebSocket
 
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Application
 open System.Diagnostics
 
@@ -284,12 +284,12 @@ module ClientState =
 
 type ClientValues internal(_signature : IFramebufferSignature) =
     
-    let _time = Mod.init MicroTime.Zero
-    let _session = Mod.init Guid.Empty
-    let _size = Mod.init V2i.II
-    let _viewTrafo = Mod.init Trafo3d.Identity
-    let _projTrafo = Mod.init Trafo3d.Identity
-    let _samples = Mod.init 1
+    let _time = AVal.init MicroTime.Zero
+    let _session = AVal.init Guid.Empty
+    let _size = AVal.init V2i.II
+    let _viewTrafo = AVal.init Trafo3d.Identity
+    let _projTrafo = AVal.init Trafo3d.Identity
+    let _samples = AVal.init 1
 
     member internal x.Update(info : ClientInfo, state : ClientState) =
         _time.Value <- info.time
@@ -308,12 +308,12 @@ type ClientValues internal(_signature : IFramebufferSignature) =
 
     member x.runtime = _signature.Runtime
     member x.signature = _signature
-    member x.size = _size :> IMod<_>
-    member x.time = _time :> IMod<_>
-    member x.session = _session :> IMod<_>
-    member x.viewTrafo = _viewTrafo :> IMod<_>
-    member x.projTrafo = _projTrafo :> IMod<_>
-    member x.samples = _samples :> IMod<_>
+    member x.size = _size :> aval<_>
+    member x.time = _time :> aval<_>
+    member x.session = _session :> aval<_>
+    member x.viewTrafo = _viewTrafo :> aval<_>
+    member x.projTrafo = _projTrafo :> aval<_>
+    member x.samples = _samples :> aval<_>
 
 
 [<AbstractClass>]
@@ -503,7 +503,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let runtime = server.runtime
     let mutable task = RenderTask.empty
     
-    let targetSize = Mod.init V2i.II
+    let targetSize = AVal.init V2i.II
     
     let mutable currentSize = -V2i.II
     let mutable currentSignature = Unchecked.defaultof<IFramebufferSignature>
@@ -572,7 +572,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     let compressTime = Stopwatch()
     let mutable frameCount = 0
 
-    let mutable currentScene : Option<string * ConcreteScene * ModRef<C4f>> = None
+    let mutable currentScene : Option<string * ConcreteScene * cval<C4f>> = None
 
     let mutable lastInfo : Option<ClientInfo> = None
 
@@ -593,8 +593,8 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 
         transact (fun () -> task.Dispose())
         let newScene = getScene signature name
-        let clearColor = Mod.init C4f.Black
-        let clear = runtime.CompileClear(signature, clearColor, Mod.constant 1.0)
+        let clearColor = AVal.init C4f.Black
+        let clear = runtime.CompileClear(signature, clearColor, AVal.constant 1.0)
         let render = newScene.CreateNewRenderTask()
         task <- RenderTask.ofList [clear; render]
 
@@ -645,8 +645,8 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                                     let ndc = V3d(2.0 * tc.X - 1.0, 1.0 - 2.0 * tc.Y, 2.0 * float depth - 1.0)
                                     match currentScene with
                                         | Some (_,cs,_) ->
-                                            let view = cs.State.viewTrafo |> Mod.force
-                                            let proj = cs.State.projTrafo |> Mod.force
+                                            let view = cs.State.viewTrafo |> AVal.force
+                                            let proj = cs.State.projTrafo |> AVal.force
 
                                             let vp = proj.Backward.TransformPosProj ndc 
                                             let wp = view.Backward.TransformPos vp
@@ -679,30 +679,19 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 Log.warn "[Media Server] threadCount > 1"
             t <- runtime.ContextLock
             target <- getFramebuffer info.size info.signature
-            let innerToken = token.Isolated
-            let token = ()
-
             transact (fun () -> clearColor.Value <- info.clearColor)
             
             try
-                scene.EvaluateAlways innerToken (fun innerToken ->
+                scene.EvaluateAlways token (fun token ->
                     scene.OutOfDate <- true
                     renderTime.Start()
                     transact (fun () -> scene.Apply(info, state))
 
-                    task.Run(innerToken, RenderToken.Empty, OutputDescription.ofFramebuffer target)
+                    task.Run(token, RenderToken.Empty, OutputDescription.ofFramebuffer target)
                     renderTime.Stop()
-                    innerToken.Release()
                 )
                 
             finally
-                innerToken.Release()
-                if scene.State.viewTrafo.ReaderCount > 0 then
-                    printfn "[Media.Server] scene.State.viewTrafo.ReaderCount > 0"
-//                let real = scene.State.projTrafo |> Mod.force
-//                let should = state.projTrafo
-//                if real <> should then
-//                    Log.warn "bad"
                 Interlocked.Decrement(&threadCount) |> ignore
         )
         compressTime.Start()
@@ -1361,6 +1350,9 @@ type internal ClientCreateInfo =
         getSignature    : int -> IFramebufferSignature
     }
 
+type private DummyObject() =
+    inherit AdaptiveObject()
+
 type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState : ClientInfo -> ClientState, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
     static let mutable currentId = 0
  
@@ -1372,7 +1364,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             new JpegClientRenderTask(info.server, getContent, q) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
-    let sender = AdaptiveObject()
+    let sender = DummyObject()
     let requestedSize : MVar<C4b * V2i> = MVar.empty()
     let mutable createInfo = createInfo
     let mutable task = newTask createInfo getContent

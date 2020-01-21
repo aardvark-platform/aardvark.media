@@ -1,11 +1,11 @@
 Aardvark.Base
+FSharp.Data.Adaptive
 Aardvark.Base.Incremental
 Aardvark.Base.FSharp
 Aardvark.Base.Rendering
 Aardvark.Rendering.GL
 Aardvark.Application
 Aardvark.SceneGraph
-Aardvark.Compiler.DomainTypes
 Aardvark.Rendering.Vulkan
 Aardvark.GPGPU
 

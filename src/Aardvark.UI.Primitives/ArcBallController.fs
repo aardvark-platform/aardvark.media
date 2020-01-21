@@ -3,7 +3,7 @@
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -18,7 +18,7 @@ open System.Security
 open Aardvark.Base
 
 module ArcBallController =
-    open Aardvark.Base.Incremental.Operators
+    open FSharp.Data.Adaptive.Operators
 
     type Message = 
         | Down      of button : MouseButtons * pos : V2i
@@ -246,7 +246,7 @@ module ArcBallController =
 
                 { model with view = cam; orbitCenter = center }
 
-    let attributes (state : MCameraControllerState) (f : Message -> 'msg) =
+    let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
             always (onMouseDown (fun b p -> f (Down(b,p))))
@@ -257,23 +257,23 @@ module ArcBallController =
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
         ]
 
-    let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg)  =
+    let extractAttributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg)  =
         attributes state f |> AttributeMap.toAMap
 
-    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
-        let cam = Mod.map2 Camera.create state.view frustum 
+        let cam = AVal.map2 Camera.create state.view frustum 
         Incremental.renderControlWithClientValues cam attributes sg
 
-    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+    let controlledControl (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         controlledControlWithClientValues state f frustum att (constF sg)
 
-    let view (state : MCameraControllerState) =
+    let view (state : AdaptiveCameraControllerState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
         div [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
   
             controlledControl state id 
-                (Mod.constant frustum)
+                (AVal.constant frustum)
                 (AttributeMap.empty)                
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))

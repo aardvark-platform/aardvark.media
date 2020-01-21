@@ -3,12 +3,12 @@
 open System
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 open Aardvark.Cef.Internal
 
-type Browser(signature : IFramebufferSignature, time : IMod<System.DateTime>, runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) =
+type Browser(signature : IFramebufferSignature, time : aval<System.DateTime>, runtime : IRuntime, mipMaps : bool, size : aval<V2i>) =
     let client = new Client(runtime, mipMaps, size)
 
     member x.ExecuteAsync(js : string) = client.ExecuteAsync js

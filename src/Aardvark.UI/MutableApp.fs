@@ -9,7 +9,7 @@ open Aardvark.Base
 open Aardvark.Base.Geometry
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Internal
@@ -88,6 +88,9 @@ module MutableApp =
 
 
 
+    type private DummyObject() =
+        inherit AdaptiveObject()
+
     let toWebPart' (runtime : IRuntime) (useGpuCompression : bool) (app : MutableApp<'model, 'msg>) =
         
         ThreadPoolAdjustment.adjust ()
@@ -151,7 +154,7 @@ module MutableApp =
                             messages        = app.messages
                         }
 
-                    let o = AdaptiveObject()
+                    let o = DummyObject()
                     
                     let update = MVar.create true
                     let subscription = o.AddMarkingCallback(fun () -> MVar.put update true)

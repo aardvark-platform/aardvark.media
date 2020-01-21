@@ -1,10 +1,11 @@
 ﻿namespace Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Application
+open Adaptify
 
-[<DomainType>]
+[<ModelType>]
 type FreeFlyConfig = 
     {
         lookAtMouseSensitivity  : float
@@ -59,7 +60,7 @@ module FreeFlyConfig =
 
 
 
-[<DomainType>]
+[<ModelType>]
 type CameraControllerState =
     {
         view : CameraView
@@ -108,7 +109,7 @@ type CameraControllerState =
     
 
 
-[<DomainType>]
+[<ModelType>]
 type OrbitState =
     {
         sky     : V3d
@@ -123,7 +124,7 @@ type OrbitState =
         targetCenter : V3d
         
         dragStart : Option<V2i>
-        [<NonIncremental>]
+        [<NonAdaptive>]
         lastRender : Option<MicroTime>
 
         view : CameraView

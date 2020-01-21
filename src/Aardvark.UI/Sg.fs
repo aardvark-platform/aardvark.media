@@ -5,7 +5,8 @@ open Aardvark.Base
 open Aardvark.Base.Geometry
 open Aardvark.Base.Rendering
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
+open FSharp.Data.Traceable
 open Aardvark.SceneGraph
 open Aardvark.Application
 open Suave.Logging
@@ -17,20 +18,18 @@ type Continuation =
 
 module AMap =
     let keys (m : amap<'k, 'v>) : aset<'k> =
-        ASet.create (fun scope ->
+        ASet.ofReader (fun () ->
             let reader = m.GetReader()
-            { new AbstractReader<hdeltaset<'k>>(scope, HDeltaSet.monoid) with
-                member x.Release() =
-                    reader.Dispose()
+            { new AbstractReader<HashSetDelta<'k>>(HashSetDelta.empty) with
 
                 member x.Compute(token) =
-                    let ops = reader.GetOperations token
+                    let ops = reader.GetChanges token
 
-                    ops |> HMap.map (fun key op ->
+                    ops |> HashMapDelta.toHashMap |> HashMap.map (fun key op ->
                         match op with
                             | Set _ -> +1
                             | Remove -> -1
-                    ) |> HDeltaSet.ofHMap
+                    ) |> HashSetDelta.ofHashMap
             }
         )
 
@@ -62,7 +61,7 @@ type SceneEvent =
         evtAlt          : bool
         evtShift        : bool
         evtCtrl         : bool
-        evtTrafo        : IMod<Trafo3d>
+        evtTrafo        : aval<Trafo3d>
     }
 
     member x.kind = x.evtKind
@@ -336,7 +335,7 @@ module Sg =
 
     type AbstractApplicator<'msg>(child : ISg<'msg>) =
         interface Aardvark.SceneGraph.IApplicator with
-            member x.Child = child |> unbox |> Mod.constant
+            member x.Child = child |> unbox |> AVal.constant
 
         interface IApplicator<'msg> with
             member x.Child = child
@@ -345,7 +344,7 @@ module Sg =
 
     type MapApplicator<'inner, 'outer>(mapping : 'inner -> seq<'outer>, child : ISg<'inner>) =
         interface Aardvark.SceneGraph.IApplicator with
-            member x.Child = child |> unbox |> Mod.constant
+            member x.Child = child |> unbox |> AVal.constant
 
         interface ISg<'outer>
 
@@ -383,15 +382,15 @@ module ``F# Sg`` =
         let private unboxed (f : Aardvark.SceneGraph.ISg -> Aardvark.SceneGraph.ISg) (inner : ISg<'msg>) =
             match inner with
                 | :? Sg.Adapter<'msg> as a ->
-                    a.Child |> Mod.force |> f |> Sg.Adapter :> ISg<'msg>
+                    a.Child |> AVal.force |> f |> Sg.Adapter :> ISg<'msg>
                 | _ ->
                     inner |> unbox |> f |> Sg.Adapter :> ISg<'msg>
 
         let pickable (p : PickShape) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickable p)
 
-        let pickable' (p : IMod<PickShape>) (sg : ISg<'msg>) =
-            sg |> unboxed (fun s -> new Sg.PickableApplicator(Mod.map Pickable.ofShape p, Mod.constant s) :> ISg)
+        let pickable' (p : aval<PickShape>) (sg : ISg<'msg>) =
+            sg |> unboxed (fun s -> new Sg.PickableApplicator(AVal.map Pickable.ofShape p, AVal.constant s) :> ISg)
 
         let pickBoundingBox (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickBoundingBox)
@@ -414,16 +413,16 @@ module ``F# Sg`` =
         let withGlobalEvents (events : list<SceneEventKind * (SceneEvent -> seq<'msg>)>) (sg : ISg<'msg>) =
             Sg.GlobalEvent(AMap.ofList events, sg) :> ISg<'msg>
 
-        let uniform (name : string) (value : IMod<'a>) (sg : ISg<'msg>) =
+        let uniform (name : string) (value : aval<'a>) (sg : ISg<'msg>) =
            sg |> unboxed (Sg.uniform name value)
         
-        let trafo (m : IMod<Trafo3d>) (sg : ISg<'msg>) =
+        let trafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
            sg |> unboxed (Sg.trafo m)      
        
-        let viewTrafo (m : IMod<Trafo3d>) (sg : ISg<'msg>) =
+        let viewTrafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.viewTrafo m)
 
-        let projTrafo (m : IMod<Trafo3d>) (sg : ISg<'msg>) =
+        let projTrafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.projTrafo m)  
 
         let scale (s : float) (sg : ISg<'msg>) =
@@ -435,7 +434,7 @@ module ``F# Sg`` =
         let transform (t : Trafo3d) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.transform t)
 
-        let camera (cam : IMod<Camera>) (sg : ISg<'msg>) =
+        let camera (cam : aval<Camera>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.camera cam)
 
         let surface (m : ISurface) (sg : ISg<'msg>) =
@@ -463,16 +462,16 @@ module ``F# Sg`` =
         let geometrySet mode attributeTypes (geometries : aset<_>) : ISg<'msg> =
             Sg.GeometrySet(geometries,mode,attributeTypes) |> box
 
-        let dynamic (s : IMod<ISg<'msg>>) = 
-            Sg.DynamicNode(Mod.map unbox s) |> box<'msg>
+        let dynamic (s : aval<ISg<'msg>>) = 
+            Sg.DynamicNode(AVal.map unbox s) |> box<'msg>
 
-        let onOff (active : IMod<bool>) (sg : ISg<'msg>) =
+        let onOff (active : aval<bool>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.onOff active)
 
-        let texture (sem : Symbol) (tex : IMod<ITexture>) (sg : ISg<'msg>) =
+        let texture (sem : Symbol) (tex : aval<ITexture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.texture sem tex)
 
-        let diffuseTexture (tex : IMod<ITexture>) (sg : ISg<'msg>) =
+        let diffuseTexture (tex : aval<ITexture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.diffuseTexture tex)
 
         let diffuseTexture' (tex : ITexture) (sg : ISg<'msg>) =
@@ -484,43 +483,43 @@ module ``F# Sg`` =
         let fileTexture (sym : Symbol) (path : string) (wantMipMaps : bool) (sg : ISg<'msg>) = 
             sg |> unboxed (Sg.fileTexture sym path wantMipMaps)
 
-        let scopeDependentTexture (sem : Symbol) (tex : Ag.Scope -> IMod<ITexture>) (sg : ISg<'msg>) =
+        let scopeDependentTexture (sem : Symbol) (tex : Ag.Scope -> aval<ITexture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.scopeDependentTexture sem tex)
 
-        let scopeDependentDiffuseTexture (tex : Ag.Scope -> IMod<ITexture>) (sg : ISg<'msg>) =
+        let scopeDependentDiffuseTexture (tex : Ag.Scope -> aval<ITexture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.scopeDependentDiffuseTexture tex)
 
-        let runtimeDependentTexture (sem : Symbol) (tex : IRuntime -> IMod<ITexture>) (sg : ISg<'msg>) =
+        let runtimeDependentTexture (sem : Symbol) (tex : IRuntime -> aval<ITexture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.runtimeDependentTexture sem tex)
 
-        let runtimeDependentDiffuseTexture (tex : IRuntime -> IMod<ITexture>) (sg : ISg<'msg>) =
+        let runtimeDependentDiffuseTexture (tex : IRuntime -> aval<ITexture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.runtimeDependentDiffuseTexture tex)
 
-        let samplerState (sem : Symbol) (state : IMod<Option<SamplerStateDescription>>) (sg : ISg<'msg>) =
+        let samplerState (sem : Symbol) (state : aval<Option<SamplerStateDescription>>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.samplerState sem state)
 
-        let modifySamplerState (sem : Symbol) (modifier : IMod<SamplerStateDescription -> SamplerStateDescription>) (sg : ISg<'msg>) =
+        let modifySamplerState (sem : Symbol) (modifier : aval<SamplerStateDescription -> SamplerStateDescription>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.modifySamplerState sem modifier)
 
-        let depthBias (m : IMod<DepthBiasState>) (sg : ISg<'msg>) =
+        let depthBias (m : aval<DepthBiasState>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.depthBias m)
 
-        let frontFace (m : IMod<WindingOrder>) (sg : ISg<'msg>) =
+        let frontFace (m : aval<WindingOrder>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.frontFace m)
 
-        let fillMode (m : IMod<FillMode>) (sg : ISg<'msg>) =
+        let fillMode (m : aval<FillMode>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.fillMode m)
 
-        let blendMode (m : IMod<BlendMode>) (sg : ISg<'msg>) =
+        let blendMode (m : aval<BlendMode>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.blendMode m)
 
-        let cullMode (m : IMod<CullMode>) (sg : ISg<'msg>) =
+        let cullMode (m : aval<CullMode>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.cullMode m)
 
-        let stencilMode (m : IMod<StencilMode>) (sg : ISg<'msg>) =
+        let stencilMode (m : aval<StencilMode>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.stencilMode m)
 
-        let depthTest (m : IMod<DepthTestMode>) (sg : ISg<'msg>) =
+        let depthTest (m : aval<DepthTestMode>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.depthTest m)
 
         let writeBuffers' (buffers : Microsoft.FSharp.Collections.Set<Symbol>) (sg : ISg<'msg>) =
@@ -529,18 +528,18 @@ module ``F# Sg`` =
         let writeBuffers (buffers : Option<Microsoft.FSharp.Collections.Set<Symbol>>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.writeBuffers buffers)
 
-        let colorMask (maskRgba : IMod<bool * bool * bool * bool>) (sg : ISg<'msg>) =
+        let colorMask (maskRgba : aval<bool * bool * bool * bool>) (sg : ISg<'msg>) =
             let f sg = sg |> Sg.colorMask maskRgba :> ISg
             sg |> unboxed f
 
-        let depthMask (depthWriteEnabled : IMod<bool>) (sg : ISg<'msg>) =
+        let depthMask (depthWriteEnabled : aval<bool>) (sg : ISg<'msg>) =
             let f sg = sg |> Sg.depthMask depthWriteEnabled :> ISg
             sg |> unboxed f
 
-        let vertexAttribute<'a, 'msg when 'a : struct> (s : Symbol) (value : IMod<'a[]>) (sg : ISg<'msg>) = 
+        let vertexAttribute<'a, 'msg when 'a : struct> (s : Symbol) (value : aval<'a[]>) (sg : ISg<'msg>) = 
             sg |> unboxed (Sg.vertexAttribute s value)
 
-        let index<'a, 'msg when 'a : struct> (value : IMod<'a[]>)  (sg : ISg<'msg>) = 
+        let index<'a, 'msg when 'a : struct> (value : aval<'a[]>)  (sg : ISg<'msg>) = 
             sg |> unboxed (Sg.index value)
 
         let vertexAttribute'<'a, 'msg when 'a : struct> (s : Symbol) (value : 'a[]) (sg : ISg<'msg>) =
@@ -552,7 +551,7 @@ module ``F# Sg`` =
         let vertexBuffer (s : Symbol) (view : BufferView) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.vertexBuffer s view)
 
-        let vertexBufferValue (s : Symbol) (value : IMod<V4f>) (sg : ISg<'msg>) =
+        let vertexBufferValue (s : Symbol) (value : aval<V4f>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.vertexBufferValue s value)
 
         let draw (mode : IndexedGeometryMode) : ISg<'msg> =
@@ -567,7 +566,7 @@ module ``F# Sg`` =
         let ofIndexedGeometryInterleaved (attributes : list<Symbol>) (g : IndexedGeometry) : ISg<'msg> =
             Sg.ofIndexedGeometryInterleaved attributes g |> box
 
-        let instancedGeometry (trafos : IMod<Trafo3d[]>) (g : IndexedGeometry) : ISg<'msg> =
+        let instancedGeometry (trafos : aval<Trafo3d[]>) (g : IndexedGeometry) : ISg<'msg> =
             Sg.instancedGeometry trafos g |> box
 
         let pass (pass : RenderPass) (sg : ISg<'msg>) =
@@ -605,7 +604,7 @@ module FShadeSceneGraph =
 
     open Aardvark.SceneGraph
     open Aardvark.Base
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     open Aardvark.Base.Rendering
 
 
@@ -708,7 +707,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
 
     static let intersectLeaf (part : RayPart) (p : PickObject) =
-        let pickable = p.Pickable |> Mod.force
+        let pickable = p.Pickable |> AVal.force
         match Pickable.intersect part pickable with
             | Some t -> 
                 match Ag.tryGetInhAttribute p.Scope "SceneEventHandler" with
@@ -719,7 +718,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
             | None -> 
                 None
 
-    member private x.Perform (evt : SceneEvent, bvh : BvhTree<PickObject>, seen : hset<SgTools.SceneEventHandler>) =
+    member private x.Perform (evt : SceneEvent, bvh : BvhTree<PickObject>, seen : HashSet<SgTools.SceneEventHandler>) =
         let intersection = bvh.Intersections(intersectLeaf, evt.globalRay) |> Seq.tryHead
         match intersection with
         | Some hit ->
@@ -737,11 +736,12 @@ type PickTree<'msg>(sg : ISg<'msg>) =
     member x.Needed = needed
 
     member x.Perform(evt : SceneEvent) =
-        let bvh = bvh |> Mod.force
-        x.Perform(evt,bvh,HSet.empty)
+        let bvh = bvh |> AVal.force
+        x.Perform(evt,bvh,HashSet.empty)
         
     member x.Dispose() =
-        bvh.Dispose()
+        // TODO: think about bvh.Dispose()
+        ()
 
     interface System.IDisposable with
         member x.Dispose() = x.Dispose()
@@ -756,7 +756,7 @@ open Aardvark.UI
 open Aardvark.UI.SgTools
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Ag
 
 
@@ -782,8 +782,8 @@ module ``Message Semantics`` =
         member x.RenderObjects() : aset<IRenderObject> = x?RenderObjects()
         member x.PickObjects() : aset<PickObject> = x?PickObjects()
         member x.GlobalPicks() : GlobalPicks<'msg> = x?GlobalPicks()
-        member x.GlobalBoundingBox() : IMod<Box3d> = x?GlobalBoundingBox
-        member x.LocalBoundingBox() : IMod<Box3d> = x?LocalBoundingBox()
+        member x.GlobalBoundingBox() : aval<Box3d> = x?GlobalBoundingBox
+        member x.LocalBoundingBox() : aval<Box3d> = x?LocalBoundingBox()
         
         member x.MessageSink : IMessageSink<'msg> = x?MessageSink
         member x.SceneEventHandler : SceneEventHandler = x?SceneEventHandler
@@ -862,7 +862,7 @@ module ``Message Semantics`` =
                     None
 
             g.Children 
-            |> ASet.mapM (fun c -> c.GlobalBoundingBox()) 
+            |> ASet.mapA (fun c -> c.GlobalBoundingBox()) 
             |> ASet.foldHalfGroup add trySub Box3d.Invalid
 
 //        member x.LocalBoundingBox(app : IApplicator<'msg>) =
@@ -880,7 +880,7 @@ module ``Message Semantics`` =
                     None
 
             g.Children 
-            |> ASet.mapM (fun c -> c.LocalBoundingBox()) 
+            |> ASet.mapA (fun c -> c.LocalBoundingBox()) 
             |> ASet.foldHalfGroup add trySub Box3d.Invalid
 
         
@@ -963,14 +963,14 @@ module ``Message Semantics`` =
             let trafo = app.ModelTrafo
 
             let processor (evt : SceneEvent) (rayT : option<float>) =
-                let evts = app.Events.Content |> Mod.force
+                let evts = app.Events.Content |> AVal.force
                 let createArtificialMove = 
-                    (HMap.containsKey SceneEventKind.Enter evts || HMap.containsKey SceneEventKind.Leave evts) &&
-                    (not <| HMap.containsKey SceneEventKind.Move evts)
+                    (HashMap.containsKey SceneEventKind.Enter evts || HashMap.containsKey SceneEventKind.Leave evts) &&
+                    (not <| HashMap.containsKey SceneEventKind.Move evts)
                 let evts =
-                    if createArtificialMove then HMap.add SceneEventKind.Move (fun _ -> Continue, Seq.empty) evts
+                    if createArtificialMove then HashMap.add SceneEventKind.Move (fun _ -> Continue, Seq.empty) evts
                     else evts
-                match HMap.tryFind evt.kind evts with
+                match HashMap.tryFind evt.kind evts with
                 | Some cb -> 
                     match rayT with
                     | Some rayT -> cb { event = { evt with evtTrafo = trafo }; rayT = rayT }
@@ -1001,14 +1001,14 @@ module ``Message Semantics`` =
             let trafo = app.ModelTrafo
 
             let processor (evt : SceneEvent) (rayT : option<float>) =
-                let evts = app.Events.Content |> Mod.force
+                let evts = app.Events.Content |> AVal.force
                 let createArtificialMove = 
-                    (HMap.containsKey SceneEventKind.Enter evts || HMap.containsKey SceneEventKind.Leave evts) &&
-                    (not <| HMap.containsKey SceneEventKind.Move evts)
+                    (HashMap.containsKey SceneEventKind.Enter evts || HashMap.containsKey SceneEventKind.Leave evts) &&
+                    (not <| HashMap.containsKey SceneEventKind.Move evts)
                 let evts =
-                    if createArtificialMove then HMap.add SceneEventKind.Move (fun _ -> Continue, Seq.empty) evts
+                    if createArtificialMove then HashMap.add SceneEventKind.Move (fun _ -> Continue, Seq.empty) evts
                     else evts
-                match HMap.tryFind evt.kind evts with
+                match HashMap.tryFind evt.kind evts with
                 | Some cb -> 
                     match rayT with
                     | Some rayT -> cb { event = { evt with evtTrafo = trafo }; rayT = rayT }

@@ -2,7 +2,7 @@
 
 open Suave
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 type Attribute<'msg> = string * AttributeValue<'msg>
 
@@ -179,11 +179,11 @@ module Events =
 
     let always (att : Attribute<'msg>) =
         let (k,v) = att
-        k, Mod.constant (Some v)
+        k, AVal.constant (Some v)
 
-    let onlyWhen (m : IMod<bool>) (att : Attribute<'msg>) =
+    let onlyWhen (m : aval<bool>) (att : Attribute<'msg>) =
         let (k,v) = att
-        k, m |> Mod.map (function true -> Some v | false -> None)
+        k, m |> AVal.map (function true -> Some v | false -> None)
 
 
     let internal onMouseRel (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> 'msg) =

@@ -5,7 +5,7 @@ module RotationController =
     // old version ...https://github.com/aardvark-platform/aardvark.media/blob/base2/src/Aardvark.ImmutableSceneGraph/TrafoApps.fs 
 
     open Aardvark.Base
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     
     open Aardvark.Base.Rendering
     open Aardvark.Base.Geometry
@@ -58,8 +58,8 @@ module RotationController =
                       |> Seq.map(fun edge -> Line3d(edge.P0, edge.P1)) 
                       |> Seq.toArray                      
                 
-                yield Sg.lines (Mod.constant(C4b.Red)) (Mod.constant(segments))
-            ] |> Sg.group             
+                yield Sg.lines (AVal.constant(C4b.Red)) (AVal.constant(segments))
+            ] |> Aardvark.SceneGraph.SgFSharp.Sg.ofList |> Sg.noEvents  
           
     let intersect (ray : RayPart) (circle:Circle3d) =
         let mutable p = V3d.NaN
@@ -111,16 +111,16 @@ module RotationController =
 
     
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : IMod<CameraView>) (m : MTransformation) : ISg<'msg> =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : aval<CameraView>) (m : AdaptiveTransformation) : ISg<'msg> =
             
         let circle axis =
             let col =
-                m.hovered |> Mod.map2 (TrafoController.colorMatch axis) (m.grabbed |> Mod.map (Option.map ( fun p -> p.axis )))            
+                m.hovered |> AVal.map2 (TrafoController.colorMatch axis) (m.grabbed |> AVal.map (Option.map ( fun p -> p.axis )))            
                                            
             RotationHandle.sg axis
             |> Sg.noEvents
             |> Sg.uniform "HoverColor" col
-            |> Sg.uniform "LineWidth" (Mod.constant(cylinderRadius * 20.0))
+            |> Sg.uniform "LineWidth" (AVal.constant(cylinderRadius * 20.0))
             
         let pickOnCircle =            
             Sg.empty 
@@ -146,25 +146,25 @@ module RotationController =
                                     Hover axis
                                 else                                            
                                     m.hovered 
-                                        |> Mod.map(fun x ->
+                                        |> AVal.map(fun x ->
                                           match x with
                                             | Some h when h = axis -> Unhover
-                                            | _ -> Nop) |> Mod.force
+                                            | _ -> Nop) |> AVal.force
                             else
                                 Nop
                         );
                     Global.onMouseDown (fun e ->
-                        m.hovered |> Mod.map(fun x ->
+                        m.hovered |> AVal.map(fun x ->
                             match x with
                                 | Some h when h = axis -> 
                                     Grab (e.localRay, axis)
                                 | _ -> Nop
-                        ) |> Mod.force
+                        ) |> AVal.force
                     )
                 ]
             |> Sg.map liftMessage
 
-        let currentTrafo : IMod<Trafo3d> =
+        let currentTrafo : aval<Trafo3d> =
             adaptive {
                 let! mode = m.mode
                 match mode with
@@ -178,9 +178,9 @@ module RotationController =
             }        
 
         let scaleTrafo =
-            let pos = currentTrafo |> Mod.map(fun x -> x.Forward.C3.XYZ) 
-            let scale = Sg.computeInvariantScale' v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) 
-            scale |> Mod.map Trafo3d.Scale        
+            let pos = currentTrafo |> AVal.map(fun x -> x.Forward.C3.XYZ) 
+            let scale = Sg.computeInvariantScale' v (AVal.constant 0.1) pos (AVal.constant 0.3) (AVal.constant 60.0) 
+            scale |> AVal.map Trafo3d.Scale        
             
         let pickGraphs =
             [

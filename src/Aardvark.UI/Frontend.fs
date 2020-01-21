@@ -2,7 +2,7 @@
 
 open Aardvark.UI
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Application
 
 type HTMLPointerType =
@@ -1255,7 +1255,7 @@ type HTMLAttribute<'msg> =
     static member ToAttributeMap (attributes : alist<HTMLAttribute<'msg>>) =
         attributes |> AList.collect (fun a -> a.ToAttributes() |> AList.ofList) |> AttributeMap.ofAList
         
-    static member ToAttributeMap (attributes : alist<IMod<option<HTMLAttribute<'msg>>>>) =
+    static member ToAttributeMap (attributes : alist<aval<option<HTMLAttribute<'msg>>>>) =
         attributes |> AList.collect (fun a -> 
             a |> AList.bind (function
                 | Some att -> att.ToAttributes() |> AList.ofList
@@ -1264,7 +1264,7 @@ type HTMLAttribute<'msg> =
         )
         |> AttributeMap.ofAList
         
-    static member ToAttributeMap (attributes : list<IMod<option<HTMLAttribute<'msg>>>>) =
+    static member ToAttributeMap (attributes : list<aval<option<HTMLAttribute<'msg>>>>) =
         HTMLAttribute.ToAttributeMap(AList.ofList attributes)
 
 module HTMLAttribute =
@@ -1274,13 +1274,13 @@ module HTMLAttribute =
     let inline capturePointer (e : HTMLAttribute<'msg>) = e.WithPointerCapture
     let inline noCapturePointer (e : HTMLAttribute<'msg>) = e.WithoutPointerCapture
 
-    let onlyWhen (condition : IMod<bool>) (attribute : HTMLAttribute<'msg>) =
-        condition |> Mod.map (function
+    let onlyWhen (condition : aval<bool>) (attribute : HTMLAttribute<'msg>) =
+        condition |> AVal.map (function
             | true -> Some attribute
             | false -> None
         )
     let always (attribute : HTMLAttribute<'msg>) =
-        Mod.constant (Some attribute)
+        AVal.constant (Some attribute)
 
 
 
@@ -1360,19 +1360,19 @@ module HTMLAttributeExtensions =
         member x.Yield (value : list<HTMLAttribute<'msg>>) = [AttributeMap.ofList (List.collect HTMLAttribute.toAttributes value)]
         member x.Yield (value : seq<HTMLAttribute<'msg>>) = [AttributeMap.ofList (List.collect HTMLAttribute.toAttributes (Seq.toList value))]
 
-        member x.Yield (value : IMod<HTMLAttribute<'msg>>) = [value |> AMap.bind (HTMLAttribute.toAttributes >> AMap.ofList) |> AttributeMap]
-        member x.Yield (value : IMod<option<HTMLAttribute<'msg>>>) = 
+        member x.Yield (value : aval<HTMLAttribute<'msg>>) = [value |> AMap.bind (HTMLAttribute.toAttributes >> AMap.ofList) |> AttributeMap]
+        member x.Yield (value : aval<option<HTMLAttribute<'msg>>>) = 
             [
                 value |> AMap.bind (function 
                     | Some att -> (att |> HTMLAttribute.toAttributes |> AttributeMap.ofList).AMap
                     | None -> AMap.empty
                 ) |> AttributeMap
             ]
-        member x.Yield (value : IMod<list<HTMLAttribute<'msg>>>) = 
+        member x.Yield (value : aval<list<HTMLAttribute<'msg>>>) = 
             [
                 value |> AMap.bind (fun l -> HTMLAttribute.ToAttributeMap(l).AMap) |> AttributeMap
             ]
-        member x.Yield (value : IMod<seq<HTMLAttribute<'msg>>>) = 
+        member x.Yield (value : aval<seq<HTMLAttribute<'msg>>>) = 
             [
                 value |> AMap.bind (fun l -> HTMLAttribute.ToAttributeMap(Seq.toList l).AMap) |> AttributeMap
             ]
@@ -1402,10 +1402,10 @@ module HTMLAttributeExtensions =
 
     let att = AttributeBuilder()
 
-    let inline onlyWhen (cond : IMod<bool>) =
+    let inline onlyWhen (cond : aval<bool>) =
         AttributeBuilder<'msg, AttributeMap<'msg>>(fun map ->
-            map.AMap |> AMap.chooseM (fun _ att ->
-                cond |> Mod.map (function
+            map.AMap |> AMap.chooseA (fun _ att ->
+                cond |> AVal.map (function
                     | true -> Some att
                     | false -> None
                 )
@@ -1435,10 +1435,10 @@ module HTMLAttributeExtensions =
             [Autoplay]
             
             if a % 2 <> 0 then
-                Mod.constant Autoplay
-                Mod.constant (Some Autoplay)
-                Mod.constant (Seq.singleton Autoplay)
-                Mod.constant [ Autoplay; Alt "hugo" ]
+                AVal.constant Autoplay
+                AVal.constant (Some Autoplay)
+                AVal.constant (Seq.singleton Autoplay)
+                AVal.constant [ Autoplay; Alt "hugo" ]
 
             ASet.ofList [
                 Autoplay
@@ -1451,16 +1451,16 @@ module HTMLAttributeExtensions =
             ]
             
             alist {
-                let! a = Mod.constant 10
+                let! a = AVal.constant 10
                 if a < 100 then
                     Style "asdasdasd"
             }
            
-            HTMLAttribute.onlyWhen (Mod.constant true) (
+            HTMLAttribute.onlyWhen (AVal.constant true) (
                 Style "border: none"
             )
 
-            onlyWhen (Mod.constant true) {
+            onlyWhen (AVal.constant true) {
                 Style "background: red"
                 OnPointerMove (fun e -> [1])
                 OnPointerUp (fun e -> Stop, Some 2)

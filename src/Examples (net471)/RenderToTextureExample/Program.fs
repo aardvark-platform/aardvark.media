@@ -1,5 +1,5 @@
 ﻿open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
@@ -83,7 +83,7 @@ let main argv =
 
     let task =
         RenderTask.ofList [
-            app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Gray)
+            app.Runtime.CompileClear(win.FramebufferSignature, AVal.constant C4f.Gray)
             app.Runtime.CompileRender(win.FramebufferSignature, sg)
                 //|> DefaultOverlays.withStatistics
         ]

@@ -1,6 +1,6 @@
 namespace Aardvark.UI.Trafos
 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -27,15 +27,15 @@ module Pose =
     let toRotTrafo x = 
         Trafo3d(Rot3d.op_Explicit x.rotation, Rot3d.op_Explicit x.rotation.Inverse)
 
-    let toRotTrafo' (pose:IMod<Pose>) : IMod<Trafo3d> = 
-        pose |> Mod.map(fun x -> Trafo3d(Rot3d.op_Explicit x.rotation, Rot3d.op_Explicit x.rotation.Inverse))
+    let toRotTrafo' (pose:aval<Pose>) : aval<Trafo3d> = 
+        pose |> AVal.map(fun x -> Trafo3d(Rot3d.op_Explicit x.rotation, Rot3d.op_Explicit x.rotation.Inverse))
 
     let toTrafo x = 
         let rot = x |> toRotTrafo
         Trafo3d.Scale x.scale * rot * Trafo3d.Translation x.position
 
-    let toTrafo' (pose : IMod<Pose>) : IMod<Trafo3d> =
-        pose |> Mod.map(fun x ->
+    let toTrafo' (pose : aval<Pose>) : aval<Trafo3d> =
+        pose |> AVal.map(fun x ->
             let rot = x |> toRotTrafo
             Trafo3d.Scale x.scale * rot * Trafo3d.Translation x.position)        
 
@@ -53,7 +53,7 @@ module Pose =
 module TrafoController = 
     open Aardvark.Base
     open Aardvark.Base.Geometry
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
 
     let initial =
         { 
@@ -83,12 +83,12 @@ module TrafoController =
         | _,      _,      Y -> C4b.Green
         | _,      _,      Z -> C4b.Blue
 
-    let pickingTrafo (m:MTransformation) : IMod<Trafo3d> =
+    let pickingTrafo (m:AdaptiveTransformation) : aval<Trafo3d> =
         adaptive {
             let! mode = m.mode
             match mode with
                 | TrafoMode.Local -> 
-                    return! m.pose |> Mod.map Pose.toTrafo
+                    return! m.pose |> AVal.map Pose.toTrafo
                 | TrafoMode.Global -> 
                     let! a = m.pose
                     return Trafo3d.Translation(a.position)
@@ -96,14 +96,14 @@ module TrafoController =
                     return failwith ""
         }
 
-    let getTranslation (t : IMod<Trafo3d>) =
-        t |> Mod.map(fun x -> x.Forward.C3.XYZ)
+    let getTranslation (t : aval<Trafo3d>) =
+        t |> AVal.map(fun x -> x.Forward.C3.XYZ)
 
 module Sg =
     open Aardvark.Base
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
 
-    let computeInvariantScale' (view : IMod<CameraView>) (near : IMod<float>) (p:IMod<V3d>) (size:IMod<float>) (hfov:IMod<float>) =
+    let computeInvariantScale' (view : aval<CameraView>) (near : aval<float>) (p:aval<V3d>) (size:aval<float>) (hfov:aval<float>) =
         adaptive {
             let! p = p
             let! v = view

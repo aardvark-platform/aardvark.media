@@ -1,7 +1,7 @@
 ﻿namespace Aardvark.UI.Primitives
 
 open Aardvark.UI
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 type DockElement =
     {
@@ -271,12 +271,12 @@ module DockingUIExtensions =
 
     [<AutoOpen>]
     module Static = 
-        let docking (atts : list<string * AttributeValue<'msg>>) (cfg : IMod<DockConfig>) = 
-            let initial =  DockConfig.toJSON (Mod.force cfg)
+        let docking (atts : list<string * AttributeValue<'msg>>) (cfg : aval<DockConfig>) = 
+            let initial =  DockConfig.toJSON (AVal.force cfg)
             let boot = bootCode.Replace("__INITIALCONFIG__", initial.Replace("\\", "\\\\").Replace("\"", "\\\""))
             let hasLayoutChanged = atts |> List.exists (fst >> ((=) "onlayoutchanged"))
             let boot = boot.Replace("__NEEDSEVENT__", if hasLayoutChanged then "true" else "false")
-            let channels = if cfg.IsConstant then [] else ["dockconfig", Mod.channel (cfg |> Mod.map DockConfig.toJSON) ]
+            let channels = if cfg.IsConstant then [] else ["dockconfig", AVal.channel (cfg |> AVal.map DockConfig.toJSON) ]
             require dependencies (
                 onBoot' channels boot (
                     div atts []

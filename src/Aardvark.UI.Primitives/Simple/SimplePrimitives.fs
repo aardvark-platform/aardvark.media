@@ -2,7 +2,7 @@
 
 open Aardvark.Base
 open Aardvark.UI
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Generic
 
 [<AutoOpen>]
@@ -66,8 +66,8 @@ module SimplePrimitives =
 
     module Incremental =
     
-        let checkbox (atts : AttributeMap<'msg>) (state : IMod<bool>) (toggle : 'msg) (l : list<DomNode<'msg>>) =
-            let state = if state.IsConstant then Mod.custom (fun t -> state.GetValue t) else state
+        let checkbox (atts : AttributeMap<'msg>) (state : aval<bool>) (toggle : 'msg) (l : list<DomNode<'msg>>) =
+            let state = if state.IsConstant then AVal.custom (fun t -> state.GetValue t) else state
 
             let ev =
                 {
@@ -85,7 +85,7 @@ module SimplePrimitives =
 
             let atts = AttributeMap.union atts myAtts
             require semui (
-                onBoot' ["isChecked", Mod.channel state] boot (
+                onBoot' ["isChecked", AVal.channel state] boot (
                     Incremental.div atts (
                         alist {
                             yield input [attribute "type" "checkbox"]
@@ -103,9 +103,9 @@ module SimplePrimitives =
 
 
 
-        let numeric (cfg : NumericConfig) (atts : AttributeMap<'msg>) (value : IMod<float>) (update : float -> 'msg) =
+        let numeric (cfg : NumericConfig) (atts : AttributeMap<'msg>) (value : aval<float>) (update : float -> 'msg) =
             
-            let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
+            let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
             let inline pickle (v : float) = v.ToString(System.Globalization.CultureInfo.InvariantCulture)
             
             let inline unpickle (v : string) = 
@@ -131,7 +131,7 @@ module SimplePrimitives =
                 ]
                 
             require semui (
-                onBoot' ["valueCh", Mod.channel (Mod.map thing value)] boot (
+                onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
                             yield 
@@ -151,9 +151,9 @@ module SimplePrimitives =
             )
 
         
-        let slider (cfg : SliderConfig) (atts : AttributeMap<'msg>) (value : IMod<float>) (update : float -> 'msg) =
+        let slider (cfg : SliderConfig) (atts : AttributeMap<'msg>) (value : aval<float>) (update : float -> 'msg) =
 
-            let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
+            let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
             let inline pickle (v : float) = v.ToString(System.Globalization.CultureInfo.InvariantCulture)
 
             let inline unpickle (v : string) = 
@@ -175,21 +175,21 @@ module SimplePrimitives =
             let boot =
                 String.concat ";" [
                     "var $__ID__ = $('#__ID__');"
-                    sprintf "var cfg = { decimalPlaces: 10, min: %s, max: %s, step: %s, start: %s, onMove: function(v) { aardvark.processEvent('__ID__', 'data-event', v);} };" (pickle cfg.min) (pickle cfg.max) (pickle cfg.step) (pickle (Mod.force value))
+                    sprintf "var cfg = { decimalPlaces: 10, min: %s, max: %s, step: %s, start: %s, onMove: function(v) { aardvark.processEvent('__ID__', 'data-event', v);} };" (pickle cfg.min) (pickle cfg.max) (pickle cfg.step) (pickle (AVal.force value))
                     sprintf "$__ID__.slider(cfg);"  
                     "valueCh.onmessage = function(v) { $__ID__.slider('update position', v.value); };"
                 ]
     
             require semui (
-                onBoot' ["valueCh", Mod.channel (Mod.map thing value)] boot (
+                onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) AList.empty
                 )
             )
 
 
-        let textbox (cfg : TextConfig) (atts : AttributeMap<'msg>) (value : IMod<string>) (update : string -> 'msg) =
+        let textbox (cfg : TextConfig) (atts : AttributeMap<'msg>) (value : aval<string>) (update : string -> 'msg) =
         
-            let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
+            let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
             let update v =
                 value.MarkOutdated()
                 update v
@@ -217,7 +217,7 @@ module SimplePrimitives =
                 ]
                        
             require semui (
-                onBoot' ["valueCh", Mod.channel (Mod.map thing value)] boot (
+                onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
                             yield 
@@ -236,9 +236,9 @@ module SimplePrimitives =
 
         let private pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
 
-        let dropdown (cfg : DropdownConfig) (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : IMod<Option<'a>>) (update : Option<'a> -> 'msg) =
+        let dropdown (cfg : DropdownConfig) (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
         
-            let selected = if selected.IsConstant then Mod.custom (fun t -> selected.GetValue t) else selected
+            let selected = if selected.IsConstant then AVal.custom (fun t -> selected.GetValue t) else selected
 
             let compare =
                 if typeof<System.IComparable>.IsAssignableFrom typeof<'a> then Some Unchecked.compare<'a>
@@ -257,22 +257,22 @@ module SimplePrimitives =
 
             let m =
                 valuesWithKeys
-                |> AMap.toMod
-                |> Mod.map (HMap.map (fun k (v,_) -> v))
-                |> Mod.map (fun m -> m, HMap.ofSeq (Seq.map (fun (a,b) -> b,a) m))
+                |> AMap.toAVal
+                |> AVal.map (HashMap.map (fun k (v,_) -> v))
+                |> AVal.map (fun m -> m, HashMap.ofSeq (Seq.map (fun (a,b) -> b,a) m))
 
             let update (k : string) =
-                let _fw, bw = Mod.force m
+                let _fw, bw = AVal.force m
                 selected.MarkOutdated()
                 try
-                    match HMap.tryFind k bw with 
+                    match HashMap.tryFind k bw with 
                     | Some v -> update (Some v) |> Seq.singleton
                     | None -> update None |> Seq.singleton
                 with _ ->
                     Seq.empty
 
             let selection = 
-                selected |> Mod.bind (function Some v -> m |> Mod.map (fun (fw,_) -> HMap.tryFind v fw) | None -> Mod.constant None) 
+                selected |> AVal.bind (function Some v -> m |> AVal.map (fun (fw,_) -> HashMap.tryFind v fw) | None -> AVal.constant None) 
 
             let myAtts =
                 AttributeMap.ofList [
@@ -295,7 +295,7 @@ module SimplePrimitives =
                 ]
 
             require semui (
-                onBoot' ["selectedCh", Mod.channel (Mod.map thing selection)] boot (
+                onBoot' ["selectedCh", AVal.channel (AVal.map thing selection)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
                             yield input [ attribute "type" "hidden" ]
@@ -318,15 +318,15 @@ module SimplePrimitives =
                 )
             )
 
-        let dropdown1 (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : IMod<'a>) (update : 'a -> 'msg) =
-            dropdown { allowEmpty = false; placeholder = "" } atts values (Mod.map Some selected) (Option.get >> update)
+        let dropdown1 (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
+            dropdown { allowEmpty = false; placeholder = "" } atts values (AVal.map Some selected) (Option.get >> update)
 
     [<AutoOpen>]
     module ``Primtive Builders`` =
         type CheckBuilder() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, [], (Mod.constant true, ()))
+                (AttributeMap.empty, [], (AVal.constant true, ()))
 
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,c,u), na) = (AttributeMap.union a (att na), c, u)
@@ -346,7 +346,7 @@ module SimplePrimitives =
         type NumericBuilder() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, Mod.constant 0.0, { min = -1E100; max = 1E100; smallStep = 1.0; largeStep = 10.0; }, (fun _ -> ()))
+                (AttributeMap.empty, AVal.constant 0.0, { min = -1E100; max = 1E100; smallStep = 1.0; largeStep = 10.0; }, (fun _ -> ()))
 
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,u,c,m), na) = (AttributeMap.union a (att na), u, c, m)
@@ -380,7 +380,7 @@ module SimplePrimitives =
         type TextBuilder() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, Mod.constant "", { regex = None; maxLength = None }, (fun _ -> ()))
+                (AttributeMap.empty, AVal.constant "", { regex = None; maxLength = None }, (fun _ -> ()))
 
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,u,c,m), na) = (AttributeMap.union a (att na), u, c, m)
@@ -400,13 +400,13 @@ module SimplePrimitives =
             [<CustomOperation("maxLength")>]
             member inline x.MaxLength((a,v,cfg,m), s) = (a,v, { cfg with maxLength = Some s }, m)
 
-            member inline x.Run((a,v : IMod<_>,cfg,msg)) =
+            member inline x.Run((a,v : aval<_>,cfg,msg)) =
                 Incremental.textbox cfg a v msg
         
         type DropdownBuilder() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, AMap.empty, Mod.constant None, { allowEmpty = true; placeholder = "" }, (fun _ -> ()))
+                (AttributeMap.empty, AMap.empty, AVal.constant None, { allowEmpty = true; placeholder = "" }, (fun _ -> ()))
 
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,u,s,c,m), na) = (AttributeMap.union a (att na), u, s, c, m)
@@ -438,19 +438,19 @@ module SimplePrimitives =
         let simpledropdown = DropdownBuilder()
 
 
-    let inline checkbox atts (state : IMod<bool>) (toggle : 'msg) content =
+    let inline checkbox atts (state : aval<bool>) (toggle : 'msg) content =
         Incremental.checkbox (att atts) state toggle [label [] content]
         
-    let inline numeric (cfg : NumericConfig) atts (state : IMod<float>) (update : float -> 'msg) =
+    let inline numeric (cfg : NumericConfig) atts (state : aval<float>) (update : float -> 'msg) =
         Incremental.numeric cfg (att atts) state update 
         
-    let inline slider (cfg : SliderConfig) atts (state : IMod<float>) (update : float -> 'msg) =
+    let inline slider (cfg : SliderConfig) atts (state : aval<float>) (update : float -> 'msg) =
         Incremental.slider cfg (att atts) state update 
 
-    let inline textbox (cfg : TextConfig) atts (state : IMod<string>) (update : string -> 'msg) =
+    let inline textbox (cfg : TextConfig) atts (state : aval<string>) (update : string -> 'msg) =
         Incremental.textbox cfg (att atts) state update 
         
-    let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : IMod<Option<'a>>) (update : Option<'a> -> 'msg) =
+    let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
         Incremental.dropdown cfg (att atts) values selected update
 
 
