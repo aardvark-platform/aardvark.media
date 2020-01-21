@@ -26,3 +26,4 @@ bin/Debug
 /src/Scratch/17 - Serviced/Properties/PublishProfiles/FolderProfile.pubxml
 /src/Scratch/17 - Serviced/Properties/PublishProfiles/FolderProfile.pubxml.user
 /.paket/.store/*
+*.adaptifycache

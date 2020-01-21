@@ -64,10 +64,10 @@ open System.Threading
 open Aardvark.SceneGraph.Semantics
 open System.Collections.Generic
 
-let view (runtime : IRuntime) (model : MModel) =
+let view (runtime : IRuntime) (model : AdaptiveModel) =
 
 
-    let cobjects = CSet.empty
+    let cobjects = cset()
     let hobjects = List<_>()
 
     let theHatefulThread = 
@@ -83,7 +83,7 @@ let view (runtime : IRuntime) (model : MModel) =
 
         // extract the render object using the scene graph semantics
         let template =
-            template.RenderObjects() |> ASet.toList |> List.head |> unbox<RenderObject>
+            template.RenderObjects() |> ASet.force |> HashSet.toList |> List.head |> unbox<RenderObject>
 
         Thread(ThreadStart (fun _ -> 
             let viewTrafo = 
@@ -106,9 +106,9 @@ let view (runtime : IRuntime) (model : MModel) =
                 if rnd.NextDouble() < 0.5 then
                     let uniforms (t : Trafo3d) =
                         UniformProvider.ofList [
-                            "ModelTrafo", AVal.constant t :> IMod
-                            "ViewTrafo", viewTrafo :> IMod
-                            "ProjTrafo", projTrafo :> IMod
+                            "ModelTrafo", AVal.constant t :> IAdaptiveValue
+                            "ViewTrafo", viewTrafo :> IAdaptiveValue
+                            "ProjTrafo", projTrafo :> IAdaptiveValue
                         ]
 
                     let trafo = mkTrafo () 
