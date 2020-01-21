@@ -131,6 +131,9 @@ let view (model : MModel) =
                 slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
             ]
             div [ clazz "item" ] [ 
+                slider { min = 0; max = 20; step = 1 } [clazz "ui inverted blue slider"] model.intValue SetInt
+            ]
+            div [ clazz "item" ] [ 
                 textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
             ]
             div [ clazz "item" ] [ 

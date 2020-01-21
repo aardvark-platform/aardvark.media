@@ -31,11 +31,11 @@ module SimplePrimitives =
 
     let inline private thing a = { value = a }
 
-    type SliderConfig =
+    type SliderConfig<'a> =
         {
-            min         : float
-            max         : float
-            step        : float
+            min         : 'a
+            max         : 'a
+            step        : 'a
         }
 
     type NumericConfig<'a> =
@@ -61,16 +61,16 @@ module SimplePrimitives =
         }
 
     type NumberType =
-    | Int = 0
-    | Real = 1
-    | Float = 2
+        | Int
+        | Real
+        | Decimal
 
     type NumericConfigDefaults<'a>() =
         class
             [<DefaultValue>] static val mutable private min : 'a 
             [<DefaultValue>] static val mutable private max : 'a 
             [<DefaultValue>] static val mutable private small : 'a 
-            [<DefaultValue>] static val mutable private large : 'a 
+            [<DefaultValue>] static val mutable private large : 'a
             [<DefaultValue>] static val mutable private numType : NumberType
 
             static member MinValue = NumericConfigDefaults<'a>.min
@@ -92,22 +92,22 @@ module SimplePrimitives =
                     NumericConfigDefaults<'a>.max <- unbox<'a> Double.MaxValue
                     NumericConfigDefaults<'a>.small <- unbox<'a> 1.0
                     NumericConfigDefaults<'a>.large <- unbox<'a> 10.0
-                    NumericConfigDefaults<'a>.numType <- NumberType.Float
+                    NumericConfigDefaults<'a>.numType <- NumberType.Real
                 elif at = typeof<float32> then 
                     NumericConfigDefaults<'a>.min <- unbox<'a> Single.MinValue
                     NumericConfigDefaults<'a>.max <- unbox<'a> Single.MaxValue
                     NumericConfigDefaults<'a>.small <- unbox<'a> 1.0f
                     NumericConfigDefaults<'a>.large <- unbox<'a> 10.0f
-                    NumericConfigDefaults<'a>.numType <- NumberType.Float
+                    NumericConfigDefaults<'a>.numType <- NumberType.Real
                 elif at = typeof<decimal> then 
                     NumericConfigDefaults<'a>.min <- unbox<'a> Decimal.MinValue
                     NumericConfigDefaults<'a>.max <- unbox<'a> Decimal.MaxValue
                     NumericConfigDefaults<'a>.small <- unbox<'a> 1m
                     NumericConfigDefaults<'a>.large <- unbox<'a> 10m
-                    NumericConfigDefaults<'a>.numType <- NumberType.Real
+                    NumericConfigDefaults<'a>.numType <- NumberType.Decimal
                 else
                     // user needs to fully specify min, max, small and large 
-                    // -> numType will be uninitialized !?
+                    NumericConfigDefaults<'a>.numType <- NumberType.Int
                     Log.warn "NumericConfigDefaults of type %A not implemented" typeof<'a>
                     //failwith "not supported type in NumericInput"
         end
@@ -115,10 +115,29 @@ module SimplePrimitives =
     module TextConfig =
         let empty = { regex = None; maxLength = None }
 
-
-
-
     module Incremental =
+
+        [<AutoOpen>]
+        module private Helpers =
+
+            let pickle (v : 'a) = System.Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture)
+
+            let unpickle (v : string) = 
+                try
+                    match NumericConfigDefaults<'a>.NumType with
+                    | Int ->
+                        match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
+                        | (true, v) -> let txt = Text(Math.Round(v).ToString())
+                                       let rv = Text<'a>.Parse.Invoke(txt)
+                                       Some rv
+                        | _ -> None
+                    | _ ->
+                        let value = Text<'a>.Parse.Invoke(Text(v))
+                        Some value
+                with 
+                | _ -> 
+                    Log.warn "[UI.Primitives] failed to parse user input"
+                    None
     
         let checkbox (atts : AttributeMap<'msg>) (state : IMod<bool>) (toggle : 'msg) (l : list<DomNode<'msg>>) =
             let state = if state.IsConstant then Mod.custom (fun t -> state.GetValue t) else state
@@ -158,23 +177,6 @@ module SimplePrimitives =
         let numeric (cfg : NumericConfig<'a>) (atts : AttributeMap<'msg>) (value : IMod<'a>) (update : 'a -> 'msg) =
             
             let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
-            let inline pickle (v : 'a) = System.Convert.ToString(v, System.Globalization.CultureInfo.InvariantCulture);
-            
-            let unpickle (v : string) = 
-                try
-                    if NumericConfigDefaults<'a>.NumType = NumberType.Int then
-                        match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
-                        | (true, v) -> let txt = Text(Math.Round(v).ToString())
-                                       let rv = Text<'a>.Parse.Invoke(txt)
-                                       Some rv
-                        | _ -> None
-                    else
-                        let value = Text<'a>.Parse.Invoke(Text(v))
-                        Some value
-                with 
-                | _ -> 
-                    Log.warn "[UI.Primitives.numeric] failed to parse user input"
-                    None
 
             let update (v : 'a) =
                 value.MarkOutdated()
@@ -192,6 +194,11 @@ module SimplePrimitives =
                     "$__ID__.numeric({ changed: function(v) { aardvark.processEvent('__ID__', 'data-event', v); } });"
                     "valueCh.onmessage = function(v) { $__ID__.numeric('set', v.value); };"
                 ]
+
+            let pattern =
+                match NumericConfigDefaults<'a>.NumType with
+                | Int -> "[0-9]"
+                | _ -> "[0-9]*(\.[0-9]*)?"
                 
             require semui (
                 onBoot' ["valueCh", Mod.channel (Mod.map thing value)] boot (
@@ -207,7 +214,7 @@ module SimplePrimitives =
                                     attribute "step" (pickle cfg.smallStep) 
                                     attribute "data-largestep" (pickle cfg.largeStep)
                                     //attribute "data-numtype" (NumericConfigDefaults<'a>.NumType.ToString())
-                                    attribute "pattern" (match NumericConfigDefaults<'a>.NumType with | Int -> "[0-9]"; | _ -> "[0-9]*(\.[0-9]*)?")
+                                    attribute "pattern" pattern
                                 ])
                         }
                     )
@@ -215,15 +222,9 @@ module SimplePrimitives =
             )
 
         
-        let slider (cfg : SliderConfig) (atts : AttributeMap<'msg>) (value : IMod<float>) (update : float -> 'msg) =
+        let slider (cfg : SliderConfig<'a>) (atts : AttributeMap<'msg>) (value : IMod<'a>) (update : 'a -> 'msg) =
 
             let value = if value.IsConstant then Mod.custom (fun t -> value.GetValue t) else value
-            let inline pickle (v : float) = v.ToString(System.Globalization.CultureInfo.InvariantCulture)
-
-            let inline unpickle (v : string) = 
-                match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
-                | (true, v) -> Some v
-                | _ -> None
                 
             let update v =
                 value.MarkOutdated()
@@ -234,7 +235,6 @@ module SimplePrimitives =
                     "class", AttributeValue.String "ui slider"
                     onEvent' "data-event" [] (function (str :: _) -> str |> unpickle |> Option.toList |> Seq.map update | _ -> Seq.empty)
                 ]
-
 
             let boot =
                 String.concat ";" [
@@ -508,7 +508,7 @@ module SimplePrimitives =
     let inline numeric (cfg : NumericConfig<'a>) atts (state : IMod<'a>) (update : 'a -> 'msg) =
         Incremental.numeric cfg (att atts) state update 
         
-    let inline slider (cfg : SliderConfig) atts (state : IMod<float>) (update : float -> 'msg) =
+    let inline slider (cfg : SliderConfig<'a>) atts (state : IMod<'a>) (update : 'a -> 'msg) =
         Incremental.slider cfg (att atts) state update 
 
     let inline textbox (cfg : TextConfig) atts (state : IMod<string>) (update : string -> 'msg) =
