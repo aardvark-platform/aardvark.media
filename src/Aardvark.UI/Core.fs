@@ -783,8 +783,8 @@ and DomNodeVisitor<'msg, 'r> =
 and DomNode private() =
     static let eventNames =
         Map.ofList [
-            SceneEventKind.Click,           "onmouseclick"
-            SceneEventKind.DoubleClick,     "onmousedblclick"
+            SceneEventKind.Click,           "onpointerclick"
+            SceneEventKind.DoubleClick,     "onpointerdblclick"
             SceneEventKind.Down,            "onmousedown"
             SceneEventKind.Up,              "onmouseup"
             SceneEventKind.Move,            "onmousemove"

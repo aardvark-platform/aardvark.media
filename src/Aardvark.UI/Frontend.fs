@@ -14,7 +14,14 @@ type HTMLPointerType =
 [<AutoOpen>]
 module private Patterns =
     
-    let inline (|Button|_|) (value : string) =
+    let (|String|_|) (value : string) =
+        try 
+            let t : string = Newtonsoft.Json.JsonConvert.DeserializeObject<string> value
+            Some t
+        with _ ->
+            None
+
+    let (|Button|_|) (value : string) =
         match System.Int32.TryParse value with
         | (true, v) -> 
             match v with
@@ -25,7 +32,15 @@ module private Patterns =
         | _ ->
             None
 
-    let inline (|Buttons|_|) (value : string) =
+    let (|Key|_|) (value : string) =
+        match System.Int32.TryParse value with
+        | (true, v) -> 
+            let key = KeyConverter.keyFromVirtualKey v
+            Some key
+        | _ ->
+            None
+
+    let (|Buttons|_|) (value : string) =
         match System.Int32.TryParse value with
         | (true, v) -> 
             let mutable res = MouseButtons.None
@@ -36,12 +51,16 @@ module private Patterns =
         | _ ->
             None
             
-    let inline (|PointerType|_|) (v : string) =
-        match v.Trim().ToLower() with
-        | "mouse" -> Some HTMLPointerType.Mouse
-        | "touch" -> Some HTMLPointerType.Touch
-        | "pen" -> Some HTMLPointerType.Pen
-        | _ -> Some HTMLPointerType.Unknown
+    let (|PointerType|_|) (v : string) =
+        match v with
+        | String v ->
+            match v.Trim().ToLower() with
+            | "mouse" -> Some HTMLPointerType.Mouse
+            | "touch" -> Some HTMLPointerType.Touch
+            | "pen" -> Some HTMLPointerType.Pen
+            | _ -> Some HTMLPointerType.Unknown
+        | _ ->
+            None
 
     let inline (|Int|_|) (v : string) =
         match System.Int32.TryParse v with
@@ -60,27 +79,30 @@ module private Patterns =
         | _ -> None
 
 
-type HTMLEvent (targetId : string) =
+type HTMLEvent (targetId : string, eventType : string) =
     member x.Target = targetId
+    member x.Type = eventType
 
-
-type HTMLPointerEvent(targetId : string, 
+type HTMLPointerEvent(targetId : string, eventType : string,
                       button : MouseButtons, buttons : MouseButtons, 
                       pointerType : HTMLPointerType, pointerId : int, 
                       pointerSize : V2d,
-                      client : V2d, page : V2d, screen : V2d, 
+                      wheelDelta : float,
+                      client : V2d, page : V2d, screen : V2d, move : V2d,
                       altKey : bool, ctrlKey: bool, shiftKey: bool, metaKey : bool, 
                       viewport : V2d) =
-    inherit HTMLEvent(targetId)
+    inherit HTMLEvent(targetId, eventType)
 
-    let button = match pointerType with | HTMLPointerType.Mouse -> button | _ -> MouseButtons.None
-    let buttons = match pointerType with | HTMLPointerType.Mouse -> buttons | _ -> MouseButtons.None
+    //let button = match pointerType with | HTMLPointerType.Mouse -> button | _ -> MouseButtons.None
+    //let buttons = match pointerType with | HTMLPointerType.Mouse -> buttons | _ -> MouseButtons.None
 
     member x.Ndc =
         V2d(
             2.0 * (client.X + 0.5) / viewport.X - 1.0,
             1.0 - 2.0 * (client.Y + 0.5) / viewport.Y
         )
+
+    member x.WheelDelta = wheelDelta
 
     member x.Button = button
     member x.Buttons = buttons
@@ -93,7 +115,7 @@ type HTMLPointerEvent(targetId : string,
     member x.Meta = metaKey
     member x.ViewportSize = viewport
     member x.PointerSize = pointerSize
-
+    member x.Movement = move
     member x.PointerType = pointerType
     member x.PointerId = pointerId
 
@@ -117,6 +139,7 @@ type HTMLPointerEvent(targetId : string,
 
             sprintf "pointerId: %d" pointerId
             sprintf "pointerType: %A" pointerType
+            sprintf "wheelDelta: %A" wheelDelta
 
             sprintf "client: %A" client
             sprintf "page: %A" page
@@ -127,63 +150,141 @@ type HTMLPointerEvent(targetId : string,
             sprintf "ctrl: %A" ctrlKey
             sprintf "meta: %A" metaKey
             sprintf "size: %A" viewport
-        ]
+        ] |> sprintf "%s { %s }" x.Type
 
 
-    static member internal Pickle (capture : bool, send : list<string> -> string) =
-        String.concat ";" [
-            sprintf "const rect__ID__ = this.getBoundingClientRect();"
+    static member internal Pickle (hasButton : bool, capture : bool, send : list<string> -> string) =
+        let id = newId() |> string
+        let str = 
+            String.concat "" [
+                sprintf "const rect__ID__ = this.getBoundingClientRect();"
 
-            match capture with
-            | true -> 
-                "this.setPointerCapture(event.pointerId);"
-                "const releaseCapture__ID__ = function(evt) { "
-                "    if(evt.pointerId == event.pointerId) { "
-                "        this.releasePointerCapture(event.pointerId);"
-                "        this.removeEventListener('pointerup', releaseCapture__ID__, true);"
-                "    } "
-                "};"
-                "this.addEventListener('pointerup', releaseCapture__ID__, true);"
-            | false -> 
-                ()
+                match capture with
+                | true -> 
+                    "(function(self, event){"
+                    "    self.focus();"
+                    "    if(event.buttons == 0) return;"
+                    "    const downButton = event.button;"
+                    "    const downPointer = event.pointerId;"
+                    "    self.requestPointerLock();"
+                    "    let blubber = "
+                    "       { handleEvent: function(evt) { "
+                    "             if(evt.pointerId != downPointer) return;"
+                    "             if(evt.buttons == 0) document.exitPointerLock();"
+                    "             if(evt.button == downButton) { self.removeEventListener('pointerup', blubber, true); }"
+                    "         }"
+                    "       };"
+                    "    self.addEventListener('pointerup', blubber, true);"
+                    "})(this, event);"
+                | false -> 
+                    ()
 
-            send [
-                "this.id || ''"
-                "(typeof event.button == 'number' ? event.button : -1)"; "event.buttons || 0"; 
-                "event.pointerType || ''"; "event.pointerId || 0";
-                "event.width || 0"; "event.height || 0";
-                "(event.clientX || 0) - (rect__ID__.left || 0)"; "(event.clientY || 0) - (rect__ID__.top || 0)"
-                "event.pageX || 0"; "event.pageY || 0"
-                "event.screenX || 0"; "event.screenY || 0"
-                "event.altKey || false"; "event.ctrlKey || false"; "event.shiftKey || false"; "event.metaKey || false"
-                "rect__ID__.width || 0"; "rect__ID__.height || 0"
+                "event.preventDefault();"
+
+                send [
+                    "this.id || ''"
+                    (if hasButton then "event.button" else "-1"); "event.buttons || 0"; 
+                    "event.pointerType || ''"; "event.pointerId || 0";
+                    "event.width || 0"; "event.height || 0";
+                    "(event.clientX || 0) - (rect__ID__.left || 0)"; "(event.clientY || 0) - (rect__ID__.top || 0)"
+                    "event.pageX || 0"; "event.pageY || 0"
+                    "event.screenX || 0"; "event.screenY || 0"
+                    "event.movementX || 0"; "event.movementY || 0"
+                    "event.altKey || false"; "event.ctrlKey || false"; "event.shiftKey || false"; "event.metaKey || false"
+                    "rect__ID__.width || 0"; "rect__ID__.height || 0";
+                    "(event.deltaY || 0) / -100"
+                ]
             ]
-        ]
+        str.Replace("__ID__", id)
 
-    static member internal Unpickle (args : list<string>) =
+    static member internal Unpickle (eventType : string, args : list<string>) =
         match args with
-        | [targetId; Button button; Buttons buttons; 
+        | [String targetId; Button button; Buttons buttons; 
            PointerType pointerType; Int pointerId;
            Float pw; Float ph;
            Float clientX; Float clientY; Float pageX; Float pageY; Float screenX; Float screenY;
+           Float moveX; Float moveY;
            Bool altKey; Bool ctrlKey; Bool shiftKey; Bool metaKey;
-           Float width; Float height
+           Float width; Float height; Float wheelDelta
           ] ->  
             Some (
                 HTMLPointerEvent(
-                    targetId, button, buttons, 
+                    targetId, eventType, 
+                    button, buttons, 
                     pointerType, pointerId, 
                     V2d(pw, ph),
+                    wheelDelta, 
                     V2d(clientX, clientY),
                     V2d(pageX, pageY),
                     V2d(screenX, screenY),
+                    V2d(moveX, moveY),
                     altKey, ctrlKey, shiftKey, metaKey,
                     V2d(width, height)
                 )
             )
         | _ -> 
             None
+    
+type HTMLKeyLocation =
+    | Standard = 0
+    | Left = 1
+    | Right = 2
+    | NumPad = 3
+    | Mobile = 4
+    | Joystick = 5
+
+type HTMLKeyEvent(targetId : string, eventType : string,
+                  key : Aardvark.Application.Keys, location : HTMLKeyLocation, repeat : bool,
+                  altKey : bool, ctrlKey: bool, shiftKey: bool, metaKey : bool
+                  ) =
+    inherit HTMLEvent(targetId, eventType)
+    
+    member x.Key = key
+    member x.Repeat = repeat
+    member x.Alt = altKey
+    member x.Ctrl = ctrlKey
+    member x.Shift = shiftKey
+    member x.Meta = metaKey
+    
+    override x.ToString() =
+        sprintf "%s { target: %s; key: %A; location: %A; repeat: %A; alt: %A; ctrl: %A; shift: %A; meta: %A }" x.Type targetId key location repeat altKey ctrlKey shiftKey metaKey
+
+    static member internal Pickle (send : list<string> -> string) =
+        String.concat "" [
+            
+            "event.preventDefault();"
+
+            send [
+                "this.id || ''"
+                "event.keyCode || 0"; "event.location || 0"
+                "event.repeat || false"
+                "event.altKey || false"; "event.ctrlKey || false"; "event.shiftKey || false"; "event.metaKey || false"
+            ]
         
+        ]
+
+    static member internal Unpickle (eventType : string, args : list<string>) =
+        match args with
+        | [String id; Key key; Int loc; Bool repeat; Bool altKey; Bool ctrlKey; Bool shiftKey; Bool metaKey] ->
+            
+            Some (
+                HTMLKeyEvent(
+                    id, eventType, key, unbox loc, repeat, altKey, ctrlKey, shiftKey, metaKey
+                )
+            )
+        | _ ->
+            None
+
+type HTMLRenderedEvent(targetId : string, viewportSize : V2i, samples : int) =
+    inherit HTMLEvent(targetId, "Rendered")
+    member x.ViewportSize = viewportSize
+    member x.Samples = samples
+
+    override x.ToString() =
+        sprintf "%s { target: %s; viewportSize: %A; samples: %A }" x.Type targetId viewportSize samples
+
+
+
 
 
 
@@ -478,214 +579,7 @@ type HTMLAttribute<'msg> =
     /// Specifies that the form should not be validated when submitted
     /// </summary>
     | NoValidate
-    /// <summary>
-    /// &lt;audio&gt;, &lt;embed&gt;, &lt;img&gt;, &lt;object&gt;, &lt;video&gt;
-    /// Script to be run on abort
-    //| onabort
-    ///// &lt;body&gt;
-    ///// Script to be run after the document is printed
-    //| onafterprint
-    ///// &lt;body&gt;
-    ///// Script to be run before the document is printed
-    //| onbeforeprint
-    ///// &lt;body&gt;
-    ///// Script to be run when the document is about to be unloaded
-    //| onbeforeunload
-    ///// All visible elements.
-    ///// Script to be run when the element loses focus
-    //| onblur
-    ///// &lt;audio&gt;, &lt;embed&gt;, &lt;object&gt;, &lt;video&gt;
-    ///// Script to be run when a file is ready to start playing (when it has buffered enough to begin)
-    //| oncanplay
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when a file can be played all the way to the end without pausing for buffering
-    //| oncanplaythrough
-    ///// All visible elements.
-    ///// Script to be run when the value of the element is changed
-    //| onchange
-    ///// All visible elements.
-    ///// Script to be run when the element is being clicked
-    //| onclick
-    ///// All visible elements.
-    ///// Script to be run when a context menu is triggered
-    //| oncontextmenu
-    ///// All visible elements.
-    ///// Script to be run when the content of the element is being copied
-    //| oncopy
-    ///// &lt;track&gt;
-    ///// Script to be run when the cue changes in a &lt;track&gt; element
-    //| oncuechange
-    ///// All visible elements.
-    ///// Script to be run when the content of the element is being cut
-    //| oncut
-    ///// All visible elements.
-    ///// Script to be run when the element is being double-clicked
-    //| ondblclick
-    ///// All visible elements.
-    ///// Script to be run when the element is being dragged
-    //| ondrag
-    ///// All visible elements.
-    ///// Script to be run at the end of a drag operation
-    //| ondragend
-    ///// All visible elements.
-    ///// Script to be run when an element has been dragged to a valid drop target
-    //| ondragenter
-    ///// All visible elements.
-    ///// Script to be run when an element leaves a valid drop target
-    //| ondragleave
-    ///// All visible elements.
-    ///// Script to be run when an element is being dragged over a valid drop target
-    //| ondragover
-    ///// All visible elements.
-    ///// Script to be run at the start of a drag operation
-    //| ondragstart
-    ///// All visible elements.
-    ///// Script to be run when dragged element is being dropped
-    //| ondrop
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the length of the media changes
-    //| ondurationchange
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when something bad happens and the file is suddenly unavailable (like unexpectedly disconnects)
-    //| onemptied
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the media has reach the end (a useful event for messages like "thanks for listening")
-    //| onended
-    ///// &lt;audio&gt;, &lt;body&gt;, &lt;embed&gt;, &lt;img&gt;, &lt;object&gt;, &lt;script&gt;, &lt;style&gt;, &lt;video&gt;
-    ///// Script to be run when an error occurs
-    //| onerror
-    ///// All visible elements.
-    ///// Script to be run when the element gets focus
-    //| onfocus
-    ///// &lt;body&gt;
-    ///// Script to be run when there has been changes to the anchor part of the a URL
-    //| onhashchange
-    ///// All visible elements.
-    ///// Script to be run when the element gets user input
-    //| oninput
-    ///// All visible elements.
-    ///// Script to be run when the element is invalid
-    //| oninvalid
-    ///// All visible elements.
-    ///// Script to be run when a user is pressing a key
-    //| onkeydown
-    ///// All visible elements.
-    ///// Script to be run when a user presses a key
-    //| onkeypress
-    ///// All visible elements.
-    ///// Script to be run when a user releases a key
-    //| onkeyup
-    ///// &lt;body&gt;, &lt;iframe&gt;, &lt;img&gt;, &lt;input&gt;, &lt;link&gt;, &lt;script&gt;, &lt;style&gt;
-    ///// Script to be run when the element is finished loading
-    //| onload
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when media data is loaded
-    //| onloadeddata
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when meta data (like dimensions and duration) are loaded
-    //| onloadedmetadata
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run just as the file begins to load before anything is actually loaded
-    //| onloadstart
-    
-    /// All visible elements.
-    /// Script to be run when a mouse button is pressed down on an element
-    | OnPointerDownEvt of capture : bool * pointerCapture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
 
-    /// All visible elements.
-    /// Script to be run as long as the  mouse pointer is moving over an element
-    | OnPointerMoveEvt  of capture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
-
-    /// All visible elements.
-    /// Script to be run when a mouse button is released over an element
-    | OnPointerUpEvt of capture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
-    ///// All visible elements.
-    ///// Script to be run when a mouse wheel is being scrolled over an element
-    //| onmousewheel
-    ///// &lt;body&gt;
-    ///// Script to be run when the browser starts to work offline
-    //| onoffline
-    ///// &lt;body&gt;
-    ///// Script to be run when the browser starts to work online
-    //| ononline
-    ///// &lt;body&gt;
-    ///// Script to be run when a user navigates away from a page
-    //| onpagehide
-    ///// &lt;body&gt;
-    ///// Script to be run when a user navigates to a page
-    //| onpageshow
-    ///// All visible elements.
-    ///// Script to be run when the user pastes some content in an element
-    //| onpaste
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the media is paused either by the user or programmatically
-    //| onpause
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the media has started playing
-    //| onplay
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the media has started playing
-    //| onplaying
-    ///// &lt;body&gt;
-    ///// Script to be run when the window's history changes.
-    //| onpopstate
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the browser is in the process of getting the media data
-    //| onprogress
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run each time the playback rate changes (like when a user switches to a slow motion or fast forward mode).
-    //| onratechange
-    ///// &lt;form&gt;
-    ///// Script to be run when a reset button in a form is clicked.
-    //| onreset
-    ///// &lt;body&gt;
-    ///// Script to be run when the browser window is being resized.
-    //| onresize
-    ///// All visible elements.
-    ///// Script to be run when an element's scrollbar is being scrolled
-    //| onscroll
-    ///// &lt;input&gt;
-    ///// Script to be run when the user writes something in a search field (for &lt;input="search"&gt;)
-    //| onsearch
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the seeking attribute is set to false indicating that seeking has ended
-    //| onseeked
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the seeking attribute is set to true indicating that seeking is active
-    //| onseeking
-    ///// All visible elements.
-    ///// Script to be run when the element gets selected
-    //| onselect
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the browser is unable to fetch the media data for whatever reason
-    //| onstalled
-    ///// &lt;body&gt;
-    ///// Script to be run when a Web Storage area is updated
-    //| onstorage
-    ///// &lt;form&gt;
-    ///// Script to be run when a form is submitted
-    //| onsubmit
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when fetching the media data is stopped before it is completely loaded for whatever reason
-    //| onsuspend
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the playing position has changed (like when the user fast forwards to a different point in the media)
-    //| ontimeupdate
-    ///// &lt;details&gt;
-    ///// Script to be run when the user opens or closes the &lt;details&gt; element
-    //| ontoggle
-    ///// &lt;body&gt;
-    ///// Script to be run when a page has unloaded (or the browser window has been closed)
-    //| onunload
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run each time the volume of a video/audio has been changed
-    //| onvolumechange
-    ///// &lt;audio&gt;, &lt;video&gt;
-    ///// Script to be run when the media has paused but is expected to resume (like when the media pauses to buffer more data)
-    //| onwaiting
-    ///// All visible elements.
-    ///// Script to be run when the mouse wheel rolls up or down over an element
-    //| onwheel
     /// &lt;details&gt;
     /// Specifies that the details should be visible (open) to the user
     /// </summary>
@@ -866,6 +760,51 @@ type HTMLAttribute<'msg> =
     /// </summary>
     | Wrap of string
 
+    
+    /// All visible elements.
+    /// Script to be run when a mouse button is pressed down on an element
+    | OnPointerDownEvt of capture : bool * pointerCapture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+
+    /// All visible elements.
+    /// Script to be run as long as the  mouse pointer is moving over an element
+    | OnPointerMoveEvt  of capture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+
+    /// All visible elements.
+    /// Script to be run when a mouse button is released over an element
+    | OnPointerUpEvt of capture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+
+    /// All visible elements.
+    /// Script to be run when a mouse button is clicked on an element
+    | OnPointerClickEvt of capture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+    
+    /// All visible elements.
+    /// Script to be run when a mouse button is clicked twice on an element
+    | OnPointerDoubleClickEvt of capture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+    
+    /// All visible elements.
+    /// Script to be run when a pointer enters the elements bounds
+    | OnPointerEnterEvt of callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+    
+    /// All visible elements.
+    /// Script to be run when a pointer leaves the elements bounds
+    | OnPointerLeaveEvt of callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+    
+    /// All visible elements.
+    /// Script to be run when a pointer-wheel is changed
+    | OnPointerWheelEvt of capture : bool * callback : (HTMLPointerEvent -> Continuation * seq<'msg>)
+
+    | OnKeyDownEvt of capture : bool * callback : (HTMLKeyEvent -> Continuation * seq<'msg>)
+    | OnKeyUpEvt of capture : bool * callback : (HTMLKeyEvent -> Continuation * seq<'msg>)
+
+    | OnRenderedEvt of callback : (HTMLRenderedEvent -> Continuation * seq<'msg>)
+
+    | OnClickEvt of capture : bool * callback : (HTMLEvent -> Continuation * seq<'msg>)
+
+
+
+
+
+
     static member OnPointerDown(callback : HTMLPointerEvent -> Continuation * seq<'msg>) =
         OnPointerDownEvt(false, false, callback)
         
@@ -922,6 +861,162 @@ type HTMLAttribute<'msg> =
     static member OnPointerMove(callback : HTMLPointerEvent -> option<'msg>) =
         OnPointerMoveEvt(false, fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
 
+        
+    static member OnPointerEnter(callback : HTMLPointerEvent -> Continuation * seq<'msg>) =
+        OnPointerEnterEvt(callback)
+
+    static member OnPointerEnter(callback : HTMLPointerEvent -> Continuation * list<'msg>) =
+        OnPointerEnterEvt(fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnPointerEnter(callback : HTMLPointerEvent -> Continuation * option<'msg>) =
+        OnPointerEnterEvt(fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnPointerEnter(callback : HTMLPointerEvent -> seq<'msg>) =
+        OnPointerEnterEvt(fun e -> Continue, callback e)
+        
+    static member OnPointerEnter(callback : HTMLPointerEvent -> list<'msg>) =
+        OnPointerEnterEvt(fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnPointerEnter(callback : HTMLPointerEvent -> option<'msg>) =
+        OnPointerEnterEvt(fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+
+        
+    static member OnPointerLeave(callback : HTMLPointerEvent -> Continuation * seq<'msg>) =
+        OnPointerLeaveEvt(callback)
+
+    static member OnPointerLeave(callback : HTMLPointerEvent -> Continuation * list<'msg>) =
+        OnPointerLeaveEvt(fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnPointerLeave(callback : HTMLPointerEvent -> Continuation * option<'msg>) =
+        OnPointerLeaveEvt(fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnPointerLeave(callback : HTMLPointerEvent -> seq<'msg>) =
+        OnPointerLeaveEvt(fun e -> Continue, callback e)
+        
+    static member OnPointerLeave(callback : HTMLPointerEvent -> list<'msg>) =
+        OnPointerLeaveEvt(fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnPointerLeave(callback : HTMLPointerEvent -> option<'msg>) =
+        OnPointerLeaveEvt(fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+
+
+        
+    static member OnPointerClick(callback : HTMLPointerEvent -> Continuation * seq<'msg>) =
+        OnPointerClickEvt(false, callback)
+        
+    static member OnPointerClick(callback : HTMLPointerEvent -> Continuation * list<'msg>) =
+        OnPointerClickEvt(false, fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnPointerClick(callback : HTMLPointerEvent -> Continuation * option<'msg>) =
+        OnPointerClickEvt(false, fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnPointerClick(callback : HTMLPointerEvent -> seq<'msg>) =
+        OnPointerClickEvt(false, fun e -> Continue, callback e)
+
+    static member OnPointerClick(callback : HTMLPointerEvent -> list<'msg>) =
+        OnPointerClickEvt(false, fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnPointerClick(callback : HTMLPointerEvent -> option<'msg>) =
+        OnPointerClickEvt(false, fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+        
+        
+    static member OnPointerDoubleClick(callback : HTMLPointerEvent -> Continuation * seq<'msg>) =
+        OnPointerDoubleClickEvt(false, callback)
+        
+    static member OnPointerDoubleClick(callback : HTMLPointerEvent -> Continuation * list<'msg>) =
+        OnPointerDoubleClickEvt(false, fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnPointerDoubleClick(callback : HTMLPointerEvent -> Continuation * option<'msg>) =
+        OnPointerDoubleClickEvt(false, fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnPointerDoubleClick(callback : HTMLPointerEvent -> seq<'msg>) =
+        OnPointerDoubleClickEvt(false, fun e -> Continue, callback e)
+
+    static member OnPointerDoubleClick(callback : HTMLPointerEvent -> list<'msg>) =
+        OnPointerDoubleClickEvt(false, fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnPointerDoubleClick(callback : HTMLPointerEvent -> option<'msg>) =
+        OnPointerWheelEvt(false, fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+        
+    static member OnPointerWheel(callback : HTMLPointerEvent -> Continuation * seq<'msg>) =
+        OnPointerWheelEvt(false, callback)
+        
+    static member OnPointerWheel(callback : HTMLPointerEvent -> Continuation * list<'msg>) =
+        OnPointerWheelEvt(false, fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnPointerWheel(callback : HTMLPointerEvent -> Continuation * option<'msg>) =
+        OnPointerWheelEvt(false, fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnPointerWheel(callback : HTMLPointerEvent -> seq<'msg>) =
+        OnPointerWheelEvt(false, fun e -> Continue, callback e)
+
+    static member OnPointerWheel(callback : HTMLPointerEvent -> list<'msg>) =
+        OnPointerWheelEvt(false, fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnPointerWheel(callback : HTMLPointerEvent -> option<'msg>) =
+        OnPointerWheelEvt(false, fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+   
+
+    static member OnKeyUp(callback : HTMLKeyEvent -> Continuation * seq<'msg>) =
+        OnKeyUpEvt(false, callback)
+        
+    static member OnKeyUp(callback : HTMLKeyEvent -> Continuation * list<'msg>) =
+        OnKeyUpEvt(false, fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnKeyUp(callback : HTMLKeyEvent -> Continuation * option<'msg>) =
+        OnKeyUpEvt(false, fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnKeyUp(callback : HTMLKeyEvent -> seq<'msg>) =
+        OnKeyUpEvt(false, fun e -> Continue, callback e)
+
+    static member OnKeyUp(callback : HTMLKeyEvent -> list<'msg>) =
+        OnKeyUpEvt(false, fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnKeyUp(callback : HTMLKeyEvent -> option<'msg>) =
+        OnKeyUpEvt(false, fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+        
+
+    static member OnKeyDown(callback : HTMLKeyEvent -> Continuation * seq<'msg>) =
+        OnKeyDownEvt(false, callback)
+        
+    static member OnKeyDown(callback : HTMLKeyEvent -> Continuation * list<'msg>) =
+        OnKeyDownEvt(false, fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnKeyDown(callback : HTMLKeyEvent -> Continuation * option<'msg>) =
+        OnKeyDownEvt(false, fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnKeyDown(callback : HTMLKeyEvent -> seq<'msg>) =
+        OnKeyDownEvt(false, fun e -> Continue, callback e)
+
+    static member OnKeyDown(callback : HTMLKeyEvent -> list<'msg>) =
+        OnKeyDownEvt(false, fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnKeyDown(callback : HTMLKeyEvent -> option<'msg>) =
+        OnKeyDownEvt(false, fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+   
+   
+
+    static member OnRendered(callback : HTMLRenderedEvent -> Continuation * seq<'msg>) =
+        OnRenderedEvt(callback)
+
+    static member OnRendered(callback : HTMLRenderedEvent -> Continuation * list<'msg>) =
+        OnRenderedEvt(fun e -> let (c, m) = callback e in c, m :> seq<_>)
+        
+    static member OnRendered(callback : HTMLRenderedEvent -> Continuation * option<'msg>) =
+        OnRenderedEvt(fun e -> match callback e with | (cont, Some msg) -> cont, Seq.singleton msg | (cont, None) -> cont, Seq.empty)
+        
+    static member OnRendered(callback : HTMLRenderedEvent -> seq<'msg>) =
+        OnRenderedEvt(fun e -> Continue, callback e)
+        
+    static member OnRendered(callback : HTMLRenderedEvent -> list<'msg>) =
+        OnRenderedEvt(fun e -> Continue, callback e :> seq<_>)
+        
+    static member OnRendered(callback : HTMLRenderedEvent -> option<'msg>) =
+        OnRenderedEvt(fun e -> Continue, (match callback e with | Some m -> Seq.singleton m | None -> Seq.empty))
+
+
+
+
     member x.WithPointerCapture =
         match x with
         | OnPointerDownEvt(capture, _, callback) -> OnPointerDownEvt(capture, true, callback)
@@ -937,6 +1032,11 @@ type HTMLAttribute<'msg> =
         | OnPointerDownEvt(_, pointerCapture, callback) -> OnPointerDownEvt(true, pointerCapture, callback)
         | OnPointerUpEvt(_, callback) -> OnPointerUpEvt(true, callback)
         | OnPointerMoveEvt(_, callback) -> OnPointerMoveEvt(true, callback)
+        | OnPointerClickEvt(_, callback) -> OnPointerClickEvt(true, callback)
+        | OnPointerDoubleClickEvt(_, callback) -> OnPointerDoubleClickEvt(true, callback)
+        | OnPointerWheelEvt(_, callback) -> OnPointerWheelEvt(true, callback)
+        | OnKeyUpEvt(_, callback) -> OnKeyUpEvt(true, callback)
+        | OnKeyDownEvt(_, callback) -> OnKeyDownEvt(true, callback)
         | _ -> e
         
     member e.Bubbling =
@@ -944,140 +1044,244 @@ type HTMLAttribute<'msg> =
         | OnPointerDownEvt(_, pointerCapture, callback) -> OnPointerDownEvt(false, pointerCapture, callback)
         | OnPointerUpEvt(_, callback) -> OnPointerUpEvt(false, callback)
         | OnPointerMoveEvt(_, callback) -> OnPointerMoveEvt(false, callback)
+        | OnPointerClickEvt(_, callback) -> OnPointerClickEvt(false, callback)
+        | OnPointerDoubleClickEvt(_, callback) -> OnPointerDoubleClickEvt(false, callback)
+        | OnPointerWheelEvt(_, callback) -> OnPointerWheelEvt(false, callback)
+        | OnKeyUpEvt(_, callback) -> OnKeyUpEvt(false, callback)
+        | OnKeyDownEvt(_, callback) -> OnKeyDownEvt(false, callback)
         | _ -> e
 
-
-    member att.ToAttribute() : string * AttributeValue<'msg> =
+    member att.ToAttributes() : list<string * AttributeValue<'msg>> =
         match att with
-        | Accept mimeTypes ->           "accept", AttributeValue.String (String.concat ", " mimeTypes)
-        | AcceptCharset charset ->      "acceptcharset", AttributeValue.String charset
-        | AccessKey key ->              "accesskey", AttributeValue.String key
-        | Action action ->              "action", AttributeValue.String action
-        | Alt alt ->                    "alt", AttributeValue.String alt
-        | Async ->                      "async", AttributeValue.String "true"
-        | Autocomplete comp ->          "autocomplete", AttributeValue.String (string comp)
-        | Autofocus focus ->            "autofocus", AttributeValue.String (string focus)
-        | Autoplay ->                   "autoplay", AttributeValue.String "true"
-        | Charset charset ->            "charset", AttributeValue.String charset
-        | Checked ->                    "checked", AttributeValue.String "true"
-        | Cite url ->                   "cite", AttributeValue.String url
-        | Class clazz ->                "class", AttributeValue.String clazz
-        | Cols cols ->                  "cols", AttributeValue.String (string cols)
-        | Colspan cols ->               "colspan", AttributeValue.String (string cols)
-        | Content content ->            "content", AttributeValue.String content
-        | ContentEditable edit ->       "contenteditable", AttributeValue.String (string edit)
-        | Controls ->                   "controls", AttributeValue.String "true"
-        | Coords coords ->              "coords", AttributeValue.String coords
-        | Data data ->                  "data", AttributeValue.String data
-        | Datetime time ->              "datetime", AttributeValue.String (time.ToUniversalTime().ToString("o"))
-        | Default ->                    "default", AttributeValue.String "true"
-        | Defer ->                      "defer", AttributeValue.String "true"
-        | Dir dir ->                    "dir", AttributeValue.String dir
-        | Dirname dir ->                "dirname", AttributeValue.String dir
-        | Disabled ->                   "disabled", AttributeValue.String "true"
-        | Download url ->               "download", AttributeValue.String url
-        | Draggable drag ->             "draggable", AttributeValue.String (string drag)
-        | Dropzone drop ->              "dropzone", AttributeValue.String drop
-        | Enctype enc ->                "enctye", AttributeValue.String enc
-        | For name ->                   "for", AttributeValue.String name
-        | Form name ->                  "form", AttributeValue.String name
-        | FormAction action ->          "formaction", AttributeValue.String action
-        | Headers headers ->            "headers", AttributeValue.String (String.concat ", " headers)
-        | Height height ->              "height", AttributeValue.String (string height)
-        | Hidden ->                     "hidden", AttributeValue.String "true"
-        | High value ->                 "high", AttributeValue.String (string value)
-        | Href url ->                   "href", AttributeValue.String url
-        | HrefLang lang ->              "hreflang", AttributeValue.String lang
-        | HttpEquiv equiv ->            "http-equiv", AttributeValue.String equiv
-        | Id id ->                      "id", AttributeValue.String id
-        | IsMap ->                      "ismap", AttributeValue.String "true"
-        | Kind kind ->                  "kind", AttributeValue.String kind
-        | Label title ->                "label", AttributeValue.String title
-        | Lang lang ->                  "lang", AttributeValue.String lang
-        | List list ->                  "list", AttributeValue.String list
-        | Loop ->                       "loop", AttributeValue.String "true"
-        | Low value ->                  "low", AttributeValue.String (string value)
-        | Max value ->                  "max", AttributeValue.String (string value)
-        | MaxLength length ->           "maxlength", AttributeValue.String (string length)
-        | Media media ->                "media", AttributeValue.String media
-        | Method meth ->                "method", AttributeValue.String meth
-        | Min value ->                  "min", AttributeValue.String (string value)
-        | Multiple ->                   "multiple", AttributeValue.String "true"
-        | Muted ->                      "muted", AttributeValue.String "true"
-        | Name name ->                  "name", AttributeValue.String name
-        | NoValidate ->                 "novalidate", AttributeValue.String "true"
-        | Open ->                       "open", AttributeValue.String "true"
-        | Optimum value ->              "optimium", AttributeValue.String (string value)
-        | Pattern pat ->                "pattern", AttributeValue.String pat
-        | Placeholder value ->          "placeholder", AttributeValue.String value
-        | Poster url ->                 "poster", AttributeValue.String url
-        | Preload kind ->               "preload", AttributeValue.String kind
-        | ReadOnly ->                   "readonly", AttributeValue.String "true"
-        | Rel url ->                    "rel", AttributeValue.String url
-        | Required ->                   "requires", AttributeValue.String "true"
-        | Reversed ->                   "reversed", AttributeValue.String "true"
-        | Rows rows ->                  "rows", AttributeValue.String (string rows)
-        | RowSpan rows ->               "rowspan", AttributeValue.String (string rows)
-        | Sandbox ->                    "sandbox", AttributeValue.String "true"
-        | Scope scope ->                "scope", AttributeValue.String (string scope)
-        | Selected ->                   "selected", AttributeValue.String "true"
-        | Shape shape ->                "shape", AttributeValue.String shape
-        | Size size ->                  "size", AttributeValue.String (string size)
-        | Sizes sizes ->                "sizes", AttributeValue.String sizes
-        | Span value ->                 "span", AttributeValue.String (string value)
-        | Spellcheck ->                 "spellcheck", AttributeValue.String "true"
-        | Src url ->                    "src", AttributeValue.String url
-        | SrcDoc html ->                "srcdoc", AttributeValue.String html
-        | SrcLang lang ->               "srclang", AttributeValue.String lang
-        | SrcSet value ->               "srcset", AttributeValue.String value
-        | Start start ->                "start", AttributeValue.String (string start)
-        | Step value ->                 "step", AttributeValue.String (string value)
-        | Style style ->                "style", AttributeValue.String style
-        | TabIndex idx ->               "tabindex", AttributeValue.String (string idx)
-        | Target target ->              "target", AttributeValue.String target
-        | Title title ->                "title", AttributeValue.String title
-        | Translate trans ->            "translate", AttributeValue.String (string trans)
-        | Type typ ->                   "type", AttributeValue.String typ
-        | UseMap map ->                 "usemap", AttributeValue.String map
-        | Value value ->                "value", AttributeValue.String (string value)
-        | Width width ->                "width", AttributeValue.String (string width)
-        | Wrap mode ->                  "wrap", AttributeValue.String mode
+        | Accept mimeTypes ->           ["accept", AttributeValue.String (String.concat ", " mimeTypes)]
+        | AcceptCharset charset ->      ["acceptcharset", AttributeValue.String charset]
+        | AccessKey key ->              ["accesskey", AttributeValue.String key]
+        | Action action ->              ["action", AttributeValue.String action]
+        | Alt alt ->                    ["alt", AttributeValue.String alt]
+        | Async ->                      ["async", AttributeValue.String "true"]
+        | Autocomplete comp ->          ["autocomplete", AttributeValue.String (string comp)]
+        | Autofocus focus ->            ["autofocus", AttributeValue.String (string focus)]
+        | Autoplay ->                   ["autoplay", AttributeValue.String "true"]
+        | Charset charset ->            ["charset", AttributeValue.String charset]
+        | Checked ->                    ["checked", AttributeValue.String "true"]
+        | Cite url ->                   ["cite", AttributeValue.String url]
+        | Class clazz ->                ["class", AttributeValue.String clazz]
+        | Cols cols ->                  ["cols", AttributeValue.String (string cols)]
+        | Colspan cols ->               ["colspan", AttributeValue.String (string cols)]
+        | Content content ->            ["content", AttributeValue.String content]
+        | ContentEditable edit ->       ["contenteditable", AttributeValue.String (string edit)]
+        | Controls ->                   ["controls", AttributeValue.String "true"]
+        | Coords coords ->              ["coords", AttributeValue.String coords]
+        | Data data ->                  ["data", AttributeValue.String data]
+        | Datetime time ->              ["datetime", AttributeValue.String (time.ToUniversalTime().ToString("o"))]
+        | Default ->                    ["default", AttributeValue.String "true"]
+        | Defer ->                      ["defer", AttributeValue.String "true"]
+        | Dir dir ->                    ["dir", AttributeValue.String dir]
+        | Dirname dir ->                ["dirname", AttributeValue.String dir]
+        | Disabled ->                   ["disabled", AttributeValue.String "true"]
+        | Download url ->               ["download", AttributeValue.String url]
+        | Draggable drag ->             ["draggable", AttributeValue.String (string drag)]
+        | Dropzone drop ->              ["dropzone", AttributeValue.String drop]
+        | Enctype enc ->                ["enctye", AttributeValue.String enc]
+        | For name ->                   ["for", AttributeValue.String name]
+        | Form name ->                  ["form", AttributeValue.String name]
+        | FormAction action ->          ["formaction", AttributeValue.String action]
+        | Headers headers ->            ["headers", AttributeValue.String (String.concat ", " headers)]
+        | Height height ->              ["height", AttributeValue.String (string height)]
+        | Hidden ->                     ["hidden", AttributeValue.String "true"]
+        | High value ->                 ["high", AttributeValue.String (string value)]
+        | Href url ->                   ["href", AttributeValue.String url]
+        | HrefLang lang ->              ["hreflang", AttributeValue.String lang]
+        | HttpEquiv equiv ->            ["http-equiv", AttributeValue.String equiv]
+        | Id id ->                      ["id", AttributeValue.String id]
+        | IsMap ->                      ["ismap", AttributeValue.String "true"]
+        | Kind kind ->                  ["kind", AttributeValue.String kind]
+        | Label title ->                ["label", AttributeValue.String title]
+        | Lang lang ->                  ["lang", AttributeValue.String lang]
+        | List list ->                  ["list", AttributeValue.String list]
+        | Loop ->                       ["loop", AttributeValue.String "true"]
+        | Low value ->                  ["low", AttributeValue.String (string value)]
+        | Max value ->                  ["max", AttributeValue.String (string value)]
+        | MaxLength length ->           ["maxlength", AttributeValue.String (string length)]
+        | Media media ->                ["media", AttributeValue.String media]
+        | Method meth ->                ["method", AttributeValue.String meth]
+        | Min value ->                  ["min", AttributeValue.String (string value)]
+        | Multiple ->                   ["multiple", AttributeValue.String "true"]
+        | Muted ->                      ["muted", AttributeValue.String "true"]
+        | Name name ->                  ["name", AttributeValue.String name]
+        | NoValidate ->                 ["novalidate", AttributeValue.String "true"]
+        | Open ->                       ["open", AttributeValue.String "true"]
+        | Optimum value ->              ["optimium", AttributeValue.String (string value)]
+        | Pattern pat ->                ["pattern", AttributeValue.String pat]
+        | Placeholder value ->          ["placeholder", AttributeValue.String value]
+        | Poster url ->                 ["poster", AttributeValue.String url]
+        | Preload kind ->               ["preload", AttributeValue.String kind]
+        | ReadOnly ->                   ["readonly", AttributeValue.String "true"]
+        | Rel url ->                    ["rel", AttributeValue.String url]
+        | Required ->                   ["requires", AttributeValue.String "true"]
+        | Reversed ->                   ["reversed", AttributeValue.String "true"]
+        | Rows rows ->                  ["rows", AttributeValue.String (string rows)]
+        | RowSpan rows ->               ["rowspan", AttributeValue.String (string rows)]
+        | Sandbox ->                    ["sandbox", AttributeValue.String "true"]
+        | Scope scope ->                ["scope", AttributeValue.String (string scope)]
+        | Selected ->                   ["selected", AttributeValue.String "true"]
+        | Shape shape ->                ["shape", AttributeValue.String shape]
+        | Size size ->                  ["size", AttributeValue.String (string size)]
+        | Sizes sizes ->                ["sizes", AttributeValue.String sizes]
+        | Span value ->                 ["span", AttributeValue.String (string value)]
+        | Spellcheck ->                 ["spellcheck", AttributeValue.String "true"]
+        | Src url ->                    ["src", AttributeValue.String url]
+        | SrcDoc html ->                ["srcdoc", AttributeValue.String html]
+        | SrcLang lang ->               ["srclang", AttributeValue.String lang]
+        | SrcSet value ->               ["srcset", AttributeValue.String value]
+        | Start start ->                ["start", AttributeValue.String (string start)]
+        | Step value ->                 ["step", AttributeValue.String (string value)]
+        | Style style ->                ["style", AttributeValue.String style]
+        | TabIndex idx ->               ["tabindex", AttributeValue.String (string idx)]
+        | Target target ->              ["target", AttributeValue.String target]
+        | Title title ->                ["title", AttributeValue.String title]
+        | Translate trans ->            ["translate", AttributeValue.String (string trans)]
+        | Type typ ->                   ["type", AttributeValue.String typ]
+        | UseMap map ->                 ["usemap", AttributeValue.String map]
+        | Value value ->                ["value", AttributeValue.String (string value)]
+        | Width width ->                ["width", AttributeValue.String (string width)]
+        | Wrap mode ->                  ["wrap", AttributeValue.String mode]
 
         | OnPointerDownEvt(capture, pointerCapture, callback) ->
             let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
-            "onpointerdown", create {
-                clientSide = fun send id -> HTMLPointerEvent.Pickle (pointerCapture, send id)
-                serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle args with | Some evt -> callback evt | None -> Continue, Seq.empty
-            }
+            [
+                "onpointerdown", create {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (true, pointerCapture, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerDown", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
 
         | OnPointerUpEvt(capture, callback) ->
             let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
-            "onpointerup", create {
-                clientSide = fun send id -> HTMLPointerEvent.Pickle (false, send id)
-                serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle args with | Some evt -> callback evt | None -> Continue, Seq.empty
-            }
+            [
+                "onpointerup", create {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (true, false, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerUp", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
 
         | OnPointerMoveEvt(capture, callback) ->
             let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
-            "onpointermove", create {
-                clientSide = fun send id -> HTMLPointerEvent.Pickle (false, send id)
-                serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle args with | Some evt -> callback evt | None -> Continue, Seq.empty
-            }
+            [
+                "onpointermove", create {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (false, false, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerMove", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
   
+        | OnPointerEnterEvt(callback) ->
+            [
+                "onpointerenter", AttributeValue.Bubble {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (false, false, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerEnter", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
+  
+        | OnPointerLeaveEvt(callback) ->
+            [
+                "onpointerleave", AttributeValue.Bubble {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (false, false, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerLeave", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
+  
+        | OnPointerClickEvt(capture, callback) ->
+            let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
+            [
+                "onpointerclick", create {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (true, false, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerClick", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
+  
+        | OnPointerDoubleClickEvt(capture, callback) ->
+            let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
+            [
+                "onpointerdblclick", create {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (true, false, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerDoubleClick", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
+  
+        | OnPointerWheelEvt(capture, callback) ->
+            let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
+            [
+                "onwheel", create {
+                    clientSide = fun send id -> HTMLPointerEvent.Pickle (false, false, send id)
+                    serverSide = fun _ _ args -> match HTMLPointerEvent.Unpickle("PointerWheel", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
+            
+        | OnKeyDownEvt(capture, callback) ->
+            let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
+            [
+                "onkeydown", create {
+                    clientSide = fun send id -> HTMLKeyEvent.Pickle (send id)
+                    serverSide = fun _ _ args -> match HTMLKeyEvent.Unpickle("KeyDown", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
+            
+        | OnKeyUpEvt(capture, callback) ->
+            let create = if capture then AttributeValue.Capture else AttributeValue.Bubble
+            [
+                "onkeyup", create {
+                    clientSide = fun send id -> HTMLKeyEvent.Pickle (send id)
+                    serverSide = fun _ _ args -> match HTMLKeyEvent.Unpickle("KeyUp", args) with | Some evt -> callback evt | None -> Continue, Seq.empty
+                }
+            ]
+
+        | OnRenderedEvt(callback) ->
+            [
+                "onrendered", AttributeValue.Bubble {
+                    clientSide = fun send id -> ""
+                    serverSide = fun _ _ args -> 
+                        match args with
+                        | [String target; Int w; Int h; Int samples] ->
+                            callback (HTMLRenderedEvent(target, V2i(w,h), samples))
+                        | _ ->
+                            Continue, Seq.empty
+                }
+            ]
 
 
     static member ToAttributeMap (attributes : list<HTMLAttribute<'msg>>) =
-        attributes |> List.map (fun a -> a.ToAttribute()) |> AttributeMap.ofList
+        attributes |> List.collect (fun a -> a.ToAttributes()) |> AttributeMap.ofList
 
     static member ToAttributeMap (attributes : alist<HTMLAttribute<'msg>>) =
-        attributes |> AList.map (fun a -> a.ToAttribute()) |> AttributeMap.ofAList
+        attributes |> AList.collect (fun a -> a.ToAttributes() |> AList.ofList) |> AttributeMap.ofAList
+        
+    static member ToAttributeMap (attributes : alist<IMod<option<HTMLAttribute<'msg>>>>) =
+        attributes |> AList.collect (fun a -> 
+            a |> AList.bind (function
+                | Some att -> att.ToAttributes() |> AList.ofList
+                | None -> AList.empty
+            )
+        )
+        |> AttributeMap.ofAList
+        
+    static member ToAttributeMap (attributes : list<IMod<option<HTMLAttribute<'msg>>>>) =
+        HTMLAttribute.ToAttributeMap(AList.ofList attributes)
 
 module HTMLAttribute =
-    let inline toAttribute (e : HTMLAttribute<'msg>) = e.ToAttribute()
+    let inline toAttributes (e : HTMLAttribute<'msg>) = e.ToAttributes()
     let inline captured (e : HTMLAttribute<'msg>) = e.Captured
     let inline bubbling (e : HTMLAttribute<'msg>) = e.Bubbling
     let inline capturePointer (e : HTMLAttribute<'msg>) = e.WithPointerCapture
     let inline noCapturePointer (e : HTMLAttribute<'msg>) = e.WithoutPointerCapture
+
+    let onlyWhen (condition : IMod<bool>) (attribute : HTMLAttribute<'msg>) =
+        condition |> Mod.map (function
+            | true -> Some attribute
+            | false -> None
+        )
+    let always (attribute : HTMLAttribute<'msg>) =
+        Mod.constant (Some attribute)
+
 
 
 [<AutoOpen>]
@@ -1091,6 +1295,24 @@ module HTMLAttributeExtensions =
 
     let inline private onPointerMoveAux (_dummy : ^a) (callback : HTMLPointerEvent -> ^b) =
         ((^a or ^b) : (static member OnPointerMove : (HTMLPointerEvent -> ^b) -> ^a) (callback))
+        
+    let inline private onPointerEnterAux (_dummy : ^a) (callback : HTMLPointerEvent -> ^b) =
+        ((^a or ^b) : (static member OnPointerEnter : (HTMLPointerEvent -> ^b) -> ^a) (callback))
+        
+    let inline private onPointerLeaveAux (_dummy : ^a) (callback : HTMLPointerEvent -> ^b) =
+        ((^a or ^b) : (static member OnPointerLeave : (HTMLPointerEvent -> ^b) -> ^a) (callback))
+        
+    let inline private onPointerClickAux (_dummy : ^a) (callback : HTMLPointerEvent -> ^b) =
+        ((^a or ^b) : (static member OnPointerClick : (HTMLPointerEvent -> ^b) -> ^a) (callback))
+        
+    let inline private onPointerDoubleClickAux (_dummy : ^a) (callback : HTMLPointerEvent -> ^b) =
+        ((^a or ^b) : (static member OnPointerDoubleClick : (HTMLPointerEvent -> ^b) -> ^a) (callback))
+        
+    let inline private onKeyDownAux (_dummy : ^a) (callback : HTMLKeyEvent -> ^b) =
+        ((^a or ^b) : (static member OnKeyDown : (HTMLKeyEvent -> ^b) -> ^a) (callback))
+        
+    let inline private onKeyUpAux (_dummy : ^a) (callback : HTMLKeyEvent -> ^b) =
+        ((^a or ^b) : (static member OnKeyUp : (HTMLKeyEvent -> ^b) -> ^a) (callback))
 
     let inline OnPointerDown (callback : HTMLPointerEvent -> ^b) = 
         onPointerDownAux Unchecked.defaultof<HTMLAttribute<_>> callback
@@ -1100,19 +1322,150 @@ module HTMLAttributeExtensions =
         
     let inline OnPointerMove (callback : HTMLPointerEvent -> ^b) = 
         onPointerMoveAux Unchecked.defaultof<HTMLAttribute<_>> callback
+        
+    let inline OnPointerEnter (callback : HTMLPointerEvent -> ^b) = 
+        onPointerEnterAux Unchecked.defaultof<HTMLAttribute<_>> callback
+        
+    let inline OnPointerLeave (callback : HTMLPointerEvent -> ^b) = 
+        onPointerLeaveAux Unchecked.defaultof<HTMLAttribute<_>> callback
+        
+    let inline OnPointerClick (callback : HTMLPointerEvent -> ^b) = 
+        onPointerClickAux Unchecked.defaultof<HTMLAttribute<_>> callback
+        
+    let inline OnPointerDoubleClick (callback : HTMLPointerEvent -> ^b) = 
+        onPointerDoubleClickAux Unchecked.defaultof<HTMLAttribute<_>> callback
+        
+    let inline OnKeyDown (callback : HTMLKeyEvent -> ^b) = 
+        onKeyDownAux Unchecked.defaultof<HTMLAttribute<_>> callback
+        
+    let inline OnKeyUp (callback : HTMLKeyEvent -> ^b) = 
+        onKeyUpAux Unchecked.defaultof<HTMLAttribute<_>> callback
 
-    let test = OnPointerDown(fun e -> Stop, None)
+          
+    type AttributeBuilderBase() =
+        
+        member x.Zero() : list<AttributeMap<'msg>> = []
+        member x.Delay (action : unit -> list<AttributeMap<'msg>>) = action
+        member x.Combine(l : list<AttributeMap<'msg>>, r : unit -> list<AttributeMap<'msg>>) = l @ r()
 
+        member x.For(elements : seq<'a>, mapping : 'a -> list<AttributeMap<'msg>>) =
+            elements |> Seq.toList |> List.collect mapping
+            
+        member x.While(guard : unit -> bool, mapping : unit -> list<AttributeMap<'msg>>) =
+            if guard() then mapping() @ x.While(guard, mapping)
+            else []
+                
+        member x.Yield (value : HTMLAttribute<'msg>) = [AttributeMap.ofList (HTMLAttribute.toAttributes value)]
+        member x.Yield (value : option<HTMLAttribute<'msg>>) = match value with | Some v -> x.Yield v | None -> []
+        member x.Yield (value : list<HTMLAttribute<'msg>>) = [AttributeMap.ofList (List.collect HTMLAttribute.toAttributes value)]
+        member x.Yield (value : seq<HTMLAttribute<'msg>>) = [AttributeMap.ofList (List.collect HTMLAttribute.toAttributes (Seq.toList value))]
 
-
-
-module Bla =
-    let test : AttributeMap<unit> = 
-        HTMLAttribute.ToAttributeMap (
-            AList.ofList [
-                Autocomplete true
-                Width 100
-                Height 100
-                Style "background: red"
+        member x.Yield (value : IMod<HTMLAttribute<'msg>>) = [value |> AMap.bind (HTMLAttribute.toAttributes >> AMap.ofList) |> AttributeMap]
+        member x.Yield (value : IMod<option<HTMLAttribute<'msg>>>) = 
+            [
+                value |> AMap.bind (function 
+                    | Some att -> (att |> HTMLAttribute.toAttributes |> AttributeMap.ofList).AMap
+                    | None -> AMap.empty
+                ) |> AttributeMap
             ]
+        member x.Yield (value : IMod<list<HTMLAttribute<'msg>>>) = 
+            [
+                value |> AMap.bind (fun l -> HTMLAttribute.ToAttributeMap(l).AMap) |> AttributeMap
+            ]
+        member x.Yield (value : IMod<seq<HTMLAttribute<'msg>>>) = 
+            [
+                value |> AMap.bind (fun l -> HTMLAttribute.ToAttributeMap(Seq.toList l).AMap) |> AttributeMap
+            ]
+
+        member x.Yield (set : aset<HTMLAttribute<'msg>>) = 
+            set
+            |> ASet.toAList
+            |> HTMLAttribute.ToAttributeMap       
+            |> List.singleton
+            
+        member x.Yield (list : alist<HTMLAttribute<'msg>>) = 
+            HTMLAttribute.ToAttributeMap list    
+            |> List.singleton
+
+        member x.Yield (map : AttributeMap<'msg>) = [map]
+
+    type AttributeBuilder<'msg, 'r>(run : AttributeMap<'msg> -> 'r) =
+        inherit AttributeBuilderBase()
+
+        member x.Run(action : unit -> list<AttributeMap<'msg>>) = action() |> AttributeMap.unionMany |> run
+
+            
+    type AttributeBuilder() =
+        inherit AttributeBuilderBase()
+        
+        member x.Run(action : unit -> list<AttributeMap<'msg>>) = action() |> AttributeMap.unionMany
+
+    let att = AttributeBuilder()
+
+    let inline onlyWhen (cond : IMod<bool>) =
+        AttributeBuilder<'msg, AttributeMap<'msg>>(fun map ->
+            map.AMap |> AMap.chooseM (fun _ att ->
+                cond |> Mod.map (function
+                    | true -> Some att
+                    | false -> None
+                )
+            ) |> AttributeMap
         )
+
+
+
+    let private test : AttributeMap<int> =
+        att {
+            OnPointerDown (fun e -> Stop, Some 1)
+            Style "position: absolute"
+            Width 100
+            Height 100
+
+            for i in 1 .. 10 do
+                Width 100
+
+            let mutable a = 0
+            while a < 1 do
+                Src "sadasdsad"
+                a <- a + 1
+
+            
+            Some Autoplay
+            Seq.singleton Autoplay
+            [Autoplay]
+            
+            if a % 2 <> 0 then
+                Mod.constant Autoplay
+                Mod.constant (Some Autoplay)
+                Mod.constant (Seq.singleton Autoplay)
+                Mod.constant [ Autoplay; Alt "hugo" ]
+
+            ASet.ofList [
+                Autoplay
+                Alt "hugo"
+            ]
+            
+            AList.ofList [
+                Autoplay
+                Alt "hugo"
+            ]
+            
+            alist {
+                let! a = Mod.constant 10
+                if a < 100 then
+                    Style "asdasdasd"
+            }
+           
+            HTMLAttribute.onlyWhen (Mod.constant true) (
+                Style "border: none"
+            )
+
+            onlyWhen (Mod.constant true) {
+                Style "background: red"
+                OnPointerMove (fun e -> [1])
+                OnPointerUp (fun e -> Stop, Some 2)
+            }
+
+        
+        }
+

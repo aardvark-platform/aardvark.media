@@ -33,6 +33,7 @@ let viewScene (model : MModel) =
 let view (model : MModel) =
 
     let renderControl =
+
         FreeFlyController.controlledControl 
             model.cameraState Camera 
             (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
@@ -48,8 +49,18 @@ let view (model : MModel) =
                     //    serverSide = fun _ _ _ -> Log.warn "bubble"; Continue, Seq.empty
                     //}
 
-                    Frontend.HTMLAttribute.OnPointerDown(fun e -> Log.warn "down %A %A %A" e.ClientLocation e.ViewportSize e.Ndc; Continue, None).Captured.WithPointerCapture.ToAttribute()
-                    //Frontend.HTMLAttribute.OnPointerUp(fun e -> Log.warn "up %A" e.Ndc; Continue, None).Captured.WithPointerCapture.ToAttribute()
+                    //Frontend.HTMLAttribute.OnPointerDown(fun e -> Log.warn "down %A %A %A" e.ClientLocation e.Shift e.Ndc; Continue, None).Captured.WithPointerCapture.ToAttribute()
+                    ////Frontend.HTMLAttribute.OnPointerUp(fun e -> Log.warn "up %A" e.Ndc; Continue, None).Captured.WithPointerCapture.ToAttribute()
+
+                    //Frontend.HTMLAttribute.OnPointerEnter(fun e -> Log.warn "enter %A %A %A" e.ClientLocation e.Shift e.Ndc; Continue, None).ToAttribute()
+                    //Frontend.HTMLAttribute.OnPointerLeave(fun e -> Log.warn "leave %A %A %A" e.ClientLocation e.Shift e.Ndc; Continue, None).ToAttribute()
+
+                    //Frontend.HTMLAttribute.OnPointerDown(fun e -> Log.warn "down %A" e; Continue, None).Captured.ToAttribute()
+
+
+                    ////Frontend.HTMLAttribute.OnPointerClick(fun e -> Log.warn "click %A" e.Ndc; Continue, None).ToAttribute()
+                    ////Frontend.HTMLAttribute.OnPointerDoubleClick(fun e -> Log.warn "double click %A" e.Ndc; Continue, None).ToAttribute()
+                    //Frontend.HTMLAttribute.OnPointerWheel(fun e -> Log.warn "wheel %A" e; if e.Shift then Stop, None else Continue, None).Captured.ToAttribute()
 
                     style "width: 100%; grid-row: 2; height:100%"; 
                     attribute "showFPS" "true";         // optional, default is false
