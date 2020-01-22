@@ -15,7 +15,7 @@ let update (model : Model) (msg : Message) =
         | DropTop -> { model with location = Position.Top }
         | DropBottom -> { model with location = Position.Bottom }
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     let aard name = 
         img [
             // standard image stuff

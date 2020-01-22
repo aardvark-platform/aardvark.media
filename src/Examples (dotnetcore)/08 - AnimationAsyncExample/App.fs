@@ -47,7 +47,7 @@ module CameraAnimations =
 let update (m : Model) (msg : Message )  =
     match msg with
         | CameraMessage msg when not (shouldAnimate m) -> 
-            FreeFlyController.update' msg |> Lens.update Model.Lens.cameraState m 
+            { m with cameraState = FreeFlyController.update' msg m.cameraState }
         | Tick t when shouldAnimate m -> 
             match IndexList.tryAt 0 m.animations with
                 | Some anim -> 
@@ -63,7 +63,7 @@ let update (m : Model) (msg : Message )  =
                                      animations = IndexList.setAt 0 anim m.animations }
                 | None -> m
         | PushAnimation a -> 
-            { m with animations = IndexList.append a m.animations }
+            { m with animations = IndexList.add a m.animations }
         | RemoveAnimation i -> 
             { m with animations = IndexList.remove i m.animations }
         | Tick _ -> m // not allowed to animate
@@ -92,14 +92,14 @@ let update (m : Model) (msg : Message )  =
             { m with loadTasks = HashSet.remove name m.loadTasks; progress = HashMap.remove name m.progress }
     
 
-let viewScene (m : MModel) =
+let viewScene (m : AdaptiveModel) =
     Sg.box ~~C4b.DarkRed ~~Box3d.Unit
       |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
        }
 
-let view (m : MModel) =
+let view (m : AdaptiveModel) =
     let doubleClick (callback : V3d -> seq<'msg>) =
         "ondblclick", AttributeValue.Bubble {
             clientSide = fun send id -> 
@@ -146,7 +146,7 @@ let view (m : MModel) =
 
                         br[]; br[]; b [] [text "Pending operations (click to abort)"]
 
-                        Incremental.div AttributeMap.empty <| AList.mapi (fun i (taskName:string,progress:MTaskProgress) ->
+                        Incremental.div AttributeMap.empty <| AList.mapi (fun i (taskName:string,progress:AdaptiveTaskProgress) ->
                             let text = progress.percentage |> AVal.map (fun percentage -> sprintf "task %A: %A" (taskName.Substring(0,3)) percentage)
                             button [clazz "ui button"; onClick (fun _ -> StopTask taskName)] [Incremental.text text]
                         ) (m.progress |> AMap.toASet |> ASet.sortBy (fun (n,p) -> p.startTime))

@@ -45,7 +45,7 @@ let update (m : Model) (msg : Message) =
     match msg with
         | ClosePolygon _ -> 
             // add the working polygon to the list of finished polygon an start a fresh working polygon
-            { m with finishedPolygons = IndexList.append m.workingPolygon m.finishedPolygons; workingPolygon = { points = [] }; past = Some m }
+            { m with finishedPolygons = IndexList.add m.workingPolygon m.finishedPolygons; workingPolygon = { points = [] }; past = Some m }
         | AddPoint pt -> 
             // update the working polygon by prepending a point to the lsit of points. furthermore the past is our old model
             { m with workingPolygon = { points = pt :: m.workingPolygon.points}; past = Some m }
@@ -66,7 +66,7 @@ let update (m : Model) (msg : Message) =
 // in aardvark.ui view functions get one argument of type MModel (instead of the plain immutable model)
 // this allows for an efficient implementation since our MModel is an adaptive datastructure the gui and 
 // 3d rendering can depend on.
-let view (m : MModel) =
+let view (m : AdaptiveModel) =
 
     // convinience function for creating svg line elements.
     // documentation is online: https://www.w3schools.com/graphics/svg_line.asp

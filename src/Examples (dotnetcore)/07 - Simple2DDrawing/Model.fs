@@ -19,6 +19,7 @@ namespace Simple2DDrawing
 
 open Aardvark.Base // stuff like V2d
 open FSharp.Data.Adaptive // [<ModelType>] is defined here
+open Adaptify
 
 // start down with the definition of model
 

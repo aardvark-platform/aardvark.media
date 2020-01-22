@@ -22,7 +22,7 @@ let update (model : Model) (msg : Message) =
             }
         | ChangeCount n -> { model with count = Numeric.update model.count n }
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let dependencies = 
         [ 

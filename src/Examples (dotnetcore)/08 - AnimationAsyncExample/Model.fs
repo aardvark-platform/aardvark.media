@@ -3,6 +3,7 @@ namespace AnimationModel
 open Aardvark.Base                 
 open FSharp.Data.Adaptive 
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Time = float
 type RelativeTime = Time

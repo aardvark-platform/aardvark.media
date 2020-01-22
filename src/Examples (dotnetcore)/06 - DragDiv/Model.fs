@@ -3,6 +3,7 @@ namespace Model
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Adaptify
 
 type RelativeClick =
     {
@@ -17,7 +18,7 @@ type Message =
     | StopDrag of V2d
 
 [<ModelType>]
-type Object =
+type Obj =
     {
         position : V2d
     }
@@ -33,5 +34,5 @@ type Drag =
 type Model = 
     {
         dragObject : Option<Drag>
-        objects : HashMap<string, Object>
+        objects : HashMap<string, Obj>
     }

@@ -50,7 +50,7 @@ let dependencies =
         { kind = Script; url = "resources/DragUtilities.js"; name = "DragUtilities" }
     ]
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let baseStyle = "width: 50px; height: 50px;border:1px solid black;background: green;position:absolute;"
     let objects =
