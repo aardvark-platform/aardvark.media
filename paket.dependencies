@@ -5,6 +5,8 @@ source https://api.nuget.org/v3/index.json
 nuget FSharp.Core                       >= 4.6.2 lowest_matching: true
 nuget FSharp.Data                       ~> 3.0.0
 
+nuget FSharp.Data.Adaptive              ~> 0.0.17
+
 nuget Aardvark.Base.TypeProviders       ~> 4.5.14
 nuget Aardvark.Base                     ~> 5.0.0-prerelease0007
 nuget Aardvark.Base.Incremental         ~> 5.0.0-prerelease0007
@@ -21,7 +23,7 @@ nuget Aardvark.Rendering.Text           ~> 5.0.0-prerelease0001
 nuget Aardvark.Rendering.Vulkan         ~> 5.0.0-prerelease0001
 nuget Aardvark.GPGPU                    ~> 5.0.0-prerelease0001
 
-nuget Adaptify.MSBuild                  ~> 0.0.10
+nuget Adaptify.MSBuild                  ~> 0.0.11
 
 
 nuget FsPickler                         ~> 5.2.2
