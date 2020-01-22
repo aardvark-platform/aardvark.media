@@ -18,7 +18,7 @@ type Message =
     | StopDrag of V2d
 
 [<ModelType>]
-type Obj =
+type Object =
     {
         position : V2d
     }
@@ -34,5 +34,5 @@ type Drag =
 type Model = 
     {
         dragObject : Option<Drag>
-        objects : HashMap<string, Obj>
+        objects : HashMap<string, Object>
     }
