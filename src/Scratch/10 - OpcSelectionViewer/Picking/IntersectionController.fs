@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer.Picking
+namespace OpcSelectionViewer.Picking
 
 module IntersectionController = 
   open Aardvark.Application
@@ -11,9 +11,9 @@ module IntersectionController =
   open System.Drawing
   open Aardvark.SceneGraph.Opc
 
-  let hitBoxes (kd : hmap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
+  let hitBoxes (kd : HashMap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
     kd
-      |> HMap.toList 
+      |> HashMap.toList 
       |> List.map fst
       |> List.filter(
         fun x -> 
@@ -61,7 +61,7 @@ module IntersectionController =
   let loadTriangleSet (kd : LazyKdTree) =
     kd |> loadTriangles |> TriangleSet
     
-  let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =           
+  let loadObjectSet (cache : HashMap<string, ConcreteKdIntersectionTree>) (lvl0Tree : Level0KdTree) =           
     match lvl0Tree with
       | InCoreKdTree kd -> 
         kd.kdTree, cache
@@ -70,7 +70,7 @@ module IntersectionController =
           match kd.kdTree with
             | Some k -> k, cache
             | None -> 
-              let tree = cache |> HMap.tryFind (kd.boundingBox.ToString())
+              let tree = cache |> HashMap.tryFind (kd.boundingBox.ToString())
               match tree with
                 | Some t -> 
                   //Log.line "cache hit %A" kd.boundingBox
@@ -83,7 +83,7 @@ module IntersectionController =
 
                   let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
                                                       
-                  tree, (HMap.add key tree cache)
+                  tree, (HashMap.add key tree cache)
         kdTree, cache
 
   let intersectSingle ray (hitObject : 'a) (kdTree:ConcreteKdIntersectionTree) = 
@@ -162,13 +162,13 @@ module IntersectionController =
 
     exactUV
 
-  let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache
+  let intersectKdTrees (bb : Box3d) (hitObject : 'a) (cache : HashMap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: HashMap<Box3d, Level0KdTree>) = 
+      let kdtree, c = kdTreeMap |> HashMap.find bb |> loadObjectSet cache
       let hit = intersectSingle ray hitObject kdtree
       hit,c
 
-  let intersectKdTreeswithObjectIndex (bb : Box3d) (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
-      let kdtree, c =  kdTreeMap |> HMap.find bb |> loadObjectSet cache
+  let intersectKdTreeswithObjectIndex (bb : Box3d) (hitObject : 'a) (cache : HashMap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: HashMap<Box3d, Level0KdTree>) = 
+      let kdtree, c =  kdTreeMap |> HashMap.find bb |> loadObjectSet cache
       
       //let triangleSet = kdtree.KdIntersectionTree.
       let hit = intersectSingleForIndex ray hitObject kdtree
@@ -176,9 +176,9 @@ module IntersectionController =
       hit,c
 
 
-  let mutable cache = HMap.empty
+  let mutable cache = HashMap.empty
 
-  let intersectWithOpc (kdTree0 : option<hmap<Box3d, Level0KdTree>>) (hitObject : 'a) ray =
+  let intersectWithOpc (kdTree0 : option<HashMap<Box3d, Level0KdTree>>) (hitObject : 'a) ray =
     kdTree0
       |> Option.bind(fun kd ->
           let boxes = hitBoxes kd ray Trafo3d.Identity
@@ -197,7 +197,7 @@ module IntersectionController =
           
           match closest with
             | Some (values,bb) -> 
-              let lvl0KdTree = kd |> HMap.find bb
+              let lvl0KdTree = kd |> HashMap.find bb
 
               let position = ray.Ray.GetPointOnRay (fst values)
 
@@ -216,7 +216,7 @@ module IntersectionController =
   let intersect (m : PickingModel) opc (hit : SceneHit) (boxId : Box3d) = 
     let fray = hit.globalRay.Ray
             
-    let opcdings = m.pickingInfos |> HMap.tryFind boxId
+    let opcdings = m.pickingInfos |> HashMap.tryFind boxId
     match opcdings with
     | Some kk ->
 
@@ -226,7 +226,7 @@ module IntersectionController =
         | Some (t,_) -> 
           let hitpoint = fray.Ray.GetPointOnRay t
           Log.line "hit surface at %A" hitpoint            
-          { m with intersectionPoints = m.intersectionPoints |> PList.prepend hitpoint  }            
+          { m with intersectionPoints = m.intersectionPoints |> IndexList.prepend hitpoint  }            
         | None -> m      
     | None -> m
       

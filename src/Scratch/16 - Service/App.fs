@@ -1,9 +1,9 @@
-﻿module Inc.App
+module Inc.App
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Inc.Model
 
@@ -37,10 +37,10 @@ let update (send : InstanceMessage -> unit) (model : Model) (msg : Message) =
                     port = port
                     endpoint = e
                 }
-            { model with running = HMap.add id instance model.running }
+            { model with running = HashMap.add id instance model.running }
         | InstanceStatus (InstanceMessage.Exit e) -> 
             printfn "removing instance: %A" e
-            { model with running = HMap.remove e model.running }
+            { model with running = HashMap.remove e model.running }
         | InstanceStatus (InstanceMessage.Stderr(id,e)) -> 
             printfn "instance %A errors: %s" id e
             model
@@ -48,7 +48,7 @@ let update (send : InstanceMessage -> unit) (model : Model) (msg : Message) =
             printfn "instance %A says: %s" id e 
             model
         | Kill i -> 
-            match HMap.tryFind i model.running with
+            match HashMap.tryFind i model.running with
                 | Some instance -> 
                     Log.warn "killing: %A" instance
                     instance.p.Kill()
@@ -67,7 +67,7 @@ let view (model : MModel) =
                         | Some id -> 
                             let stdout = sprintf "./%s/stdout.txt" id
                             let stderr = sprintf "./%s/stderr.txt" id
-                            let url =  AMap.tryFind id model.running  |> Mod.map (function None -> None | Some instance -> Some (instance.endpoint.url instance.port)) 
+                            let url =  AMap.tryFind id model.running  |> AVal.map (function None -> None | Some instance -> Some (instance.endpoint.url instance.port)) 
                             let urlLink =
                                 amap {
                                     let! url = url
@@ -150,8 +150,8 @@ let app send =
         initial = 
             { 
                executables = 
-                    Discovery.discoverApps() |> PList.ofList
-               running = HMap.empty
+                    Discovery.discoverApps() |> IndexList.ofList
+               running = HashMap.empty
             }
         update = update send
         view = view

@@ -1,8 +1,8 @@
-﻿namespace CorrelationDrawing
+namespace CorrelationDrawing
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.UI
 
@@ -33,7 +33,7 @@ module Semantic =
     let view (s : MSemantic) =
         //require Html.semui (             
         div [clazz "ui"][
-            button [clazz "ui button"; onMouseClick (fun _ -> ChangeLabel)] [text (Mod.force s.label)]
+            button [clazz "ui button"; onMouseClick (fun _ -> ChangeLabel)] [text (AVal.force s.label)]
             ColorPicker.view s.style.color |> UI.map ColorPickerMessage
             button [clazz "ui button"; onMouseClick (fun _ -> ChangeThickness)] [text "Thickness"]
         ]

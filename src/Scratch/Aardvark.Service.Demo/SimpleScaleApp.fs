@@ -1,9 +1,9 @@
-﻿module SimpleScaleApp
+module SimpleScaleApp
 
 open SimpleScaleModel
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open UI.Composed
 open PRo3DModels
 open Aardvark.Base
@@ -22,7 +22,7 @@ let update (model : Model) (act : Action) : Model =
 
 let view (model : MModel) =
     
-    let frustum = Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+    let frustum = AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
             
     require (Html.semui) (
         div [clazz "ui"; style "background-color: #1B1C1E"] [
@@ -32,13 +32,13 @@ let view (model : MModel) =
                 ])
                 (
                     let boxGeometry = Box3d(-V3d.III, V3d.III)
-                    let box = Mod.constant (boxGeometry)   
+                    let box = AVal.constant (boxGeometry)   
                         
-                    let localScaleTrafo = model.scale.value |> Mod.map(fun d -> Trafo3d.Scale d)
+                    let localScaleTrafo = model.scale.value |> AVal.map(fun d -> Trafo3d.Scale d)
 
-                    let b = Sg.box (Mod.constant C4b.Blue) box
+                    let b = Sg.box (AVal.constant C4b.Blue) box
 
-                    let s = Sg.sphere 5 (Mod.constant C4b.Red) (Mod.constant 2.0)
+                    let s = Sg.sphere 5 (AVal.constant C4b.Red) (AVal.constant 2.0)
                                 |> Sg.trafo localScaleTrafo
 
                     [b; s]  |> Sg.ofList

@@ -1,7 +1,7 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
@@ -12,7 +12,7 @@ type Message =
     | ChangeThickness of Numeric.Action
     | ToggleAnimation
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         cameraState      : CameraControllerState

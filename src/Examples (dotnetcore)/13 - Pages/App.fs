@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 
@@ -31,7 +31,7 @@ let update (model : Model) (msg : Message) =
             { model with fill = not model.fill; past = Some model }
 
         | SetFiles files -> 
-            { model with files = PList.ofList files }
+            { model with files = IndexList.ofList files }
 
         | Undo ->
             match model.past with
@@ -50,18 +50,18 @@ let deps = [
 ]
 
 let viewScene (model : MModel) =
-    Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
     |> Sg.shader {
         do! DefaultSurfaces.trafo
         do! DefaultSurfaces.vertexColor
         do! DefaultSurfaces.simpleLighting
     }
     |> Sg.cullMode model.cullMode
-    |> Sg.fillMode (model.fill |> Mod.map (function true -> FillMode.Fill | false -> FillMode.Line))
+    |> Sg.fillMode (model.fill |> AVal.map (function true -> FillMode.Fill | false -> FillMode.Line))
 let view (model : MModel) =
 
 
-    let toggleBox (str : string) (state : IMod<bool>) (toggle : 'msg) =
+    let toggleBox (str : string) (state : aval<bool>) (toggle : 'msg) =
 
         let attributes = 
             amap {
@@ -81,7 +81,7 @@ let view (model : MModel) =
 
 
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ style "width: 100%; height:100%"; attribute "data-samples" "8" ]) 
                     (viewScene model)
 
@@ -131,7 +131,7 @@ let view (model : MModel) =
                 ]  
 
             | None -> 
-                model.dockConfig |> Mod.force |> Mod.constant |> docking [
+                model.dockConfig |> AVal.force |> AVal.constant |> docking [
                     style "width:100%;height:100%;"
                     onLayoutChanged UpdateConfig
                 ]
@@ -151,7 +151,7 @@ let app =
                 cameraState = initialCamera
                 cullMode = CullMode.None
                 fill = true
-                files = PList.empty
+                files = IndexList.empty
                 dockConfig =
                     config {
                         content (

@@ -1,4 +1,4 @@
-﻿namespace Viewer
+namespace Viewer
 
 open Aardvark.Service
 
@@ -6,8 +6,8 @@ open System
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.Application.WinForms
@@ -52,7 +52,7 @@ module KitchenSinkApp =
         
         {
             content = id
-            children = PList.ofList children
+            children = IndexList.ofList children
         }
 
     let randomTree (d : int) =
@@ -61,7 +61,7 @@ module KitchenSinkApp =
         let children = List.init cnt (fun i -> randomNode (d - 1))
         
         {
-            nodes = PList.ofList children
+            nodes = IndexList.ofList children
         }
 
 
@@ -69,13 +69,13 @@ module KitchenSinkApp =
     let initial =
         {
             lastName = None
-            elements = PList.ofList ["A"; "B"; "C"]
+            elements = IndexList.ofList ["A"; "B"; "C"]
             hasD3Hate = true
             boxHovered = false
             boxScale = 1.0
             dragging = false
             lastTime = MicroTime.Now
-            objects = HMap.empty
+            objects = HashMap.empty
             tree = randomTree 3
         }
 
@@ -85,21 +85,21 @@ module KitchenSinkApp =
                 match index with
                     | [] -> None
                     | h :: index ->
-                        match PList.tryGet h n.children with
+                        match IndexList.tryGet h n.children with
                             | Some c -> 
                                 match remNode index c with
-                                    | Some c -> Some { n with children = PList.set h c n.children }
-                                    | None -> Some { n with children = PList.remove h n.children }
+                                    | Some c -> Some { n with children = IndexList.set h c n.children }
+                                    | None -> Some { n with children = IndexList.remove h n.children }
                             | None ->
                                 Some n
 
             match index with
                 | h :: index ->
-                    match PList.tryGet h tree.nodes with
+                    match IndexList.tryGet h tree.nodes with
                         | Some c -> 
                             match remNode index c with
-                                | Some c -> { nodes = PList.set h c tree.nodes }
-                                | None -> { nodes = PList.remove h tree.nodes }
+                                | Some c -> { nodes = IndexList.set h c tree.nodes }
+                                | None -> { nodes = IndexList.remove h tree.nodes }
                         | _ ->
                             tree
                 | _ ->
@@ -110,20 +110,20 @@ module KitchenSinkApp =
                 match index with
                     | [] -> Some { n with content = f n.content }
                     | h :: index ->
-                        match PList.tryGet h n.children with
+                        match IndexList.tryGet h n.children with
                             | Some c -> 
                                 match traverse index c with
-                                    | Some c -> Some { n with children = PList.set h c n.children }
+                                    | Some c -> Some { n with children = IndexList.set h c n.children }
                                     | None -> None
                             | None ->
                                 None
 
             match index with
                 | h :: index ->
-                    match PList.tryGet h tree.nodes with
+                    match IndexList.tryGet h tree.nodes with
                         | Some c -> 
                             match traverse index c with
-                                | Some c -> { nodes = PList.set h c tree.nodes }
+                                | Some c -> { nodes = IndexList.set h c tree.nodes }
                                 | None -> tree
                         | _ ->
                             tree
@@ -141,12 +141,12 @@ module KitchenSinkApp =
                 { m with tree = initial.tree }
 
             | ClearTree ->
-                { m with tree = { nodes = PList.empty } }
+                { m with tree = { nodes = IndexList.empty } }
 
             | KillNode index ->
                 { m with tree = Tree.remove index m.tree }
             | AddButton(before, str) -> 
-                { m with lastName = Some str; elements = PList.remove before m.elements }
+                { m with lastName = Some str; elements = IndexList.remove before m.elements }
             | Hugo l ->
                 let res : list<string> = l |> List.map Pickler.json.UnPickleOfString
                 printfn "%A" res
@@ -204,7 +204,7 @@ module KitchenSinkApp =
     let view (m : MModel) =
         let view = CameraView.lookAt (V3d.III * 6.0) V3d.Zero V3d.OOI
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
-        let cam = Mod.constant (Camera.create view frustum)
+        let cam = AVal.constant (Camera.create view frustum)
 
         div [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
 
@@ -235,12 +235,12 @@ module KitchenSinkApp =
                         b [] [text "Status"]
                         div [ clazz "menu" ] [
                             span [clazz "item"; attribute "style" "color: red; font-weight: bold"] [ 
-                                m.boxHovered |> Mod.map (function true -> "hovered" | false -> "not hovered") |> Incremental.text 
+                                m.boxHovered |> AVal.map (function true -> "hovered" | false -> "not hovered") |> Incremental.text 
                             ]
                             
                             div [clazz "item"] [
                                 span [] [text "current scale: "]
-                                span [attribute "style" "color: red; font-weight: bold"] [ m.boxScale |> Mod.map string |> Incremental.text ]
+                                span [attribute "style" "color: red; font-weight: bold"] [ m.boxScale |> AVal.map string |> Incremental.text ]
                             ]
 
                             div [clazz "item"] [
@@ -263,7 +263,7 @@ module KitchenSinkApp =
                                             js "oncontextmenu" "event.preventDefault();"
                                         ] 
                                         [
-                                            Incremental.text (Mod.map (sprintf "Node%d") v)
+                                            Incremental.text (AVal.map (sprintf "Node%d") v)
                                         ]
                                 )
                             ]
@@ -280,11 +280,11 @@ module KitchenSinkApp =
                     ] 
                 )
                 (
-                    let value = m.lastName |> Mod.map (function Some str -> str | None -> "yeah")
+                    let value = m.lastName |> AVal.map (function Some str -> str | None -> "yeah")
 
                     let baseBox = Box3d(-V3d.III, V3d.III)
-                    let box = m.boxHovered |> Mod.map (fun h -> if h then baseBox.ScaledFromCenterBy(1.3) else baseBox)
-                    let color = m.boxHovered |> Mod.map (fun h -> if h then C4b.Red else C4b.Green)
+                    let box = m.boxHovered |> AVal.map (fun h -> if h then baseBox.ScaledFromCenterBy(1.3) else baseBox)
+                    let color = m.boxHovered |> AVal.map (fun h -> if h then C4b.Red else C4b.Green)
 
                     let box =
                         Sg.box color box
@@ -298,7 +298,7 @@ module KitchenSinkApp =
                                  
 
                     let sg = 
-                        box |> Sg.trafo (m.boxScale |> Mod.map Trafo3d.Scale)
+                        box |> Sg.trafo (m.boxScale |> AVal.map Trafo3d.Scale)
                             |> Sg.withEvents [
                                 Sg.onEnter (fun p -> Enter)
                                 Sg.onLeave (fun () -> Exit)
@@ -309,7 +309,7 @@ module KitchenSinkApp =
                     Sg.ofList [
                         sg
 
-                        Sg.markdown MarkdownConfig.light (m.lastName |> Mod.map (Option.defaultValue "yeah"))
+                        Sg.markdown MarkdownConfig.light (m.lastName |> AVal.map (Option.defaultValue "yeah"))
                             |> Sg.noEvents
                             |> Sg.transform (Trafo3d.FromOrthoNormalBasis(-V3d.IOO, V3d.OOI, V3d.OIO))
                             |> Sg.translate 0.0 0.0 3.0

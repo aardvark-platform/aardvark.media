@@ -1,10 +1,10 @@
-﻿namespace Examples.TemplateModel
+namespace Examples.TemplateModel
 
 open Aardvark.Base                 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
-[<DomainType>]
+[<ModelType>]
 type Model = { camera : CameraControllerState }
 
 type Message = 

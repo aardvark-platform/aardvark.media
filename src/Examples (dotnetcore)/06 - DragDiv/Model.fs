@@ -1,7 +1,7 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 type RelativeClick =
@@ -16,22 +16,22 @@ type Message =
     | Move of V2d
     | StopDrag of V2d
 
-[<DomainType>]
+[<ModelType>]
 type Object =
     {
         position : V2d
     }
 
-[<DomainType>]
+[<ModelType>]
 type Drag = 
     {
         name : string
         startOffset : V2d
     }
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         dragObject : Option<Drag>
-        objects : hmap<string, Object>
+        objects : HashMap<string, Object>
     }

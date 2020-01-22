@@ -1,7 +1,7 @@
-﻿namespace OrthoCamera
+namespace OrthoCamera
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
@@ -24,10 +24,10 @@ module OrthoCameraDemo =
           model.camera.view 
               
       let frustum =
-          Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+          AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
     
-      let box = Mod.constant (Box3d(-V3d.III, V3d.III))
-      let c = Mod.constant (C4b.DarkCyan)
+      let box = AVal.constant (Box3d(-V3d.III, V3d.III))
+      let c = AVal.constant (C4b.DarkCyan)
   
       let scene = 
         Sg.box c box                            
@@ -45,7 +45,7 @@ module OrthoCameraDemo =
         let min = V3d(-d, -d, -d*2.0)
         let max = V3d(d, d, d*2.0)
         let fr = Frustum.ortho (Box3d(min, max))
-        Mod.constant (Frustum.orthoTrafo fr)
+        AVal.constant (Frustum.orthoTrafo fr)
 
       let ortho =
         let d = 5.0
@@ -53,11 +53,11 @@ module OrthoCameraDemo =
         let min = V3d(-d, -d, -d*2.0)
         let max = V3d(d, d, d*2.0)
         let fr = Frustum.ortho (Box3d(min, max))
-        Mod.constant (fr)
+        AVal.constant (fr)
 
       require (Html.semui) ( 
           Incremental.renderControl'
-            (Mod.map2 Camera.create model.camera.view ortho)
+            (AVal.map2 Camera.create model.camera.view ortho)
             (AttributeMap.unionMany [
                 renderControlAttributes                                
                 [

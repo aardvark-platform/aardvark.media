@@ -1,14 +1,14 @@
-﻿namespace Inc.Model
+namespace Inc.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 type Message = 
     | Inc
     | Camera of FreeFlyController.Message
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         value : int
@@ -16,11 +16,11 @@ type Model =
     }
 
 [<ReferenceEquality;>]
-type Object = { trafo : IMod<string> }
+type Object = { trafo : aval<string> }
 [<ReferenceEquality;>]
 type Scene = { objects : aset<Object> }
 
-[<DomainType>]
+[<ModelType>]
 type IObject = { itrafo : string }
-[<DomainType>]
-type IScene = { iobjects : hrefset<IObject> }
+[<ModelType>]
+type IScene = { iobjects : CountingHashSet<IObject> }

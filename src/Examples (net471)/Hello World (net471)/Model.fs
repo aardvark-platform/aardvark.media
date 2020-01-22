@@ -1,5 +1,6 @@
 ﻿namespace Model
 
+open Adaptify
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives

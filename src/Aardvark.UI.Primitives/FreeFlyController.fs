@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Primitives
+namespace Aardvark.UI.Primitives
 
 open System
 
@@ -14,7 +14,7 @@ open Aardvark.UI.Primitives.TouchStick
 open FSharp.Data.Adaptive.Operators
 
 module FreeFlyController =
-    //open Aardvark.Base.Incremental.Operators
+    //open FSharp.Data.Adaptive.Operators
                         
 
     let initial =

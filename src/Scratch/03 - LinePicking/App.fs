@@ -1,8 +1,8 @@
-﻿namespace LinePickingDemo
+namespace LinePickingDemo
 
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 
 open Aardvark.SceneGraph
@@ -28,13 +28,13 @@ module LineDrawing =
         toEffect DefaultSurfaces.vertexColor
         toEffect DefaultSurfaces.thickLine
       ]
-      |> Sg.uniform "LineWidth" (Mod.constant 5.0)
+      |> Sg.uniform "LineWidth" (AVal.constant 5.0)
 
   let sphere color size pos =
     let trafo = 
-      pos |> Mod.map(fun x -> Trafo3d.Translation x)
+      pos |> AVal.map(fun x -> Trafo3d.Translation x)
     
-    Sg.sphere 3 (Mod.constant color) (Mod.constant size)
+    Sg.sphere 3 (AVal.constant color) (AVal.constant size)
       |> Sg.noEvents
       |> Sg.trafo trafo
         
@@ -91,16 +91,16 @@ module App =
     corners |> LineDrawing.cylinders
 
 
-  let pickable' (pick :IMod<Pickable>) (sg: ISg) =
-        Sg.PickableApplicator (pick, Mod.constant sg)
+  let pickable' (pick :aval<Pickable>) (sg: ISg) =
+        Sg.PickableApplicator (pick, AVal.constant sg)
 
   let scene (model:MModel) =
-    let color = Mod.constant C4b.Blue
+    let color = AVal.constant C4b.Blue
     let boxGeometry = Box3d(-V3d.III, V3d.III)
     let corners = boxGeometry.ComputeCorners()
 
     
-    let pickable = { shape = PickShape.Box (boxGeometry.Scaled(V3d(1.1))); trafo = Trafo3d.Identity } |> Mod.constant
+    let pickable = { shape = PickShape.Box (boxGeometry.Scaled(V3d(1.1))); trafo = Trafo3d.Identity } |> AVal.constant
 
     let wireBox picking =
       corners
@@ -111,13 +111,13 @@ module App =
         |> Sg.withEvents [
            SceneEventKind.Down, (
              fun sceneHit ->
-               if (picking |> Mod.force) then
+               if (picking |> AVal.force) then
                  Stop, Seq.ofList[PickPolygon (sceneHit)]
                else
                  Continue, Seq.ofList[])
         ]
                 
-    let box = Mod.constant (boxGeometry)
+    let box = AVal.constant (boxGeometry)
   
     let b = 
       Sg.box color box                            
@@ -130,16 +130,16 @@ module App =
 
     let hitPoint =
       model.hitPoint 
-      |> Mod.map(
+      |> AVal.map(
         function
-          | Some y -> LineDrawing.sphere C4b.Red 0.08 (y|>Mod.constant)
+          | Some y -> LineDrawing.sphere C4b.Red 0.08 (y|>AVal.constant)
           | None -> Sg.empty) |> Sg.dynamic
       
     [wireBox model.isShift; hitPoint] |> Sg.ofList
   
   let view (model : MModel) =
     let frustum =
-      Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+      AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
     
     let renderControlAttributes = 
       CameraController.extractAttributes model.camera FreeFlyAction |> AttributeMap.ofAMap
@@ -148,7 +148,7 @@ module App =
       div [clazz "ui"; style "background: #1B1C1E"] [
         yield 
           Incremental.renderControl 
-            (Mod.map2 Camera.create model.camera.view frustum) 
+            (AVal.map2 Camera.create model.camera.view frustum) 
             (AttributeMap.unionMany [
                 renderControlAttributes                   
                 [

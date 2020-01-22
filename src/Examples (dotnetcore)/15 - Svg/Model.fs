@@ -1,7 +1,7 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
@@ -19,7 +19,7 @@ type Message =
     | SetStepSize of Numeric.Action
 
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         dragInfo   : Option<DragInfo>

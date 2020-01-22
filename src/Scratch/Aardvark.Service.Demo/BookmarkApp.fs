@@ -1,11 +1,11 @@
-﻿namespace UI.Composed
+namespace UI.Composed
 
 open System
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -31,7 +31,7 @@ module BookmarkApp =
         | Exit       
     
     let getNewBookmark (p:V3d)(m:BookmarkAppModel) = 
-        let id = sprintf "%d" (PList.count m.bookmarks)
+        let id = sprintf "%d" (IndexList.count m.bookmarks)
         let bm = {
             id = id
             point = p
@@ -59,7 +59,7 @@ module BookmarkApp =
             | Move p, true -> 
                     { model with hoverPosition = Some (Trafo3d.Translation p) }
             | AddBookmark p, true ->
-                    { model with bookmarks = model.bookmarks |> PList.append (getNewBookmark p model) }
+                    { model with bookmarks = model.bookmarks |> IndexList.append (getNewBookmark p model) }
             | UpdateCam id, _ -> 
                     let bm = (findBM id model)
                     { model with bookmarkCamera = bm.camState }            
@@ -72,7 +72,7 @@ module BookmarkApp =
 
     module Draw =
 
-        let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =        
+        let computeScale (view : aval<CameraView>)(p:aval<V3d>)(size:float) =        
             adaptive {
                 let! p = p
                 let! v = view
@@ -81,8 +81,8 @@ module BookmarkApp =
                 return distF * size / 800.0 //needs hfov at this point
             }
 
-        let computeScale2 (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =     
-            Mod.map2 (fun (p : V3d) (v : CameraView) -> 
+        let computeScale2 (view : aval<CameraView>)(p:aval<V3d>)(size:float) =     
+            AVal.map2 (fun (p : V3d) (v : CameraView) -> 
                 let distV = p - v.Location
                 let distF = V3d.Dot(v.Forward, distV)
                 distF * size / 800.0 //needs hfov at this point
@@ -104,7 +104,7 @@ module BookmarkApp =
         
         let canvas =  
             let b = new Box3d( V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0) )                                               
-            Sg.box (Mod.constant C4b.White) (Mod.constant b)
+            Sg.box (AVal.constant C4b.White) (AVal.constant b)
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -118,31 +118,31 @@ module BookmarkApp =
                         Sg.onLeave (fun _ -> Exit)
                     ]    
 
-        let brush (hovered : IMod<Trafo3d option>) = 
+        let brush (hovered : aval<Trafo3d option>) = 
             let trafo =
-                hovered |> Mod.map (function o -> match o with 
+                hovered |> AVal.map (function o -> match o with 
                                                     | Some t-> t
                                                     | None -> Trafo3d.Scale(V3d.Zero))
 
-            mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo ""
+            mkISg (AVal.constant C4b.Red) (AVal.constant 0.05) trafo ""
 
-        let dots (bm : MBookmark) (point : IMod<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =         
-            mkISg color (computeScale view point 5.0) (point |> Mod.map Trafo3d.Translation) (Mod.force bm.id)              
+        let dots (bm : MBookmark) (point : aval<V3d>) (color : aval<C4b>) (view : aval<CameraView>) =         
+            mkISg color (computeScale view point 5.0) (point |> AVal.map Trafo3d.Translation) (AVal.force bm.id)              
 
 
         let getColor (model : MBookmarkAppModel) (bm : MBookmark) =
-            let hc = Mod.constant (new C4b(0, 0, 255))
+            let hc = AVal.constant (new C4b(0, 0, 255))
 
             adaptive {
                 let! hovered = model.boxHovered
                 match hovered with
-                    | Some k when k = Mod.force bm.id -> 
+                    | Some k when k = AVal.force bm.id -> 
                         return! hc
                     | _ -> return! bm.color
             }
 
 
-        let bookmark' (model : MBookmarkAppModel)(bm : MBookmark)(view : IMod<CameraView>) = 
+        let bookmark' (model : MBookmarkAppModel)(bm : MBookmark)(view : aval<CameraView>) = 
             let point = bm.point            
             let color = getColor model bm
 
@@ -151,7 +151,7 @@ module BookmarkApp =
     let view (model : MBookmarkAppModel) =
                     
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
         require (Html.semui) (
             body [clazz "ui"; style "background: #1B1C1E"] [
@@ -190,8 +190,8 @@ module BookmarkApp =
                                             amap {
                                                 let! c = Draw.getColor model b
                                                 yield style (sprintf "background: %s" (Html.ofC4b c))
-                                                yield onClick(fun _ -> UpdateCam (Mod.force b.id))
-                                                yield onMouseEnter(fun _ -> Enter (Mod.force b.id))
+                                                yield onClick(fun _ -> UpdateCam (AVal.force b.id))
+                                                yield onMouseEnter(fun _ -> Enter (AVal.force b.id))
                                                 yield onMouseLeave(fun _ -> Exit) 
                                                 yield clazz "item"
                                             } |> AttributeMap.ofAMap
@@ -218,7 +218,7 @@ module BookmarkApp =
             hoverPosition = None
             draw = false            
             
-            bookmarks = PList.empty
+            bookmarks = IndexList.empty
         }
 
     let app : App<BookmarkAppModel,MBookmarkAppModel,Action> =

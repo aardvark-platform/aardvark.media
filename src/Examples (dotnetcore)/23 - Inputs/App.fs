@@ -1,11 +1,11 @@
-﻿module Input.App
+module Input.App
 
 open Aardvark.UI
 open Aardvark.UI.Generic
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Input
 
@@ -16,7 +16,7 @@ let initial =
         value = Constant.Pi
         name = "Pi"
         alt = Some A
-        options = HMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
+        options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
     }
 
 
@@ -38,7 +38,7 @@ let update (model : Model) (msg : Message) =
                 model
         | SetName n ->
             if model.active then
-                { model with name = n; options = HMap.add (Custom n) n model.options }
+                { model with name = n; options = HashMap.add (Custom n) n model.options }
             else
                 model
         | SetAlternative a ->

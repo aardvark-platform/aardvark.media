@@ -1,9 +1,9 @@
-﻿module App
+module App
 
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 
 open Aardvark.UI
@@ -20,7 +20,7 @@ module Lens =
 
 
 let shouldAnimate (m : Model) =
-    m.animation = Animate.On && PList.count m.animations > 0
+    m.animation = Animate.On && IndexList.count m.animations > 0
 
 let updateAnimation (m : 'm) (t : Time) (a : Animation<'m,'s,'a>) =
     match a.state with
@@ -49,23 +49,23 @@ let update (m : Model) (msg : Message )  =
         | CameraMessage msg when not (shouldAnimate m) -> 
             FreeFlyController.update' msg |> Lens.update Model.Lens.cameraState m 
         | Tick t when shouldAnimate m -> 
-            match PList.tryAt 0 m.animations with
+            match IndexList.tryAt 0 m.animations with
                 | Some anim -> 
                     // initialize animation (if needed)
                     let (anim,localTime,state) = updateAnimation m t anim
                     match anim.sample(localTime, t) state with 
-                        | None -> { m with animations = PList.removeAt 0 m.animations } // animation stops, so pop it
+                        | None -> { m with animations = IndexList.removeAt 0 m.animations } // animation stops, so pop it
                         | Some (s,cameraView) -> 
                             // feed in new state
                             let anim = { anim with state = Some s } 
                             // activate result in camera state
                             { m with cameraState = { m.cameraState with view = cameraView }; 
-                                     animations = PList.setAt 0 anim m.animations }
+                                     animations = IndexList.setAt 0 anim m.animations }
                 | None -> m
         | PushAnimation a -> 
-            { m with animations = PList.append a m.animations }
+            { m with animations = IndexList.append a m.animations }
         | RemoveAnimation i -> 
-            { m with animations = PList.remove i m.animations }
+            { m with animations = IndexList.remove i m.animations }
         | Tick _ -> m // not allowed to animate
         | CameraMessage _ -> m // not allowed to camera around
         | Pong -> 
@@ -77,19 +77,19 @@ let update (m : Model) (msg : Message )  =
         | StartAsyncOperation -> 
             let name = System.Guid.NewGuid() |> string
             printfn "starting async operation: %s" name
-            { m with loadTasks = HSet.add name m.loadTasks; progress = HMap.add name { percentage = 0.0; startTime = System.DateTime.Now } m.progress }
+            { m with loadTasks = HashSet.add name m.loadTasks; progress = HashMap.add name { percentage = 0.0; startTime = System.DateTime.Now } m.progress }
         | AsyncOperationComplete (name,result) -> 
             printfn "operation complete: %s, result was: %A" name result
-            { m with loadTasks = HSet.remove name m.loadTasks; progress = HMap.remove name m.progress }
+            { m with loadTasks = HashSet.remove name m.loadTasks; progress = HashMap.remove name m.progress }
         | Message.Progress(name,percentage) ->    
             let update progress =
                 match progress with
                     | None -> Log.warn "non existing task reported progress."; None // just cancelled task reported progress
                     | Some old -> Some { old with percentage = percentage }
-            { m with progress = HMap.alter name update m.progress }
+            { m with progress = HashMap.alter name update m.progress }
         | StopTask name -> 
             printfn "stopping task: %s" name
-            { m with loadTasks = HSet.remove name m.loadTasks; progress = HMap.remove name m.progress }
+            { m with loadTasks = HashSet.remove name m.loadTasks; progress = HashMap.remove name m.progress }
     
 
 let viewScene (m : MModel) =
@@ -120,7 +120,7 @@ let view (m : MModel) =
     body [ style "background: #1B1C1E"] [
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
-                FreeFlyController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                FreeFlyController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ 
                         attribute "style" "width:85%; height: 100%; float: left;";
                         attribute "data-samples" "8"
@@ -147,7 +147,7 @@ let view (m : MModel) =
                         br[]; br[]; b [] [text "Pending operations (click to abort)"]
 
                         Incremental.div AttributeMap.empty <| AList.mapi (fun i (taskName:string,progress:MTaskProgress) ->
-                            let text = progress.percentage |> Mod.map (fun percentage -> sprintf "task %A: %A" (taskName.Substring(0,3)) percentage)
+                            let text = progress.percentage |> AVal.map (fun percentage -> sprintf "task %A: %A" (taskName.Substring(0,3)) percentage)
                             button [clazz "ui button"; onClick (fun _ -> StopTask taskName)] [Incremental.text text]
                         ) (m.progress |> AMap.toASet |> ASet.sortBy (fun (n,p) -> p.startTime))
                     ]
@@ -217,7 +217,7 @@ let threads (m : Model) =
                 yield AsyncOperationComplete (taskName, float iter)
             }
 
-        HSet.fold (fun pool operationId -> 
+        HashSet.fold (fun pool operationId -> 
             ThreadPool.add operationId (asyncOperationWithProgress operationId) pool
         ) ThreadPool.empty m.loadTasks
 
@@ -247,11 +247,11 @@ let app =
                    { FreeFlyController.initial with 
                         view = CameraView.lookAt (V3d.III * 3.0) V3d.Zero V3d.OOI
                    }
-               animations = PList.empty
+               animations = IndexList.empty
                animation = Animate.On
                pending = None
-               loadTasks = HSet.empty
-               progress = HMap.empty
+               loadTasks = HashSet.empty
+               progress = HashMap.empty
             }
         update = update 
         view = view

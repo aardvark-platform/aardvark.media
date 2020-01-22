@@ -1,7 +1,7 @@
-﻿namespace OrthoCamera
+namespace OrthoCamera
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
@@ -9,7 +9,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 
 module OrthoCameraModel =
-  [<DomainType>]
+  [<ModelType>]
   type OrthoModel =
     {
       camera     : CameraControllerState

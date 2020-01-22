@@ -1,8 +1,8 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
@@ -22,8 +22,8 @@ module SceneObjectHandling =
   let font = Font("Consolas")
   let border = { left = 0.01; right = 0.01; top = 0.01; bottom = 0.01 }
   
-  let pickable' (pick :IMod<Pickable>) (sg: ISg) =
-    Sg.PickableApplicator (pick, Mod.constant sg)
+  let pickable' (pick :aval<Pickable>) (sg: ISg) =
+    Sg.PickableApplicator (pick, AVal.constant sg)
 
   let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
     let boundingBox, opcData = data
@@ -46,8 +46,8 @@ module SceneObjectHandling =
           let tex = FileTexture(texPath,config) :> ITexture
                     
           Sg.ofIndexedGeometry g
-              |> Sg.trafo (Mod.constant info.Local2Global)             
-              |> Sg.diffuseTexture (Mod.constant tex)             
+              |> Sg.trafo (AVal.constant info.Local2Global)             
+              |> Sg.diffuseTexture (AVal.constant tex)             
           )
         |> Sg.ofList   
     
@@ -63,7 +63,7 @@ module SceneObjectHandling =
       |> Sg.withEvents [
           SceneEventKind.Down, (
             fun sceneHit -> 
-              let intersect = m.pickingActive |> Mod.force
+              let intersect = m.pickingActive |> AVal.force
               if intersect then              
                 Stop, Seq.ofList[(HitSurface (boundingBox,sceneHit)) |> PickingAction]
               else 

@@ -1,8 +1,8 @@
-﻿module SimpleTestApp
+module SimpleTestApp
 
 open SimpleTest
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.SceneGraph
 open Aardvark.Base.Rendering
@@ -36,7 +36,7 @@ let threeD (m : MModel) =
         }
 
     let sg =
-        Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+        Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
         |> Sg.requirePicking
         |> Sg.noEvents
         //|> Sg.pickable (PickShape.Box Box3d.Unit)       
@@ -57,24 +57,24 @@ let threeD (m : MModel) =
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
 
     let att = AttributeMap.ofList [ attribute "style" "width:70%; height: 70%"]
-    let control = Incremental.renderControl (Mod.constant Unchecked.defaultof<_>) att sg
+    let control = Incremental.renderControl (AVal.constant Unchecked.defaultof<_>) att sg
 
     let cmds = 
         alist {
             let! sphereFirst = m.sphereFirst
             if not sphereFirst then
                 yield SceneGraph sg
-                yield Clear(None,Some (Mod.constant 1.0))
+                yield Clear(None,Some (AVal.constant 1.0))
                 yield SceneGraph other
             else
                 yield SceneGraph other
-                yield Clear(None,Some (Mod.constant 1.0))
+                yield Clear(None,Some (AVal.constant 1.0))
                 yield SceneGraph sg
         }
 
-    let control = DomNode.RenderControl(att,(Mod.constant Unchecked.defaultof<_>),cmds,None)
+    let control = DomNode.RenderControl(att,(AVal.constant Unchecked.defaultof<_>),cmds,None)
 
-    CameraController.withControls m.cameraModel CameraAction (Mod.constant frustum) control
+    CameraController.withControls m.cameraModel CameraAction (AVal.constant frustum) control
 
 
 let view (m : MModel) =
@@ -88,7 +88,7 @@ let view (m : MModel) =
         text "constant text"
         br []
         Incremental.text s
-        //text (Mod.force s)
+        //text (AVal.force s)
         br []
         button [onMouseClick (fun _ -> Inc)] [text "inc"]
         button [onMouseClick (fun _ -> Dec)] [text "dec"]

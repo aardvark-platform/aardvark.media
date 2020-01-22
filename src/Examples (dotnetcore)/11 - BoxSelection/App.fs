@@ -1,9 +1,9 @@
-﻿module App
+module App
 
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
@@ -34,9 +34,9 @@ let update (model : BoxSelectionDemoModel) (act : Action) =
             { model with rendering = RenderingParameters.update model.rendering a }
         | Select id-> 
             let selection = 
-                if HSet.contains id model.selectedBoxes 
-                then HSet.remove id model.selectedBoxes 
-                else HSet.add id model.selectedBoxes
+                if HashSet.contains id model.selectedBoxes 
+                then HashSet.remove id model.selectedBoxes 
+                else HashSet.add id model.selectedBoxes
 
             { model with selectedBoxes = selection }           
         | Enter id-> { model with boxHovered = Some id }            
@@ -46,13 +46,13 @@ let update (model : BoxSelectionDemoModel) (act : Action) =
             let i = model.boxes.Count                
             let box = Primitives.mkNthBox i (i+1) |> mkVisibleBox Primitives.colors.[i % 5]
                                          
-            { model with boxes = PList.append box model.boxes }
+            { model with boxes = IndexList.append box model.boxes }
         | RemoveBox ->  
             let i = model.boxes.Count - 1
-            let boxes = PList.removeAt i model.boxes
+            let boxes = IndexList.removeAt i model.boxes
 
             {model with boxes = boxes}
-        | ClearSelection -> { model with selectedBoxes = HSet.empty}
+        | ClearSelection -> { model with selectedBoxes = HashSet.empty}
                         
 let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
@@ -62,14 +62,14 @@ let mkColor (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
     let color =  
         model.selectedBoxes 
             |> ASet.contains id 
-            |> Mod.bind (function 
-                | true -> Mod.constant Primitives.selectionColor 
+            |> AVal.bind (function 
+                | true -> AVal.constant Primitives.selectionColor 
                 | false -> box.color
               )
 
     let color = 
-        model.boxHovered |> Mod.bind (function 
-            | Some k -> if k = id then Mod.constant Primitives.hoverColor else color
+        model.boxHovered |> AVal.bind (function 
+            | Some k -> if k = id then AVal.constant Primitives.hoverColor else color
             | None -> color
         )
 
@@ -131,7 +131,7 @@ let view (model : MBoxSelectionDemoModel) =
         model.camera.view 
                            
     let frustum =
-        Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+        AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
@@ -223,10 +223,10 @@ let initial =
         camera           = FreeFlyController.initial            
         rendering        = RenderingParameters.initial            
         boxHovered       = None
-        boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> mkVisibleBox Primitives.colors.[i % 5] k) |> PList.ofList
-        selectedBoxes = HSet.empty         
-        boxesSet = HSet.empty
-        boxesMap = HMap.empty
+        boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> mkVisibleBox Primitives.colors.[i % 5] k) |> IndexList.ofList
+        selectedBoxes = HashSet.empty         
+        boxesSet = HashSet.empty
+        boxesMap = HashMap.empty
     }
 
 let app : App<BoxSelectionDemoModel,MBoxSelectionDemoModel,Action> =

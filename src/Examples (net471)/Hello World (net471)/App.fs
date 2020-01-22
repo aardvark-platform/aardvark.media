@@ -12,7 +12,7 @@ let update (model : Model) (msg : Message) =
     match msg with
         Inc -> { model with value = model.value + 1 }
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     body [] [
         text "Hello World"
         br []

@@ -3,8 +3,8 @@ namespace AnimationDemo
   module AnimationDemoApp = 
     
     open Aardvark.Base
-    open Aardvark.Base.Incremental
-    open Aardvark.Base.Incremental.Operators
+    open FSharp.Data.Adaptive
+    open FSharp.Data.Adaptive.Operators
     open Aardvark.Base.Rendering
     
     open Aardvark.UI
@@ -41,7 +41,7 @@ namespace AnimationDemo
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
            }
-          |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d.IOO * -2.0)))
+          |> Sg.trafo (AVal.constant (Trafo3d.Translation(V3d.IOO * -2.0)))
 
         Sg.ofList [b1; b2]
         
@@ -49,7 +49,7 @@ namespace AnimationDemo
       body [ style "background: #1B1C1E"] [
         require (Html.semui) (
           div [clazz "ui"; style "background: #1B1C1E"] [
-            CameraController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+            CameraController.controlledControl m.cameraState CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                 (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"]) (viewScene m)
     
             div [style "width:15%; height: 100%; float:right"] [
@@ -77,7 +77,7 @@ namespace AnimationDemo
                     |> UI.map AnimationMessage
 
                 button [clazz "ui button"; onClick (fun _ ->  
-                  AnimationAction.PushAnimation (CameraAnimations.animateFoward ((V3d.IOO * -2.0) - (m.cameraState.view |> Mod.force).Location).Normalized 2.0 "rotate"))] [text "foward"] 
+                  AnimationAction.PushAnimation (CameraAnimations.animateFoward ((V3d.IOO * -2.0) - (m.cameraState.view |> AVal.force).Location).Normalized 2.0 "rotate"))] [text "foward"] 
                     |> UI.map AnimationMessage
     
                 br[]; br[]; b [] [text "Pending animations (click to abort)"]
@@ -120,7 +120,7 @@ namespace AnimationDemo
                }
              animations = 
                { 
-                 animations =  PList.empty; 
+                 animations =  IndexList.empty; 
                  animation  = Animate.On; 
                  cam        = initialView }
                }

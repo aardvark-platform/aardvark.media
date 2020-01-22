@@ -1,4 +1,4 @@
-﻿namespace OpcSelectionViewer.Picking
+namespace OpcSelectionViewer.Picking
 
 open System
 open Aardvark.Base
@@ -67,7 +67,7 @@ module KdTrees =
     ConcreteKdIntersectionTree(treeOida, Trafo3d.Identity)
 
 
-  let loadKdTrees' (h : PatchHierarchy) (trafo:Trafo3d) (load : bool) (mode:ViewerModality) (b : BinarySerializer) : hmap<Box3d,Level0KdTree> =
+  let loadKdTrees' (h : PatchHierarchy) (trafo:Trafo3d) (load : bool) (mode:ViewerModality) (b : BinarySerializer) : HashMap<Box3d,Level0KdTree> =
     //ObjectBuilder
 
     let masterKdPath = 
@@ -80,9 +80,9 @@ module KdTrees =
     if System.IO.File.Exists(cacheFile) then
       Log.line "Found lazy kdtree cache"
       if load then
-        loadAs<list<Box3d*Level0KdTree>> cacheFile b |> HMap.ofList
+        loadAs<list<Box3d*Level0KdTree>> cacheFile b |> HashMap.ofList
       else
-        HMap.empty
+        HashMap.empty
     else
       
       Log.line "did not find lazy kdtree cache"
@@ -104,7 +104,7 @@ module KdTrees =
                kdTree = tree;
                boundingBox = tree.KdIntersectionTree.BoundingBox3d.Transformed(trafo)
             }
-            HMap.add kd.boundingBox (InCoreKdTree kd) HMap.empty
+            HashMap.add kd.boundingBox (InCoreKdTree kd) HashMap.empty
           | (true, true) ->   
             Log.line "Found master kdtree and patch trees"
             Log.startTimed "building lazy kdtree cache"
@@ -145,12 +145,12 @@ module KdTrees =
             bla |> save cacheFile b |> ignore
                
             if load then
-              bla |> HMap.ofList
+              bla |> HashMap.ofList
             else
-              HMap.empty
+              HashMap.empty
           | _ ->
             Log.warn "Could not find level 0 kdtrees"
-            HMap.empty
+            HashMap.empty
   
   let triangleIsNan (t:Triangle3d) =
     t.P0.AnyNaN || t.P1.AnyNaN || t.P2.AnyNaN
@@ -178,7 +178,7 @@ module KdTrees =
 
     triangles
 
-  let loadObjectSet (cache : hmap<string, ConcreteKdIntersectionTree>) (computeIndices) (lvl0Tree : Level0KdTree) =       
+  let loadObjectSet (cache : HashMap<string, ConcreteKdIntersectionTree>) (computeIndices) (lvl0Tree : Level0KdTree) =       
   
     match lvl0Tree with
       | InCoreKdTree kd -> 
@@ -189,7 +189,7 @@ module KdTrees =
           match kd.kdTree with
             | Some k -> k, cache
             | None -> 
-              let tree = cache |> HMap.tryFind (kd.boundingBox.ToString())
+              let tree = cache |> HashMap.tryFind (kd.boundingBox.ToString())
               match tree with
                 | Some t -> 
                   //Log.line "cache hit %A" kd.boundingBox
@@ -202,15 +202,15 @@ module KdTrees =
 
                   let key = tree.KdIntersectionTree.BoundingBox3d.ToString()
                                                       
-                  tree, (HMap.add key tree cache)
+                  tree, (HashMap.add key tree cache)
         kdTree, cache
 
-  let loadKdTrees (h : PatchHierarchy) (trafo:Trafo3d) (mode:ViewerModality) (b : BinarySerializer) : hmap<Box3d,Level0KdTree> =
+  let loadKdTrees (h : PatchHierarchy) (trafo:Trafo3d) (mode:ViewerModality) (b : BinarySerializer) : HashMap<Box3d,Level0KdTree> =
     loadKdTrees' (h) (trafo) (true) mode b
 
-  let intersectKdTrees (computeIndices) bb (hitObject : 'a) (cache : hmap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: hmap<Box3d, Level0KdTree>) = 
+  let intersectKdTrees (computeIndices) bb (hitObject : 'a) (cache : HashMap<string, ConcreteKdIntersectionTree>) (ray : FastRay3d) (kdTreeMap: HashMap<Box3d, Level0KdTree>) = 
 
-    let kdtree, c = kdTreeMap |> HMap.find bb |> loadObjectSet cache computeIndices
+    let kdtree, c = kdTreeMap |> HashMap.find bb |> loadObjectSet cache computeIndices
 
     let kdi = kdtree.KdIntersectionTree 
     let mutable hit = ObjectRayHit.MaxRange

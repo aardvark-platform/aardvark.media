@@ -1,7 +1,7 @@
-﻿namespace Niobe.Sketching
+namespace Niobe.Sketching
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
@@ -16,18 +16,18 @@ type SketchingAction =
   | Undo
   | Redo
 
-[<DomainType>]
+[<ModelType>]
 type Brush =
   {
-    points : plist<V3d>
+    points : IndexList<V3d>
     color  : C4b    
   }
 
-[<DomainType>]
+[<ModelType>]
 type SketchingModel = 
   {
     working : option<Brush>
-    finishedBrushes : plist<Brush>
+    finishedBrushes : IndexList<Brush>
     selectedColor : ColorInput
     selectedThickness : NumericInput
     volumeOffset : NumericInput
@@ -87,6 +87,6 @@ module Initial =
       volumeOffset = offset
       depthOffset = depthOffset
       alphaArea = alpha
-      finishedBrushes = PList.empty
+      finishedBrushes = IndexList.empty
     }
 

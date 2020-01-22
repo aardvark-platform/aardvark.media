@@ -1,9 +1,9 @@
-﻿namespace UI.Composed
+namespace UI.Composed
 
 open System
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.SceneGraph.AirState
 open PRo3DModels    
 

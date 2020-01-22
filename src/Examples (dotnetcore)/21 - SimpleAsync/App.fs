@@ -1,10 +1,10 @@
-﻿module RenderControl.App
+module RenderControl.App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open RenderControl.Model
 
@@ -32,7 +32,7 @@ let update (model : Model) (msg : Message) =
 let view (model : MModel) =
     div [] [
         button [onClick (fun _ -> Start)] [text "start"]
-        Incremental.text (Mod.map string model.result)
+        Incremental.text (AVal.map string model.result)
         br []
         Incremental.text model.info
     ]

@@ -1,7 +1,7 @@
-﻿module Examples.TemplateApp
+module Examples.TemplateApp
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Examples.TemplateModel
@@ -17,7 +17,7 @@ let view (m : MModel) =
     body [ style "background: #1B1C1E"] [
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
-                CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+                CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ attribute "style" "width:85%; height: 100%; float: left;"]) (viewScene m)
 
                 div [style "width:15%; height: 100%; float:right"] [

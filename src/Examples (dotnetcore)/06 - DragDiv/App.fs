@@ -1,16 +1,16 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 
 let setPosition name objects newPos =
     let f = function | Some o -> { o with position = newPos } | None -> failwith ""
-    HMap.update name f objects
+    HashMap.update name f objects
 
 let update (model : Model) (msg : Message) =
     match msg with
@@ -94,7 +94,7 @@ let app =
         initial = 
             { 
                objects = 
-                    HMap.ofList [ 
+                    HashMap.ofList [ 
                         "object1", { position = V2d(50,20) }
                         "object2", { position = V2d(50,100) }
                     ]

@@ -1,8 +1,8 @@
-﻿module SimpleTestApp
+module SimpleTestApp
 
 open SimpleTest
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.SceneGraph
 open Aardvark.Base.Rendering
@@ -33,7 +33,7 @@ let threeD (m : MModel) =
         }
 
     let sg =
-        Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+        Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
         |> Sg.requirePicking
         |> Sg.noEvents
         //|> Sg.pickable (PickShape.Box Box3d.Unit)       
@@ -50,7 +50,7 @@ let threeD (m : MModel) =
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
     CameraController.controlledControl m.cameraModel CameraAction
-        (Mod.constant frustum) 
+        (AVal.constant frustum) 
         (AttributeMap.ofList [ attribute "style" "width:70%; height: 100%"]) sg
 
 let view (m : MModel) =
@@ -64,7 +64,7 @@ let view (m : MModel) =
         text "constant text"
         br []
         Incremental.text s
-        //text (Mod.force s)
+        //text (AVal.force s)
         br []
         button [onMouseClick (fun _ -> Inc)] [text "inc"]
         button [onMouseClick (fun _ -> Dec)] [text "dec"]

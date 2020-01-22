@@ -1,7 +1,7 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 type Message = 
@@ -10,7 +10,7 @@ type Message =
 
 type Position = Top = 0 | Bottom = 1
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         location : Position

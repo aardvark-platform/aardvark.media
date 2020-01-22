@@ -1,11 +1,11 @@
-﻿
+
 open Aardvark.Service
 open System
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.Application.WinForms

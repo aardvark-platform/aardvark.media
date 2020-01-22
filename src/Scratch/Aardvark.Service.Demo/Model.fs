@@ -1,8 +1,8 @@
-﻿namespace Demo.TestApp
+namespace Demo.TestApp
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Mutable
 open Aardvark.UI
 open FShade.Primitives
@@ -10,34 +10,34 @@ open Aardvark.Application
 
 type ClientLocalAttribute() = inherit System.Attribute()
 
-[<DomainType>]
+[<ModelType>]
 type Urdar = { urdar : int }
 
 
-[<DomainType>]
+[<ModelType>]
 type TreeNode<'a> =
     {
         content : 'a
-        children : plist<TreeNode<'a>>
+        children : IndexList<TreeNode<'a>>
     }
 
-[<DomainType>]
+[<ModelType>]
 type Tree<'a> =
     {
-        nodes : plist<TreeNode<'a>>
+        nodes : IndexList<TreeNode<'a>>
     }
 
 
-[<DomainType>]
+[<ModelType>]
 type Model =
     {
         boxHovered      : bool
         dragging        : bool
         lastName        : Option<string>
-        elements        : plist<string>
+        elements        : IndexList<string>
         hasD3Hate       : bool
         boxScale        : float
-        objects         : hmap<string,Urdar>
+        objects         : HashMap<string,Urdar>
         lastTime        : MicroTime
         tree            : Tree<int>
     }

@@ -1,7 +1,7 @@
-﻿namespace Chat
+namespace Chat
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 open System
@@ -13,19 +13,19 @@ type Client =
         name : string
     }
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
-        lines : hmap<DateTime, string>
-        clients : hmap<string, Client>
-        currentMsg : hmap<string, string>
+        lines : HashMap<DateTime, string>
+        clients : HashMap<string, Client>
+        currentMsg : HashMap<string, string>
     }
 
 module Model =
     let initial =
         {
-            lines = HMap.empty
-            clients = HMap.empty
-            currentMsg = HMap.empty
+            lines = HashMap.empty
+            clients = HashMap.empty
+            currentMsg = HashMap.empty
         }
 

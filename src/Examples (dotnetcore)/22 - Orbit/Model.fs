@@ -1,7 +1,7 @@
-﻿namespace Orbit
+namespace Orbit
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 
@@ -19,7 +19,7 @@ type OrbitMessage =
     | SetTargetRadius of float
 
 
-[<DomainType>]
+[<ModelType>]
 type OrbitState =
     {
         sky     : V3d
@@ -34,7 +34,7 @@ type OrbitState =
         targetCenter : V3d
         
         dragStart : Option<V2i>
-        [<NonIncremental>]
+        [<NonAdaptive>]
         lastRender : Option<MicroTime>
 
         view : CameraView

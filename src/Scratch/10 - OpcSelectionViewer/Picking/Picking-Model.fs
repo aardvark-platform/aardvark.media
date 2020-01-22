@@ -2,7 +2,7 @@ namespace OpcSelectionViewer.Picking
 
 open Aardvark.UI
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Geometry
 open OpcSelectionViewer
 open OpcSelectionViewer.KdTrees
@@ -14,26 +14,26 @@ type PickingAction =
   | ClearPoints
 
 
-[<DomainType>]
+[<ModelType>]
 type OpcData = {
-  [<NonIncremental>]
+  [<NonAdaptive>]
   patchHierarchy : PatchHierarchy
-  kdTree         : hmap<Box3d, Level0KdTree>
+  kdTree         : HashMap<Box3d, Level0KdTree>
 
   localBB        : Box3d
   globalBB       : Box3d
 }
 
-[<DomainType>]
+[<ModelType>]
 type PickingModel = {
-  pickingInfos         : hmap<Box3d, OpcData>
-  intersectionPoints   : plist<V3d>  
+  pickingInfos         : HashMap<Box3d, OpcData>
+  intersectionPoints   : IndexList<V3d>  
 }  
 
 module PickingModel =
 
   let initial = 
     {
-      pickingInfos       = HMap.empty
-      intersectionPoints = PList.empty
+      pickingInfos       = HashMap.empty
+      intersectionPoints = IndexList.empty
     }

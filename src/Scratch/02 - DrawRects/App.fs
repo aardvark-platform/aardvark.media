@@ -1,10 +1,10 @@
-﻿namespace DrawRects
+namespace DrawRects
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.UI.Operators
 
@@ -264,7 +264,7 @@ module ClientApp =
                             | Some r -> return! r.color
                     }
 
-                let colorMode = color |> Mod.map (function Constant _ -> "Constant" | Color.Gradient(Direction.Vertical,_,_) -> "Vertical Gradient" | Color.Gradient(Direction.Horizontal,_,_) -> "Horizontal Gradient" | Color.Points _ -> "Points")
+                let colorMode = color |> AVal.map (function Constant _ -> "Constant" | Color.Gradient(Direction.Vertical,_,_) -> "Vertical Gradient" | Color.Gradient(Direction.Horizontal,_,_) -> "Horizontal Gradient" | Color.Points _ -> "Points")
                 let changeMode s =
                     match s with
                         | "Constant" -> Color.Constant C4f.White
@@ -347,28 +347,28 @@ module DrawRectsApp =
             | AddRectangle r  ->
                 if r.box.Area < 0.0001 then 
                     printfn "supersmall %A" r
-                    m //{ m with rects = HMap.add r.id r m.rects }
-                else { m with rects = HMap.add r.id r m.rects }
+                    m //{ m with rects = HashMap.add r.id r m.rects }
+                else { m with rects = HashMap.add r.id r m.rects }
             | SetColorMode(id,c) -> 
                 let update old =
                     match old with
                         | None -> None
                         | Some r -> { r with color = c } |> Some
-                { m with rects = HMap.alter id update m.rects }
+                { m with rects = HashMap.alter id update m.rects }
             | SetBoxBounds(id,startPos,endPos) ->
                 let update old =
                     match old with
                         | None -> None
                         | Some r -> { r with box = Box2d.FromPoints(startPos,endPos) } |> Some
-                { m with rects = HMap.alter id update m.rects }
+                { m with rects = HashMap.alter id update m.rects }
             | Translate(id, shift) -> 
                 let update old =
                     match old with
                         | None -> None
                         | Some r -> { r with box = r.box.Translated shift } |> Some
-                { m with rects = HMap.alter id update m.rects }
+                { m with rects = HashMap.alter id update m.rects }
             | Delete i -> 
-                { m with rects = HMap.remove i m.rects }
+                { m with rects = HashMap.remove i m.rects }
             | ChangeColor(id,point,color) -> 
                 let update old =
                     match old with
@@ -381,7 +381,7 @@ module DrawRectsApp =
                                     let points = pts.colors.Copy()
                                     points.[point] <- color
                                     Some { r with color = Color.Points { colors = points } }
-                { m with rects = HMap.alter id update m.rects }  
+                { m with rects = HashMap.alter id update m.rects }  
 
 
     let mapOut (m : ClientState) (msg : ClientMessage) =
@@ -422,7 +422,7 @@ module DrawRectsApp =
             threads = threads 
             initial = 
                 { 
-                   rects = HMap.empty
+                   rects = HashMap.empty
                 }
             update = update
             view = view runtime

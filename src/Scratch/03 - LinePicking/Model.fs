@@ -1,7 +1,7 @@
-﻿namespace Inc.Model
+namespace Inc.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
@@ -11,7 +11,7 @@ type Action =
   | KeyDown       of key : Aardvark.Application.Keys
   | KeyUp         of key : Aardvark.Application.Keys      
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         camera    : CameraControllerState

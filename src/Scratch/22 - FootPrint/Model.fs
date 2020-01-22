@@ -1,8 +1,8 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Application
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open System
@@ -20,14 +20,14 @@ type Message =
     | UpdateDockConfig  of DockConfig 
     | KeyDown           of key : Keys  
 
-[<DomainType>]
+[<ModelType>]
 type ProjectionModel = 
     {
         frustum         : Frustum
         cam             : CameraControllerState
     }
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         cameraMain          : CameraControllerState

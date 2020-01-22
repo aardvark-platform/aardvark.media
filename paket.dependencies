@@ -21,7 +21,7 @@ nuget Aardvark.Rendering.Text           ~> 5.0.0-prerelease0001
 nuget Aardvark.Rendering.Vulkan         ~> 5.0.0-prerelease0001
 nuget Aardvark.GPGPU                    ~> 5.0.0-prerelease0001
 
-nuget Adaptify.MSBuild                  ~> 0.0.8
+nuget Adaptify.MSBuild                  ~> 0.0.9
 
 
 nuget FsPickler                         ~> 5.2.2

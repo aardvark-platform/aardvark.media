@@ -1,11 +1,11 @@
-﻿namespace Viewer
+namespace Viewer
 
 open System
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.Application.WinForms
@@ -37,7 +37,7 @@ module Viewer =
 
     module SemUi =
         
-        let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : IMod<'a>) (change : 'a -> 'msg) =
+        let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : aval<'a>) (change : 'a -> 'msg) =
             let names = Enum.GetNames(typeof<'a>)
             let values = Enum.GetValues(typeof<'a>) |> unbox<'a[]>
             let nv = Array.zip names values
@@ -45,7 +45,7 @@ module Viewer =
             let attributes (name : string) (value : 'a) =
                 AttributeMap.ofListCond [
                     always (attribute "value" name)
-                    onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
+                    onlyWhen (AVal.map ((=) value) selected) (attribute "selected" "selected")
                 ]
 
             onBoot "$('#__ID__').dropdown();" (
@@ -86,9 +86,9 @@ module Viewer =
 
             | Import ->
                 Log.startTimed "importing %A" model.files
-                let scenes = model.files |> HSet.ofList |> HSet.map (Loader.Assimp.load)
+                let scenes = model.files |> HashSet.ofList |> HashSet.map (Loader.Assimp.load)
                 let bounds = scenes |> Seq.map (fun s -> s.bounds) |> Box3d
-                let sgs = scenes |> HSet.map Sg.adapter
+                let sgs = scenes |> HashSet.map Sg.adapter
                 Log.stop()
                 { model with files = []; scenes = sgs; bounds = bounds }
 
@@ -110,8 +110,8 @@ module Viewer =
             model.camera.view 
             
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
-//            |> Mod.map (fun view -> Camera.create view (Frustum.perspective 60.0 0.1 100.0 1.0))
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+//            |> AVal.map (fun view -> Camera.create view (Frustum.perspective 60.0 0.1 100.0 1.0))
 
         let normalizeTrafo (b : Box3d) =
             let size = b.Size
@@ -180,14 +180,14 @@ module Viewer =
                                 |> Sg.set
                                 |> Sg.fillMode model.fillMode
                                 |> Sg.cullMode model.cullMode
-                                |> Sg.trafo (model.bounds |> Mod.map normalizeTrafo)
+                                |> Sg.trafo (model.bounds |> AVal.map normalizeTrafo)
                                 |> Sg.transform (Trafo3d.FromOrthoNormalBasis(V3d.IOO, V3d.OOI, -V3d.OIO))
                                 |> Sg.effect [
                                     toEffect DefaultSurfaces.trafo
                                     toEffect DefaultSurfaces.diffuseTexture
                                     toEffect DefaultSurfaces.simpleLighting
                                 ]
-                                |> Sg.trafo (model.rotation |> Mod.map Trafo3d.RotationZ)
+                                |> Sg.trafo (model.rotation |> AVal.map Trafo3d.RotationZ)
                         )
 
                     div[style "height:100%; float:right"][
@@ -235,7 +235,7 @@ module Viewer =
         {
             rotation = 0.0
             files = []
-            scenes = HSet.empty
+            scenes = HashSet.empty
             bounds = Box3d.Unit
             fillMode = FillMode.Fill
             cullMode = CullMode.None

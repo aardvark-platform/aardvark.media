@@ -1,8 +1,8 @@
-﻿namespace Viewer
+namespace Viewer
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.SceneGraph
 open Aardvark.UI
 open Aardvark.UI.Primitives
@@ -19,13 +19,13 @@ type Message =
     | SetCullMode of CullMode
 
 
-[<DomainType>]
+[<ModelType>]
 type ViewerModel =
     {
 
         files : list<string>
         rotation : float
-        scenes : hset<ISg<Message>>
+        scenes : HashSet<ISg<Message>>
         bounds : Box3d
         camera : CameraControllerState
         fillMode : FillMode

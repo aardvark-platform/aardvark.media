@@ -1,20 +1,20 @@
-﻿namespace LayoutingModel
+namespace LayoutingModel
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
-[<DomainType>]
+[<ModelType>]
 type Tab = { name : string; url : string }
 
-[<DomainType>]
+[<ModelType>]
 type Tree = 
     | Vertical of Tree * Tree
     | Horizontal of Tree * Tree
     | Leaf of Tab
 
-[<DomainType>]
+[<ModelType>]
 type Model = { 
-    tabs : plist<Tab>
+    tabs : IndexList<Tab>
 }
 
 type Action = Action

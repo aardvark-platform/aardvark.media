@@ -1,11 +1,11 @@
 ﻿namespace Aardvark.Cef.Internal
 
 open Aardvark.Base
-open FSharp.Data.Adaptive
 open System
 open System.Net
 open System.Collections.Concurrent
 open System.Collections.Generic
+open FSharp.Data.Adaptive
 open System.Threading
 open System.Runtime.InteropServices
 open Xilium.CefGlue
@@ -15,6 +15,7 @@ open Microsoft.FSharp.NativeInterop
 
 
 #nowarn "9"
+#nowarn "44"
 
 module Pickler = 
     open MBrace.FsPickler
@@ -343,7 +344,7 @@ type Priority =
 
 
 type TransactThread() =
-    let mark = HashSet<IAdaptiveObject>()
+    let mark = System.Collections.Generic.HashSet<IAdaptiveObject>()
     let sem = new SemaphoreSlim(0)
 
     let runner =
@@ -353,7 +354,7 @@ type TransactThread() =
                 sem.Wait()
                 let objects = 
                     lock mark (fun () -> 
-                        let m = mark |> HashSet.toArray
+                        let m = mark |> Aardvark.Base.HashSet.toArray
                         mark.Clear()
                         m
                     )
@@ -836,7 +837,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     
     let loadHandler = LoadHandler(this)
     let renderHandler = RenderHandler(this, size, texture)
-    let mutable loadResult = System.Threading.Tasks.TaskCompletionSource<LoadResult>()
+    let loadResult = MVar.empty() //System.Threading.Tasks.TaskCompletionSource<LoadResult>()
 
     let messagePump = MessagePump()
     let transactor = MessagePump()
@@ -875,17 +876,18 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     member internal x.LoadFinished(res : LoadResult) =
         lock lockObj (fun () ->
             if not isDisposed then
-                loadResult.SetResult res
-                //MVar.put loadResult res
+                //loadResult.SetResult res
+                MVar.put loadResult res
             )
 
     member internal x.Render(f : unit -> Transaction) =
         lock lockObj (fun () -> // NOTE: locking here might block when acquiring the graphics context when only 1 resource context is created
             if not isDisposed then
                 let t = f()
-                version.UnsafeCache <- version.UnsafeCache + 1
-
-                t.Enqueue version
+                useTransaction t (fun () ->
+                    version.Value <- version.Value + 1
+                
+                )
                 transactor.Enqueue (fun () -> t.Commit())
                 //transactor.Mark [texture :> IAdaptiveObject; version :> IAdaptiveObject]
         )
@@ -1039,11 +1041,9 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     member x.LoadUrlAsync (url : string) =
         lock lockObj (fun () ->
             if not isDisposed then
-                let tcs = System.Threading.Tasks.TaskCompletionSource()
-                loadResult <- tcs
                 x.Init()
                 frame.LoadUrl url
-                tcs.Task
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )
@@ -1052,10 +1052,9 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
         lock lockObj (fun () ->
             if not isDisposed then
                 let tcs = System.Threading.Tasks.TaskCompletionSource()
-                loadResult <- tcs
                 x.Init()
                 frame.LoadUrl url
-                tcs.Task
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )
@@ -1064,10 +1063,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
         lock lockObj (fun () ->
             if not isDisposed then
                 x.Init()
-                let tcs = System.Threading.Tasks.TaskCompletionSource()
-                loadResult <- tcs
                 frame.LoadString(code, "http://aardvark.local/index.html")
-                tcs.Task
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )
@@ -1076,10 +1073,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
         lock lockObj (fun () ->
             if not isDisposed then
                 x.Init()
-                let tcs = System.Threading.Tasks.TaskCompletionSource()
-                loadResult <- tcs
                 frame.LoadString(code, "http://aardvark.local/index.html")
-                tcs.Task
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )

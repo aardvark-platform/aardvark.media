@@ -1,9 +1,9 @@
-﻿namespace DrawRects
+namespace DrawRects
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 module RenderQuads =
     let size = V2i(256,256)
@@ -17,12 +17,12 @@ module RenderQuads =
             runtime.CreateFramebufferSignature [ DefaultSemantic.Colors, RenderbufferFormat.Rgba8 ]
         let rt = 
              Aardvark.SceneGraph.SgPrimitives.Sg.fullScreenQuad
-             |> Sg.vertexAttribute DefaultSemantic.Colors (Mod.constant colors)
+             |> Sg.vertexAttribute DefaultSemantic.Colors (AVal.constant colors)
              |> Sg.shader {
                  do! DefaultSurfaces.vertexColor
                 }
              |> Sg.compile runtime signature
-             |> RenderTask.renderToColor (Mod.constant size)
+             |> RenderTask.renderToColor (AVal.constant size)
         let t = rt.GetValue()
         let t2 = runtime.Download(t |> unbox)
         encode (unbox t2.Data), size

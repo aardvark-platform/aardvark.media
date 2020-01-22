@@ -1,12 +1,12 @@
-﻿namespace SimpleScaleModel
+namespace SimpleScaleModel
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open PRo3DModels
 open Aardvark.UI
 
-[<DomainType>]
+[<ModelType>]
 type Model =
     {
         camera          : CameraControllerState

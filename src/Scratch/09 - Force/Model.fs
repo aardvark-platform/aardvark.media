@@ -1,13 +1,13 @@
-﻿namespace Inc.Model
+namespace Inc.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 type Message = 
     | Inc
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         value : int

@@ -1,10 +1,10 @@
-﻿namespace Examples.MultiviewModel
+namespace Examples.MultiviewModel
 
 open Aardvark.Base                 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
-[<DomainType>]
+[<ModelType>]
 type Model = { 
     camera1 : CameraControllerState 
     camera2 : CameraControllerState 

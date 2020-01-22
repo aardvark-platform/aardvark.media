@@ -1,7 +1,7 @@
-﻿module LayoutingApp
+module LayoutingApp
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
@@ -31,7 +31,7 @@ let app rootUrl =
         initial = 
             { 
                tabs = 
-                PList.ofList [
+                IndexList.ofList [
                     for i in 0 .. 5 do
                         yield {name="3D"; url = sprintf "%s/threeD/" rootUrl }
                         yield {name="2D"; url = sprintf "%s/twoD/" rootUrl }

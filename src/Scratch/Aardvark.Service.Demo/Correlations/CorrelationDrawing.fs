@@ -1,4 +1,4 @@
-﻿namespace CorrelationDrawing
+namespace CorrelationDrawing
 
 
 
@@ -14,8 +14,8 @@ module CorrelationDrawing =
     open System
     
     open Aardvark.Base.Geometry
-    open Aardvark.Base.Incremental
-    open Aardvark.Base.Incremental.Operators
+    open FSharp.Data.Adaptive
+    open FSharp.Data.Adaptive.Operators
     open Aardvark.Base.Rendering
     open Aardvark.Application
     open Aardvark.SceneGraph
@@ -58,7 +58,7 @@ module CorrelationDrawing =
 
     let insertFirstSemantics (model : CorrelationDrawingModel) = 
         let newSem = Semantic.initial
-        let newSemantics = HMap.union model.semantics (model.semantics.Add(newSem.label, newSem))
+        let newSemantics = HashMap.union model.semantics (model.semantics.Add(newSem.label, newSem))
         {model with semantics = newSemantics; semanticsList = plistFromHMap newSemantics; selectedSemantic = Some newSem.label}
            
     let insertSampleSemantics (model : CorrelationDrawingModel) = 
@@ -84,7 +84,7 @@ module CorrelationDrawing =
 
     let finishAndAppend (model : CorrelationDrawingModel) = 
         let anns = match model.working with
-                            | Some w -> model.annotations |> PList.append w
+                            | Some w -> model.annotations |> IndexList.append w
                             | None -> model.annotations
         { model with working = None; annotations = anns }
 
@@ -106,15 +106,15 @@ module CorrelationDrawing =
                     let working = 
                         match model.working with
                                 | Some w ->                                     
-                                    { w with points = w.points |> PList.append p }
+                                    { w with points = w.points |> IndexList.append p }
                                 | None ->                                     
                                     {Annotation.initial with
-                                        points = PList.ofList [p]; 
+                                        points = IndexList.ofList [p]; 
                                         semantic = getSelectedSemantic model}//add annotation states
 
                     let model = { model with working = Some working }
 
-                    let model = match (working.geometry, (working.points |> PList.count)) with
+                    let model = match (working.geometry, (working.points |> IndexList.count)) with
                                     | GeometryType.Point, 1 -> model |> finishAndAppend
                                     | GeometryType.Line, 2 -> model |> finishAndAppend
                                     | _ -> model
@@ -134,7 +134,7 @@ module CorrelationDrawing =
                             | None -> Semantic.initial //TODO something useful
                     (match model.selectedSemantic with
                         | Some s -> 
-                            let newSemantics = HMap.update s fUpdate model.semantics
+                            let newSemantics = HashMap.update s fUpdate model.semantics
                             {model with semantics = newSemantics; semanticsList = CorrelationUtilities.plistFromHMap newSemantics}
                         | None -> model)
             | AddSemantic, _ -> insertSampleSemantics model 
@@ -156,15 +156,15 @@ module CorrelationDrawing =
                     { model with exportPath = s }
             | Export, _ ->
                     //let path = Path.combine([model.exportPath; "drawing.json"])
-                    //printf "Writing %i annotations to %s" (model.annotations |> PList.count) path
-                    //let json = model.annotations |> PList.map JsonTypes.ofAnnotation |> JsonConvert.SerializeObject
+                    //printf "Writing %i annotations to %s" (model.annotations |> IndexList.count) path
+                    //let json = model.annotations |> IndexList.map JsonTypes.ofAnnotation |> JsonConvert.SerializeObject
                     //Serialization.writeToFile path json 
                     
                     model
             | _ -> model
 
     module UI =
-        open Aardvark.Base.Incremental    
+        open FSharp.Data.Adaptive    
        
         let viewAnnotationTools (model:MCorrelationDrawingModel) =  
               
@@ -172,7 +172,7 @@ module CorrelationDrawing =
             let onChange = 
                 fun (selected : option<MSemantic>) -> 
                   selected 
-                    |> Option.map(fun y -> y.label |> Mod.force) 
+                    |> Option.map(fun y -> y.label |> AVal.force) 
                     |> SetSemantic
 
             Html.SemUi.accordion "Annotation Tools" "Write" true [
@@ -180,7 +180,7 @@ module CorrelationDrawing =
                     Html.row "Text:"        [Html.SemUi.textBox  model.exportPath SetExportPath ]
                     Html.row "Geometry:"    [Html.SemUi.dropDown model.geometry   SetGeometry]
                     Html.row "Projections:" [Html.SemUi.dropDown model.projection SetProjection]
-                    Html.row "Semantic:"    [dropDownList model.semanticsList selected onChange (fun x -> Mod.force x.label)]
+                    Html.row "Semantic:"    [dropDownList model.semanticsList selected onChange (fun x -> AVal.force x.label)]
                     
                 ]                    
             ]
@@ -210,7 +210,7 @@ module CorrelationDrawing =
 
     module Sg =        
 
-        let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =
+        let computeScale (view : aval<CameraView>)(p:aval<V3d>)(size:float) =
             adaptive {
                 let! p = p
                 let! v = view
@@ -243,13 +243,13 @@ module CorrelationDrawing =
                         Sg.onClick(fun p -> Action.AddPoint p)
                         Sg.onLeave (fun _ -> Action.Exit)
                     ]  
-                |> Sg.onOff (Mod.constant true)
+                |> Sg.onOff (AVal.constant true)
               //  |> Sg.map DrawingMessage
 
         let edgeLines (close : bool) (points : alist<V3d>) =
             
-            points |> AList.toMod |> Mod.map (fun l ->
-                let list = PList.toList l
+            points |> AList.toMod |> AVal.map (fun l ->
+                let list = IndexList.toList l
                 let head = list |> List.tryHead
                     
                 match head with
@@ -260,23 +260,23 @@ module CorrelationDrawing =
                     | None -> [||]                         
             )
             
-        let brush (hovered : IMod<Trafo3d option>) = 
+        let brush (hovered : aval<Trafo3d option>) = 
             let trafo =
-                hovered |> Mod.map (function o -> match o with 
+                hovered |> AVal.map (function o -> match o with 
                                                     | Some t-> t
                                                     | None -> Trafo3d.Scale(V3d.Zero))
 
-            mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
+            mkISg (AVal.constant C4b.Red) (AVal.constant 0.05) trafo
        
-        let dots (points : alist<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =            
+        let dots (points : alist<V3d>) (color : aval<C4b>) (view : aval<CameraView>) =            
             
             aset {
                 for p in points |> ASet.ofAList do
-                    yield mkISg color (computeScale view (Mod.constant p) 5.0) (Mod.constant (Trafo3d.Translation(p)))
+                    yield mkISg color (computeScale view (AVal.constant p) 5.0) (AVal.constant (Trafo3d.Translation(p)))
             } 
             |> Sg.set
            
-        let lines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) = 
+        let lines (points : alist<V3d>) (color : aval<C4b>) (width : aval<float>) = 
             edgeLines false points
                 |> Sg.lines color
                 |> Sg.effect [
@@ -287,11 +287,11 @@ module CorrelationDrawing =
                 |> Sg.noEvents
                 |> Sg.uniform "LineWidth" width
                 |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
-                |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                |> Sg.depthTest (AVal.constant DepthTestMode.None)
    
-        //let getC4bFromCI = Mod.map (fun c -> c.c)
+        //let getC4bFromCI = AVal.map (fun c -> c.c)
 
-        let annotation (anno : IMod<Option<MAnnotation>>)(view : IMod<CameraView>) = 
+        let annotation (anno : aval<Option<MAnnotation>>)(view : aval<CameraView>) = 
             //alist builder?
             let points = 
                 anno |> AList.bind (fun o -> 
@@ -300,35 +300,35 @@ module CorrelationDrawing =
                         | None -> AList.empty
                 )    
                 
-            let withDefault (m : IMod<Option<'a>>) (f : 'a -> IMod<'b>) (defaultValue : 'b) = 
-                let defaultValue = defaultValue |> Mod.constant
-                m |> Mod.bind (function | None -> defaultValue | Some v -> f v)
+            let withDefault (m : aval<Option<'a>>) (f : 'a -> aval<'b>) (defaultValue : 'b) = 
+                let defaultValue = defaultValue |> AVal.constant
+                m |> AVal.bind (function | None -> defaultValue | Some v -> f v)
 
             let color = 
                 adaptive {
                         let! a = anno
                         match a with
-                            | Some b -> return Mod.force b.semantic.style.color.c
+                            | Some b -> return AVal.force b.semantic.style.color.c
                             | None -> return C4b.Cyan
                 }
                 //withDefault anno (fun a -> a.color) C4b.VRVisGreen
 
             let thickness = 
-                    (match (anno |> Mod.force) with
-                        | Some b -> Mod.force b.semantic.style.thickness.value
+                    (match (anno |> AVal.force) with
+                        | Some b -> AVal.force b.semantic.style.thickness.value
                         | None -> 1.0
-                    ) |> Mod.constant
+                    ) |> AVal.constant
 
             [lines points color thickness; dots points color view]
           
-        let annotation' (anno : MAnnotation)(view : IMod<CameraView>) =      
+        let annotation' (anno : MAnnotation)(view : aval<CameraView>) =      
             let color = anno.semantic.style.color.c
                 //withDefault anno (fun a -> a.color) C4b.VRVisGreen
             let thickness = anno.semantic.style.thickness.value
             [lines anno.points color thickness; dots anno.points color view] 
             |> ASet.ofList
 
-        let view (model:MCorrelationDrawingModel) (cam:IMod<CameraView>) =        
+        let view (model:MCorrelationDrawingModel) (cam:aval<CameraView>) =        
             // order is irrelevant for rendering. change list to set,
             // since set provides more degrees of freedom for the compiler
             let annoSet = ASet.ofAList model.annotations 

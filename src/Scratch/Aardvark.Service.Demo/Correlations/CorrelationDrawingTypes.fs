@@ -1,8 +1,8 @@
-﻿namespace CorrelationDrawing
+namespace CorrelationDrawing
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.UI
 open Aardvark.UI.Primitives
@@ -13,13 +13,13 @@ type GeometryType = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3 | DnS = 4 
 type SemanticType = Metric = 0 | Angular = 1 | Hierarchical = 2
 
 
-[<DomainType>]
+[<ModelType>]
 type Style = {
     color : ColorInput
     thickness : NumericInput
  } 
 
-[<DomainType>]
+[<ModelType>]
 type RenderingParameters = {
     fillMode : FillMode
     cullMode : CullMode
@@ -33,7 +33,7 @@ module RenderingPars =
     }
 
 
-[<DomainType>]
+[<ModelType>]
 type Semantic = {
         label             : string
         size              : double
@@ -42,23 +42,23 @@ type Semantic = {
         semanticType      : SemanticType
     }
 
-[<DomainType>]
+[<ModelType>]
 type Annotation = {       
     geometry : GeometryType
     projection : Projection
     semantic : Semantic
-    points : plist<V3d>
-    segments : plist<plist<V3d>> //list<Segment>
+    points : IndexList<V3d>
+    segments : IndexList<IndexList<V3d>> //list<Segment>
     visible : bool
     text : string
 }
 
-[<DomainType>]
+[<ModelType>]
 type Border = {
-    annotations : plist<Annotation>
+    annotations : IndexList<Annotation>
 }
 
-[<DomainType>]
+[<ModelType>]
 type LogModel = {
         id      : string
         //borders : alist<Annotation>
@@ -66,21 +66,21 @@ type LogModel = {
         // horizon ?
 }
 
-[<DomainType>]
+[<ModelType>]
 type CorrelationDrawingModel = {
     draw             : bool 
     hoverPosition    : option<Trafo3d>
     working          : option<Annotation>
     projection       : Projection
     geometry         : GeometryType
-    semantics        : hmap<string, Semantic>
-    semanticsList    : plist<Semantic>
+    semantics        : HashMap<string, Semantic>
+    semanticsList    : IndexList<Semantic>
     selectedSemantic : option<string>
-    annotations      : plist<Annotation>
+    annotations      : IndexList<Annotation>
     exportPath       : string
 }
 
-[<DomainType>]
+[<ModelType>]
 type CorrelationAppModel = {
     camera           : CameraControllerState
     rendering        : RenderingParameters

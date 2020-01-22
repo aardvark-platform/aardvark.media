@@ -1,11 +1,11 @@
-﻿namespace UI.Composed
+namespace UI.Composed
 
 open System
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -55,19 +55,19 @@ module MeasurementsImporterApp =
 
     let parsePointsLevelOne (points:XElement) = points.Value.NestedBracketSplitLevelOne()
                                                     |> Seq.map (fun x -> V3d.Parse(x))
-                                                    |> PList.ofSeq
+                                                    |> IndexList.ofSeq
       
 
     let parsePointsLevelZero (points:XElement) = points.Value.NestedBracketSplit(0) 
                                                     |> Seq.map (fun x -> V3d.Parse(x))
-                                                    |> PList.ofSeq  
+                                                    |> IndexList.ofSeq  
        
     
     let getPoints (points:XElement, aType:string) =
         let l = match points with
-                    | null -> PList.empty 
+                    | null -> IndexList.empty 
                     | _-> match aType with
-                            | "Exomars.Base.Geology.Point" ->  PList.ofList [V3d.Parse(points.Value)]
+                            | "Exomars.Base.Geology.Point" ->  IndexList.ofList [V3d.Parse(points.Value)]
                             | "Exomars.Base.Geology.Line"  ->  parsePointsLevelOne points
                             | _ -> parsePointsLevelZero points
         l
@@ -75,23 +75,23 @@ module MeasurementsImporterApp =
                         
     let parseSegments (segments:XElement) = segments.Elements(xname "V3d_Array")
                                                 |> Seq.map (fun x -> parsePointsLevelZero x)
-                                                |> PList.ofSeq
+                                                |> IndexList.ofSeq
 
-    let parseSegment (seg:XElement) =  PList.ofList [parsePointsLevelZero seg]
+    let parseSegment (seg:XElement) =  IndexList.ofList [parsePointsLevelZero seg]
         
 
     let getSegments (m:XElement, aType:string) = 
         let segments = match aType with
                         |"Exomars.Base.Geology.Line"            -> let segment = m.Element(xname "Segment")
                                                                    match segment.FirstAttribute with
-                                                                    | null -> PList.empty
+                                                                    | null -> IndexList.empty
                                                                     | _ -> parseSegment segment
                         |"Exomars.Base.Geology.Polyline"   
                         |"Exomars.Base.Geology.DipAndStrike"    -> let segments = m.Element(xname "Segments")
                                                                    match segments with
-                                                                    | null -> PList.empty
+                                                                    | null -> IndexList.empty
                                                                     | _ -> parseSegments segments
-                        |_ -> PList.empty
+                        |_ -> IndexList.empty
         segments
 
     let getGeometry (aType:string, closed:bool) = 
@@ -143,7 +143,7 @@ module MeasurementsImporterApp =
         let measurements = reader.StreamElements("Measurements").Elements(xname "object")
         let annotations = measurements 
                             |> Seq.map (fun x -> getAnnotation x)
-                            |> PList.ofSeq  
+                            |> IndexList.ofSeq  
         annotations
 
 
@@ -167,7 +167,7 @@ module MeasurementsImporterApp =
 
     module Draw =
 
-        let computeScale (view : IMod<CameraView>)(p:IMod<V3d>)(size:float) =        
+        let computeScale (view : aval<CameraView>)(p:aval<V3d>)(size:float) =        
             adaptive {
                 let! p = p
                 let! v = view
@@ -199,11 +199,11 @@ module MeasurementsImporterApp =
                         Sg.onMouseMove (fun p -> Move p)
                         Sg.onLeave (fun _ -> Exit)
                     ]  
-                |> Sg.onOff (Mod.constant true)
+                |> Sg.onOff (AVal.constant true)
 
         let boxCanvas =  
             let b = new Box3d( V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0) )                                               
-            Sg.box (Mod.constant C4b.White) (Mod.constant b)
+            Sg.box (AVal.constant C4b.White) (AVal.constant b)
                 |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -219,8 +219,8 @@ module MeasurementsImporterApp =
 
         let edgeLines (close : bool) (points : alist<V3d>) =
             
-            points |> AList.toMod |> Mod.map (fun l ->
-                let list = PList.toList l
+            points |> AList.toMod |> AVal.map (fun l ->
+                let list = IndexList.toList l
                 let head = list |> List.tryHead
                     
                 match head with
@@ -231,23 +231,23 @@ module MeasurementsImporterApp =
                     | None -> [||]                         
             )
             
-        //let brush (hovered : IMod<Trafo3d option>) = 
+        //let brush (hovered : aval<Trafo3d option>) = 
         //    let trafo =
-        //        hovered |> Mod.map (function o -> match o with 
+        //        hovered |> AVal.map (function o -> match o with 
         //                                            | Some t-> t
         //                                            | None -> Trafo3d.Scale(V3d.Zero))
 
-        //    mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
+        //    mkISg (AVal.constant C4b.Red) (AVal.constant 0.05) trafo
        
-        let dots (points : alist<V3d>) (color : IMod<C4b>) (view : IMod<CameraView>) =            
+        let dots (points : alist<V3d>) (color : aval<C4b>) (view : aval<CameraView>) =            
             
             aset {
                 for p in points |> ASet.ofAList do
-                    yield mkISg color (computeScale view (Mod.constant p) 5.0) (Mod.constant (Trafo3d.Translation(p)))
+                    yield mkISg color (computeScale view (AVal.constant p) 5.0) (AVal.constant (Trafo3d.Translation(p)))
             } 
             |> Sg.set
            
-        let lines (points : alist<V3d>) (color : IMod<C4b>) (width : IMod<float>) = 
+        let lines (points : alist<V3d>) (color : aval<C4b>) (width : aval<float>) = 
             edgeLines false points
                 |> Sg.lines color
                 |> Sg.effect [
@@ -258,9 +258,9 @@ module MeasurementsImporterApp =
                 |> Sg.noEvents
                 |> Sg.uniform "LineWidth" width
                 |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
-                |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                |> Sg.depthTest (AVal.constant DepthTestMode.None)
    
-        //let annotation (anno : IMod<Option<MAnnotation>>)(view : IMod<CameraView>) = 
+        //let annotation (anno : aval<Option<MAnnotation>>)(view : aval<CameraView>) = 
         //    //alist builder?
         //    let points = 
         //        anno |> AList.bind (fun o -> 
@@ -269,27 +269,27 @@ module MeasurementsImporterApp =
         //                | None -> AList.empty
         //        )    
                 
-            //let withDefault (m : IMod<Option<'a>>) (f : 'a -> IMod<'b>) (defaultValue : 'b) = 
-            //    let defaultValue = defaultValue |> Mod.constant
-            //    m |> Mod.bind (function | None -> defaultValue | Some v -> f v)
+            //let withDefault (m : aval<Option<'a>>) (f : 'a -> aval<'b>) (defaultValue : 'b) = 
+            //    let defaultValue = defaultValue |> AVal.constant
+            //    m |> AVal.bind (function | None -> defaultValue | Some v -> f v)
 
             //let color = 
             //    withDefault anno (fun a -> a.color) C4b.VRVisGreen
 
             //let thickness = 
-            //    anno |> Mod.bind (function o -> match o with
+            //    anno |> AVal.bind (function o -> match o with
             //                                    | Some a -> a.thickness.value
-            //                                    | None -> Mod.constant 1.0)
+            //                                    | None -> AVal.constant 1.0)
 
             //[lines points color thickness; dots points color view]
 
-        let isEmpty l = l |> AList.toMod |> Mod.map (fun a -> (PList.count a) = 0)
-        let IModTrue = Mod.constant true
-        let IModFalse = Mod.constant false
+        let isEmpty l = l |> AList.toMod |> AVal.map (fun a -> (IndexList.count a) = 0)
+        let IAdaptiveValueTrue = AVal.constant true
+        let IAdaptiveValueFalse = AVal.constant false
 
-        let annotation' (anno : MAnnotation)(view : IMod<CameraView>) = 
-            let count = anno.segments |> AList.toMod |> (Mod.map PList.count)
-            let c = Mod.force count
+        let annotation' (anno : MAnnotation)(view : aval<CameraView>) = 
+            let count = anno.segments |> AList.toMod |> (AVal.map IndexList.count)
+            let c = AVal.force count
             let points = match c with       
                             | 0 -> anno.points
                             | _ -> anno.segments |> AList.concat
@@ -302,7 +302,7 @@ module MeasurementsImporterApp =
     let view (model : MMeasurementsImporterAppModel) =
                     
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
         require (Html.semui) (
             body [clazz "ui"; style "background: #1B1C1E"] [
@@ -342,7 +342,7 @@ module MeasurementsImporterApp =
                         div [clazz "item"] [label [] [text "Scene Path:"]]
                         div [clazz "item"] [Html.SemUi.textBox model.scenePath SetPath]
                         div [clazz "ui button"; onMouseClick (fun _ -> OpenFolder )] [text "..."]
-                        div [clazz "ui button"; onMouseClick (fun _ -> Import (Mod.force model.scenePath))] [text "import"]
+                        div [clazz "ui button"; onMouseClick (fun _ -> Import (AVal.force model.scenePath))] [text "import"]
                     
                     ]
                     
@@ -356,7 +356,7 @@ module MeasurementsImporterApp =
                                         
                                         let c = a.color // Annotation.color.[int sem]
 
-                                        let bgc = sprintf "background: %s" (Html.ofC4b (Mod.force c))
+                                        let bgc = sprintf "background: %s" (Html.ofC4b (AVal.force c))
                                     
                                         yield div [clazz "item"; style bgc] [
                                                 i [clazz "medium File Outline middle aligned icon"][]
@@ -381,7 +381,7 @@ module MeasurementsImporterApp =
         measurementsHoverPosition = None
 
         scenePath = @"."
-        annotations = PList.empty
+        annotations = IndexList.empty
         }
     
     let app (f : System.Windows.Forms.Form) : App<MeasurementsImporterAppModel,MMeasurementsImporterAppModel,Action> =

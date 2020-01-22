@@ -1,10 +1,10 @@
-﻿module RenderControl.App
+module RenderControl.App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open RenderControl.Model
 
@@ -45,8 +45,8 @@ let rec update (model : Model) (msg : Message) =
 
 
 let viewScene (model : MModel) =
-    Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
-     //|> Sg.trafo (model.rot |> Mod.map (fun a -> Trafo3d.RotationZ a))
+    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
+     //|> Sg.trafo (model.rot |> AVal.map (fun a -> Trafo3d.RotationZ a))
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -57,7 +57,7 @@ let viewScene (model : MModel) =
 let view (model : MModel) =
 
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ style "width: 100%; height:100%"; 
                                            attribute "showFPS" "true";       // optional, default is false
                                            attribute "data-samples" "8"

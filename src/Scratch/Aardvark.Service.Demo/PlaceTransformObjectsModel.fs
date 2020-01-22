@@ -1,7 +1,7 @@
-﻿namespace PlaceTransformObjects
+namespace PlaceTransformObjects
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open DragNDrop
@@ -11,7 +11,7 @@ type ObjectType =
     | Sphere of V3d * float 
     | Box of Box3d
 
-[<DomainType>]
+[<ModelType>]
 type Object =
     {
         [<PrimaryKey>]
@@ -20,15 +20,15 @@ type Object =
         transformation  : Transformation
     }
 
-[<DomainType>]
+[<ModelType>]
 type World =
     {
-        objects         : hmap<string, Object>
-        selectedObjects : hset<string>
+        objects         : HashMap<string, Object>
+        selectedObjects : HashSet<string>
     }
 
 
-[<DomainType>]
+[<ModelType>]
 type Scene =
     {
         world  : World

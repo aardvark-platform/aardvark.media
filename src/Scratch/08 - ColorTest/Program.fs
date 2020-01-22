@@ -1,4 +1,4 @@
-﻿open System
+open System
 open Aardvark.Base
 open Aardvark.Application
 open Aardvark.Application.Slim
@@ -10,29 +10,29 @@ open Suave
 open Suave.WebPart
 open Aardvark.Rendering.Vulkan
 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Inc.Model
 
 
-let dehateObject (m : Object) : IMod<IObject> =
-    m.trafo |> Mod.map (fun t -> { itrafo = t })
+let dehateObject (m : Object) : aval<IObject> =
+    m.trafo |> AVal.map (fun t -> { itrafo = t })
 
-//let dehateScene1 (s : Scene) : IMod<IScene> = 
+//let dehateScene1 (s : Scene) : aval<IScene> = 
 //    let reader = s.objects.GetReader()
-//    Mod.custom (fun t -> 
+//    AVal.custom (fun t -> 
 //        printfn "running dehate"
 
 //        let _ = reader.GetOperations t
 
 //        let objects = [ for o in reader.State do yield { itrafo = o.trafo.GetValue t }]
         
-//        { iobjects = objects |> HSet.ofSeq }
+//        { iobjects = objects |> HashSet.ofSeq }
 //    )
 
-let dehateScene2 (s : Scene) : IMod<IScene> = 
+let dehateScene2 (s : Scene) : aval<IScene> = 
     let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
-    Mod.custom (fun t -> 
+    AVal.custom (fun t -> 
         printfn "running dehate"
 
         let _ = reader.GetOperations t
@@ -41,7 +41,7 @@ let dehateScene2 (s : Scene) : IMod<IScene> =
     )
 
 
-let dehateScene3 (s : Scene) : IMod<IScene> = 
+let dehateScene3 (s : Scene) : aval<IScene> = 
     adaptive {
         let objects = 
             aset {
@@ -53,20 +53,20 @@ let dehateScene3 (s : Scene) : IMod<IScene> =
         return { iobjects = o  }
     }
 
-let dehateScene99 (s : Scene) : IMod<IScene> = 
+let dehateScene99 (s : Scene) : aval<IScene> = 
     let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
-    let mutable objects = HRefSet.empty
-    Mod.custom (fun t -> 
+    let mutable objects = CountingHashSet.empty
+    AVal.custom (fun t -> 
         let deltas = reader.GetOperations(t)
-        let (a,b) = deltas |> HRefSet.applyDelta objects
+        let (a,b) = deltas |> CountingHashSet.applyDelta objects
         { iobjects = a  }
     )
 
 open System.Collections.Generic
-let dehateScene22 (s : Scene) : IMod<IScene> = 
-    let cache = Dictionary<Object,IMod<IObject>>()
+let dehateScene22 (s : Scene) : aval<IScene> = 
+    let cache = Dictionary<Object,aval<IObject>>()
     let r = s.objects.GetReader()
-    Mod.custom (fun t -> 
+    AVal.custom (fun t -> 
         printfn "running dehate"
 
         for d in r.GetOperations(t) do
@@ -74,22 +74,22 @@ let dehateScene22 (s : Scene) : IMod<IScene> =
                 | Rem(1, v) -> 
                     cache.Remove v |> ignore
                 | Add(1,v) -> 
-                    let i = v.trafo |> Mod.map (fun t -> { itrafo = t })
+                    let i = v.trafo |> AVal.map (fun t -> { itrafo = t })
                     cache.[v] <- i
                 | _ ->
                     failwith "unexpected"
-        { iobjects = r.State |> Seq.map (fun o -> cache.[o].GetValue t) |> HRefSet.ofSeq }
+        { iobjects = r.State |> Seq.map (fun o -> cache.[o].GetValue t) |> CountingHashSet.ofSeq }
     )
 
-let dehateScene (s : Scene) : IMod<IScene> = 
+let dehateScene (s : Scene) : aval<IScene> = 
     let reader = s.objects.GetReader()
-    Mod.custom (fun t -> 
+    AVal.custom (fun t -> 
         printfn "running dehate"
 
         reader.GetOperations(t) |> ignore
        
 
-        { iobjects = reader.State |> HRefSet.map (fun o -> printfn "mk"; { itrafo = o.trafo.GetValue(t)})  }
+        { iobjects = reader.State |> CountingHashSet.map (fun o -> printfn "mk"; { itrafo = o.trafo.GetValue(t)})  }
     )
 
 [<EntryPoint; STAThread>]
@@ -98,7 +98,7 @@ let main argv =
     Aardvark.Init()
 
     let cnt = 200000
-    let trafos = [| for i in 1.. cnt do yield Mod.init (sprintf "A%d" i) |]
+    let trafos = [| for i in 1.. cnt do yield AVal.init (sprintf "A%d" i) |]
     let objects = 
         [
             for t in trafos do
@@ -107,10 +107,10 @@ let main argv =
 
     let scene = { objects = objects }
     let iscene = dehateScene scene
-    let mscene = MIScene.Create({iobjects=HRefSet.empty})
+    let mscene = MIScene.Create({iobjects=CountingHashSet.empty})
     let sw = System.Diagnostics.Stopwatch()
     sw.Start()
-    let mscene = iscene |> Mod.unsafeRegisterCallbackKeepDisposable (fun s -> mscene.Update s; sw.Stop())
+    let mscene = iscene |> AVal.unsafeRegisterCallbackKeepDisposable (fun s -> mscene.Update s; sw.Stop())
     printfn "initial took: %A" (sw.Elapsed.TotalSeconds)
     
     sw.Start()

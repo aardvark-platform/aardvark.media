@@ -1,7 +1,7 @@
-﻿namespace CorrelationDrawing
+namespace CorrelationDrawing
 
 open System
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base
 open Aardvark.UI
 
@@ -9,7 +9,7 @@ module CorrelationUtilities =
     let alistFromAMap (input : amap<_,'a>) : alist<'a> = input |> AMap.toASet |> AList.ofASet |> AList.map snd 
 
 
-    let plistFromHMap (input : hmap<_,'a>) : plist<'a> = input |> HMap.toSeq |> PList.ofSeq |> PList.map snd 
+    let plistFromHMap (input : HashMap<_,'a>) : IndexList<'a> = input |> HashMap.toSeq |> IndexList.ofSeq |> IndexList.map snd 
 
     let wrapToolTip (text:string) (dom:DomNode<'a>) : DomNode<'a> =
 
@@ -51,14 +51,14 @@ module CorrelationUtilities =
         )
 
 
-    let dropDownList (values : alist<'a>)(selected : IMod<Option<'a>>) (change : Option<'a> -> 'msg) (f : 'a ->string)  =
+    let dropDownList (values : alist<'a>)(selected : aval<Option<'a>>) (change : Option<'a> -> 'msg) (f : 'a ->string)  =
 
         let attributes (name : string) =
             AttributeMap.ofListCond [
                 always (attribute "value" (name))
                 onlyWhen (
                         selected 
-                            |> Mod.map (
+                            |> AVal.map (
                                 fun x -> 
                                     match x with
                                         | Some s -> name = f s
@@ -68,8 +68,8 @@ module CorrelationUtilities =
 
         let ortisOnChange  = 
             let cb (i : int) =
-                let currentState = values.Content |> Mod.force
-                change (PList.tryAt (i-1) currentState)
+                let currentState = values.Content |> AVal.force
+                change (IndexList.tryAt (i-1) currentState)
                     
             onEvent "onchange" ["event.target.selectedIndex"] (fun x -> x |> List.head |> Int32.Parse |> cb)
 

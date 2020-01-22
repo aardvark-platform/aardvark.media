@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 
@@ -17,10 +17,10 @@ let initialCamera = {
 let update (model : Model) (msg : Message) =
     match msg with
         | OpenFiles m -> 
-            { model with currentFiles = PList.ofList m }
+            { model with currentFiles = IndexList.ofList m }
 
 let viewScene (model : MModel) =
-    Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -63,7 +63,7 @@ let app =
         threads = threads 
         initial = 
             { 
-               currentFiles = PList.empty
+               currentFiles = IndexList.empty
             }
         update = update 
         view = view

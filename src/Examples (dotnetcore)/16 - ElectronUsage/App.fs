@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 
@@ -28,7 +28,7 @@ let update (model : Model) (msg : Message) =
             model
 
 let viewScene (model : MModel) =
-    Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -59,7 +59,7 @@ let dependencies = [
 let view (model : MModel) =
 
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ style "width: 50%;height:50%;"; clazz "myRenderControl"]) 
                     (viewScene model)
 

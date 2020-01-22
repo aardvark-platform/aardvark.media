@@ -1,7 +1,7 @@
-﻿module Examples.MultiviewApp
+module Examples.MultiviewApp
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.UI
 open Aardvark.UI.Primitives
@@ -17,7 +17,7 @@ let update (m : Model) (message : Message) =
             Log.warn "%A" files; m
 
 let viewScene (m : MModel) =
-    Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
+    Sg.box (AVal.constant C4b.Red) (AVal.constant Box3d.Unit)
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -26,12 +26,12 @@ let viewScene (m : MModel) =
 let complex (m : MModel) =
     div [clazz "ui"; style "background: #1B1C1E"] [     
         CameraController.controlledControl m.camera1 CameraMessage1 
-            (Frustum.perspective 40.0 0.1 100.0 1.0 |> Mod.constant) 
+            (Frustum.perspective 40.0 0.1 100.0 1.0 |> AVal.constant) 
             (AttributeMap.ofList [ attribute "style" "width:85%; height: 50%; float: left;"]) (viewScene m)
                 
         br []
         CameraController.controlledControl m.camera2 CameraMessage2 
-            (Frustum.perspective 80.0 0.1 100.0 1.0 |> Mod.constant) 
+            (Frustum.perspective 80.0 0.1 100.0 1.0 |> AVal.constant) 
             (AttributeMap.ofList [ attribute "style" "width:85%; height: 50%; float: left;"]) (viewScene m)
         br []
 
@@ -46,7 +46,7 @@ let complex (m : MModel) =
 
 let simple (m : MModel) =
     CameraController.controlledControl m.camera3 CameraMessage3 
-        (Frustum.perspective 80.0 0.1 100.0 1.0 |> Mod.constant) 
+        (Frustum.perspective 80.0 0.1 100.0 1.0 |> AVal.constant) 
         (AttributeMap.ofList [ attribute "data-scene" "myscene"; attribute "style" "width:85%; height: 50%; float: left;"]) (viewScene m)
 
 let browseOnClick (react : list<string> -> Option<'msg>) : Attribute<'msg> =

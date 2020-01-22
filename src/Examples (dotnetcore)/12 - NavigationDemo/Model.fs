@@ -1,7 +1,7 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
@@ -11,7 +11,7 @@ type NavigationMode =
     | FreeFly = 0
     | ArcBall = 1
 
-[<DomainType>]
+[<ModelType>]
 type NavigationParameters = {
     navigationMode : NavigationMode    
 }
@@ -24,7 +24,7 @@ module NavigationParameters =
             navigationMode = NavigationMode.FreeFly
         }
 
-[<DomainType>]
+[<ModelType>]
 type NavigationModeDemoModel = {
     camera     : CameraControllerState
     rendering  : RenderingParameters

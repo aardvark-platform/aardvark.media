@@ -1,9 +1,9 @@
-﻿namespace CorrelationDrawing
+namespace CorrelationDrawing
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.UI
 open CorrelationUtilities

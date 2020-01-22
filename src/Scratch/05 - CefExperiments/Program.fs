@@ -1,4 +1,4 @@
-﻿#nowarn "044"
+#nowarn "044"
 
 open Aardvark.Cef
 open Aardvark.Cef.Internal
@@ -95,13 +95,13 @@ and private DevToolsWebClient(parent : AardvarkCefBrowser) =
     inherit CefClient()
 
 module Shared =
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     let sg<'a> : ISg<'a> = 
         [for x in -10.0 .. 1.0 .. 10.0 do
             for y in -10.0 .. 1.0 .. 10.0 do
                 for z in -10.0 .. 1.0 .. 10.0 do
-                    //yield Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.scale 0.5 |> Sg.translate x y z
-                    yield Sg.sphere (10) (Mod.constant C4b.Green) (Mod.constant 0.7) |> Sg.translate x y z
+                    //yield Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit) |> Sg.scale 0.5 |> Sg.translate x y z
+                    yield Sg.sphere (10) (AVal.constant C4b.Green) (AVal.constant 0.7) |> Sg.translate x y z
         ] |> Sg.ofSeq
 
 module TestApp =
@@ -110,7 +110,7 @@ module TestApp =
     open Aardvark.UI.Primitives
 
     open Aardvark.Base
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     open Aardvark.Base.Rendering
     open Model
 
@@ -121,7 +121,7 @@ module TestApp =
            | Camera m -> { model with cameraState = CameraController.update model.cameraState m}
 
     let viewScene (model : MModel) =
-        Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+        Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -131,7 +131,7 @@ module TestApp =
     let view (model : MModel) =
 
         let renderControl =
-            CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+            CameraController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                         (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                attribute "showFPS" "true";       // optional, default is false
                                                //attribute "showLoader" "false"  // optional, default is true
@@ -175,7 +175,7 @@ module TestApp =
         open Aardvark.UI.Primitives
 
         open Aardvark.Base
-        open Aardvark.Base.Incremental
+        open FSharp.Data.Adaptive
         open Aardvark.Base.Rendering
         open Model
 
@@ -188,7 +188,7 @@ module TestApp =
 
         let viewScene (model : MModel) =
             //Shared.sg
-            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+            Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
              |> Sg.shader {
                     do! DefaultSurfaces.trafo
                     do! DefaultSurfaces.vertexColor
@@ -198,7 +198,7 @@ module TestApp =
         let view (model : MModel) =
 
             let renderControl =
-               FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+               FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                             (AttributeMap.ofList [ style "width: 100%; grid-row: 2"; 
                                                    attribute "showFPS" "true";       // optional, default is false
                                                    //attribute "showLoader" "false"  // optional, default is true
@@ -241,7 +241,7 @@ module TestApp =
         open Aardvark.UI.Primitives
 
         open Aardvark.Base
-        open Aardvark.Base.Incremental
+        open FSharp.Data.Adaptive
         open Aardvark.Base.Rendering
         open Model
 

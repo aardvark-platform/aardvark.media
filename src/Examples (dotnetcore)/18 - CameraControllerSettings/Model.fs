@@ -1,7 +1,7 @@
-﻿namespace RenderControl.Model
+namespace RenderControl.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 type Message = 
@@ -28,7 +28,7 @@ type Message =
     | SetMoveSensitivity   of float
     | SetTime
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         cameraState : CameraControllerState

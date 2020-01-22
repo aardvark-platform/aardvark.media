@@ -1,18 +1,18 @@
-﻿namespace Performance
+namespace Performance
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 
-[<DomainType>]
+[<ModelType>]
 type Model =
     {
-        visible     : plist<Trafo3d>
-        objects     : plist<Trafo3d>
+        visible     : IndexList<Trafo3d>
+        objects     : IndexList<Trafo3d>
         cameraState : CameraControllerState
     }

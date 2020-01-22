@@ -1,8 +1,8 @@
-﻿namespace PRo3DModels
+namespace PRo3DModels
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.UI.Mutable
 open Aardvark.UI
@@ -13,7 +13,7 @@ open Demo.TestApp
 open System.Net
 
 
-[<DomainType>]
+[<ModelType>]
 type Bookmark = {
     id          : string
     point       : V3d
@@ -32,7 +32,7 @@ type RenderingPropertiesAction =
         | SetFillMode of FillMode
         | SetCullMode of CullMode
 
-[<DomainType>]
+[<ModelType>]
 type RenderingParameters = {
     fillMode : FillMode
     cullMode : CullMode
@@ -42,12 +42,12 @@ type NavigationMode =
         | FreeFly = 0
         | ArcBall = 1
 
-[<DomainType>]
+[<ModelType>]
 type NavigationParameters = {
     navigationMode : NavigationMode    
 }
 
-[<DomainType>]
+[<ModelType>]
 type BookmarkAppModel = {
     bookmarkCamera    : CameraControllerState
     rendering : RenderingParameters
@@ -55,10 +55,10 @@ type BookmarkAppModel = {
     draw          : bool 
     hoverPosition : Option<Trafo3d>
     boxHovered    : Option<string>
-    bookmarks     : plist<Bookmark>
+    bookmarks     : IndexList<Bookmark>
 }
 
-[<DomainType>]
+[<ModelType>]
 type VisibleBox = {
     geometry : Box3d
     color    : C4b    
@@ -76,15 +76,15 @@ type Geometry = Point = 0 | Line = 1 | Polyline = 2 | Polygon = 3 | DnS = 4 | Un
 type Semantic = Horizon0 = 0 | Horizon1 = 1 | Horizon2 = 2 | Horizon3 = 3 | Horizon4 = 4 | Crossbed = 5 | GrainSize = 6
 
 
-[<DomainType>]
+[<ModelType>]
 type Annotation = {
     
     geometry : Geometry
     projection : Projection
     semantic : Semantic
 
-    points : plist<V3d>
-    segments : plist<plist<V3d>> //list<Segment>
+    points : IndexList<V3d>
+    segments : IndexList<IndexList<V3d>> //list<Segment>
     color : C4b
     thickness : NumericInput
 
@@ -92,7 +92,7 @@ type Annotation = {
     text : string
 }
 
-[<DomainType>]
+[<ModelType>]
 type MeasurementsImporterAppModel = {
     measurementsCamera : CameraControllerState
     measurementsRendering : RenderingParameters
@@ -100,10 +100,10 @@ type MeasurementsImporterAppModel = {
     measurementsHoverPosition : option<Trafo3d>
 
     scenePath     : string
-    annotations : plist<Annotation>
+    annotations : IndexList<Annotation>
 }
 
-[<DomainType>]
+[<ModelType>]
 type ComposedViewerModel = {
     camera : CameraControllerState
     singleAnnotation : Annotation
@@ -123,17 +123,17 @@ type BoxSelectionDemoAction =
         | RemoveBox
         | ClearSelection
 
-[<DomainType>]
+[<ModelType>]
 type BoxSelectionDemoModel = {
     camera : CameraControllerState    
     rendering : RenderingParameters
 
-    boxes : plist<VisibleBox>
-    boxesSet : hset<VisibleBox>
-    boxesMap : hmap<string,VisibleBox>
+    boxes : IndexList<VisibleBox>
+    boxesSet : HashSet<VisibleBox>
+    boxesMap : HashMap<string,VisibleBox>
 
     boxHovered : option<string>
-    selectedBoxes : hset<string>
+    selectedBoxes : HashSet<string>
 }
 
 
@@ -149,7 +149,7 @@ type OpenPolygon = {
 }
 
 
-[<DomainType>]
+[<ModelType>]
 type SimpleDrawingAppModel = {
     camera : CameraControllerState
     rendering : RenderingParameters
@@ -161,7 +161,7 @@ type SimpleDrawingAppModel = {
 }
 
 
-[<DomainType>]
+[<ModelType>]
 type DrawingModel = {
 
     draw    : bool 
@@ -172,12 +172,12 @@ type DrawingModel = {
     geometry : Geometry
     semantic : Semantic
 
-    annotations : plist<Annotation>
+    annotations : IndexList<Annotation>
     exportPath : string
 }
 
 
-[<DomainType>]
+[<ModelType>]
 type AnnotationAppModel = {
     camera : CameraControllerState
     rendering : RenderingParameters
@@ -192,7 +192,7 @@ type AnnotationAppModel = {
     //geometry : Geometry
     //semantic : Semantic
 
-    //annotations : plist<Annotation>
+    //annotations : IndexList<Annotation>
 
     [<TreatAsValue>]
     history : Option<AnnotationAppModel> 
@@ -229,8 +229,8 @@ module JsonTypes =
 
     let ofSegment (s:Segment) : _Segment = s  |> List.map ofV3d
 
-    let ofSegment1 (s:plist<V3d>) : _Segment = s  |> PList.map ofV3d
-                                                  |> PList.toList
+    let ofSegment1 (s:IndexList<V3d>) : _Segment = s  |> IndexList.map ofV3d
+                                                  |> IndexList.toList
 
 
     let rec fold f s xs =
@@ -246,13 +246,13 @@ module JsonTypes =
         polyline  |> List.pairwise |> List.fold (fun s (a,b) -> s + (b - a).LengthSquared) 0.0 |> Math.Sqrt
 
     let ofAnnotation (a:Annotation) : _Annotation =
-        let polygon = ofPolygon (a.points |> PList.toList)
+        let polygon = ofPolygon (a.points |> IndexList.toList)
         let avgHeight = (polygon |> List.map (fun v -> v.Z ) |> List.sum) / double polygon.Length
-        let distance = sumDistance (a.points |> PList.toList)
+        let distance = sumDistance (a.points |> IndexList.toList)
         {            
             semantic = a.semantic.ToString()
             geometry = polygon
-            segments = a.segments |> PList.map (fun x -> ofSegment1 x) |> PList.toList //|> List.map (fun x -> ofSegment x)
+            segments = a.segments |> IndexList.map (fun x -> ofSegment1 x) |> IndexList.toList //|> List.map (fun x -> ofSegment x)
             color = a.color.ToString()
             thickness = a.thickness.value
             
@@ -264,7 +264,7 @@ module JsonTypes =
     //let ofDrawing (m : Drawing) : list<_Annotation> =
     //    m.finished.AsList |> List.map ofAnnotation
 
-[<DomainType>]
+[<ModelType>]
 type OrbitCameraDemoModel = {
     camera          : CameraControllerState
     rendering       : RenderingParameters    
@@ -273,7 +273,7 @@ type OrbitCameraDemoModel = {
     navsensitivity  : NumericInput
 }
 
-[<DomainType>]
+[<ModelType>]
 type NavigationModeDemoModel = {
     camera : CameraControllerState
     rendering : RenderingParameters
@@ -312,7 +312,7 @@ module Annotation =
             text = ""
         }
 
-[<DomainType>]
+[<ModelType>]
 type FalseColorsModel = {
     useFalseColors  : bool
     lowerBound      : NumericInput
@@ -328,9 +328,9 @@ module InitValues =
     let annotation = 
         {
             geometry = Geometry.Polyline
-            points = edge |> PList.ofList
+            points = edge |> IndexList.ofList
             semantic = Semantic.Horizon0
-            segments = PList.ofList [edge |> PList.ofList; edge |> PList.ofList; edge |> PList.ofList] //[edge; edge; edge]
+            segments = IndexList.ofList [edge |> IndexList.ofList; edge |> IndexList.ofList; edge |> IndexList.ofList] //[edge; edge; edge]
             color = C4b.Red
             thickness = Numeric.init
             projection = Projection.Viewpoint
@@ -342,8 +342,8 @@ module InitValues =
         {
             geometry = Geometry.Polyline
             semantic = Semantic.Horizon0
-            points = PList.empty
-            segments = PList.empty //[]
+            points = IndexList.empty
+            segments = IndexList.empty //[]
             color = C4b.Red
             thickness = Numeric.init
             projection = Projection.Viewpoint

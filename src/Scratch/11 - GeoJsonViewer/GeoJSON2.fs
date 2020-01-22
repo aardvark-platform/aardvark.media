@@ -1,4 +1,4 @@
-﻿namespace GeoJsonViewer
+namespace GeoJsonViewer
 
 open Aardvark.Base
 open FSharp.Data
@@ -96,7 +96,7 @@ module MinervaGeoJSON =
       name        = (root?name).AsString()
       typus       = root.GetProperty("type") |> parseTypus    
       boundingBox = (root?bbox) |> parseBoundingBox
-      features    = (root?features) |> parseFeatures |> PList.ofList
+      features    = (root?features) |> parseFeatures |> IndexList.ofList
     }
 
   let load (siteUrl:string) : FeatureCollection =     
@@ -107,7 +107,7 @@ module MinervaGeoJSON =
       name = "layers"
       typus = FeatureCollection
       boundingBox = collections |> Seq.fold (fun (a:Box2d) (fc:FeatureCollection) -> a.ExtendedBy(fc.boundingBox)) Box2d.Invalid
-      features = collections |> Seq.map(fun x -> x.features) |> PList.concat
+      features = collections |> Seq.map(fun x -> x.features) |> IndexList.concat
     }
 
   let loadMultiple sites : FeatureCollection =     

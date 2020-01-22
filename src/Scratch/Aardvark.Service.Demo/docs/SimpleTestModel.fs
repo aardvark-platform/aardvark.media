@@ -1,11 +1,11 @@
-﻿namespace SimpleTest
+namespace SimpleTest
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
-[<DomainType>]
+[<ModelType>]
 type Model = { 
     value : float 
     cameraModel : CameraControllerState

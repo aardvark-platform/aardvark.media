@@ -1,4 +1,4 @@
-﻿namespace DiscoverOpcs
+namespace DiscoverOpcs
 
 open System
 open System.IO
@@ -7,7 +7,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
   
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open DiscoverOpcs.Model
 
@@ -49,7 +49,7 @@ module App =
         let opcs = 
           selectedPaths 
             |> List.map Discover.superDiscovery
-            |> HMap.ofList
+            |> HashMap.ofList
 
         let surfacePaths = 
           selectedPaths
@@ -59,7 +59,7 @@ module App =
         Log.stop()
         
         { model with 
-           selectedPaths = selectedPaths |> PList.ofList
+           selectedPaths = selectedPaths |> IndexList.ofList
            opcPaths = opcs
            surfaceFolder = surfacePaths
         }
@@ -159,8 +159,8 @@ module App =
 
   let initial = 
     { 
-       selectedPaths = initPaths |> PList.ofList
-       opcPaths = HMap.empty //opcPaths |> PList.ofList
+       selectedPaths = initPaths |> IndexList.ofList
+       opcPaths = HashMap.empty //opcPaths |> IndexList.ofList
        surfaceFolder = List.empty
     }
 

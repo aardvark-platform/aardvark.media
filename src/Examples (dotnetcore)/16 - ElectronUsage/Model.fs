@@ -1,7 +1,7 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 type Message = 
@@ -10,7 +10,7 @@ type Message =
     | LoadFiles of list<string>
     | SaveFile of string
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         cameraState : CameraControllerState

@@ -1,11 +1,11 @@
-﻿namespace GeoJsonViewer
+namespace GeoJsonViewer
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Events
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 
 module App =
@@ -29,7 +29,7 @@ module App =
   
   let isSelected (model : MModel) (feature : Feature) = 
     model.selected 
-      |> Mod.map(function
+      |> AVal.map(function
         | Some x -> x = feature.id
         | None -> false)
 
@@ -172,12 +172,12 @@ module App =
 
   let view (model : MModel) =
 
-    //let box = Sg.box (Mod.constant C4b.VRVisGreen) (Mod.constant Box3d.Unit)
+    //let box = Sg.box (AVal.constant C4b.VRVisGreen) (AVal.constant Box3d.Unit)
 
     let sg = drawFeatures model.data
               
     let renderControl =
-      FreeFlyController.controlledControl model.camera Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+      FreeFlyController.controlledControl model.camera Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> AVal.constant) 
         (AttributeMap.ofList [ 
           style "width: 100%; height:100%"; 
           attribute "showFPS" "false";       // optional, default is false
@@ -223,7 +223,7 @@ module App =
       name = "initial"
       boundingBox = Box2d.Invalid
       typus       = Typus.Feature
-      features    = PList.empty
+      features    = IndexList.empty
     }
       
   let camPosition (bb : Box2d) =

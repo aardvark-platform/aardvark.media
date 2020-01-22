@@ -1,9 +1,9 @@
-﻿module App
+module App
 
 open RenderModel // open the namespace which holds our domain types (both, the original and the generated ones)
 
 open Aardvark.Base             // math stuff such as V3d, Trafo3d
-open Aardvark.Base.Incremental // the incremental system (Mod et al) including domain type functionality
+open FSharp.Data.Adaptive // the incremental system (Mod et al) including domain type functionality
 open Aardvark.Base.Rendering   // basic rendering datastructures (such as CullMode)
 
 open Aardvark.UI            // the base infrastructure for elm style aardvark applications
@@ -26,7 +26,7 @@ let update (m : Model) (a : Action) =
         | SetCullMode mode -> { m with appearance = { cullMode = mode } }
 
 // map objects to their rendering representation (adaptively)
-let renderModel (model : IMod<MObject>) =
+let renderModel (model : aval<MObject>) =
     adaptive {
         let! currentModel = model // type could change, read adaptively
         match currentModel with
@@ -36,17 +36,17 @@ let renderModel (model : IMod<MObject>) =
                     return 
                         file 
                         |> Sg.Assimp.loadFromFile true 
-                        |> Sg.trafo (Trafo3d.Scale(1.0,1.0,-1.0) |> Mod.constant)
+                        |> Sg.trafo (Trafo3d.Scale(1.0,1.0,-1.0) |> AVal.constant)
                         |> Sg.normalize // create scenegraph
                 else 
                     Log.warn "file not found"
                     return Sg.empty 
             | MSphereModel(center,radius) ->
-                let sphere = Sg.sphere 6 (Mod.constant C4b.White) radius 
+                let sphere = Sg.sphere 6 (AVal.constant C4b.White) radius 
                 // create unit sphere of given mod radius and translate adaptively
                 return Sg.translate' center sphere
             | MBoxModel b -> 
-                return Sg.box (Mod.constant C4b.White) b //adaptively create box
+                return Sg.box (AVal.constant C4b.White) b //adaptively create box
     }
 
 // map the adaptive model to a rendering representation.
@@ -75,7 +75,7 @@ let view3D (m : MModel) =
             // (nested changeability Mod<Mod<..>> is flattened out)          
             
 
-    let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant
+    let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant
     let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"; attribute "data-samples" "8"]
     FreeFlyController.controlledControl m.cameraState CameraAction frustum attributes sg
 

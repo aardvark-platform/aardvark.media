@@ -1,9 +1,9 @@
-﻿namespace UI.Composed
+namespace UI.Composed
 
 open System
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.SceneGraph.AirState
 open Demo
 
@@ -13,8 +13,8 @@ open System
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.Application.WinForms
@@ -30,8 +30,8 @@ open Demo.TestApp.Mutable
 
 module Mod =    
 
-    let bindOption (m : IMod<Option<'a>>) (defaultValue : 'b) (project : 'a -> IMod<'b>)  : IMod<'b> =
-        m |> Mod.bind (function | None   -> Mod.constant defaultValue       
+    let bindOption (m : aval<Option<'a>>) (defaultValue : 'b) (project : 'a -> aval<'b>)  : aval<'b> =
+        m |> AVal.bind (function | None   -> AVal.constant defaultValue       
                                 | Some v -> project v)
 
 module Primitives =
@@ -53,7 +53,7 @@ module Primitives =
         [0..number-1] |> List.map (function x -> mkNthBox x number)
 
     let hoveredColor (model : MComposedViewerModel) (box : VisibleBox) =
-        model.boxHovered |> Mod.map (fun h -> match h with
+        model.boxHovered |> AVal.map (fun h -> match h with
                                                 | Some i -> if i = box.id then hoverColor else box.color
                                                 | None -> box.color)
 
@@ -65,7 +65,7 @@ module Primitives =
         }
 
     let mkISgBox (model : MComposedViewerModel) (box : VisibleBox) =
-        let box' = Mod.constant (box.geometry)
+        let box' = AVal.constant (box.geometry)
         let c = hoveredColor model box
 
         Sg.box c box'
@@ -103,7 +103,7 @@ module SimpleCompositionViewer =
             model.camera.view 
             
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
@@ -204,7 +204,7 @@ module OrbitCameraDemo =
             model.camera.view 
             
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
             
         require (Html.semui) (
             div [clazz "ui"; style "background-color: #1B1C1E"] [
@@ -215,15 +215,15 @@ module OrbitCameraDemo =
                     (
                       
                         let boxGeometry = Box3d(-V3d.III, V3d.III)
-                        let box = Mod.constant (boxGeometry)   
+                        let box = AVal.constant (boxGeometry)   
                         
                         //let trafo = 
                         //    model.camera.orbitCenter 
-                        //        |> Mod.bind (fun center -> match center with 
-                        //                                    | Some x -> Mod.constant (Trafo3d.Translation x)
-                        //                                    | None -> Mod.constant (Trafo3d.Identity))
+                        //        |> AVal.bind (fun center -> match center with 
+                        //                                    | Some x -> AVal.constant (Trafo3d.Translation x)
+                        //                                    | None -> AVal.constant (Trafo3d.Identity))
 
-                        let trafo = model.orbitCenter.value |> Mod.map(fun d -> Trafo3d.Translation d)
+                        let trafo = model.orbitCenter.value |> AVal.map(fun d -> Trafo3d.Translation d)
 
                         let b = Sg.box model.color.c box
                                     |> Sg.shader {
@@ -236,7 +236,7 @@ module OrbitCameraDemo =
                                     |> Sg.withEvents [
                                             Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map CameraMessage
 
-                        let s = Sg.sphere 5 (Mod.constant C4b.Red) (Mod.constant 0.15)
+                        let s = Sg.sphere 5 (AVal.constant C4b.Red) (AVal.constant 0.15)
                                     |> Sg.shader {
                                         do! DefaultSurfaces.trafo
                                         do! DefaultSurfaces.vertexColor
@@ -266,7 +266,7 @@ module OrbitCameraDemo =
 
                         //        let input = Vector3d.initV3d center
                         //    }
-                        //Mod.bindOption model.dnsResults Double.NaN (fun a -> a.dipAngle)                       
+                        //AVal.bindOption model.dnsResults Double.NaN (fun a -> a.dipAngle)                       
 
                         yield Incremental.div AttributeMap.empty (
                             AList.ofList [Vector3d.view model.orbitCenter |> UI.map V3dMessage]
@@ -365,24 +365,24 @@ module NavigationModeDemo =
             model.camera.view 
             
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
         
         //let controller = 
         //    model.navigation.navigationMode 
-        //        |> Mod.map (function 
+        //        |> AVal.map (function 
         //            | NavigationMode.FreeFly -> CameraController.controlledControl model.camera FreeFlyAction frustum
         //            | NavigationMode.ArcBall -> ArcBallController.controlledControl model.camera ArcBallAction frustum
         //            | _ -> CameraController.controlledControl model.camera FreeFlyAction frustum
         //        )
 
         let scene =
-            let color = Mod.constant C4b.Blue
+            let color = AVal.constant C4b.Blue
             let boxGeometry = Box3d(-V3d.III, V3d.III)
-            let box = Mod.constant (boxGeometry)                       
+            let box = AVal.constant (boxGeometry)                       
                         
             let trafo = 
                 model.camera.orbitCenter 
-                    |> Mod.map (function
+                    |> AVal.map (function
                         | Some x -> Trafo3d.Translation x
                         | None   -> Trafo3d.Identity
                     )
@@ -399,7 +399,7 @@ module NavigationModeDemo =
                         |> Sg.withEvents [
                                 Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map ArcBallAction                                    
 
-            let s = Sg.sphere 4 (Mod.constant C4b.Red) (Mod.constant 0.15)
+            let s = Sg.sphere 4 (AVal.constant C4b.Red) (AVal.constant 0.15)
                         |> Sg.shader {
                             do! DefaultSurfaces.trafo
                             do! DefaultSurfaces.vertexColor
@@ -429,7 +429,7 @@ module NavigationModeDemo =
            div [clazz "ui"; style "background: #1B1C1E"] [
                     yield 
                         Incremental.renderControl 
-                            (Mod.map2 Camera.create model.camera.view frustum) 
+                            (AVal.map2 Camera.create model.camera.view frustum) 
                             (AttributeMap.unionMany [
                                 renderControlAttributes 
                                 
@@ -450,9 +450,9 @@ module NavigationModeDemo =
             //]
                     let cameracontroller (ccs : MCameraControllerState) = 
                         Html.table [  
-                            Html.row "Sensitivity:" [Incremental.text (ccs.sensitivity |> Mod.map (fun x -> sprintf "%f" x))]
-                            Html.row "ZoomFactor:"  [Incremental.text (ccs.zoomFactor  |> Mod.map (fun x -> sprintf "%f" x))]
-                            Html.row "PanFactor:"   [Incremental.text (ccs.panFactor   |> Mod.map (fun x -> sprintf "%f" x))]                            
+                            Html.row "Sensitivity:" [Incremental.text (ccs.sensitivity |> AVal.map (fun x -> sprintf "%f" x))]
+                            Html.row "ZoomFactor:"  [Incremental.text (ccs.zoomFactor  |> AVal.map (fun x -> sprintf "%f" x))]
+                            Html.row "PanFactor:"   [Incremental.text (ccs.panFactor   |> AVal.map (fun x -> sprintf "%f" x))]                            
                         ]
 
                     let navigationAcc = 
@@ -527,9 +527,9 @@ module BoxSelectionDemo =
                  { model with rendering = RenderingProperties.update model.rendering a }
             | Select id-> 
                 let selection = 
-                    if HSet.contains id model.selectedBoxes 
-                    then HSet.remove id model.selectedBoxes 
-                    else HSet.add id model.selectedBoxes
+                    if HashSet.contains id model.selectedBoxes 
+                    then HashSet.remove id model.selectedBoxes 
+                    else HashSet.add id model.selectedBoxes
 
                 { model with selectedBoxes = selection }           
             | Enter id-> { model with boxHovered = Some id }            
@@ -539,26 +539,26 @@ module BoxSelectionDemo =
                 let i = model.boxes.Count                
                 let box = Primitives.mkNthBox i (i+1) |> Primitives.mkVisibleBox Primitives.colors.[i % 5]
                                          
-                { model with boxes = PList.append box model.boxes }
+                { model with boxes = IndexList.append box model.boxes }
             | RemoveBox ->  
                 let i = model.boxes.Count - 1
-                let boxes = PList.removeAt i model.boxes
+                let boxes = IndexList.removeAt i model.boxes
 
                 {model with boxes = boxes}
-            | ClearSelection -> { model with selectedBoxes = HSet.empty}
+            | ClearSelection -> { model with selectedBoxes = HashSet.empty}
                         
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
     let mkColor (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
-        let id = box.id |> Mod.force
+        let id = box.id |> AVal.force
 
         let color =  
             model.selectedBoxes 
                 |> ASet.contains id 
-                |> Mod.bind (function x -> if x then Mod.constant Primitives.selectionColor else box.color)
+                |> AVal.bind (function x -> if x then AVal.constant Primitives.selectionColor else box.color)
 
-        let color = model.boxHovered |> Mod.bind (function x -> match x with
-                                                                | Some k -> if k = id then Mod.constant Primitives.hoverColor else color
+        let color = model.boxHovered |> AVal.bind (function x -> match x with
+                                                                | Some k -> if k = id then AVal.constant Primitives.hoverColor else color
                                                                 | None -> color)
 
         color
@@ -576,8 +576,8 @@ module BoxSelectionDemo =
                 |> Sg.requirePicking
                 |> Sg.noEvents
                 |> Sg.withEvents [
-                    Sg.onClick (fun _ -> Select (box.id |> Mod.force))
-                    Sg.onEnter (fun _ -> Enter (box.id |> Mod.force))
+                    Sg.onClick (fun _ -> Select (box.id |> AVal.force))
+                    Sg.onEnter (fun _ -> Enter (box.id |> AVal.force))
                     Sg.onLeave (fun () -> Exit)
                 ]
 
@@ -586,7 +586,7 @@ module BoxSelectionDemo =
             model.camera.view 
                            
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
@@ -627,8 +627,8 @@ module BoxSelectionDemo =
                                     let bgc = sprintf "background: %s" (Html.ofC4b c)
                                     
                                     yield div [clazz "item"; style bgc; 
-                                               onClick(fun _ -> Select (b.id |> Mod.force))
-                                               onMouseEnter(fun _ -> Enter (b.id |> Mod.force))
+                                               onClick(fun _ -> Select (b.id |> AVal.force))
+                                               onMouseEnter(fun _ -> Enter (b.id |> AVal.force))
                                                onMouseLeave(fun _ -> Exit)] [
                                          i [clazz "medium File Outline middle aligned icon"][]
                                     ]                                                                    
@@ -643,10 +643,10 @@ module BoxSelectionDemo =
             camera           = CameraController.initial            
             rendering        = InitValues.rendering            
             boxHovered = None
-            boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i % 5] k) |> PList.ofList
-            selectedBoxes = HSet.empty         
-            boxesSet = HSet.empty
-            boxesMap = HMap.empty
+            boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> Primitives.mkVisibleBox Primitives.colors.[i % 5] k) |> IndexList.ofList
+            selectedBoxes = HashSet.empty         
+            boxesSet = HashSet.empty
+            boxesMap = HashMap.empty
         }
 
     let app : App<BoxSelectionDemoModel,MBoxSelectionDemoModel,Action> =
@@ -689,9 +689,9 @@ module SimpleDrawingApp =
             
     let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
-    let computeScale (view : IMod<CameraView>)(p:V3d)(size:float) =        
+    let computeScale (view : aval<CameraView>)(p:V3d)(size:float) =        
         view 
-            |> Mod.map (function v -> 
+            |> AVal.map (function v -> 
                                     let distV = p - v.Location
                                     let distF = V3d.Dot(v.Forward, distV)
                                     distF * size / 800.0)
@@ -708,7 +708,7 @@ module SimpleDrawingApp =
         
     let canvas =  
         let b = new Box3d( V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0) )                                               
-        Sg.box (Mod.constant Primitives.colorsBlue.[0]) (Mod.constant b)
+        Sg.box (AVal.constant Primitives.colorsBlue.[0]) (AVal.constant b)
             |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -722,9 +722,9 @@ module SimpleDrawingApp =
                     Sg.onLeave (fun _ -> Exit)
                 ]    
 
-    let edgeLines (close : bool)  (points : IMod<list<V3d>>) =        
+    let edgeLines (close : bool)  (points : aval<list<V3d>>) =        
         points 
-            |> Mod.map (
+            |> AVal.map (
                 function k -> 
                             let head = k |> List.tryHead
                             match head with
@@ -739,7 +739,7 @@ module SimpleDrawingApp =
             model.camera.view 
             
         let frustum =
-            Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+            AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
       
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
@@ -753,34 +753,34 @@ module SimpleDrawingApp =
                         
                         let x = 
                             edgeLines false model.points 
-                                |> Sg.lines (Mod.constant Primitives.colorsBlue.[2])
+                                |> Sg.lines (AVal.constant Primitives.colorsBlue.[2])
                                 |> Sg.noEvents
-                                |> Sg.uniform "LineWidth" (Mod.constant 5) 
+                                |> Sg.uniform "LineWidth" (AVal.constant 5) 
                                 |> Sg.effect [
                                     toEffect DefaultSurfaces.trafo
                                     toEffect DefaultSurfaces.vertexColor
                                     toEffect DefaultSurfaces.thickLine
                                     ]
                                 |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
-                                |> Sg.depthTest (Mod.constant DepthTestMode.None)
+                                |> Sg.depthTest (AVal.constant DepthTestMode.None)
 
                                                 
 
                         let spheres =
                             model.points 
-                                |> Mod.map(function ps -> ps |> List.map (function p -> mkISg (Mod.constant Primitives.colorsBlue.[3])
+                                |> AVal.map(function ps -> ps |> List.map (function p -> mkISg (AVal.constant Primitives.colorsBlue.[3])
                                                                                               (computeScale model.camera.view p 5.0)
-                                                                                              (Mod.constant (Trafo3d.Translation(p)))) 
+                                                                                              (AVal.constant (Trafo3d.Translation(p)))) 
                                                              |> Sg.ofList)                                
                                 |> Sg.dynamic                            
                                               
                         let trafo = 
                             model.hoverPosition 
-                                |> Mod.map (function o -> match o with 
+                                |> AVal.map (function o -> match o with 
                                                             | Some t-> t
                                                             | None -> Trafo3d.Scale(V3d.Zero))
 
-                        let brush = mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
+                        let brush = mkISg (AVal.constant C4b.Red) (AVal.constant 0.05) trafo
                                                             
                         [canvas; brush; spheres; x]
                             |> Sg.ofList

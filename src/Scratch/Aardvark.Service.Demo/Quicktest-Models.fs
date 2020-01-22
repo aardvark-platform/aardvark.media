@@ -1,7 +1,7 @@
-﻿namespace QuickTest
+namespace QuickTest
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.SceneGraph
 open Aardvark.Base.Rendering
@@ -13,9 +13,9 @@ type Person = {
     secondName : string
 }
 
-[<DomainType>]
+[<ModelType>]
 type QuickTestModel = {
-    values : plist<Person>
+    values : IndexList<Person>
     selected : Person
     newValue : option<Person>
 }

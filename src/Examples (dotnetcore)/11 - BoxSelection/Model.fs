@@ -1,7 +1,7 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 open RenderingParametersModel
@@ -17,7 +17,7 @@ type BoxSelectionDemoAction =
     | ClearSelection
     | Nop
 
-[<DomainType>]
+[<ModelType>]
 type VisibleBox = {
     geometry : Box3d
     color    : C4b    
@@ -26,15 +26,15 @@ type VisibleBox = {
     id : string
 }
 
-[<DomainType>]
+[<ModelType>]
 type BoxSelectionDemoModel = {
     camera : CameraControllerState    
     rendering : RenderingParameters
 
-    boxes : plist<VisibleBox>
-    boxesSet : hset<VisibleBox>
-    boxesMap : hmap<string,VisibleBox>
+    boxes : IndexList<VisibleBox>
+    boxesSet : HashSet<VisibleBox>
+    boxesMap : HashMap<string,VisibleBox>
 
     boxHovered : option<string>
-    selectedBoxes : hset<string>
+    selectedBoxes : HashSet<string>
 }

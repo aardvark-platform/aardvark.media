@@ -1,4 +1,4 @@
-﻿module Inc.App
+module Inc.App
 
 open Aardvark.SceneGraph
 open Aardvark.UI
@@ -6,7 +6,7 @@ open Aardvark.UI.Primitives
 open Aardvark.UI.Operators
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Inc.Model
 open Aardvark.Application
@@ -59,7 +59,7 @@ let changeColor (model : Model) (point : int) (f : C4f -> C4f) =
             | _ -> failwith ""
     match model.selectedObject with
         | None -> model
-        | Some id -> { model with objects = HMap.alter id update model.objects}
+        | Some id -> { model with objects = HashMap.alter id update model.objects}
 
 let horizontalMapping =
     [ 0, 0; 1, 1; 2, 1; 3,0 ] |> Map.ofList
@@ -95,7 +95,7 @@ let update (model : Model) (msg : Message) =
                     | Some r, None, None, None -> 
                         let newObject = Rect(Box2d(r.Min.XY,r.Max.XY), Color.initial)
                         let freshId = ObjectId.freshId()
-                        { model with objects = HMap.add freshId newObject model.objects; openRect = None; selectedObject = Some freshId }
+                        { model with objects = HashMap.add freshId newObject model.objects; openRect = None; selectedObject = Some freshId }
                     | None, Some t, Some id, None -> 
                         let update o =
                             match o with
@@ -104,7 +104,7 @@ let update (model : Model) (msg : Message) =
                                     match old with
                                         | Rect(b,c) -> Rect(b.Translated t.XY, c) |> Some
                                         | Polygon(vs,cs) -> failwith "not implemented"
-                        { model with objects = HMap.alter id update model.objects; translation = None }
+                        { model with objects = HashMap.alter id update model.objects; translation = None }
                     | None, None, Some id, Some d -> 
                         let update o =
                             match o with
@@ -113,7 +113,7 @@ let update (model : Model) (msg : Message) =
                                     match old with
                                         | Rect(b,c) -> Rect(Box2d.FromPoints(d.fixedPoint,d.pos),c) |> Some
                                         | Polygon(vs,cs) -> failwith "not implemented"
-                        { model with objects = HMap.alter id update model.objects; dragEndpoint = None }
+                        { model with objects = HashMap.alter id update model.objects; dragEndpoint = None }
                     | o,t,i,d -> 
                         Log.warn "%A" (o,t,i,d)
                         model
@@ -136,7 +136,7 @@ let update (model : Model) (msg : Message) =
                             | None -> None
                             | Some (Rect(b,c)) -> Some (Rect(b,{c with kind = m }))
                             | Some other -> Some other
-                    { model with objects = HMap.alter s update model.objects}
+                    { model with objects = HashMap.alter s update model.objects}
         | SetDirection d -> 
             match model.selectedObject with
                 | None -> model
@@ -146,16 +146,16 @@ let update (model : Model) (msg : Message) =
                             | None -> None
                             | Some (Rect(b,c)) -> Some (Rect(b,{c with gradient = {c.gradient with direction = d} }))
                             | Some other -> Some other
-                    { model with objects = HMap.alter s update model.objects}
+                    { model with objects = HashMap.alter s update model.objects}
         | ChangeColor(point,color) -> 
             changeColor model point (constF color)
         | Delete index -> 
-            { model with objects = HMap.remove index model.objects }
+            { model with objects = HashMap.remove index model.objects }
         | HoverHandle(vertexId) -> 
             match model.selectedObject with
                 | None -> model
                 | Some i -> 
-                    match HMap.tryFind i model.objects with
+                    match HashMap.tryFind i model.objects with
                         | None -> model
                         | Some o ->
                             match o with
@@ -186,12 +186,12 @@ let dependencies =
   ] 
 
 
-let viewBox (box : IMod<Box2d>) (colors : IMod<array<C4f>>) =
-    let boxColors = colors |> Mod.map (fun colors -> Array.concat [colors |> Array.map C4b;colors|> Array.map C4b])
-    let colors2 = boxColors |> Mod.map (fun colors -> Utils.Geometry.indices |> Array.map (fun i -> colors.[i]))
-    let b = box |> Mod.map (fun b2d -> Box3d.FromPoints(V3d(b2d.Min,0.0),V3d(b2d.Max,1.0)))
+let viewBox (box : aval<Box2d>) (colors : aval<array<C4f>>) =
+    let boxColors = colors |> AVal.map (fun colors -> Array.concat [colors |> Array.map C4b;colors|> Array.map C4b])
+    let colors2 = boxColors |> AVal.map (fun colors -> Utils.Geometry.indices |> Array.map (fun i -> colors.[i]))
+    let b = box |> AVal.map (fun b2d -> Box3d.FromPoints(V3d(b2d.Min,0.0),V3d(b2d.Max,1.0)))
     let box = Utils.Geometry.box colors2 b 
-    let s = b |> Mod.map (fun b -> if b.Min.AnyNaN || b.Max.AnyNaN then failwith "" else PickShape.Box b)
+    let s = b |> AVal.map (fun b -> if b.Min.AnyNaN || b.Max.AnyNaN then failwith "" else PickShape.Box b)
     box |> Sg.pickable' s
     
 let unpackColor (color : Color) =
@@ -211,7 +211,7 @@ let viewObject (object : MObject) =
         | MPolygon(points,colors) -> 
             Sg.empty
         | MRect(box,color) -> 
-            let colors = color |> Mod.map unpackColor
+            let colors = color |> AVal.map unpackColor
             viewBox box colors
 
 let viewScene (model : MModel) =
@@ -225,7 +225,7 @@ let viewScene (model : MModel) =
             Sg.onMouseDown (fun button p -> MouseDown(Where.Canvas,button,p))
             Sg.onMouseUp   (fun _ -> MouseUp Where.Canvas)
         ]   
-        |> Sg.trafo (Trafo3d.Translation(1.0,1.0,0.0) * Trafo3d.Scale(0.5,0.5,0.5) |> Mod.constant)
+        |> Sg.trafo (Trafo3d.Translation(1.0,1.0,0.0) * Trafo3d.Scale(0.5,0.5,0.5) |> AVal.constant)
         |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.constantColor C4f.Black
@@ -241,19 +241,19 @@ let viewScene (model : MModel) =
                         | None -> return Sg.empty
                         | Some object -> 
                             let! object = object
-                            let trafo = model.translation |> Mod.map (function Some t -> Trafo3d.Translation t | _ -> Trafo3d.Identity)
+                            let trafo = model.translation |> AVal.map (function Some t -> Trafo3d.Translation t | _ -> Trafo3d.Identity)
                             match object with
                                 | MRect(originalBox,color) -> 
                                     let! box =
-                                        Mod.map2 (fun originalBox dragEndPoint -> 
+                                        AVal.map2 (fun originalBox dragEndPoint -> 
                                             match dragEndPoint with
                                                 | None -> originalBox
                                                 | Some d -> Box2d.FromPoints(d.fixedPoint,d.pos)
                                         ) originalBox model.dragEndpoint
                                     let vertices = [|box.Min; box.Min + box.Size.XO; box.Min + box.Size; box.Min + box.Size.OY|]
-                                    let colors = color |> Mod.map unpackColor
+                                    let colors = color |> AVal.map unpackColor
                                     let baseObject = 
-                                        viewBox (Mod.constant box) (colors) 
+                                        viewBox (AVal.constant box) (colors) 
                                         |> Sg.withEvents [ 
                                             Sg.onClick (fun p -> ClickObject id); 
                                             Sg.onMouseDown (fun b p -> MouseDown(Where.Object id, b, p))
@@ -264,7 +264,7 @@ let viewScene (model : MModel) =
                                     return
                                         vertices |> Array.mapi (fun i origin ->
                                             let b = Box3d.FromCenterAndSize(V3d(origin,1.0),V3d.III*0.01)
-                                            Sg.box (Mod.constant C4b.White) (Mod.constant b)
+                                            Sg.box (AVal.constant C4b.White) (AVal.constant b)
                                             |> Sg.pickable (PickShape.Box b)
                                             |> Sg.withEvents [
                                                     Sg.onMouseDown (fun b p -> DragEndPoint(id, i, vertices))
@@ -285,14 +285,14 @@ let viewScene (model : MModel) =
             match openRect with
                 | None -> return Sg.empty
                 | Some o -> 
-                    return viewBox (Mod.constant (Box2d(o.Min.XY,o.Max.XY))) (Array.init 4 (constF defaultColor) |> Mod.constant)
+                    return viewBox (AVal.constant (Box2d(o.Min.XY,o.Max.XY))) (Array.init 4 (constF defaultColor) |> AVal.constant)
                     
         } |> Sg.dynamic
 
     let objectSg = 
         model.objects 
             |> AMap.toASet 
-            |> ASet.filterM (fun (id,_) -> model.selectedObject |> Mod.map (function Some s -> s <> id | _ -> true)) 
+            |> ASet.filterM (fun (id,_) -> model.selectedObject |> AVal.map (function Some s -> s <> id | _ -> true)) 
             |> ASet.mapM (fun (id,object) -> 
                 adaptive {
                     let! object = object
@@ -319,9 +319,9 @@ let viewScene (model : MModel) =
  
 
     Sg.ofSeq [background; objectSg] 
-        |> Sg.blendMode (Mod.constant BlendMode.Blend)
-        |> Sg.depthTest (Mod.constant DepthTestMode.None)
-        //|> Sg.trafo (Trafo3d.FromOrthoNormalBasis(V3d.IOO,V3d.OOI,V3d.OIO) |> Mod.constant)
+        |> Sg.blendMode (AVal.constant BlendMode.Blend)
+        |> Sg.depthTest (AVal.constant DepthTestMode.None)
+        //|> Sg.trafo (Trafo3d.FromOrthoNormalBasis(V3d.IOO,V3d.OOI,V3d.OIO) |> AVal.constant)
 
  
 
@@ -339,10 +339,10 @@ let view (model : MModel) =
     //let frustum = Frustum.perspective 60.0 0.01 100.0 1.0
 
     let renderControl = 
-        //FreeFlyController.controlledControl' model.cameraState Camera (frustum |> Mod.constant)
+        //FreeFlyController.controlledControl' model.cameraState Camera (frustum |> AVal.constant)
         //            (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; "useMapping" => "false"]) 
         //            (viewScene model)
-        let camera = Camera.create (model.cameraState.view.GetValue()) frustum |> Mod.constant
+        let camera = Camera.create (model.cameraState.view.GetValue()) frustum |> AVal.constant
         renderControl' camera [ style "width: 100%; height:100%; background: #222; border-style: solid; border-color: black; border-width:1px"; 
                                 "useMapping" => "false"
                                 onWheel' (fun delta pos -> ChangeAlpha(None,delta))] RenderControlConfig.noScaling (viewScene model)
@@ -371,7 +371,7 @@ let view (model : MModel) =
                                 let! o = o 
                                 match o with    
                                     | MRect(b,color) -> 
-                                        let! colors = color |> Mod.map unpackColor
+                                        let! colors = color |> AVal.map unpackColor
                                         let! color = color
 
                                         let withPicker (c : C4f) (index : int) (s : string)  =
@@ -435,11 +435,11 @@ let view (model : MModel) =
                                                 return c.kind, c.gradient.direction
                                             | _ -> return ColorKind.Constant, Direction.Horizontal
                     }
-                yield Html.SemUi.dropDown (Mod.map fst mode) SetColorMode
+                yield Html.SemUi.dropDown (AVal.map fst mode) SetColorMode
                 yield br []
                 yield text "Gradient Direction"
                 yield br []
-                yield Html.SemUi.dropDown (Mod.map snd mode) SetDirection
+                yield Html.SemUi.dropDown (AVal.map snd mode) SetDirection
             ]
             yield button [style "ui small red button"; onClick (fun _ -> Delete id)] [text "Delete"]
         ]
@@ -475,7 +475,7 @@ let app =
         initial = 
             { 
                 objects = 
-                  HMap.ofList [
+                  HashMap.ofList [
                      (ObjectId.freshId(), Rect(Box2d.FromMinAndSize(V2d(0.0,0.0),V2d(0.7,0.7)), Color.initial))
                   ] 
                 selectedObject = None

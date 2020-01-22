@@ -1,8 +1,8 @@
-﻿module PerformanceApp
+module PerformanceApp
 
 open Performance
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.SceneGraph
 open Aardvark.Base.Rendering
@@ -15,10 +15,10 @@ type Action =
     | CameraAction of CameraController.Message
 
 let addObj m =
-    match PList.tryAt 0 m.objects with
+    match IndexList.tryAt 0 m.objects with
         | None -> m
         | Some o -> 
-            { m with visible = PList.append o m.visible; objects = PList.removeAt 0 m.objects }
+            { m with visible = IndexList.append o m.visible; objects = IndexList.removeAt 0 m.objects }
 
 let update (m : Model) (a : Action) =
     match a with
@@ -35,11 +35,11 @@ let cam =
 
 let threeD (m : MModel) =
 
-    let box = Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+    let box = Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
     let objects =
         aset {
             for o in m.visible |> AList.toASet do
-                yield box |> Sg.trafo (Mod.constant o)
+                yield box |> Sg.trafo (AVal.constant o)
         } |> Sg.set
 
     let sg =
@@ -55,15 +55,15 @@ let threeD (m : MModel) =
 
     let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
     CameraController.controlledControl m.cameraState CameraAction
-        (Mod.constant frustum) 
+        (AVal.constant frustum) 
         (AttributeMap.ofList [ attribute "style" "width:100%; height: 90%"]) sg
 
 let view (m : MModel) =
     div [] [
         text "constant text"
         br []
-        Incremental.text (m.visible |> AList.toMod |> (Mod.map (string << PList.count)))
-        //text (Mod.force s)
+        Incremental.text (m.visible |> AList.toMod |> (AVal.map (string << IndexList.count)))
+        //text (AVal.force s)
         br []
         button [onMouseClick (fun _ -> Inc)] [text "inc"]
         //button [onMouseClick (fun _ -> Dec)] [text "dec"]
@@ -77,12 +77,12 @@ let app =
             for y in -10 .. 10 do
                 for z in -10 .. 10 do
                     yield Trafo3d.Translation(float x, float y, float z)
-        ] |> PList.ofList
+        ] |> IndexList.ofList
     {
         unpersist = Unpersist.instance
         threads = 
             fun (model : Model) -> CameraController.threads model.cameraState |> ThreadPool.map CameraAction
-        initial = update { visible = PList.empty ; objects = objects; cameraState = CameraController.initial } Inc 
+        initial = update { visible = IndexList.empty ; objects = objects; cameraState = CameraController.initial } Inc 
         update = update
         view = view
     } 

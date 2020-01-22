@@ -1,9 +1,9 @@
-﻿namespace DragNDrop
+namespace DragNDrop
 
 module App =
 
     open Aardvark.Base
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
@@ -38,7 +38,7 @@ module App =
     let scene (m : MModel) =
 
         let box =
-            Sg.box (Mod.constant C4b.Green) (Mod.constant (Box3d.FromCenterAndSize(V3d.OOO,V3d.III)))
+            Sg.box (AVal.constant C4b.Green) (AVal.constant (Box3d.FromCenterAndSize(V3d.OOO,V3d.III)))
             |> Sg.requirePicking
             |> Sg.noEvents    
             |> Sg.withEvents [
@@ -61,7 +61,7 @@ module App =
 
             
 
-        CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+        CameraController.controlledControl m.camera CameraAction (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
             (AttributeMap.ofList [ 
                 attribute "style" "width:100%; height: 100%"
              ]) scene
@@ -84,7 +84,7 @@ module App =
 
 //module Matrix = 
 //    open Aardvark.Base
-//    open Aardvark.Base.Incremental
+//    open FSharp.Data.Adaptive
 
 //    let decomp (m:M44d) = 
 
@@ -120,7 +120,7 @@ module App =
                        
 //        s, Trafo3d(a, b), t
 
-//    let filterTrafo (mode : IMod<TrafoMode>) (trafo : IMod<Trafo3d>)=
+//    let filterTrafo (mode : aval<TrafoMode>) (trafo : aval<Trafo3d>)=
 //        adaptive {
 //            let! tr = trafo
 //            let! m = mode

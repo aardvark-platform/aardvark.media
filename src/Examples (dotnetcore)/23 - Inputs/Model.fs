@@ -1,7 +1,7 @@
-﻿namespace Input
+namespace Input
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 
 type Alternative =
@@ -11,14 +11,14 @@ type Alternative =
     | D
     | Custom of string
 
-[<DomainType>]
+[<ModelType>]
 type Model =
     {
         active  : bool
         value   : float
         name    : string
         alt     : Option<Alternative>
-        options : hmap<Alternative, string>
+        options : HashMap<Alternative, string>
     }
 
 type Message = 

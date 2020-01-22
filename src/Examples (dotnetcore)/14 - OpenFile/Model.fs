@@ -1,14 +1,14 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 type Message = 
     | OpenFiles of list<string>
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
-        currentFiles : plist<string>
+        currentFiles : IndexList<string>
     }

@@ -1,7 +1,7 @@
-﻿module App
+module App
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 open Utils
@@ -85,7 +85,7 @@ let view (model : MModel) =
             ]       
 
     let renderControl =
-      FreeFlyController.controlledControl model.cameraMain Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+      FreeFlyController.controlledControl model.cameraMain Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
         (AttributeMap.ofList [ 
             attribute "showFPS" "true"; 
             attribute "data-renderalways" "1"; 

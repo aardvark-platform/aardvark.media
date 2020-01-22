@@ -1,11 +1,11 @@
-﻿namespace TouchCamera
+namespace TouchCamera
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.TouchStick
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 
 open Aardvark.SceneGraph.IO
@@ -39,7 +39,7 @@ module TouchStickApp =
                     do! DefaultSurfaces.vertexColor
                 }
             |> Sg.andAlso(
-                Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+                Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
                  |> Sg.shader {
                         do! DefaultSurfaces.trafo
                         do! DefaultSurfaces.vertexColor
@@ -50,11 +50,11 @@ module TouchStickApp =
             
         div [] [
             div [] [
-                Incremental.text (m.cameraState.freeFlyConfig.touchScalesExponentially |> Mod.map (fun e -> if e then "Exponential" else "Linear"))
+                Incremental.text (m.cameraState.freeFlyConfig.touchScalesExponentially |> AVal.map (fun e -> if e then "Exponential" else "Linear"))
                 button [onClick (fun _ -> SwitchExpo); attribute "style" "width:20vw;height:5vh"] [text "SWITCH"]
             ]
             
-            FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 80.0 0.1 1000.0 1.0 |> Mod.constant) 
+            FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 80.0 0.1 1000.0 1.0 |> AVal.constant) 
                 (AttributeMap.ofList [  
                     style "width: 100vw; height:100vh"
 

@@ -1,9 +1,9 @@
-﻿module QuickTestApp
+module QuickTestApp
 
 open QuickTest
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.SceneGraph
 open Aardvark.Base.Rendering
@@ -19,11 +19,11 @@ let update (m : QuickTestModel) (a : Action) =
     match a with
         | Select p ->  { m with selected =  p }
         //| ChangeValue s -> { m with newValue = s }
-        //| AddValue s -> { m with values = m.values |> PList.append s }
+        //| AddValue s -> { m with values = m.values |> IndexList.append s }
             
             
-let personToText (p:IMod<option<Person>>) : IMod<string> =
-    p |> Mod.map(
+let personToText (p:aval<option<Person>>) : aval<string> =
+    p |> AVal.map(
         fun x ->
             match x with
                 | Some s -> sprintf "person selected: %s %s" s.firstName s.secondName
@@ -33,11 +33,11 @@ let view (m : MQuickTestModel) =
     body[][
         div [] [
          //   Html.SemUi.textBox m.newValue. ChangeValue
-          //  button [onClick(fun _ -> AddValue (m.newValue |> Mod.force))] [text "add"]
+          //  button [onClick(fun _ -> AddValue (m.newValue |> AVal.force))] [text "add"]
           //  br[]
             Html.SemUi.dropDown' m.values m.selected (fun a -> Select a) (fun a -> a.secondName)
             br[]
-            Incremental.text (m.selected |> Mod.map(fun x -> sprintf "person selected: %s %s" x.firstName x.secondName ))
+            Incremental.text (m.selected |> AVal.map(fun x -> sprintf "person selected: %s %s" x.firstName x.secondName ))
         ]
     ]
 
@@ -56,7 +56,7 @@ let app =
         initial = 
             { 
                 newValue = None
-                values = persons|> PList.ofList
+                values = persons|> IndexList.ofList
                 selected= { firstName = "Atti"; secondName = "Szaborider" }
                 //dropdown = dropDownINit                    
             }
