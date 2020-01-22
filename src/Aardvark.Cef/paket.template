@@ -7,7 +7,7 @@ licenseUrl http://www.apache.org/licenses/LICENSE-2.0.txt
 description
     Aardvark is an open-source platform for visual computing, real-time graphics and visualization.
 files
-	..\..\bin\Release\Aardvark.Cef.dll==> lib\net471
-    ..\..\bin\Release\Aardvark.Cef.pdb ==> lib\net471
-	..\..\bin\Release\Aardvark.Cef.Process.exe ==> lib\net471
-	..\..\bin\Release\Aardvark.Cef.Process.exe.config ==> lib\net471
+	..\..\bin\Release\net471\Aardvark.Cef.dll==> lib\net471
+    ..\..\bin\Release\net471\Aardvark.Cef.pdb ==> lib\net471
+	..\..\bin\Release\net471\Aardvark.Cef.Process.exe ==> lib\net471
+	..\..\bin\Release\net471\Aardvark.Cef.Process.exe.config ==> lib\net471
