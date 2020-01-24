@@ -130,7 +130,8 @@ class Renderer {
         if (!scene) scene = id;
         this.scene = scene;
 
-        var samples = Math.max(parseInt(this.div.getAttribute("data-samples")) || 1, 1);
+        var samples = this.div.getAttribute("data-samples");
+        if (!samples) samples = 1;
         this.samples = samples;
         
         var quality = this.div.getAttribute("data-quality");
@@ -149,8 +150,8 @@ class Renderer {
 		if (useMapping === "false") useMapping = false; else useMapping = true;
 		this.useMapping = useMapping;
 
-        var onRendered = this.div.getEventListener("rendered", false);
-		if (onRendered) this.onRendered = onRendered;
+		var onRendered = this.div.getAttribute("onRendered");
+        if (onRendered) this.onRendered = onRendered;
 
         this.customLoaderImg = this.div.getAttribute("data-customLoaderImg");
         this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
@@ -719,9 +720,9 @@ class Renderer {
 			this.send(JSON.stringify({ Case: "Rendered" }));
 
 
-            var shouldSay = this.div.getEventListener("rendered", false);
-            if (shouldSay) {
-                aardvark.processEvent(this.div.id, 'rendered', this.div.id, this.requestedSize.X, this.requestedSize.Y, this.samples);
+			var shouldSay = this.div.getAttribute("onRendered");
+			if (shouldSay) {
+				aardvark.processEvent(this.div.id, 'onRendered');
 			}
 
             if (this.loading) {
@@ -823,9 +824,9 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-                var shouldSay = this.div.getEventListener("rendered", false);
-                if (shouldSay) {
-                    aardvark.processEvent(this.div.id, 'rendered', this.div.id, o.size.X, o.size.Y, this.samples);
+				var shouldSay = this.div.getAttribute("onRendered");
+				if (shouldSay) {
+					aardvark.processEvent(this.div.id, 'onRendered');
 				}
                 if (this.loading) {
                     this.fadeIn();
@@ -851,8 +852,7 @@ class Renderer {
         if(typeof bg != undefined)
             color = new RGBColor(bg);
 
-        this.requestedSize = { X: Math.round(rect.width), Y: Math.round(rect.height) };
-        this.send(JSON.stringify({ Case: "RequestImage", background: { A: 255, B: color.b, G: color.g, R: color.r }, size: this.requestedSize }));
+        this.send(JSON.stringify({ Case: "RequestImage", background: { A: 255, B: color.b, G: color.g, R: color.r }, size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
     }
 
 }
@@ -1066,14 +1066,6 @@ class Channel {
 
 }
 
-class EventDispatchInfo {
-
-    constructor(capture, id) {
-        this.capture = capture;
-        this.id = id;
-    }
-}
-
 if (!aardvark.getChannel) {
     aardvark.getChannel = function (id, name) {
         var channelName = id + "_" + name;
@@ -1155,24 +1147,14 @@ if (!aardvark.connect) {
         
 
         eventSocket.onopen = function () {
-
-            aardvark.eventId = "";
-            aardvark.capture = false;
-
             aardvark.processEvent = function () {
-                if (arguments.length < 2) return;
-
                 var sender = arguments[0];
                 var name = arguments[1];
-
-                var capture = aardvark.capture;
-                var id = aardvark.eventId;
-
                 var args = [];
                 for (var i = 2; i < arguments.length; i++) {
                     args.push(JSON.stringify(arguments[i]));
                 }
-                var message = JSON.stringify({ sender: sender, name: name, capture: capture, id: id, args: args });
+                var message = JSON.stringify({ sender: sender, name: name, args: args });
                 eventSocket.send(message);
             };
             doPing();
@@ -1246,233 +1228,6 @@ if (!aardvark.setAttribute) {
         }
     };
 }
-
-
-if (!EventTarget.prototype.setEventListener)
-{
-
-    var downEvents = {};
-    var downTimes = {};
-
-    var downButtons = 0;
-
-    window.addEventListener("pointerdown", function (event) {
-        downEvents[event.pointerId] = event;
-        downTimes[event.pointerId] = performance.now()
-        downButtons = event.buttons;
-    }, true);
-
-    function getEventArgs(event) {
-        var obj = {};
-        for (var x in event) {
-            if (x == "id") continue;
-            obj[x] = event[x];
-        }
-        return obj;
-    }
-
-    window.addEventListener("mousemove", function (event) {
-        var evt =
-            new PointerEvent(
-                "pointermove",
-                {
-                    pointerId: 1,
-                    pointerType: "mouse",
-                    movementX: event.movementX,
-                    movementY: event.movementY,
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    button: event.button,
-                    buttons: event.buttons,
-                    pageX: event.pageX,
-                    pageY: event.pageY,
-                    screenX: event.screenX,
-                    screenY: event.screenY,
-                    offsetX: event.offsetX,
-                    offsetY: event.offsetY,
-                    altKey: event.altKey,
-                    ctrlKey: event.ctrlKey,
-                    shiftKey: event.shiftKey,
-                    metaKey: event.metaKey
-                }
-            );
-        evt.routed = true;
-        event.target.dispatchEvent(evt);
-    }, true);
-
-    window.addEventListener("pointermove", function (event) {
-        if (event.buttons != downButtons) { 
-            const o0 = (downButtons & 1);
-            const n0 = (event.buttons & 1);
-            if (o0 != n0) {
-                const name = n0 ? "pointerdown" : "pointerup";
-
-                var evt = new PointerEvent(name, Object.assign({}, getEventArgs(event), { bubbles: true, cancelable: true, button: 0 }));
-                event.target.dispatchEvent(evt);
-            }
-            const o1 = (downButtons & 2);
-            const n1 = (event.buttons & 2);
-            if (o1 != n1) {
-                const name = n1 ? "pointerdown" : "pointerup";
-                var evt = new PointerEvent(name, Object.assign({}, getEventArgs(event), { bubbles: true, cancelable: true, button: 2 }));
-                event.target.dispatchEvent(evt);
-            }
-            const o2 = (downButtons & 4);
-            const n2 = (event.buttons & 4);
-            if (o2 != n2) {
-                const name = n2 ? "pointerdown" : "pointerup";
-                var evt = new PointerEvent(name, Object.assign({}, getEventArgs(event), { bubbles: true, cancelable: true, button: 1 }));
-                event.target.dispatchEvent(evt);
-            }
-
-            downButtons = event.buttons;
-        }
-
-        if (event.pointerType == "mouse" && !event.routed) {
-            event.stopImmediatePropagation();
-        }
-
-
-    }, true);
-
-
-    window.addEventListener("pointerup", function (event) {
-        const downEvent = downEvents[event.pointerId];
-        if (downEvent) {
-            const downTime = downTimes[event.pointerId];
-            const dt = performance.now() - downTime;
-            const dx = event.clientX - downEvent.clientX;
-            const dy = event.clientY - downEvent.clientY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            const tolerance = event.pointerType == "mouse" ? 3.0 : 20.0;
-
-            if (dt < 300.0 && dist < tolerance) {
-                const evt = new PointerEvent("pointerclick", {
-                    bubbles: true,
-                    cancelable: true,
-                    altKey: event.altKey,
-                    button: event.button,
-                    pointerType: event.pointerType,
-                    pointerId: event.pointerId,
-                    width: event.width,
-                    height: event.height,
-                    buttons: downEvent.buttons,
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    ctrlKey: event.ctrlKey,
-                    metaKey: event.metaKey,
-                    shiftKey: event.shiftKey,
-                    offsetX: event.offsetX,
-                    offsetY: event.offsetY,
-                    pageX: event.pageX,
-                    pageY: event.pageY,
-                    screenX: event.screenX,
-                    screenY: event.screenY
-                });
-
-                event.target.dispatchEvent(evt);
-            }
-
-            delete downEvents[event.pointerId];
-            delete downTimes[event.pointerId];
-        }
-
-
-        downButtons = event.buttons;
-
-    }, true);
-
-    var clickEvents = {};
-    var clickTimes = {};
-    window.addEventListener("pointerclick", function (event) {    
-        
-        const lastClick = clickEvents[event.pointerId];
-        if (lastClick) {
-            const clickTime = clickTimes[event.pointerId];
-            const dt = performance.now() - clickTime;
-            const dx = event.clientX - lastClick.clientX;
-            const dy = event.clientY - lastClick.clientY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            const tolerance = event.pointerType == "mouse" ? 3.0 : 20.0;
-            if (dt < 300.0 && dist < tolerance) {
-                const evt = new PointerEvent("pointerdblclick", {
-                    bubbles: true,
-                    cancelable: true,
-                    altKey: event.altKey,
-                    button: event.button,
-                    buttons: lastClick.buttons,
-                    pointerType: event.pointerType,
-                    pointerId: event.pointerId,
-                    width: event.width,
-                    height: event.height,
-                    clientX: event.clientX,
-                    clientY: event.clientY,
-                    ctrlKey: event.ctrlKey,
-                    metaKey: event.metaKey,
-                    shiftKey: event.shiftKey,
-                    offsetX: event.offsetX,
-                    offsetY: event.offsetY,
-                    pageX: event.pageX,
-                    pageY: event.pageY,
-                    screenX: event.screenX,
-                    screenY: event.screenY
-                });
-
-                event.target.dispatchEvent(evt);
-            }
-        }
-        clickEvents[event.pointerId] = event;
-        clickTimes[event.pointerId] = performance.now();
-
-    }, true);
-
-
-    EventTarget.prototype.setEventListener = function (name, listener, capture) {
-        name = name.toLowerCase();
-        const id = "__" + name + "_" + capture;
-        const _self = this;
-        function myListener(event) {
-            if (!event.uniqueId) event.uniqueId = aardvark.newguid();
-
-            const oi = aardvark.eventId;
-            const oc = aardvark.capture;
-
-            aardvark.eventId = event.uniqueId;
-            aardvark.capture = capture;
-
-            const res = listener.bind(_self)(event)
-            aardvark.eventId = oi;
-            aardvark.capture = oc;
-
-            return res;
-        }
-
-     
-        if (listener) {
-            const old = this[id];
-            if (old) { this.removeEventListener(name, old, capture); }
-
-            this.addEventListener(name, myListener, capture);
-            this[id] = myListener;
-        }
-        else {
-            const old = this[id];
-            if (old) { this.removeEventListener(name, old, capture); }
-            delete this[id];
-        }
-    }
-}
-if (!EventTarget.prototype.getEventListener) {
-    EventTarget.prototype.getEventListener = function (name, capture) {
-        name = name.toLowerCase();
-        capture = capture || false;
-        const id = "__" + name + "_" + capture;
-        return this[id];
-    }
-}
-
 
 $(document).ready(function () {
     // initialize all aardvark-controls 

@@ -1,4 +1,4 @@
-namespace Aardvark.UI.Primitives
+﻿namespace Aardvark.UI.Primitives
 
 open System
 
@@ -32,6 +32,7 @@ module FreeFlyController =
             lastTime = None
             moveVec = V3d.Zero
             rotateVec = V3d.Zero
+            dragStart = V2i.Zero
             movePos = V2i.Zero
             look = false; zoom = false; pan = false                    
             forward = false; backward = false; left = false; right = false
@@ -254,11 +255,10 @@ module FreeFlyController =
                         Some j
                 )
 
-            let angles = (state.targetPhiTheta - V2d(motion.dRot.Y, motion.dRot.X))
             { state with 
                 view = state.view + { motion with dRot = motion.dRot + state.rotateVec }
                 moveSpeed = state.moveSpeed + motion.dMoveSpeed 
-                targetPhiTheta = angles
+                targetPhiTheta = state.targetPhiTheta - V2d(motion.dRot.Y, motion.dRot.X)
                 targetZoom = state.targetZoom - motion.dZoom
                 targetPan = state.targetPan - motion.dPan
                 targetDolly = state.targetDolly - motion.dDolly
@@ -266,10 +266,10 @@ module FreeFlyController =
             }
 
     type Message =     
-        | Down of button : MouseButtons
+        | Down of button : MouseButtons * pos : V2i
         | Up of button : MouseButtons
         | Wheel of V2d
-        | Move of delta : V2i
+        | Move of V2i
         | KeyDown of key : Keys
         | KeyUp of key : Keys
         | Blur
@@ -321,6 +321,7 @@ module FreeFlyController =
                 { model with 
                     lastTime = None
                     moveVec = V3d.Zero
+                    dragStart = V2i.Zero
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
                 }
@@ -482,8 +483,8 @@ module FreeFlyController =
             | KeyDown _ | KeyUp _ ->
                 model
 
-            | Down(button) ->
-                let model = withTime model
+            | Down(button,pos) ->
+                let model = withTime { model with dragStart = pos }
                 match button with
                     | MouseButtons.Left -> { model with look = true }
                     | MouseButtons.Middle -> { model with pan = true }
@@ -500,8 +501,8 @@ module FreeFlyController =
             | JumpTo cv ->
                 startAnimation { model with targetJump = Some cv }
 
-            | Move delta  ->
-                //let delta = pos - model.dragStart
+            | Move pos  ->
+                let delta = pos - model.dragStart
 
                 let look model = 
                     if model.look then
@@ -509,6 +510,7 @@ module FreeFlyController =
                     
                         startAnimation 
                             { model with 
+                                dragStart = pos
                                 targetPhiTheta = model.targetPhiTheta + deltaAngle 
                             }
                     else model
@@ -518,6 +520,7 @@ module FreeFlyController =
                         startAnimation 
                             { model with
                                 targetPan = model.targetPan + (V2d(delta.X,-delta.Y)) * model.freeFlyConfig.panMouseSensitivity
+                                dragStart = pos
                             }
                     else 
                         model
@@ -527,11 +530,12 @@ module FreeFlyController =
                         startAnimation 
                             { model with
                                 targetDolly = model.targetDolly + (float -delta.Y) * model.freeFlyConfig.dollyMouseSensitivity
+                                dragStart = pos
                             }
                     else 
                         model
                     
-                model
+                { model with dragStart = pos }
                     |> look
                     |> pan
                     |> dolly
@@ -553,66 +557,24 @@ module FreeFlyController =
 
     let update' = flip update
 
-    let atts (state : AdaptiveCameraControllerState) (f : Message -> 'msg) = 
-        Frontend.HTMLAttributeExtensions.att {
-            Frontend.HTMLAttribute.OnPointerDown(fun e -> 
-                match e.PointerType with 
-                | Frontend.HTMLPointerType.Mouse -> 
-                    [f (Down(e.Button))]
-                | _ -> 
-                    []
-            ).WithPointerCapture
-            
-            Frontend.HTMLAttribute.OnPointerWheel(fun e -> 
-                [f (Wheel(V2d(e.WheelDelta, e.WheelDelta)))]
-            )
-
-            Frontend.HTMLAttribute.OnPointerUp(fun e -> 
-                match e.PointerType with 
-                | Frontend.HTMLPointerType.Mouse -> 
-                    
-                    [f (Up(e.Button))] 
-                | _ -> 
-                    []
-            ) |> Frontend.HTMLAttribute.onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
-
-            Frontend.HTMLAttribute.OnPointerMove(fun e -> 
-                match e.PointerType with 
-                | Frontend.HTMLPointerType.Mouse when e.Buttons <> MouseButtons.None -> 
-                    Stop, [f (Move(V2i e.Movement))] 
-                | _ -> 
-                    Continue, []
-            ).Captured |> Frontend.HTMLAttribute.onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
-
-            Frontend.HTMLAttribute.OnKeyDown(fun e -> 
-                [f (KeyDown e.Key)]
-            ) 
-            
-            Frontend.HTMLAttribute.OnKeyUp(fun e -> 
-                [f (KeyUp e.Key)]
-            )
-
-            Frontend.HTMLAttribute.OnRendered(fun s ->
-                Continue, Seq.singleton (f Rendered)
-            )
-
-        }
-        
     let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) = 
-        atts state f
-        //AttributeMap.ofListCond [
-        //    //yield always (onBlur (fun _ -> f Blur))
-        //    //yield onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
-        //    yield always (onKeyDown (KeyDown >> f))
-        //    yield always (onKeyUp (KeyUp >> f))           
-        //    //yield always (onWheelPrevent true (fun x -> f (Wheel x)))
-        //    yield! atts state f
-        //    //yield always <| onEvent "onRendered" [] (fun _ -> f Rendered)
-        //    //yield always <| onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick |> f)
-        //    //yield always <| onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick |> f)
-        //    //yield always <| onTouchStickStop "leftstick" (fun _ -> ReleaseMovStick |> f)
-        //    //yield always <| onTouchStickStop "ritestick" (fun _ -> ReleaseRotStick |> f)
-        //]
+        AttributeMap.ofListCond [
+            always (onBlur (fun _ -> f Blur))
+            always (onCapturedPointerDown (Some 2) (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f Nop))
+            onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
+            always (onKeyDown (KeyDown >> f))
+            always (onKeyUp (KeyUp >> f))           
+            always (onWheelPrevent true (fun x -> f (Wheel x)))
+            always (onCapturedPointerUp (Some 2) (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f Nop))
+            onlyWhen 
+                (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
+                (onCapturedPointerMove (Some 2) (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
+            always <| onEvent "onRendered" [] (fun _ -> f Rendered)
+            always <| onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick |> f)
+            always <| onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick |> f)
+            always <| onTouchStickStop "leftstick" (fun _ -> ReleaseMovStick |> f)
+            always <| onTouchStickStop "ritestick" (fun _ -> ReleaseRotStick |> f)
+        ]
 
     let extractAttributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         attributes state f |> AttributeMap.toAMap

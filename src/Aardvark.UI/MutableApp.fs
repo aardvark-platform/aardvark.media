@@ -76,8 +76,6 @@ module MutableApp =
         {
             sender  : string
             name    : string
-            capture : bool 
-            id    : string
             args    : array<string>
         }
 
@@ -272,7 +270,6 @@ module MutableApp =
                     
 
                     socket {
-                        let mutable skip = None
                         while running do
                             let! code, data = ws.readMessage()
                             match code with
@@ -287,14 +284,9 @@ module MutableApp =
                                                     Log.warn "bad opcode: %A" str
                                         else
                                             let evt : EventMessage = Pickler.json.UnPickle data
-                                            match skip with
-                                            | Some s when s = evt.id -> ()
-                                            | _ -> 
-                                                match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name, evt.capture))) with
+                                            match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
                                                 | (true, handler) ->
-                                                    let cont, msgs = handler sessionId evt.sender (Array.toList evt.args)
-                                                    if cont = Continuation.Stop && evt.id <> "" then 
-                                                        skip <- Some evt.id
+                                                    let msgs = handler sessionId evt.sender (Array.toList evt.args)
                                                     app.update sessionId msgs
                                                     
                                                 | _ ->

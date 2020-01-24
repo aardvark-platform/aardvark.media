@@ -16,7 +16,6 @@ type BoxSelectionDemoAction =
     | AddBox
     | RemoveBox
     | ClearSelection
-    | Nop
 
 [<ModelType>]
 type VisibleBox = {

@@ -72,14 +72,14 @@ module SimplePrimitives =
             let ev =
                 {
                     clientSide = fun _ _ -> ""
-                    serverSide = fun _ _ _ -> Continue, Seq.singleton toggle
+                    serverSide = fun _ _ _ -> Seq.singleton toggle
                 }
 
             let boot = bootCheckBox.Replace("__INITIALSTATE__", if state.GetValue() then "check" else "uncheck")
 
             let myAtts =
                 AttributeMap.ofList [
-                    "onclick", AttributeValue.Bubble ev
+                    "onclick", AttributeValue.Event ev
                     "class", AttributeValue.String "ui checkbox"
                 ]
 

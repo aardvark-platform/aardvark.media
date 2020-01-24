@@ -1,4 +1,4 @@
-module App
+﻿module App
 
 open System
 
@@ -12,7 +12,6 @@ open Aardvark.UI.Primitives
 
 open RenderingParametersModel
 open Model
-open Aardvark.Application
 
 type Action = BoxSelectionDemoAction
 
@@ -26,8 +25,6 @@ let mkVisibleBox (color : C4b) (box : Box3d) : VisibleBox =
 let update (model : BoxSelectionDemoModel) (act : Action) =
         
     match act with
-        | Nop ->
-            model
         | CameraMessage m -> 
             { model with camera = FreeFlyController.update model.camera m }          
         | RenderingAction a ->
@@ -76,27 +73,6 @@ let mkColor (model : AdaptiveBoxSelectionDemoModel) (box : AdaptiveVisibleBox) =
 
     color
 
-let inline consume l = Stop, l :> seq<_>
-let nop = Continue, Seq.empty
-
-//let handler =   
-//    [
-//        Click Capture, 
-//            function 
-//            | { button = MouseButtons.Left; shift = true } -> consume [Nop]
-//            | { button = MouseButtons.Right; alt = true } -> consume [Nop]
-//            | { button = MouseButtons.Middle } -> consume [Nop]
-//            | _ -> nop
-
-//        Down Bubble, 
-//            function 
-//            | { button = MouseButtons.Left; shift = true } -> consume [Nop]
-//            | { button = MouseButtons.Right; alt = true } -> consume [Nop]
-//            | { button = MouseButtons.Middle } -> consume [Nop]
-//            | _ -> nop
-//    ]
-
-
 let mkISg (model : AdaptiveBoxSelectionDemoModel) (box : AdaptiveVisibleBox) =
                 
     let color = mkColor model box
@@ -111,20 +87,10 @@ let mkISg (model : AdaptiveBoxSelectionDemoModel) (box : AdaptiveVisibleBox) =
         |> Sg.noEvents
         |> Sg.fillMode model.rendering.fillMode
         |> Sg.cullMode model.rendering.cullMode
-        |> Sg.withCaptureEvents [
-            SceneEventKind.Click,
-                function 
-                | { event = { evtButtons = MouseButtons.Left; evtShift = true } } -> consume [Select box.id]
-                | { event = { evtButtons = MouseButtons.Left } } -> consume [ClearSelection; Select box.id]
-                | _ -> nop
-        ]
         |> Sg.withEvents [
-            SceneEventKind.Click, fun hit ->
-                Log.line "bubble: %s click" box.id
-                Continue, Seq.empty
-
-            Sg.onEnter (fun _ -> Log.line "enter %s" box.id; Enter box.id)
-            Sg.onLeave (fun () ->  Log.line "leave %s" box.id; Exit)
+                Sg.onClick (fun _ -> Select box.id)
+                Sg.onEnter (fun _ -> Enter box.id)
+                Sg.onLeave (fun () -> Exit)
         ]
 
 let view (model : AdaptiveBoxSelectionDemoModel) =
@@ -140,26 +106,6 @@ let view (model : AdaptiveBoxSelectionDemoModel) =
                 (AttributeMap.ofList [
                     attribute "style" "width:65%; height: 100%; float: left;"
                     attribute "data-samples" "8"
-
-                    "onmouseclick", AttributeValue.Capture {
-                        clientSide = fun send id -> send id []
-                        serverSide = fun _ _ _ -> Log.line "capture: dom click"; Continue, Seq.empty
-                    }
-                    
-                    "onmouseclick", AttributeValue.Bubble {
-                        clientSide = fun send id -> send id ["event.button"]
-                        serverSide = fun _ _ l -> 
-                            match l with
-                            | [l] ->
-                                let w = System.Int32.Parse l
-                                match w with
-                                | 0 -> 
-                                    Continue, Seq.singleton ClearSelection
-                                | _ ->
-                                    Continue, Seq.empty
-                            | _ ->
-                                Continue, Seq.empty
-                    }
                 ])
                 (
                        
@@ -173,18 +119,7 @@ let view (model : AdaptiveBoxSelectionDemoModel) =
                             toEffect DefaultSurfaces.simpleLighting                              
                             ]
                         |> Sg.noEvents
-                        |> Sg.withCaptureEvents [
-                            SceneEventKind.Click, (fun _ -> 
-                                Log.line "capture: click all"
-                                Continue, Seq.empty
                             )
-                        ]
-                        |> Sg.withEvents [
-                            Sg.onClick (fun _ -> Log.line "bubble: click all"; Nop)
-                            Sg.onEnter (fun _ -> Log.line "enter all"; Nop)
-                            Sg.onLeave (fun () ->  Log.line "leave all"; Nop)
-                        ]
-                )
 
             div [style "width:35%; height: 100%; float:right; background: #1B1C1E"] [
                 Html.SemUi.accordion "Rendering" "configure" true [

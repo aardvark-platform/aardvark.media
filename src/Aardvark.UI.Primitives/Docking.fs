@@ -267,7 +267,7 @@ module DockingUIExtensions =
                 | _ ->
                     Seq.empty
 
-        "onlayoutchanged", AttributeValue.Bubble(Event.ofDynamicArgs [] callback)
+        "onlayoutchanged", AttributeValue.Event(Event.ofDynamicArgs [] callback)
 
     [<AutoOpen>]
     module Static = 

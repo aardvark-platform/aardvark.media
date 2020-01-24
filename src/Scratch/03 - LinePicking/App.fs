@@ -1,4 +1,4 @@
-namespace LinePickingDemo
+﻿namespace LinePickingDemo
 
 
 open Aardvark.Base
@@ -112,9 +112,9 @@ module App =
            SceneEventKind.Down, (
              fun sceneHit ->
                if (picking |> AVal.force) then
-                 Stop, Seq.ofList[PickPolygon (sceneHit)]
+                 true, Seq.ofList[PickPolygon (sceneHit)]
                else
-                 Continue, Seq.ofList[])
+                 false, Seq.ofList[])
         ]
                 
     let box = AVal.constant (boxGeometry)

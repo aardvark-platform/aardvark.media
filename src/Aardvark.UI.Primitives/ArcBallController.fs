@@ -34,6 +34,7 @@ module ArcBallController =
     let initial =
         {
             view        = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
+            dragStart   = V2i.Zero
             movePos     = V2i.Zero
             look        = false
             zoom        = false
@@ -180,6 +181,7 @@ module ArcBallController =
 
 
             | Down(button,pos) ->
+                let model = { model with dragStart = pos }
                 match button with
                     | MouseButtons.Left -> { model with look = true }
                     | MouseButtons.Middle -> { model with pan = true }
@@ -193,9 +195,10 @@ module ArcBallController =
                     | MouseButtons.Right -> { model with zoom = false }
                     | _ -> model
 
-            | Move delta  ->
+            | Move pos  ->
                 
                 let cam = model.view
+                let delta = pos - model.dragStart
 
                 //orientation
                 let cam =
@@ -244,7 +247,7 @@ module ArcBallController =
                     else
                         cam, model.orbitCenter            
 
-                { model with view = cam; orbitCenter = center }
+                { model with view = cam; dragStart = pos; orbitCenter = center }
 
     let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         AttributeMap.ofListCond [

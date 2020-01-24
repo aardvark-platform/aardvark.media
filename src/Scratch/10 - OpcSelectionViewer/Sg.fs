@@ -65,9 +65,9 @@ module SceneObjectHandling =
             fun sceneHit -> 
               let intersect = m.pickingActive |> AVal.force
               if intersect then              
-                Stop, Seq.ofList[(HitSurface (boundingBox,sceneHit)) |> PickingAction]
+                true, Seq.ofList[(HitSurface (boundingBox,sceneHit)) |> PickingAction]
               else 
-                Continue, Seq.ofList[]
+                false, Seq.ofList[]
           )      
       ]
 

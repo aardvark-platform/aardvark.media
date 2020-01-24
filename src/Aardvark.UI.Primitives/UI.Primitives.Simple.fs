@@ -23,7 +23,7 @@ module Simple =
                 | _ -> defaultValue
 
         let changed =
-            AttributeValue.Bubble  {
+            AttributeValue.Event  {
                 clientSide = fun send src -> 
                     String.concat "" [
                         "if(!event.inputType && event.target.value != event.target.oldValue) {"
@@ -35,8 +35,8 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            Continue, str |> int |> changed |> Seq.singleton
-                        | _ -> Continue, Seq.empty
+                            str |> int |> changed |> Seq.singleton
+                        | _ -> Seq.empty
             }
 
         div [ clazz "ui input"; style "width: 60pt"] [
@@ -69,7 +69,7 @@ module Simple =
                 | _ -> defaultValue
 
         let changed =
-            AttributeValue.Bubble  {
+            AttributeValue.Event  {
                 clientSide = fun send src -> 
                     String.concat "" [
                         "if(!event.inputType && event.target.value != event.target.oldValue) {"
@@ -81,8 +81,8 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            Continue, str |> int |> changed |> Seq.singleton
-                        | _ -> Continue, Seq.empty
+                            str |> int |> changed |> Seq.singleton
+                        | _ -> Seq.empty
             }
 
         div [ clazz "ui small labeled input"; style "width: 60pt"] [
@@ -115,7 +115,7 @@ module Simple =
                 | _ -> defaultValue
 
         let changed =
-            AttributeValue.Bubble  {
+            AttributeValue.Event  {
                 clientSide = fun send src -> 
                     String.concat "" [
                         "if(!event.inputType && event.target.value != event.target.oldValue) {"
@@ -127,8 +127,8 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            Continue, str |> float |> changed |> Seq.singleton
-                        | _ -> Continue, Seq.empty
+                            str |> float |> changed |> Seq.singleton
+                        | _ -> Seq.empty
             }
 
         Incremental.div containerAttribs <|
@@ -183,14 +183,14 @@ module Simple =
     let largeTextArea' (changed : string -> 'msg) (value : aval<string>) (attributes : AttributeMap<'msg>) =
 
         let changed =
-            AttributeValue.Bubble  {
+            AttributeValue.Event  {
                 clientSide = fun send src -> send src ["event.target.value"] + ";"
                 serverSide = fun client src args ->
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            Continue, str.Trim('\"') |> changed |> Seq.singleton
-                        | _ -> Continue, Seq.empty
+                            str.Trim('\"') |> changed |> Seq.singleton
+                        | _ -> Seq.empty
             }
 
         let atts = 

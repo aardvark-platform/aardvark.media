@@ -43,6 +43,7 @@ module CameraController =
             lastTime = None
             moveVec = V3d.Zero
             rotateVec = V3d.Zero
+            dragStart = V2i.Zero
             movePos = V2i.Zero
             look = false; zoom = false; pan = false                    
             forward = false; backward = false; left = false; right = false
@@ -79,6 +80,7 @@ module CameraController =
                 { model with 
                     lastTime = None
                     moveVec = V3d.Zero
+                    dragStart = V2i.Zero
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false
                 }
@@ -180,6 +182,7 @@ module CameraController =
                 model
 
             | Down(button,pos) ->
+                let model = { model with dragStart = pos }
                 match button with
                     | MouseButtons.Left -> { model with look = true }
                     | MouseButtons.Middle -> { model with pan = true }
@@ -192,8 +195,9 @@ module CameraController =
                     | MouseButtons.Middle -> { model with pan = false }
                     | MouseButtons.Right -> { model with zoom = false }
                     | _ -> model            
-            | Move delta  ->
+            | Move pos  ->
                 let cam = model.view
+                let delta = pos - model.dragStart
 
                 let cam =
                     if model.look then
@@ -220,7 +224,7 @@ module CameraController =
                     else
                         cam
 
-                { model with view = cam }
+                { model with view = cam; dragStart = pos }
 
     let update' = flip update
 

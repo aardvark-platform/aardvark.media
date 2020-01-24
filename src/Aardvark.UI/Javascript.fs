@@ -15,9 +15,6 @@ type JSExpr =
     | SetAttribute of target : JSExpr * name : string * value : string
     | RemoveAttribute of target : JSExpr * name : string
 
-    | SetEventListener of target : JSExpr * name : string * cb : string * capture : bool
-    | RemoveEventListener of target : JSExpr * name : string * capture : bool
-
     | Remove of target : JSExpr
     | InnerText of target : JSExpr * text : string 
 
@@ -59,14 +56,6 @@ module JSExpr =
                 | SetAttribute(t, name, value) ->
                     let! t = eliminateDeadBindings t
                     return SetAttribute(t, name, value)
-
-                | SetEventListener(t, name, value, cap)->
-                    let! t = eliminateDeadBindings t
-                    return SetEventListener(t, name, value, cap)
-
-                | RemoveEventListener(t, name, cap)->
-                    let! t = eliminateDeadBindings t
-                    return RemoveEventListener(t, name, cap)
 
                 | RemoveAttribute(t, name) ->
                     let! t = eliminateDeadBindings t
@@ -147,14 +136,6 @@ module JSExpr =
             | SetAttribute(t, name, value) ->
                 let t = toStringInternal t
                 sprintf "aardvark.setAttribute(%s,\"%s\", \"%s\");" t name (escape value)
-                
-            | SetEventListener(t, name, value, capture) ->
-                let t = toStringInternal t
-                sprintf "%s.setEventListener(\"%s\", function (event) { %s; }, %A);" t name value capture
-                
-            | RemoveEventListener(t, name, capture) ->
-                let t = toStringInternal t
-                sprintf "%s.setEventListener(\"%s\", null, %A);" t name capture
 
             | RemoveAttribute(t, name) ->
                 let t = toStringInternal t

@@ -65,6 +65,7 @@ type CameraControllerState =
     {
         view : CameraView
 
+        dragStart : V2i
         movePos   : V2i
         look      : bool
         zoom      : bool

@@ -172,7 +172,7 @@ function initTouchSticks(id, sticks) {
 
           var d = (pointerdistance / maxr);
           var a = pointerangle;
-            aardvark.processEvent(id, "touchstickmove_" + name, d,a);
+          aardvark.processEvent(id,"touchstickmove_" + name, d,a);
           updatecircle(id);
           updateline(id);
         }
@@ -181,7 +181,7 @@ function initTouchSticks(id, sticks) {
 
     function panstop(te) {
       //if(basex >= minx && basex < maxx && basey >= miny && basey < maxy) {
-        aardvark.processEvent(id, "touchstickstop_" + name, 0);
+          aardvark.processEvent(id,"touchstickstop_" + name, 0);
           dragging = false;
           pointerangle = -999.0;
           pointerdistance = -999.0;

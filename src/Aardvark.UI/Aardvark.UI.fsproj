@@ -26,7 +26,6 @@
     <None Include="paket.references" />
     <Compile Include="SgFSharpExtensions.fs" />
     <Compile Include="Combinators.fs" />
-    <Compile Include="Frontend.fs" />
 	<EmbeddedResource Include="resources\favicon.ico" />
   </ItemGroup>
   <ItemGroup>
