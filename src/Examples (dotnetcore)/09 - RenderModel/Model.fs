@@ -4,6 +4,7 @@ open Aardvark.Base             // for math such as V3d
 open FSharp.Data.Adaptive // for Mods etc and [<ModelType>]
 open Aardvark.Base.Rendering   // for render attribs such as cullMode
 open Aardvark.UI.Primitives    // for primitives such as camera controller state
+open Adaptify
 
 [<ModelType>] // records can be marked as domaintypes
 type Appearance = { 

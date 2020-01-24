@@ -5,6 +5,7 @@ open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 open RenderingParametersModel
+open Adaptify
 
 type BoxSelectionDemoAction =
     | CameraMessage    of FreeFlyController.Message     
@@ -22,7 +23,7 @@ type VisibleBox = {
     geometry : Box3d
     color    : C4b    
 
-    [<NonIncremental; PrimaryKey>]
+    [<NonAdaptive>]
     id : string
 }
 
@@ -32,7 +33,6 @@ type BoxSelectionDemoModel = {
     rendering : RenderingParameters
 
     boxes : IndexList<VisibleBox>
-    boxesSet : HashSet<VisibleBox>
     boxesMap : HashMap<string,VisibleBox>
 
     boxHovered : option<string>

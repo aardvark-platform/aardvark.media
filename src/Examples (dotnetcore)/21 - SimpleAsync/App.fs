@@ -29,7 +29,7 @@ let update (model : Model) (msg : Message) =
             { model with threads = ThreadPool.start worker model.threads }
         
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     div [] [
         button [onClick (fun _ -> Start)] [text "start"]
         Incremental.text (AVal.map string model.result)

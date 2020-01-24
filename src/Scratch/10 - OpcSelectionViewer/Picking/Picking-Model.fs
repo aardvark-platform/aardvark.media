@@ -7,6 +7,7 @@ open Aardvark.Geometry
 open OpcSelectionViewer
 open OpcSelectionViewer.KdTrees
 open Aardvark.SceneGraph.Opc
+open Adaptify
 
 type PickingAction = 
   | HitSurface of Box3d*SceneHit    

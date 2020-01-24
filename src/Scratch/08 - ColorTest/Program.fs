@@ -31,13 +31,13 @@ let dehateObject (m : Object) : aval<IObject> =
 //    )
 
 let dehateScene2 (s : Scene) : aval<IScene> = 
-    let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
+    let reader = (s.objects |> ASet.mapA dehateObject).GetReader()
     AVal.custom (fun t -> 
         printfn "running dehate"
 
-        let _ = reader.GetOperations t
+        let _ = reader.GetChanges t
  
-        { iobjects = reader.State  }
+        { iobjects = HashSet.ofSeq reader.State  }
     )
 
 
@@ -49,18 +49,18 @@ let dehateScene3 (s : Scene) : aval<IScene> =
                     let! t = o.trafo
                     yield { itrafo = t }
             }
-        let! o = ASet.toMod objects
+        let! o = ASet.toAVal objects
         return { iobjects = o  }
     }
 
-let dehateScene99 (s : Scene) : aval<IScene> = 
-    let reader = (s.objects |> ASet.mapM dehateObject).GetReader()
-    let mutable objects = CountingHashSet.empty
-    AVal.custom (fun t -> 
-        let deltas = reader.GetOperations(t)
-        let (a,b) = deltas |> CountingHashSet.applyDelta objects
-        { iobjects = a  }
-    )
+//let dehateScene99 (s : Scene) : aval<IScene> = 
+//    let reader = (s.objects |> ASet.mapA dehateObject).GetReader()
+//    let mutable objects = CountingHashSet.empty
+//    AVal.custom (fun t -> 
+//        let deltas = reader.GetOperations(t)
+//        let (a,b) = deltas |> CountingHashSet.applyDelta objects
+//        { iobjects = a  }
+//    )
 
 open System.Collections.Generic
 let dehateScene22 (s : Scene) : aval<IScene> = 
@@ -69,7 +69,7 @@ let dehateScene22 (s : Scene) : aval<IScene> =
     AVal.custom (fun t -> 
         printfn "running dehate"
 
-        for d in r.GetOperations(t) do
+        for d in r.GetChanges(t) do
             match d with
                 | Rem(1, v) -> 
                     cache.Remove v |> ignore
@@ -78,7 +78,7 @@ let dehateScene22 (s : Scene) : aval<IScene> =
                     cache.[v] <- i
                 | _ ->
                     failwith "unexpected"
-        { iobjects = r.State |> Seq.map (fun o -> cache.[o].GetValue t) |> CountingHashSet.ofSeq }
+        { iobjects = r.State |> Seq.map (fun o -> cache.[o].GetValue t) |> HashSet.ofSeq }
     )
 
 let dehateScene (s : Scene) : aval<IScene> = 
@@ -86,10 +86,10 @@ let dehateScene (s : Scene) : aval<IScene> =
     AVal.custom (fun t -> 
         printfn "running dehate"
 
-        reader.GetOperations(t) |> ignore
+        reader.GetChanges(t) |> ignore
        
 
-        { iobjects = reader.State |> CountingHashSet.map (fun o -> printfn "mk"; { itrafo = o.trafo.GetValue(t)})  }
+        { iobjects = reader.State |> HashSet.ofSeq |> HashSet.map (fun o -> printfn "mk"; { itrafo = o.trafo.GetValue(t)})  }
     )
 
 [<EntryPoint; STAThread>]
@@ -100,17 +100,17 @@ let main argv =
     let cnt = 200000
     let trafos = [| for i in 1.. cnt do yield AVal.init (sprintf "A%d" i) |]
     let objects = 
-        [
+        cset [
             for t in trafos do
                 yield { trafo = t }
-        ] |> CSet.ofList
+        ]
 
     let scene = { objects = objects }
     let iscene = dehateScene scene
-    let mscene = MIScene.Create({iobjects=CountingHashSet.empty})
+    let mscene = AdaptiveIScene.Create({iobjects=HashSet.empty})
     let sw = System.Diagnostics.Stopwatch()
     sw.Start()
-    let mscene = iscene |> AVal.unsafeRegisterCallbackKeepDisposable (fun s -> mscene.Update s; sw.Stop())
+    let mscene = iscene.AddCallback (fun s -> mscene.Update s; sw.Stop())
     printfn "initial took: %A" (sw.Elapsed.TotalSeconds)
     
     sw.Start()

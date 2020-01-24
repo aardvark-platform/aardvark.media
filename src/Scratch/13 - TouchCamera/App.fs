@@ -21,7 +21,7 @@ module TouchStickApp =
 
             | Camera im -> { m with cameraState = FreeFlyController.update m.cameraState im}
 
-    let viewScene (model : MTouchStickModel) =
+    let viewScene (model : AdaptiveTouchStickModel) =
         let sponza() =
             Loader.Assimp.load @"D:\temp\sponza\sponza_cm.obj"
                 |> Sg.adapter
@@ -46,7 +46,7 @@ module TouchStickApp =
                         do! DefaultSurfaces.simpleLighting
                     })
         
-    let view (m : MTouchStickModel) =
+    let view (m : AdaptiveTouchStickModel) =
             
         div [] [
             div [] [

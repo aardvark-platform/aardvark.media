@@ -27,11 +27,12 @@ module App =
   open SceneObjectHandling
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
-  
+  open Aether.Operators
+
   let cameraFilePath = @".\camera"
-  let _view_        = Model.Lens.cameraState |. CameraControllerState.Lens.view
-  let _mSensitivity_ = Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.moveSensitivity
-  let _pSensitivity_ = Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.panMouseSensitivity
+  let _view_        = Model.cameraState_ >-> CameraControllerState.view_
+  let _mSensitivity_ = Model.cameraState_ >-> CameraControllerState.freeFlyConfig_ >-> FreeFlyConfig.moveSensitivity_
+  let _pSensitivity_ = Model.cameraState_ >-> CameraControllerState.freeFlyConfig_ >-> FreeFlyConfig.panMouseSensitivity_
 
   let update (model : Model) (msg : Message) =   
     match msg with
@@ -53,15 +54,15 @@ module App =
           | Keys.PageUp ->              
             let s' = model.cameraState.freeFlyConfig.moveSensitivity + 1.0
             Log.line "increasing sensitivity %A" s'
-            s' |> Lenses.set' _mSensitivity_ model
+            model |> s' ^= _mSensitivity_
           | Keys.PageDown ->
             let s' = model.cameraState.freeFlyConfig.moveSensitivity - 1.0
             Log.line "increasing sensitivity %A" s'
-            s' |> Lenses.set' _mSensitivity_ model
+            model |> s' ^= _mSensitivity_
           | Keys.Home ->
              match cameraFilePath |> Serialization.tryLoadAs<Trafo3d> with
              | Some v ->                                  
-               CameraView.ofTrafo v |> Lenses.set' _view_ model               
+               model |> CameraView.ofTrafo v ^= _view_               
              | None -> model
           | Keys.Space ->            
             Log.line "Saving current CameraView to %A" cameraFilePath
@@ -77,7 +78,7 @@ module App =
         { model with dockConfig = cfg }
       | _ -> model
                     
-  let view (m : MModel) =
+  let view (m : AdaptiveModel) =
                                                  
       let box = 
         m.patchHierarchies
@@ -208,6 +209,6 @@ module App =
           update = update
           view   = view          
           threads = fun m -> m.threads
-          unpersist = Unpersist.instance<Model, MModel>
+          unpersist = Unpersist.instance<Model, AdaptiveModel>
       }
        

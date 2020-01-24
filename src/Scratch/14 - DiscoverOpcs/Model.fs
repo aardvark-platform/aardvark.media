@@ -4,6 +4,7 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open DiscoverOpcs
+open Adaptify
 
 type Message = 
     | SetPaths of list<string>

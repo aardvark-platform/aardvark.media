@@ -7,7 +7,7 @@ open Aardvark.SceneGraph
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
-
+open Adaptify
 
 [<ModelType>]
 type OrthoModel =

@@ -56,7 +56,7 @@ module Shader =
             restartStrip()
         }
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
 
     let read a =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
@@ -165,7 +165,7 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
     subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) [] app
 
 // variant with html5 grid layouting (currently not working in our cef)
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     let renderControl =
       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
         (AttributeMap.ofList [ 

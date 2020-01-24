@@ -8,10 +8,10 @@ open Aardvark.UI.Operators
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
-open Inc.Model
 open Aardvark.Application
-
+open Adaptify.FSharp.Core
 open Utils
+open IncModel
 
 type Where = 
     | Canvas
@@ -206,15 +206,15 @@ let unpackColor (color : Color) =
             [| t; t; f; f |]
         | _ -> failwith ""
 
-let viewObject (object : MObject) =
+let viewObject (object : IncModel.AdaptiveObjectCase) =
     match object with
-        | MPolygon(points,colors) -> 
+        | AdaptivePolygon(points,colors) -> 
             Sg.empty
-        | MRect(box,color) -> 
+        | AdaptiveRect(box,color) -> 
             let colors = color |> AVal.map unpackColor
             viewBox box colors
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
     let objectPass = RenderPass.after "bg" RenderPassOrder.Arbitrary RenderPass.main
     let background = 
         Aardvark.SceneGraph.SgPrimitives.Sg.fullScreenQuad 
@@ -240,10 +240,9 @@ let viewScene (model : MModel) =
                    match object with
                         | None -> return Sg.empty
                         | Some object -> 
-                            let! object = object
                             let trafo = model.translation |> AVal.map (function Some t -> Trafo3d.Translation t | _ -> Trafo3d.Identity)
                             match object with
-                                | MRect(originalBox,color) -> 
+                                | AdaptiveRect(originalBox,color) -> 
                                     let! box =
                                         AVal.map2 (fun originalBox dragEndPoint -> 
                                             match dragEndPoint with
@@ -280,31 +279,27 @@ let viewScene (model : MModel) =
        } |> Sg.dynamic
 
     let openRect =
+        let openRect : aval<Option<Box3d>> = model.openRect
         adaptive {
-            let! openRect = model.openRect
-            match openRect with
-                | None -> return Sg.empty
+            match! openRect with
+                | None -> 
+                    return Sg.empty
                 | Some o -> 
                     return viewBox (AVal.constant (Box2d(o.Min.XY,o.Max.XY))) (Array.init 4 (constF defaultColor) |> AVal.constant)
-                    
-        } |> Sg.dynamic
+        }  |> Sg.dynamic
 
     let objectSg = 
         model.objects 
             |> AMap.toASet 
-            |> ASet.filterM (fun (id,_) -> model.selectedObject |> AVal.map (function Some s -> s <> id | _ -> true)) 
-            |> ASet.mapM (fun (id,object) -> 
-                adaptive {
-                    let! object = object
-                    let sg = viewObject object 
-                    return sg |> Sg.withEvents [
-                        Sg.onMouseMove (fun p -> MouseMove(Where.Object id, p))
-                        Sg.onClick(fun p -> ClickObject id)
-                        Sg.onMouseDown (fun b p -> MouseDown(Where.Object id, b, p))
-                        Sg.onMouseUp (fun p -> MouseUp(Where.Object id))
-
-                    ]  
-                }
+            |> ASet.filterA (fun (id,_) -> model.selectedObject |> AVal.map (function Some s -> s <> id | _ -> true)) 
+            |> ASet.map (fun (id,object) -> 
+                let sg = viewObject object 
+                sg |> Sg.withEvents [
+                    Sg.onMouseMove (fun p -> MouseMove(Where.Object id, p))
+                    Sg.onClick(fun p -> ClickObject id)
+                    Sg.onMouseDown (fun b p -> MouseDown(Where.Object id, b, p))
+                    Sg.onMouseUp (fun p -> MouseUp(Where.Object id))
+                ]  
         ) 
         |> Sg.set
         |> Sg.andAlso openRect
@@ -325,7 +320,7 @@ let viewScene (model : MModel) =
 
  
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let containerAttribs = 
         amap {
@@ -357,9 +352,8 @@ let view (model : MModel) =
                         match obj with
                             | None -> yield text "could not find selected rect"
                             | Some o -> 
-                                let! o = o
                                 match o with
-                                    | MRect(b,colors) -> 
+                                    | AdaptiveRect(b,colors) -> 
                                         yield Nvg.rect 0.0 0.0 1.0 1.0 [style "fill:rgba(0,0,255,0.4);stroke-width:1;stroke:rgb(0,0,0);"; "vector-effect" => "non-scaling-stroke"]
                                     | _ -> failwith "not implemented"
                     }
@@ -368,9 +362,8 @@ let view (model : MModel) =
                         let! o = model.objects |> AMap.tryFind id 
                         match o with
                             | Some o -> 
-                                let! o = o 
                                 match o with    
-                                    | MRect(b,color) -> 
+                                    | AdaptiveRect(b,color) -> 
                                         let! colors = color |> AVal.map unpackColor
                                         let! color = color
 
@@ -428,9 +421,9 @@ let view (model : MModel) =
                                 match o with
                                     | None -> return ColorKind.Constant, Direction.Horizontal
                                     | Some o -> 
-                                        let! o = o
+                                        //let! o = o
                                         match o with
-                                            | MRect(b,c) -> 
+                                            | AdaptiveRect(b,c) -> 
                                                 let! c = c
                                                 return c.kind, c.gradient.direction
                                             | _ -> return ColorKind.Constant, Direction.Horizontal

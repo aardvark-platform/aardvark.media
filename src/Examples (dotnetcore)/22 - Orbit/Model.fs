@@ -3,7 +3,7 @@ namespace Orbit
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
-
+open Adaptify
 
 type OrbitMessage =
     | MouseDown of V2i

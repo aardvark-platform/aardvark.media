@@ -97,7 +97,7 @@ module App =
           | _ -> model
         | _ -> model
   
-  let view (model : MModel) =
+  let view (model : AdaptiveModel) =
 
     let sceneSG = 
       //Sg.box (AVal.constant C4b.Red) (AVal.constant Box3d.Unit)

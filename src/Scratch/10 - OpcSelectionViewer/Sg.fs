@@ -25,7 +25,7 @@ module SceneObjectHandling =
   let pickable' (pick :aval<Pickable>) (sg: ISg) =
     Sg.PickableApplicator (pick, AVal.constant sg)
 
-  let createSingleOpcSg (m : MModel) (data : Box3d*MOpcData) =
+  let createSingleOpcSg (m : AdaptiveModel) (data : Box3d*AdaptiveOpcData) =
     let boundingBox, opcData = data
     
     let leaves = 

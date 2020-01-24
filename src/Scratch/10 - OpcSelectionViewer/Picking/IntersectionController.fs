@@ -10,6 +10,7 @@ module IntersectionController =
   open System
   open System.Drawing
   open Aardvark.SceneGraph.Opc
+  open FSharp.Data.Adaptive
 
   let hitBoxes (kd : HashMap<Box3d, Level0KdTree>) (r : FastRay3d) (trafo : Trafo3d) =
     kd

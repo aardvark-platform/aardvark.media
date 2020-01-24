@@ -19,7 +19,7 @@ let update (model : Model) (msg : Message) =
         | OpenFiles m -> 
             { model with currentFiles = IndexList.ofList m }
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
      |> Sg.shader {
             do! DefaultSurfaces.trafo
@@ -29,7 +29,7 @@ let viewScene (model : MModel) =
 
 
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     require Html.semui (
         body [ style "background: black"] [
             div [clazz "ui inverted segment" ] [

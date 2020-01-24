@@ -55,7 +55,7 @@ let update (model : Model) (msg : Message) =
 //        D, text "D"
 //    ]
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     let values = model.options |> AMap.map (fun k v -> text v)
     div [clazz "ui inverted segment"; style "width: 100%; height: 100%"] [
         div [ clazz "ui vertical inverted menu" ] [

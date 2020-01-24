@@ -94,7 +94,7 @@ module App =
   let pickable' (pick :aval<Pickable>) (sg: ISg) =
         Sg.PickableApplicator (pick, AVal.constant sg)
 
-  let scene (model:MModel) =
+  let scene (model:AdaptiveModel) =
     let color = AVal.constant C4b.Blue
     let boxGeometry = Box3d(-V3d.III, V3d.III)
     let corners = boxGeometry.ComputeCorners()
@@ -137,7 +137,7 @@ module App =
       
     [wireBox model.isShift; hitPoint] |> Sg.ofList
   
-  let view (model : MModel) =
+  let view (model : AdaptiveModel) =
     let frustum =
       AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
     

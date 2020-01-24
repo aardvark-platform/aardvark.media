@@ -9,7 +9,7 @@ open Aardvark.Geometry
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
-
+open Adaptify
 open OpcSelectionViewer.Picking
 
 type Message =

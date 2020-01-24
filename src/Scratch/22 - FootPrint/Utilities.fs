@@ -169,7 +169,7 @@ module Drawing =
 
   let drawColoredEdges (color : C4b) (points : alist<V3d>) = 
     points
-        |> AList.toMod 
+        |> AList.toAVal 
         |> AVal.map (fun l ->
             let list = IndexList.toList l
             let head = list |> List.tryHead
@@ -205,7 +205,7 @@ module Drawing =
 
 module Scene =
   
-  let scene (model : MModel) =
+  let scene (model : AdaptiveModel) =
 
     let geom1 =
         [
@@ -241,7 +241,7 @@ module Scene =
     regular ([geom1] |> Sg.ofList) 
     
 
-  let fullScene (model : MModel) =
+  let fullScene (model : AdaptiveModel) =
     let scenesgs = scene model
     let camtrafo = model.position.value |> AVal.map Trafo3d.Translation
     let camPoint = Drawing.mkISg (AVal.constant C4b.Yellow) (AVal.constant 0.3) camtrafo
@@ -281,7 +281,7 @@ module Scene =
             |> Sg.andAlso features
     Sg.ofSeq [tSg; upSg] |> Sg.noEvents //scenesgs; camPoint; lookAtSg; upSg; frustum
 
-  let camScene (model : MModel) =
+  let camScene (model : AdaptiveModel) =
     let scenesgs = scene model
     Sg.ofSeq [scenesgs] |> Sg.noEvents 
 

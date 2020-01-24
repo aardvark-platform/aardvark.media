@@ -14,7 +14,7 @@ let update (model : MasterModel) (msg : MasterMessage) =
         | Nop -> model
 
 
-let viewScene (model : MMasterModel) = 
+let viewScene (model : AdaptiveMasterModel) = 
     Sg.box (AVal.constant C4b.White) (AVal.constant Box3d.Unit)
     |> Sg.shader {
         do! DefaultSurfaces.trafo
@@ -22,7 +22,7 @@ let viewScene (model : MMasterModel) =
         do! DefaultSurfaces.simpleLighting
        }
        
-let view (model : MMasterModel) =
+let view (model : AdaptiveMasterModel) =
     let scene = viewScene model
 
     let mapOut (m : Model) (msg : Message) = 

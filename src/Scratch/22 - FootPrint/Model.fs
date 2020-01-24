@@ -6,7 +6,7 @@ open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open System
-
+open Adaptify
 
 
 

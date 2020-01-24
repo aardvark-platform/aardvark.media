@@ -25,7 +25,7 @@ let update (model : Model) (msg : Message) =
             printfn "open file: %A" s
             model
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
      |> Sg.shader {
             do! DefaultSurfaces.trafo
@@ -33,7 +33,7 @@ let viewScene (model : MModel) =
             do! DefaultSurfaces.simpleLighting
         }
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 

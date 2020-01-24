@@ -33,7 +33,7 @@ module OrthoCameraDemo =
         orthoFrustumFromWidth 5.0
         //Frustum.perspective 60.0 0.1 100.0 1.0             
 
-    let view (model : MOrthoModel) =
+    let view (model : AdaptiveOrthoModel) =
 
         let sg =
             Sg.box (AVal.constant C4b.White) (AVal.constant (Box3d(-V3d.III, V3d.III)))                        

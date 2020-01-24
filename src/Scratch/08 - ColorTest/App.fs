@@ -13,7 +13,7 @@ let update (model : Model) (msg : Message) =
         | Camera m -> { model with cameraState = FreeFlyController.update model.cameraState m }
 
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
     let rand = System.Random()
     let spheres = 
         [ for i in 0 .. 1000 do
@@ -28,7 +28,7 @@ let viewScene (model : MModel) =
         }
      |> Sg.blendMode (AVal.constant BlendMode.Blend)
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let scene = viewScene model
     let renderControl =

@@ -5,6 +5,7 @@ open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Trafos
+open Adaptify
 
 type ObjectType = 
     | Sphere of V3d * float 
@@ -13,7 +14,7 @@ type ObjectType =
 [<ModelType>]
 type Object =
     {
-        [<PrimaryKey>]
+        [<NonAdaptive>]
         name            : string
         objectType      : ObjectType
         transformation  : Transformation

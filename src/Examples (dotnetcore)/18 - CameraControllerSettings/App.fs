@@ -7,6 +7,7 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open RenderControl.Model
+open Aether.Operators
 
 open Aardvark.Base.LensOperators
 
@@ -16,6 +17,8 @@ let initialCamera = {
     }
 
 let rec update (model : Model) (msg : Message) =
+    let bla = Model.cameraState_ >-> CameraControllerState.freeFlyConfig_ >-> FreeFlyConfig.lookAtMouseSensitivity_
+    let ffc = Model.cameraState_ >-> CameraControllerState.freeFlyConfig_
     match msg with
         | Camera m -> 
             { model with cameraState = FreeFlyController.update model.cameraState m; rot = model.rot + 0.01 }
@@ -23,28 +26,28 @@ let rec update (model : Model) (msg : Message) =
             { model with cameraState = initialCamera }
         | JumpToOrigin ->
             update model (Camera (FreeFlyController.Message.JumpTo (CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI)))
-        | SetLookAtSensitivity s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.lookAtMouseSensitivity <== (model,s)
-        | SetLookAtConstant    s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.lookAtConstant <== (model,s)
-        | SetLookAtSmoothing   s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.lookAtDamping  <== (model,s)
+        | SetLookAtSensitivity s -> model |> s ^= (ffc >-> FreeFlyConfig.lookAtMouseSensitivity_)
+        | SetLookAtConstant    s -> model |> s ^= (ffc >-> FreeFlyConfig.lookAtConstant_)
+        | SetLookAtSmoothing   s -> model |> s ^= (ffc >-> FreeFlyConfig.lookAtDamping_)
                                   
-        | SetPanSensitiviy     s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.panMouseSensitivity <== (model,s)
-        | SetPanConstant       s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.panConstant <== (model,s)
-        | SetPanSmoothing      s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.panDamping  <== (model,s)
+        | SetPanSensitiviy     s -> model |> s ^= (ffc >-> FreeFlyConfig.panMouseSensitivity_)
+        | SetPanConstant       s -> model |> s ^= (ffc >-> FreeFlyConfig.panConstant_)
+        | SetPanSmoothing      s -> model |> s ^= (ffc >-> FreeFlyConfig.panDamping_)
                                 
-        | SetDollySensitiviy   s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.dollyMouseSensitivity <== (model,s)
-        | SetDollyConstant     s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.dollyConstant <== (model,s)
-        | SetDollySmoothing    s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.dollyDamping  <== (model,s)
+        | SetDollySensitiviy   s -> model |> s ^= (ffc >-> FreeFlyConfig.dollyMouseSensitivity_)
+        | SetDollyConstant     s -> model |> s ^= (ffc >-> FreeFlyConfig.dollyConstant_)
+        | SetDollySmoothing    s -> model |> s ^= (ffc >-> FreeFlyConfig.dollyDamping_)
           
-        | SetZoomSensitiviy    s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.zoomMouseWheelSensitivity <== (model,s)
-        | SetZoomConstant      s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.zoomConstant <== (model,s)
-        | SetZoomSmoothing     s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.zoomDamping  <== (model,s)
+        | SetZoomSensitiviy    s -> model |> s ^= (ffc >-> FreeFlyConfig.zoomMouseWheelSensitivity_)
+        | SetZoomConstant      s -> model |> s ^= (ffc >-> FreeFlyConfig.zoomConstant_)
+        | SetZoomSmoothing     s -> model |> s ^= (ffc >-> FreeFlyConfig.zoomDamping_)
 
-        | SetMoveSensitivity   s -> Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.moveSensitivity <== (model,s)
+        | SetMoveSensitivity   s -> model |> s ^= (ffc >-> FreeFlyConfig.moveSensitivity_)
         | SetTime -> { model with rot = 0.01 + model.rot }
        
 
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
      //|> Sg.trafo (model.rot |> AVal.map (fun a -> Trafo3d.RotationZ a))
      |> Sg.shader {
@@ -54,7 +57,7 @@ let viewScene (model : MModel) =
         }
 
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 

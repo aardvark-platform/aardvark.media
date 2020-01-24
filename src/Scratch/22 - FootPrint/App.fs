@@ -25,7 +25,7 @@ let update2ndCam (model : Model) =
                             footprintProj = {model.footprintProj with cam = { model.footprintProj.cam with view = view}}}
    
 
-let getFrustum (model : MModel) =
+let getFrustum (model : AdaptiveModel) =
     adaptive {
         let! texActive = model.textureActive
         let! tpf = model.textureProj.frustum
@@ -75,9 +75,9 @@ let update (model : Model) (msg : Message) =
 
 
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
-    let viewV3dInput (model : MV3dInput) =  
+    let viewV3dInput (model : AdaptiveV3dInput) =  
             Html.table [                            
                 Html.row "X" [Numeric.view' [InputBox] model.x |> UI.map Vector3d.Action.SetX]
                 Html.row "Y" [Numeric.view' [InputBox] model.y |> UI.map Vector3d.Action.SetY]

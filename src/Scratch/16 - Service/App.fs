@@ -57,7 +57,7 @@ let update (send : InstanceMessage -> unit) (model : Model) (msg : Message) =
                     Log.warn "cannot kill non-existing instance"
                     model
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     let runningInstances = model.running |> AMap.toASet |> ASet.sortBy fst
     require Html.semui (
         page (fun request -> 

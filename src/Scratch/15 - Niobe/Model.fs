@@ -10,6 +10,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
 open Niobe.Sketching
+open Adaptify
 
 type Message =
   | Camera           of FreeFlyController.Message  

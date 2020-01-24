@@ -8,6 +8,7 @@ open Aardvark.SceneGraph.Opc
 open MBrace.FsPickler    
 open MBrace.FsPickler.Combinators  
 open OpcSelectionViewer.KdTrees
+open FSharp.Data.Adaptive
 
 module KdTrees = 
  

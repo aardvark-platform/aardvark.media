@@ -5,6 +5,7 @@ open System.Diagnostics
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Exectuable = DotnetAssembly of string | Native of string
 

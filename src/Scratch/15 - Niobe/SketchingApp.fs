@@ -8,7 +8,7 @@ open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.UI
 open Aardvark.UI.Primitives
-
+open Adaptify.FSharp.Core
 open Uncodium
 
 module Sg = 
@@ -17,7 +17,7 @@ module Sg =
     
     let pointsF =
       points 
-      |> AList.toMod 
+      |> AList.toAVal 
       |> AVal.map(fun x -> x |> IndexList.toSeq |> Seq.map(fun y -> V3f y) |> Seq.toArray)
 
     let indexArray = 
@@ -88,7 +88,7 @@ module Sg =
 
     let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
       points 
-      |> AList.toMod
+      |> AList.toAVal
       |> AVal.map(fun x -> 
         let plane = planeFit x
         let extrudeNormal = plane.Normal
@@ -186,14 +186,14 @@ module SketchingApp =
       let b' = model.working |> Option.map(fun b -> { b with color = c.c})
       { model with working = b'; selectedColor = c }
   
-  let currentBrushSg (model : MSketchingModel) : ISg<SketchingAction> = 
+  let currentBrushSg (model : AdaptiveSketchingModel) : ISg<SketchingAction> = 
 
-    let color = model.working |> AVal.bind (fun x -> match x with | None -> AVal.constant(C4b.Black) | Some a -> a.color)
-    let points = model.working |> AList.bind (fun x -> match x with | None -> AList.empty | Some a -> a.points)
+    let color = model.working |> AVal.bind (fun x -> match x with | AdaptiveNone -> AVal.constant(C4b.Black) | AdaptiveSome a -> a.color)
+    let points = model.working |> AList.bind (fun x -> match x with | AdaptiveNone -> AList.empty | AdaptiveSome a -> a.points)
 
     Sg.drawWorkingBrush points color model.depthOffset.value model.selectedThickness.value
 
-  let finishedBrushSg (model : MSketchingModel) = 
+  let finishedBrushSg (model : AdaptiveSketchingModel) = 
 
     model.finishedBrushes 
       |> AList.map(fun br -> Sg.drawFinishedBrush br.points br.color model.alphaArea.value model.volumeOffset.value )
@@ -209,7 +209,7 @@ module SketchingApp =
       { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
     ] 
 
-  let viewGui (model : MSketchingModel) =
+  let viewGui (model : AdaptiveSketchingModel) =
     require dependencies (
       Html.SemUi.accordion "Brush" "paint brush" true [          
           Html.table [  

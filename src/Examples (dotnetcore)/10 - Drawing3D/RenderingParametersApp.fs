@@ -13,7 +13,7 @@ let update (model : RenderingParameters) (act : Action) =
         | SetCullMode mode ->
             { model with cullMode = mode }
 
-let view (model : MRenderingParameters) =        
+let view (model : AdaptiveRenderingParameters) =        
     require Html.semui (
         Html.table [                            
             Html.row "FillMode:" [Html.SemUi.dropDown model.fillMode SetFillMode]

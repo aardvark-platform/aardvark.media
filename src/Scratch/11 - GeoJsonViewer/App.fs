@@ -27,7 +27,7 @@ module App =
       { kind = Script;     name = "semui"; url = "./rendering/semantic.js" }
     ]
   
-  let isSelected (model : MModel) (feature : Feature) = 
+  let isSelected (model : AdaptiveModel) (feature : Feature) = 
     model.selected 
       |> AVal.map(function
         | Some x -> x = feature.id
@@ -60,7 +60,7 @@ module App =
         "fill-opacity" ==> "0.5"
       ]
 
-  let viewFeaturesGui (model:MModel) =
+  let viewFeaturesGui (model:AdaptiveModel) =
     alist {
       
       for f in model.data.features do
@@ -94,7 +94,7 @@ module App =
         yield item 
     }
 
-  let viewFeaturesSvg (model:MModel) = 
+  let viewFeaturesSvg (model:AdaptiveModel) = 
 
     let canvasSize = V2d(600.0, 600.0)
 
@@ -149,7 +149,7 @@ module App =
     let height = 0.2
     IndexedGeometryPrimitives.point ((point |> withZ height).ToV3f()) color |> Sg.ofIndexedGeometry
 
-  let drawFeatures (fc : MFeatureCollection) = 
+  let drawFeatures (fc : AdaptiveFeatureCollection) = 
 
     let plane = 
       adaptive {
@@ -170,7 +170,7 @@ module App =
         do! DefaultSurfaces.simpleLighting
       }
 
-  let view (model : MModel) =
+  let view (model : AdaptiveModel) =
 
     //let box = Sg.box (AVal.constant C4b.VRVisGreen) (AVal.constant Box3d.Unit)
 

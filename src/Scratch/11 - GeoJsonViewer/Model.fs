@@ -8,6 +8,7 @@ open Aardvark.UI.Primitives
 open FSharp.Data
 open FSharp.Data.JsonExtensions
 open Aardvark.Application
+open Adaptify
 
 type FeatureId = FeatureId of string
 

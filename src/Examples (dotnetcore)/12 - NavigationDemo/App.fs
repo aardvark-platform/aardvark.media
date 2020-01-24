@@ -61,7 +61,7 @@ let update (model : NavigationModeDemoModel) (act : Action) =
         | KeyUp k -> model
 
 
-let view (model : MNavigationModeDemoModel) =
+let view (model : AdaptiveNavigationModeDemoModel) =
     let cam =
         model.camera.view 
             
@@ -150,7 +150,7 @@ let view (model : MNavigationModeDemoModel) =
         //         Html.table [                            
         //   Html.row "Mode:" [Html.SemUi.dropDown model.navigationMode SetNavigationMode]
         //]
-                let cameracontroller (ccs : MCameraControllerState) = 
+                let cameracontroller (ccs : AdaptiveCameraControllerState) = 
                     Html.table [  
                         Html.row "Sensitivity:" [Incremental.text (ccs.sensitivity |> AVal.map (fun x -> sprintf "%f" x))]
                         Html.row "ZoomFactor:"  [Incremental.text (ccs.zoomFactor  |> AVal.map (fun x -> sprintf "%f" x))]

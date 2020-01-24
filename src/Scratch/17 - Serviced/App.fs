@@ -40,7 +40,7 @@ let menu () =
     ]
 
 
-let view (sg : ISg<_>) (model : MModel) =
+let view (sg : ISg<_>) (model : AdaptiveModel) =
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 

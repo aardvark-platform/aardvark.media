@@ -28,12 +28,12 @@ module PickingApp =
     
     let head = 
       points 
-        |> AList.toMod 
+        |> AList.toAVal 
         |> AVal.map(fun x -> (IndexList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
       
     let pointsF = 
       points 
-        |> AList.toMod 
+        |> AList.toAVal 
         |> AVal.map2(
           fun h points -> 
             points |> IndexList.map(fun (x:V3d) -> (x-h) |> toV3f) |> IndexList.toArray
@@ -50,5 +50,5 @@ module PickingApp =
       |> Sg.translate' head
       |> Sg.uniform "PointSize" (AVal.constant 10.0)
 
-  let view (model : MPickingModel) =
+  let view (model : AdaptivePickingModel) =
     drawColoredPoints model.intersectionPoints

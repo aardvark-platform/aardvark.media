@@ -125,7 +125,7 @@ module ClientApp =
             )
 
     //https://bugs.chromium.org/p/chromium/issues/detail?id=716694&can=2&q=716694&colspec=ID%20Pri%20M%20Stars%20ReleaseBlock%20Component%20Status%20Owner%20Summary%20OS%20Modified
-    let view (runtime : IRuntime) (model : MModel) (clientState : MClientState) =
+    let view (runtime : IRuntime) (model : AdaptiveModel) (clientState : AdaptiveClientState) =
     
         let svgAttribs = 
             amap {
@@ -409,7 +409,7 @@ module DrawRectsApp =
                 | _ -> ()
         }
 
-    let view (runtime : IRuntime) (m : MModel) =
+    let view (runtime : IRuntime) (m : AdaptiveModel) =
         body ["oncontextmenu" => "return false;"] [
             subApp' mapOut (fun _ msg -> match msg with Translate(_,_) -> Seq.singleton ClientMessage.StopDrag | _ -> Seq.empty) [] (ClientApp.app runtime m)
         ]

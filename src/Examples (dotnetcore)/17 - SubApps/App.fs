@@ -25,7 +25,7 @@ module IncApp' =
     open Inc.App
     open Inc.Model
 
-    let view (model : MModel) =
+    let view (model : AdaptiveModel) =
         div [] [
             text "Hello World"
             br []
@@ -53,7 +53,7 @@ module IncApp' =
         }
 
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     body [] [
         div [style "display: flex; flex-direction: column; width: 100%; height: 100%"] [
             div [] [

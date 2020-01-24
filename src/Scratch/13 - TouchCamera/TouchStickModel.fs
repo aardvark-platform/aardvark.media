@@ -7,6 +7,7 @@ open FSharp.Data.Adaptive
 
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.TouchStick
+open Adaptify
 
 
 [<ModelType>]

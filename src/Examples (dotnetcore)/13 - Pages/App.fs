@@ -49,7 +49,7 @@ let deps = [
     { name = "failing2"; kind = Script; url = "notfound"}
 ]
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
     |> Sg.shader {
         do! DefaultSurfaces.trafo
@@ -58,7 +58,7 @@ let viewScene (model : MModel) =
     }
     |> Sg.cullMode model.cullMode
     |> Sg.fillMode (model.fill |> AVal.map (function true -> FillMode.Fill | false -> FillMode.Line))
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
 
     let toggleBox (str : string) (state : aval<bool>) (toggle : 'msg) =

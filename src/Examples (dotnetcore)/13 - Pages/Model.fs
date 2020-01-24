@@ -5,6 +5,7 @@ open Aardvark.Base.Rendering
 open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Message = 
     | Camera of FreeFlyController.Message

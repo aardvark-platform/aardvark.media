@@ -36,8 +36,8 @@ let app =
         unpersist = Unpersist.instance     
         threads = threads 
         initial = 
-            { 
-               value = 0
+            {   
+                value = 0
             }
         update = update 
         view = view

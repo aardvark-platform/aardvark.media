@@ -5,7 +5,7 @@ open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 open System
-
+open Adaptify
 
 type Client = 
     {

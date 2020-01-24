@@ -3,6 +3,7 @@ namespace Inc.Model
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Message = 
     | Inc
@@ -23,4 +24,4 @@ type Scene = { objects : aset<Object> }
 [<ModelType>]
 type IObject = { itrafo : string }
 [<ModelType>]
-type IScene = { iobjects : CountingHashSet<IObject> }
+type IScene = { iobjects : HashSet<IObject> }

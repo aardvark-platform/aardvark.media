@@ -10,6 +10,7 @@ open Aardvark.UI.Primitives
 open Aardvark.Base.Geometry
 open Model
 open Aardvark.UI.Trafos
+open Aether.Operators
 
 type Action = 
     | PlaceBox 
@@ -40,7 +41,9 @@ let updateMode mode m =
     { m with mode = mode; world = { m.world with objects = objs;}}
 
 let _selected name = 
-    Scene.Lens.world |. World.Lens.objects |. HashMap.Lens.item name |? Unchecked.defaultof<_> |. Object.Lens.transformation
+    let hm k  =
+        (fun m -> HashMap.tryFind k m), (fun v m -> HashMap.add k v m)
+    Scene.world_ >-> World.objects_ >-> hm name >?> Object.transformation_
 
 let update (m : Scene) (a : Action) =
     match a with
@@ -60,11 +63,11 @@ let update (m : Scene) (a : Action) =
             //_selected(n).Update(m, fun t -> { t with pivotTrafo = t.trafo })
                 
         | Translate(name, a) ->
-            _selected(name).Update(m, fun t -> TranslateController.updateController t a)
-        | Rotate(name, a) ->                 
-            _selected(name).Update(m, fun t -> RotationController.updateController t a)
-        | Scale(name,a) ->                 
-            _selected(name).Update(m, fun t -> ScaleController.updateController t a)
+            m |> (flip TranslateController.updateController a) ^% (_selected name)
+        | Rotate(name, a) ->    
+            m |> (flip RotationController.updateController a) ^% (_selected name)     
+        | Scale(name,a) ->   
+            m |> (flip ScaleController.updateController a) ^% (_selected name)     
         | Unselect -> 
             if isGrabbed m.world then m // hack
             else  { m with world = { m.world with selectedObjects = HashSet.empty } }
@@ -89,12 +92,12 @@ let update (m : Scene) (a : Action) =
 
     
 
-let viewScene (m : MScene) =
+let viewScene (m : AdaptiveScene) =
         
     let objects =
         aset {
             for (name,obj) in m.world.objects |> AMap.toASet do
-                let selected = ASet.contains name m.world.selectedObjects
+                let selected = m.world.selectedObjects |> ASet.toAVal |> AVal.map (fun s -> HashSet.contains name s)
                 let color = selected |> AVal.map (function | true -> C4b.Red | false -> C4b.Gray)
                                                                                   
                 let controller =
@@ -108,11 +111,11 @@ let viewScene (m : MScene) =
                                 | true ->
                                     match kind with
                                         | TrafoKind.Translate -> 
-                                            TranslateController.viewController (fun t -> Translate(obj.name |> AVal.force, t)) m.camera.view obj.transformation
+                                            TranslateController.viewController (fun t -> Translate(obj.name, t)) m.camera.view obj.transformation
                                         | TrafoKind.Rotate    -> 
-                                            RotationController.viewController (fun r -> Rotate(obj.name |> AVal.force, r)) m.camera.view obj.transformation
+                                            RotationController.viewController (fun r -> Rotate(obj.name, r)) m.camera.view obj.transformation
                                         | TrafoKind.Scale     -> 
-                                            ScaleController.viewController (fun s -> Scale(obj.name |> AVal.force, s)) m.camera.view obj.transformation
+                                            ScaleController.viewController (fun s -> Scale(obj.name, s)) m.camera.view obj.transformation
                                         | _ -> Sg.empty
                                     
                                 | false -> Sg.ofList []
@@ -161,7 +164,7 @@ let viewScene (m : MScene) =
         ]
 
 
-let view (m : MScene) =
+let view (m : AdaptiveScene) =
     body [ style "background: #1B1C1E"] [
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [

@@ -1,9 +1,10 @@
-namespace Inc.Model
+namespace IncModel
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open System
+open Adaptify
 
 type Direction = Vertical = 0 | Horizontal = 1
 

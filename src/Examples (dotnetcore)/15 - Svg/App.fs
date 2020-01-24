@@ -36,7 +36,7 @@ let onEndDrag  (cb : DragInfo -> 'msg) =
 
 let (=>) n v = attribute n v
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let position = model.Current |> AVal.map getPosition
 

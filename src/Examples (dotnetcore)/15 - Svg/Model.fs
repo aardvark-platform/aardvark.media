@@ -4,6 +4,7 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Adaptify
 
 type DragInfo = {
     absolutePosition : V2d

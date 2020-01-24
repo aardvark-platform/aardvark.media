@@ -15,7 +15,8 @@ FsPickler
 FsPickler.Json
 
 Aardium
-
+Uncodium.Eigensystems
+Aardvark.Geometry.Intersection
 
 Suave
 FSharp.Core

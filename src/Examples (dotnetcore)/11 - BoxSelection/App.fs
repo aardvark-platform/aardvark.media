@@ -46,7 +46,7 @@ let update (model : BoxSelectionDemoModel) (act : Action) =
             let i = model.boxes.Count                
             let box = Primitives.mkNthBox i (i+1) |> mkVisibleBox Primitives.colors.[i % 5]
                                          
-            { model with boxes = IndexList.append box model.boxes }
+            { model with boxes = IndexList.add box model.boxes }
         | RemoveBox ->  
             let i = model.boxes.Count - 1
             let boxes = IndexList.removeAt i model.boxes
@@ -56,12 +56,13 @@ let update (model : BoxSelectionDemoModel) (act : Action) =
                         
 let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
-let mkColor (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
+let mkColor (model : AdaptiveBoxSelectionDemoModel) (box : AdaptiveVisibleBox) =
     let id = box.id 
 
     let color =  
         model.selectedBoxes 
-            |> ASet.contains id 
+            |> ASet.toAVal 
+            |> AVal.map (HashSet.contains id) 
             |> AVal.bind (function 
                 | true -> AVal.constant Primitives.selectionColor 
                 | false -> box.color
@@ -96,7 +97,7 @@ let nop = Continue, Seq.empty
 //    ]
 
 
-let mkISg (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
+let mkISg (model : AdaptiveBoxSelectionDemoModel) (box : AdaptiveVisibleBox) =
                 
     let color = mkColor model box
 
@@ -126,7 +127,7 @@ let mkISg (model : MBoxSelectionDemoModel) (box : MVisibleBox) =
             Sg.onLeave (fun () ->  Log.line "leave %s" box.id; Exit)
         ]
 
-let view (model : MBoxSelectionDemoModel) =
+let view (model : AdaptiveBoxSelectionDemoModel) =
     let cam =
         model.camera.view 
                            
@@ -224,12 +225,11 @@ let initial =
         rendering        = RenderingParameters.initial            
         boxHovered       = None
         boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> mkVisibleBox Primitives.colors.[i % 5] k) |> IndexList.ofList
-        selectedBoxes = HashSet.empty         
-        boxesSet = HashSet.empty
+        selectedBoxes = HashSet.empty     
         boxesMap = HashMap.empty
     }
 
-let app : App<BoxSelectionDemoModel,MBoxSelectionDemoModel,Action> =
+let app : App<BoxSelectionDemoModel,AdaptiveBoxSelectionDemoModel,Action> =
     {
         unpersist = Unpersist.instance
         threads = fun model -> FreeFlyController.threads model.camera |> ThreadPool.map CameraMessage

@@ -42,7 +42,7 @@ module App =
         | Disconnect (id) ->
             { model with clients = model.clients |> HashMap.remove id }
 
-    let view (model : MModel) = 
+    let view (model : AdaptiveModel) = 
         
         onBoot ("window.top.clientid = Math.random().toString(36).substr(2, 9); aardvark.processEvent('__ID__', 'clientConnected', { id : window.top.clientid, name : 'aard'});") (
             div [onEvent "clientConnected" [] (List.head >> Pickler.json.UnPickleOfString >> Connect) ] [

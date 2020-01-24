@@ -3,6 +3,7 @@ namespace GeoJsonViewer
 open Aardvark.Base
 open FSharp.Data
 open FSharp.Data.JsonExtensions
+open FSharp.Data.Adaptive
 
 module MinervaGeoJSON =
   open FSharp.Data.Runtime

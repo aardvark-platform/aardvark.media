@@ -2,7 +2,7 @@ namespace Input
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-
+open Adaptify
 
 type Alternative =
     | A

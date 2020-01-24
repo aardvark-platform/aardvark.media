@@ -87,7 +87,7 @@ let edgeLines (close : bool)  (points : aval<list<V3d>>) =
 let frustum =
     AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
 
-let scene3D (model : MSimpleDrawingModel) =
+let scene3D (model : AdaptiveSimpleDrawingModel) =
     let cam =
         model.camera.view 
 
@@ -127,7 +127,7 @@ let scene3D (model : MSimpleDrawingModel) =
         |> Sg.fillMode model.rendering.fillMode
         |> Sg.cullMode model.rendering.cullMode   
 
-let view (model : MSimpleDrawingModel) =            
+let view (model : AdaptiveSimpleDrawingModel) =            
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum
