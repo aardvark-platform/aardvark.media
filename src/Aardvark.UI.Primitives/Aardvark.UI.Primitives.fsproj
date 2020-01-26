@@ -2,8 +2,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
-    <AssemblyName>Aardvark.UI.Primitives</AssemblyName>
-    <OutputType>Library</OutputType>
     <GenerateLenses>True</GenerateLenses>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
   </PropertyGroup>
