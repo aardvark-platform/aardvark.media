@@ -1,4 +1,4 @@
-framework: netstandard2.0, net471, netcoreapp2.0
+framework: netstandard2.0, net471, netcoreapp3.0
 source https://api.nuget.org/v3/index.json
 
 nuget FSharp.Core                       >= 4.6.2 lowest_matching: true
@@ -22,7 +22,7 @@ nuget Aardvark.Rendering.Text           ~> 5.0.0-prerelease0001
 nuget Aardvark.Rendering.Vulkan         ~> 5.0.0-prerelease0001
 nuget Aardvark.GPGPU                    ~> 5.0.0-prerelease0001
 
-nuget Adaptify.MSBuild                  ~> 0.0.21
+nuget Adaptify.MSBuild                  ~> 0.0.26
 
 nuget Aether                            ~> 8.3.1
 nuget FsPickler                         ~> 5.2.2

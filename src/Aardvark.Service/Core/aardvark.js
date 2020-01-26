@@ -9,6 +9,15 @@ if (!aardvark) {
     //window.aardvark = aardvark;
 }
 
+// until new aardium version available
+if (aardvark.electron) {
+    aardvark.openFileDialog = function (config, callback) {
+        if (!callback) callback = config;
+        aardvark.electron.remote.dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] }).then(e => callback(e.filePaths));
+    };
+
+}
+
 if (!aardvark.promise)
 {
     aardvark.promise = new Promise(function (succ, fail) { succ(); });
