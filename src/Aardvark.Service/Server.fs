@@ -827,15 +827,6 @@ type internal PngClientRenderTask internal(server : Server, getScene : IFramebuf
         resolved <- None
 
 
-type private MappingInfo =
-    {
-        name : string
-        file : MemoryMappedFile
-        view : MemoryMappedViewAccessor
-        size : int64
-        data : nativeint
-    }
-    
 module internal RawDownload =
     open System.Runtime.InteropServices
 
@@ -1263,35 +1254,107 @@ module internal RawDownload =
             if tmpRbo >= 0 then GL.DeleteRenderbuffer(tmpRbo)
             GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
             
+   
+
+type IMappingInfo =
+    inherit IDisposable
+    abstract member Name : string
+    abstract member Pointer : nativeint
+    abstract member Size : int64
+    
+      
+module MappingInfo =
+    open System.Runtime.InteropServices
+
+    module Windows =
+        type private MappingInfo =
+            {
+                name : string
+                file : MemoryMappedFile
+                view : MemoryMappedViewAccessor
+                size : int64
+                data : nativeint
+            }
+            interface IMappingInfo with
+                member x.Name = x.name
+                member x.Dispose() =
+                    x.view.Dispose()
+                    x.file.Dispose()
+                member x.Pointer = x.data
+                member x.Size = x.size
+
+        let create (size : int64) =
+            let name = Guid.NewGuid() |> string
+            let file = MemoryMappedFile.CreateNew(name, size)
+            let view = file.CreateViewAccessor()
+
+            {
+                name = name
+                file = file
+                view = view
+                size = size
+                data = view.SafeMemoryMappedViewHandle.DangerousGetHandle()
+            } :> IMappingInfo
+
+    module Linux =
         
+        [<DllImport("libc", CharSet = CharSet.Ansi)>]
+        extern int ftok(string path, byte mode)
+        
+        [<DllImport("libc", CharSet = CharSet.Ansi)>]
+        extern int shmget(int key, unativeint size, int shmflag)
+        
+        [<DllImport("libc", CharSet = CharSet.Ansi)>]
+        extern nativeint shmat(int id, nativeint shmaddr, int shmflag)
+        
+        [<DllImport("libc", CharSet = CharSet.Ansi)>]
+        extern int shmdt(nativeint shmaddr)
+        
+        [<DllImport("libc", CharSet = CharSet.Ansi)>]
+        extern int shmctl(int id, int cmd, nativeint ptr)
+
+        let create (size : int64) =
+            let name = Guid.NewGuid() |> string
+            let key = ftok(name, 82uy)
+
+            let shm = shmget(key, unativeint size, 0x11FF)
+            if shm < 0 then failwithf "cannot open mapping %s" name
+
+            let ptr = shmat(shm, 0n, 0)
+            if ptr < 0n then
+                if shmctl(shm, 0, 0n) < 0 then failwithf "could not unmap %s" name
+                failwithf  "cannot open mapping %s" name
+
+            { new IMappingInfo with
+                member x.Pointer = ptr
+                member x.Size = size
+                member x.Name = name
+                member x.Dispose() =
+                    if shmdt ptr <> 0 then failwithf "could not unmap %s" name
+                    if shmctl(shm, 0, 0n) < 0 then failwithf "could not unmap %s" name
+            }
+
+
+    let create (size : int64) =
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then 
+            Windows.create size
+        else 
+            Linux.create size
+
 
 type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(server, getScene)
     let runtime = server.runtime
 
-    let mutable mapping : Option<MappingInfo> = None
+    let mutable mapping : Option<IMappingInfo> = None
     let mutable downloader : Option<RawDownload.IDownloader> = None
     
     let recreateMapping (desiredSize : int64) =
         match mapping with
-            | Some m ->
-                m.view.Dispose()
-                m.file.Dispose()
-            | None ->
-                ()
+            | Some m -> m.Dispose()
+            | None -> ()
 
-        let name = Guid.NewGuid() |> string
-        let file = MemoryMappedFile.CreateNew(name, desiredSize)
-        let view = file.CreateViewAccessor()
-
-        let m =
-            {
-                name = name
-                file = file
-                view = view
-                size = desiredSize
-                data = view.SafeMemoryMappedViewHandle.DangerousGetHandle()
-            }
+        let m = MappingInfo.create desiredSize
         mapping <- Some m
         m
 
@@ -1310,7 +1373,7 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
 
         let mapping =
             match mapping with
-                | Some m when m.size = desiredMapSize -> m
+                | Some m when m.Size = desiredMapSize -> m
                 | _ -> recreateMapping desiredMapSize
 
         //RawDownload.download runtime target color.Samples mapping.data
@@ -1321,17 +1384,16 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
                 | Some d when d.Multisampled = isMS -> d
                 | _ -> recreateDownloader runtime color.Samples
 
-        downloader.Download(target, mapping.data)
+        downloader.Download(target, mapping.Pointer)
 
-        Mapping { name = mapping.name; size = color.Size; length = int mapping.size }
+        Mapping { name = mapping.Name; size = color.Size; length = int mapping.Size }
 
     override x.Release() =
         downloader |> Option.iter (fun d -> d.Dispose())
         downloader <- None
         match mapping with
-            | Some m ->
-                m.view.Dispose()
-                m.file.Dispose()
+            | Some m -> 
+                m.Dispose()
                 mapping <- None
             | None ->
                 ()
