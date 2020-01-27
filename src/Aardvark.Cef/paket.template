@@ -11,3 +11,5 @@ files
     ..\..\bin\Release\net471\Aardvark.Cef.pdb ==> lib\net471
 	..\..\bin\Release\net471\Aardvark.Cef.Process.exe ==> lib\net471
 	..\..\bin\Release\net471\Aardvark.Cef.Process.exe.config ==> lib\net471
+excludeddependencies
+    Adaptify.MSBuild
