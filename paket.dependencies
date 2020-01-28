@@ -32,7 +32,7 @@ nuget FsPickler.Json                    ~> 5.2.2
 nuget TurboJpegWrapper                  ~> 1.5.2
 nuget Suave                             ~> 2.5.5
 
-nuget Aardium                            ~> 1.0.24
+nuget Aardium                            ~> 1.0.25
 nuget Uncodium.Eigensystems              ~> 1.1.0-prerelease0001
 nuget Aardvark.Geometry.Intersection     ~> 5.0.0-prerelease0001
 

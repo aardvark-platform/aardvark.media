@@ -1,7 +1,7 @@
 RESTRICTION: || (== net471) (== netcoreapp3.0) (== netstandard2.0)
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    Aardium (1.0.24)
+    Aardium (1.0.25)
       Aardvark.Base.FSharp (>= 4.5.8)
     Aardvark.Application (5.0.0-prerelease0001)
       Aardvark.Base.Essentials (>= 5.0.0-prerelease0007 < 5.1.0-prerelease)
