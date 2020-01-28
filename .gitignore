@@ -1,3 +1,5 @@
+**/.ionide/
+Aardvark.log
 /.paket
 bin/Release
 bin/Debug

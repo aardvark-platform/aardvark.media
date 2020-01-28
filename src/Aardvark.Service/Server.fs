@@ -1256,30 +1256,30 @@ module internal RawDownload =
             
    
 
-type IMappingInfo =
+type ISharedMemory =
     inherit IDisposable
-    abstract member Name : string
     abstract member Pointer : nativeint
     abstract member Size : int64
-    
-      
-module MappingInfo =
+    abstract member Name : string
+
+module SharedMemory =
     open System.Runtime.InteropServices
 
-    module Windows =
+    [<System.Diagnostics.CodeAnalysis.SuppressMessage("NameConventions", "*")>]
+    module private Windows =
         type private MappingInfo =
             {
-                name : string
+                name : string                
                 file : MemoryMappedFile
                 view : MemoryMappedViewAccessor
                 size : int64
                 data : nativeint
             }
-            interface IMappingInfo with
-                member x.Name = x.name
+            interface ISharedMemory with
                 member x.Dispose() =
                     x.view.Dispose()
                     x.file.Dispose()
+                member x.Name = x.name                
                 member x.Pointer = x.data
                 member x.Size = x.size
 
@@ -1294,67 +1294,166 @@ module MappingInfo =
                 view = view
                 size = size
                 data = view.SafeMemoryMappedViewHandle.DangerousGetHandle()
-            } :> IMappingInfo
+            } :> ISharedMemory
 
-    module Linux =
-        
-        [<DllImport("libc", CharSet = CharSet.Ansi)>]
-        extern int ftok(string path, byte mode)
-        
-        [<DllImport("libc", CharSet = CharSet.Ansi)>]
-        extern int shmget(int key, unativeint size, int shmflag)
-        
-        [<DllImport("libc", CharSet = CharSet.Ansi)>]
-        extern nativeint shmat(int id, nativeint shmaddr, int shmflag)
-        
-        [<DllImport("libc", CharSet = CharSet.Ansi)>]
-        extern int shmdt(nativeint shmaddr)
-        
-        [<DllImport("libc", CharSet = CharSet.Ansi)>]
-        extern int shmctl(int id, int cmd, nativeint ptr)
+    [<System.Diagnostics.CodeAnalysis.SuppressMessage("NameConventions", "*")>]
+    module private Linux =
 
-        let create (size : int64) =
-            let name = Guid.NewGuid() |> string
-            let key = ftok(name, 82uy)
+        open System.IO
+ 
+        let PROT_READ = 0x01
+        let PROT_WRITE = 0x02
+        let PROT_EXEC = 0x04
 
-            let shm = shmget(key, unativeint size, 0x11FF)
-            if shm < 0 then failwithf "cannot open mapping %s" name
+        let MAP_SHARED = 0x001
 
-            let ptr = shmat(shm, 0n, 0)
-            if ptr < 0n then
-                if shmctl(shm, 0, 0n) < 0 then failwithf "could not unmap %s" name
-                failwithf  "cannot open mapping %s" name
+        let O_RDONLY = 0x0
+        let O_WRONLY = 0x1
+        let O_RDWR = 0x2
+        let O_CREAT = 0x40             
 
-            { new IMappingInfo with
+        let IPC_RMID = 0
+
+        let IPC_CREAT = 0x200
+
+        type ErrorCode =
+            | NoPermission = 1
+            | NoSuchFileOrDirectory = 2
+            | NoSuchProcess = 3
+            | InterruptedSystemCall = 4
+            | IOError = 5
+            | NoSuchDeviceOrAddress = 6
+            | ArgListTooLong = 7
+            | ExecFormatError = 8
+
+        [<DllImport("librt", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int shm_open(string name, int oflag, int mode)
+        
+        [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern nativeint mmap(nativeint addr, unativeint size, int prot, int flags, int fd, unativeint offset)
+
+        [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int munmap(nativeint ptr, unativeint size)
+
+        [<DllImport("librt", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int shm_unlink(string name)
+
+        [<DllImport("librt", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int ftruncate(int fd, unativeint size)
+
+
+
+
+        [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int ftok(string name, int projId)
+
+        [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int shmget(int key, int size, int shmflag)
+
+        [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int shmdt(nativeint shmaddr)        
+
+        [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern nativeint shmat(int shm, nativeint shmaddr, int shmflag)
+
+        [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+        extern int shmctl(int shmid, int cmd,  nativeint buf)
+
+        let inline check (name : string) v =
+            if v <> LanguagePrimitives.GenericZero then
+                let err = Marshal.GetLastWin32Error() |> unbox<ErrorCode>
+                failwithf "%s failed with %A (%A)" name v err
+
+
+        let inline checkPos (name : string) v =
+            if v < LanguagePrimitives.GenericZero then
+                let err = Marshal.GetLastWin32Error() |> unbox<ErrorCode>
+                failwithf "%s failed with %A (%A)" name v err
+
+        let perm (f : int) (u : int) (g : int) (o : int) =
+            ((f &&& 7) <<< 9) ||| 
+            ((u &&& 7) <<< 6) ||| 
+            ((g &&& 7) <<< 3) ||| 
+            (o % 8)
+
+        let createPosix (name : string) (size : int64) =
+            // open the shared memory (or create if not existing)
+            let fd = shm_open(name, O_CREAT ||| O_RDWR, perm 0 6 4 4)
+            fd |> checkPos "shm_open"
+
+            // set the size
+            if ftruncate(fd, unativeint size) <> 0 then 
+                let err = Marshal.GetLastWin32Error() |> unbox<ErrorCode>
+                shm_unlink(name) |> check "shm_unlink"
+                failwithf "could not set file size for %d (%A)" fd err
+
+            // map the memory into our memory
+            let ptr = mmap(0n, unativeint size, PROT_WRITE ||| PROT_READ, MAP_SHARED, fd, 0un)
+            if ptr = -1n then 
+                let err = Marshal.GetLastWin32Error() |> unbox<ErrorCode>
+                shm_unlink(name) |> check "shm_unlink"
+                failwithf "could not map %d: %A" fd err
+
+            
+
+            { new ISharedMemory with
+                member x.Name = name
                 member x.Pointer = ptr
                 member x.Size = size
-                member x.Name = name
                 member x.Dispose() =
-                    if shmdt ptr <> 0 then failwithf "could not unmap %s" name
-                    if shmctl(shm, 0, 0n) < 0 then failwithf "could not unmap %s" name
+                    munmap(ptr, unativeint size) |> check "munmap"
+                    shm_unlink(name) |> check "munmap"
             }
 
+        let create (name : string) (size : int64) =
+            let p = 
+                if Directory.Exists "/dev/shm" then Path.Combine("/dev/shm", name + ".shm")
+                else Path.Combine(Path.GetTempPath(), name + ".shm")
 
-    let create (size : int64) =
+            File.WriteAllText(p, "")
+
+            let tok = ftok(p, int 'R') //s.SafeFileHandle.DangerousGetHandle() |> int 
+            tok |> checkPos "ftok"
+
+            let shm = shmget(tok, int size, perm 1 6 4 4)
+            shm |> checkPos "shmget"
+
+            let ptr = shmat(shm, 0n, 0)
+            ptr |> checkPos "shmat"
+
+            { new ISharedMemory with
+                member x.Name = name
+                member x.Pointer = ptr
+                member x.Size = size
+                member x.Dispose() =
+                    shmdt(ptr) |> check "shmdt"
+                    shmctl(shm, IPC_RMID, 0n) |> checkPos "shmctl"
+                    File.Delete p
+            }
+
+    let create (name : string) (size : int64) =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then 
             Windows.create size
         else 
-            Linux.create size
+            Linux.create name size
+
+
 
 
 type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(server, getScene)
     let runtime = server.runtime
 
-    let mutable mapping : Option<IMappingInfo> = None
+    let mutable mapping : Option<ISharedMemory> = None
     let mutable downloader : Option<RawDownload.IDownloader> = None
     
     let recreateMapping (desiredSize : int64) =
+        let name = Guid.NewGuid() |> string
         match mapping with
             | Some m -> m.Dispose()
             | None -> ()
 
-        let m = MappingInfo.create desiredSize
+        let m = SharedMemory.create name desiredSize
         mapping <- Some m
         m
 
