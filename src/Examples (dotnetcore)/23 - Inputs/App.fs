@@ -8,6 +8,7 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Input
+open System
 
 
 let initial = 
@@ -17,6 +18,7 @@ let initial =
         name = "Pi"
         alt = Some A
         options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
+        enumValue = EnumValue.Value1
     }
 
 
@@ -47,6 +49,7 @@ let update (model : Model) (msg : Message) =
                 { model with alt = a }
             else 
                 model
+        | SetEnumValue v -> { model with enumValue = v }
 //let values =
 //    AMap.ofList [
 //        A, div [] [ text "A"; i [ clazz "icon rocket" ] []; i [ clazz "icon thermometer three quarters" ] [] ]
@@ -54,6 +57,8 @@ let update (model : Model) (msg : Message) =
 //        C, text "C"
 //        D, text "D"
 //    ]
+
+let enumValues = AMap.ofArray((Enum.GetValues typeof<EnumValue> :?> (EnumValue [])) |> Array.map (fun c -> (c, text (Enum.GetName(typeof<EnumValue>, c)) )))
 
 let view (model : AdaptiveModel) =
     let values = model.options |> AMap.map (fun k v -> text v)
@@ -91,6 +96,9 @@ let view (model : AdaptiveModel) =
             ]
             div [ clazz "item" ] [ 
                 dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
+            ]
+            div [ clazz "item" ] [ 
+                dropdown1 [ clazz "ui inverted selection dropdown" ] enumValues model.enumValue SetEnumValue
             ]
         ]
     ]

@@ -453,6 +453,9 @@ module SimplePrimitives =
     let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
         Incremental.dropdown cfg (att atts) values selected update
 
+    let inline dropdown1 atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
+        Incremental.dropdown1 (att atts) values selected update
+
 
 
 

@@ -11,6 +11,11 @@ type Alternative =
     | D
     | Custom of string
 
+type EnumValue =
+    | Value1 = 1
+    | Value2 = 2
+    | Value3 = 3
+
 [<ModelType>]
 type Model =
     {
@@ -19,6 +24,7 @@ type Model =
         name    : string
         alt     : Option<Alternative>
         options : HashMap<Alternative, string>
+        enumValue : EnumValue
     }
 
 type Message = 
@@ -26,3 +32,4 @@ type Message =
     | SetValue of float
     | SetName of string
     | SetAlternative of Option<Alternative>
+    | SetEnumValue of EnumValue
