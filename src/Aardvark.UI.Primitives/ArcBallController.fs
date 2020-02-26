@@ -107,7 +107,7 @@ module ArcBallController =
 
                       let step = dir * (exp model.sensitivity) * dt                      
                       let loc' = cam.Location + step
-                      let direction = (V3d.Dot(model.orbitCenter.Value - loc', cam.Forward)).Sign()
+                      let direction = (Vec.Dot(model.orbitCenter.Value - loc', cam.Forward)).Sign()
 
                       //Log.line "[ArcBall:] direction dot %A" direction
 
@@ -230,7 +230,7 @@ module ArcBallController =
                         let step = -model.zoomFactor * (exp model.sensitivity) * (cam.Forward * float delta.Y)
 
                         let loc' = cam.Location + step
-                        let direction = (V3d.Dot(model.orbitCenter.Value - loc', cam.Forward)).Sign()
+                        let direction = (Vec.Dot(model.orbitCenter.Value - loc', cam.Forward)).Sign()
 
                         if direction > 0 then
                           cam.WithLocation(loc')

@@ -113,7 +113,7 @@ module Sg =
             let hfov_rad = Conversion.RadiansFromDegrees(hfov)
                
             let wz = Fun.Tan(hfov_rad / 2.0) * near * size
-            let dist = V3d.Distance(p, v.Location)
+            let dist = Vec.Distance(p,v.Location)
 
             return ( wz / near ) * dist
         }
@@ -121,7 +121,7 @@ module Sg =
     let computeInvariantScale (view : CameraView) (near : float) (p : V3d) (size : float) (hfov : float) =                    
         let hfov_rad = Conversion.RadiansFromDegrees(hfov)               
         let wz = Fun.Tan(hfov_rad / 2.0) * near * size
-        let dist = V3d.Distance(p, view.Location)
+        let dist = Vec.Distance(p, view.Location)
 
         ( wz / near ) * dist
         

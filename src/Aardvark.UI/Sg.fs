@@ -802,7 +802,7 @@ module ``Message Semantics`` =
 
         member x.GlobalBoundingBox(g : IGroup<'msg>) =
             let add (l : Box3d) (r : Box3d) =
-                Box3d.Union(l,r)
+                Box3d(l,r)
 
             let trySub (s : Box3d) (b : Box3d) =
                 if b.Max.AllSmaller s.Max && b.Min.AllGreater s.Min then
@@ -820,7 +820,7 @@ module ``Message Semantics`` =
 
         member x.LocalBoundingBox(g : IGroup<'msg>) =
             let add (l : Box3d) (r : Box3d) =
-                Box3d.Union(l,r)
+                Box3d(l,r)
 
             let trySub (s : Box3d) (b : Box3d) =
                 if b.Max.AllSmaller s.Max && b.Min.AllGreater s.Min then

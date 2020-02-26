@@ -777,7 +777,7 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
                 | Some gpuCompressorInstance ->
                     let resolved = resolved.Value
                     if color.Samples > 1 then
-                        runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
+                        runtime.ResolveMultisamples(color, resolved, ImageTrafo.Identity)
                     else
                         runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
                     gpuCompressorInstance.Compress(resolved.[TextureAspect.Color,0,0])
@@ -813,7 +813,7 @@ type internal PngClientRenderTask internal(server : Server, getScene : IFramebuf
                 | _ -> recreate color.Format color.Size
         let data =
             if color.Samples > 1 then
-                runtime.ResolveMultisamples(color, resolved, ImageTrafo.Rot0)
+                runtime.ResolveMultisamples(color, resolved, ImageTrafo.Identity)
             else
                 runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
 

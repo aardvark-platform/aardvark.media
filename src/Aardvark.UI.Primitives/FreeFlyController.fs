@@ -73,8 +73,8 @@ module FreeFlyController =
         if r.GetEulerAngles().AllSmallerOrEqual(1E-9) then
             cv
         else
-            let fw = r.TransformDir cv.Forward
-            let up = r.TransformDir cv.Up
+            let fw = r.Transform cv.Forward
+            let up = r.Transform cv.Up
             (cv.WithForward fw).WithUp up
         
 

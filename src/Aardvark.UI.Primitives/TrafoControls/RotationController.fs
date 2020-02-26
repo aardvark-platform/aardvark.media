@@ -141,7 +141,7 @@ module RotationController =
                     Global.onMouseMove (fun e -> 
                             let hit, p = intersect e.localRay circle
                             if hit then
-                                let dist = (V3d.Distance(V3d.Zero, p))
+                                let dist = (Vec.Distance(V3d.Zero, p))
                                 if (dist > radius - 0.1 && dist < radius + 0.1) then
                                     Hover axis
                                 else                                            
