@@ -7,20 +7,20 @@ nuget FSharp.Data                       ~> 3.0.0
 nuget FSharp.Data.Adaptive              ~> 0.0.17
 
 nuget Aardvark.Base.TypeProviders       ~> 4.5.14
-nuget Aardvark.Base                     ~> 5.0.0-prerelease0007
-nuget Aardvark.Base.Incremental         ~> 5.0.0-prerelease0007
-nuget Aardvark.Base.FSharp              ~> 5.0.0-prerelease0007
-nuget Aardvark.Base.Essentials          ~> 5.0.0-prerelease0007
+nuget Aardvark.Base                     ~> 5.0.0-prerelease0009
+nuget Aardvark.Base.Incremental         ~> 5.0.0-prerelease0009
+nuget Aardvark.Base.FSharp              ~> 5.0.0-prerelease0009
+nuget Aardvark.Base.Essentials          ~> 5.0.0-prerelease0009
 
-nuget Aardvark.Base.Rendering           ~> 5.0.0-prerelease0001
-nuget Aardvark.Application.WinForms.GL  ~> 5.0.0-prerelease0001
-nuget Aardvark.Application.Slim.GL      ~> 5.0.0-prerelease0001
-nuget Aardvark.SceneGraph               ~> 5.0.0-prerelease0001
-nuget Aardvark.SceneGraph.IO            ~> 5.0.0-prerelease0001
-nuget Aardvark.SceneGraph.Opc           ~> 5.0.0-prerelease0001
-nuget Aardvark.Rendering.Text           ~> 5.0.0-prerelease0001
-nuget Aardvark.Rendering.Vulkan         ~> 5.0.0-prerelease0001
-nuget Aardvark.GPGPU                    ~> 5.0.0-prerelease0001
+nuget Aardvark.Base.Rendering           ~> 5.0.0-prerelease0006
+nuget Aardvark.Application.WinForms.GL  ~> 5.0.0-prerelease0006
+nuget Aardvark.Application.Slim.GL      ~> 5.0.0-prerelease0006
+nuget Aardvark.SceneGraph               ~> 5.0.0-prerelease0006
+nuget Aardvark.SceneGraph.IO            ~> 5.0.0-prerelease0006
+nuget Aardvark.SceneGraph.Opc           ~> 5.0.0-prerelease0006
+nuget Aardvark.Rendering.Text           ~> 5.0.0-prerelease0006
+nuget Aardvark.Rendering.Vulkan         ~> 5.0.0-prerelease0006
+nuget Aardvark.GPGPU                    ~> 5.0.0-prerelease0006
 
 nuget Adaptify.Core                     ~> 0.0.33
 nuget Adaptify.MSBuild                  ~> 0.0.33
