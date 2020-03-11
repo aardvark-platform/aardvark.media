@@ -1,4 +1,4 @@
-framework: netstandard2.0, net471, netcoreapp3.0
+framework: netstandard2.0, net471, netcoreapp3.1
 source https://api.nuget.org/v3/index.json
 
 nuget FSharp.Core                       >= 4.6.2 lowest_matching: true
@@ -43,5 +43,6 @@ nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.2.3
 nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.2.3
 
 group Build
+    framework: netstandard2.0
     source https://api.nuget.org/v3/index.json
     github aardvark-platform/aardvark.fake:v5
