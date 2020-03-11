@@ -12,10 +12,10 @@ open Aardvark.SceneGraph
 
 let update2ndCam (model : Model) =
     let right = - model.up.Cross(model.lookAt)
-    let rotPanFw = Rot3d(model.up, model.pan.value.RadiansFromDegrees()).TransformDir(model.lookAt )
+    let rotPanFw = Rot3d.Rotation(model.up, model.pan.value.RadiansFromDegrees()).Transform(model.lookAt )
 
-    let lookAt = Rot3d(right, model.tilt.value.RadiansFromDegrees()).TransformDir(rotPanFw )
-    let up = Rot3d(right, model.tilt.value.RadiansFromDegrees()).TransformDir(model.up)
+    let lookAt = Rot3d.Rotation(right, model.tilt.value.RadiansFromDegrees()).Transform(rotPanFw )
+    let up = Rot3d.Rotation(right, model.tilt.value.RadiansFromDegrees()).Transform(model.up)
 
     let view = CameraView.look model.position.value lookAt.Normalized up.Normalized 
     match model.textureActive with

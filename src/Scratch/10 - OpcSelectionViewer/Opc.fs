@@ -35,13 +35,13 @@ module Opc =
 
   type IUniformProvider with
     member x.TryGetViewTrafo() =
-      match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ViewTrafo") with
+      match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ViewTrafo") with
         | Some (:? aval<Trafo3d> as t) -> t |> Some
         | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
         | _ -> None
   
       member x.TryGetProjTrafo() =
-        match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ProjTrafo") with
+        match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ProjTrafo") with
           | Some (:? aval<Trafo3d> as t) -> t |> Some
           | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
           | _ -> None

@@ -32,7 +32,7 @@ module LineDrawing =
 
   let sphere color size pos =
     let trafo = 
-      pos |> AVal.map(fun x -> Trafo3d.Translation x)
+      pos |> AVal.map(fun (x : V3d) -> Trafo3d.Translation x)
     
     Sg.sphere 3 (AVal.constant color) (AVal.constant size)
       |> Sg.noEvents
@@ -62,7 +62,7 @@ module App =
   let update (model : Model) (msg : Action) =
       match msg with
         | FreeFlyAction a when not model.isShift ->
-          { model with camera = CameraController.update model.camera a }
+          { model with camera = FreeFlyController.update model.camera a }
         | PickPolygon hit ->
           let r = hit.globalRay.Ray.Ray
           match r |> intersect model with
@@ -142,7 +142,7 @@ module App =
       AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
     
     let renderControlAttributes = 
-      CameraController.extractAttributes model.camera FreeFlyAction |> AttributeMap.ofAMap
+      FreeFlyController.extractAttributes model.camera FreeFlyAction |> AttributeMap.ofAMap
     
     require Html.semui ( 
       div [clazz "ui"; style "background: #1B1C1E"] [
@@ -162,7 +162,7 @@ module App =
       ])
   
   let threads (model : Model) = 
-      CameraController.threads model.camera |> ThreadPool.map FreeFlyAction
+      FreeFlyController.threads model.camera |> ThreadPool.map FreeFlyAction
     
   let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
     {

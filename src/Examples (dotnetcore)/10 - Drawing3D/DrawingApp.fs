@@ -41,7 +41,7 @@ let computeScale (view : aval<CameraView>)(p:V3d)(size:float) =
     view 
     |> AVal.map (fun v -> 
         let distV = p - v.Location
-        let distF = V3d.Dot(v.Forward, distV)
+        let distF = Vec.Dot(v.Forward, distV)
         distF * size / 800.0
       )
 

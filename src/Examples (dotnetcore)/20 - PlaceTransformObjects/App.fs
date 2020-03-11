@@ -20,7 +20,7 @@ type Action =
     | Translate     of string * TrafoController.Action
     | Rotate        of string * TrafoController.Action
     | Scale         of string * TrafoController.Action
-    | CameraMessage of CameraController.Message
+    | CameraMessage of FreeFlyController.Message
     | KeyDown       of key : Aardvark.Application.Keys
     | Unselect
     | Nop
@@ -49,7 +49,7 @@ let update (m : Scene) (a : Action) =
     match a with
         | CameraMessage a -> 
             if isGrabbed m.world then m 
-            else { m with camera = CameraController.update m.camera a }
+            else { m with camera = FreeFlyController.update m.camera a }
         | PlaceBox -> 
             let name = System.Guid.NewGuid() |> string
             let newObject = { name = name; objectType = ObjectType.Box Box3d.Unit; transformation = TrafoController.initial }
@@ -168,7 +168,7 @@ let view (m : AdaptiveScene) =
     body [ style "background: #1B1C1E"] [
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
-                CameraController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
+                FreeFlyController.controlledControl m.camera CameraMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [onKeyDown KeyDown; attribute "style" "width:85%; height: 100%; float: left;"; attribute "data-samples" "8"]) (viewScene m)
 
                 div [style "width:15%; height: 100%; float:right"] [
@@ -225,11 +225,11 @@ let one =
 let app =
     {
         unpersist = Unpersist.instance
-        threads = fun (model : Scene) -> CameraController.threads model.camera |> ThreadPool.map CameraMessage
+        threads = fun (model : Scene) -> FreeFlyController.threads model.camera |> ThreadPool.map CameraMessage
         initial = 
             { 
                 world = { objects = many; selectedObjects = HashSet.empty }
-                camera = CameraController.initial' 20.0
+                camera = FreeFlyController.initial' 20.0
                 kind = TrafoKind.Rotate 
                 mode = TrafoMode.Local
             } |> updateMode TrafoMode.Local

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>net471</TargetFramework>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -17,11 +17,21 @@
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj" />
-    <ProjectReference Include="..\..\Aardvark.Cef\Aardvark.Cef.fsproj" />
-    <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />
-    <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
-    <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj" />
+    <Reference Include="Aardvark.Cef">
+      <HintPath>..\..\..\bin\$(Configuration)\net471\Aardvark.Cef.dll</HintPath>
+    </Reference>
+    <Reference Include="Aardvark.Cef.Process">
+      <HintPath>..\..\..\bin\$(Configuration)\net471\Aardvark.Cef.Process.exe</HintPath>
+    </Reference>
+    <Reference Include="Aardvark.Service">
+      <HintPath>..\..\..\bin\$(Configuration)\netstandard2.0\Aardvark.Service.dll</HintPath>
+    </Reference>
+    <Reference Include="Aardvark.UI">
+      <HintPath>..\..\..\bin\$(Configuration)\netstandard2.0\Aardvark.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="Aardvark.UI.Primitives">
+      <HintPath>..\..\..\bin\$(Configuration)\netstandard2.0\Aardvark.UI.Primitives.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

@@ -94,7 +94,7 @@ let dehateScene (s : Scene) : aval<IScene> =
 
 [<EntryPoint; STAThread>]
 let main argv = 
-    Ag.initialize()
+    
     Aardvark.Init()
 
     let cnt = 200000

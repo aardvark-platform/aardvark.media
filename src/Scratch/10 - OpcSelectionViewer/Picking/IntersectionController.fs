@@ -120,11 +120,11 @@ module IntersectionController =
     let v1 = triangle.P2 - triangle.P0
     let v2 = pos         - triangle.P0
 
-    let d00 = V3d.Dot(v0, v0)
-    let d01 = V3d.Dot(v0, v1)
-    let d11 = V3d.Dot(v1, v1)
-    let d20 = V3d.Dot(v2, v0)
-    let d21 = V3d.Dot(v2, v1)
+    let d00 = Vec.Dot(v0, v0)
+    let d01 = Vec.Dot(v0, v1)
+    let d11 = Vec.Dot(v1, v1)
+    let d20 = Vec.Dot(v2, v0)
+    let d21 = Vec.Dot(v2, v1)
     
     let denom = d00 * d11 - d01 * d01;
 
