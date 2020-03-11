@@ -532,12 +532,12 @@ module ``Sg Events`` =
 open Aardvark.Base.Ag
 
 type PickTree<'msg>(sg : ISg<'msg>) =
-    let objects : aset<PickObject> = sg?PickObjects()
+    let objects : aset<PickObject> = sg?PickObjects(Ag.Scope.Root)
     let bvh = BvhTree.ofASet PickObject.bounds objects
 
     let needed = //ASet.ofList [ SceneEventKind.Click; SceneEventKind.DoubleClick; SceneEventKind.Down; SceneEventKind.Up; SceneEventKind.Move]
         objects |> ASet.collect (fun o -> 
-            match Ag.tryGetInhAttribute o.Scope "PickProcessor" with
+            match o.Scope.TryGetInherited "PickProcessor" with
                 | Some (:? SgTools.ISceneHitProcessor<'msg> as proc) ->
                     proc.NeededEvents
                 | _ ->
@@ -553,7 +553,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
         match Pickable.intersect part pickable with
             | Some t -> 
                 let pt = part.Ray.Ray.GetPointOnRay t
-                match Ag.tryGetInhAttribute p.Scope "PickProcessor" with
+                match p.Scope.TryGetInherited "PickProcessor" with
                     | Some (:? SgTools.ISceneHitProcessor<'msg> as proc) ->
                         Some <| RayHit(t, proc)
                     | _ ->
@@ -728,13 +728,14 @@ module ``Message Semantics`` =
     type GlobalPicks<'msg> = amap<SceneEventKind, SceneEvent -> seq<'msg>> 
 
     type ISg<'msg> with
-        member x.RenderObjects() : aset<IRenderObject> = x?RenderObjects()
-        member x.PickObjects() : aset<PickObject> = x?PickObjects()
-        member x.GlobalPicks() : GlobalPicks<'msg> = x?GlobalPicks();
-        member x.GlobalBoundingBox() : aval<Box3d> = x?GlobalBoundingBox
-        member x.LocalBoundingBox() : aval<Box3d> = x?LocalBoundingBox()
+        member x.RenderObjects(scope : Ag.Scope) : aset<IRenderObject> = x?RenderObjects(scope)
+        member x.PickObjects(scope : Ag.Scope) : aset<PickObject> = x?PickObjects(scope)
+        member x.GlobalPicks(scope : Ag.Scope) : GlobalPicks<'msg> = x?GlobalPicks(scope)
+        member x.GlobalBoundingBox(scope : Ag.Scope) : aval<Box3d> = x?GlobalBoundingBox(scope)
+        member x.LocalBoundingBox(scope : Ag.Scope) : aval<Box3d> = x?LocalBoundingBox(scope)
 
-        member x.MessageProcessor : IMessageProcessor<'msg> = x?MessageProcessor
+    type Ag.Scope with
+        member x.MessageProcessor() : IMessageProcessor<'msg> = x?MessageProcessor
         member x.PickProcessor : ISceneHitProcessor = x?PickProcessor
 
 
@@ -752,24 +753,21 @@ module ``Message Semantics`` =
     //        | _ -> ASet.empty
                 
     let rec collectMsgSgs (mapping : ISg<'msg> -> aset<'a>) (s : ISg) : aset<'a> =
-        let ctx = Ag.getContext()
-        Ag.useScope (ctx.GetChildScope s) (fun () ->
-            match s with
-                | :? ISg<'msg> as s -> 
-                    mapping s
+        match s with
+            | :? ISg<'msg> as s -> 
+                mapping s
 
-                | :? IApplicator as a -> 
-                    a.Child |> ASet.bind (collectMsgSgs mapping)
+            | :? IApplicator as a -> 
+                a.Child |> ASet.bind (collectMsgSgs mapping)
 
-                | :? IGroup as g -> 
-                    g.Children |> ASet.collect (collectMsgSgs mapping)
+            | :? IGroup as g -> 
+                g.Children |> ASet.collect (collectMsgSgs mapping)
 
-                | _ -> 
-                    ASet.empty
-        )
+            | _ -> 
+                ASet.empty
                      
 
-    [<Semantic>]
+    [<Rule>]
     type StandardSems() =
 
 //        member x.RenderObjects(app : IApplicator<'msg>) =
@@ -778,10 +776,10 @@ module ``Message Semantics`` =
 //                yield! c.RenderObjects()
 //            }
 
-        member x.RenderObjects(g : IGroup<'msg>) =
+        member x.RenderObjects(g : IGroup<'msg>, scope : Ag.Scope) =
             aset {
                 for c in g.Children do
-                    yield! c.RenderObjects()
+                    yield! c.RenderObjects(scope)
             }
 
 //        member x.PickObjects(app : IApplicator<'msg>) =
@@ -790,17 +788,17 @@ module ``Message Semantics`` =
 //                yield! c.PickObjects()
 //            }
 
-        member x.PickObjects(g : IGroup<'msg>) =
+        member x.PickObjects(g : IGroup<'msg>, scope : Ag.Scope) =
             aset {
                 for c in g.Children do
-                    yield! c.PickObjects()
+                    yield! c.PickObjects(scope)
             }
 
 //        member x.GlobalBoundingBox(app : IApplicator<'msg>) =
 //            let c = app.Child
 //            c.GlobalBoundingBox()
 
-        member x.GlobalBoundingBox(g : IGroup<'msg>) =
+        member x.GlobalBoundingBox(g : IGroup<'msg>, scope : Ag.Scope) =
             let add (l : Box3d) (r : Box3d) =
                 Box3d(l,r)
 
@@ -811,14 +809,14 @@ module ``Message Semantics`` =
                     None
 
             g.Children 
-            |> ASet.mapA (fun c -> c.GlobalBoundingBox()) 
+            |> ASet.mapA (fun c -> c.GlobalBoundingBox(scope)) 
             |> ASet.foldHalfGroup add trySub Box3d.Invalid
 
 //        member x.LocalBoundingBox(app : IApplicator<'msg>) =
 //            let c = app.Child
 //            c.LocalBoundingBox()
 
-        member x.LocalBoundingBox(g : IGroup<'msg>) =
+        member x.LocalBoundingBox(g : IGroup<'msg>, scope : Ag.Scope) =
             let add (l : Box3d) (r : Box3d) =
                 Box3d(l,r)
 
@@ -829,16 +827,16 @@ module ``Message Semantics`` =
                     None
 
             g.Children 
-            |> ASet.mapA (fun c -> c.LocalBoundingBox()) 
+            |> ASet.mapA (fun c -> c.LocalBoundingBox(scope)) 
             |> ASet.foldHalfGroup add trySub Box3d.Invalid
 
         
 
-        member x.GlobalPicks(g : IGroup<'msg>) : GlobalPicks<'msg> =
+        member x.GlobalPicks(g : IGroup<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
              // usuperfast
              
              g.Children 
-                |> ASet.collect (fun g -> g.GlobalPicks() |> AMap.toASet)
+                |> ASet.collect (fun g -> g.GlobalPicks(scope) |> AMap.toASet)
                 |> AMap.ofASet
                 |> AMap.map (fun k vs e ->
                     seq {
@@ -847,53 +845,53 @@ module ``Message Semantics`` =
                     }
                 )
 
-        member x.GlobalPicks(a : IApplicator<'msg>) : GlobalPicks<'msg> =
-            a.Child.GlobalPicks()
+        member x.GlobalPicks(a : IApplicator<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
+            a.Child.GlobalPicks(scope)
             
             
-        member x.GlobalPicks(a : Sg.Adapter<'msg>) : GlobalPicks<'msg> =
+        member x.GlobalPicks(a : Sg.Adapter<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
             a.Child 
-                |> ASet.bind (collectMsgSgs (fun g -> g.GlobalPicks() |> AMap.toASet))
-                |> AMap.ofASet
-                |> AMap.map (fun k vs e ->
-                    seq {
-                        for v in vs do
-                            yield! v e
-                    }
-                )
+            |> ASet.bind (collectMsgSgs (fun g -> g.GlobalPicks(scope) |> AMap.toASet))
+            |> AMap.ofASet
+            |> AMap.map (fun k vs e ->
+                seq {
+                    for v in vs do
+                        yield! v e
+                }
+            )
           
 
-        member x.GlobalPicks(g : Sg.GlobalEvent<'msg>) : GlobalPicks<'msg> =
-            let b = g.Child.GlobalPicks()
-            let trafo = g.ModelTrafo
+        member x.GlobalPicks(g : Sg.GlobalEvent<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
+            let b = g.Child.GlobalPicks(scope)
+            let trafo = scope.ModelTrafo
 
             let own = g.Events |> AMap.map (fun k l e -> l { e with evtTrafo = trafo })
             AMap.unionWith (fun k l r -> fun e -> Seq.append (l e) (r e)) own b
 
             
-        member x.GlobalPicks(other : ISg<'msg>) : GlobalPicks<'msg>  =
+        member x.GlobalPicks(other : ISg<'msg>, scope : Ag.Scope) : GlobalPicks<'msg>  =
             AMap.empty
 
-        member x.GlobalPicks(ma : MapApplicator<'i,'o>) : GlobalPicks<'o> =
-            let picks = ma.Child.GlobalPicks()
+        member x.GlobalPicks(ma : MapApplicator<'i,'o>, scope : Ag.Scope) : GlobalPicks<'o> =
+            let picks = ma.Child.GlobalPicks(scope)
             picks |> AMap.map (fun k v e -> v e |> Seq.collect ma.Mapping)
 
 
-    [<Semantic>]
+    [<Rule>]
     type MessageProcessorSem() =
 
-        member x.MessageProcessor(root : Root<ISg<'msg>>) =
+        member x.MessageProcessor(root : Root<ISg<'msg>>, scope : Ag.Scope) =
             root.Child?MessageProcessor <- MessageProcessor.id<'msg>
             
-        member x.MessageProcessor(app : Sg.MapApplicator<'inner, 'outer>) =
-            let parent = app.MessageProcessor
+        member x.MessageProcessor(app : Sg.MapApplicator<'inner, 'outer>, scope : Ag.Scope) =
+            let parent = scope.MessageProcessor()
             app.Child?MessageProcessor <- parent.Map(ASet.empty, app.Mapping)
 
-        member x.PickProcessor(root : Root<ISg<'msg>>) =
+        member x.PickProcessor(root : Root<ISg<'msg>>, scope : Ag.Scope) =
             root.Child?PickProcessor <- IgnoreProcessor<obj, 'msg>.Instance :> ISceneHitProcessor
 
-        member x.PickProcessor(app : Sg.EventApplicator<'msg>) =
-            let msg = app.MessageProcessor
+        member x.PickProcessor(app : Sg.EventApplicator<'msg>, scope : Ag.Scope) =
+            let msg = scope.MessageProcessor()
 
     
             let needed = 
@@ -903,7 +901,7 @@ module ``Message Semantics`` =
                         | _ -> n
                 )
  
-            let trafo = app.ModelTrafo
+            let trafo = scope.ModelTrafo
 
             let processor (hit : SceneHit) =
                 let evts = app.Events.Content |> AVal.force

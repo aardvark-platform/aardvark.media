@@ -959,7 +959,7 @@ and DomNode private() =
 
                 transact ( fun _ -> tree.Value <- PickTree.ofSg sg )
                 
-                transact ( fun _ -> globalPicks.Value <- sg.GlobalPicks() ) 
+                transact ( fun _ -> globalPicks.Value <- sg.GlobalPicks(Ag.Scope.Root) ) 
                 
                 values.runtime.CompileRender(values.signature, sg)
             )
@@ -1014,7 +1014,7 @@ and DomNode private() =
                 let t = 
                   sgs |> AList.choose (function RenderCommand.Clear _ -> None | SceneGraph sg -> PickTree.ofSg sg |> Some)
                 let g = 
-                  sgs |> AList.toASet |> ASet.choose (function RenderCommand.Clear _ -> None | SceneGraph sg -> sg.GlobalPicks() |> Some)
+                  sgs |> AList.toASet |> ASet.choose (function RenderCommand.Clear _ -> None | SceneGraph sg -> sg.GlobalPicks(Ag.Scope.Root) |> Some)
 
                 transact (fun _ -> trees.Value <- t; globalPicks.Value <- g)
                 
@@ -1200,7 +1200,7 @@ and DomNode private() =
             )
 
         let trees = sgs |> AList.choose (function Clear _ -> None | SceneGraph sg -> PickTree.ofSg sg |> Some)
-        let globalPicks = sgs |> AList.toASet |> ASet.choose (function Clear _ -> None | SceneGraph sg -> sg.GlobalPicks() |> Some)
+        let globalPicks = sgs |> AList.toASet |> ASet.choose (function Clear _ -> None | SceneGraph sg -> sg.GlobalPicks(Ag.Scope.Root) |> Some)
 
         let globalNeeded = globalPicks |> ASet.collect AMap.keys
         let treeNeeded = trees |> AList.toASet |> ASet.collect (fun t -> t.Needed)

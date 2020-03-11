@@ -13,7 +13,6 @@ type AssemblyResources = AssemblyResources
 
 [<EntryPoint; STAThread>]
 let main argv = 
-    Ag.initialize()
     Aardvark.Init()
     Aardium.init()
 

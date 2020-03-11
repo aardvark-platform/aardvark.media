@@ -10,7 +10,7 @@ open Aardvark.UI
 [<AutoOpen>]
 module Extensions = 
     module Sg =
-       let translate' t sg = 
+       let translate' (t : aval<V3d>) sg = 
             Sg.trafo (t |> AVal.map Trafo3d.Translation) sg
 
        let sphere level color radius = Sg.sphere level color radius |> Sg.noEvents

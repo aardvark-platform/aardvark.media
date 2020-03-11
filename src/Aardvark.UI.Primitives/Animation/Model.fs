@@ -116,8 +116,8 @@ module CameraAnimations =
       (initial name) with 
         sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
           if localTime < duration then                  
-            let rot = Rot3d(state.Forward, dst) * localTime / duration
-            let forward' = rot.Transform(state.Forward)                  
+            let rot = Rot3d.RotateInto(state.Forward, dst) * localTime / duration
+            let forward' = Rot3d(rot).Transform state.Forward               
             let view = state |> CameraView.withForward forward'
 
             Some (state,view)
@@ -129,8 +129,8 @@ module CameraAnimations =
       (initial name) with 
         sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
           if localTime < duration then                  
-            let rot = Rot3d(state.Up, dst) * localTime / duration
-            let sky' = rot.Transform(state.Up)                  
+            let rot = Rot3d.RotateInto(state.Up, dst) * localTime / duration
+            let sky' = Rot3d(rot).Transform(state.Up)                  
             let view = state |> CameraView.withUp sky'
 
             Some (state,view)

@@ -55,9 +55,9 @@ type RO(xs : aset<IRenderObject>) =
     interface Aardvark.SceneGraph.ISg
     member x.RenderObjects = xs
 
-[<Semantic>]
+[<Rule>]
 type RoSem() =
-    member x.RenderObjects(a : RO) =
+    member x.RenderObjects(a : RO, scope : Ag.Scope) =
         a.RenderObjects
 
 open System.Threading
@@ -83,7 +83,7 @@ let view (runtime : IRuntime) (model : AdaptiveModel) =
 
         // extract the render object using the scene graph semantics
         let template =
-            template.RenderObjects() |> ASet.force |> HashSet.toList |> List.head |> unbox<RenderObject>
+            template.RenderObjects(Ag.Scope.Root) |> ASet.force |> HashSet.toList |> List.head |> unbox<RenderObject>
 
         Thread(ThreadStart (fun _ -> 
             let viewTrafo = 
