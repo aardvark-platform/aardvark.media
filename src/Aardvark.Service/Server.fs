@@ -1012,21 +1012,6 @@ module internal RawDownload =
         open Aardvark.Rendering.GL
 
         type SSDownloader(runtime : Runtime) =
-            
-            //let mutable pbo : Option<int * int64> = None
-
-            //let getPBO (size : int64) =
-            //    //let size = Fun.NextPowerOfTwo size
-            //    match pbo with
-            //        | Some (h,s) when s = size -> h
-            //        | _ ->
-            //            pbo |> Option.iter (fun (h,_) -> GL.DeleteBuffer(h))
-            //            let b = GL.GenBuffer()
-            //            GL.BindBuffer(BufferTarget.PixelPackBuffer, b)
-            //            GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint size, 0n, BufferStorageFlags.MapReadBit)
-            //            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
-            //            pbo <- Some (b, size)
-            //            b
 
             member x.Download(fbo : IFramebuffer, dst : nativeint) =
                 let fbo = unbox<Framebuffer> fbo
@@ -1038,8 +1023,8 @@ module internal RawDownload =
                 let sizeInBytes = rowSize * int64 size.Y
 
                 let pbo = GL.GenBuffer()
+                GL.NamedBufferStorage(pbo, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
 
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
                 GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
@@ -1122,8 +1107,8 @@ module internal RawDownload =
                 let sizeInBytes = rowSize * int64 size.Y
 
                 let pbo = GL.GenBuffer()
+                GL.NamedBufferStorage(pbo, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
 
                 let temp = getFramebuffer size
 
