@@ -1405,6 +1405,19 @@ module SharedMemory =
                 strerrorInternal code |> Marshal.PtrToStringAnsi
 
 
+            let exists (name : string) =
+                let mapName = "/" + name
+                let flags = SharedMemoryFlags.ReadOnly
+                let perm = Permission(Protection.Read, Protection.Read, Protection.Read)
+                let fd = shmopen(mapName, flags, perm)
+                
+                if fd.IsValid then
+                    close(fd) |> ignore
+                    true
+                else
+                    false
+
+
             let create (name : string) (size : int64) =
                 // open the shared memory (or create if not existing)
                 let mapName = "/" + name;
@@ -1545,6 +1558,29 @@ module SharedMemory =
                             failwithf "[SharedMemory] could not unlink %s (ERROR: %s)" name err
                 }
 
+    let randomString() =
+        let str = Guid.NewGuid().ToByteArray() |> System.Convert.ToBase64String
+        let str = str.Replace("/", "-").Substring(0, 13)
+        str
+
+
+    let createNew (size : int64) = 
+        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then 
+            let name = Guid.NewGuid() |> string
+            Windows.create name size
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
+            let mutable name = randomString()
+            while Posix.Mac.exists name do
+                name <- randomString()
+            Posix.Mac.create name size        
+        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
+            let name = Guid.NewGuid() |> string
+            Posix.Linux.create name size
+        else
+            failwith "[SharedMemory] unknown platform"
+        
+        
+
     let create (name : string) (size : int64) =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then 
             Windows.create name size
@@ -1564,14 +1600,15 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
 
     let mutable mapping : Option<ISharedMemory> = None
     let mutable downloader : Option<RawDownload.IDownloader> = None
-    
+    static let mutable currentId = 0
+
+
     let recreateMapping (desiredSize : int64) =
-        let name = Guid.NewGuid() |> string
         match mapping with
             | Some m -> m.Dispose()
             | None -> ()
 
-        let m = SharedMemory.create name desiredSize
+        let m = SharedMemory.createNew desiredSize
         mapping <- Some m
         m
 
