@@ -11,12 +11,13 @@
     <OutputPath>..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <Target Name="CopyTurbojpeg" AfterTargets="Build">
+    <Warning Text="$(OS)" />
     <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
     <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
     <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'OSX'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'OSX'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'OSX'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
+    <Copy Condition="'$(OS)' == 'Unix'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
+    <Copy Condition="'$(OS)' == 'Unix'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
+    <Copy Condition="'$(OS)' == 'Unix'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
     <Copy Condition="'$(OS)' == 'Unix'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\linux\AMD64\libturbojpeg.so" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
     <Copy Condition="'$(OS)' == 'Unix'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\linux\AMD64\libturbojpeg.so" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
     <Copy Condition="'$(OS)' == 'Unix'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\linux\AMD64\libturbojpeg.so" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
