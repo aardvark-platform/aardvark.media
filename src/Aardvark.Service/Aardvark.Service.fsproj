@@ -11,7 +11,6 @@
     <OutputPath>..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <Target Name="CopyTurbojpeg" AfterTargets="Build">
-    <Warning Text="$(OS)" />
     <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
     <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
     <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
