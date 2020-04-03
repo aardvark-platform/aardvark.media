@@ -1154,7 +1154,7 @@ NUGET
       System.Xml.XPath (>= 4.3)
 GITHUB
   remote: aardvark-platform/aardvark.fake
-    FULLPROJECT (4ff2e2f49f872ae9d94c424fddb1338afa7aaf5e)
+    FULLPROJECT (7cbfd4d294b590c1757062801076ef657824f554)
       Argu (>= 5.5 < 5.6)
       fake-cli (>= 5.19 < 5.20)
       Fake.Core.Target (>= 5.19 < 5.20)
