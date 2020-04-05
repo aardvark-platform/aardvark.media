@@ -1054,7 +1054,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
                 let tcs = System.Threading.Tasks.TaskCompletionSource()
                 x.Init()
                 frame.LoadUrl url
-                MVar.takeAsync loadResult
+                MVar.take loadResult
             else
                 fail "Disposed"
         )
