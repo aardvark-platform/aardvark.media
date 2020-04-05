@@ -1038,7 +1038,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     member x.Version = version :> aval<_>
     member x.Size = size
 
-    member x.LoadUrlAsync (url : string) =
+    member x.LoadUrlAsync (url : string) : Async<LoadResult>=
         lock lockObj (fun () ->
             if not isDisposed then
                 x.Init()
@@ -1048,7 +1048,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
                 fail "Disposed"
         )
 
-    member x.LoadUrl (url : string) =
+    member x.LoadUrl (url : string) : LoadResult =
         lock lockObj (fun () ->
             if not isDisposed then
                 let tcs = System.Threading.Tasks.TaskCompletionSource()
@@ -1156,8 +1156,10 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
 
     /// <summary>
     /// Gets virtual screen-info for offscreen rendering. It's possible here to supply a rendering-scale factor/etc.
+    /// Called to allow the client to fill in the CefScreenInfo object with appropriate values.
     /// </summary>
     override x.GetScreenInfo(browser : CefBrowser, info : CefScreenInfo) =
+        Log.line "[CEF] GetScreenInfo"
         info.Rectangle <- CefRectangle(0,0,4096, 4096)
         info.AvailableRectangle <- CefRectangle(0,0,4096, 4096)
         true
@@ -1178,6 +1180,7 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
 
     /// <summary>
     /// Initializes the view-rectangle and returns a boolean indicating whether the rectangle is valid.
+    /// Called to retrieve the view rectangle which is relative to screen coordinates.
     /// </summary>
     override x.GetViewRect(browser : CefBrowser, rect : byref<CefRectangle>) =
         let s = AVal.force size
@@ -1186,6 +1189,7 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
 
     /// <summary>
     /// NO IDEA WHAT THIS IS EXACTLY
+    /// Called to retrieve the root window rectangle in screen coordinates.
     /// </summary>
     override x.GetRootScreenRect(browser : CefBrowser, rect : byref<CefRectangle>) =
         rect <- CefRectangle(0,0,4096, 4096)
@@ -1214,7 +1218,6 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
             Marshal.Copy(buffer, pixelData, 0, pixelData.Length)
 
             parent.Render(fun () ->
-                let size = V2i(width, height)
                 texture.UpdateAsync(PixFormat.ByteBGRA, V2i(width, height), buffer)
             ) 
 
