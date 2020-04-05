@@ -1,11 +1,11 @@
 ﻿namespace Aardvark.Cef.Internal
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
 open System
 open System.Net
 open System.Collections.Concurrent
 open System.Collections.Generic
+open FSharp.Data.Adaptive
 open System.Threading
 open System.Runtime.InteropServices
 open Xilium.CefGlue
@@ -15,6 +15,7 @@ open Microsoft.FSharp.NativeInterop
 
 
 #nowarn "9"
+#nowarn "44"
 
 module Pickler = 
     open MBrace.FsPickler
@@ -343,7 +344,7 @@ type Priority =
 
 
 type TransactThread() =
-    let mark = HashSet<IAdaptiveObject>()
+    let mark = System.Collections.Generic.HashSet<IAdaptiveObject>()
     let sem = new SemaphoreSlim(0)
 
     let runner =
@@ -353,7 +354,7 @@ type TransactThread() =
                 sem.Wait()
                 let objects = 
                     lock mark (fun () -> 
-                        let m = mark |> HashSet.toArray
+                        let m = mark |> Aardvark.Base.HashSet.toArray
                         mark.Clear()
                         m
                     )
@@ -800,14 +801,14 @@ type BrowserMouse(focus : ref<bool>, flags : ref<CefEventFlags>, host : CefBrows
 
 
 
-type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
+type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     inherit CefClient()
 
     let windowInfo = 
         let info = CefWindowInfo.Create()
         
         info.SetAsWindowless(0n, true)
-        let s = Mod.force size
+        let s = AVal.force size
         info.Width <- s.X
         info.Height <- s.Y
 
@@ -832,11 +833,11 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
     let browserReady = new ManualResetEventSlim(false)
 
     let texture = runtime.CreateStreamingTexture(mipMaps)
-    let version = Mod.init 0
+    let version = AVal.init 0
     
     let loadHandler = LoadHandler(this)
     let renderHandler = RenderHandler(this, size, texture)
-    let loadResult = MVar.empty()
+    let loadResult = MVar.empty() //System.Threading.Tasks.TaskCompletionSource<LoadResult>()
 
     let messagePump = MessagePump()
     let transactor = MessagePump()
@@ -875,6 +876,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
     member internal x.LoadFinished(res : LoadResult) =
         lock lockObj (fun () ->
             if not isDisposed then
+                //loadResult.SetResult res
                 MVar.put loadResult res
             )
 
@@ -882,9 +884,10 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
         lock lockObj (fun () -> // NOTE: locking here might block when acquiring the graphics context when only 1 resource context is created
             if not isDisposed then
                 let t = f()
-                version.UnsafeCache <- version.UnsafeCache + 1
-
-                t.Enqueue version
+                useTransaction t (fun () ->
+                    version.Value <- version.Value + 1
+                
+                )
                 transactor.Enqueue (fun () -> t.Commit())
                 //transactor.Mark [texture :> IAdaptiveObject; version :> IAdaptiveObject]
         )
@@ -1031,8 +1034,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
 
     member x.Events = eventSink :> IObservable<_>
 
-    member x.Texture = texture :> IMod<ITexture>
-    member x.Version = version :> IMod<_>
+    member x.Texture = texture :> aval<ITexture>
+    member x.Version = version :> aval<_>
     member x.Size = size
 
     member x.LoadUrlAsync (url : string) =
@@ -1040,40 +1043,41 @@ type Client(runtime : IRuntime, mipMaps : bool, size : IMod<V2i>) as this =
             if not isDisposed then
                 x.Init()
                 frame.LoadUrl url
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )
-        MVar.takeAsync loadResult
 
     member x.LoadUrl (url : string) =
         lock lockObj (fun () ->
             if not isDisposed then
+                let tcs = System.Threading.Tasks.TaskCompletionSource()
                 x.Init()
                 frame.LoadUrl url
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )
-        MVar.take loadResult
 
     member x.LoadHtmlAsync (code : string) =
         lock lockObj (fun () ->
             if not isDisposed then
                 x.Init()
                 frame.LoadString(code, "http://aardvark.local/index.html")
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )
-        MVar.takeAsync loadResult
 
     member x.LoadHtml (code : string) =
         lock lockObj (fun () ->
             if not isDisposed then
                 x.Init()
                 frame.LoadString(code, "http://aardvark.local/index.html")
+                MVar.takeAsync loadResult
             else
                 fail "Disposed"
         )
-        MVar.take loadResult
 
     interface IDisposable with
         member x.Dispose() = 
@@ -1123,7 +1127,7 @@ and LoadHandler(parent : Client) =
     override x.OnLoadError(browser : CefBrowser, frame : CefFrame, errorCode : CefErrorCode, errorText : string, failedUrl : string) =
         parent.LoadFinished(Error(errorText, failedUrl))
 
-and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture) =
+and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture) =
     inherit CefRenderHandler()
 
 
@@ -1176,7 +1180,7 @@ and RenderHandler(parent : Client, size : IMod<V2i>, texture : IStreamingTexture
     /// Initializes the view-rectangle and returns a boolean indicating whether the rectangle is valid.
     /// </summary>
     override x.GetViewRect(browser : CefBrowser, rect : byref<CefRectangle>) =
-        let s = Mod.force size
+        let s = AVal.force size
         rect <- CefRectangle(0, 0, s.X, s.Y)
         true
 

@@ -1,11 +1,11 @@
-﻿namespace GeoJsonViewer
+namespace GeoJsonViewer
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Events
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 
 module App =
@@ -27,9 +27,9 @@ module App =
       { kind = Script;     name = "semui"; url = "./rendering/semantic.js" }
     ]
   
-  let isSelected (model : MModel) (feature : Feature) = 
+  let isSelected (model : AdaptiveModel) (feature : Feature) = 
     model.selected 
-      |> Mod.map(function
+      |> AVal.map(function
         | Some x -> x = feature.id
         | None -> false)
 
@@ -60,7 +60,7 @@ module App =
         "fill-opacity" ==> "0.5"
       ]
 
-  let viewFeaturesGui (model:MModel) =
+  let viewFeaturesGui (model:AdaptiveModel) =
     alist {
       
       for f in model.data.features do
@@ -94,7 +94,7 @@ module App =
         yield item 
     }
 
-  let viewFeaturesSvg (model:MModel) = 
+  let viewFeaturesSvg (model:AdaptiveModel) = 
 
     let canvasSize = V2d(600.0, 600.0)
 
@@ -149,7 +149,7 @@ module App =
     let height = 0.2
     IndexedGeometryPrimitives.point ((point |> withZ height).ToV3f()) color |> Sg.ofIndexedGeometry
 
-  let drawFeatures (fc : MFeatureCollection) = 
+  let drawFeatures (fc : AdaptiveFeatureCollection) = 
 
     let plane = 
       adaptive {
@@ -170,14 +170,14 @@ module App =
         do! DefaultSurfaces.simpleLighting
       }
 
-  let view (model : MModel) =
+  let view (model : AdaptiveModel) =
 
-    //let box = Sg.box (Mod.constant C4b.VRVisGreen) (Mod.constant Box3d.Unit)
+    //let box = Sg.box (AVal.constant C4b.VRVisGreen) (AVal.constant Box3d.Unit)
 
     let sg = drawFeatures model.data
               
     let renderControl =
-      FreeFlyController.controlledControl model.camera Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+      FreeFlyController.controlledControl model.camera Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> AVal.constant) 
         (AttributeMap.ofList [ 
           style "width: 100%; height:100%"; 
           attribute "showFPS" "false";       // optional, default is false
@@ -223,7 +223,7 @@ module App =
       name = "initial"
       boundingBox = Box2d.Invalid
       typus       = Typus.Feature
-      features    = PList.empty
+      features    = IndexList.empty
     }
       
   let camPosition (bb : Box2d) =

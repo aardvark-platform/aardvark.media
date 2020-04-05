@@ -2,14 +2,15 @@ namespace TouchCamera
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.TouchStick
+open Adaptify
 
 
-[<DomainType>]
+[<ModelType>]
 type TouchStickModel =
     {
         cameraState : CameraControllerState

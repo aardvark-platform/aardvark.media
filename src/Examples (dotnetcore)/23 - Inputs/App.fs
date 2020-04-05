@@ -1,13 +1,14 @@
-﻿module Input.App
+module Input.App
 
 open Aardvark.UI
 open Aardvark.UI.Generic
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Input
+open System
 
 
 let initial = 
@@ -19,7 +20,8 @@ let initial =
         uintValue = 1u
         name = "Pi"
         alt = Some A
-        options = HMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
+        options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
+        enumValue = EnumValue.Value1
     }
 
 
@@ -44,7 +46,7 @@ let update (model : Model) (msg : Message) =
         | SetUInt v -> Log.warn "SetUInt :%A" v; { model with uintValue = v }
         | SetName n ->
             if model.active then
-                { model with name = n; options = HMap.add (Custom n) n model.options }
+                { model with name = n; options = HashMap.add (Custom n) n model.options }
             else
                 model
         | SetAlternative a ->
@@ -53,6 +55,7 @@ let update (model : Model) (msg : Message) =
                 { model with alt = a }
             else 
                 model
+        | SetEnumValue v -> { model with enumValue = v }
 //let values =
 //    AMap.ofList [
 //        A, div [] [ text "A"; i [ clazz "icon rocket" ] []; i [ clazz "icon thermometer three quarters" ] [] ]
@@ -61,7 +64,9 @@ let update (model : Model) (msg : Message) =
 //        D, text "D"
 //    ]
 
-let view (model : MModel) =
+let enumValues = AMap.ofArray((Enum.GetValues typeof<EnumValue> :?> (EnumValue [])) |> Array.map (fun c -> (c, text (Enum.GetName(typeof<EnumValue>, c)) )))
+
+let view (model : AdaptiveModel) =
     let values = model.options |> AMap.map (fun k v -> text v)
     div [clazz "ui inverted segment"; style "width: 100%; height: 100%"] [
         div [ clazz "ui vertical inverted menu" ] [
@@ -135,6 +140,9 @@ let view (model : MModel) =
             ]
             div [ clazz "item" ] [ 
                 dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
+            ]
+            div [ clazz "item" ] [ 
+                dropdown1 [ clazz "ui inverted selection dropdown" ] enumValues model.enumValue SetEnumValue
             ]
         ]
     ]

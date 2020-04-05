@@ -9,6 +9,18 @@ if (!aardvark) {
     //window.aardvark = aardvark;
 }
 
+// until new aardium version available
+if (aardvark.electron) {
+
+
+
+    aardvark.openFileDialog = function (config, callback) {
+        if (!callback) callback = config;
+        aardvark.electron.remote.dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] }).then(e => callback(e.filePaths));
+    };
+
+}
+
 if (!aardvark.promise)
 {
     aardvark.promise = new Promise(function (succ, fail) { succ(); });
@@ -151,7 +163,10 @@ class Renderer {
 		this.useMapping = useMapping;
 
 		var onRendered = this.div.getAttribute("onRendered");
-		if (onRendered) this.onRendered = onRendered;
+        if (onRendered) this.onRendered = onRendered;
+
+        this.customLoaderImg = this.div.getAttribute("data-customLoaderImg");
+        this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
 
         this.buffer = [];
         this.isOpen = false;
@@ -174,7 +189,13 @@ class Renderer {
             this.div.appendChild(loader);
             loader.setAttribute("class", "loader");
 
-            $(loader).html(
+            let aardvarkHtml = 
+                "<div style='color: white; margin-top: 30px; text-align: center;>" +
+                "<center style='text-align: center;'>Powered by the Aardvark Platform</center>" +
+                "</div >";
+
+
+            let loaderHtml = 
                 "<div class='fountainG_0'>" +
                 "<div class='fountainG_1 fountainG'></div>" +
                 "<div class='fountainG_2 fountainG'></div>" +
@@ -184,8 +205,17 @@ class Renderer {
                 "<div class='fountainG_6 fountainG'></div>" +
                 "<div class='fountainG_7 fountainG'></div>" +
                 "<div class='fountainG_8 fountainG'></div>" +
-                "</div>"
-            );
+                (this.customLoaderImg ? aardvarkHtml : "") +
+                "</div>" 
+
+            $(loader).html(loaderHtml);
+
+            if (this.customLoaderImg) {
+                $(loader).css("background-image", "url('https://upload.wikimedia.org/wikipedia/commons/5/57/Fsharp_logo.png')");
+            }
+            if (this.customLoaderImgSize) {
+                $(loader).css("background-size", this.customLoaderImgSize);
+            }
 
 
             this.loader = loader;
@@ -702,10 +732,19 @@ class Renderer {
 			this.send(JSON.stringify({ Case: "Rendered" }));
 
 
-			var shouldSay = this.div.getAttribute("onRendered");
-			if (shouldSay) {
-				aardvark.processEvent(this.div.id, 'onRendered');
-			}
+            var shouldSay = this.div.getAttribute("onRendered");
+            if (shouldSay) {
+                if (this.div.onRenderedCode != shouldSay) {
+                    this.div.onRenderedCode = shouldSay;
+                    var f = new Function(shouldSay);
+                    this.div.onRendered = f.bind(this.div);
+                }
+                this.div.onRendered();
+            }
+            else {
+                delete this.div.onRenderedCode;
+                delete this.div.onRendered;
+            }
 
             if (this.loading) {
                 this.fadeIn();
@@ -806,10 +845,20 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-				var shouldSay = this.div.getAttribute("onRendered");
-				if (shouldSay) {
-					aardvark.processEvent(this.div.id, 'onRendered');
-				}
+                var shouldSay = this.div.getAttribute("onRendered");
+                if (shouldSay) {
+                    if (this.div.onRenderedCode != shouldSay) {
+                        this.div.onRenderedCode = shouldSay;
+                        var f = new Function(shouldSay);
+                        this.div.onRendered = f.bind(this.div);
+                    }
+                    this.div.onRendered();
+                }
+                else {
+                    delete this.div.onRenderedCode;
+                    delete this.div.onRendered;
+                }
+
                 if (this.loading) {
                     this.fadeIn();
                 }

@@ -1,11 +1,11 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open System
 open System.IO
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Ag
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
@@ -27,11 +27,12 @@ module App =
   open SceneObjectHandling
   open Aardvark.Application
   open Aardvark.Base.DynamicLinkerTypes  
-  
+  open Aether.Operators
+
   let cameraFilePath = @".\camera"
-  let _view_        = Model.Lens.cameraState |. CameraControllerState.Lens.view
-  let _mSensitivity_ = Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.moveSensitivity
-  let _pSensitivity_ = Model.Lens.cameraState |. CameraControllerState.Lens.freeFlyConfig |. FreeFlyConfig.Lens.panMouseSensitivity
+  let _view_        = Model.cameraState_ >-> CameraControllerState.view_
+  let _mSensitivity_ = Model.cameraState_ >-> CameraControllerState.freeFlyConfig_ >-> FreeFlyConfig.moveSensitivity_
+  let _pSensitivity_ = Model.cameraState_ >-> CameraControllerState.freeFlyConfig_ >-> FreeFlyConfig.panMouseSensitivity_
 
   let update (model : Model) (msg : Message) =   
     match msg with
@@ -53,15 +54,15 @@ module App =
           | Keys.PageUp ->              
             let s' = model.cameraState.freeFlyConfig.moveSensitivity + 1.0
             Log.line "increasing sensitivity %A" s'
-            s' |> Lenses.set' _mSensitivity_ model
+            model |> s' ^= _mSensitivity_
           | Keys.PageDown ->
             let s' = model.cameraState.freeFlyConfig.moveSensitivity - 1.0
             Log.line "increasing sensitivity %A" s'
-            s' |> Lenses.set' _mSensitivity_ model
+            model |> s' ^= _mSensitivity_
           | Keys.Home ->
              match cameraFilePath |> Serialization.tryLoadAs<Trafo3d> with
              | Some v ->                                  
-               CameraView.ofTrafo v |> Lenses.set' _view_ model               
+               model |> CameraView.ofTrafo v ^= _view_               
              | None -> model
           | Keys.Space ->            
             Log.line "Saving current CameraView to %A" cameraFilePath
@@ -77,13 +78,13 @@ module App =
         { model with dockConfig = cfg }
       | _ -> model
                     
-  let view (m : MModel) =
+  let view (m : AdaptiveModel) =
                                                  
       let box = 
         m.patchHierarchies
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.LocalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+          |> List.fold (fun a b -> Box.Union(a, b)) Box3d.Invalid
       
       let opcs = 
         m.opcInfos
@@ -102,7 +103,7 @@ module App =
         ] |> Sg.ofList
 
       let renderControl =
-       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl m.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> AVal.constant) 
          (AttributeMap.ofList [ 
            style "width: 100%; height:100%"; 
            attribute "showFPS" "false";       // optional, default is false
@@ -115,9 +116,9 @@ module App =
          ]) 
          (scene) 
             
-      let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> Mod.constant          
+      let frustum = Frustum.perspective 60.0 0.1 50000.0 1.0 |> AVal.constant          
         
-      let cam = Mod.map2 Camera.create m.cameraState.view frustum 
+      let cam = AVal.map2 Camera.create m.cameraState.view frustum 
 
       page (fun request -> 
         match Map.tryFind "page" request.queryParams with
@@ -158,7 +159,7 @@ module App =
         patchHierarchies 
           |> List.map(fun x -> x.tree |> QTree.getRoot) 
           |> List.map(fun x -> x.info.GlobalBoundingBox)
-          |> List.fold (fun a b -> Box3d.Union(a, b)) Box3d.Invalid
+          |> List.fold (fun a b -> Box.Union(a, b)) Box3d.Invalid
                       
       let opcInfos = 
         [
@@ -174,7 +175,7 @@ module App =
             }
         ]
         |> List.map (fun info -> info.globalBB, info)
-        |> HMap.ofList      
+        |> HashMap.ofList      
                       
       let camState = { FreeFlyController.initial with view = CameraView.lookAt (box.Center) V3d.OOO V3d.OOI; }
 
@@ -185,7 +186,7 @@ module App =
           patchHierarchies   = patchHierarchies          
                     
           threads            = FreeFlyController.threads camState |> ThreadPool.map Camera
-          boxes              = List.empty //kdTrees |> HMap.toList |> List.map fst
+          boxes              = List.empty //kdTrees |> HashMap.toList |> List.map fst
       
           pickingActive      = false
           opcInfos           = opcInfos
@@ -208,6 +209,6 @@ module App =
           update = update
           view   = view          
           threads = fun m -> m.threads
-          unpersist = Unpersist.instance<Model, MModel>
+          unpersist = Unpersist.instance<Model, AdaptiveModel>
       }
        

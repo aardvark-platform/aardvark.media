@@ -1,11 +1,12 @@
-﻿namespace RenderingParametersModel
+namespace RenderingParametersModel
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open Aardvark.Base.Rendering
+open Adaptify
 
-[<DomainType>]
+[<ModelType>]
 type RenderingParameters = {
     fillMode : FillMode
     cullMode : CullMode

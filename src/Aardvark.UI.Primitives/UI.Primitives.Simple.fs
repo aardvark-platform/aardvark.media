@@ -1,6 +1,6 @@
 ﻿namespace Aardvark.UI.Primitives
 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 
 type EmbeddedResources = EmbeddedResources
@@ -14,7 +14,7 @@ module Simple =
 
     let private uniqueClass str = "unique-" + str
 
-    let integerInput (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : IMod<int>) =
+    let integerInput (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : aval<int>) =
         let defaultValue = max 0 minValue
         let parse (str : string) =
             let str = str.Replace(".", "").Replace(",", "")
@@ -53,14 +53,14 @@ module Simple =
                     yield always <| ("oninput", changed)
                     yield always <| ("onchange", changed)
 
-                    yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
+                    yield "value", value |> AVal.map (string >> AttributeValue.String >> Some)
 
 
 
                 ]
         ]
 
-    let labeledIntegerInput (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : IMod<int>) =
+    let labeledIntegerInput (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : aval<int>) =
         let defaultValue = max 0 minValue
         let parse (str : string) =
             let str = str.Replace(".", "").Replace(",", "")
@@ -100,14 +100,14 @@ module Simple =
                     yield always <| ("oninput", changed)
                     yield always <| ("onchange", changed)
 
-                    yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
+                    yield "value", value |> AVal.map (string >> AttributeValue.String >> Some)
 
 
 
                 ]
         ]
 
-    let labeledFloatInput' (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>) (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) =
+    let labeledFloatInput' (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : aval<float>) (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) =
         let defaultValue = max 0.0 minValue
         let parse (str : string) =
             match System.Double.TryParse str with
@@ -147,12 +147,12 @@ module Simple =
                         yield always <| ("oninput", changed)
                         yield always <| ("onchange", changed)
 
-                        yield "value", value |> Mod.map (string >> AttributeValue.String >> Some)
+                        yield "value", value |> AVal.map (string >> AttributeValue.String >> Some)
 
                     ]
             ]
 
-    let labeledFloatInput (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : IMod<float>) =
+    let labeledFloatInput (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : aval<float>) =
         labeledFloatInput' name minValue maxValue step changed value (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) 
 
 
@@ -180,7 +180,7 @@ module Simple =
         else
             str
 
-    let largeTextArea' (changed : string -> 'msg) (value : IMod<string>) (attributes : AttributeMap<'msg>) =
+    let largeTextArea' (changed : string -> 'msg) (value : aval<string>) (attributes : AttributeMap<'msg>) =
 
         let changed =
             AttributeValue.Event  {
@@ -198,7 +198,7 @@ module Simple =
                 attributes
                 (AttributeMap.ofListCond [
                     always <| ("oninput", changed)
-                    "value", value |> Mod.map (AttributeValue.String >> Some)
+                    "value", value |> AVal.map (AttributeValue.String >> Some)
                 ])
         
         let req = 
@@ -207,31 +207,31 @@ module Simple =
                 { name = "metro.min.js";  url = "https://cdnjs.cloudflare.com/ajax/libs/metro/4.2.30/js/metro.min.js";  kind = Script     }
             ]
 
-        require req (Incremental.textarea atts (Mod.constant ""))
+        require req (Incremental.textarea atts (AVal.constant ""))
 
-    let largeTextArea (changed : string -> 'msg) (value : IMod<string>) =
+    let largeTextArea (changed : string -> 'msg) (value : aval<string>) =
         largeTextArea' changed value AttributeMap.empty
 
-    let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : list<string * AttributeValue<'msg>>) (current : IMod<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
+    let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : list<string * AttributeValue<'msg>>) (current : aval<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
         
         let mutable back = Map.empty
         let forth = 
             names |> Map.map (fun a s -> 
-                let id = newId()
+                let id = System.Guid.NewGuid()
                 back <- Map.add id a back
                 id
             )
         
-        let selectedValue = current |> Mod.map (fun c -> Map.find c forth)
+        let selectedValue = current |> AVal.map (fun c -> Map.find c forth)
         
         let boot = 
             String.concat "\r\n" [
-                sprintf "$('#__ID__').dropdown().dropdown('set selected', %d);" (Mod.force selectedValue)
+                sprintf "$('#__ID__').dropdown().dropdown('set selected', '%s');" (string (AVal.force selectedValue))
                 "current.onmessage = function(v) { $('#__ID__').dropdown('set selected', v); };"
             ]
 
-        onBoot' ["current", Mod.channel selectedValue] boot  (
-            select ((onChange (fun str -> Map.find (str |> int) back |> update))::att) [
+        onBoot' ["current", AVal.channel selectedValue] boot  (
+            select ((onChange (fun str -> Map.find (str |> System.Guid.Parse) back |> update))::att) [
                 for (value, name) in Map.toSeq names do
                     let v = Map.find value forth
                     yield option [attribute "value" (string v)] [ text name ]

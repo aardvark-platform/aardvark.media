@@ -1,8 +1,9 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Message = 
     | DropTop
@@ -10,7 +11,7 @@ type Message =
 
 type Position = Top = 0 | Bottom = 1
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         location : Position

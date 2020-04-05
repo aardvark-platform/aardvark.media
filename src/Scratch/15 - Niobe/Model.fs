@@ -1,8 +1,8 @@
-﻿namespace Niobe
+namespace Niobe
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Geometry
 open Aardvark.SceneGraph.Opc
 open Aardvark.Geometry
@@ -10,6 +10,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
 open Niobe.Sketching
+open Adaptify
 
 type Message =
   | Camera           of FreeFlyController.Message  
@@ -21,7 +22,7 @@ type Message =
   | ToggleShadowVolumeVis
   | ToggleLineVis
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
   {
       cameraState          : CameraControllerState          

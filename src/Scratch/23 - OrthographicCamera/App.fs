@@ -1,7 +1,7 @@
-﻿namespace OrthoCamera
+namespace OrthoCamera
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
@@ -33,10 +33,10 @@ module OrthoCameraDemo =
         orthoFrustumFromWidth 5.0
         //Frustum.perspective 60.0 0.1 100.0 1.0             
 
-    let view (model : MOrthoModel) =
+    let view (model : AdaptiveOrthoModel) =
 
         let sg =
-            Sg.box (Mod.constant C4b.White) (Mod.constant (Box3d(-V3d.III, V3d.III)))                        
+            Sg.box (AVal.constant C4b.White) (AVal.constant (Box3d(-V3d.III, V3d.III)))                        
             |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.simpleLighting
@@ -48,14 +48,14 @@ module OrthoCameraDemo =
             ]
 
         let s = 
-            Sg.sphere 4 (Mod.constant C4b.Red) (Mod.constant 0.15)
+            Sg.sphere 4 (AVal.constant C4b.Red) (AVal.constant 0.15)
             |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
                 do! DefaultSurfaces.simpleLighting
                 }
             |> Sg.noEvents
-            |> Sg.trafo (model.point |> Mod.map(Trafo3d.Translation))
+            |> Sg.trafo (model.point |> AVal.map(Trafo3d.Translation))
             
 
         let attributes = 
@@ -69,7 +69,7 @@ module OrthoCameraDemo =
 
         let attributes = AttributeMap.union attributes (FreeFlyController.attributes model.cameraState CameraAction)
 
-        let cam = Mod.map2 Camera.create model.cameraState.view (frustum |> Mod.constant)
+        let cam = AVal.map2 Camera.create model.cameraState.view (frustum |> AVal.constant)
 
         body [] [
             //FreeFlyController.controlledControl model.camera Action.CameraAction frustum (AttributeMap.ofList att) sg

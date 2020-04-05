@@ -39,7 +39,7 @@ let main argv =
     Log.line "Service will run here: %s" uri
 
 
-    Ag.initialize()
+    
     Aardvark.Init()
     Aardium.init()
     //System.Diagnostics.Debugger.Launch()

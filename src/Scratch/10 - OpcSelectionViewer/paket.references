@@ -9,12 +9,12 @@ Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
 Aardvark.SceneGraph.IO
 Aardvark.SceneGraph.Opc
-Aardvark.Compiler.DomainTypes.MSBuild
-Aardvark.Geometry.Intersection
+Adaptify.MSBuild
 
 FsPickler
 FsPickler.Json
-
+Aether
+Aardvark.Geometry.Intersection
 Aardium
 
 Suave

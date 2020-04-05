@@ -1,7 +1,7 @@
-﻿open System
+open System
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Rendering.NanoVg
 open Aardvark.SceneGraph
 open Aardvark.Application
@@ -30,7 +30,7 @@ let main argv =
 
     let initialView = CameraView.lookAt (V3d(6,6,6)) V3d.Zero V3d.OOI
     let view = initialView |> DefaultCameraController.control win.Mouse win.Keyboard win.Time
-    let proj = win.Sizes |> Mod.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
+    let proj = win.Sizes |> AVal.map (fun s -> Frustum.perspective 60.0 0.1 100.0 (float s.X / float s.Y))
 
 
     let sg =
@@ -40,8 +40,8 @@ let main argv =
                 DefaultSurfaces.trafo |> toEffect
                 DefaultSurfaces.vertexColor |> toEffect
                ]
-            |> Sg.viewTrafo (view |> Mod.map CameraView.viewTrafo)
-            |> Sg.projTrafo (proj |> Mod.map Frustum.projTrafo)
+            |> Sg.viewTrafo (view |> AVal.map CameraView.viewTrafo)
+            |> Sg.projTrafo (proj |> AVal.map Frustum.projTrafo)
 
     
     let task =

@@ -1,7 +1,7 @@
-﻿module App
+module App
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 open Utils
@@ -12,10 +12,10 @@ open Aardvark.SceneGraph
 
 let update2ndCam (model : Model) =
     let right = - model.up.Cross(model.lookAt)
-    let rotPanFw = Rot3d(model.up, model.pan.value.RadiansFromDegrees()).TransformDir(model.lookAt )
+    let rotPanFw = Rot3d.Rotation(model.up, model.pan.value.RadiansFromDegrees()).Transform(model.lookAt )
 
-    let lookAt = Rot3d(right, model.tilt.value.RadiansFromDegrees()).TransformDir(rotPanFw )
-    let up = Rot3d(right, model.tilt.value.RadiansFromDegrees()).TransformDir(model.up)
+    let lookAt = Rot3d.Rotation(right, model.tilt.value.RadiansFromDegrees()).Transform(rotPanFw )
+    let up = Rot3d.Rotation(right, model.tilt.value.RadiansFromDegrees()).Transform(model.up)
 
     let view = CameraView.look model.position.value lookAt.Normalized up.Normalized 
     match model.textureActive with
@@ -25,7 +25,7 @@ let update2ndCam (model : Model) =
                             footprintProj = {model.footprintProj with cam = { model.footprintProj.cam with view = view}}}
    
 
-let getFrustum (model : MModel) =
+let getFrustum (model : AdaptiveModel) =
     adaptive {
         let! texActive = model.textureActive
         let! tpf = model.textureProj.frustum
@@ -75,9 +75,9 @@ let update (model : Model) (msg : Message) =
 
 
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
-    let viewV3dInput (model : MV3dInput) =  
+    let viewV3dInput (model : AdaptiveV3dInput) =  
             Html.table [                            
                 Html.row "X" [Numeric.view' [InputBox] model.x |> UI.map Vector3d.Action.SetX]
                 Html.row "Y" [Numeric.view' [InputBox] model.y |> UI.map Vector3d.Action.SetY]
@@ -85,7 +85,7 @@ let view (model : MModel) =
             ]       
 
     let renderControl =
-      FreeFlyController.controlledControl model.cameraMain Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+      FreeFlyController.controlledControl model.cameraMain Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
         (AttributeMap.ofList [ 
             attribute "showFPS" "true"; 
             attribute "data-renderalways" "1"; 

@@ -3,7 +3,7 @@ namespace Aardvark.UI.Trafos
 module TranslateController =
 
     open Aardvark.Base
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
@@ -89,15 +89,15 @@ module TranslateController =
             | SetMode a-> m 
             | Nop -> m
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : IMod<CameraView>) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : aval<CameraView>) (m : AdaptiveTransformation) =
         
         let arrow rot axis =
             let col =
-                let g : IMod<Option<PickPoint>> = m.grabbed
-                let p : IMod<Option<Axis>> =  (g |> Mod.map (Option.map ( fun (p:PickPoint) -> p.axis )))
-                m.hovered |> Mod.map2 (colorMatch axis) p
+                let g : aval<Option<PickPoint>> = m.grabbed
+                let p : aval<Option<Axis>> =  (g |> AVal.map (Option.map ( fun (p:PickPoint) -> p.axis )))
+                m.hovered |> AVal.map2 (colorMatch axis) p
 
-            Sg.cylinder tessellation col (Mod.constant cylinderRadius) (Mod.constant 1.0) 
+            Sg.cylinder tessellation col (AVal.constant cylinderRadius) (AVal.constant 1.0) 
             |> Sg.noEvents
             |> Sg.andAlso (                
                 IndexedGeometryPrimitives.solidCone V3d.OOI V3d.OOI coneHeight coneRadius tessellation C4b.Red 
@@ -114,7 +114,7 @@ module TranslateController =
                ]
                
         let scaleTrafo pos =            
-            Sg.computeInvariantScale' v (Mod.constant 0.1) pos (Mod.constant 0.3) (Mod.constant 60.0) |> Mod.map Trafo3d.Scale
+            Sg.computeInvariantScale' v (AVal.constant 0.1) pos (AVal.constant 0.3) (AVal.constant 60.0) |> AVal.map Trafo3d.Scale
 
         let pickGraph =
             Sg.empty 
@@ -134,7 +134,7 @@ module TranslateController =
         let arrowY = arrow (Trafo3d.RotationX -Constant.PiHalf) Axis.Y
         let arrowZ = arrow (Trafo3d.RotationY 0.0)              Axis.Z
           
-        let currentTrafo : IMod<Trafo3d> =
+        let currentTrafo : aval<Trafo3d> =
             adaptive {
                 let! mode = m.mode
                 match mode with

@@ -1,9 +1,10 @@
-﻿namespace Inc.Model
+namespace IncModel
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open System
+open Adaptify
 
 type Direction = Vertical = 0 | Horizontal = 1
 
@@ -25,7 +26,7 @@ type Color =
          constant : Constant
     }
 
-[<DomainType>]
+[<ModelType>]
 type Object =
     | Rect    of corners  : Box2d * color : Color
     | Polygon of vertices : array<V2f> * colors : array<C4f>
@@ -39,11 +40,11 @@ type DragState = { f : V3d; t : V3d }
 
 type DragEndpoint = { rect : int; vertexId : int; fixedPoint : V2d; pos : V2d }
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         selectedObject  : Option<int>
-        objects         : hmap<int,Object>
+        objects         : HashMap<int,Object>
         cameraState     : CameraControllerState
 
         hoverHandle : Option<int>

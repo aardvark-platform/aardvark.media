@@ -1,8 +1,8 @@
-﻿module Inc.App
+module Inc.App
 
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 
 open Aardvark.UI
@@ -40,9 +40,9 @@ let menu () =
     ]
 
 
-let view (sg : ISg<_>) (model : MModel) =
+let view (sg : ISg<_>) (model : AdaptiveModel) =
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ style "width: 400px; height:400px; background: #222"; attribute "data-samples" "8"]) 
                     sg
 

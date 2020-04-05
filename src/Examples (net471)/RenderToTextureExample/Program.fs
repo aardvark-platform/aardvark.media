@@ -1,5 +1,5 @@
 ﻿open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
@@ -38,8 +38,6 @@ module Shader =
 let main argv = 
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init()
-
-    Ag.initialize()
     Aardvark.Init()
 
     use app = new OpenGlApplication()
@@ -53,18 +51,18 @@ let main argv =
 
     let test =
         adaptive {
-            let! (size,version) = client.Size, client.Version
+            let! (size,version) = AVal.map2 (fun a b -> a,b) client.Size client.Version
             let vp = client.GetViewport "newsLogo"
-            match vp with
-                | Some vp ->
-                    let bounds = Box2d(V2d vp.Min / V2d size, V2d vp.Max / V2d size)
+            do
+                match vp with
+                    | Some vp ->
+                        let bounds = Box2d(V2d vp.Min / V2d size, V2d vp.Max / V2d size)
 
-                    let visible = bounds.Intersection(Box2d.Unit)
-
-                    if not visible.IsEmpty then
-                        Log.line "visible: %A" visible
-                | None ->
-                    ()
+                        let visible = bounds.Intersection(Box2d.Unit)
+                        if not visible.IsEmpty then
+                            Log.line "visible: %A" visible
+                    | None ->
+                        ()
 
             return size
         }
@@ -83,7 +81,7 @@ let main argv =
 
     let task =
         RenderTask.ofList [
-            app.Runtime.CompileClear(win.FramebufferSignature, Mod.constant C4f.Gray)
+            app.Runtime.CompileClear(win.FramebufferSignature, AVal.constant C4f.Gray)
             app.Runtime.CompileRender(win.FramebufferSignature, sg)
                 //|> DefaultOverlays.withStatistics
         ]

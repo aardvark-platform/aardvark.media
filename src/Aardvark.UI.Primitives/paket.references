@@ -1,11 +1,12 @@
 Aardvark.Base
-Aardvark.Base.Incremental
+FSharp.Data.Adaptive
 Aardvark.Base.FSharp
 Aardvark.Base.Rendering
+Aardvark.Base.Incremental
 
 Aardvark.Application
 Aardvark.SceneGraph
-Aardvark.Compiler.DomainTypes.MSBuild
+Adaptify.MSBuild
 
 FSharp.Core
 

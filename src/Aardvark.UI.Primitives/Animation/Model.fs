@@ -1,7 +1,8 @@
 ﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base                 
-open Aardvark.Base.Incremental 
+open FSharp.Data.Adaptive 
+open Adaptify
 
 type Time = float
 type RelativeTime = Time
@@ -18,14 +19,14 @@ type Animate = On = 0 | Off = 1
 
 type TaskId = string
 
-[<DomainType>]
-type TaskProgress = { percentage : float; [<NonIncremental>] startTime : System.DateTime }
+[<ModelType>]
+type TaskProgress = { percentage : float; [<NonAdaptive>] startTime : System.DateTime }
 
-[<DomainType>]
+[<ModelType>]
 type AnimationModel = {
    cam        : CameraView
    animation  : Animate
-   animations : plist<Animation<AnimationModel,CameraView,CameraView>>
+   animations : IndexList<Animation<AnimationModel,CameraView,CameraView>>
 }
 
 type AnimationAction = 
@@ -115,8 +116,8 @@ module CameraAnimations =
       (initial name) with 
         sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
           if localTime < duration then                  
-            let rot = Rot3d(state.Forward, dst) * localTime / duration
-            let forward' = rot.TransformDir(state.Forward)                  
+            let rot = Rot3d.RotateInto(state.Forward, dst) * localTime / duration
+            let forward' = Rot3d(rot).Transform state.Forward               
             let view = state |> CameraView.withForward forward'
 
             Some (state,view)
@@ -128,8 +129,8 @@ module CameraAnimations =
       (initial name) with 
         sample = fun (localTime, globalTime) (state : CameraView) -> // given the state and t since start of the animation, compute a state and the cameraview
           if localTime < duration then                  
-            let rot = Rot3d(state.Up, dst) * localTime / duration
-            let sky' = rot.TransformDir(state.Up)                  
+            let rot = Rot3d.RotateInto(state.Up, dst) * localTime / duration
+            let sky' = Rot3d(rot).Transform(state.Up)                  
             let view = state |> CameraView.withUp sky'
 
             Some (state,view)

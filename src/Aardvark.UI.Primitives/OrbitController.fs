@@ -3,7 +3,7 @@
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -167,7 +167,7 @@ module OrbitController =
 
             let model = 
                 if dcenter.Length > 0.0 then
-                    if V3d.ApproxEqual(V3d.Zero, dcenter, 1E-4) then
+                    if Fun.ApproximateEquals(V3d.Zero, dcenter, 1E-4) then
                         Log.warn "center done"
                         OrbitState.withView { model with center = model.targetCenter }
                     else
@@ -181,8 +181,8 @@ module OrbitController =
         ThreadPool.empty
 
 
-    let private attributes (model : MOrbitState) (f : OrbitMessage -> 'msg) =
-        let down = model.dragStart |> Mod.map Option.isSome
+    let private attributes (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) =
+        let down = model.dragStart |> AVal.map Option.isSome
         AttributeMap.ofListCond [
             always <| onCapturedPointerDown None (fun k b p -> MouseDown p |> f)
             always <| onCapturedPointerUp None (fun k b p -> MouseUp p |> f)
@@ -192,13 +192,13 @@ module OrbitController =
         ]
         
 
-    let controlledControl (model : MOrbitState) (f : OrbitMessage -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        let cam = Mod.map2 Camera.create model.view  frustum
+    let controlledControl (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+        let cam = AVal.map2 Camera.create model.view  frustum
         let controllerAtts = attributes model f
         DomNode.RenderControl(AttributeMap.union att controllerAtts, cam, sg, RenderControlConfig.standard, None)
 
-    let withControls (state : MOrbitState) (f : OrbitMessage -> 'msg) (frustum : IMod<Frustum>) (node : DomNode<'msg>) =
-        let cam = Mod.map2 Camera.create state.view frustum 
+    let withControls (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (node : DomNode<'msg>) =
+        let cam = AVal.map2 Camera.create state.view frustum 
         match node with
             | :? SceneNode<'msg> as node ->
                 let getState(c : Aardvark.Service.ClientInfo) =
@@ -217,15 +217,15 @@ module OrbitController =
                 failwith "[UI] cannot add camera controllers to non-scene node"
                 
 
-    let simpleView (model : MOrbitState) =
+    let simpleView (model : AdaptiveOrbitState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
         let mainAtts =
             AttributeMap.ofList [
                 style "width: 100%; height: 100%"
             ]
 
-        controlledControl model id (Mod.constant frustum) mainAtts (
-            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+        controlledControl model id (AVal.constant frustum) mainAtts (
+            Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
             |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor

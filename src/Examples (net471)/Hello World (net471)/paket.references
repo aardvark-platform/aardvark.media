@@ -1,5 +1,5 @@
 Aardvark.Base
-Aardvark.Base.Incremental
+FSharp.Data.Adaptive
 Aardvark.Base.FSharp
 
 Aardvark.Base.Rendering
@@ -10,7 +10,7 @@ Aardvark.SceneGraph.IO
 Aardvark.Rendering.Text
 Aardvark.GPGPU
 
-Aardvark.Compiler.DomainTypes.MSBuild
+Adaptify.MSBuild
 
 
 FsPickler
@@ -19,6 +19,7 @@ FsPickler.Json
 Another.Unofficial.Xilium.CefGlue
 Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies
 Another.Unofficial.Xilium.CefGlue.WindowsForms
+Microsoft.NETFramework.ReferenceAssemblies
 
 Suave
 FSharp.Core

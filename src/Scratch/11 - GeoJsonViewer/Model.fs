@@ -1,13 +1,14 @@
-﻿namespace GeoJsonViewer
+namespace GeoJsonViewer
 
 open System
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 open FSharp.Data
 open FSharp.Data.JsonExtensions
 open Aardvark.Application
+open Adaptify
 
 type FeatureId = FeatureId of string
 
@@ -81,16 +82,16 @@ type Feature =
     geometry    : Geometry
   }
 
-[<DomainType>]
+[<ModelType>]
 type FeatureCollection = 
   {
     name : string
     typus       : Typus
     boundingBox : Box2d    
-    features    : plist<Feature>
+    features    : IndexList<Feature>
   }
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
   {
      camera   : CameraControllerState

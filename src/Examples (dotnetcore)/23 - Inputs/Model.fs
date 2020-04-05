@@ -1,8 +1,8 @@
-﻿namespace Input
+namespace Input
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
-
+open FSharp.Data.Adaptive
+open Adaptify
 
 type Alternative =
     | A
@@ -11,7 +11,12 @@ type Alternative =
     | D
     | Custom of string
 
-[<DomainType>]
+type EnumValue =
+    | Value1 = 1
+    | Value2 = 2
+    | Value3 = 3
+
+[<ModelType>]
 type Model =
     {
         active    : bool
@@ -21,7 +26,8 @@ type Model =
         uintValue : uint32
         name      : string
         alt       : Option<Alternative>
-        options   : hmap<Alternative, string>
+        options : HashMap<Alternative, string>
+        enumValue : EnumValue
     }
 
 type Message = 
@@ -32,3 +38,4 @@ type Message =
     | SetUInt of uint32
     | SetName of string
     | SetAlternative of Option<Alternative>
+    | SetEnumValue of EnumValue

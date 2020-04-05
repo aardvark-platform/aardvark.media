@@ -1,11 +1,11 @@
-﻿namespace UI.Composed
+namespace UI.Composed
 
 open System
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Incremental
-open Aardvark.Base.Incremental.Operators
+open FSharp.Data.Adaptive
+open FSharp.Data.Adaptive.Operators
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -30,8 +30,8 @@ module FalseColorLegendApp =
         | SetLowerColor     of ColorPicker.Action //C4b
         | SetUpperColor     of ColorPicker.Action //C4b  
 
-    let bindOption (m : IMod<Option<'a>>) (defaultValue : 'b) (project : 'a -> IMod<'b>)  : IMod<'b> =
-        m |> Mod.bind (function | None   -> Mod.constant defaultValue       
+    let bindOption (m : aval<Option<'a>>) (defaultValue : 'b) (project : 'a -> aval<'b>)  : aval<'b> =
+        m |> AVal.bind (function | None   -> AVal.constant defaultValue       
                                 | Some v -> project v)
     
    

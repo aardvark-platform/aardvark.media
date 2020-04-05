@@ -1,27 +1,27 @@
-﻿namespace Niobe.Sketching
+namespace Niobe.Sketching
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
 open Aardvark.Application
 open Aardvark.UI
 open Aardvark.UI.Primitives
-
+open Adaptify.FSharp.Core
 open Uncodium
 
 module Sg = 
 
-  let drawWorkingBrush (points:alist<V3d>) (color : IMod<C4b>) (offset:IMod<float>) (width : IMod<float>) =           
+  let drawWorkingBrush (points:alist<V3d>) (color : aval<C4b>) (offset:aval<float>) (width : aval<float>) =           
     
     let pointsF =
       points 
-      |> AList.toMod 
-      |> Mod.map(fun x -> x |> PList.toSeq |> Seq.map(fun y -> V3f y) |> Seq.toArray)
+      |> AList.toAVal 
+      |> AVal.map(fun x -> x |> IndexList.toSeq |> Seq.map(fun y -> V3f y) |> Seq.toArray)
 
     let indexArray = 
-      pointsF |> Mod.map(fun x -> (Array.init (max 0 (x.Length * 2 - 1)) (fun a -> (a + 1)/ 2)))
+      pointsF |> AVal.map(fun x -> (Array.init (max 0 (x.Length * 2 - 1)) (fun a -> (a + 1)/ 2)))
 
     let lines = 
       Sg.draw IndexedGeometryMode.LineList
@@ -40,8 +40,8 @@ module Sg =
     let points = 
       Sg.draw IndexedGeometryMode.PointList
       |> Sg.vertexAttribute DefaultSemantic.Positions pointsF 
-      |> Sg.uniform "Color" (Mod.constant(C4b.Red))
-      |> Sg.uniform "PointSize" (Mod.constant 10.0)
+      |> Sg.uniform "Color" (AVal.constant(C4b.Red))
+      |> Sg.uniform "PointSize" (AVal.constant 10.0)
       |> Sg.uniform "depthOffset" offset
       |> Sg.effect [
         toEffect DefaultSurfaces.trafo
@@ -53,9 +53,9 @@ module Sg =
 
     [ lines; points] 
       |> Sg.ofSeq
-      |> Sg.depthBias (offset |> Mod.map (fun x -> DepthBiasState(x, 0.0, 0.0)))  // using this methode the bias depends on the near-far-plane ratio
+      |> Sg.depthBias (offset |> AVal.map (fun x -> DepthBiasState(x, 0.0, 0.0)))  // using this methode the bias depends on the near-far-plane ratio
     
-  let drawFinishedBrush points (color:IMod<C4b>) (alpha:IMod<float>) (offset:IMod<float>) :ISg<'a> =
+  let drawFinishedBrush points (color:aval<C4b>) (alpha:aval<float>) (offset:aval<float>) :ISg<'a> =
     
     let planeFit (points:seq<V3d>) : Plane3d =
       let length = points |> Seq.length |> float
@@ -67,10 +67,10 @@ module Sg =
       let pDiffAvg = points |> Seq.map(fun x -> x - c)
       
       let mutable matrix = M33d.Zero
-      #if TRAVIS_CI
-      #else
-      pDiffAvg |> Seq.iter(fun x -> matrix.AddOuterProduct(&x))
-      #endif
+      pDiffAvg |> Seq.iter(fun x -> 
+        let mutable x = x
+        matrix.AddOuterProduct(&x)
+      )
       matrix <- matrix / length
        
       let mutable q = M33d.Zero
@@ -88,11 +88,11 @@ module Sg =
 
     let generatePolygonTriangles (color : C4b) (offset : float) (points:alist<V3d>) =
       points 
-      |> AList.toMod
-      |> Mod.map(fun x -> 
+      |> AList.toAVal
+      |> AVal.map(fun x -> 
         let plane = planeFit x
         let extrudeNormal = plane.Normal
-        let projPointsOnPlane = x |> PList.map(plane.Project) |> PList.toList
+        let projPointsOnPlane = x |> IndexList.map(plane.Project) |> IndexList.toList
 
         // Top and Bottom triangle-fan startPoint
         let startPoint = projPointsOnPlane |> List.head
@@ -123,7 +123,7 @@ module Sg =
           ) |> List.concat
        )
 
-    let colorAlpha = Mod.map2(fun (c:C4b) a  -> 
+    let colorAlpha = AVal.map2(fun (c:C4b) a  -> 
       let col = c.ToC4d() 
       C4d(col.R, col.G, col.B, a).ToC4b()) color alpha
 
@@ -147,7 +147,7 @@ module SketchingApp =
 
   let emptyBrush = 
     {
-      points = PList.empty
+      points = IndexList.empty
       color = C4b.VRVisGreen
     }
 
@@ -157,13 +157,13 @@ module SketchingApp =
       match model.working with
       | None -> model
       | Some b ->
-        let finishedBrush = { b with points = b.points |> PList.prepend (b.points |> PList.last) }
-        { model with working = None; past = Some model; finishedBrushes = model.finishedBrushes |> PList.prepend finishedBrush }
+        let finishedBrush = { b with points = b.points |> IndexList.prepend (b.points |> IndexList.last) }
+        { model with working = None; past = Some model; finishedBrushes = model.finishedBrushes |> IndexList.prepend finishedBrush }
     | AddPoint p ->
       let b' =
         match model.working with
-        | Some b -> Some { b with points = b.points |> PList.prepend p }
-        | None -> Some { emptyBrush with points = p |> PList.single }
+        | Some b -> Some { b with points = b.points |> IndexList.prepend p }
+        | None -> Some { emptyBrush with points = p |> IndexList.single }
       { model with working = b'; past = Some model }
     | SetThickness a ->
       { model with selectedThickness = Numeric.update model.selectedThickness a }
@@ -186,14 +186,14 @@ module SketchingApp =
       let b' = model.working |> Option.map(fun b -> { b with color = c.c})
       { model with working = b'; selectedColor = c }
   
-  let currentBrushSg (model : MSketchingModel) : ISg<SketchingAction> = 
+  let currentBrushSg (model : AdaptiveSketchingModel) : ISg<SketchingAction> = 
 
-    let color = model.working |> Mod.bind (fun x -> match x with | None -> Mod.constant(C4b.Black) | Some a -> a.color)
-    let points = model.working |> AList.bind (fun x -> match x with | None -> AList.empty | Some a -> a.points)
+    let color = model.working |> AVal.bind (fun x -> match x with | AdaptiveNone -> AVal.constant(C4b.Black) | AdaptiveSome a -> a.color)
+    let points = model.working |> AList.bind (fun x -> match x with | AdaptiveNone -> AList.empty | AdaptiveSome a -> a.points)
 
     Sg.drawWorkingBrush points color model.depthOffset.value model.selectedThickness.value
 
-  let finishedBrushSg (model : MSketchingModel) = 
+  let finishedBrushSg (model : AdaptiveSketchingModel) = 
 
     model.finishedBrushes 
       |> AList.map(fun br -> Sg.drawFinishedBrush br.points br.color model.alphaArea.value model.volumeOffset.value )
@@ -209,7 +209,7 @@ module SketchingApp =
       { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
     ] 
 
-  let viewGui (model : MSketchingModel) =
+  let viewGui (model : AdaptiveSketchingModel) =
     require dependencies (
       Html.SemUi.accordion "Brush" "paint brush" true [          
           Html.table [  

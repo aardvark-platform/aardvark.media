@@ -15,7 +15,6 @@ let main argv =
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init argv
 
-    Ag.initialize()
     Aardvark.Init()
 
     use app = new OpenGlApplication()

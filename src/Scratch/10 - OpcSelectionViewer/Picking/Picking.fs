@@ -3,7 +3,7 @@ namespace OpcSelectionViewer.Picking
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open OpcSelectionViewer
 
 module PickingApp =
@@ -17,9 +17,9 @@ module PickingApp =
         match model.intersectionPoints.AsList with
           | [] -> []
           | _ :: rest -> rest
-      { model with intersectionPoints = points |> PList.ofList }
+      { model with intersectionPoints = points |> IndexList.ofList }
     | ClearPoints -> 
-      { model with intersectionPoints = PList.empty }
+      { model with intersectionPoints = IndexList.empty }
     //| _ -> model
 
   let toV3f (input:V3d) : V3f= input |> V3f
@@ -28,15 +28,15 @@ module PickingApp =
     
     let head = 
       points 
-        |> AList.toMod 
-        |> Mod.map(fun x -> (PList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
+        |> AList.toAVal 
+        |> AVal.map(fun x -> (IndexList.tryAt 0 x) |> Option.defaultValue V3d.Zero)
       
     let pointsF = 
       points 
-        |> AList.toMod 
-        |> Mod.map2(
+        |> AList.toAVal 
+        |> AVal.map2(
           fun h points -> 
-            points |> PList.map(fun (x:V3d) -> (x-h) |> toV3f) |> PList.toArray
+            points |> IndexList.map(fun (x:V3d) -> (x-h) |> toV3f) |> IndexList.toArray
             ) head
        
 
@@ -48,7 +48,7 @@ module PickingApp =
          Shader.PointSprite.Effect
       ]
       |> Sg.translate' head
-      |> Sg.uniform "PointSize" (Mod.constant 10.0)
+      |> Sg.uniform "PointSize" (AVal.constant 10.0)
 
-  let view (model : MPickingModel) =
+  let view (model : AdaptivePickingModel) =
     drawColoredPoints model.intersectionPoints

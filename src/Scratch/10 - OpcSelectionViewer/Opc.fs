@@ -1,8 +1,8 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open Aardvark.Base
 open Aardvark.Base.Geometry   
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Opc
 
@@ -27,23 +27,23 @@ module Opc =
           let tex = FileTexture(texPath,config) :> ITexture
         
           Sg.ofIndexedGeometry g
-              |> Sg.trafo (Mod.constant info.Local2Global)             
-              |> Sg.diffuseTexture (Mod.constant tex)             
+              |> Sg.trafo (AVal.constant info.Local2Global)             
+              |> Sg.diffuseTexture (AVal.constant tex)             
           )
         |> Sg.ofList        
     sg
 
   type IUniformProvider with
     member x.TryGetViewTrafo() =
-      match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ViewTrafo") with
-        | Some (:? IMod<Trafo3d> as t) -> t |> Some
-        | Some (:? IMod<Trafo3d[]> as t) -> t |> Mod.map (Array.item 0) |> Some
+      match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ViewTrafo") with
+        | Some (:? aval<Trafo3d> as t) -> t |> Some
+        | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
         | _ -> None
   
       member x.TryGetProjTrafo() =
-        match x.TryGetUniform(Ag.emptyScope, Symbol.Create "ProjTrafo") with
-          | Some (:? IMod<Trafo3d> as t) -> t |> Some
-          | Some (:? IMod<Trafo3d[]> as t) -> t |> Mod.map (Array.item 0) |> Some
+        match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ProjTrafo") with
+          | Some (:? aval<Trafo3d> as t) -> t |> Some
+          | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
           | _ -> None
   
   let isNan (v : V3f) =

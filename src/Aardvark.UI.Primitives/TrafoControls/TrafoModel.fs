@@ -1,7 +1,8 @@
 namespace Aardvark.UI.Trafos
 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base
+open Adaptify
 
 type Axis = X | Y | Z
 
@@ -32,7 +33,7 @@ type Pose =
             let rot = Trafo3d(Rot3d.op_Explicit x.rotation, Rot3d.op_Explicit x.rotation.Inverse)
             Trafo3d.Scale x.scale * rot *  Trafo3d.Translation x.position
 
-[<DomainType>]
+[<ModelType>]
 type Transformation = { 
     workingPose   : Pose
     pose          : Pose

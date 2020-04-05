@@ -15,7 +15,7 @@ let main argv =
     printfn "%A" System.Environment.CurrentDirectory
 
     Aardvark.Init()
-    Ag.initialize()
+    
     Aardium.init()
 
     // media apps require a runtime, which serves as renderer for your render controls.

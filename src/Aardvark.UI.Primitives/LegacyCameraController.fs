@@ -3,7 +3,7 @@
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -24,7 +24,7 @@ type CameraControllerMessage =
 
 [<Obsolete("CameraController module is deprecated. Use much smoother FreeFlyController instead.")>]
 module CameraController =
-    open Aardvark.Base.Incremental.Operators    
+    open FSharp.Data.Adaptive.Operators    
     
     type Message = CameraControllerMessage
 
@@ -229,7 +229,7 @@ module CameraController =
     let update' = flip update
 
 
-    let attributes (state : MCameraControllerState) (f : Message -> 'msg) = 
+    let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) = 
          AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
             always (onMouseDown (fun b p -> f (Down(b,p))))
@@ -240,20 +240,20 @@ module CameraController =
             onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseMove (Move >> f))
         ]
 
-    let extractAttributes (state : MCameraControllerState) (f : Message -> 'msg) =
+    let extractAttributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         attributes state f |> AttributeMap.toAMap
 
-    let controlledControlWithClientValues (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
-        let cam = Mod.map2 Camera.create state.view frustum 
+        let cam = AVal.map2 Camera.create state.view frustum 
         Incremental.renderControlWithClientValues' cam attributes config sg
 
-    let controlledControl (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
+    let controlledControl (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         controlledControlWithClientValues state f frustum att RenderControlConfig.standard (constF sg)
 
 
-    let withControls (state : MCameraControllerState) (f : Message -> 'msg) (frustum : IMod<Frustum>) (node : DomNode<'msg>) =
-        let cam = Mod.map2 Camera.create state.view frustum 
+    let withControls (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (node : DomNode<'msg>) =
+        let cam = AVal.map2 Camera.create state.view frustum 
         match node with
             | :? SceneNode<'msg> as node ->
                 let getState(c : Aardvark.Service.ClientInfo) =
@@ -273,12 +273,12 @@ module CameraController =
                 
  
 
-    let view (state : MCameraControllerState) =
+    let view (state : AdaptiveCameraControllerState) =
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0
         div [attribute "style" "display: flex; flex-direction: row; width: 100%; height: 100%; border: 0; padding: 0; margin: 0"] [
   
             controlledControl state id 
-                (Mod.constant frustum)
+                (AVal.constant frustum)
                 (AttributeMap.empty)                
                 (
                     Sg.box' C4b.Green (Box3d(-V3d.III, V3d.III))

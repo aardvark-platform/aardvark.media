@@ -1,8 +1,9 @@
 Another.Unofficial.Xilium.CefGlue
 Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies
+Microsoft.NETFramework.ReferenceAssemblies
 
 Aardvark.Base
-Aardvark.Base.Incremental
+FSharp.Data.Adaptive
 Aardvark.Base.FSharp
 
 Aardvark.Base.Rendering

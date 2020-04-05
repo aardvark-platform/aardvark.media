@@ -1,13 +1,14 @@
-﻿module App
-
-open RenderModel // open the namespace which holds our domain types (both, the original and the generated ones)
+module App
 
 open Aardvark.Base             // math stuff such as V3d, Trafo3d
-open Aardvark.Base.Incremental // the incremental system (Mod et al) including domain type functionality
+open FSharp.Data.Adaptive // the incremental system (Mod et al) including domain type functionality
 open Aardvark.Base.Rendering   // basic rendering datastructures (such as CullMode)
 
 open Aardvark.UI            // the base infrastructure for elm style aardvark applications
 open Aardvark.UI.Primitives // for gui elements such as div, text, button but also camera controlers
+
+open Adaptify.FSharp.Core
+open RenderModel // open the namespace which holds our domain types (both, the original and the generated ones)
 
 // the actions (might be nested for composability) of our application
 type Action = 
@@ -26,38 +27,38 @@ let update (m : Model) (a : Action) =
         | SetCullMode mode -> { m with appearance = { cullMode = mode } }
 
 // map objects to their rendering representation (adaptively)
-let renderModel (model : IMod<MObject>) =
+let renderModel (model : aval<AdaptiveObjectCase>) =
     adaptive {
         let! currentModel = model // type could change, read adaptively
         match currentModel with
-            | MFileModel fileName -> 
+            | AdaptiveFileModel fileName -> 
                 let! file = fileName // read current filename (if model stays the same but filename changes)
                 if System.IO.File.Exists file then  // check if good
                     return 
                         file 
                         |> Sg.Assimp.loadFromFile true 
-                        |> Sg.trafo (Trafo3d.Scale(1.0,1.0,-1.0) |> Mod.constant)
+                        |> Sg.trafo (Trafo3d.Scale(1.0,1.0,-1.0) |> AVal.constant)
                         |> Sg.normalize // create scenegraph
                 else 
                     Log.warn "file not found"
                     return Sg.empty 
-            | MSphereModel(center,radius) ->
-                let sphere = Sg.sphere 6 (Mod.constant C4b.White) radius 
+            | AdaptiveSphereModel(center,radius) ->
+                let sphere = Sg.sphere 6 (AVal.constant C4b.White) radius 
                 // create unit sphere of given mod radius and translate adaptively
                 return Sg.translate' center sphere
-            | MBoxModel b -> 
-                return Sg.box (Mod.constant C4b.White) b //adaptively create box
+            | AdaptiveBoxModel b -> 
+                return Sg.box (AVal.constant C4b.White) b //adaptively create box
     }
 
 // map the adaptive model to a rendering representation.
-let view3D (m : MModel) =
+let view3D (m : AdaptiveModel) =
     let model =
         adaptive {
             let! model = m.currentModel // peel of level of change: the model could have changed
             match model with
-                | None ->  // model switched to no model
+                | AdaptiveNone ->  // model switched to no model
                     return Sg.empty // no model specified, render nothing
-                | Some model -> // model switched to Some model
+                | AdaptiveSome model -> // model switched to Some model
                     return! renderModel model // render the model
         }
 
@@ -75,7 +76,7 @@ let view3D (m : MModel) =
             // (nested changeability Mod<Mod<..>> is flattened out)          
             
 
-    let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant
+    let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant
     let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"; attribute "data-samples" "8"]
     FreeFlyController.controlledControl m.cameraState CameraAction frustum attributes sg
 
@@ -85,7 +86,7 @@ let defaultBox = BoxModel Box3d.Unit
 // create camera which looks down from (2,2,2) to (0,0,0) while z is up
 let initialView = CameraView.lookAt (V3d.III * 6.0) V3d.OOO V3d.OOI
 
-let view (m : MModel) =
+let view (m : AdaptiveModel) =
     require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
         body [] (        // explit html body for our app (adorner menus need to be immediate children of body). if there is no explicit body the we would automatically generate a body for you.
             Html.SemUi.adornerMenu [ 

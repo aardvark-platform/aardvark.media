@@ -1,4 +1,4 @@
-﻿namespace GeoJsonViewer
+namespace GeoJsonViewer
 
 //open Aardvark.Base
 //open FSharp.Data
@@ -83,7 +83,7 @@
 //      name        = "layer"
 //      typus       = root.Type     |> parseTypus
 //      boundingBox = features      |> computeBb //root.Bbox     |> parseBoundingBox
-//      features    = features      |> PList.ofList
+//      features    = features      |> IndexList.ofList
 //    }
 
 //  let sites = [
@@ -98,7 +98,7 @@
 //      name = "layers"
 //      typus = FeatureCollection
 //      boundingBox = collections |> Seq.fold (fun (a:Box2d) (fc:FeatureCollection) -> a.ExtendedBy(fc.boundingBox)) Box2d.Invalid
-//      features = collections |> Seq.map(fun x -> x.features) |> PList.concat
+//      features = collections |> Seq.map(fun x -> x.features) |> IndexList.concat
 //    }
 
 //  let load : FeatureCollection =     

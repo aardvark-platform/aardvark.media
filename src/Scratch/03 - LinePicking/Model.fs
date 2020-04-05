@@ -1,17 +1,18 @@
-﻿namespace Inc.Model
+namespace Inc.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Action =
-  | FreeFlyAction of CameraController.Message
+  | FreeFlyAction of FreeFlyController.Message
   | PickPolygon   of SceneHit
   | KeyDown       of key : Aardvark.Application.Keys
   | KeyUp         of key : Aardvark.Application.Keys      
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         camera    : CameraControllerState
