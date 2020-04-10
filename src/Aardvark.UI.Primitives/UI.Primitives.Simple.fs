@@ -31,7 +31,7 @@ module Simple =
                         "   " + send src ["event.target.value"] + ";"
                         "}"
                     ]
-                serverSide = fun client src args ->
+                serverSide = fun client args ->
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
@@ -77,7 +77,7 @@ module Simple =
                         "   " + send src ["event.target.value"] + ";"
                         "}"
                     ]
-                serverSide = fun client src args ->
+                serverSide = fun client args ->
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
@@ -123,7 +123,7 @@ module Simple =
                         "   " + send src ["event.target.value"] + ";"
                         "}"
                     ]
-                serverSide = fun client src args ->
+                serverSide = fun client args ->
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
@@ -185,7 +185,7 @@ module Simple =
         let changed =
             AttributeValue.Event  {
                 clientSide = fun send src -> send src ["event.target.value"] + ";"
-                serverSide = fun client src args ->
+                serverSide = fun client args ->
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 

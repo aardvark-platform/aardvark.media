@@ -126,7 +126,7 @@ module SimplePrimitives =
             let ev =
                 {
                     clientSide = fun _ _ -> ""
-                    serverSide = fun _ _ _ -> Seq.singleton toggle
+                    serverSide = fun _ _ -> Seq.singleton toggle
                 }
 
             let boot = bootCheckBox.Replace("__INITIALSTATE__", if state.GetValue() then "check" else "uncheck")

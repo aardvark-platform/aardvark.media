@@ -72,10 +72,17 @@ module MutableApp =
         let reader = new IO.StreamReader(stream)
         reader.ReadToEnd()
 
+    type private EventMessageInfo =
+        {
+            name    : string
+            capture : bool
+            id      : int
+        }
+
     type private EventMessage =
         {
             sender  : string
-            name    : string
+            info    : EventMessageInfo
             args    : array<string>
         }
 
@@ -268,6 +275,18 @@ module MutableApp =
                     updateThread.Name <- "[media] UpdateThread"
                     updateThread.Start()
                     
+                    let mutable lastStopped = -1
+                    let inline stop (id : int) () =
+                        if id >= 0 then
+                            lastStopped <- id
+                        else
+                            lastStopped <- -1
+
+                    let inline isStopped (id : int) =
+                        if id >= 0 then 
+                            lastStopped = id
+                        else
+                            false
 
                     socket {
                         while running do
@@ -284,13 +303,16 @@ module MutableApp =
                                                     Log.warn "bad opcode: %A" str
                                         else
                                             let evt : EventMessage = Pickler.json.UnPickle data
-                                            match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
-                                                | (true, handler) ->
-                                                    let msgs = handler sessionId evt.sender (Array.toList evt.args)
-                                                    app.update sessionId msgs
+                                            if not (isStopped evt.info.id) then
+                                                match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.info.name, evt.info.capture))) with
+                                                    | (true, handler) ->
+                                                        let args = Array.toList evt.args
+                                                        let info = EventInfo(sessionId, evt.sender, evt.info.id, evt.info.capture, stop evt.info.id)
+                                                        let msgs = handler info args
+                                                        app.update sessionId msgs
                                                     
-                                                | _ ->
-                                                    ()
+                                                    | _ ->
+                                                        ()
 
                                     with e ->
                                         Log.warn "unpickle faulted: %A" e

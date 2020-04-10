@@ -569,7 +569,7 @@ module FreeFlyController =
             onlyWhen 
                 (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
                 (onCapturedPointerMove (Some 2) (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
-            always <| onEvent "onRendered" [] (fun _ -> f Rendered)
+            always <| onEvent "onrender" [] (fun _ -> f Rendered)
             always <| onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick |> f)
             always <| onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick |> f)
             always <| onTouchStickStop "leftstick" (fun _ -> ReleaseMovStick |> f)

@@ -40,7 +40,7 @@ module Updaters =
     type UpdateState<'msg> =
         {
             scenes              : ContraDict<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>
-            handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
+            handlers            : ContraDict<string * string * bool, EventInfo -> list<string> -> seq<'msg>>
             references          : Dictionary<string * ReferenceKind, Reference>
             activeChannels      : Dict<string * string, ChannelReader>
             messages            : IObservable<'msg>
@@ -65,7 +65,7 @@ module Updaters =
         let setup (state : UpdateState<'msg>) =
             if id.IsValueCreated then
                 for (name,cb) in Map.toSeq node.Callbacks do
-                    state.handlers.[(id.Value,name)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
+                    state.handlers.[(id.Value,name,false)] <- fun _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
 
             for r in node.Required do
                 state.references.[(r.name, r.kind)] <- r
@@ -271,16 +271,55 @@ module Updaters =
                 for (name, op) in atts do
                     match op with
                         | Set value ->
-                            let value =
-                                match value with
-                                    | AttributeValue.String str -> 
-                                        str
-                                    | AttributeValue.Event evt ->
-                                        let key = (id, name)
-                                        state.handlers.[key] <- evt.serverSide
-                                        Event.toString id name evt
+                            
+                            match value with
+                                | AttributeValue.String str -> 
+                                    match HashMap.tryFind name old with
+                                    | Some (AttributeValue.EventInfo e) ->
+                                        match e.capture with
+                                        | Some _ -> yield JSExpr.RemoveEventListener(self, name, true)
+                                        | _ -> ()
 
-                            yield JSExpr.SetAttribute(self, name, value)
+                                        match e.bubble with
+                                        | Some _ -> yield JSExpr.RemoveEventListener(self, name, false)
+                                        | _ -> ()
+                                    | _ ->
+                                        ()
+
+                                    yield JSExpr.SetAttribute(self, name, str)
+                                
+                                | AttributeValue.EventInfo evt ->
+                                    let inline setEvent (capture : bool) (evt : Event<'msg>) =
+                                        let key = (id, name, capture)
+                                        state.handlers.[key] <- evt.serverSide
+                                        let str = Event.toString id name capture evt
+                                        JSExpr.SetEventListener(self, name, str, capture)
+
+                                    match HashMap.tryFind name old with
+                                    | Some (AttributeValue.EventInfo e) ->
+                                        if not (Unchecked.equals e.capture evt.capture) then
+                                            match evt.capture with
+                                            | Some evt -> yield setEvent true evt
+                                            | None -> yield JSExpr.RemoveEventListener(self, name, true)
+
+                                        if not (Unchecked.equals e.bubble evt.bubble) then
+                                            match evt.bubble with
+                                            | Some evt -> yield setEvent false evt
+                                            | None -> yield JSExpr.RemoveEventListener(self, name, false)
+
+                                    | o ->
+                                        match o with
+                                        | Some _ -> yield JSExpr.RemoveAttribute(self, name)
+                                        | None -> ()
+
+                                        match evt.capture with
+                                        | Some evt -> yield setEvent true evt
+                                        | None -> ()
+
+                                        match evt.bubble with
+                                        | Some evt -> yield setEvent false evt
+                                        | None -> ()
+                                    
 
                             //yield JSExpr.SetAttribute(self, name, value)
 
@@ -463,8 +502,18 @@ module Updaters =
         let renderMessage (info : ClientInfo) =
             let attributes = e.Attributes.Content.GetValue()
             match HashMap.tryFind "preRender" attributes with
-                | Some (AttributeValue.Event evt) ->
-                    evt.serverSide info.session this.Id.Value []
+                | Some (AttributeValue.EventInfo evt) ->
+                    let capture = 
+                        match evt.capture with
+                        | Some evt -> evt.serverSide (EventInfo(info.session, this.Id.Value, -1, false)) []
+                        | None -> Seq.empty
+
+                    let bubble = 
+                        match evt.bubble with
+                        | Some evt -> evt.serverSide (EventInfo(info.session, this.Id.Value, -1, false)) []
+                        | None -> Seq.empty
+
+                    Seq.append capture bubble
                 | _ ->
                     Seq.empty
                     
@@ -509,10 +558,10 @@ module Updaters =
             
         let mutable cache : Option<UpdateState<'inner> * System.Reactive.Subjects.Subject<'inner>> = None
             
-        let mapMsg handler (client : Guid) (name : string) (args : list<string>) =
+        let mapMsg handler (client : EventInfo) (args : list<string>) =
             match cache with
                 | Some (_,subject) ->
-                    let messages = handler client name args
+                    let messages = handler client args
                     seq {
                         for msg in messages do
                             yield m.Mapping msg
@@ -557,21 +606,21 @@ module Updaters =
             
         let mutable cache : Option<UpdateState<'inner> * System.Reactive.Subjects.Subject<'inner> * IDisposable> = None
 
-        let processMsgs (client : Guid) (messages : seq<'inner>) =
+        let processMsgs (client : EventInfo) (messages : seq<'inner>) =
             match cache with
                 | Some (_, subject, _) ->
                     let messages = messages |> Seq.cache
-                    m.update client messages
+                    m.update client.Client messages
                     for msg in messages do subject.OnNext msg
                     let model = m.model.GetValue()
                     messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg)) |> Seq.cache
                 | _ ->
                     Seq.empty
 
-        let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
+        let mapMsg handler (client : EventInfo) (args : list<string>) =
             match cache with
                 | Some (_, subject, _) ->
-                    let messages = handler client bla args
+                    let messages = handler client args
                     processMsgs client messages
                 | None ->
                     Seq.empty
@@ -583,7 +632,7 @@ module Updaters =
                 let subject = new System.Reactive.Subjects.Subject<'inner>()
                 let innerState =
                     {
-                        scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f v -> let model = m.model.GetValue() in v |> f |> processMsgs v.session)), getState))
+                        scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f v -> let model = m.model.GetValue() in v |> f |> processMsgs (EventInfo(v.session, "", -1, false)))), getState))
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
                         references          = state.references
                         activeChannels      = state.activeChannels

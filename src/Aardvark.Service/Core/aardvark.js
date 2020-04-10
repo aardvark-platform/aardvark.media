@@ -162,7 +162,7 @@ class Renderer {
 		if (useMapping === "false") useMapping = false; else useMapping = true;
 		this.useMapping = useMapping;
 
-		var onRendered = this.div.getAttribute("onRendered");
+        var onRendered = aardvark.getEventListener(this.div, "onrendered");
         if (onRendered) this.onRendered = onRendered;
 
         this.customLoaderImg = this.div.getAttribute("data-customLoaderImg");
@@ -504,13 +504,27 @@ class Renderer {
     }
 
     processEvent() {
-        var sender = this.id;
-        var name = arguments[0];
+        const sender = this.id;
+        const name = arguments[0];
+
+        let info = null;
+        if (typeof name === "string") {
+            info = { name: name, capture: false, id: -1 };
+        }
+        else if (name.name) {
+            info = { name: name.name, capture: (name.capture || false), id: (name.id | 0)}
+        }
+        if (!info) {
+            console.warn("bad event: ", name);
+            return;
+        }
+
+
         var args = [];
-        for (var i = 1; i < arguments.length; i++) {
+        for (let i = 1; i < arguments.length; i++) {
             args.push(JSON.stringify(arguments[i]));
         }
-        var message = JSON.stringify({ sender: sender, name: name, args: args });
+        var message = JSON.stringify({ sender: sender, info: info, args: args });
         this.send(message);
     }
 
@@ -732,18 +746,9 @@ class Renderer {
 			this.send(JSON.stringify({ Case: "Rendered" }));
 
 
-            var shouldSay = this.div.getAttribute("onRendered");
+            var shouldSay = aardvark.getEventListener(this.div, "onrender", false);
             if (shouldSay) {
-                if (this.div.onRenderedCode != shouldSay) {
-                    this.div.onRenderedCode = shouldSay;
-                    var f = new Function(shouldSay);
-                    this.div.onRendered = f.bind(this.div);
-                }
-                this.div.onRendered();
-            }
-            else {
-                delete this.div.onRenderedCode;
-                delete this.div.onRendered;
+                shouldSay(this.div.renderEvent);
             }
 
             if (this.loading) {
@@ -845,18 +850,9 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-                var shouldSay = this.div.getAttribute("onRendered");
+                var shouldSay = aardvark.getEventListener(this.div, "onrender", false);
                 if (shouldSay) {
-                    if (this.div.onRenderedCode != shouldSay) {
-                        this.div.onRenderedCode = shouldSay;
-                        var f = new Function(shouldSay);
-                        this.div.onRendered = f.bind(this.div);
-                    }
-                    this.div.onRendered();
-                }
-                else {
-                    delete this.div.onRenderedCode;
-                    delete this.div.onRendered;
+                    shouldSay(this.div.renderEvent);
                 }
 
                 if (this.loading) {
@@ -882,6 +878,10 @@ class Renderer {
         var bg = window.getComputedStyle(this.div).backgroundColor;
         if(typeof bg != undefined)
             color = new RGBColor(bg);
+
+        this.div.renderEvent = { target: this.div };
+        var shouldSay = aardvark.getEventListener(this.div, "onrender", true);
+        if (shouldSay) shouldSay(this.div.renderEvent);
 
         this.send(JSON.stringify({ Case: "RequestImage", background: { A: 255, B: color.b, G: color.g, R: color.r }, size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
     }
@@ -1178,14 +1178,29 @@ if (!aardvark.connect) {
         
 
         eventSocket.onopen = function () {
+
+
             aardvark.processEvent = function () {
                 var sender = arguments[0];
                 var name = arguments[1];
                 var args = [];
+
+                let info = null;
+                if (typeof name === "string") {
+                    info = { name: name, capture: false, id: aardvark.getEventId(aardvark.currentEvent) };
+                }
+                else if (name.name) {
+                    info = { name: name.name, capture: (name.capture || false), id: ((name.id || (aardvark.getEventId(aardvark.currentEvent))) || -1) }
+                }
+                if (!info) {
+                    console.warn("bad event: ", name);
+                    return;
+                }
+
                 for (var i = 2; i < arguments.length; i++) {
                     args.push(JSON.stringify(arguments[i]));
                 }
-                var message = JSON.stringify({ sender: sender, name: name, args: args });
+                var message = JSON.stringify({ sender: sender, info: info, args: args });
                 eventSocket.send(message);
             };
             doPing();
@@ -1257,6 +1272,77 @@ if (!aardvark.setAttribute) {
         else {
             id.setAttribute(name, value);
         }
+    };
+}
+
+if (!aardvark.setEventListener) {
+
+    aardvark.currentEvent = null;
+    aardvark.useEvent = function (evt, action) {
+        const o = aardvark.currentEvent;
+        aardvark.currentEvent = evt;
+        try { return action(); }
+        finally { aardvark.currentEvent = o; }
+    }
+
+    const sym = Symbol("eventId");
+    aardvark.currentEventId = 1;
+    aardvark.getEventId = function (evt) {
+        if (!evt) return -1;
+
+        let id = evt[sym];
+        if (id) return id;
+
+        id = aardvark.currentEventId;
+        aardvark.currentEventId = id + 1;
+        evt[sym] = id;
+        return id;
+    }
+
+
+    aardvark.setEventListener = function (element, name, callback, capture) {
+        if (!element) { console.warn("cannot set event listener to undefined element", name); return; }
+        if (!name) { console.warn("cannot set event listener to " + element.id + " with no name"); return; }
+        capture = capture || false;
+        if (name.startsWith("on")) name = name.substring(2);
+
+        const uniqueName = name + (capture ? "__captured" : "") + "__listener";
+
+
+        if (callback) {
+            const o = element[uniqueName];
+            if (o) element.removeEventListener(name, o, capture);
+
+            function realCallback(evt) {
+                aardvark.useEvent(evt, function () {
+                    return callback(evt);
+                });
+            }
+
+            element.addEventListener(name, realCallback, capture);
+            element[uniqueName] = realCallback;
+        }
+        else {
+            const o = element[uniqueName];
+            if (!o) return;
+            element.removeEventListener(name, o, capture);
+            delete element[uniqueName];
+        }
+
+
+    };
+
+    aardvark.getEventListener = function (element, name, capture) {
+        if (!element) { console.warn("cannot get event listener to undefined element", name); return null; }
+        if (!name) { console.warn("cannot get event listener to " + element.id + " with no name"); return null; }
+        capture = capture || false;
+        if (name.startsWith("on")) name = name.substring(2);
+
+        const uniqueName = name + (capture ? "__captured" : "") + "__listener";
+
+        const o = element[uniqueName];
+        if (o) return o;
+        else return null;
     };
 }
 

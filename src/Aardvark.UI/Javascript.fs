@@ -14,6 +14,8 @@ type JSExpr =
     | CreateElement of tag : string * ns : Option<string>
     | SetAttribute of target : JSExpr * name : string * value : string
     | RemoveAttribute of target : JSExpr * name : string
+    | SetEventListener of target : JSExpr * name : string * value : string * capture: bool
+    | RemoveEventListener of target : JSExpr * name : string * capture: bool
 
     | Remove of target : JSExpr
     | InnerText of target : JSExpr * text : string 
@@ -52,6 +54,14 @@ module JSExpr =
             match e with
                 | Raw _ | Body | Nop | CreateElement _ | GetElementById _ ->
                     return e
+
+                | SetEventListener(t, name, value, capture) ->
+                    let! t = eliminateDeadBindings t
+                    return SetEventListener(t, name, value, capture)
+                    
+                | RemoveEventListener(t, name, capture) ->
+                    let! t = eliminateDeadBindings t
+                    return RemoveEventListener(t, name, capture)
 
                 | SetAttribute(t, name, value) ->
                     let! t = eliminateDeadBindings t
@@ -129,9 +139,17 @@ module JSExpr =
             | CreateElement(tag,ns) ->
                 match ns with
                     | None -> 
-                        sprintf "document.createElement(\"%s\")" tag
+                        sprintf "document.createElement(\"%s\");" tag
                     | Some ns -> 
-                        sprintf "document.createElementNS(\"%s\", \"%s\")" ns tag 
+                        sprintf "document.createElementNS(\"%s\", \"%s\");" ns tag 
+
+            | SetEventListener(t, name, value, capture) ->
+                let t = toStringInternal t
+                sprintf "aardvark.setEventListener(%s, \"%s\", (function(event) { %s }).bind(%s), %s);" t name value t (if capture then "true" else "false")
+                
+            | RemoveEventListener(t, name, capture) ->
+                let t = toStringInternal t
+                sprintf "aardvark.setEventListener(%s, \"%s\", null, %s);" t name (if capture then "true" else "false")
 
             | SetAttribute(t, name, value) ->
                 let t = toStringInternal t

@@ -58,46 +58,62 @@ module Pickler =
     let unpickleOfJson s = json.UnPickleOfString s
     let jsonToString s = json.PickleToString s
 
+type EventInfo(client : Guid, sender : string, id : int, capture : bool, stop : unit -> unit) =
+    member x.Client = client
+    member x.Sender = sender
+    member x.Id = id
+    member x.Capture = capture
+    member x.Stop() = stop()
+
+    override x.ToString() =
+        sprintf "{ client = %A; sender = %A; id = %d; capture = %A }" client sender id capture
+
+    new (client : Guid, sender : string, id : int, capture : bool) = EventInfo(client, sender, id, capture, fun () -> ())
+    static member Empty = EventInfo(Guid.Empty, "", -1, false)
 
 type Event<'msg> =
     {
         clientSide  : (string -> list<string> -> string) -> string -> string
-        serverSide : Guid -> string -> list<string> -> seq<'msg>
+        serverSide : EventInfo -> list<string> -> seq<'msg>
     }
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Event =
 
-    let private processEvent (name : string) (id : string) (args : list<string>) =
-        let args = sprintf "'%s'" id :: sprintf "'%s'" name :: args
+    let private processEvent (name : string) (capture : bool) (id : string) (args : list<string>) =
+
+        let info = sprintf "{ name: '%s', capture: %s }" name (if capture then "true" else "false")
+
+        let args = sprintf "'%s'" id :: info :: args
         sprintf "aardvark.processEvent(%s);" (String.concat ", " args)
         
-    let toString (id : string) (name : string) (evt : Event<'msg>) =
-        let send = processEvent name
-        evt.clientSide send id
+    let toString (id : string) (name : string) (capture : bool) (evt : Event<'msg>) =
+        let send = processEvent name capture
+        evt.clientSide send id 
 
     let empty<'msg> : Event<'msg> =
         {
             clientSide = fun _ _ -> ""
-            serverSide = fun _ _ _ -> Seq.empty
+            serverSide = fun _ _ -> Seq.empty
         }
 
     let ofTrigger (reaction : unit -> 'msg) =
         {
             clientSide = fun send id -> send id []
-            serverSide = fun _ _ _ -> Seq.delay (reaction >> Seq.singleton)
+            serverSide = fun _ _ -> Seq.delay (reaction >> Seq.singleton)
         }
 
     let ofDynamicArgs (args : list<string>) (reaction : list<string> -> seq<'msg>) =
         {
             clientSide = fun send id -> send id args
-            serverSide = fun session id args -> reaction args
+            serverSide = fun session args -> reaction args
         }
 
     let create1 (a : string) (reaction : 'a -> 'msg) =
         {
             clientSide = fun send id -> send id [a]
-            serverSide = fun session id args -> 
+            serverSide = fun session args -> 
                 match args with
                     | [a] ->
                         try 
@@ -114,7 +130,7 @@ module Event =
     let create2 (a : string) (b : string) (reaction : 'a -> 'b -> 'msg) =
         {
             clientSide = fun send id -> send id [a; b]
-            serverSide = fun session id args -> 
+            serverSide = fun session args -> 
                 match args with
                     | [a; b] ->
                         try 
@@ -131,7 +147,7 @@ module Event =
     let create3 (a : string) (b : string) (c : string) (reaction : 'a -> 'b -> 'c -> 'msg) =
         {
             clientSide = fun send id -> send id [a; b; c]
-            serverSide = fun session id args -> 
+            serverSide = fun session args -> 
                 match args with
                     | [a; b; c] ->
                         try 
@@ -151,12 +167,12 @@ module Event =
                 l.clientSide (fun id args -> send id ("0" :: args)) id + "; " +
                 r.clientSide (fun id args -> send id ("1" :: args)) id
 
-            serverSide = fun session id args ->
+            serverSide = fun session args ->
                 match args with
-                    | "0" :: args -> l.serverSide session id args
-                    | "1" :: args -> r.serverSide session id args
+                    | "0" :: args -> l.serverSide session args
+                    | "1" :: args -> r.serverSide session args
                     | _ -> 
-                        Log.warn "[UI] expected args ((1|2)::args) but got %A" args
+                        Log.warn "[UI] expected args ((0|1)::args) but got %A" args
                         Seq.empty
                 
         }
@@ -176,12 +192,12 @@ module Event =
                             )
                         String.concat "; " clientScripts
 
-                    serverSide = fun session id args ->
+                    serverSide = fun session args ->
                         match args with
                             | index :: args ->
                                 match Int32.TryParse index with
                                     | (true, index) when index >= 0 && index < events.Length ->
-                                        events.[index].serverSide session id args
+                                        events.[index].serverSide session args
 
                                     | _ ->
                                         Log.warn "[UI] unexpected index for dispatcher: %A" index
@@ -197,26 +213,65 @@ module Event =
     let map (f : 'a -> 'b) (e : Event<'a>) = 
         {
             clientSide = e.clientSide; 
-            serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
+            serverSide = fun session args -> Seq.map f (e.serverSide session args) 
         }
+
+
+type Events<'msg> =
+    {
+        capture : option<Event<'msg>>
+        bubble  : option<Event<'msg>>
+    }
+    
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Events =
+    let capture (e : Event<'msg>) = { capture = Some e; bubble = None }
+    let bubble (e : Event<'msg>) = { capture = None; bubble = Some e }
+
+    let combine (l : Events<'msg>) (r : Events<'msg>) =
+        {
+            capture =
+                match l.capture with
+                | Some l ->
+                    match r.capture with
+                    | Some r -> Some (Event.combine l r)
+                    | None -> Some l
+                | None ->
+                    r.capture
+            bubble =
+                match l.bubble with
+                | Some l ->
+                    match r.bubble with
+                    | Some r -> Some (Event.combine l r)
+                    | None -> Some l
+                | None ->
+                    r.bubble
+        }
+
+
+    let map (mapping : 'a -> 'b) (info : Events<'a>) =
+        {
+            capture = info.capture |> Option.map (Event.map mapping)
+            bubble = info.bubble |> Option.map (Event.map mapping)
+        }
+
 
 [<RequireQualifiedAccess>]
 type AttributeValue<'msg> =
     | String of string
-    | Event of Event<'msg>
-    //| RenderControlEvent of (SceneEvent -> list<'msg>)
+    | EventInfo of Events<'msg>
+
+    static member Event (e : Event<'msg>) = EventInfo (Events.bubble e)
+    static member CaptureEvent (e : Event<'msg>) = EventInfo (Events.capture e)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module AttributeValue =
     
     let combine (name : string) (l : AttributeValue<'msg>) (r : AttributeValue<'msg>) =
         match name, l, r with
-            | _, AttributeValue.Event l, AttributeValue.Event r -> 
-                AttributeValue.Event (Event.combine l r)
-
-            //| _, AttributeValue.RenderControlEvent l,  AttributeValue.RenderControlEvent r ->
-            //     AttributeValue.RenderControlEvent (fun a -> l a @ r a)
-
+            | _, AttributeValue.EventInfo l, AttributeValue.EventInfo r -> 
+                AttributeValue.EventInfo (Events.combine l r)
+                
             | "class", AttributeValue.String l, AttributeValue.String r -> 
                 AttributeValue.String (l + " " + r)
 
@@ -228,7 +283,7 @@ module AttributeValue =
 
     let map (f : 'a -> 'b) (v : AttributeValue<'a>) = 
         match v with
-            | AttributeValue.Event e -> AttributeValue.Event (Event.map f e)
+            | AttributeValue.EventInfo e -> AttributeValue.EventInfo (Events.map f e)
             | AttributeValue.String s -> AttributeValue.String s
             //| AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
 
@@ -849,7 +904,7 @@ and DomNode private() =
 
             {
                 clientSide = fun send id -> send id args + ";"
-                serverSide = fun session id args ->
+                serverSide = fun session args ->
                     match args with
                         | x :: y :: alt :: shift :: ctrl :: which :: _ ->
                             let x = round (float x) |> int
@@ -858,7 +913,8 @@ and DomNode private() =
                             let alt = Boolean.Parse alt
                             let shift = Boolean.Parse shift
                             let ctrl = Boolean.Parse ctrl
-                            perform(session, id, kind, button, alt, shift, ctrl, V2i(x,y))
+                            // TODO: perform should get full EventInfo
+                            perform(session.Client, session.Sender, kind, button, alt, shift, ctrl, V2i(x,y))
 
                         | x :: y :: alt :: shift :: ctrl :: _ -> 
                             let vx = round (float x) |> int
@@ -866,7 +922,8 @@ and DomNode private() =
                             let alt = Boolean.Parse alt
                             let shift = Boolean.Parse shift
                             let ctrl = Boolean.Parse ctrl
-                            perform(session, id, kind, MouseButtons.None, alt, shift, ctrl, V2i(vx,vy))
+                            // TODO: perform should get full EventInfo
+                            perform(session.Client, session.Sender, kind, MouseButtons.None, alt, shift, ctrl, V2i(vx,vy))
 
                         | _ ->
                             Seq.empty

@@ -10,16 +10,18 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>..\..\bin\Release\</OutputPath>
   </PropertyGroup>
-  <Target Name="CopyTurbojpeg" AfterTargets="Build">
-    <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Windows_NT'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\turbojpeg.dll" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Unix'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Unix'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Unix'"        SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\libturbojpeg.dylib" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Unix'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\linux\AMD64\libturbojpeg.so" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Unix'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\linux\AMD64\libturbojpeg.so" DestinationFolder="$(OutputPath)..\netcoreapp3.1" ContinueOnError="true" />
-    <Copy Condition="'$(OS)' == 'Unix'" SourceFiles="$(ProjectDir)..\..\lib\Native\Aardvark.Service\linux\AMD64\libturbojpeg.so" DestinationFolder="$(OutputPath)..\net471" ContinueOnError="true" />
+  <ItemGroup>
+    <NativeDependency Include="$(ProjectDir)..\..\lib\Native\Aardvark.Service\windows\AMD64\*.dll" />
+    <NativeDependency Include="$(ProjectDir)..\..\lib\Native\Aardvark.Service\linux\AMD64\*.so" />
+    <NativeDependency Include="$(ProjectDir)..\..\lib\Native\Aardvark.Service\mac\AMD64\*.dylib" />
+  </ItemGroup>
+  <Target Name="CopyNative" AfterTargets="Build">
+    <MakeDir Condition="!Exists('$(OutputPath)..\netstandard2.0\')" Directories="$(OutputPath)..\netstandard2.0\" />
+    <MakeDir Condition="!Exists('$(OutputPath)..\netcoreapp3.1\')" Directories="$(OutputPath)..\netcoreapp3.1\" />
+    <MakeDir Condition="!Exists('$(OutputPath)..\net471\')" Directories="$(OutputPath)..\net471\" />
+    <Copy SourceFiles="@(NativeDependency)" DestinationFolder="$(OutputPath)..\netstandard2.0\" ContinueOnError="true" />
+    <Copy SourceFiles="@(NativeDependency)" DestinationFolder="$(OutputPath)..\netcoreapp3.1\"  ContinueOnError="true" />
+    <Copy SourceFiles="@(NativeDependency)" DestinationFolder="$(OutputPath)..\net471\"  ContinueOnError="true" />
   </Target>
   <ItemGroup>
     <Compile Include="Utilities.fs" />
@@ -38,7 +40,7 @@
     <EmbeddedResource Include="resources\semantic.css" />
     <EmbeddedResource Include="resources\docking.js" />
     <EmbeddedResource Include="resources\semantic.js" />
-	<EmbeddedResource Include="resources\jquery-3-3-1.js" />
+	  <EmbeddedResource Include="resources\jquery-3-3-1.js" />
     <EmbeddedResource Include="resources\touchstick.js" />
     <Compile Include="aardfs\FileSystem.fs" />
     <EmbeddedResource Include="aardfs\aardfs.css" />

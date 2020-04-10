@@ -174,7 +174,7 @@ module Dialog =
             "dialogchoose", 
                 AttributeValue.Event {
                     clientSide = fun _ _ -> ""
-                    serverSide = fun _ _ args ->
+                    serverSide = fun _ args ->
                         match args with
                         | [arg] -> 
                             try 

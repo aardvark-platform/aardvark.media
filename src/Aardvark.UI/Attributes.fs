@@ -19,7 +19,7 @@ module Attributes =
         name, 
         AttributeValue.Event { 
             clientSide = fun send id -> code.Replace("__ID__", id)
-            serverSide = fun _ _ _ -> Seq.empty
+            serverSide = fun _ _ -> Seq.empty
         }
     
 
@@ -102,7 +102,7 @@ module Events =
         let args =
             {
                 clientSide = fun send id -> (if prevent then "event.preventDefault();" else "")+send id ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"]
-                serverSide = fun session id args -> (serverClick >> f >> Seq.singleton) args
+                serverSide = fun session args -> (serverClick >> f >> Seq.singleton) args
             }
         "onwheel" , AttributeValue.Event(args)
 
@@ -190,13 +190,13 @@ module Events =
         kind, AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left) / rect.width"
                     "var y = (event.clientY - rect.top) / rect.height"
                     send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
                         
                 ]
-            serverSide = fun client src args -> 
+            serverSide = fun client args -> 
                 match args with
                     | which :: pos :: _ ->
                         let v : V2d = Pickler.json.UnPickleOfString pos
@@ -210,13 +210,13 @@ module Events =
         kind, AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left)"
                     "var y = (event.clientY - rect.top)"
                     send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"; "{ X: rect.width.toFixed(10), Y: rect.height.toFixed(10) }"]
                         
                 ]
-            serverSide = fun client src args -> 
+            serverSide = fun client args -> 
                 match args with
                     | which :: pos :: size :: _ ->
                         let pos : V2d = Pickler.json.UnPickleOfString pos
@@ -261,13 +261,13 @@ module Events =
         "onwheel", AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left) / rect.width"
                     "var y = (event.clientY - rect.top) / rect.height"
                     send src ["{ X: event.deltaX.toFixed(), Y : event.deltaY.toFixed() }"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
                         
                 ]
-            serverSide = fun client src args -> 
+            serverSide = fun client args -> 
                 match args with
                     | delta :: pos :: _ ->
                         let v : V2d = Pickler.json.UnPickleOfString pos
@@ -286,7 +286,7 @@ module Events =
         name, AttributeValue.Event {
                 clientSide = fun send src -> 
                     String.concat ";" [
-                        yield "var rect = getBoundingClientRect(this)"
+                        yield "var rect = this.getBoundingClientRect()"
                         yield "var x = (event.clientX - rect.left)"
                         yield "var y = (event.clientY - rect.top)"
                         match preventDefault with | None -> () | Some i -> yield (sprintf "if(event.which==%d){event.preventDefault();};" i)
@@ -294,7 +294,7 @@ module Events =
                         yield send src ["event.pointerType";"event.which"; "x|0"; "y|0"]
                         
                     ]
-                serverSide = fun client src args -> 
+                serverSide = fun client args -> 
                     match args with
                         | pointertypestr :: which :: x :: y :: _ ->
                             let v : V2i = V2i(int x, int y)
