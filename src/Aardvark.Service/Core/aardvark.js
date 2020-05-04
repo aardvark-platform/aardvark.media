@@ -9,6 +9,18 @@ if (!aardvark) {
     //window.aardvark = aardvark;
 }
 
+// until new aardium version available
+if (aardvark.electron) {
+
+
+
+    aardvark.openFileDialog = function (config, callback) {
+        if (!callback) callback = config;
+        aardvark.electron.remote.dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] }).then(e => callback(e.filePaths));
+    };
+
+}
+
 if (!aardvark.promise)
 {
     aardvark.promise = new Promise(function (succ, fail) { succ(); });
@@ -720,10 +732,19 @@ class Renderer {
 			this.send(JSON.stringify({ Case: "Rendered" }));
 
 
-			var shouldSay = this.div.getAttribute("onRendered");
-			if (shouldSay) {
-				aardvark.processEvent(this.div.id, 'onRendered');
-			}
+            var shouldSay = this.div.getAttribute("onRendered");
+            if (shouldSay) {
+                if (this.div.onRenderedCode != shouldSay) {
+                    this.div.onRenderedCode = shouldSay;
+                    var f = new Function(shouldSay);
+                    this.div.onRendered = f.bind(this.div);
+                }
+                this.div.onRendered();
+            }
+            else {
+                delete this.div.onRenderedCode;
+                delete this.div.onRendered;
+            }
 
             if (this.loading) {
                 this.fadeIn();
@@ -824,10 +845,20 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-				var shouldSay = this.div.getAttribute("onRendered");
-				if (shouldSay) {
-					aardvark.processEvent(this.div.id, 'onRendered');
-				}
+                var shouldSay = this.div.getAttribute("onRendered");
+                if (shouldSay) {
+                    if (this.div.onRenderedCode != shouldSay) {
+                        this.div.onRenderedCode = shouldSay;
+                        var f = new Function(shouldSay);
+                        this.div.onRendered = f.bind(this.div);
+                    }
+                    this.div.onRendered();
+                }
+                else {
+                    delete this.div.onRenderedCode;
+                    delete this.div.onRendered;
+                }
+
                 if (this.loading) {
                     this.fadeIn();
                 }

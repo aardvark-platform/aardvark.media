@@ -1,15 +1,15 @@
-﻿namespace OpcSelectionViewer
+namespace OpcSelectionViewer
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Geometry
 open Aardvark.SceneGraph.Opc
 open Aardvark.Geometry
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.Application
-
+open Adaptify
 open OpcSelectionViewer.Picking
 
 type Message =
@@ -19,16 +19,16 @@ type Message =
   | UpdateDockConfig of DockConfig    
   | PickingAction    of PickingAction
 
-[<DomainType>]
+[<ModelType>]
 type Model =
     {
         cameraState          : CameraControllerState                       
         fillMode             : FillMode                                
-        [<NonIncremental>]
+        [<NonAdaptive>]
         patchHierarchies     : list<PatchHierarchy>        
         
         boxes                : list<Box3d>
-        opcInfos             : hmap<Box3d, OpcData>
+        opcInfos             : HashMap<Box3d, OpcData>
         threads              : ThreadPool<Message>
         dockConfig           : DockConfig
         picking              : PickingModel

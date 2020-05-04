@@ -4,7 +4,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open RenderControl.Model
 
@@ -21,8 +21,8 @@ let update (model : Model) (msg : Message) =
         | CenterScene -> 
             { model with cameraState = initialCamera }
 
-let viewScene (model : MModel) =
-    Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+let viewScene (model : AdaptiveModel) =
+    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
      |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -30,10 +30,10 @@ let viewScene (model : MModel) =
         }
 
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ 
                         style "width: 100%; grid-row: 2; height:100%"; 
                         attribute "showFPS" "true";         // optional, default is false
@@ -41,7 +41,7 @@ let view (model : MModel) =
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
                         attribute "data-samples" "8"        // optional, default is 1
                     ]) 
-                    (viewScene model)
+            (viewScene model)
 
 
     div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [

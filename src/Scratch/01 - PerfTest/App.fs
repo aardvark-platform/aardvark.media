@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 open Aardvark.UI
@@ -53,13 +53,13 @@ module Shader =
             return v.c + 0.01 * strange * V4d.IIII
         }
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
 
-    let waitTime = Mod.map2 (fun _ time -> System.Threading.Thread.Sleep (int time);5) model.trafo model.modLoad.value
+    let waitTime = AVal.map2 (fun _ time -> System.Threading.Thread.Sleep (int time);5) model.trafo model.modLoad.value
 
-    Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit)
+    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
      |> Sg.trafo model.trafo
-     |> Sg.uniform "GpuLoad" (Mod.map int model.gpuLoad.value)
+     |> Sg.uniform "GpuLoad" (AVal.map int model.gpuLoad.value)
      |> Sg.uniform "BadMod" waitTime
      |> Sg.shader {
             do! DefaultSurfaces.trafo
@@ -82,9 +82,9 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
     subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) [] app
 
 // variant with html5 grid layouting (currently not working in our cef)
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ attribute "showFPS" "true"; attribute "data-renderalways" "1"; style "width: 100%; height:80%; "]) 
                     (viewScene model)
 

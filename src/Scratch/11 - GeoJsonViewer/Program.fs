@@ -11,7 +11,7 @@ open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main argv = 
-    Ag.initialize()
+    
     Aardvark.Init()
     Aardium.init()
             

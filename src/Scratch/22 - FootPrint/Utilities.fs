@@ -1,10 +1,10 @@
-﻿namespace Utils
+namespace Utils
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 
@@ -12,7 +12,7 @@ open Aardvark.SceneGraph
 open Aardvark.SceneGraph.SgPrimitives
 
 module Footprint = 
-    let getTrafo (view:IMod<CameraView>) (frustum : IMod<Frustum>) =
+    let getTrafo (view:aval<CameraView>) (frustum : aval<Frustum>) =
         adaptive {
             let! fr = frustum 
             let projMatrix = (fr |> Frustum.projTrafo).Forward
@@ -169,9 +169,9 @@ module Drawing =
 
   let drawColoredEdges (color : C4b) (points : alist<V3d>) = 
     points
-        |> AList.toMod 
-        |> Mod.map (fun l ->
-            let list = PList.toList l
+        |> AList.toAVal 
+        |> AVal.map (fun l ->
+            let list = IndexList.toList l
             let head = list |> List.tryHead
                     
             match head with
@@ -180,13 +180,13 @@ module Drawing =
                             |> List.map (fun (a,b) -> new Line3d(a,b))
                             |> List.toArray
                 | None -> [||])
-        |> Sg.lines (Mod.constant color)
+        |> Sg.lines (AVal.constant color)
         |> Sg.effect [
         toEffect DefaultSurfaces.stableTrafo
         toEffect DefaultSurfaces.vertexColor
         toEffect DefaultSurfaces.thickLine
         ]
-        |> Sg.uniform "LineWidth" (Mod.constant 5.0)
+        |> Sg.uniform "LineWidth" (AVal.constant 5.0)
 
   let mkISg color size trafo =         
     Sg.sphere 5 color size 
@@ -205,30 +205,30 @@ module Drawing =
 
 module Scene =
   
-  let scene (model : MModel) =
+  let scene (model : AdaptiveModel) =
 
     let geom1 =
         [
-            Sg.box (Mod.constant C4b.Magenta) (Mod.constant Box3d.Unit) 
-            |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))))
+            Sg.box (AVal.constant C4b.Magenta) (AVal.constant Box3d.Unit) 
+            |> Sg.trafo (AVal.constant (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))))
 
-            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) 
-            |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(1.0, 0.0, 2.0))))
+            Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit) 
+            |> Sg.trafo (AVal.constant (Trafo3d.Translation(V3d(1.0, 0.0, 2.0))))
 
             Drawing.drawPlane C4b.Green (Box2d(V2d(10.0), V2d(1.0)))
-            |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))))
+            |> Sg.trafo (AVal.constant (Trafo3d.Translation(V3d(0.0, 0.0, 0.0))))
 
         ] |> Sg.ofList
     
     
     let regular sg = 
         sg
-         |> Sg.cullMode (Mod.constant CullMode.Back)
-         |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-         |> Sg.uniform "footprintVisible" (Mod.constant true)
+         |> Sg.cullMode (AVal.constant CullMode.Back)
+         |> Sg.depthTest (AVal.constant DepthTestMode.Less)
+         |> Sg.uniform "footprintVisible" (AVal.constant true)
          |> Sg.uniform "footprintProj" (Footprint.getTrafo model.footprintProj.cam.view model.footprintProj.frustum)
          |> Sg.uniform "textureProj" (Footprint.getTrafo model.textureProj.cam.view model.textureProj.frustum)
-         |> Sg.texture (Sym.ofString "FootPrintTexture") (Mod.constant Footprint.checkerboard)
+         |> Sg.texture (Sym.ofString "FootPrintTexture") (AVal.constant Footprint.checkerboard)
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -241,10 +241,10 @@ module Scene =
     regular ([geom1] |> Sg.ofList) 
     
 
-  let fullScene (model : MModel) =
+  let fullScene (model : AdaptiveModel) =
     let scenesgs = scene model
-    let camtrafo = model.position.value |> Mod.map Trafo3d.Translation
-    let camPoint = Drawing.mkISg (Mod.constant C4b.Yellow) (Mod.constant 0.3) camtrafo
+    let camtrafo = model.position.value |> AVal.map Trafo3d.Translation
+    let camPoint = Drawing.mkISg (AVal.constant C4b.Yellow) (AVal.constant 0.3) camtrafo
 
     let lookAt = 
         alist {
@@ -270,9 +270,9 @@ module Scene =
 
     let features = 
       alist {
-            yield Sg.frustum (C4b.Yellow |> Mod.constant) model.footprintProj.cam.view model.footprintProj.frustum
+            yield Sg.frustum (C4b.Yellow |> AVal.constant) model.footprintProj.cam.view model.footprintProj.frustum
                     |> Sg.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect]
-            yield Sg.frustum (C4b.Cyan |> Mod.constant) model.textureProj.cam.view model.textureProj.frustum
+            yield Sg.frustum (C4b.Cyan |> AVal.constant) model.textureProj.cam.view model.textureProj.frustum
                     |> Sg.effect [DefaultSurfaces.trafo |> toEffect; DefaultSurfaces.vertexColor |> toEffect]
       } |> AList.toASet |> Sg.set
 
@@ -281,7 +281,7 @@ module Scene =
             |> Sg.andAlso features
     Sg.ofSeq [tSg; upSg] |> Sg.noEvents //scenesgs; camPoint; lookAtSg; upSg; frustum
 
-  let camScene (model : MModel) =
+  let camScene (model : AdaptiveModel) =
     let scenesgs = scene model
     Sg.ofSeq [scenesgs] |> Sg.noEvents 
 

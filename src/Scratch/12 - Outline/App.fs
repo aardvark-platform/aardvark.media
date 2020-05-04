@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 open Aardvark.UI
@@ -56,7 +56,7 @@ module Shader =
             restartStrip()
         }
 
-let viewScene (model : MModel) =
+let viewScene (model : AdaptiveModel) =
 
     let read a =
         StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
@@ -66,8 +66,8 @@ let viewScene (model : MModel) =
 
     let geom1 =
         [
-            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(0.0, 2.0, 0.0))))
-            Sg.box (Mod.constant C4b.Green) (Mod.constant Box3d.Unit) |> Sg.trafo (Mod.constant (Trafo3d.Translation(V3d(0.0, 0.0, 1.0))))
+            Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit) |> Sg.trafo (AVal.constant (Trafo3d.Translation(V3d(0.0, 2.0, 0.0))))
+            Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit) |> Sg.trafo (AVal.constant (Trafo3d.Translation(V3d(0.0, 0.0, 1.0))))
         ] |> Sg.ofList
 
     let geom2 =
@@ -76,9 +76,9 @@ let viewScene (model : MModel) =
             IndexedGeometryPrimitives.Torus.solidTorus (Torus3d(V3d(0.0, 1.0, 2.0), V3d.OOI, 1.0, 0.25)) C4b.Blue 20 20 |> Sg.ofIndexedGeometry
         ] |> Sg.ofList
     
-    let testLines = [|Line3d(V3d(1.0, 0.0, 0.0), V3d(2.0, 0.0, 0.0)); Line3d(V3d(2.0, 0.0, 0.0), V3d(3.0, 2.0, 0.0))|] |> Mod.constant
+    let testLines = [|Line3d(V3d(1.0, 0.0, 0.0), V3d(2.0, 0.0, 0.0)); Line3d(V3d(2.0, 0.0, 0.0), V3d(3.0, 2.0, 0.0))|] |> AVal.constant
 
-    //let sgLine = Sg.lines (C4b.DarkMagenta |> Mod.constant) testLines 
+    //let sgLine = Sg.lines (C4b.DarkMagenta |> AVal.constant) testLines 
    
 
     let pass0 = RenderPass.main
@@ -89,8 +89,8 @@ let viewScene (model : MModel) =
         sg
          |> Sg.pass pass0
          |> Sg.trafo model.trafo
-         |> Sg.cullMode (Mod.constant CullMode.Back)
-         |> Sg.depthTest (Mod.constant DepthTestMode.Less)
+         |> Sg.cullMode (AVal.constant CullMode.Back)
+         |> Sg.depthTest (AVal.constant DepthTestMode.Less)
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -101,7 +101,7 @@ let viewScene (model : MModel) =
         sg
          |> Sg.pass pass0
          |> Sg.trafo model.trafo
-         |> Sg.stencilMode (Mod.constant (write v))
+         |> Sg.stencilMode (AVal.constant (write v))
          |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
@@ -112,8 +112,8 @@ let viewScene (model : MModel) =
     let outline sg v pass colour = 
         sg
          |> Sg.trafo model.trafo
-         |> Sg.stencilMode (Mod.constant (read v))
-         |> Sg.depthTest (Mod.constant DepthTestMode.None)
+         |> Sg.stencilMode (AVal.constant (read v))
+         |> Sg.depthTest (AVal.constant DepthTestMode.None)
          |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
          |> Sg.pass pass
          |> Sg.uniform "LineWidth" model.thickness.value
@@ -128,11 +128,11 @@ let viewScene (model : MModel) =
     let outLine sg v pass colour = 
         sg
          |> Sg.trafo model.trafo
-         |> Sg.stencilMode (Mod.constant (read v))
-         |> Sg.depthTest (Mod.constant DepthTestMode.None)
+         |> Sg.stencilMode (AVal.constant (read v))
+         |> Sg.depthTest (AVal.constant DepthTestMode.None)
          |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
          |> Sg.pass pass
-         |> Sg.uniform "LineWidth" (Mod.constant 5.0)
+         |> Sg.uniform "LineWidth" (AVal.constant 5.0)
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! Shader.lines
@@ -165,9 +165,9 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
     subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) [] app
 
 // variant with html5 grid layouting (currently not working in our cef)
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     let renderControl =
-      FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> Mod.constant) 
+      FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
         (AttributeMap.ofList [ 
             attribute "showFPS" "true"; 
             attribute "data-renderalways" "1"; 

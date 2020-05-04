@@ -1,14 +1,15 @@
 Aardvark.Base
-Aardvark.Base.Incremental
+FSharp.Data.Adaptive
 Aardvark.Base.FSharp
 
 Aardvark.Base.Rendering
+Aardvark.Base.Incremental
 Aardvark.Rendering.Vulkan
 Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
 Aardvark.SceneGraph.IO
 Aardvark.Rendering.Text
-Aardvark.Compiler.DomainTypes.MSBuild
+Adaptify.MSBuild
 
 FsPickler
 FsPickler.Json

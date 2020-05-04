@@ -1,11 +1,12 @@
 ﻿namespace Aardvark.UI
-
+ 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
+open Adaptify
 
-[<DomainType>]
+[<ModelType>]
 type NumericInput = {
     value : float
     min   : float
@@ -14,7 +15,7 @@ type NumericInput = {
     format: string
 }
 
-[<DomainType>]
+[<ModelType>]
 type V3dInput = {
     x : NumericInput
     y : NumericInput
@@ -22,28 +23,28 @@ type V3dInput = {
     value : V3d
 }
 
-[<DomainType>]
+[<ModelType>]
 type ColorInput = {
     c : C4b
 }
 
-[<DomainType>]
+[<ModelType>]
 type DropDownModel = {
-    values   : hmap<int,string>
+    values   : HashMap<int,string>
     selected : int    
 }
 
-[<DomainType>]
+[<ModelType>]
 type LeafValue = 
-    | Number of int 
-    | Text of string
+    | Number of number : int 
+    | Text of text : string
 
-[<DomainType>]
+[<ModelType>]
 type Properties = { isExpanded : bool; isSelected : bool; isActive : bool }
 
-[<DomainType>]
+[<ModelType>]
 type Tree =
-    | Node of value : LeafValue * properties : Properties * children : plist<Tree>
+    | Node of value : LeafValue * properties : Properties * children : IndexList<Tree>
     | Leaf of value : LeafValue
 
 [<AutoOpen; CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -51,17 +52,17 @@ module Tree =
     let node v p c = Node(v, p, c)
 
 
-[<DomainType>]
+[<ModelType>]
 type TreeModel = { data: Tree }
 
-[<DomainType>]
+[<ModelType>]
 type D3TestInput = 
     {
         t1 : int
         t2 : int
     }
 
-[<DomainType>]
+[<ModelType>]
 type D3AxisInput = 
     {
         min : float

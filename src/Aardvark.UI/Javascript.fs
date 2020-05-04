@@ -4,7 +4,7 @@ open System
 open System.Threading
 open System.Collections.Generic
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Application
 
 type JSVar = { name : string }

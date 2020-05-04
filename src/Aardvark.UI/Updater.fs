@@ -5,9 +5,9 @@ open System.Threading
 open System.Collections.Generic
 open Aardvark.UI
 open Aardvark.Base
-open Aardvark.Base.Incremental
 open Aardvark.Service
 open System.Runtime.CompilerServices
+open FSharp.Data.Adaptive
 
 module Updaters =
 
@@ -259,14 +259,15 @@ module Updaters =
             
 
     type AttributeUpdater<'msg>(attributes : AttributeMap<'msg>) =
-        let reader = attributes.GetReader()
+        let mutable reader = attributes.GetReader()
 
         member x.TryGetAttrbute(name : string) =
-            HMap.tryFind name reader.State
+            HashMap.tryFind name reader.State
 
         member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) =
             JSExpr.Sequential [
-                let atts = reader.GetOperations token
+                let old = reader.State
+                let atts = reader.GetChanges token
                 for (name, op) in atts do
                     match op with
                         | Set value ->
@@ -281,14 +282,16 @@ module Updaters =
 
                             yield JSExpr.SetAttribute(self, name, value)
 
-                        | Remove -> 
-                            let key = (id,name)
-                            state.handlers.Remove key |> ignore
+                            //yield JSExpr.SetAttribute(self, name, value)
+
+                        | Remove ->
                             yield JSExpr.RemoveAttribute(self, name)
             ]
 
         member x.Dispose() =
-            reader.Dispose()
+            ()
+            reader <- Unchecked.defaultof<_>
+            //reader.Dispose()
 
         interface IDisposable with
             member x.Dispose() = x.Dispose()
@@ -321,7 +324,7 @@ module Updaters =
     and InnerUpdater<'msg>(e : InnerNode<'msg>, request : Request) =
         inherit AbstractUpdater<'msg>(e)
             
-        let elemReader : IListReader<IUpdater<'msg>> = (AList.map (fun n -> Foo.NewUpdater(n, request)) e.Children).GetReader()
+        let mutable elemReader : IIndexListReader<IUpdater<'msg>> = (AList.map (fun n -> Foo.NewUpdater(n, request)) e.Children).GetReader()
         let att = new AttributeUpdater<_>(e.Attributes)
 
         static let cmpState =
@@ -348,14 +351,14 @@ module Updaters =
                 yield att.Update(token, state, id, self)
                       
                 let mutable toUpdate = elemReader.State
-                let ops = elemReader.GetOperations token
+                let ops = elemReader.GetChanges token
 
 
-                for (i,op) in PDeltaList.toSeq ops do
+                for (i,op) in IndexListDelta.toSeq ops do
                     match op with
                         | ElementOperation.Remove ->
                             let (_,s,_) = neighbours i
-                            toUpdate <- PList.remove i toUpdate
+                            toUpdate <- IndexList.remove i toUpdate
                             match s with
                                 | Some n -> 
                                     let n = !n
@@ -397,7 +400,7 @@ module Updaters =
                                 | Some ref ->
                                     let oldElement = !ref
                                     ref := newElement
-                                    toUpdate <- PList.remove i toUpdate
+                                    toUpdate <- IndexList.remove i toUpdate
                                     match oldElement.Id, newElement.Id with
                                         | Some o, Some id ->
                                             let vo = { name = o }
@@ -446,7 +449,8 @@ module Updaters =
                 |> Seq.map (fun elemState -> elemState.Destroy(state,JSExpr.GetElementById(elemState.Id.Value))) 
                 |> Seq.toList
                 |> JSExpr.Sequential
-            elemReader.Dispose()
+
+            elemReader <- Unchecked.defaultof<_>
             att.Dispose()
             inner
             
@@ -458,7 +462,7 @@ module Updaters =
 
         let renderMessage (info : ClientInfo) =
             let attributes = e.Attributes.Content.GetValue()
-            match HMap.tryFind "preRender" attributes with
+            match HashMap.tryFind "preRender" attributes with
                 | Some (AttributeValue.Event evt) ->
                     evt.serverSide info.session this.Id.Value []
                 | _ ->

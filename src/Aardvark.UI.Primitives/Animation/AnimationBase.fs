@@ -2,14 +2,14 @@ namespace Aardvark.UI.Animation
 
 module AnimationApp = 
   open Aardvark.Base
-  open Aardvark.Base.Incremental
-  open Aardvark.Base.Incremental.Operators
+  open FSharp.Data.Adaptive
+  open FSharp.Data.Adaptive.Operators
   open Aardvark.Base.Rendering
   
   open Aardvark.UI
               
   let shouldAnimate (m : AnimationModel) =
-        m.animation = Animate.On && PList.count m.animations > 0
+        m.animation = Animate.On && IndexList.count m.animations > 0
     
   let updateAnimation (m : 'm) (t : Aardvark.UI.Animation.Time) (a : Animation<'m,'s,'a>) =
         match a.state with
@@ -21,23 +21,23 @@ module AnimationApp =
   let update (m : AnimationModel) (msg : AnimationAction ) =
     match msg with
     | Tick t when shouldAnimate m -> 
-        match PList.tryAt 0 m.animations with
+        match IndexList.tryAt 0 m.animations with
             | Some anim -> 
                 // initialize animation (if needed)
                 let (anim,localTime,state) = updateAnimation m t anim
                 match anim.sample(localTime, t) state with 
-                    | None -> { m with animations = PList.removeAt 0 m.animations } // animation stops, so pop it
+                    | None -> { m with animations = IndexList.removeAt 0 m.animations } // animation stops, so pop it
                     | Some (s,cameraView) -> 
                         // feed in new state
                         let anim = { anim with state = Some s } 
                         // activate result in camera state
                         //{ m with cameraState = { m.cameraState with view = cameraView }; 
-                        { m with cam = cameraView; animations = PList.setAt 0 anim m.animations }
+                        { m with cam = cameraView; animations = IndexList.setAt 0 anim m.animations }
             | None -> m
     | PushAnimation a -> 
-        { m with animations = PList.append a m.animations }
+        { m with animations = IndexList.add a m.animations }
     | RemoveAnimation i -> 
-        { m with animations = PList.remove i m.animations }
+        { m with animations = IndexList.remove i m.animations }
     | Tick _ -> m // not allowed to animate      
 
   let totalTime = System.Diagnostics.Stopwatch.StartNew()

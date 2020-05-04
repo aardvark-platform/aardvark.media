@@ -1,10 +1,11 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 
 open RenderingParametersModel
+open Adaptify
 
 type BoxSelectionDemoAction =
     | CameraMessage    of FreeFlyController.Message     
@@ -16,24 +17,23 @@ type BoxSelectionDemoAction =
     | RemoveBox
     | ClearSelection
 
-[<DomainType>]
+[<ModelType>]
 type VisibleBox = {
     geometry : Box3d
     color    : C4b    
 
-    [<NonIncremental; PrimaryKey>]
+    [<NonAdaptive>]
     id : string
 }
 
-[<DomainType>]
+[<ModelType>]
 type BoxSelectionDemoModel = {
     camera : CameraControllerState    
     rendering : RenderingParameters
 
-    boxes : plist<VisibleBox>
-    boxesSet : hset<VisibleBox>
-    boxesMap : hmap<string,VisibleBox>
+    boxes : IndexList<VisibleBox>
+    boxesMap : HashMap<string,VisibleBox>
 
     boxHovered : option<string>
-    selectedBoxes : hset<string>
+    selectedBoxes : HashSet<string>
 }

@@ -1,4 +1,4 @@
-﻿namespace Utils
+namespace Utils
 
 open Aardvark.SceneGraph
 open Aardvark.UI
@@ -6,7 +6,7 @@ open Aardvark.UI.Primitives
 open Aardvark.UI.Operators
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 
@@ -87,7 +87,7 @@ module Geometry =
 
         )
 
-    let createQuad (vertices : IMod<array<V2f>>) (colors : IMod<array<C4f>>) =
+    let createQuad (vertices : aval<array<V2f>>) (colors : aval<array<C4f>>) =
         let drawCall = 
             DrawCallInfo(
                 FaceVertexCount = 4,
@@ -96,12 +96,12 @@ module Geometry =
 
         let positions = 
             // strip: [| V3f(-1,-1,0); V3f(1,-1,0); V3f(-1,1,0); V3f(1,1,0) |]
-            vertices |> Mod.map (fun arr -> 
+            vertices |> AVal.map (fun arr -> 
                 [| V3f(arr.[0],0.0f); V3f(arr.[1],0.0f); V3f(arr.[3],0.0f); V3f(arr.[2],0.0f) |]
             )
     
         let colors = 
-            colors |> Mod.map (fun arr -> 
+            colors |> AVal.map (fun arr -> 
                 [| arr.[0]; arr.[1]; arr.[3]; arr.[2] |]
             )
         
@@ -112,11 +112,11 @@ module Geometry =
             |> Sg.render IndexedGeometryMode.TriangleStrip 
             |> Sg.vertexAttribute DefaultSemantic.Positions positions
             |> Sg.vertexAttribute DefaultSemantic.Colors colors
-            |> Sg.vertexAttribute DefaultSemantic.DiffuseColorCoordinates (Mod.constant texcoords)
+            |> Sg.vertexAttribute DefaultSemantic.DiffuseColorCoordinates (AVal.constant texcoords)
 
 
-    let box (colors : IMod<C4b[]>) (bounds : IMod<Box3d>) =
-        let trafo = bounds |> Mod.map (fun box -> Trafo3d.Scale(box.Size) * Trafo3d.Translation(box.Min))
+    let box (colors : aval<C4b[]>) (bounds : aval<Box3d>) =
+        let trafo = bounds |> AVal.map (fun box -> Trafo3d.Scale(box.Size) * Trafo3d.Translation(box.Min))
         SgPrimitives.Primitives.unitBox
             |> Sg.ofIndexedGeometry
             |> Sg.vertexAttribute DefaultSemantic.Colors colors

@@ -1,8 +1,8 @@
-﻿module App
+module App
 
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
@@ -61,29 +61,29 @@ let update (model : NavigationModeDemoModel) (act : Action) =
         | KeyUp k -> model
 
 
-let view (model : MNavigationModeDemoModel) =
+let view (model : AdaptiveNavigationModeDemoModel) =
     let cam =
         model.camera.view 
             
     let frustum =
-        Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+        AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
         
     //let controller = 
     //    model.navigation.navigationMode 
-    //        |> Mod.map (function 
+    //        |> AVal.map (function 
     //            | NavigationMode.FreeFly ->FreeFlyController.controlledControl model.camera FreeFlyAction frustum
     //            | NavigationMode.ArcBall -> ArcBallController.controlledControl model.camera ArcBallAction frustum
     //            | _ ->FreeFlyController.controlledControl model.camera FreeFlyAction frustum
     //        )
 
     let scene =
-        let color = Mod.constant C4b.Blue
+        let color = AVal.constant C4b.Blue
         let boxGeometry = Box3d(-V3d.III, V3d.III)
-        let box = Mod.constant (boxGeometry)                       
+        let box = AVal.constant (boxGeometry)                       
                         
         let trafo = 
             model.camera.orbitCenter 
-                |> Mod.map (function
+                |> AVal.map (function
                     | Some x -> Trafo3d.Translation x
                     | None   -> Trafo3d.Identity
                 )
@@ -100,7 +100,7 @@ let view (model : MNavigationModeDemoModel) =
                     |> Sg.withEvents [
                             Sg.onDoubleClick (fun p -> ArcBallController.Message.Pick p) ] |> Sg.map ArcBallAction                                    
 
-        let s = Sg.sphere 4 (Mod.constant C4b.Red) (Mod.constant 0.15)
+        let s = Sg.sphere 4 (AVal.constant C4b.Red) (AVal.constant 0.15)
                     |> Sg.shader {
                         do! DefaultSurfaces.trafo
                         do! DefaultSurfaces.vertexColor
@@ -128,7 +128,7 @@ let view (model : MNavigationModeDemoModel) =
         div [clazz "ui"; style "background: #1B1C1E"] [
                 yield 
                     Incremental.renderControl 
-                        (Mod.map2 Camera.create model.camera.view frustum) 
+                        (AVal.map2 Camera.create model.camera.view frustum) 
                         (AttributeMap.unionMany [
                             renderControlAttributes 
                                 
@@ -150,11 +150,11 @@ let view (model : MNavigationModeDemoModel) =
         //         Html.table [                            
         //   Html.row "Mode:" [Html.SemUi.dropDown model.navigationMode SetNavigationMode]
         //]
-                let cameracontroller (ccs : MCameraControllerState) = 
+                let cameracontroller (ccs : AdaptiveCameraControllerState) = 
                     Html.table [  
-                        Html.row "Sensitivity:" [Incremental.text (ccs.sensitivity |> Mod.map (fun x -> sprintf "%f" x))]
-                        Html.row "ZoomFactor:"  [Incremental.text (ccs.zoomFactor  |> Mod.map (fun x -> sprintf "%f" x))]
-                        Html.row "PanFactor:"   [Incremental.text (ccs.panFactor   |> Mod.map (fun x -> sprintf "%f" x))]                            
+                        Html.row "Sensitivity:" [Incremental.text (ccs.sensitivity |> AVal.map (fun x -> sprintf "%f" x))]
+                        Html.row "ZoomFactor:"  [Incremental.text (ccs.zoomFactor  |> AVal.map (fun x -> sprintf "%f" x))]
+                        Html.row "PanFactor:"   [Incremental.text (ccs.panFactor   |> AVal.map (fun x -> sprintf "%f" x))]                            
                     ]
 
                 let navigationAcc = 

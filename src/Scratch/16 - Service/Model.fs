@@ -1,10 +1,11 @@
-﻿namespace Inc.Model
+namespace Inc.Model
 
 open System
 open System.Diagnostics
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Exectuable = DotnetAssembly of string | Native of string
 
@@ -28,16 +29,16 @@ type Message =
     | InstanceStatus of InstanceMessage
     | Kill of Id
 
-[<DomainType>]
+[<ModelType>]
 type Instance = 
     {
-        [<NonIncremental>]
+        [<NonAdaptive>]
         p : Process
-        [<NonIncremental>]
+        [<NonAdaptive>]
         id : string
-        [<NonIncremental>]
+        [<NonAdaptive>]
         port : int
-        [<NonIncremental>]
+        [<NonAdaptive>]
         endpoint : Endpoint
     }
 
@@ -45,9 +46,9 @@ module Instance =
     let getUrl (i : Instance) = 
         i.endpoint.url i.port
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
-        executables : plist<Endpoint>
-        running : hmap<string,Instance>
+        executables : IndexList<Endpoint>
+        running : HashMap<string,Instance>
     }

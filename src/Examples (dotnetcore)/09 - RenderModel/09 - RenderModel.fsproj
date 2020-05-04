@@ -2,8 +2,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
-    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>
@@ -15,6 +15,7 @@
     <Compile Include="AssemblyInfo.fs" />
 	<Compile Include="Helpers.fs" />
     <Compile Include="Model.fs" />
+    <Compile Include="Model.g.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />

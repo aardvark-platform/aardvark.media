@@ -1,9 +1,9 @@
-﻿namespace DrawRects
+namespace DrawRects
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
-
+open Adaptify
 
 type Direction = Vertical | Horizontal
 
@@ -16,7 +16,7 @@ type Color =
     | Points   of ColoredRect
     | Constant of C4f 
 
-[<DomainType>]
+[<ModelType>]
 type Rect = {
     box : Box2d
     color : Color
@@ -35,10 +35,10 @@ module Rect =
         //{ p00 = b.Min; p10 = b.Min + V2d(b.Size.X,0.0); p11 = b.Max; p01 = b.Min + V2d(0.0,b.Size.Y); color = Constant C4f.White; id = newId }
         { box = Box2d.FromPoints(b.s,b.t); color = Constant C4f.White; id = newId }
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
-        rects : hmap<int,Rect>
+        rects : HashMap<int,Rect>
     }
 
 type Interaction =
@@ -49,7 +49,7 @@ type Interaction =
     
 type DragEndpoint = { rect : int; vertexId : int; fixedPoint : V2d; pos : V2d }
 
-[<DomainType>]
+[<ModelType>]
 type ClientState =
     {
         viewport     : Box2d

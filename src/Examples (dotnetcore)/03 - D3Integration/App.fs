@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 
@@ -22,7 +22,7 @@ let update (model : Model) (msg : Message) =
             }
         | ChangeCount n -> { model with count = Numeric.update model.count n }
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
     let dependencies = 
         [ 

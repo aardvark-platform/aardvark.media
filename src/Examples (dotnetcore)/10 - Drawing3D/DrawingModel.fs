@@ -1,13 +1,14 @@
-﻿namespace DrawingModel
+namespace DrawingModel
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open Aardvark.Base.Rendering
+open Adaptify
 
 open RenderingParametersModel
 
-[<DomainType>]
+[<ModelType>]
 type SimpleDrawingModel = {
     camera     : CameraControllerState
     rendering  : RenderingParameters

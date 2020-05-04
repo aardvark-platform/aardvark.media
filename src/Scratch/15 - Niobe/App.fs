@@ -1,9 +1,9 @@
-﻿namespace Niobe
+namespace Niobe
 
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.SceneGraph
 
@@ -40,19 +40,19 @@ module StencilAreaMasking =
   let maskSG sg = 
     sg
       |> Sg.pass maskPass
-      |> Sg.stencilMode (Mod.constant (writeZFail))
-      |> Sg.cullMode (Mod.constant (CullMode.None))
+      |> Sg.stencilMode (AVal.constant (writeZFail))
+      |> Sg.cullMode (AVal.constant (CullMode.None))
       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
   let fillSG sg =
     sg
       |> Sg.pass areaPass
-      |> Sg.stencilMode (Mod.constant (readMaskAndReset))
-      //|> Sg.cullMode (Mod.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
-      //|> Sg.depthTest (Mod.constant DepthTestMode.Less)        // for zpass -> active depth-test
-      |> Sg.cullMode (Mod.constant CullMode.None)
-      |> Sg.depthTest (Mod.constant DepthTestMode.None)
-      |> Sg.blendMode (Mod.constant BlendMode.Blend)
+      |> Sg.stencilMode (AVal.constant (readMaskAndReset))
+      //|> Sg.cullMode (AVal.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
+      //|> Sg.depthTest (AVal.constant DepthTestMode.Less)        // for zpass -> active depth-test
+      |> Sg.cullMode (AVal.constant CullMode.None)
+      |> Sg.depthTest (AVal.constant DepthTestMode.None)
+      |> Sg.blendMode (AVal.constant BlendMode.Blend)
       |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
   let stencilAreaSG sg =
@@ -97,10 +97,10 @@ module App =
           | _ -> model
         | _ -> model
   
-  let view (model : MModel) =
+  let view (model : AdaptiveModel) =
 
     let sceneSG = 
-      //Sg.box (Mod.constant C4b.Red) (Mod.constant Box3d.Unit)
+      //Sg.box (AVal.constant C4b.Red) (AVal.constant Box3d.Unit)
       [
           Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
           Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
@@ -112,7 +112,7 @@ module App =
               do! DefaultSurfaces.trafo
               do! DefaultSurfaces.simpleLighting
           }  
-        |> Sg.depthTest (Mod.constant DepthTestMode.Less)   // depth test active
+        |> Sg.depthTest (AVal.constant DepthTestMode.Less)   // depth test active
         |> Sg.pass RenderPass.main
         |> Sg.requirePicking
             |> Sg.noEvents
@@ -131,8 +131,8 @@ module App =
 
     let shadowVolumeDebugVis brushes =
       brushes
-        |> Sg.depthTest (Mod.constant DepthTestMode.Less)
-        |> Sg.cullMode (Mod.constant (CullMode.Back)) // only for testing
+        |> Sg.depthTest (AVal.constant DepthTestMode.Less)
+        |> Sg.cullMode (AVal.constant (CullMode.Back)) // only for testing
         |> Sg.onOff model.shadowVolumeVis
         |> Sg.pass RenderPass.main
 
@@ -145,7 +145,7 @@ module App =
       ] |> Sg.ofList
     
     let renderControl =
-     FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> Mod.constant) 
+     FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> AVal.constant) 
        (AttributeMap.ofList [ 
          style "width: 100%; height:100%"; 
          attribute "showFPS" "true";       // optional, default is false

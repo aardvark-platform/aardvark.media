@@ -1,10 +1,10 @@
-﻿module Inc.Master
+module Inc.Master
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Inc.Model
 
@@ -14,15 +14,15 @@ let update (model : MasterModel) (msg : MasterMessage) =
         | Nop -> model
 
 
-let viewScene (model : MMasterModel) = 
-    Sg.box (Mod.constant C4b.White) (Mod.constant Box3d.Unit)
+let viewScene (model : AdaptiveMasterModel) = 
+    Sg.box (AVal.constant C4b.White) (AVal.constant Box3d.Unit)
     |> Sg.shader {
         do! DefaultSurfaces.trafo
         do! DefaultSurfaces.vertexColor
         do! DefaultSurfaces.simpleLighting
        }
        
-let view (model : MMasterModel) =
+let view (model : AdaptiveMasterModel) =
     let scene = viewScene model
 
     let mapOut (m : Model) (msg : Message) = 
@@ -51,7 +51,7 @@ let app =
         threads = threads 
         initial = 
             { 
-               clients = HMap.empty
+               clients = HashMap.empty
             }
         update = update 
         view = view

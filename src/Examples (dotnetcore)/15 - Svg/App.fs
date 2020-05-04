@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 open Aardvark.UI.Html
@@ -36,9 +36,9 @@ let onEndDrag  (cb : DragInfo -> 'msg) =
 
 let (=>) n v = attribute n v
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
 
-    let position = model.Current |> Mod.map getPosition
+    let position = model.Current |> AVal.map getPosition
 
     body [] [
         require dependencies (

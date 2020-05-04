@@ -3,7 +3,7 @@
 open System
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.UI
 open Aardvark.UI.Operators
@@ -41,11 +41,11 @@ module Html =
 
     let row k v = tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
 
-    type A = { a : IMod<int> }
-    let a = Mod.init { a = Mod.init 10 }
+    type A = { a : aval<int> }
+    let a = AVal.init { a = AVal.init 10 }
 
     let test = 
-        a |> Mod.map (fun z -> Mod.map (fun v -> v + 1) z.a)
+        a |> AVal.map (fun z -> AVal.map (fun v -> v + 1) z.a)
 
     let semui = 
         [ 
@@ -168,7 +168,7 @@ module Html =
                 ]
             )
 
-        let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : IMod<'a>) (change : 'a -> 'msg) =
+        let dropDown<'a, 'msg when 'a : enum<int> and 'a : equality> (selected : aval<'a>) (change : 'a -> 'msg) =
             let names = Enum.GetNames(typeof<'a>)
             let values = Enum.GetValues(typeof<'a>) |> unbox<'a[]>
             let nv = Array.zip names values
@@ -176,7 +176,7 @@ module Html =
             let attributes (name : string) (value : 'a) =
                 AttributeMap.ofListCond [
                     always (attribute "value" name)
-                    onlyWhen (Mod.map ((=) value) selected) (attribute "selected" "selected")
+                    onlyWhen (AVal.map ((=) value) selected) (attribute "selected" "selected")
                 ]
        
             select [onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change); style "color:black"] [
@@ -186,12 +186,12 @@ module Html =
             ]         
 
         //Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]
-        let dropDown' (values : alist<'a>)(selected : IMod<'a>) (change : 'a -> 'msg) (f : 'a ->string)  =
+        let dropDown' (values : alist<'a>)(selected : aval<'a>) (change : 'a -> 'msg) (f : 'a ->string)  =
 
             let attributes (name : string) =
                 AttributeMap.ofListCond [
                     always (attribute "value" (name))
-                    onlyWhen (selected |> Mod.map (fun x -> f x = name)
+                    onlyWhen (selected |> AVal.map (fun x -> f x = name)
                                             //fun x -> 
                                             //    match x with
                                             //        | Some s -> (f s) = name
@@ -201,8 +201,8 @@ module Html =
 
             let ortisOnChange  = 
                 let cb (i : int) =                    
-                    let currentState = values.Content |> Mod.force
-                    match PList.tryAt i currentState with
+                    let currentState = values.Content |> AVal.force
+                    match IndexList.tryAt i currentState with
                         | None -> failwith ""
                         | Some a -> change a 
                 onEvent "onchange" ["event.target.selectedIndex"] (fun x -> x |> List.head |> Int32.Parse |> cb)
@@ -212,7 +212,7 @@ module Html =
                     |> AList.mapi(fun i x -> Incremental.option (attributes (f x)) (AList.ofList [text (f x)]))
                 )
                   
-        let textBox (text : IMod<string>) (set : string -> 'msg) =          
+        let textBox (text : aval<string>) (set : string -> 'msg) =          
             
             let attributes = 
                 amap {
@@ -224,7 +224,7 @@ module Html =
           
             Incremental.input (AttributeMap.ofAMap attributes)            
 
-        let toggleBox (state : IMod<bool>) (toggle : 'msg) =
+        let toggleBox (state : aval<bool>) (toggle : 'msg) =
 
             let attributes = 
                 amap {
@@ -239,7 +239,7 @@ module Html =
       //      div [clazz "ui toggle checkbox"] [
             Incremental.input (AttributeMap.ofAMap attributes)        
 
-        let toggleImage (state : IMod<bool>) (toggle : unit -> 'msg) = 0
+        let toggleImage (state : aval<bool>) (toggle : unit -> 'msg) = 0
 
         let tabbed attr content active =            
             onBoot "$('.menu .item').tab();" (
@@ -257,8 +257,8 @@ module Html =
                 ]
             )
 
-        let iconToggle (state : IMod<bool>) onIcon offIcon action =
-          let toggleIcon = state |> Mod.map(fun isOn -> if isOn then onIcon else offIcon)
+        let iconToggle (state : aval<bool>) onIcon offIcon action =
+          let toggleIcon = state |> AVal.map(fun isOn -> if isOn then onIcon else offIcon)
         
           let attributes = 
             amap {
@@ -269,7 +269,7 @@ module Html =
         
           Incremental.i attributes AList.empty
         
-        let iconCheckBox (dings : IMod<bool>) action =
+        let iconCheckBox (dings : aval<bool>) action =
           iconToggle dings "check square outline icon" "square icon" action
 
     module IO =
@@ -312,7 +312,7 @@ module Numeric =
     let formatNumber (format : string) (value : float) =
         String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : MNumericInput ) inputType =         
+    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : AdaptiveNumericInput ) inputType =         
 
         let tryParseAndClamp min max fallback s =
             let parsed = 0.0
@@ -358,13 +358,13 @@ module Numeric =
 
     let numericField' = numericField (Seq.singleton) AttributeMap.empty
 
-    let view' (inputTypes : list<NumericInputType>) (model : MNumericInput) : DomNode<Action> =
+    let view' (inputTypes : list<NumericInputType>) (model : AdaptiveNumericInput) : DomNode<Action> =
         inputTypes 
             |> List.map (numericField' model) 
             |> List.intersperse (text " ") 
             |> div []
 
-    let view (model : MNumericInput) =
+    let view (model : AdaptiveNumericInput) =
         view' [InputBox] model
 
     let init = {
@@ -423,7 +423,7 @@ module ColorPicker =
             |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x))
             |> String.concat System.String.Empty
 
-    let view (model : MColorInput) =
+    let view (model : AdaptiveColorInput) =
         require spectrum (
             onBoot "$('#__ID__').spectrum(
                         {
@@ -456,7 +456,7 @@ module ColorPicker =
         ))
 
 
-    let viewSimple (color : IMod<C4b>) (change : C4b -> 'msg) =
+    let viewSimple (color : aval<C4b>) (change : C4b -> 'msg) =
         require spectrum (
             onBoot "$('#__ID__').spectrum(
                         {
@@ -488,7 +488,7 @@ module ColorPicker =
                 Incremental.input (AttributeMap.ofAMap attributes)
         ))
 
-    let app : App<ColorInput, MColorInput, Action> =
+    let app : App<ColorInput, AdaptiveColorInput, Action> =
         {
             unpersist = Unpersist.instance
             threads = fun _ -> ThreadPool.empty
@@ -599,7 +599,7 @@ module D3Test =
         }
         """
 
-    let d3Code (model:MD3TestInput) = 
+    let d3Code (model:AdaptiveD3TestInput) = 
         require [
                 { kind = Script; name = "d3"; url = "https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" }
                 { kind = Script; name = "d3Test"; url = "d3Test.js" }]
@@ -617,7 +617,7 @@ module D3Test =
                         )
                     )
 
-    let view (model:MD3TestInput) =
+    let view (model:AdaptiveD3TestInput) =
         require (Html.semui) (
             body [clazz "ui"; style "background: #FFFFFF"] [
                     d3Code model
@@ -629,7 +629,7 @@ module D3Test =
             ]
             )
 
-    let app : App<D3TestInput, MD3TestInput, Action> =
+    let app : App<D3TestInput, AdaptiveD3TestInput, Action> =
         {
             unpersist = Unpersist.instance
             threads = fun _ -> ThreadPool.empty
@@ -663,7 +663,7 @@ module D3Axis =
 
     let pickler = FsPickler.CreateJsonSerializer(omitHeader = true)
 
-    let view (model:MD3AxisInput) = 
+    let view (model:AdaptiveD3AxisInput) = 
         require [
                 { kind = Script; name = "d3"; url = "https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" }
                 { kind = Script; name = "d3Test"; url = "d3Test.js" }]
@@ -681,7 +681,7 @@ module D3Axis =
                         )
                     ) 
 
-    let viewTest (model:MD3AxisInput) =
+    let viewTest (model:AdaptiveD3AxisInput) =
         require (Html.semui) (
             body [clazz "ui"; style "background: #FFFFFF"] [
                 
@@ -696,7 +696,7 @@ module D3Axis =
             ]
             )
 
-    let app : App<D3AxisInput, MD3AxisInput, Action> =
+    let app : App<D3AxisInput, AdaptiveD3AxisInput, Action> =
         {
             unpersist = Unpersist.instance
             threads = fun _ -> ThreadPool.empty
@@ -752,7 +752,7 @@ module Vector3d =
                         value = V3d(x.value, y.value, z.value)
                 }
                 
-    let view (model : MV3dInput) =  
+    let view (model : AdaptiveV3dInput) =  
         
         Html.table [                            
             Html.row "X" [Numeric.view' [InputBox] model.x |> UI.map SetX]
@@ -786,7 +786,7 @@ module Vector3d =
         value = v
     }
 
-    let app : App<V3dInput, MV3dInput, Action> =
+    let app : App<V3dInput, AdaptiveV3dInput, Action> =
         {
             unpersist = Unpersist.instance
             threads = fun _ -> ThreadPool.empty
@@ -814,7 +814,7 @@ module TreeView =
             Incremental.div (AttributeMap.ofList [clazz "content" ]) content
         ]
 
-    let node (isExpanded : IMod<bool>) (clickMsg : unit -> 'a) header description children =
+    let node (isExpanded : aval<bool>) (clickMsg : unit -> 'a) header description (children : alist<_>) =
         let itemAttributes =
             amap {
                 yield onMouseClick (fun _ -> clickMsg ())
@@ -864,10 +864,10 @@ module TreeViewApp =
 
     let init =
         { data =
-            Tree.node (LeafValue.Text "0") defaultP <| PList.ofList [ 
+            Tree.node (LeafValue.Text "0") defaultP <| IndexList.ofList [ 
                 Leaf (LeafValue.Number 1)
                 Leaf (LeafValue.Text "2" )
-                Tree.node (LeafValue.Number 3) defaultP <| PList.ofList [
+                Tree.node (LeafValue.Number 3) defaultP <| IndexList.ofList [
                     yield Leaf (LeafValue.Number 4)
                     yield Leaf (LeafValue.Number 5) 
                 ]
@@ -882,8 +882,8 @@ module TreeViewApp =
                     match t with
                         | Leaf _ -> t
                         | Node(l,p,xs) -> 
-                            match PList.tryGet x xs with
-                                | Some c -> Node(l,p, PList.set x (go rest c) xs)
+                            match IndexList.tryGet x xs with
+                                | Some c -> Node(l,p, IndexList.set x (go rest c) xs)
                                 | None   -> t
         go (List.rev p) t
 
@@ -912,9 +912,9 @@ module TreeViewApp =
                              function | Leaf v -> Leaf v
                                       | Node(l,p,xs) -> 
                                             let value = match l with
-                                                           | Number n -> Number (PList.count xs + 1)
+                                                           | Number n -> Number (IndexList.count xs + 1)
                                                            | Text   t -> LeafValue.Text t
-                                            Node(l,p, PList.append (Leaf value) xs)
+                                            Node(l,p, IndexList.add (Leaf value) xs)
                            ) model.data
                 }
             | RemChild p -> 
@@ -922,25 +922,25 @@ module TreeViewApp =
                     data = updateAt p (
                              function | Leaf v -> Leaf v
                                       | Node(l,p,xs) -> 
-                                          Node(l,p, if PList.count xs > 0 then PList.removeAt 0 xs else xs)
+                                          Node(l,p, if IndexList.count xs > 0 then IndexList.removeAt 0 xs else xs)
                            ) model.data
                 }
             | Nop -> model
     
     let viewLabel v = 
-        v |> Mod.bind (fun u -> match u with 
-                                    | MNumber n -> n |> Mod.map (fun x -> sprintf "Number %A" (string x))
-                                    | MText t   -> t |> Mod.map (fun x -> sprintf "Text %A" x))
+        v |> AVal.bind (fun u -> match u with 
+                                    | AdaptiveNumber n -> n |> AVal.map (fun x -> sprintf "Number %A" (string x))
+                                    | AdaptiveText t   -> t |> AVal.map (fun x -> sprintf "Text %A" x))
         |> Incremental.text
                         
 
-    let rec viewTree path (model : IMod<MTree>) =
+    let rec viewTree path (model : AdaptiveTreeCase) =
         alist {
-            let! model = model
+            //let! model = model
             match model with
-            | MLeaf v -> 
+            | AdaptiveLeaf v -> 
                 yield TreeView.leaf (click path) (AList.ofList [viewLabel v]) Nop Nop
-            | MNode(s, p, xs) -> 
+            | AdaptiveNode(s, p, xs) -> 
                 let children = AList.collecti (fun i v -> viewTree (i::path) v) xs
                 let desc =
                     div [] [
@@ -952,9 +952,9 @@ module TreeViewApp =
                                     children
         }
 
-    let view (model : MTreeModel) =
+    let view (model : AdaptiveTreeModel) =
         require Html.semui (
-            TreeView.view [] (viewTree [] model.data)
+            TreeView.view [] (model.data |> AList.bind (viewTree []))
         )
 
     let app =

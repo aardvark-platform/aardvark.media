@@ -13,7 +13,7 @@ open System.Collections.Concurrent
 [<EntryPoint; STAThread>]
 let main argv = 
 
-    Ag.initialize()
+    
     Aardvark.Init()
     Aardium.init()
 

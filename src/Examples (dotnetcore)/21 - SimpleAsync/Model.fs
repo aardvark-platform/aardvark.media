@@ -1,15 +1,16 @@
-﻿namespace RenderControl.Model
+namespace RenderControl.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Message = 
     | Start
     | Log of string
     | Done of (string*float)
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         threads : ThreadPool<Message>

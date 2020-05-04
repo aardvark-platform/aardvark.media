@@ -1,11 +1,11 @@
-﻿// by convention, create a separate module for the app
+// by convention, create a separate module for the app
 module App
 
 // open domain type namespace (including auto generated adaptive variants)
 open Simple2DDrawing
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 open Aardvark.UI // defines app etc
 
@@ -45,7 +45,7 @@ let update (m : Model) (msg : Message) =
     match msg with
         | ClosePolygon _ -> 
             // add the working polygon to the list of finished polygon an start a fresh working polygon
-            { m with finishedPolygons = PList.append m.workingPolygon m.finishedPolygons; workingPolygon = { points = [] }; past = Some m }
+            { m with finishedPolygons = IndexList.add m.workingPolygon m.finishedPolygons; workingPolygon = { points = [] }; past = Some m }
         | AddPoint pt -> 
             // update the working polygon by prepending a point to the lsit of points. furthermore the past is our old model
             { m with workingPolygon = { points = pt :: m.workingPolygon.points}; past = Some m }
@@ -66,7 +66,7 @@ let update (m : Model) (msg : Message) =
 // in aardvark.ui view functions get one argument of type MModel (instead of the plain immutable model)
 // this allows for an efficient implementation since our MModel is an adaptive datastructure the gui and 
 // 3d rendering can depend on.
-let view (m : MModel) =
+let view (m : AdaptiveModel) =
 
     // convinience function for creating svg line elements.
     // documentation is online: https://www.w3schools.com/graphics/svg_line.asp
@@ -77,9 +77,9 @@ let view (m : MModel) =
         ]
 
     // this function adaptively creates an alist of lines which connect our 
-    // adaptive input point list (IMod<list<V2d>>)
+    // adaptive input point list (aval<list<V2d>>)
     // in order to provide a preview for unfinished polygons, we optionally
-    // pass in an additional IMod<list<V2d>> which is always prepended to the actual
+    // pass in an additional aval<list<V2d>> which is always prepended to the actual
     // point list. you will see why this is nice later on.
     let viewPolygon prepend points =
         alist {
@@ -117,11 +117,11 @@ let view (m : MModel) =
             alist {
                 // loop over polygons and emit html code to render the svg
                 for polygon in m.finishedPolygons do
-                    yield! viewPolygon (Mod.constant []) polygon.points
+                    yield! viewPolygon (AVal.constant []) polygon.points
 
                 // let us prepent our current cursor position in order to get a preview of the 
                 // last point.
-                yield! viewPolygon (Mod.map Option.toList m.cursor) m.workingPolygon.points
+                yield! viewPolygon (AVal.map Option.toList m.cursor) m.workingPolygon.points
             }
 
     // body creates a html body
@@ -151,7 +151,7 @@ let app =
         threads = threads // not used here
         initial = // the initial model of our app after startup
             { 
-               finishedPolygons = PList.empty; workingPolygon = { points = [] }; 
+               finishedPolygons = IndexList.empty; workingPolygon = { points = [] }; 
                cursor = None; past = None; future = None 
             }
         update = update // use our update and view function

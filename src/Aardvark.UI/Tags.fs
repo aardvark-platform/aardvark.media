@@ -1,21 +1,21 @@
 ﻿namespace Aardvark.UI
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 
 
 module Incremental =
 
-    let renderControl (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
+    let renderControl (cam : aval<Camera>) (attributes : AttributeMap<'msg>) (sg : ISg<'msg>) =
         DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard, None)
 
-    let renderControl' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : ISg<'msg>) =
+    let renderControl' (cam : aval<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : ISg<'msg>) =
         DomNode.RenderControl(attributes, cam, sg, config, None)
 
-    let renderControlWithClientValues (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let renderControlWithClientValues (cam : aval<Camera>) (attributes : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         DomNode.RenderControl(attributes, cam, sg, RenderControlConfig.standard, None)
 
-    let renderControlWithClientValues' (cam : IMod<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let renderControlWithClientValues' (cam : aval<Camera>) (attributes : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         DomNode.RenderControl(attributes, cam, sg, config, None)
 
     let inline elem (tagName : string) (attrs : AttributeMap<'msg>) (children : alist<DomNode<'msg>>) =
@@ -30,7 +30,7 @@ module Incremental =
     let inline voidElemNS (tagName : string) (ns : string) (attrs : AttributeMap<'msg>) = 
         DomNode.Void(tagName, ns, attrs)
    
-    let inline text (content : IMod<string>) =
+    let inline text (content : aval<string>) =
         DomNode.Text(content)
         
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
@@ -245,10 +245,10 @@ module Static =
             }
 
 
-    let renderControl (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
+    let renderControl (cam : aval<Camera>) (attributes : list<string * AttributeValue<'msg>>) (sg : ISg<'msg>) =
         DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, RenderControlConfig.standard, None)
 
-    let renderControl' (cam : IMod<Camera>) (attributes : list<string * AttributeValue<'msg>>) (config : RenderControlConfig) (sg : ISg<'msg>) =
+    let renderControl' (cam : aval<Camera>) (attributes : list<string * AttributeValue<'msg>>) (config : RenderControlConfig) (sg : ISg<'msg>) =
         DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, config, None)
 
     let page (createPage : Request -> DomNode<'msg>) =
@@ -267,7 +267,7 @@ module Static =
         DomNode.Void(tagName, ns, AttributeMap.ofList attrs)
    
     let inline text (content : string) =
-        DomNode.Text(Mod.constant content)
+        DomNode.Text(AVal.constant content)
 
     // Elements - list of elements here: https://developer.mozilla.org/en-US/docs/Web/HTML/Element
     // Void elements
@@ -319,7 +319,7 @@ module Static =
     let inline main x = elem "main" x
     let inline ol x = elem "ol" x
     let inline p x = elem "p" x
-    let inline pre a x = DomNode.Text("pre", None, AttributeMap.ofList a, Mod.constant x)
+    let inline pre a x = DomNode.Text("pre", None, AttributeMap.ofList a, AVal.constant x)
     let inline section x = elem "section" x
     let inline ul x = elem "ul" x
 
@@ -389,7 +389,7 @@ module Static =
     let inline output x = elem "output" x
     let inline progress x = elem "progress" x
     let inline select x = elem "select" x
-    let inline textarea a x = DomNode.Text("textarea", None, AttributeMap.ofList a, Mod.constant x)
+    let inline textarea a x = DomNode.Text("textarea", None, AttributeMap.ofList a, AVal.constant x)
 
     // Interactive elements
     let inline details x = elem "details" x
@@ -407,7 +407,7 @@ module Static =
         let inline defs x = elemNS "defs" svgNS x
         let inline linearGradient  x = elemNS "linearGradient" svgNS x
         let inline radialGradient  x = elemNS "radialGradient" svgNS x
-        let inline text x c = elemNS "text" svgNS x [DomNode.SvgText(Mod.constant c)]
+        let inline text x c = elemNS "text" svgNS x [DomNode.SvgText(AVal.constant c)]
         let inline filter x = elemNS "filter" svgNS x
 
         let inline feBlend x = voidElemNS "feBlend" svgNS x
@@ -494,20 +494,20 @@ module Generic =
     type AttributeCreator =
         static member inline AttributeMap(attributes : AttributeMap<'msg>) = attributes
         static member inline AttributeMap(attributes : list<string * AttributeValue<'msg>>) = AttributeMap.ofList attributes
-        static member inline AttributeMap(attributes : list<string * IMod<Option<AttributeValue<'msg>>>>) = AttributeMap.ofListCond attributes
+        static member inline AttributeMap(attributes : list<string * aval<Option<AttributeValue<'msg>>>>) = AttributeMap.ofListCond attributes
         
     type IDomContent<'msg> =
         abstract member Create : tag : string * attributes : AttributeMap<'msg> -> DomNode<'msg>
 
     type ContentCreator =
         static member inline Content(l : list<DomNode<'msg>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofList l) }
-        static member inline Content(l : IMod<list<DomNode<'msg>>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofMod (Mod.map PList.ofList l)) }
-        static member inline Content(l : plist<DomNode<'msg>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofList (PList.toList l)) }
-        static member inline Content(l : IMod<plist<DomNode<'msg>>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofMod l) }
+        static member inline Content(l : aval<list<DomNode<'msg>>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofAVal (AVal.map IndexList.ofList l)) }
+        static member inline Content(l : IndexList<DomNode<'msg>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofList (IndexList.toList l)) }
+        static member inline Content(l : aval<IndexList<DomNode<'msg>>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, AList.ofAVal l) }
         static member inline Content(l : alist<DomNode<'msg>>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Node(t, a, l) }
 
-        static member inline Content(l : IMod<string>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Text(t, None, a, l) }
-        static member inline Content(l : string) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Text(t, None, a, Mod.constant l) }
+        static member inline Content(l : aval<string>) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Text(t, None, a, l) }
+        static member inline Content(l : string) = { new IDomContent<'msg> with member x.Create(t,a) = DomNode.Text(t, None, a, AVal.constant l) }
 
             
 
@@ -517,49 +517,49 @@ module Generic =
         static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : alist<DomNode<'msg>>) =
             DomNode.Node(tag, attributes, children)
             
-        static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : IMod<list<DomNode<'msg>>>) =
-            DomNode.Node(tag, attributes, children |> Mod.map PList.ofList |> AList.ofMod)
+        static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : aval<list<DomNode<'msg>>>) =
+            DomNode.Node(tag, attributes, children |> AVal.map IndexList.ofList |> AList.ofAVal)
             
-        static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : IMod<plist<DomNode<'msg>>>) =
-            DomNode.Node(tag, attributes, children |> AList.ofMod)
+        static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : aval<IndexList<DomNode<'msg>>>) =
+            DomNode.Node(tag, attributes, children |> AList.ofAVal)
 
         static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : list<DomNode<'msg>>) =
             DomNode.Node(tag, attributes, AList.ofList children)
  
-        static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : plist<DomNode<'msg>>) =
-            DomNode.Node(tag, attributes, AList.ofPList children)
+        static member inline Node(tag : string, attributes : AttributeMap<'msg>, children : IndexList<DomNode<'msg>>) =
+            DomNode.Node(tag, attributes, AList.ofIndexList children)
             
             
         // Children and static attributes
         static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : alist<DomNode<'msg>>) =
             DomNode.Node(tag, AttributeMap.ofList attributes, children)
             
-        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : IMod<list<DomNode<'msg>>>) =
-            DomNode.Node(tag, AttributeMap.ofList attributes, children |> Mod.map PList.ofList |> AList.ofMod)
+        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : aval<list<DomNode<'msg>>>) =
+            DomNode.Node(tag, AttributeMap.ofList attributes, children |> AVal.map IndexList.ofList |> AList.ofAVal)
             
-        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : IMod<plist<DomNode<'msg>>>) =
-            DomNode.Node(tag, AttributeMap.ofList attributes, children |> AList.ofMod)
+        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : aval<IndexList<DomNode<'msg>>>) =
+            DomNode.Node(tag, AttributeMap.ofList attributes, children |> AList.ofAVal)
 
         static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : list<DomNode<'msg>>) =
             DomNode.Node(tag, AttributeMap.ofList attributes, AList.ofList children)
  
-        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : plist<DomNode<'msg>>) =
-            DomNode.Node(tag, AttributeMap.ofList attributes, AList.ofPList children)
+        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, children : IndexList<DomNode<'msg>>) =
+            DomNode.Node(tag, AttributeMap.ofList attributes, AList.ofIndexList children)
             
 
         // Content and dynamic attributes
-        static member inline Node(tag : string, attributes : AttributeMap<'msg>, content : IMod<string>) =
+        static member inline Node(tag : string, attributes : AttributeMap<'msg>, content : aval<string>) =
             DomNode.Text(tag, None, attributes, content)
             
         static member inline Node(tag : string, attributes : AttributeMap<'msg>, content : string) =
-            DomNode.Text(tag, None, attributes, Mod.constant content)
+            DomNode.Text(tag, None, attributes, AVal.constant content)
 
         // Content and static attributes
-        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, content : IMod<string>) =
+        static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, content : aval<string>) =
             DomNode.Text(tag, None, AttributeMap.ofList attributes, content)
             
         static member inline Node(tag : string, attributes : list<string * AttributeValue<'msg>>, content : string) =
-            DomNode.Text(tag, None, AttributeMap.ofList attributes, Mod.constant content)
+            DomNode.Text(tag, None, AttributeMap.ofList attributes, AVal.constant content)
 
         static member inline Void(tag : string, attributes : AttributeMap<'msg>) =
             DomNode.Void(tag, attributes)
@@ -572,49 +572,49 @@ module Generic =
         static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : alist<DomNode<'msg>>) =
             DomNode.Node(tag, ns, attributes, children)
             
-        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : IMod<list<DomNode<'msg>>>) =
-            DomNode.Node(tag, ns, attributes, children |> Mod.map PList.ofList |> AList.ofMod)
+        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : aval<list<DomNode<'msg>>>) =
+            DomNode.Node(tag, ns, attributes, children |> AVal.map IndexList.ofList |> AList.ofAVal)
             
-        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : IMod<plist<DomNode<'msg>>>) =
-            DomNode.Node(tag, ns, attributes, children |> AList.ofMod)
+        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : aval<IndexList<DomNode<'msg>>>) =
+            DomNode.Node(tag, ns, attributes, children |> AList.ofAVal)
 
         static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : list<DomNode<'msg>>) =
             DomNode.Node(tag, ns, attributes, AList.ofList children)
  
-        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : plist<DomNode<'msg>>) =
-            DomNode.Node(tag, ns, attributes, AList.ofPList children)
+        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, children : IndexList<DomNode<'msg>>) =
+            DomNode.Node(tag, ns, attributes, AList.ofIndexList children)
             
             
         // Children and static attributes
         static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : alist<DomNode<'msg>>) =
             DomNode.Node(tag, ns, AttributeMap.ofList attributes, children)
             
-        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : IMod<list<DomNode<'msg>>>) =
-            DomNode.Node(tag, ns, AttributeMap.ofList attributes, children |> Mod.map PList.ofList |> AList.ofMod)
+        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : aval<list<DomNode<'msg>>>) =
+            DomNode.Node(tag, ns, AttributeMap.ofList attributes, children |> AVal.map IndexList.ofList |> AList.ofAVal)
             
-        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : IMod<plist<DomNode<'msg>>>) =
-            DomNode.Node(tag, ns, AttributeMap.ofList attributes, children |> AList.ofMod)
+        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : aval<IndexList<DomNode<'msg>>>) =
+            DomNode.Node(tag, ns, AttributeMap.ofList attributes, children |> AList.ofAVal)
 
         static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : list<DomNode<'msg>>) =
             DomNode.Node(tag, ns, AttributeMap.ofList attributes, AList.ofList children)
  
-        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : plist<DomNode<'msg>>) =
-            DomNode.Node(tag, ns, AttributeMap.ofList attributes, AList.ofPList children)
+        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, children : IndexList<DomNode<'msg>>) =
+            DomNode.Node(tag, ns, AttributeMap.ofList attributes, AList.ofIndexList children)
             
 
         // Content and dynamic attributes
-        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, content : IMod<string>) =
+        static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, content : aval<string>) =
             DomNode.Text(tag, Some ns, attributes, content)
             
         static member inline Node(tag : string, ns : string, attributes : AttributeMap<'msg>, content : string) =
-            DomNode.Text(tag, Some ns, attributes, Mod.constant content)
+            DomNode.Text(tag, Some ns, attributes, AVal.constant content)
 
         // Content and static attributes
-        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, content : IMod<string>) =
+        static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, content : aval<string>) =
             DomNode.Text(tag, Some ns, AttributeMap.ofList attributes, content)
             
         static member inline Node(tag : string, ns : string, attributes : list<string * AttributeValue<'msg>>, content : string) =
-            DomNode.Text(tag, Some ns, AttributeMap.ofList attributes, Mod.constant content)
+            DomNode.Text(tag, Some ns, AttributeMap.ofList attributes, AVal.constant content)
 
         static member inline Void(tag : string, ns : string, attributes : AttributeMap<'msg>) =
             DomNode.Void(tag, ns, attributes)
@@ -793,7 +793,7 @@ module Generic =
         let inline defs a c = elemNS "defs" svgNS a c
         let inline linearGradient  a c = elemNS "linearGradient" svgNS a c
         let inline radialGradient  a c = elemNS "radialGradient" svgNS a c
-        let inline text a c = elemNS "text" svgNS a [DomNode.SvgText(Mod.constant c)]
+        let inline text a c = elemNS "text" svgNS a [DomNode.SvgText(AVal.constant c)]
         let inline filter a c = elemNS "filter" svgNS a c
 
         let inline feBlend x = voidElemNS "feBlend" svgNS x
@@ -852,8 +852,8 @@ module private GenericTest =
         let a : DomNode<unit> = div AttributeMap.empty [text "asdasdas"]
         let a : DomNode<unit> = div [] AList.empty
         let a : DomNode<unit> = div AttributeMap.empty AList.empty
-        let a : DomNode<unit> = div [] (Mod.constant "hi")
-        let a : DomNode<unit> = div AttributeMap.empty (Mod.constant "hi")
+        let a : DomNode<unit> = div [] (AVal.constant "hi")
+        let a : DomNode<unit> = div AttributeMap.empty (AVal.constant "hi")
         let a : DomNode<unit> = div AttributeMap.empty "hi"
         let a : DomNode<unit> = div [] "hi"
         let a : DomNode<unit> = div [] [ div [] "hi"; div [] "hugo"; br []; br AttributeMap.empty ]
@@ -861,7 +861,7 @@ module private GenericTest =
 
         let a : DomNode<unit> =
             div [] [
-                text (Mod.init "asdasda")
+                text (AVal.init "asdasda")
                 text "asdasda"
 
                 div [] (
@@ -871,7 +871,7 @@ module private GenericTest =
                     }
                 )
 
-                button [] (Mod.init "test")
+                button [] (AVal.init "test")
                 button [] "click me"
             ]
 

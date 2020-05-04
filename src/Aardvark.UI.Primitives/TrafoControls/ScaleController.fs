@@ -3,7 +3,7 @@ namespace Aardvark.UI.Trafos
 module ScaleController =
 
     open Aardvark.Base
-    open Aardvark.Base.Incremental    
+    open FSharp.Data.Adaptive    
     open Aardvark.SceneGraph
     open Aardvark.Base.Rendering
     open Aardvark.Base.Geometry
@@ -70,27 +70,27 @@ module ScaleController =
 
     
 
-    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : IMod<CameraView>) (m : MTransformation) =
+    let viewController (liftMessage : TrafoController.Action -> 'msg) (v : aval<CameraView>) (m : AdaptiveTransformation) =
                 
         let box = Sg.box' C4b.Red (Box3d.FromCenterAndSize(V3d.OOI, V3d(coneHeight)))
 
         let arrow rot axis =
             let col =
-                m.hovered |> Mod.map2 ( fun g h ->
+                m.hovered |> AVal.map2 ( fun g h ->
                  match h, g, axis with
                  | _,      Some g, p when g = p -> C4b.Yellow
                  | Some h, None,   p when h = p -> C4b.White
                  | _,      _,      X -> C4b.Red
                  | _,      _,      Y -> C4b.Green
                  | _,      _,      Z -> C4b.Blue
-                ) (m.grabbed |> Mod.map (Option.map ( fun p -> p.axis )))
-            Sg.cylinder tessellation col (Mod.constant cylinderRadius) (Mod.constant 1.0) 
+                ) (m.grabbed |> AVal.map (Option.map ( fun p -> p.axis )))
+            Sg.cylinder tessellation col (AVal.constant cylinderRadius) (AVal.constant 1.0) 
             |> Sg.noEvents
             |> Sg.andAlso (box |> Sg.noEvents)
             |> Sg.pickable (Cylinder3d(V3d.OOO,V3d.OOI + V3d(0.0,0.0,0.1),cylinderRadius + 0.1) |> PickShape.Cylinder)
             |> Sg.transform rot            
             |> Sg.uniform "HoverColor" col
-            |> Sg.trafo (m.workingPose |> Mod.map Pose.trafoWoScale)
+            |> Sg.trafo (m.workingPose |> AVal.map Pose.trafoWoScale)
             |> Sg.withEvents [ 
                     Sg.onEnter        (fun _ ->   Hover axis)
                     Sg.onMouseDownEvt (fun evt -> Grab (evt.localRay, axis))
@@ -111,5 +111,5 @@ module ScaleController =
                 
         Sg.ofList [arrowX; arrowY; arrowZ ]
         |> Sg.effect [ Shader.stableTrafo |> toEffect; Shader.hoverColor |> toEffect]
-        |> Sg.trafo (m.pose |> Mod.map Pose.trafoWoScale)
+        |> Sg.trafo (m.pose |> AVal.map Pose.trafoWoScale)
         |> Sg.map liftMessage               

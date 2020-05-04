@@ -1,9 +1,9 @@
-﻿module Inc.App
+module Inc.App
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Inc.Model
 
@@ -49,7 +49,7 @@ module Printing =
     let unhtmlify (s:string) =
         s.Replace("&lt;","<").Replace("&gt;",">").Replace("&quot;","\"")
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     let graph = { nodes = [| { name= "a"}; {name="b"}; {name="c"}|]; edges = [| {id="e"; weight=1.0; fromId=0; toId=1}; {id="f"; weight=10.0; fromId=0; toId=2}; {id="g"; weight=5.0; fromId=1; toId=2}   |] }
     let a = graph |> Json.serialize |> Json.format
     require dependencies (

@@ -1,10 +1,10 @@
-﻿module App
+module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Model
 
@@ -21,17 +21,17 @@ let update (model : Model) (msg : WrappedMessage) =
             model
 
 module IncApp' =
-    open Aardvark.Base.Incremental
+    open FSharp.Data.Adaptive
     open Inc.App
     open Inc.Model
 
-    let view (model : MModel) =
+    let view (model : AdaptiveModel) =
         div [] [
             text "Hello World"
             br []
             button [onClick (fun _ -> Inc)] [text "Increment"]
             text "    "
-            Incremental.text (model.value |> Mod.map string)
+            Incremental.text (model.value |> AVal.map string)
             br []
             img [
                 attribute "src" "https://upload.wikimedia.org/wikipedia/commons/6/67/SanWild17.jpg"; 
@@ -53,11 +53,11 @@ module IncApp' =
         }
 
 
-let view (model : MModel) =
+let view (model : AdaptiveModel) =
     body [] [
         div [style "display: flex; flex-direction: column; width: 100%; height: 100%"] [
             div [] [
-                Incremental.text (model.dummy |> Mod.map (sprintf "messages: %d"))
+                Incremental.text (model.dummy |> AVal.map (sprintf "messages: %d"))
                 
                 button [ onClick (fun () -> ResetAll) ] [ text "Reset" ]
             ]

@@ -1,18 +1,19 @@
-﻿namespace DiscoverOpcs.Model
+namespace DiscoverOpcs.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open DiscoverOpcs
+open Adaptify
 
 type Message = 
     | SetPaths of list<string>
     | Discover
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
-        selectedPaths : plist<string>
-        opcPaths      : hmap<string, list<string>>
+        selectedPaths : IndexList<string>
+        opcPaths      : HashMap<string, list<string>>
         surfaceFolder : list<string>
     }

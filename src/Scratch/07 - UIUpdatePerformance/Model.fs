@@ -1,9 +1,10 @@
 ﻿namespace Inc.Model
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open System
+open Adaptify
 
 type Message = 
     | Inc
@@ -14,7 +15,7 @@ type Message =
     | GotImage of DateTime
     | Camera of FreeFlyController.Message
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
         value : int
@@ -22,7 +23,7 @@ type Model =
         threads : ThreadPool<Message>
         updateStart : float
         took : float
-        things : plist<string>
+        things : IndexList<string>
         angle : float
         lastImage : DateTime
         cameraState : CameraControllerState

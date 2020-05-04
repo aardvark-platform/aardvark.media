@@ -1,7 +1,7 @@
-﻿module App
+module App
 
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
@@ -37,11 +37,11 @@ let update (model : SimpleDrawingModel) (act : Action) =
             
 let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
-let computeScale (view : IMod<CameraView>)(p:V3d)(size:float) =        
+let computeScale (view : aval<CameraView>)(p:V3d)(size:float) =        
     view 
-    |> Mod.map (fun v -> 
+    |> AVal.map (fun v -> 
         let distV = p - v.Location
-        let distF = V3d.Dot(v.Forward, distV)
+        let distF = Vec.Dot(v.Forward, distV)
         distF * size / 800.0
       )
 
@@ -57,7 +57,7 @@ let mkISg color size trafo =
         
 let canvas =  
     let b = new Box3d( V3d(-2.0,-0.5,-2.0), V3d(2.0,0.5,2.0) )                                               
-    Sg.box (Mod.constant Primitives.colorsBlue.[0]) (Mod.constant b)
+    Sg.box (AVal.constant Primitives.colorsBlue.[0]) (AVal.constant b)
         |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
@@ -71,9 +71,9 @@ let canvas =
                 Sg.onLeave (fun _ -> Exit)
             ]    
 
-let edgeLines (close : bool)  (points : IMod<list<V3d>>) =        
+let edgeLines (close : bool)  (points : aval<list<V3d>>) =        
     points 
-     |> Mod.map (fun k -> 
+     |> AVal.map (fun k -> 
         match k with
             | h::_ -> 
                 let start = if close then k @ [h] else k
@@ -85,49 +85,49 @@ let edgeLines (close : bool)  (points : IMod<list<V3d>>) =
         )
 
 let frustum =
-    Mod.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
+    AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
 
-let scene3D (model : MSimpleDrawingModel) =
+let scene3D (model : AdaptiveSimpleDrawingModel) =
     let cam =
         model.camera.view 
 
     let lines = 
         edgeLines false model.points 
-            |> Sg.lines (Mod.constant Primitives.colorsBlue.[2])
+            |> Sg.lines (AVal.constant Primitives.colorsBlue.[2])
             |> Sg.noEvents
-            |> Sg.uniform "LineWidth" (Mod.constant 5) 
+            |> Sg.uniform "LineWidth" (AVal.constant 5) 
             |> Sg.effect [
                 toEffect DefaultSurfaces.trafo
                 toEffect DefaultSurfaces.vertexColor
                 toEffect DefaultSurfaces.thickLine
                 ]
             |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
-            |> Sg.depthTest (Mod.constant DepthTestMode.None)                                         
+            |> Sg.depthTest (AVal.constant DepthTestMode.None)                                         
 
     let spheres =
         model.points 
-            |> Mod.map (fun ps -> 
+            |> AVal.map (fun ps -> 
                 ps |> List.map (fun p -> 
-                        mkISg (Mod.constant Primitives.colorsBlue.[3])
+                        mkISg (AVal.constant Primitives.colorsBlue.[3])
                               (computeScale model.camera.view p 5.0)
-                              (Mod.constant (Trafo3d.Translation(p)))) 
+                              (AVal.constant (Trafo3d.Translation(p)))) 
                         |> Sg.ofList)                                
             |> Sg.dynamic                            
                                               
     let trafo = 
         model.hoverPosition 
-            |> Mod.map (function o -> match o with 
+            |> AVal.map (function o -> match o with 
                                         | Some t-> t
                                         | None -> Trafo3d.Scale(V3d.Zero))
 
-    let brush = mkISg (Mod.constant C4b.Red) (Mod.constant 0.05) trafo
+    let brush = mkISg (AVal.constant C4b.Red) (AVal.constant 0.05) trafo
                                                             
     [canvas; brush; spheres; lines]
         |> Sg.ofList
         |> Sg.fillMode model.rendering.fillMode
         |> Sg.cullMode model.rendering.cullMode   
 
-let view (model : MSimpleDrawingModel) =            
+let view (model : AdaptiveSimpleDrawingModel) =            
     require (Html.semui) (
         div [clazz "ui"; style "background: #1B1C1E"] [
             ArcBallController.controlledControl model.camera CameraMessage frustum

@@ -1,15 +1,16 @@
-﻿namespace Model
+namespace Model
 
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Adaptify
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {   
         cameraState : CameraControllerState
     }
 
-[<DomainType>]
+[<ModelType>]
 type ServerModel = 
     {   
         value : int

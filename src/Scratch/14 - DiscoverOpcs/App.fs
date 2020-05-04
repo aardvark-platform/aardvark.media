@@ -1,4 +1,4 @@
-﻿namespace DiscoverOpcs
+namespace DiscoverOpcs
 
 open System
 open System.IO
@@ -7,7 +7,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
   
 open Aardvark.Base
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.Base.Rendering
 open DiscoverOpcs.Model
 
@@ -49,7 +49,7 @@ module App =
         let opcs = 
           selectedPaths 
             |> List.map Discover.superDiscovery
-            |> HMap.ofList
+            |> HashMap.ofList
 
         let surfacePaths = 
           selectedPaths
@@ -59,7 +59,7 @@ module App =
         Log.stop()
         
         { model with 
-           selectedPaths = selectedPaths |> PList.ofList
+           selectedPaths = selectedPaths |> IndexList.ofList
            opcPaths = opcs
            surfaceFolder = surfacePaths
         }
@@ -80,7 +80,7 @@ module App =
   //    | Opc           _ -> div [clazz "ui middle aligned tiny label red"][text "Opc"]
   //    | Other         _ -> div [clazz "ui middle aligned tiny label blue"][text "Other"]
 
-  let viewPaths (model:MModel) = 
+  let viewPaths (model:AdaptiveModel) = 
 
     Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
       alist {
@@ -93,7 +93,7 @@ module App =
       }
     )
 
-  let viewOpcPaths (model:MModel) = 
+  let viewOpcPaths (model:AdaptiveModel) = 
     Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
       alist {
         for (folder,opclist) in model.opcPaths |> AMap.toASet |> ASet.toAList do
@@ -110,7 +110,7 @@ module App =
       }
     )
 
-  let viewSurfacePaths (model:MModel) = 
+  let viewSurfacePaths (model:AdaptiveModel) = 
     Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
       alist {
         let! test = model.surfaceFolder
@@ -119,7 +119,7 @@ module App =
       }
     )
   
-  let view (model : MModel) =
+  let view (model : AdaptiveModel) =
     require Html.semui (
       body [style "width: 100%; height:100%; background: #252525; overflow-x: hidden; overflow-y: scroll"] [
         div [clazz "ui inverted segment"] [
@@ -159,8 +159,8 @@ module App =
 
   let initial = 
     { 
-       selectedPaths = initPaths |> PList.ofList
-       opcPaths = HMap.empty //opcPaths |> PList.ofList
+       selectedPaths = initPaths |> IndexList.ofList
+       opcPaths = HashMap.empty //opcPaths |> IndexList.ofList
        surfaceFolder = List.empty
     }
 

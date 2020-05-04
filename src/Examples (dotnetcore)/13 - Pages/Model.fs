@@ -1,10 +1,11 @@
-﻿namespace Model
+namespace Model
 
 open Aardvark.Base
 open Aardvark.Base.Rendering
-open Aardvark.Base.Incremental
+open FSharp.Data.Adaptive
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Adaptify
 
 type Message = 
     | Camera of FreeFlyController.Message
@@ -16,13 +17,13 @@ type Message =
     | ToggleFill
     | SetFiles of list<string>
 
-[<DomainType>]
+[<ModelType>]
 type Model = 
     {
-        [<NonIncremental>]
+        [<NonAdaptive>]
         past : Option<Model>
 
-        [<NonIncremental>]
+        [<NonAdaptive>]
         future : Option<Model>
 
         cameraState : CameraControllerState
@@ -32,5 +33,5 @@ type Model =
 
         dockConfig : DockConfig
 
-        files : plist<string>
+        files : IndexList<string>
     }
