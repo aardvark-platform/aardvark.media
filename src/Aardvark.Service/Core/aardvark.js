@@ -195,7 +195,7 @@ class Renderer {
                 "</div >";
 
 
-            let loaderHtml = 
+            let loaderHtml =
                 "<div class='fountainG_0'>" +
                 "<div class='fountainG_1 fountainG'></div>" +
                 "<div class='fountainG_2 fountainG'></div>" +
@@ -206,12 +206,12 @@ class Renderer {
                 "<div class='fountainG_7 fountainG'></div>" +
                 "<div class='fountainG_8 fountainG'></div>" +
                 (this.customLoaderImg ? aardvarkHtml : "") +
-                "</div>" 
+                "</div>"; 
 
             $(loader).html(loaderHtml);
 
             if (this.customLoaderImg) {
-                $(loader).css("background-image", "url('https://upload.wikimedia.org/wikipedia/commons/5/57/Fsharp_logo.png')");
+                $(loader).css("background-image", this.customLoaderImg);
             }
             if (this.customLoaderImgSize) {
                 $(loader).css("background-size", this.customLoaderImgSize);
