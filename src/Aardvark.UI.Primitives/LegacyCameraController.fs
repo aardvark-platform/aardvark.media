@@ -31,7 +31,8 @@ module CameraController =
     let initial =
         {
             view = CameraView.lookAt (6.0 * V3d.III) V3d.Zero V3d.OOI
-                                    
+            upSpeed = 0.0
+            downSpeed = 0.0              
             orbitCenter = None
             stash = None
             sensitivity = 1.0

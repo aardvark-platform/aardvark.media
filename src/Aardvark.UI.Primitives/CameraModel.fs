@@ -84,6 +84,10 @@ type CameraControllerState =
 
         moveSpeed   : float
         panSpeed    : float
+
+        upSpeed     : float
+        downSpeed   : float
+
         orbitCenter : Option<V3d>
         lastTime    : Option<float>
 

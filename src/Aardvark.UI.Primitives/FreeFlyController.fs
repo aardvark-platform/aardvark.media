@@ -29,6 +29,10 @@ module FreeFlyController =
             rotationFactor = 0.01            
             dolly = false
 
+
+            upSpeed = 0.0
+            downSpeed = 0.0
+
             lastTime = None
             moveVec = V3d.Zero
             rotateVec = V3d.Zero
@@ -279,6 +283,8 @@ module FreeFlyController =
         | ReleaseMovStick
         | MoveRotStick of TouchStickState
         | ReleaseRotStick
+        | PanUp of float
+        | PanDown of float
         | Nop
 
     let initial' (dist:float) =
@@ -317,6 +323,8 @@ module FreeFlyController =
     let update (model : CameraControllerState) (message : Message) =
         match message with
             | Nop -> model
+
+
             | Blur ->
                 { model with 
                     lastTime = None
@@ -331,7 +339,7 @@ module FreeFlyController =
                 let move (state : CameraControllerState) =
                     if state.moveVec.AllTiny |> not then
                         { CameraMotion.Zero with
-                            dPos = V3d state.moveVec * exp state.freeFlyConfig.moveSensitivity
+                            dPos = state.moveVec * exp state.freeFlyConfig.moveSensitivity
                         }
                     else
                         CameraMotion.Zero
@@ -543,17 +551,25 @@ module FreeFlyController =
             | MoveMovStick s ->
                 let s = scaleStick model.freeFlyConfig.touchScalesExponentially 2.5 s
                 let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * -sin(s.angle * Constant.RadiansPerDegree))
-                startAnimation { model with moveVec = V3d(pos.X,0.0,pos.Y) }
+                startAnimation { model with moveVec = V3d(pos.X,model.moveVec.Y,pos.Y) }
             | ReleaseMovStick ->
-                startAnimation { model with moveVec = V3d(0.0,0.0,0.0) }   
+                startAnimation { model with moveVec = V3d(0.0,model.moveVec.Y,0.0) }   
                 
             | MoveRotStick s ->
                 let s = scaleStick model.freeFlyConfig.touchScalesExponentially 0.75 s
                 let pos = V2d(s.distance * cos(s.angle * Constant.RadiansPerDegree), s.distance * sin(s.angle * Constant.RadiansPerDegree))
 
-                startAnimation { model with rotateVec = V3d(-pos.Y,-pos.X,0.0) * 0.01 }
+                startAnimation { model with rotateVec = 2.0*V3d(-pos.Y,-pos.X,0.0) * 0.01 }
             | ReleaseRotStick ->
                 startAnimation { model with rotateVec = V3d(0.0,0.0,0.0) }
+
+            | PanUp v ->    
+                let n = model.moveVec + V3d(0.0, v - model.upSpeed, 0.0)
+                startAnimation { model with moveVec = n; upSpeed = v }
+                
+            | PanDown v ->    
+                let n = model.moveVec - V3d(0.0, v - model.downSpeed, 0.0)
+                startAnimation { model with moveVec = n; downSpeed = v }
 
     let update' = flip update
 
@@ -574,6 +590,13 @@ module FreeFlyController =
             always <| onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick |> f)
             always <| onTouchStickStop "leftstick" (fun _ -> ReleaseMovStick |> f)
             always <| onTouchStickStop "ritestick" (fun _ -> ReleaseRotStick |> f)
+
+
+            always <| Gamepad.onLeftTriggerChanged 0 (fun v -> [PanDown v |> f])
+            always <| Gamepad.onRightTriggerChanged 0 (fun v -> [PanUp v |> f])
+            always <| Gamepad.onLeftStickChanged 0 (fun v -> [MoveMovStick { distance = v.Length; angle = if v = V2d.Zero then 0.0 else Constant.DegreesPerRadian * atan2 v.Y v.X } |> f])
+            always <| Gamepad.onRightStickChanged 0 (fun v -> [MoveRotStick { distance = v.Length; angle = if v = V2d.Zero then 0.0 else Constant.DegreesPerRadian * atan2 v.Y v.X } |> f])
+
         ]
 
     let extractAttributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
