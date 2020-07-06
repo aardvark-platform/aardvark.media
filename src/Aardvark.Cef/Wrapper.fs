@@ -2,17 +2,12 @@
 
 open Aardvark.Base
 open System
-open System.Net
-open System.Collections.Concurrent
 open System.Collections.Generic
 open FSharp.Data.Adaptive
 open System.Threading
 open System.Runtime.InteropServices
 open Xilium.CefGlue
 open Newtonsoft.Json.Linq
-
-open Microsoft.FSharp.NativeInterop
-
 
 #nowarn "9"
 #nowarn "44"
@@ -161,8 +156,6 @@ module IPC =
             None
 
 module private Interop = 
-    open Aardvark.Base
-    open System.Collections.Generic
     open System.Reflection
     open System.IO.MemoryMappedFiles
 
@@ -837,7 +830,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     
     let loadHandler = LoadHandler(this)
     let renderHandler = RenderHandler(this, size, texture)
-    let loadResult = MVar.empty() //System.Threading.Tasks.TaskCompletionSource<LoadResult>()
+    let loadResult = MVar.empty()
 
     let messagePump = MessagePump()
     let transactor = MessagePump()
@@ -874,11 +867,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
             browser <- b
 
     member internal x.LoadFinished(res : LoadResult) =
-        lock lockObj (fun () ->
-            if not isDisposed then
-                //loadResult.SetResult res
-                MVar.put loadResult res
-            )
+        if not isDisposed then
+            MVar.put loadResult res
 
     member internal x.Render(f : unit -> Transaction) =
         lock lockObj (fun () -> // NOTE: locking here might block when acquiring the graphics context when only 1 resource context is created
