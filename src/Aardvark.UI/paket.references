@@ -3,11 +3,8 @@ FSharp.Data.Adaptive
 Aardvark.Base.Incremental
 Aardvark.Base.FSharp
 Aardvark.Base.Rendering
-Aardvark.Rendering.GL
 Aardvark.Application
 Aardvark.SceneGraph
-Aardvark.Rendering.Vulkan
-Aardvark.GPGPU
 
 FsPickler
 FsPickler.Json
