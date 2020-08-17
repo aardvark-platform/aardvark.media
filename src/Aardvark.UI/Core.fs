@@ -12,6 +12,13 @@ open Aardvark.Service
 open Aardvark.UI.Semantics
 open System.Reactive.Subjects
 
+type JSEvent(client : Guid, name : string, args : list<string>) =
+    member x.Client = client
+    member x.Name = name
+    member x.Args = args
+    
+    member x.WithArgs(args : list<string>) =
+        JSEvent(client, name, args)
 
 type RenderControlConfig =
     {
@@ -62,7 +69,7 @@ module Pickler =
 type Event<'msg> =
     {
         clientSide  : (string -> list<string> -> string) -> string -> string
-        serverSide : Guid -> string -> list<string> -> seq<'msg>
+        serverSide : JSEvent -> seq<'msg>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -79,26 +86,26 @@ module Event =
     let empty<'msg> : Event<'msg> =
         {
             clientSide = fun _ _ -> ""
-            serverSide = fun _ _ _ -> Seq.empty
+            serverSide = fun _ -> Seq.empty
         }
 
     let ofTrigger (reaction : unit -> 'msg) =
         {
             clientSide = fun send id -> send id []
-            serverSide = fun _ _ _ -> Seq.delay (reaction >> Seq.singleton)
+            serverSide = fun _ -> Seq.delay (reaction >> Seq.singleton)
         }
 
     let ofDynamicArgs (args : list<string>) (reaction : list<string> -> seq<'msg>) =
         {
             clientSide = fun send id -> send id args
-            serverSide = fun session id args -> reaction args
+            serverSide = fun evt -> reaction evt.Args
         }
 
     let create1 (a : string) (reaction : 'a -> 'msg) =
         {
             clientSide = fun send id -> send id [a]
-            serverSide = fun session id args -> 
-                match args with
+            serverSide = fun evt -> 
+                match evt.Args with
                     | [a] ->
                         try 
                             Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a)))
@@ -107,15 +114,15 @@ module Event =
                             Seq.empty
 
                     | _ -> 
-                        Log.warn "[UI] expected args (%s) but got %A" typename<'a> args
+                        Log.warn "[UI] expected args (%s) but got %A" typename<'a> evt.Args
                         Seq.empty
         }
 
     let create2 (a : string) (b : string) (reaction : 'a -> 'b -> 'msg) =
         {
             clientSide = fun send id -> send id [a; b]
-            serverSide = fun session id args -> 
-                match args with
+            serverSide = fun evt -> 
+                match evt.Args with
                     | [a; b] ->
                         try 
                             Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) ))
@@ -124,15 +131,15 @@ module Event =
                             Seq.empty
 
                     | _ -> 
-                        Log.warn "[UI] expected args (%s, %s) but got %A" typename<'a> typename<'b> args
+                        Log.warn "[UI] expected args (%s, %s) but got %A" typename<'a> typename<'b> evt.Args
                         Seq.empty
         }
 
     let create3 (a : string) (b : string) (c : string) (reaction : 'a -> 'b -> 'c -> 'msg) =
         {
             clientSide = fun send id -> send id [a; b; c]
-            serverSide = fun session id args -> 
-                match args with
+            serverSide = fun evt -> 
+                match evt.Args with
                     | [a; b; c] ->
                         try 
                             Seq.delay (fun () -> Seq.singleton (reaction (Pickler.json.UnPickleOfString a) (Pickler.json.UnPickleOfString b) (Pickler.json.UnPickleOfString c)))
@@ -141,7 +148,7 @@ module Event =
                             Seq.empty
 
                     | _ -> 
-                        Log.warn "[UI] expected args (%s, %s, %s) but got %A" typename<'a> typename<'b> typename<'c> args
+                        Log.warn "[UI] expected args (%s, %s, %s) but got %A" typename<'a> typename<'b> typename<'c> evt.Args
                         Seq.empty
         }
 
@@ -151,13 +158,17 @@ module Event =
                 l.clientSide (fun id args -> send id ("0" :: args)) id + "; " +
                 r.clientSide (fun id args -> send id ("1" :: args)) id
 
-            serverSide = fun session id args ->
-                match args with
-                    | "0" :: args -> l.serverSide session id args
-                    | "1" :: args -> r.serverSide session id args
-                    | _ -> 
-                        Log.warn "[UI] expected args ((1|2)::args) but got %A" args
+            serverSide = fun evt ->
+                match evt.Args with
+                    | "0" :: args -> l.serverSide (evt.WithArgs args)
+                    | "1" :: args -> r.serverSide (evt.WithArgs args)
+                    | id :: _ -> 
+                        Log.warn "[UI] expected args (1|2)::_ but got %A::_" id
                         Seq.empty
+                    | [] ->
+                        Log.warn "[UI] expected args (1|2)::_ but got []"
+                        Seq.empty
+                        
                 
         }
 
@@ -176,12 +187,12 @@ module Event =
                             )
                         String.concat "; " clientScripts
 
-                    serverSide = fun session id args ->
-                        match args with
+                    serverSide = fun evt ->
+                        match evt.Args with
                             | index :: args ->
                                 match Int32.TryParse index with
                                     | (true, index) when index >= 0 && index < events.Length ->
-                                        events.[index].serverSide session id args
+                                        events.[index].serverSide (evt.WithArgs args)
 
                                     | _ ->
                                         Log.warn "[UI] unexpected index for dispatcher: %A" index
@@ -197,7 +208,7 @@ module Event =
     let map (f : 'a -> 'b) (e : Event<'a>) = 
         {
             clientSide = e.clientSide; 
-            serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
+            serverSide = fun evt -> Seq.map f (e.serverSide evt) 
         }
 
 [<RequireQualifiedAccess>]
@@ -562,13 +573,13 @@ and MutableApp<'model, 'msg> =
         messages    : IObservable<'msg>
         shutdown    : unit -> unit
     }
-
     
+
 and [<AbstractClass>] DomNode<'msg>() =
     let mutable required : list<Reference> = []
     let mutable boot : Option<string -> string> = None
     let mutable shutdown : Option<string -> string> = None
-    let mutable callbacks : Map<string, (list<string> -> 'msg)> = Map.empty
+    let mutable callbacks : Map<string, (JSEvent -> seq<'msg>)> = Map.empty
     let mutable channels : Map<string, Channel> = Map.empty
         
     member x.Required
@@ -849,8 +860,8 @@ and DomNode private() =
 
             {
                 clientSide = fun send id -> send id args + ";"
-                serverSide = fun session id args ->
-                    match args with
+                serverSide = fun evt ->
+                    match evt.Args with
                         | x :: y :: alt :: shift :: ctrl :: which :: _ ->
                             let x = round (float x) |> int
                             let y = round (float y) |> int
@@ -858,7 +869,7 @@ and DomNode private() =
                             let alt = Boolean.Parse alt
                             let shift = Boolean.Parse shift
                             let ctrl = Boolean.Parse ctrl
-                            perform(session, id, kind, button, alt, shift, ctrl, V2i(x,y))
+                            perform(evt.Client, evt.Name, kind, button, alt, shift, ctrl, V2i(x,y))
 
                         | x :: y :: alt :: shift :: ctrl :: _ -> 
                             let vx = round (float x) |> int
@@ -866,7 +877,7 @@ and DomNode private() =
                             let alt = Boolean.Parse alt
                             let shift = Boolean.Parse shift
                             let ctrl = Boolean.Parse ctrl
-                            perform(session, id, kind, MouseButtons.None, alt, shift, ctrl, V2i(vx,vy))
+                            perform(evt.Client, evt.Name, kind, MouseButtons.None, alt, shift, ctrl, V2i(vx,vy))
 
                         | _ ->
                             Seq.empty

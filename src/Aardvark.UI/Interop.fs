@@ -174,8 +174,8 @@ module Dialog =
             "dialogchoose", 
                 AttributeValue.Event {
                     clientSide = fun _ _ -> ""
-                    serverSide = fun _ _ args ->
-                        match args with
+                    serverSide = fun evt ->
+                        match evt.Args with
                         | [arg] -> 
                             try 
                                 let o = Newtonsoft.Json.Linq.JArray.Parse arg

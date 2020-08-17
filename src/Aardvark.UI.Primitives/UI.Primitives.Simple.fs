@@ -31,8 +31,8 @@ module Simple =
                         "   " + send src ["event.target.value"] + ";"
                         "}"
                     ]
-                serverSide = fun client src args ->
-                    match args with
+                serverSide = fun evt ->
+                    match evt.Args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
                             str |> int |> changed |> Seq.singleton
@@ -77,8 +77,8 @@ module Simple =
                         "   " + send src ["event.target.value"] + ";"
                         "}"
                     ]
-                serverSide = fun client src args ->
-                    match args with
+                serverSide = fun evt ->
+                    match evt.Args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
                             str |> int |> changed |> Seq.singleton
@@ -123,8 +123,8 @@ module Simple =
                         "   " + send src ["event.target.value"] + ";"
                         "}"
                     ]
-                serverSide = fun client src args ->
-                    match args with
+                serverSide = fun evt ->
+                    match evt.Args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
                             str |> float |> changed |> Seq.singleton
@@ -185,8 +185,8 @@ module Simple =
         let changed =
             AttributeValue.Event  {
                 clientSide = fun send src -> send src ["event.target.value"] + ";"
-                serverSide = fun client src args ->
-                    match args with
+                serverSide = fun evt ->
+                    match evt.Args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
                             str.Trim('\"') |> changed |> Seq.singleton

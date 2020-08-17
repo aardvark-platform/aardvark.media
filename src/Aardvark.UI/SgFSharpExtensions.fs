@@ -13,6 +13,6 @@ module Extensions =
        let translate' (t : aval<V3d>) sg = 
             Sg.trafo (t |> AVal.map Trafo3d.Translation) sg
 
-       let sphere level color radius = Sg.sphere level color radius |> Sg.noEvents
-       let box color box = Sg.box color box |> Sg.noEvents
+       let sphere level color radius = Sg.sphere level color radius |> Sg.requirePicking |> Sg.noEvents
+       let box color box = Sg.box color box |> Sg.requirePicking |> Sg.noEvents
        let empty<'msg> : ISg<'msg> = Sg.ofList [] |> Sg.noEvents

@@ -321,6 +321,13 @@ type Scene() =
     let cache = ConcurrentDictionary<IFramebufferSignature, ConcreteScene>()
     let clientInfos = ConcurrentDictionary<Guid * string, unit -> Option<ClientInfo * ClientState>>()
 
+    let rendered = FSharp.Control.Event<V2i>()
+
+
+    member x.OnRendered = rendered.Publish
+
+    member internal x.Rendered(size : V2i) =
+        rendered.Trigger size
 
     member internal x.AddClientInfo(session : Guid, id : string, getter : unit -> Option<ClientInfo * ClientState>) =
         clientInfos.TryAdd((session, id), getter) |> ignore
@@ -411,7 +418,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
                 member x.FramebufferSignature = task.FramebufferSignature
                 member x.Runtime = task.Runtime
                 member x.PerformUpdate(t,rt) = task.Update(t, rt)
-                member x.Perform(t,rt,o) =  task.Run(t, rt, o)
+                member x.Perform(t,rt,o) =  task.Run(t, rt, o); scene.Rendered(o.viewport.Size)
                 
                 member x.Release() = 
                     lock x (fun () ->
@@ -1681,7 +1688,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let id = Interlocked.Increment(&currentId)
     let sender = DummyObject()
-    let requestedSize : MVar<C4b * V2i> = MVar.empty()
+    //let requestedSize : MVar<C4b * V2i> = MVar.empty()
+
+    let mutable requestedSize : C4b * V2i = C4b.Black, V2i.Zero
+    let bufferCounter = new SemaphoreSlim(30)
+    let render = MVar.create ()
+    let renderEvent = FSharp.Control.Event<V2i>()
+
     let mutable createInfo = createInfo
     let mutable task = newTask createInfo getContent
     let mutable running = false
@@ -1706,6 +1719,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         sender.AddMarkingCallback(fun () ->
             invalidateTime.Start()
             send Invalidate
+            MVar.put render ()
         )
 
     let mutable info =
@@ -1727,8 +1741,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let renderLoop() =
         while running do
-            let (background, size) = MVar.take requestedSize
+            let (background, size) = requestedSize
             if size.AllGreater 0 then
+                MVar.take render
+                bufferCounter.Wait()
                 lock updateLock (fun () ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
                         let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
@@ -1775,6 +1791,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     member x.RenderTime = task.RenderTime
     member x.CompressTime = task.CompressTime
 
+    member x.Rendered = renderEvent.Publish
 
     member x.Revive(newInfo : ClientCreateInfo) =
         if Interlocked.Exchange(&disposed, 0) = 1 then
@@ -1789,7 +1806,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             task.Dispose()
             subscription.Dispose()
             running <- false
-            MVar.put requestedSize (C4b.Black, V2i.Zero)
+            requestedSize <- (C4b.Black, V2i.Zero)
             frameCount <- 0
             roundTripTime.Reset()
             invalidateTime.Reset()
@@ -1822,13 +1839,14 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         | RequestImage(background, size) ->
                                             invalidateTime.Stop()
                                             roundTripTime.Start()
-                                            MVar.put requestedSize (background, size)
+                                            requestedSize <- (background, size)
+                                            bufferCounter.Release() |> ignore
 
                                         | RequestWorldPosition pixel ->
                                             let wp = 
                                                 match task.GetWorldPosition pixel with
-                                                    | Some d -> d
-                                                    | None -> V3d.Zero
+                                                | Some d -> d
+                                                | None -> V3d.Zero
 
                                             send (WorldPosition wp)
 

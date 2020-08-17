@@ -145,6 +145,7 @@ module MutableApp =
 
                     let state : UpdateState<'msg> =
                         {
+                            emit            = app.update Guid.Empty
                             scenes          = ContraDict.ofDictionary scenes
                             handlers        = ContraDict.ofDictionary handlers
                             references      = Dictionary()
@@ -286,7 +287,7 @@ module MutableApp =
                                             let evt : EventMessage = Pickler.json.UnPickle data
                                             match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
                                                 | (true, handler) ->
-                                                    let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                                    let msgs = handler (JSEvent(sessionId, evt.sender, Array.toList evt.args))
                                                     app.update sessionId msgs
                                                     
                                                 | _ ->

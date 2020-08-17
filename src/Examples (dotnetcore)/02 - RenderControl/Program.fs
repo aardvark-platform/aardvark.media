@@ -41,10 +41,12 @@ let main argv =
     ] |> ignore
     
 
-    Aardium.run {
-        url "http://localhost:4321/"
-        width 1024
-        height 768
-        debug true
-    }
+    Console.ReadLine() |> ignore
+
+    //Aardium.run {
+    //    url "http://localhost:4321/"
+    //    width 1024
+    //    height 768
+    //    debug true
+    //}
     0 

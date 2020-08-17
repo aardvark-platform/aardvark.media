@@ -19,7 +19,7 @@ module Attributes =
         name, 
         AttributeValue.Event { 
             clientSide = fun send id -> code.Replace("__ID__", id)
-            serverSide = fun _ _ _ -> Seq.empty
+            serverSide = fun _ -> Seq.empty
         }
     
 
@@ -102,7 +102,7 @@ module Events =
         let args =
             {
                 clientSide = fun send id -> (if prevent then "event.preventDefault();" else "")+send id ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"]
-                serverSide = fun session id args -> (serverClick >> f >> Seq.singleton) args
+                serverSide = fun evt -> (serverClick >> f >> Seq.singleton) evt.Args
             }
         "onwheel" , AttributeValue.Event(args)
 
@@ -196,8 +196,8 @@ module Events =
                     send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
                         
                 ]
-            serverSide = fun client src args -> 
-                match args with
+            serverSide = fun evt -> 
+                match evt.Args with
                     | which :: pos :: _ ->
                         let v : V2d = Pickler.json.UnPickleOfString pos
                         let button = if needButton then button which else MouseButtons.Left
@@ -216,8 +216,8 @@ module Events =
                     send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"; "{ X: rect.width.toFixed(10), Y: rect.height.toFixed(10) }"]
                         
                 ]
-            serverSide = fun client src args -> 
-                match args with
+            serverSide = fun evt -> 
+                match evt.Args with
                     | which :: pos :: size :: _ ->
                         let pos : V2d = Pickler.json.UnPickleOfString pos
                         let size : V2d = Pickler.json.UnPickleOfString size
@@ -267,8 +267,8 @@ module Events =
                     send src ["{ X: event.deltaX.toFixed(), Y : event.deltaY.toFixed() }"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
                         
                 ]
-            serverSide = fun client src args -> 
-                match args with
+            serverSide = fun evt -> 
+                match evt.Args with
                     | delta :: pos :: _ ->
                         let v : V2d = Pickler.json.UnPickleOfString pos
                         let delta : V2d = Pickler.json.UnPickleOfString delta
@@ -294,8 +294,8 @@ module Events =
                         yield send src ["event.pointerType";"event.which"; "x|0"; "y|0"]
                         
                     ]
-                serverSide = fun client src args -> 
-                    match args with
+                serverSide = fun evt -> 
+                    match evt.Args with
                         | pointertypestr :: which :: x :: y :: _ ->
                             let v : V2i = V2i(int x, int y)
                             let button = if needButton then button which else MouseButtons.None
