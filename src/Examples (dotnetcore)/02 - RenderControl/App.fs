@@ -132,13 +132,13 @@ let view (model : AdaptiveModel) =
     let renderControl =
        FreeFlyController.controlledControlWithClientValues model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ 
-                        style "width: 100%; grid-row: 2; height:100%"; 
+                        style "width: 1024px; grid-row: 2; height:768px"; 
                         attribute "showFPS" "true";         // optional, default is false
                         attribute "useMapping" "false"
-                        attribute "data-quality" "60"
+                        attribute "data-quality" "90"
                         //attribute "showLoader" "false"    // optional, default is true
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                        attribute "data-samples" "8"        // optional, default is 1
+                        attribute "data-samples" "1"        // optional, default is 1
                     ]) 
             RenderControlConfig.standard
             (viewScene model)

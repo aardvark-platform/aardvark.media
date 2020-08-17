@@ -486,11 +486,9 @@ module Updaters =
             | Some (AttributeValue.Event evt) ->
                 renderedSub.Dispose()
                 renderedSub <- 
-                    e.Scene.OnRendered.Subscribe(fun size -> 
-                        let msgs = evt.serverSide (JSEvent(Guid.Empty, "onRendered", [sprintf "{X:%d, Y:%d}" size.X size.Y]))
+                    e.Scene.OnRendered.Subscribe(fun info -> 
+                        let msgs = evt.serverSide (JSEvent(info.session, "onRendered", [sprintf "{X:%d, Y:%d}" info.size.X info.size.Y]))
                         state.emit msgs
-                        //Log.warn "%A" (Seq.toArray msgs)
-                        ()
                     )
             | _ ->
                 renderedSub.Dispose()

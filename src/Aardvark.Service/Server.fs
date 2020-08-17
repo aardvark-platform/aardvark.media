@@ -28,6 +28,7 @@ open System.Diagnostics
 
 open System.IO.MemoryMappedFiles
 open Microsoft.FSharp.NativeInterop
+open System.Runtime.InteropServices
 
 
 #nowarn "9"
@@ -35,7 +36,7 @@ open Microsoft.FSharp.NativeInterop
 type Message =
     | RequestImage of background : C4b * size : V2i
     | RequestWorldPosition of pixel : V2i
-    | Rendered
+    | Rendered of header : string
     | Shutdown
     | Change of scene : string * samples : int
 
@@ -321,12 +322,12 @@ type Scene() =
     let cache = ConcurrentDictionary<IFramebufferSignature, ConcreteScene>()
     let clientInfos = ConcurrentDictionary<Guid * string, unit -> Option<ClientInfo * ClientState>>()
 
-    let rendered = FSharp.Control.Event<V2i>()
+    let rendered = FSharp.Control.Event<ClientInfo>()
 
 
     member x.OnRendered = rendered.Publish
 
-    member internal x.Rendered(size : V2i) =
+    member internal x.Rendered(size : ClientInfo) =
         rendered.Trigger size
 
     member internal x.AddClientInfo(session : Guid, id : string, getter : unit -> Option<ClientInfo * ClientState>) =
@@ -345,6 +346,20 @@ type Scene() =
 
     abstract member Compile : ClientValues -> IRenderTask
 
+
+and internal ClientCreateInfo =
+    {
+        server          : Server
+        session         : Guid
+        id              : string
+        sceneName       : string
+        samples         : int
+        quality         : int       // 0-100
+        socket          : WebSocket
+        useMapping      : bool
+        getSignature    : int -> IFramebufferSignature
+    }
+
 and internal ConcreteScene(name : string, signature : IFramebufferSignature, scene : Scene) as this =
     inherit AdaptiveObject()
 
@@ -352,7 +367,6 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
     let mutable task : Option<IRenderTask> = None
 
     let state = ClientValues(signature)
-
 
     let destroy (o : obj) =
         let deadTask = 
@@ -410,7 +424,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
 
     member internal x.State = state
 
-    member internal x.CreateNewRenderTask() =
+    member internal x.CreateNewRenderTask(info : ClientCreateInfo) =
         lock x (fun () ->
             let task = create()
 
@@ -418,7 +432,21 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
                 member x.FramebufferSignature = task.FramebufferSignature
                 member x.Runtime = task.Runtime
                 member x.PerformUpdate(t,rt) = task.Update(t, rt)
-                member x.Perform(t,rt,o) =  task.Run(t, rt, o); scene.Rendered(o.viewport.Size)
+                member x.Perform(t,rt,o) =
+                    task.Run(t, rt, o)
+
+                    scene.Rendered {
+                        token = t
+                        signature = o.framebuffer.Signature
+                        targetId = info.id
+                        sceneName = info.sceneName
+                        session = info.session
+                        size = o.viewport.Size
+                        samples = AVal.force state.samples
+                        quality = info.quality
+                        time = AVal.force state.time
+                        clearColor = C4f.Black
+                    }
                 
                 member x.Release() = 
                     lock x (fun () ->
@@ -431,6 +459,16 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
         )
 
     member x.FramebufferSignature = signature
+       
+and Server =
+    {
+        runtime         : IRuntime
+        content         : string -> Option<Scene>
+        getState        : ClientInfo -> Option<ClientState>
+        compressor      : Option<JpegCompressor>
+        fileSystemRoot  : Option<string>
+    }
+
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Scene =
@@ -459,15 +497,6 @@ module Scene =
     let ofList (scenes : list<Scene>) = ArrayScene(List.toArray scenes) :> Scene
     let ofSeq (scenes : seq<Scene>) = ArrayScene(Seq.toArray scenes) :> Scene
     
-        
-type Server =
-    {
-        runtime         : IRuntime
-        content         : string -> Option<Scene>
-        getState        : ClientInfo -> Option<ClientState>
-        compressor      : Option<JpegCompressor>
-        fileSystemRoot  : Option<string>
-    }
 
 module private ReadPixel =
     module private Vulkan =
@@ -505,8 +534,10 @@ type internal RenderResult =
     | Mapping of MapImage
     | Png of byte[]
 
+
+
 [<AbstractClass>]
-type internal ClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+type internal ClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     let runtime = server.runtime
     let mutable task = RenderTask.empty
     
@@ -602,7 +633,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         let newScene = getScene signature name
         let clearColor = AVal.init C4f.Black
         let clear = runtime.CompileClear(signature, clearColor, AVal.constant 1.0)
-        let render = newScene.CreateNewRenderTask()
+        let render = newScene.CreateNewRenderTask(info)
         task <- RenderTask.ofList [clear; render]
 
         // needs to hold
@@ -746,8 +777,8 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         member x.Dispose() =
             x.Dispose()
 
-type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
-    inherit ClientRenderTask(server, getScene)
+type internal JpegClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
+    inherit ClientRenderTask(info, server, getScene)
     
     let quantization, quality = quality
     let runtime = server.runtime
@@ -798,10 +829,10 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
         gpuCompressorInstance <- None
         resolved <- None
 
-    new(server,getScene) = new JpegClientRenderTask(server,getScene,(Quantization.photoshop80,80))
+    new(info : ClientCreateInfo,server,getScene) = new JpegClientRenderTask(info, server,getScene,(Quantization.photoshop80,80))
 
-type internal PngClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
-    inherit ClientRenderTask(server, getScene)     
+type internal PngClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    inherit ClientRenderTask(info, server, getScene)     
 
     let runtime = server.runtime
     let mutable resolved : Option<IBackendTexture> = None
@@ -1601,8 +1632,8 @@ module SharedMemory =
 
 
 
-type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
-    inherit ClientRenderTask(server, getScene)
+type internal MappedClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    inherit ClientRenderTask(info, server, getScene)
     let runtime = server.runtime
 
     let mutable mapping : Option<ISharedMemory> = None
@@ -1660,40 +1691,77 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
                 ()
 
 
-type internal ClientCreateInfo =
-    {
-        server          : Server
-        session         : Guid
-        id              : string
-        sceneName       : string
-        samples         : int
-        quality         : int       // 0-100
-        socket          : WebSocket
-        useMapping      : bool
-        getSignature    : int -> IFramebufferSignature
-    }
-
 type private DummyObject() =
     inherit AdaptiveObject()
+
+type internal Throttle(ms : float) =
+    let sw = System.Diagnostics.Stopwatch()
+    let m = new MultimediaTimer.Trigger(1)
+
+    member x.Wait() =
+        while sw.IsRunning && sw.Elapsed.TotalMilliseconds + 0.5 < ms do
+            m.Wait()
+        sw.Restart()
+
+    member x.Dispose() =
+        sw.Stop()
+        sw.Reset()
+        m.Dispose()
+
+    interface IDisposable with
+        member x.Dispose() = x.Dispose()
+
+
+type internal RunningMean<'a>(capacity : int, zero : 'a, add : 'a -> 'a -> 'a, sub : 'a -> 'a -> 'a, div : 'a -> int -> 'a) =
+    let buffer = Array.zeroCreate capacity
+    let mutable freeIndex = 0
+    let mutable count = 0
+
+    let mutable value = zero
+
+    member x.Count = count
+    member x.IsFull = count = capacity
+
+    member x.Add(v : 'a) =
+        if count < capacity then
+            buffer.[count] <- v
+            freeIndex <- (freeIndex + 1) % capacity
+            count <- count + 1
+            value <- add value v
+        else
+            let o = buffer.[freeIndex]
+            buffer.[freeIndex] <- v
+            freeIndex <- freeIndex + 1
+            if freeIndex >= capacity then freeIndex <- 0
+            value <- add (sub value o) v
+
+    member x.Value =
+        div value count
+
+module internal RunningMean =
+    let inline create (capacity : int) : RunningMean<'a> = RunningMean<'a>(capacity, LanguagePrimitives.GenericZero<'a>, (+), (-), LanguagePrimitives.DivideByInt)
 
 type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState : ClientInfo -> ClientState, getContent : IFramebufferSignature -> string -> ConcreteScene) as this =
     static let mutable currentId = 0
  
+    static let maxBufferSize = 30
+    static let targetFrameTime = 1000.0 / 60.0
+
+
     static let newTask (info : ClientCreateInfo) getContent =
         if info.useMapping then
-            new MappedClientRenderTask(info.server, getContent) :> ClientRenderTask
+            new MappedClientRenderTask(info, info.server, getContent) :> ClientRenderTask
         else
             let q = Quantization.ofQuality (float info.quality), info.quality
-            new JpegClientRenderTask(info.server, getContent, q) :> ClientRenderTask
+            new JpegClientRenderTask(info, info.server, getContent, q) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
     let sender = DummyObject()
-    //let requestedSize : MVar<C4b * V2i> = MVar.empty()
 
     let mutable requestedSize : C4b * V2i = C4b.Black, V2i.Zero
-    let bufferCounter = new SemaphoreSlim(30)
-    let render = MVar.create ()
-    let renderEvent = FSharp.Control.Event<V2i>()
+    let mutable bufferCounter = new SemaphoreSlim(maxBufferSize)
+    let renderingDirty = MVar.create ()
+    let mutable throttle = new Throttle(targetFrameTime)
 
     let mutable createInfo = createInfo
     let mutable task = newTask createInfo getContent
@@ -1703,7 +1771,11 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     let mutable frameCount = 0
     let roundTripTime = Stopwatch()
     let invalidateTime = Stopwatch()
-
+    
+    let clock = Stopwatch.StartNew()
+    let pingMean : RunningMean<float> = RunningMean.create 5
+    let dataSizeMean : RunningMean<float> = RunningMean.create 5
+    let roundtripMean : RunningMean<float> = RunningMean.create 5
     let send (cmd : Command) =
         let data = Pickler.json.Pickle cmd
 
@@ -1719,7 +1791,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         sender.AddMarkingCallback(fun () ->
             invalidateTime.Start()
             send Invalidate
-            MVar.put render ()
+            MVar.put renderingDirty ()
         )
 
     let mutable info =
@@ -1740,10 +1812,47 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
 
     let renderLoop() =
+        let mutable buffer : byte[] =
+            Array.zeroCreate 65536
+
+        let header : byte[] =
+            Array.zeroCreate 32
+            
+        let mutable frameId = 0
+
+        let writeHeader (data : byte[]) =
+            let gc = GCHandle.Alloc(header, GCHandleType.Pinned)
+            try
+                let ptr = gc.AddrOfPinnedObject()
+
+                NativeInt.write ptr frameId
+                NativeInt.write (ptr + 4n) (data.Length + header.Length)
+                NativeInt.write (ptr + 8n) clock.Elapsed.Ticks
+                frameId <- frameId + 1
+            finally 
+                gc.Free()
+
+        let segment (code : Opcode) (data : byte[]) =
+            match code with
+            | Opcode.Binary -> 
+                let cap = Fun.NextPowerOfTwo(header.Length + data.Length)
+                if buffer.Length < cap then Array.Resize(&buffer, cap)
+
+                data.CopyTo(buffer, header.Length)
+                writeHeader data
+                header.CopyTo(buffer, 0)
+                let s = ByteSegment(buffer, 0, header.Length + data.Length)
+                dataSizeMean.Add (float s.Count)
+
+                s
+            | _ ->
+                ByteSegment(data)
+
         while running do
             let (background, size) = requestedSize
             if size.AllGreater 0 then
-                MVar.take render
+                MVar.take renderingDirty
+                throttle.Wait()
                 bufferCounter.Wait()
                 lock updateLock (fun () ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
@@ -1751,26 +1860,20 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                         try
                             let state = getState info
                             let data = task.Run(token, info, state)
-                            match data with
-                                | Jpeg data -> 
-                                    let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
-                                    match res with
-                                        | Choice1Of2() -> ()
-                                        | Choice2Of2 err ->
-                                            running <- false
-                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
-                                | Png data -> 
-                                    Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
-                                
-                                | Mapping img ->
-                                    let data = Pickler.json.Pickle img
-                                    let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
-                                    match res with
-                                        | Choice1Of2() -> ()
-                                        | Choice2Of2 err ->
-                                            running <- false
-                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
-                                    
+
+                            let struct(code, binary) = 
+                                match data with
+                                    | Jpeg data -> struct(Opcode.Binary, data)
+                                    | Png data -> struct(Opcode.Binary, data)
+                                    | Mapping img -> struct(Opcode.Text, Pickler.json.Pickle img)
+
+                            let res = createInfo.socket.send code (segment code binary) true |> Async.RunSynchronously
+                            match res with
+                                | Choice1Of2() -> ()
+                                | Choice2Of2 err ->
+                                    running <- false
+                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                           
                         with e ->
                             running <- false
                             Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
@@ -1778,10 +1881,33 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     )
                 )
 
-                
+    let pingLoop() =
+        use mm = new MultimediaTimer.Trigger 100
+        while running do
+            mm.Wait()
+            let now = clock.Elapsed.Ticks |> sprintf "#t%d" |> System.Text.Encoding.UTF8.GetBytes
+            let res = createInfo.socket.send Opcode.Text (ByteSegment now) true |> Async.RunSynchronously
+            match res with
+            | Choice1Of2() -> ()
+            | Choice2Of2 err ->
+                running <- false
+                Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                           
 
+            if pingMean.IsFull && dataSizeMean.IsFull && roundtripMean.IsFull then
+                let ping = MicroTime.FromSeconds pingMean.Value
+                let roundtrip = MicroTime.FromSeconds roundtripMean.Value
+                let size = Mem (int64 dataSizeMean.Value)
+
+                let rate = size.Megabytes / (roundtrip - ping).TotalSeconds
+                // TODO: adjust quality/renderSize based on stats
+                //Log.line "%A %A %A (%.3fMB/s)" size ping roundtrip rate
+                ()
 
     let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)
+    let mutable pingThread = new Thread(ThreadStart(pingLoop), IsBackground = true, Name = "ClientPing_" + string createInfo.session)
+
+
 
 
     member x.Info = info
@@ -1791,15 +1917,16 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     member x.RenderTime = task.RenderTime
     member x.CompressTime = task.CompressTime
 
-    member x.Rendered = renderEvent.Publish
-
     member x.Revive(newInfo : ClientCreateInfo) =
         if Interlocked.Exchange(&disposed, 0) = 1 then
             Log.line "[Client] %d: revived" id
             createInfo <- newInfo
             task <- newTask newInfo getContent
             subscription <- subscribe()
-            renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
+            renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string newInfo.session)
+            pingThread <- new Thread(ThreadStart(pingLoop), IsBackground = true, Name = "ClientPing_" + string createInfo.session)
+            bufferCounter <- new SemaphoreSlim(maxBufferSize)
+            throttle <- new Throttle(targetFrameTime)
 
     member x.Dispose() =
         if Interlocked.Exchange(&disposed, 1) = 0 then
@@ -1810,12 +1937,15 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             frameCount <- 0
             roundTripTime.Reset()
             invalidateTime.Reset()
+            bufferCounter.Dispose()
+            throttle.Dispose()
 
     member x.Run =
         running <- true
         renderThread.Start()
+        pingThread.Start()
         socket {
-            
+            let mutable lastCount = 0
             Log.line "[Client] %d: running %s" id info.sceneName
             try
                 while running do
@@ -1824,13 +1954,21 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     match code with
                         | Opcode.Text ->
                             try
-                                
                                 if data.Length > 0 && data.[0] = uint8 '#' then
                                     let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
                                     match str with
                                         | "ping" -> 
                                             do! createInfo.socket.send Opcode.Pong (ByteSegment([||])) true
-                                        | _ ->
+                                        | str when str.StartsWith "t" ->
+                                            match Int64.TryParse (str.Substring 1) with
+                                            | (true, o) ->
+                                                let dt = TimeSpan.FromTicks(clock.Elapsed.Ticks - o)
+                                                pingMean.Add dt.TotalSeconds
+                                                //Log.line "ping: %A" (MicroTime.FromSeconds pingMean.Value)
+                                            | _ ->
+                                                ()
+                                            
+                                        | _ -> 
                                             Log.warn "bad opcode: %A" str
                                 else
                                     let msg : Message = Pickler.json.UnPickle data
@@ -1840,8 +1978,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                             invalidateTime.Stop()
                                             roundTripTime.Start()
                                             requestedSize <- (background, size)
-                                            bufferCounter.Release() |> ignore
-
+                                            
                                         | RequestWorldPosition pixel ->
                                             let wp = 
                                                 match task.GetWorldPosition pixel with
@@ -1850,8 +1987,29 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
                                             send (WorldPosition wp)
 
-                                        | Rendered ->
+                                        | Rendered header ->
+                                            let header = System.Convert.FromBase64String header
+                                            
+                                            let gc = GCHandle.Alloc(header, GCHandleType.Pinned)
+                                            try
+                                                let ptr = gc.AddrOfPinnedObject()
+
+                                                let now = clock.Elapsed
+                                                let id = NativeInt.read<int> ptr
+                                                let size = NativeInt.read<int> (ptr + 4n)
+                                                let old = TimeSpan.FromTicks(NativeInt.read<int64> (ptr + 8n))
+                                                let dt = now - old
+                                                roundtripMean.Add dt.TotalSeconds
+
+                                            finally
+                                                gc.Free()
+
+                                            bufferCounter.Release() |> ignore
                                             roundTripTime.Stop()
+                                            let cc = bufferCounter.CurrentCount
+                                            if lastCount <> cc then
+                                                lastCount <- cc
+                                                Log.line "frames in cloud: %d" (30 - cc)
                                             frameCount <- frameCount + 1
 
                                         | Shutdown ->
@@ -2126,12 +2284,26 @@ module Server =
 
                         context |> (ok data >=> Writers.setMimeType mime)
 
+
+                    let createInfo =
+                        {
+                            server          = info
+                            session         = Guid.Empty
+                            id              = ""
+                            sceneName       = sceneName
+                            samples         = samples
+                            quality         = 100
+                            socket          = Unchecked.defaultof<_>
+                            useMapping      = false
+                            getSignature    = fun _ -> signature
+                        }
+
                     match Map.tryFind "fmt" args with
                         | Some "jpg" | None -> 
-                            use t = new JpegClientRenderTask(info, content, (Quantization.photoshop100,100)) :> ClientRenderTask
+                            use t = new JpegClientRenderTask(createInfo, info, content, (Quantization.photoshop100,100)) :> ClientRenderTask
                             t |> respondOK "image/jpeg"
                         | Some "png" -> 
-                            use t = new PngClientRenderTask(info, content) :> ClientRenderTask
+                            use t = new PngClientRenderTask(createInfo, info, content) :> ClientRenderTask
                             t |> respondOK "image/png"
                         | Some fmt -> context |> BAD_REQUEST (sprintf  "format not supported: %s" fmt)
 

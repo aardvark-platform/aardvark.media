@@ -287,12 +287,12 @@ class Renderer {
                 socket.binaryType = "blob";
                 self.socket = socket;
 
-                var doPing = function () {
-                    if (socket.readyState <= 1) {
-                        socket.send("#ping");
-                        setTimeout(doPing, 1000);
-                    }
-                };
+                //var doPing = function () {
+                //    if (socket.readyState <= 1) {
+                //        socket.send("#ping");
+                //        setTimeout(doPing, 1000);
+                //    }
+                //};
 
                 socket.onopen = function () {
                     for (var i = 0; i < self.buffer.length; i++) {
@@ -304,7 +304,7 @@ class Renderer {
 
                     self.render();
 
-                    doPing();
+                    //doPing();
 
                 };
 
@@ -362,12 +362,12 @@ class Renderer {
                 socket.binaryType = "blob";
                 self.socket = socket;
 
-                var doPing = function () {
-                    if (socket.readyState <= 1) {
-                        socket.send("#ping");
-                        setTimeout(doPing, 50);
-                    }
-                };
+                //var doPing = function () {
+                //    if (socket.readyState <= 1) {
+                //        socket.send("#ping");
+                //        setTimeout(doPing, 50);
+                //    }
+                //};
 
                 socket.onopen = function () {
                     for (var i = 0; i < self.buffer.length; i++) {
@@ -379,7 +379,7 @@ class Renderer {
 
                     self.render();
 
-                    doPing();
+                    //doPing();
 
                 };
 
@@ -726,14 +726,21 @@ class Renderer {
 
             this.frameCount++;
 
-
             var oldUrl = this.img.src;
-            this.img.src = urlCreator.createObjectURL(msg.data);
+            this.img.src = urlCreator.createObjectURL(msg.data.slice(32));
             delete msg.data;
 
-            urlCreator.revokeObjectURL(oldUrl);
+            var self = this;
+            var reader = new FileReader();
+            reader.onload = function () {
+                var dataUrl = reader.result;
+                var base64 = dataUrl.split(',')[1];
+                self.send(JSON.stringify({ Case: "Rendered", header: base64 }));
+            };
+            reader.readAsDataURL(msg.data.slice(0, 32));
 
-			this.send(JSON.stringify({ Case: "Rendered" }));
+
+            
 
 
             //var shouldSay = this.div.getAttribute("onRendered");
@@ -761,120 +768,125 @@ class Renderer {
             }
         }
         else {
-            var o = JSON.parse(msg.data);
+            if (msg.data.startsWith("#")) {
+                this.send(msg.data);
+            }
+            else {
+                var o = JSON.parse(msg.data);
 
-            //type Command =
-            //    | Invalidate
-            //    | Subscribe of eventName : string
-            //    | Unsubscribe of eventName : string
+                //type Command =
+                //    | Invalidate
+                //    | Subscribe of eventName : string
+                //    | Unsubscribe of eventName : string
 
-            if (o.Case === "Invalidate") {
-                if (!this.renderAlways) {
-                    // TODO: what if not visible??
-                    this.render();
+                if (o.Case === "Invalidate") {
+                    if (!this.renderAlways) {
+                        // TODO: what if not visible??
+                        this.render();
+                    }
                 }
-            }
-            else if (o.Case === "WorldPosition" && o.pos) {
-                if (this.depthCallbacks.length > 0) {
-                    var cb = this.depthCallbacks[0];
-                    cb.callback(o.pos);
-                    this.depthCallbacks.splice(0, 1);
+                else if (o.Case === "WorldPosition" && o.pos) {
+                    if (this.depthCallbacks.length > 0) {
+                        var cb = this.depthCallbacks[0];
+                        cb.callback(o.pos);
+                        this.depthCallbacks.splice(0, 1);
+                    }
                 }
-            }
-            else if (o.Case === "Subscribe") {
-                var evt = o.eventName;
-                this.subscribe(evt);
-            }
-            else if (o.Case === "Unsubscribe") {
-                var evt = o.eventName;
-                this.unsubscribe(evt);
-            }
-            else if (o.name && o.size && o.length) {
-                var now = performance.now();
-                if (!this.lastTime) {
-                    this.lastTime = now;
+                else if (o.Case === "Subscribe") {
+                    var evt = o.eventName;
+                    this.subscribe(evt);
                 }
-
-                if (now - this.lastTime > 1000.0) {
-                    if (this.frameCount > 0) {
-                        var dt = now - this.lastTime;
-                        var cnt = this.frameCount;
+                else if (o.Case === "Unsubscribe") {
+                    var evt = o.eventName;
+                    this.unsubscribe(evt);
+                }
+                else if (o.name && o.size && o.length) {
+                    var now = performance.now();
+                    if (!this.lastTime) {
                         this.lastTime = now;
-                        this.frameCount = 0;
-                        var fps = 1000.0 * cnt / dt;
-                        this.overlay.innerText = fps.toFixed(2) + " fps";
-                        if (this.overlay.style.opacity < 0.5) {
-                            $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
+                    }
+
+                    if (now - this.lastTime > 1000.0) {
+                        if (this.frameCount > 0) {
+                            var dt = now - this.lastTime;
+                            var cnt = this.frameCount;
+                            this.lastTime = now;
+                            this.frameCount = 0;
+                            var fps = 1000.0 * cnt / dt;
+                            this.overlay.innerText = fps.toFixed(2) + " fps";
+                            if (this.overlay.style.opacity < 0.5) {
+                                $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
+                            }
+                        }
+                        else {
+                            if (this.overlay.style.opacity > 0.5) {
+                                $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
+                            }
+                        }
+                    }
+
+                    this.frameCount++;
+
+                    //HERE
+                    if (this.mapping) {
+                        if (this.mapping.name !== o.name) {
+                            this.mapping.close();
+                            this.mapping = top.aardvark.openMapping(o.name, o.length);
                         }
                     }
                     else {
-                        if (this.overlay.style.opacity > 0.5) {
-                            $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
-                        }
-                    }
-                }
-
-                this.frameCount++;
-
-                //HERE
-                if (this.mapping) {
-                    if (this.mapping.name !== o.name) {
-                        this.mapping.close();
                         this.mapping = top.aardvark.openMapping(o.name, o.length);
                     }
-                }
-                else {
-					this.mapping = top.aardvark.openMapping(o.name, o.length);
-                }
 
-                if (this.frameBufferSize) {
-                    if (this.frameBufferSize.X != o.size.X || this.frameBufferSize.Y != o.size.Y) {
+                    if (this.frameBufferSize) {
+                        if (this.frameBufferSize.X != o.size.X || this.frameBufferSize.Y != o.size.Y) {
+                            var len = o.size.X * o.size.Y * 4;
+                            this.frameBuffer = new Uint8ClampedArray(len);
+                            this.frameBufferSize = o.size;
+                            this.frameBufferLength = len;
+                        }
+                    }
+                    else {
                         var len = o.size.X * o.size.Y * 4;
                         this.frameBuffer = new Uint8ClampedArray(len);
                         this.frameBufferSize = o.size;
                         this.frameBufferLength = len;
                     }
+
+                    this.canvas.width = o.size.X;
+                    this.canvas.height = o.size.Y;
+                    this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
+                    this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
+
+                    this.send(JSON.stringify({ Case: "Rendered", header: "" }));
+
+                    //var shouldSay = this.div.getAttribute("onRendered");
+                    //if (shouldSay) {
+                    //    if (this.div.onRenderedCode != shouldSay) {
+                    //        this.div.onRenderedCode = shouldSay;
+                    //        var f = new Function(shouldSay);
+                    //        this.div.onRendered = f.bind(this.div);
+                    //    }
+                    //    this.div.onRendered();
+                    //}
+                    //else {
+                    //    delete this.div.onRenderedCode;
+                    //    delete this.div.onRendered;
+                    //}
+
+                    if (this.loading) {
+                        this.fadeIn();
+                    }
+
+                    if (this.renderAlways) {
+
+                        //artificial render looop (uncommend in invalidate)
+                        this.render();
+                    }
                 }
                 else {
-                    var len = o.size.X * o.size.Y * 4;
-                    this.frameBuffer = new Uint8ClampedArray(len);
-                    this.frameBufferSize = o.size;
-                    this.frameBufferLength = len;
+                    console.warn("unexpected message " + o);
                 }
-
-                this.canvas.width = o.size.X;
-                this.canvas.height = o.size.Y;
-                this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
-                this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
-                
-				this.send(JSON.stringify({ Case: "Rendered" }));
-
-                //var shouldSay = this.div.getAttribute("onRendered");
-                //if (shouldSay) {
-                //    if (this.div.onRenderedCode != shouldSay) {
-                //        this.div.onRenderedCode = shouldSay;
-                //        var f = new Function(shouldSay);
-                //        this.div.onRendered = f.bind(this.div);
-                //    }
-                //    this.div.onRendered();
-                //}
-                //else {
-                //    delete this.div.onRenderedCode;
-                //    delete this.div.onRendered;
-                //}
-
-                if (this.loading) {
-                    this.fadeIn();
-                }
-
-                if (this.renderAlways) {
-
-                    //artificial render looop (uncommend in invalidate)
-                    this.render();
-                }
-            }
-            else {
-                console.warn("unexpected message " + o);
             }
         }
     }
@@ -1173,12 +1185,12 @@ if (!aardvark.connect) {
         var url = aardvark.getRelativeUrl('ws', path + wsQuery);
         var eventSocket = new WebSocket(url);
 
-        var doPing = function () {
-            if (eventSocket.readyState <= 1) {
-                eventSocket.send("#ping");
-                setTimeout(doPing, 500);
-            }
-        };
+        //var doPing = function () {
+        //    if (eventSocket.readyState <= 1) {
+        //        eventSocket.send("#ping");
+        //        setTimeout(doPing, 500);
+        //    }
+        //};
         
 
         eventSocket.onopen = function () {
@@ -1192,7 +1204,7 @@ if (!aardvark.connect) {
                 var message = JSON.stringify({ sender: sender, name: name, args: args });
                 eventSocket.send(message);
             };
-            doPing();
+            //doPing();
         };
 
         var exectutedCode = "";
