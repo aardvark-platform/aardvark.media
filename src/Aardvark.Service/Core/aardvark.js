@@ -705,6 +705,16 @@ class Renderer {
                 this.lastTime = now;
             }
 
+            function arrayBufferToBase64(buffer, callback) {
+                var blob = new Blob([buffer], { type: 'application/octet-binary' });
+                var reader = new FileReader();
+                reader.onload = function (evt) {
+                    var dataurl = evt.target.result;
+                    callback(dataurl.substr(dataurl.indexOf(',') + 1));
+                };
+                reader.readAsDataURL(blob);
+            }
+
             if (now - this.lastTime > 1000.0) {
                 if (this.frameCount > 0) {
                     var dt = now - this.lastTime;
@@ -726,46 +736,63 @@ class Renderer {
 
             this.frameCount++;
 
-            var oldUrl = this.img.src;
-            this.img.src = urlCreator.createObjectURL(msg.data.slice(32));
-            delete msg.data;
-
             var self = this;
             var reader = new FileReader();
+
+            var decoder = new TextDecoder('utf8');
             reader.onload = function () {
-                var dataUrl = reader.result;
-                var base64 = dataUrl.split(',')[1];
-                self.send(JSON.stringify({ Case: "Rendered", header: base64 }));
+                var header = decoder.decode(new Uint8Array(reader.result));
+
+                if (header.startsWith("#")) {
+                    self.send(msg.data);
+                }
+                else {
+
+                    var oldUrl = self.img.src;
+                    self.img.src = urlCreator.createObjectURL(msg.data.slice(32));
+                    delete msg.data;
+                    urlCreator.revokeObjectURL(oldUrl);
+
+                    arrayBufferToBase64(header, function (b64encoded) {
+                        self.send(JSON.stringify({ Case: "Rendered", header: b64encoded }));
+
+                        if (self.loading) {
+                            self.fadeIn();
+                        }
+
+                        if (self.renderAlways) {
+                            self.render();
+                        }
+                    });
+                }
+
             };
-            reader.readAsDataURL(msg.data.slice(0, 32));
+            reader.readAsArrayBuffer(msg.data.slice(0, 32));
 
 
-            
 
+            //var oldUrl = this.img.src;
+            //this.img.src = urlCreator.createObjectURL(msg.data.slice(32));
+            //delete msg.data;
+            //urlCreator.revokeObjectURL(oldUrl);
 
-            //var shouldSay = this.div.getAttribute("onRendered");
-            //if (shouldSay) {
-            //    if (this.div.onRenderedCode != shouldSay) {
-            //        this.div.onRenderedCode = shouldSay;
-            //        var f = new Function(shouldSay);
-            //        this.div.onRendered = f.bind(this.div);
+            //var self = this;
+            //var reader = new FileReader();
+            //reader.onload = function () {
+            //    var dataUrl = reader.result;
+            //    var base64 = dataUrl.split(',')[1];
+            //    self.send(JSON.stringify({ Case: "Rendered", header: base64 }));
+
+            //    if (this.loading) {
+            //        this.fadeIn();
             //    }
-            //    this.div.onRendered();
-            //}
-            //else {
-            //    delete this.div.onRenderedCode;
-            //    delete this.div.onRendered;
-            //}
 
-            if (this.loading) {
-                this.fadeIn();
-            }
+            //    if (this.renderAlways) {
+            //        this.render();
+            //    }
 
-            if (this.renderAlways) {
-
-                //artificial render looop (uncommend in invalidate)
-                this.render();
-            }
+            //};
+            //reader.readAsDataURL(msg.data.slice(0, 32));
         }
         else {
             if (msg.data.startsWith("#")) {

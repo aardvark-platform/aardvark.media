@@ -127,8 +127,7 @@ let viewScene (model : AdaptiveModel) (values : Aardvark.Service.ClientValues) =
     //]
 
 
-let view (model : AdaptiveModel) =
-
+let view (model : AdaptiveModel) = 
     let renderControl =
        FreeFlyController.controlledControlWithClientValues model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
                     (AttributeMap.ofList [ 
@@ -159,14 +158,23 @@ let threads (model : Model) =
     FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app =      
     {
-        unpersist = Unpersist.instance     
-        threads = threads 
-        initial = 
-            { 
-               cameraState = initialCamera
-            }
-        update = update 
-        view = view
+        unpersist = { create = id; update = fun _ _ -> () }
+        threads = fun _ -> ThreadPool.empty
+        initial = ()
+        update = fun _ _ -> ()
+        view =
+            fun () ->
+                subApp
+                    {
+                        unpersist = Unpersist.instance     
+                        threads = threads 
+                        initial = 
+                            { 
+                               cameraState = initialCamera
+                            }
+                        update = update 
+                        view = view
+                    }
     }

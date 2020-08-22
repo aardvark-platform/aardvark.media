@@ -1,6 +1,7 @@
 Aardvark.Base
 FSharp.Data.Adaptive
 Aardvark.Base.FSharp
+Aardvark.Geometry
 Aardvark.Base.Rendering
 Aardvark.Rendering.GL
 Aardvark.Application

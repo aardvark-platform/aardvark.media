@@ -29,6 +29,7 @@ open System.Diagnostics
 open System.IO.MemoryMappedFiles
 open Microsoft.FSharp.NativeInterop
 open System.Runtime.InteropServices
+open Aardvark.Geometry
 
 
 #nowarn "9"
@@ -1810,6 +1811,41 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let mutable subscription = subscribe()
 
+    let testRoundtrip(size : int) =
+        let data = Array.create size (uint8 '#')
+        let send = clock.Elapsed
+        match createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously with
+        | Choice1Of2 () ->
+            match createInfo.socket.readMessage() |> Async.RunSynchronously with
+            | Choice1Of2(Opcode.Binary, _data) ->
+                let recv = clock.Elapsed
+                Some (recv - send)
+            | _ ->
+                None
+        | _ ->
+            None
+        
+
+    let estimateBandwidth() =   
+        //warmup 
+        for i in 1 .. 10 do
+            testRoundtrip (1 <<< 16) |> ignore
+
+        let mutable size = 1 <<< 10
+        let mutable dt = TimeSpan.Zero
+        let mutable dtSize = 0
+        while dt.TotalMilliseconds < 1000.0 do
+            match testRoundtrip size with
+            | Some t -> 
+                dtSize <- size
+                dt <- t
+                Log.line "%A -> %A" (Mem size) (MicroTime dt)
+            | None ->
+                dt <- TimeSpan.MaxValue
+            size <- size <<< 1
+
+        2.0 * float dtSize / dt.TotalSeconds
+
 
     let renderLoop() =
         let mutable buffer : byte[] =
@@ -1825,9 +1861,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             try
                 let ptr = gc.AddrOfPinnedObject()
 
-                NativeInt.write ptr frameId
-                NativeInt.write (ptr + 4n) (data.Length + header.Length)
-                NativeInt.write (ptr + 8n) clock.Elapsed.Ticks
+                NativeInt.write ptr 0xBEDEAD
+                NativeInt.write (ptr + 4n) frameId
+                NativeInt.write (ptr + 8n) (data.Length + header.Length)
+                NativeInt.write (ptr + 16n) clock.Elapsed.Ticks
                 frameId <- frameId + 1
             finally 
                 gc.Free()
@@ -1883,6 +1920,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let pingLoop() =
         use mm = new MultimediaTimer.Trigger 100
+        let mutable i = 0
         while running do
             mm.Wait()
             let now = clock.Elapsed.Ticks |> sprintf "#t%d" |> System.Text.Encoding.UTF8.GetBytes
@@ -1892,17 +1930,15 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             | Choice2Of2 err ->
                 running <- false
                 Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
-                           
+        
 
             if pingMean.IsFull && dataSizeMean.IsFull && roundtripMean.IsFull then
                 let ping = MicroTime.FromSeconds pingMean.Value
                 let roundtrip = MicroTime.FromSeconds roundtripMean.Value
                 let size = Mem (int64 dataSizeMean.Value)
-
-                let rate = size.Megabytes / (roundtrip - ping).TotalSeconds
-                // TODO: adjust quality/renderSize based on stats
-                //Log.line "%A %A %A (%.3fMB/s)" size ping roundtrip rate
                 ()
+
+            i <- i + 1
 
     let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)
     let mutable pingThread = new Thread(ThreadStart(pingLoop), IsBackground = true, Name = "ClientPing_" + string createInfo.session)
@@ -1942,8 +1978,19 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     member x.Run =
         running <- true
+
+        //let rate = estimateBandwidth()
+        //Log.line "%.3fMB/s" (rate / 1048576.0)
+        //measureBandwidth()
+
         renderThread.Start()
         pingThread.Start()
+
+        let inline (|Int64|_|) (str : string) =
+            match Int64.TryParse(str) with
+            | (true, v) -> Some v
+            | _ -> None
+
         socket {
             let mutable lastCount = 0
             Log.line "[Client] %d: running %s" id info.sceneName
@@ -1967,7 +2014,31 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                                 //Log.line "ping: %A" (MicroTime.FromSeconds pingMean.Value)
                                             | _ ->
                                                 ()
+                                        | _ ->
+                                            ()
+                                        //| str when str.StartsWith "p" ->
+                                        //    let now = clock.Elapsed.Ticks
                                             
+                                        //    let m = Interlocked.Decrement(&missingBandwidthResults)
+                                        //    match str.Trim().Substring(1).Split('_') with
+                                        //    | [| Int64 o; Int64 s |] ->
+                                        //        let dt = MicroTime(TimeSpan.FromTicks (now - o))
+                                        //        Interlocked.Change(&bandwidthTimes, Map.add s dt) |> ignore
+                                        //        if m = 0 then
+                                        //            let reg = 
+                                        //                bandwidthTimes 
+                                        //                |> Map.toSeq 
+                                        //                |> Seq.map (fun (s, t) -> V2d(float s / 1048576.0, t.TotalMicroseconds))
+                                        //                |> LinearRegression2d.ofSeq
+
+                                        //            let n = reg.GetPlane().Normal
+                                        //            let k = abs n.X / abs n.Y
+
+                                        //            Log.line "bandwidth: %A took %A (%.2fMB/s)" (Mem s) dt (1000000.0 * k)
+                                        //    | _ ->
+                                        //        Log.warn "bad bandwidth message: %A" (str.Trim())
+
+
                                         | _ -> 
                                             Log.warn "bad opcode: %A" str
                                 else
@@ -1988,28 +2059,31 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                             send (WorldPosition wp)
 
                                         | Rendered header ->
+                                            let now = clock.Elapsed
                                             let header = System.Convert.FromBase64String header
                                             
-                                            let gc = GCHandle.Alloc(header, GCHandleType.Pinned)
-                                            try
-                                                let ptr = gc.AddrOfPinnedObject()
+                                            if header.Length >= 32 then
+                                                let gc = GCHandle.Alloc(header, GCHandleType.Pinned)
+                                                try
+                                                    let ptr = gc.AddrOfPinnedObject()
 
-                                                let now = clock.Elapsed
-                                                let id = NativeInt.read<int> ptr
-                                                let size = NativeInt.read<int> (ptr + 4n)
-                                                let old = TimeSpan.FromTicks(NativeInt.read<int64> (ptr + 8n))
-                                                let dt = now - old
-                                                roundtripMean.Add dt.TotalSeconds
+                                                    if NativeInt.read<int> ptr = 0xBEDEAD then
+                                                        let id = NativeInt.read<int> (ptr + 4n)
+                                                        let size = NativeInt.read<int> (ptr + 8n)
+                                                        let old = TimeSpan.FromTicks(NativeInt.read<int64> (ptr + 16n))
+                                                        let dt = now - old
 
-                                            finally
-                                                gc.Free()
+                                                        roundtripMean.Add dt.TotalSeconds
+
+                                                finally
+                                                    gc.Free()
 
                                             bufferCounter.Release() |> ignore
                                             roundTripTime.Stop()
-                                            let cc = bufferCounter.CurrentCount
-                                            if lastCount <> cc then
-                                                lastCount <- cc
-                                                Log.line "frames in cloud: %d" (30 - cc)
+                                            //let cc = bufferCounter.CurrentCount
+                                            //if lastCount <> cc then
+                                            //    lastCount <- cc
+                                            //    Log.line "frames in cloud: %d" (30 - cc)
                                             frameCount <- frameCount + 1
 
                                         | Shutdown ->
