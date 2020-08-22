@@ -21,7 +21,11 @@ let update (model : Model) (msg : Message) =
             { model with cameraState = FreeFlyController.update model.cameraState m }
         | CenterScene -> 
             { model with cameraState = initialCamera }
-
+        | ToggleSize ->
+            match model.size with
+            | None -> { model with size = Some (V2i(1024, 768)) }
+            | Some s when s.X = 1024 -> { model with size = Some (V2i(1920, 1080)) }
+            | _ -> { model with size = None }
 [<AutoOpen>]
 module Deff =
    
@@ -128,30 +132,46 @@ let viewScene (model : AdaptiveModel) (values : Aardvark.Service.ClientValues) =
 
 
 let view (model : AdaptiveModel) = 
+    
+    let myStyle = 
+        model.size |> AVal.map (function
+            | Some s -> sprintf "width: %dpx; height: %dpx;" s.X s.Y |> AttributeValue.String |> Some
+            | None -> "width: 100%; height: 100%;" |> AttributeValue.String |> Some
+        )
+
     let renderControl =
        FreeFlyController.controlledControlWithClientValues model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
-                    (AttributeMap.ofList [ 
-                        style "width: 1024px; grid-row: 2; height:768px"; 
-                        attribute "showFPS" "true";         // optional, default is false
-                        attribute "useMapping" "false"
-                        attribute "data-quality" "90"
-                        //attribute "showLoader" "false"    // optional, default is true
-                        //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                        attribute "data-samples" "1"        // optional, default is 1
+                    (AttributeMap.ofListCond [ 
+                        "style", myStyle //style "width: 1024px; grid-row: 2; height:768px"; 
+                        always <| attribute "showFPS" "true";         // optional, default is false
+                        always <| attribute "useMapping" "false"
+                        always <| attribute "data-quality" "90"
+                        always <| attribute "data-samples" "1"        // optional, default is 1
                     ]) 
             RenderControlConfig.standard
             (viewScene model)
 
 
-    div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
-        div [style "grid-row: 1"] [
+    div [style "width: 100%; height: 100%; color: white" ] [
+        renderControl
+        div [style "position: fixed; top: 5px; left: 5px"] [
             text "Hello 3D"
             br []
             button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
+
+            button [onClick (fun _ -> ToggleSize)] [
+                Incremental.text (
+                    model.size |> AVal.map (function 
+                        | Some s -> sprintf "%dx%d" s.X s.Y
+                        | None -> "100%"
+                    )
+                )
+            ]
+
         ]
-        renderControl
-        br []
-        text "use first person shooter WASD + mouse controls to control the 3d scene"
+        div [style "position: fixed; bottom: 5px; left: 5px; color: white"] [
+            text "use first person shooter WASD + mouse controls to control the 3d scene"
+        ]
     ]
 
 let threads (model : Model) = 
@@ -172,7 +192,8 @@ let app =
                         threads = threads 
                         initial = 
                             { 
-                               cameraState = initialCamera
+                                size = None
+                                cameraState = initialCamera
                             }
                         update = update 
                         view = view
