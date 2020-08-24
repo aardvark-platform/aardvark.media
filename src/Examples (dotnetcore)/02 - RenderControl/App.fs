@@ -115,16 +115,16 @@ module Deff =
 
 let viewScene (model : AdaptiveModel) (values : Aardvark.Service.ClientValues) =
 
-    let s = values.signature
-    DeferredNode(s, values.size, 
-        Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
-            |> Sg.shader {
-                do! DefaultSurfaces.trafo
-                do! DefaultSurfaces.vertexColor
-                do! DefaultSurfaces.simpleLighting
-            }
+    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
+        |> Sg.shader {
+            do! DefaultSurfaces.trafo
+            do! DefaultSurfaces.vertexColor
+            do! DefaultSurfaces.simpleLighting
+        }
+    //let s = values.signature
+    //DeferredNode(s, values.size, 
             
-    ) :> ISg<_>
+    //) :> ISg<_>
 
     //|> Sg.withEvents [
     //    Sg.onClick (fun p -> Log.warn "%A" p; CenterScene)
