@@ -474,13 +474,22 @@ class Renderer {
         var $self = $(this.div);
         var w = $self.width();
         var h = $self.height();
+        var currentColor = { r: 0, g: 0, b: 0 };
+
         var check = function () {
             var cw = $self.width();
             var ch = $self.height();
-            if(cw !== w || ch !== h)
+
+            var color = { r: 0, g: 0, b: 0 };
+            var bg = window.getComputedStyle($self.get(0)).backgroundColor;
+            if (typeof bg != undefined)
+                color = new RGBColor(bg);
+
+            if (cw !== w || ch !== h || currentColor.r !== color.r || currentColor.g !== color.g || currentColor.b !== color.b)
             {
                 w = cw;
                 h = ch;
+                currentColor = color;
                 self.render();
             }
         };

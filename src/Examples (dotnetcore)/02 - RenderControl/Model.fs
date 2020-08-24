@@ -8,9 +8,11 @@ open Adaptify
 type Message = 
     | Camera of FreeFlyController.Message
     | CenterScene
+    | ToggleBackground
 
 [<ModelType>]
 type Model = 
     {
         cameraState : CameraControllerState
+        background : C4b
     }

@@ -16,6 +16,8 @@ let initialCamera = {
 
 let update (model : Model) (msg : Message) =
     match msg with
+        | ToggleBackground ->
+            { model with background = (if model.background = C4b.Black then C4b.White else C4b.Black) }
         | Camera m -> 
             { model with cameraState = FreeFlyController.update model.cameraState m }
         | CenterScene -> 
@@ -34,12 +36,13 @@ let view (model : AdaptiveModel) =
 
     let renderControl =
        FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
-                    (AttributeMap.ofList [ 
-                        style "width: 100%; grid-row: 2; height:100%"; 
-                        attribute "showFPS" "true";         // optional, default is false
+                    (AttributeMap.ofListCond [ 
+                        always <| style "width: 100%; grid-row: 2; height:100%"; 
+                        always <| attribute "showFPS" "true";         // optional, default is false
+                        "style", model.background |> AVal.map(fun c -> sprintf "background: #%02X%02X%02X" c.R c.G c.B |> AttributeValue.String |> Some)
                         //attribute "showLoader" "false"    // optional, default is true
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                        attribute "data-samples" "8"        // optional, default is 1
+                        always <| attribute "data-samples" "8"        // optional, default is 1
                     ]) 
             (viewScene model)
 
@@ -49,6 +52,7 @@ let view (model : AdaptiveModel) =
             text "Hello 3D"
             br []
             button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
+            button [onClick (fun _ -> ToggleBackground)] [text "Change Background"]
         ]
         renderControl
         br []
@@ -66,6 +70,7 @@ let app =
         initial = 
             { 
                cameraState = initialCamera
+               background = C4b.Black
             }
         update = update 
         view = view
