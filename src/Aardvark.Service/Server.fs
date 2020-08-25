@@ -1937,9 +1937,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 let roundtrip = MicroTime.FromSeconds roundtripMean.Value
                 let size = Mem (int64 dataSizeMean.Value)
 
-                let transmitTime = roundtrip - ping
-
-                let rate = size.Megabytes / transmitTime.TotalSeconds
+                let rate = size.Megabytes / roundtrip.TotalSeconds
                 Log.line "%.3fMB/s" rate
 
                 ()
