@@ -1936,6 +1936,12 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 let ping = MicroTime.FromSeconds pingMean.Value
                 let roundtrip = MicroTime.FromSeconds roundtripMean.Value
                 let size = Mem (int64 dataSizeMean.Value)
+
+                let transmitTime = roundtrip - ping
+
+                let rate = size.Megabytes / transmitTime.TotalSeconds
+                Log.line "%.3fMB/s" rate
+
                 ()
 
             i <- i + 1
@@ -2058,9 +2064,9 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
                                             send (WorldPosition wp)
 
-                                        | Rendered header ->
+                                        | Rendered h64 ->
                                             let now = clock.Elapsed
-                                            let header = System.Convert.FromBase64String header
+                                            let header = System.Convert.FromBase64String h64
                                             
                                             if header.Length >= 32 then
                                                 let gc = GCHandle.Alloc(header, GCHandleType.Pinned)

@@ -753,7 +753,7 @@ class Renderer {
                     delete msg.data;
                     urlCreator.revokeObjectURL(oldUrl);
 
-                    arrayBufferToBase64(header, function (b64encoded) {
+                    arrayBufferToBase64(reader.result, function (b64encoded) {
                         self.send(JSON.stringify({ Case: "Rendered", header: b64encoded }));
 
                         if (self.loading) {
