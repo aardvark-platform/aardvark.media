@@ -748,13 +748,13 @@ class Renderer {
                 }
                 else {
 
-                    var oldUrl = self.img.src;
-                    self.img.src = urlCreator.createObjectURL(msg.data.slice(32));
-                    delete msg.data;
-                    urlCreator.revokeObjectURL(oldUrl);
-
                     arrayBufferToBase64(reader.result, function (b64encoded) {
                         self.send(JSON.stringify({ Case: "Rendered", header: b64encoded }));
+
+                        var oldUrl = self.img.src;
+                        self.img.src = urlCreator.createObjectURL(msg.data.slice(32));
+                        delete msg.data;
+                        urlCreator.revokeObjectURL(oldUrl);
 
                         if (self.loading) {
                             self.fadeIn();

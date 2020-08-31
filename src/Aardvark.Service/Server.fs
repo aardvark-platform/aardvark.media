@@ -702,7 +702,7 @@ type internal ClientRenderTask internal(info : ClientCreateInfo, server : Server
             | None ->
                 None
         
-    abstract member ProcessImage : IFramebuffer * IRenderbuffer -> RenderResult
+    abstract member ProcessImage : ClientInfo * IFramebuffer * IRenderbuffer -> RenderResult
     abstract member Release : unit -> unit
 
     member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
@@ -734,7 +734,7 @@ type internal ClientRenderTask internal(info : ClientCreateInfo, server : Server
                 Interlocked.Decrement(&threadCount) |> ignore
         )
         compressTime.Start()
-        let data = x.ProcessImage(target, color.Value)
+        let data = x.ProcessImage(info, target, color.Value)
         //let data =
         //    match gpuCompressorInstance with
         //        | Some gpuCompressorInstance ->
@@ -778,10 +778,11 @@ type internal ClientRenderTask internal(info : ClientCreateInfo, server : Server
         member x.Dispose() =
             x.Dispose()
 
-type internal JpegClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
+type internal JpegClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : int) =
     inherit ClientRenderTask(info, server, getScene)
     
-    let quantization, quality = quality
+    let mutable quality = quality
+    let mutable quantization = Quantization.ofQuality (float quality)
     let runtime = server.runtime
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
     let mutable resolved : Option<IBackendTexture> = None
@@ -806,14 +807,30 @@ type internal JpegClientRenderTask internal(info : ClientCreateInfo, server : Se
             | _ ->
                 None
 
-    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+    member x.Quality 
+        with get() = quality
+        and set v =
+            quality <- v
+            quantization <- Quantization.ofQuality (float quality)
+
+    override x.ProcessImage(info : ClientInfo, target : IFramebuffer, color : IRenderbuffer) =
         let resolved = 
             match resolved with
-                | Some r when r.Size.XY = color.Size -> Some r
-                | _ -> recreate color.Format color.Size
+            | Some r when r.Size.XY = color.Size -> Some r
+            | _ -> recreate color.Format color.Size
+
+        if quality <> info.quality then
+            x.Quality <- info.quality
+
         let data =
             match gpuCompressorInstance with
                 | Some gpuCompressorInstance ->
+                    let resolved =
+                        if gpuCompressorInstance.Quality <> quantization then
+                            recreate color.Format color.Size
+                        else 
+                            resolved
+
                     let resolved = resolved.Value
                     if color.Samples > 1 then
                         runtime.ResolveMultisamples(color, resolved, ImageTrafo.Identity)
@@ -830,7 +847,7 @@ type internal JpegClientRenderTask internal(info : ClientCreateInfo, server : Se
         gpuCompressorInstance <- None
         resolved <- None
 
-    new(info : ClientCreateInfo,server,getScene) = new JpegClientRenderTask(info, server,getScene,(Quantization.photoshop80,80))
+    new(info : ClientCreateInfo,server,getScene) = new JpegClientRenderTask(info, server,getScene, 80)
 
 type internal PngClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(info, server, getScene)     
@@ -845,7 +862,7 @@ type internal PngClientRenderTask internal(info : ClientCreateInfo, server : Ser
         r
 
 
-    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+    override x.ProcessImage(info : ClientInfo, target : IFramebuffer, color : IRenderbuffer) =
         let resolved = 
             match resolved with
                 | Some r when r.Size.XY = color.Size -> r
@@ -1661,7 +1678,7 @@ type internal MappedClientRenderTask internal(info : ClientCreateInfo, server : 
         downloader <- Some d
         d
 
-    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+    override x.ProcessImage(info : ClientInfo, target : IFramebuffer, color : IRenderbuffer) =
         let desiredMapSize = Fun.NextPowerOfTwo (int64 color.Size.X * int64 color.Size.Y * 4L)
 
         let mapping =
@@ -1753,11 +1770,12 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         if info.useMapping then
             new MappedClientRenderTask(info, info.server, getContent) :> ClientRenderTask
         else
-            let q = Quantization.ofQuality (float info.quality), info.quality
-            new JpegClientRenderTask(info, info.server, getContent, q) :> ClientRenderTask
+            new JpegClientRenderTask(info, info.server, getContent, info.quality) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
     let sender = DummyObject()
+
+    let mutable quality = 20
 
     let mutable requestedSize : C4b * V2i = C4b.Black, V2i.Zero
     let mutable bufferCounter = new SemaphoreSlim(maxBufferSize)
@@ -1774,9 +1792,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     let invalidateTime = Stopwatch()
     
     let clock = Stopwatch.StartNew()
-    let pingMean : RunningMean<float> = RunningMean.create 5
-    let dataSizeMean : RunningMean<float> = RunningMean.create 5
-    let roundtripMean : RunningMean<float> = RunningMean.create 5
+    let pingMean : RunningMean<float> = RunningMean.create 10
+    let bufferMean : RunningMean<float> = RunningMean.create 10
+    //let dataSizeMean : RunningMean<float> = RunningMean.create 1
+    //let roundtripMean : RunningMean<float> = RunningMean.create 1
     let send (cmd : Command) =
         let data = Pickler.json.Pickle cmd
 
@@ -1824,29 +1843,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 None
         | _ ->
             None
-        
-
-    let estimateBandwidth() =   
-        //warmup 
-        for i in 1 .. 10 do
-            testRoundtrip (1 <<< 16) |> ignore
-
-        let mutable size = 1 <<< 10
-        let mutable dt = TimeSpan.Zero
-        let mutable dtSize = 0
-        while dt.TotalMilliseconds < 1000.0 do
-            match testRoundtrip size with
-            | Some t -> 
-                dtSize <- size
-                dt <- t
-                Log.line "%A -> %A" (Mem size) (MicroTime dt)
-            | None ->
-                dt <- TimeSpan.MaxValue
-            size <- size <<< 1
-
-        2.0 * float dtSize / dt.TotalSeconds
-
-
+     
     let renderLoop() =
         let mutable buffer : byte[] =
             Array.zeroCreate 65536
@@ -1878,10 +1875,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 data.CopyTo(buffer, header.Length)
                 writeHeader data
                 header.CopyTo(buffer, 0)
-                let s = ByteSegment(buffer, 0, header.Length + data.Length)
-                dataSizeMean.Add (float s.Count)
+                ByteSegment(buffer, 0, header.Length + data.Length)
 
-                s
             | _ ->
                 ByteSegment(data)
 
@@ -1890,11 +1885,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             if size.AllGreater 0 then
                 MVar.take renderingDirty
                 throttle.Wait()
+                bufferMean.Add (float (maxBufferSize - bufferCounter.CurrentCount))
                 bufferCounter.Wait()
                 lock updateLock (fun () ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
                         let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
                         try
+                            let info = { info with quality = quality }
                             let state = getState info
                             let data = task.Run(token, info, state)
 
@@ -1919,11 +1916,14 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 )
 
     let pingLoop() =
+        
         use mm = new MultimediaTimer.Trigger 100
         let mutable i = 0
         while running do
             mm.Wait()
-            let now = clock.Elapsed.Ticks |> sprintf "#t%d" |> System.Text.Encoding.UTF8.GetBytes
+            let msg = sprintf "#t%d" clock.Elapsed.Ticks
+            let garbage = msg // + System.String(' ', (1 <<< 20) - msg.Length)
+            let now = garbage |> System.Text.Encoding.UTF8.GetBytes
             let res = createInfo.socket.send Opcode.Text (ByteSegment now) true |> Async.RunSynchronously
             match res with
             | Choice1Of2() -> ()
@@ -1932,15 +1932,16 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
         
 
-            if pingMean.IsFull && dataSizeMean.IsFull && roundtripMean.IsFull then
+            if pingMean.IsFull then
                 let ping = MicroTime.FromSeconds pingMean.Value
-                let roundtrip = MicroTime.FromSeconds roundtripMean.Value
-                let size = Mem (int64 dataSizeMean.Value)
+                let buffered = bufferMean.Value
+                let expectedInCloud =
+                    ping.TotalSeconds * 60.0
 
-                let rate = size.Megabytes / roundtrip.TotalSeconds
-                Log.line "%.3fMB/s" rate
 
-                ()
+                Log.line "%A (%.3f %.3f)" ping expectedInCloud buffered
+
+                
 
             i <- i + 1
 
@@ -2063,31 +2064,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                             send (WorldPosition wp)
 
                                         | Rendered h64 ->
-                                            let now = clock.Elapsed
-                                            let header = System.Convert.FromBase64String h64
-                                            
-                                            if header.Length >= 32 then
-                                                let gc = GCHandle.Alloc(header, GCHandleType.Pinned)
-                                                try
-                                                    let ptr = gc.AddrOfPinnedObject()
-
-                                                    if NativeInt.read<int> ptr = 0xBEDEAD then
-                                                        let id = NativeInt.read<int> (ptr + 4n)
-                                                        let size = NativeInt.read<int> (ptr + 8n)
-                                                        let old = TimeSpan.FromTicks(NativeInt.read<int64> (ptr + 16n))
-                                                        let dt = now - old
-
-                                                        roundtripMean.Add dt.TotalSeconds
-
-                                                finally
-                                                    gc.Free()
-
                                             bufferCounter.Release() |> ignore
                                             roundTripTime.Stop()
-                                            //let cc = bufferCounter.CurrentCount
-                                            //if lastCount <> cc then
-                                            //    lastCount <- cc
-                                            //    Log.line "frames in cloud: %d" (30 - cc)
                                             frameCount <- frameCount + 1
 
                                         | Shutdown ->
@@ -2378,7 +2356,7 @@ module Server =
 
                     match Map.tryFind "fmt" args with
                         | Some "jpg" | None -> 
-                            use t = new JpegClientRenderTask(createInfo, info, content, (Quantization.photoshop100,100)) :> ClientRenderTask
+                            use t = new JpegClientRenderTask(createInfo, info, content, 100) :> ClientRenderTask
                             t |> respondOK "image/jpeg"
                         | Some "png" -> 
                             use t = new PngClientRenderTask(createInfo, info, content) :> ClientRenderTask

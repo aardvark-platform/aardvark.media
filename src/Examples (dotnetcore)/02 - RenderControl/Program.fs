@@ -10,8 +10,6 @@ open Suave.WebPart
 open Aardium
 open RenderControl
 
-
-
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()

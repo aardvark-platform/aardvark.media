@@ -119,8 +119,10 @@ let viewScene (model : AdaptiveModel) (values : Aardvark.Service.ClientValues) =
         |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.vertexColor
+            do! DefaultSurfaces.diffuseTexture
             do! DefaultSurfaces.simpleLighting
         }
+        |> Sg.diffuseFileTexture' @"C:\Users\Schorsch\Pictures\2048.jpg" true
     //let s = values.signature
     //DeferredNode(s, values.size, 
             
@@ -145,7 +147,7 @@ let view (model : AdaptiveModel) =
                         "style", myStyle //style "width: 1024px; grid-row: 2; height:768px"; 
                         always <| attribute "showFPS" "true";         // optional, default is false
                         always <| attribute "useMapping" "false"
-                        always <| attribute "data-quality" "90"
+                        always <| attribute "data-quality" "100"
                         always <| attribute "data-samples" "1"        // optional, default is 1
                     ]) 
             RenderControlConfig.standard
