@@ -180,6 +180,19 @@ let threads (model : Model) =
     FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
+
+let subApper (app : App<_,_,_>) =      
+    {
+        unpersist = { create = id; update = fun _ _ -> () }
+        threads = fun _ -> ThreadPool.empty
+        initial = ()
+        update = fun _ _ -> ()
+        view =
+            fun () ->
+                subApp app
+    }
+
+
 let app =      
     {
         unpersist = { create = id; update = fun _ _ -> () }

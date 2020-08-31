@@ -781,7 +781,7 @@ type internal ClientRenderTask internal(info : ClientCreateInfo, server : Server
 type internal JpegClientRenderTask internal(info : ClientCreateInfo, server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : int) =
     inherit ClientRenderTask(info, server, getScene)
     
-    let mutable quality = quality
+    let mutable quality = 100
     let mutable quantization = Quantization.ofQuality (float quality)
     let runtime = server.runtime
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
@@ -807,29 +807,22 @@ type internal JpegClientRenderTask internal(info : ClientCreateInfo, server : Se
             | _ ->
                 None
 
-    member x.Quality 
-        with get() = quality
-        and set v =
-            quality <- v
-            quantization <- Quantization.ofQuality (float quality)
-
     override x.ProcessImage(info : ClientInfo, target : IFramebuffer, color : IRenderbuffer) =
+
+        if info.quality <> quality then
+            quality <- info.quality
+            quantization <- Quantization.ofQuality (float info.quality)
+
         let resolved = 
             match resolved with
             | Some r when r.Size.XY = color.Size -> Some r
             | _ -> recreate color.Format color.Size
-
-        if quality <> info.quality then
-            x.Quality <- info.quality
-
+            
         let data =
             match gpuCompressorInstance with
                 | Some gpuCompressorInstance ->
-                    let resolved =
-                        if gpuCompressorInstance.Quality <> quantization then
-                            recreate color.Format color.Size
-                        else 
-                            resolved
+                    if gpuCompressorInstance.Quality <> quantization then
+                        gpuCompressorInstance.Quality <- quantization
 
                     let resolved = resolved.Value
                     if color.Samples > 1 then

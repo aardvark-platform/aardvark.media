@@ -34,7 +34,7 @@ let main argv =
         app |> App.start
 
     WebPart.startServer 8080 [ 
-        MutableApp.toWebPart' runtime false instance
+        MutableApp.toWebPart' runtime true instance
         Suave.Files.browseHome
     ] |> ignore
     
