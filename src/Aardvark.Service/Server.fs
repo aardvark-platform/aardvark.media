@@ -1794,6 +1794,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     let clock = Stopwatch.StartNew()
     let pingMean : RunningMean<float> = RunningMean.create 10
     let bufferMean : RunningMean<float> = RunningMean.create 10
+    let qualityMean : RunningMean<float> = RunningMean.create 10
     //let dataSizeMean : RunningMean<float> = RunningMean.create 1
     //let roundtripMean : RunningMean<float> = RunningMean.create 1
     let send (cmd : Command) =
@@ -1885,6 +1886,16 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             if size.AllGreater 0 then
                 MVar.take renderingDirty
                 throttle.Wait()
+
+                let framesInCloud = maxBufferSize - bufferCounter.CurrentCount
+                let quality = 
+                    if framesInCloud > 3 then
+                        let o = framesInCloud - 3
+                        info.quality - 10 * o |> max 20
+                    else
+                        info.quality
+
+                qualityMean.Add (float quality)
                 bufferMean.Add (float (maxBufferSize - bufferCounter.CurrentCount))
                 bufferCounter.Wait()
                 lock updateLock (fun () ->
@@ -1932,19 +1943,11 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
         
 
-            if pingMean.IsFull then
+            if pingMean.IsFull && qualityMean.IsFull then
                 let ping = MicroTime.FromSeconds pingMean.Value
-                let buffered = bufferMean.Value
-                let expectedInCloud =
-                    ping.TotalSeconds * 60.0
+                let q = qualityMean.Value
 
-
-                if buffered > 5.0 && quality > 20 then 
-                    quality <- max 20 (quality - 10)
-                    Log.line "quality: %A" quality
-                elif buffered < 1.0 && quality < 90 then
-                    quality <- min 90 (quality + 10)
-                    Log.line "quality: %A" quality
+                Log.line "%A (%.2f)" ping q
                 //Log.line "%A (%.3f %.3f)" ping expectedInCloud buffered
 
                 
