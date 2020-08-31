@@ -1790,11 +1790,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     let mutable frameCount = 0
     let roundTripTime = Stopwatch()
     let invalidateTime = Stopwatch()
+    let renderTime = Stopwatch()
     
     let clock = Stopwatch.StartNew()
     let pingMean : RunningMean<float> = RunningMean.create 10
     let bufferMean : RunningMean<float> = RunningMean.create 10
     let qualityMean : RunningMean<float> = RunningMean.create 10
+    let renderTimeMean : RunningMean<float> = RunningMean.create 10
     //let dataSizeMean : RunningMean<float> = RunningMean.create 1
     //let roundtripMean : RunningMean<float> = RunningMean.create 1
     let send (cmd : Command) =
@@ -1889,9 +1891,9 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
                 let framesInCloud = maxBufferSize - bufferCounter.CurrentCount
                 let quality = 
-                    if framesInCloud > 3 then
-                        let o = framesInCloud - 3
-                        info.quality - 10 * o |> max 20
+                    if framesInCloud > 0 then
+                        let o = framesInCloud
+                        info.quality - 30 * o |> max 20
                     else
                         info.quality
 
@@ -1904,7 +1906,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                         try
                             let info = { info with quality = quality }
                             let state = getState info
+                            renderTime.Restart()
                             let data = task.Run(token, info, state)
+                            renderTime.Stop()
+                            renderTimeMean.Add renderTime.Elapsed.TotalSeconds
 
                             let struct(code, binary) = 
                                 match data with
@@ -1943,11 +1948,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
         
 
-            if pingMean.IsFull && qualityMean.IsFull then
+            if pingMean.IsFull && qualityMean.IsFull && renderTimeMean.IsFull then
                 let ping = MicroTime.FromSeconds pingMean.Value
                 let q = qualityMean.Value
+                let bs = bufferMean.Value
+                let render = MicroTime.FromSeconds renderTimeMean.Value
 
-                Log.line "%A (%.2f)" ping q
+                Log.line "%A %A (%.2f/%.2f)" ping render q bs
                 //Log.line "%A (%.3f %.3f)" ping expectedInCloud buffered
 
                 
