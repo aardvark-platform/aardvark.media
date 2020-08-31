@@ -122,7 +122,7 @@ let viewScene (model : AdaptiveModel) (values : Aardvark.Service.ClientValues) =
             do! DefaultSurfaces.diffuseTexture
             do! DefaultSurfaces.simpleLighting
         }
-        |> Sg.diffuseFileTexture' @"C:\Users\Schorsch\Pictures\2048.jpg" true
+        |> Sg.diffuseTexture DefaultTextures.checkerboard
     //let s = values.signature
     //DeferredNode(s, values.size, 
             
