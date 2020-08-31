@@ -1779,7 +1779,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let mutable requestedSize : C4b * V2i = C4b.Black, V2i.Zero
     let mutable bufferCounter = new SemaphoreSlim(maxBufferSize)
-    let renderingDirty = MVar.create ()
+    let renderingDirty = MVar.create false
     let mutable throttle = new Throttle(targetFrameTime)
 
     let mutable createInfo = createInfo
@@ -1791,6 +1791,9 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     let roundTripTime = Stopwatch()
     let invalidateTime = Stopwatch()
     let renderTime = Stopwatch()
+
+    let timer = new System.Threading.Timer(TimerCallback(fun _ -> MVar.put renderingDirty true))
+
     
     let clock = Stopwatch.StartNew()
     let pingMean : RunningMean<float> = RunningMean.create 10
@@ -1814,7 +1817,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         sender.AddMarkingCallback(fun () ->
             invalidateTime.Start()
             send Invalidate
-            MVar.put renderingDirty ()
+            MVar.put renderingDirty false
         )
 
     let mutable info =
@@ -1883,22 +1886,28 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             | _ ->
                 ByteSegment(data)
 
+
         while running do
             let (background, size) = requestedSize
             if size.AllGreater 0 then
-                MVar.take renderingDirty
+                let full = MVar.take renderingDirty
+                if not full then timer.Change(Timeout.Infinite, Timeout.Infinite) |> ignore
+
                 throttle.Wait()
 
                 let framesInCloud = maxBufferSize - bufferCounter.CurrentCount
                 let quality = 
-                    if framesInCloud > 0 then
+                    if full then 100 
+                    elif framesInCloud > 0 then
                         let o = framesInCloud
                         info.quality - 30 * o |> max 20
                     else
                         info.quality
 
-                qualityMean.Add (float quality)
-                bufferMean.Add (float (maxBufferSize - bufferCounter.CurrentCount))
+                if not full then
+                    qualityMean.Add (float quality)
+                    bufferMean.Add (float (maxBufferSize - bufferCounter.CurrentCount))
+
                 bufferCounter.Wait()
                 lock updateLock (fun () ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
@@ -2080,7 +2089,9 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                             send (WorldPosition wp)
 
                                         | Rendered h64 ->
-                                            bufferCounter.Release() |> ignore
+                                            let pc = bufferCounter.Release()
+                                            if pc = maxBufferSize - 1 then
+                                                timer.Change(166, Timeout.Infinite) |> ignore
                                             roundTripTime.Stop()
                                             frameCount <- frameCount + 1
 
