@@ -1859,27 +1859,25 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             
         let mutable frameId = 0
 
-        let writeHeader (data : byte[]) =
+        let writeHeader (full : bool) =
             let gc = GCHandle.Alloc(header, GCHandleType.Pinned)
             try
                 let ptr = gc.AddrOfPinnedObject()
 
                 NativeInt.write ptr 0xBEDEAD
-                NativeInt.write (ptr + 4n) frameId
-                NativeInt.write (ptr + 8n) (data.Length + header.Length)
-                NativeInt.write (ptr + 16n) clock.Elapsed.Ticks
+                NativeInt.write (ptr + 4n) (if full then 1 else 0)
                 frameId <- frameId + 1
             finally 
                 gc.Free()
 
-        let segment (code : Opcode) (data : byte[]) =
+        let segment (full : bool) (code : Opcode) (data : byte[]) =
             match code with
             | Opcode.Binary -> 
                 let cap = Fun.NextPowerOfTwo(header.Length + data.Length)
                 if buffer.Length < cap then Array.Resize(&buffer, cap)
 
                 data.CopyTo(buffer, header.Length)
-                writeHeader data
+                writeHeader full
                 header.CopyTo(buffer, 0)
                 ByteSegment(buffer, 0, header.Length + data.Length)
 
@@ -1926,7 +1924,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                     | Png data -> struct(Opcode.Binary, data)
                                     | Mapping img -> struct(Opcode.Text, Pickler.json.Pickle img)
 
-                            let res = createInfo.socket.send code (segment code binary) true |> Async.RunSynchronously
+                            let res = createInfo.socket.send code (segment full code binary) true |> Async.RunSynchronously
                             match res with
                                 | Choice1Of2() -> ()
                                 | Choice2Of2 err ->
@@ -2091,7 +2089,9 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         | Rendered h64 ->
                                             let pc = bufferCounter.Release()
                                             if pc = maxBufferSize - 1 then
-                                                timer.Change(166, Timeout.Infinite) |> ignore
+                                                let arr = System.Convert.FromBase64String h64
+                                                if System.BitConverter.ToInt32(arr, 4) = 0 then
+                                                    timer.Change(166, Timeout.Infinite) |> ignore
                                             roundTripTime.Stop()
                                             frameCount <- frameCount + 1
 
