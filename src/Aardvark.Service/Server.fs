@@ -1939,11 +1939,11 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     ping.TotalSeconds * 60.0
 
 
-                if buffered > expectedInCloud * 4.0 then 
-                    quality <- max 20 (quality - 20)
+                if buffered > 5.0 && quality > 20 then 
+                    quality <- max 20 (quality - 10)
                     Log.line "quality: %A" quality
-                elif buffered < expectedInCloud * 0.8 then
-                    quality <- min 90 (quality + 20)
+                elif buffered < 1.0 && quality < 90 then
+                    quality <- min 90 (quality + 10)
                     Log.line "quality: %A" quality
                 //Log.line "%A (%.3f %.3f)" ping expectedInCloud buffered
 
