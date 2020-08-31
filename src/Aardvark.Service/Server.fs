@@ -1775,7 +1775,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     let id = Interlocked.Increment(&currentId)
     let sender = DummyObject()
 
-    let mutable quality = 20
+    let mutable quality = 90
 
     let mutable requestedSize : C4b * V2i = C4b.Black, V2i.Zero
     let mutable bufferCounter = new SemaphoreSlim(maxBufferSize)
@@ -1939,7 +1939,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     ping.TotalSeconds * 60.0
 
 
-                Log.line "%A (%.3f %.3f)" ping expectedInCloud buffered
+                if buffered > expectedInCloud * 4.0 then 
+                    quality <- max 20 (quality - 20)
+                    Log.line "quality: %A" quality
+                elif buffered < expectedInCloud * 0.8 then
+                    quality <- min 90 (quality + 20)
+                    Log.line "quality: %A" quality
+                //Log.line "%A (%.3f %.3f)" ping expectedInCloud buffered
 
                 
 
