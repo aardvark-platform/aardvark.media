@@ -867,6 +867,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
             browser <- b
 
     member internal x.LoadFinished(res : LoadResult) =
+        // TODO: singnal res = Error to outside (currently Browser will stay IsInitialized=false; see HP-1166 in HilitePlugin)
         if not isDisposed then
             MVar.put loadResult res
 
