@@ -1023,8 +1023,8 @@ module internal RawDownload =
                 let sizeInBytes = rowSize * int64 size.Y
 
                 let pbo = GL.GenBuffer()
-                GL.NamedBufferStorage(pbo, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
 
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
                 GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
@@ -1107,8 +1107,8 @@ module internal RawDownload =
                 let sizeInBytes = rowSize * int64 size.Y
 
                 let pbo = GL.GenBuffer()
-                GL.NamedBufferStorage(pbo, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
                 GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
 
                 let temp = getFramebuffer size
 

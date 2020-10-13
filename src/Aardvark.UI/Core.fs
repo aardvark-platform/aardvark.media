@@ -1052,7 +1052,7 @@ and DomNode private() =
                                 | Remove ->
                                     match x.State.TryGet index with
                                     | Some o -> 
-                                        Log.warn "memory leak"; //o.Dispose(); 
+                                        o.Dispose()
                                         Some Remove
                                     | None -> None
 
@@ -1168,7 +1168,7 @@ and DomNode private() =
                                 | Remove ->
                                     match x.State.TryGet index with
                                     | Some o -> 
-                                        Log.warn "memory leak" // o.Dispose(); 
+                                        o.Dispose()
                                         Some Remove
                                     | None -> None
 
