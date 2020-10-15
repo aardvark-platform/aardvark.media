@@ -2,7 +2,7 @@ namespace OpcSelectionViewer.Picking
 
 open Aardvark.UI
 open Aardvark.Base
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open OpcSelectionViewer
 
@@ -47,7 +47,7 @@ module PickingApp =
          toEffect (DefaultSurfaces.constantColor C4f.Red)
          Shader.PointSprite.Effect
       ]
-      |> Sg.translate' head
+      |> Sg.translation head
       |> Sg.uniform "PointSize" (AVal.constant 10.0)
 
   let view (model : AdaptivePickingModel) =

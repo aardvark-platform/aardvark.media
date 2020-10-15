@@ -4,7 +4,7 @@ open System
 open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open FSharp.Data.Traceable
 open Aardvark.Application
@@ -542,9 +542,28 @@ module ChannelThings =
 open Aardvark.Service
 
 type RenderCommand<'msg> =
-    | Clear of color : Option<aval<C4f>> * depth : Option<aval<float>>
+    | Clear of color : Option<aval<C4f>> * depth : Option<aval<float>> * stencil : Option<aval<int>>
     | SceneGraph of sg : ISg<'msg>
-    
+
+    member x.Compile(values : ClientValues) =
+        match x with
+        | RenderCommand.Clear(color, depth, stencil) ->
+            match color, depth, stencil with
+            | Some c, Some d, Some s -> values.runtime.CompileClear(values.signature, c, d, s)
+            | None, Some d, Some s -> values.runtime.CompileClear(values.signature, d, s)
+            | Some c, None, Some s -> values.runtime.CompileClear(values.signature, c, s)
+            | None, None, Some s -> values.runtime.CompileClear(values.signature, s)
+            | Some c, Some d, None -> values.runtime.CompileClear(values.signature, c, d)
+            | None, Some d, None -> values.runtime.CompileClear(values.signature, d)
+            | Some c, None, None -> values.runtime.CompileClear(values.signature, c)
+            | None, None, None -> RenderTask.empty
+        | RenderCommand.SceneGraph sg -> 
+            let sg =
+                sg
+                |> Sg.viewTrafo values.viewTrafo
+                |> Sg.projTrafo values.projTrafo
+                |> Sg.uniform "ViewportSize" values.size
+            values.runtime.CompileRender(values.signature, sg)
 
 
 type IApp<'model, 'msg, 'outer> =
@@ -1017,23 +1036,6 @@ and DomNode private() =
                   sgs |> AList.toASet |> ASet.choose (function RenderCommand.Clear _ -> None | SceneGraph sg -> sg.GlobalPicks(Ag.Scope.Root) |> Some)
 
                 transact (fun _ -> trees.Value <- t; globalPicks.Value <- g)
-                
-                let invoke pass =   
-                    match pass with
-                        | RenderCommand.Clear(color,depth) -> 
-                            match color,depth with
-                                | Some c, Some d -> values.runtime.CompileClear(values.signature,c,d) 
-                                | None, Some d ->  values.runtime.CompileClear(values.signature,d) 
-                                | Some c, None -> values.runtime.CompileClear(values.signature,c)
-                                | None, None -> RenderTask.empty
-                        | RenderCommand.SceneGraph sg -> 
-                            let sg =
-                                sg
-                                |> Sg.viewTrafo values.viewTrafo
-                                |> Sg.projTrafo values.projTrafo
-                                |> Sg.uniform "ViewportSize" values.size
-                            values.runtime.CompileRender(values.signature, sg)
-
 
                 let mutable reader : IOpReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>> = 
                     let mutable state = IndexList.empty
@@ -1046,7 +1048,7 @@ and DomNode private() =
                                     match x.State.TryGet index with
                                     | Some o -> o.Dispose()
                                     | None -> ()
-                                    let task = invoke v
+                                    let task = v.Compile(values)
                                     Some (Set task)
 
                                 | Remove ->
@@ -1068,10 +1070,10 @@ and DomNode private() =
                 { new AbstractRenderTask() with
                     override x.PerformUpdate(t,rt) = 
                         update t
-                    override x.Perform(t,rt,o) = 
+                    override x.Perform(t,rt,o,q) = 
                         update t
                         for task in reader.State do
-                            task.Run(t,rt,o)
+                            task.Run(t,rt,o,q)
                     override x.Release() = 
                         for task in reader.State do 
                             task.Dispose()
@@ -1131,26 +1133,6 @@ and DomNode private() =
 
         let scene =
             Scene.custom (fun values ->
-                
-                let invoke pass =   
-                    match pass with
-                        | RenderCommand.Clear(color,depth) -> 
-                            match color,depth with
-                                | Some c, Some d -> values.runtime.CompileClear(values.signature,c,d) 
-                                | None, Some d ->  values.runtime.CompileClear(values.signature,d) 
-                                | Some c, None -> values.runtime.CompileClear(values.signature,c)
-                                | None, None -> RenderTask.empty
-                        | RenderCommand.SceneGraph sg -> 
-                            let sg =
-                                sg
-                                    |> Sg.viewTrafo values.viewTrafo
-                                    |> Sg.projTrafo values.projTrafo
-                                    |> Sg.uniform "ViewportSize" values.size
-                            values.runtime.CompileRender(values.signature, sg)
-
-
-                
-
                 let mutable reader : IOpReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>> = 
                     let mutable state = IndexList.empty
                     let input = sgs.GetReader()
@@ -1162,7 +1144,7 @@ and DomNode private() =
                                     match x.State.TryGet index with
                                     | Some o -> o.Dispose()
                                     | None -> ()
-                                    let task = invoke v
+                                    let task = v.Compile(values)
                                     Some (Set task)
 
                                 | Remove ->
@@ -1182,10 +1164,12 @@ and DomNode private() =
                 { new AbstractRenderTask() with
                     override x.PerformUpdate(t,rt) = 
                         update t
-                    override x.Perform(t,rt,o) = 
+                    override x.Perform(t,rt,o,q) = 
                         update t
+                        q.Begin()
                         for task in reader.State do
-                            task.Run(t,rt,o)
+                            task.Run(t,rt,o,q)
+                        q.End()
                     override x.Release() = 
                         for t in reader.State do 
                             t.Dispose()

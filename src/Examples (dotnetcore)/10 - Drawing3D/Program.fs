@@ -6,6 +6,7 @@ Thomas Ortners Drawing Example
 open System
 
 open Aardvark.Base
+open Aardvark.Rendering
 open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI

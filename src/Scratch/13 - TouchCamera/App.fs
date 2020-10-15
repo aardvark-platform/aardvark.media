@@ -1,18 +1,17 @@
 namespace TouchCamera
 
+open Aardvark.Base
+open FSharp.Data.Adaptive
+open Aardvark.Rendering
+open Aardvark.SceneGraph
+open Aardvark.SceneGraph.IO
+
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.TouchStick
 
-open Aardvark.Base
-open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
-
-open Aardvark.SceneGraph.IO
-
 module TouchStickApp =
     open Aardvark.Application
-    open Aardvark.Base
 
     let rec update (m : TouchStickModel) (msg : TouchStickMessage) =
     

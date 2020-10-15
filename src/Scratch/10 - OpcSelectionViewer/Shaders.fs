@@ -1,9 +1,9 @@
 ﻿namespace OpcSelectionViewer
 
 module Shader =
-  open Aardvark.Base.Rendering.Effects
+  open Aardvark.Rendering.Effects
   open Aardvark.Base
-  open Aardvark.Base.Rendering
+  open Aardvark.Rendering
   open FShade
 
   module PointSprite = 

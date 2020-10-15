@@ -2,7 +2,7 @@ Aardvark.Base
 Aardvark.Base.Incremental
 Aardvark.Base.FSharp
 
-Aardvark.Base.Rendering
+Aardvark.Rendering
 Aardvark.Rendering.Vulkan
 Aardvark.Application.WinForms.GL
 Aardvark.SceneGraph

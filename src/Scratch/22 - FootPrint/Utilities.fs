@@ -5,7 +5,7 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Model
 
 open Aardvark.SceneGraph
@@ -224,7 +224,7 @@ module Scene =
     let regular sg = 
         sg
          |> Sg.cullMode (AVal.constant CullMode.Back)
-         |> Sg.depthTest (AVal.constant DepthTestMode.Less)
+         |> Sg.depthTest (AVal.constant DepthTest.Less)
          |> Sg.uniform "footprintVisible" (AVal.constant true)
          |> Sg.uniform "footprintProj" (Footprint.getTrafo model.footprintProj.cam.view model.footprintProj.frustum)
          |> Sg.uniform "textureProj" (Footprint.getTrafo model.textureProj.cam.view model.textureProj.frustum)

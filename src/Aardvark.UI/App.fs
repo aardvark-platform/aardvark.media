@@ -4,6 +4,7 @@ open System
 open System.Threading
 open System.Collections.Generic
 open Aardvark.Base
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open System.Reactive.Subjects
 

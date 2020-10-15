@@ -1,5 +1,6 @@
 ﻿open System
 open Aardvark.Base
+open Aardvark.Rendering
 open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI

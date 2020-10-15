@@ -2,6 +2,7 @@ namespace Aardvark.UI.Trafos
 
 open FSharp.Data.Adaptive
 open Aardvark.Base
+open Aardvark.Rendering
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Axis = 
@@ -131,8 +132,8 @@ module Shader =
         
     open Aardvark.Base
     open Aardvark.Base.IO
-    open Aardvark.Base.Rendering
-    open Aardvark.Base.Rendering.Effects
+    open Aardvark.Rendering
+    open Aardvark.Rendering.Effects
     
     open FShade
 

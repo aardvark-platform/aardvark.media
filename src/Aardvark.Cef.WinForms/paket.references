@@ -6,7 +6,7 @@ Microsoft.NETFramework.ReferenceAssemblies
 Aardvark.Base
 FSharp.Data.Adaptive
 Aardvark.Base.FSharp
-Aardvark.Base.Rendering
+Aardvark.Rendering
 Aardvark.Application
 Aardvark.SceneGraph
 Aardvark.Application.WinForms.GL 

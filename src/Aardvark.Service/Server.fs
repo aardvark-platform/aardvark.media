@@ -22,6 +22,8 @@ open Suave.WebSocket
 
 
 open Aardvark.Base
+open Aardvark.Rendering
+open Aardvark.GPGPU
 open FSharp.Data.Adaptive
 open Aardvark.Application
 open System.Diagnostics
@@ -102,7 +104,7 @@ module private Tools =
             let device = fbo.Device
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
 
-            let tempImage = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+            let tempImage = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
 
             let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
             let oldLayout = color.Image.Layout
@@ -306,7 +308,7 @@ type ClientValues internal(_signature : IFramebufferSignature) =
 //        _samples.MarkOutdated()
 //        _session.MarkOutdated()
 
-    member x.runtime = _signature.Runtime
+    member x.runtime : IRuntime = unbox _signature.Runtime
     member x.signature = _signature
     member x.size = _size :> aval<_>
     member x.time = _time :> aval<_>
@@ -411,7 +413,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
                 member x.FramebufferSignature = task.FramebufferSignature
                 member x.Runtime = task.Runtime
                 member x.PerformUpdate(t,rt) = task.Update(t, rt)
-                member x.Perform(t,rt,o) =  task.Run(t, rt, o)
+                member x.Perform(t,rt,o,q) =  task.Run(t, rt, o, q)
                 
                 member x.Release() = 
                     lock x (fun () ->
@@ -594,7 +596,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         transact (fun () -> task.Dispose())
         let newScene = getScene signature name
         let clearColor = AVal.init C4f.Black
-        let clear = runtime.CompileClear(signature, clearColor, AVal.constant 1.0)
+        let clear = runtime.CompileClear(signature, clearColor, AVal.constant 1.0, AVal.constant 0)
         let render = newScene.CreateNewRenderTask()
         task <- RenderTask.ofList [clear; render]
 
@@ -852,7 +854,7 @@ module internal RawDownload =
                     | Some t when t.Size.XY = size -> t
                     | _ ->
                         tempImage |> Option.iter device.Delete
-                        let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit ||| VkImageUsageFlags.ColorAttachmentBit) device
+                        let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit ||| VkImageUsageFlags.ColorAttachmentBit) device
                         tempImage <- Some t
                         t
 
@@ -973,7 +975,7 @@ module internal RawDownload =
             if samples > 1 then
                 let lineSize = 4L * int64 image.Size.X
                 let size = lineSize * int64 image.Size.Y
-                let tempImage = Image.create image.Size 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                let tempImage = Image.create image.Size 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
                 use temp = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
 
                 let l = image.Layout

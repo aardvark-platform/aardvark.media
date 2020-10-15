@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.Cef.Internal
 
 open Aardvark.Base
+open Aardvark.Rendering
 open System
 open System.Collections.Generic
 open FSharp.Data.Adaptive
