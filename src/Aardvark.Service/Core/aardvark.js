@@ -984,7 +984,7 @@ if (!aardvark.addReferences) {
 if (!aardvark.openFileDialog) {
 
     if (getTopAardvark().openFileDialog) {
-        aardvark.openFileDialog = getTopAardvark().aardvark.openFileDialog;
+        aardvark.openFileDialog = getTopAardvark().openFileDialog;
     }
     else {
         aardvark.openFileDialog = function () {
