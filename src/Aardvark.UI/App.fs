@@ -21,7 +21,7 @@ type App<'model, 'mmodel, 'msg> =
         view        : 'mmodel -> DomNode<'msg>
     }
 
-    member app.start() =
+    member app.startAndGetState() =
         let l = obj()
         let initial = app.initial
         let state = AVal.init initial
@@ -144,7 +144,7 @@ type App<'model, 'mmodel, 'msg> =
             subject.OnCompleted()
             subject.Dispose()
 
-        {
+        mstate, {
             lock = l
             model = state
             ui = node
@@ -154,7 +154,9 @@ type App<'model, 'mmodel, 'msg> =
             messages = subject
         }
         
-        
+    member app.start() = 
+        let (_, app) = app.startAndGetState()
+        app
 
     interface IApp<'model, 'msg, 'msg> with
         member x.Start() = x.start()
