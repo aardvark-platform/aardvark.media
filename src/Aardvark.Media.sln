@@ -2,13 +2,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "25 - Animation", "Examples (dotnetcore)\25 - Animation\25 - Animation.fsproj", "{C9B9A48A-6D92-4191-B09E-886282194C6B}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "07 - UIUpdatePerformance", "Scratch\07 - UIUpdatePerformance\07 - UIUpdatePerformance.fsproj", "{16E1296F-4A35-4237-81B0-6450A065535E}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.WinForms", "Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj", "{F20C78DD-06CB-44E8-90DB-6DE144863078}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.WinForms", "Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj", "{F20C78DD-06CB-44E8-90DB-6DE144863078}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Service", "Aardvark.Service\Aardvark.Service.fsproj", "{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}"
 EndProject
@@ -22,7 +24,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (dotnetcore)", "Ex
 		Examples (dotnetcore)\new-media.fsx = Examples (dotnetcore)\new-media.fsx
 	EndProjectSection
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.WinForms.Process", "Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj", "{EDE32464-755B-415A-B0CA-CDA89F49F6F5}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.WinForms.Process", "Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj", "{EDE32464-755B-415A-B0CA-CDA89F49F6F5}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (net471)", "Examples (net471)", "{6D553C3F-E56A-4B26-8018-DA17A4B4C407}"
 	ProjectSection(SolutionItems) = preProject
@@ -33,9 +35,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net471", "net471", "{2FE873
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "netstandard", "netstandard", "{5DAFA99B-848D-4185-B4C1-287119815657}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Hello World (CEF)", "Examples (net471)\Hello World (net471)\Hello World (CEF).fsproj", "{9824D872-86F5-4058-B378-9E922026FC70}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Hello World (CEF)", "Examples (net471)\Hello World (net471)\Hello World (CEF).fsproj", "{9824D872-86F5-4058-B378-9E922026FC70}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "RenderToTextureExample", "Examples (net471)\RenderToTextureExample\RenderToTextureExample.fsproj", "{7B055C74-1C24-4CB0-96E4-02E01914F60A}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "RenderToTextureExample", "Examples (net471)\RenderToTextureExample\RenderToTextureExample.fsproj", "{7B055C74-1C24-4CB0-96E4-02E01914F60A}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01 - Inc", "Examples (dotnetcore)\01 - Inc\01 - Inc.fsproj", "{210CA4D7-4A23-43F9-9499-76ECAEE33F15}"
 EndProject
@@ -53,6 +55,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Release|Any CPU.Build.0 = Release|Any CPU
 		{16E1296F-4A35-4237-81B0-6450A065535E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{16E1296F-4A35-4237-81B0-6450A065535E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{16E1296F-4A35-4237-81B0-6450A065535E}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -106,6 +112,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{C9B9A48A-6D92-4191-B09E-886282194C6B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{16E1296F-4A35-4237-81B0-6450A065535E} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
 		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
