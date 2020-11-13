@@ -2,9 +2,8 @@
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
+open System
 open Aether
-
-open Aardvark.UI.Anewmation
 
 module private Events =
 
@@ -40,14 +39,14 @@ type private Animation<'Model, 'Value> =
 
         /// Curve defining the animation values based on
         /// its position (parameterized by arc length in the range of [0, 1]).
-        SpaceFunction : ISpaceFunction<'Value>
+        SpaceFunction : Func<float, 'Value>
 
         /// Function controlling how the animation position changes over time.
         /// Returns a flag indicating if the animation has finished and the position.
         DistanceTimeFunction : IDistanceTimeFunction
 
         /// Observers to be notified of changes.
-        Observers : HashSet<IObserver<'Model, 'Value>>
+        Observers : HashMap<IAnimationObserver<'Model>, IAnimationObserver<'Model, 'Value>>
     }
 
     /// Stops the animation and resets it.
@@ -96,24 +95,25 @@ type private Animation<'Model, 'Value> =
         | _ ->
             x
 
-    /// Updates the distance time function of the animation.
-    member x.UpdateDistanceTimeFunction(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
+    /// Updates the distance-time function of the animation according to the given mapping.
+    member x.DistanceTime(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
         { x with DistanceTimeFunction = mapping x.DistanceTimeFunction }
 
     /// Registers a new observer.
-    member x.Subscribe(observer : IObserver<'Model, 'Value>) =
+    member x.Subscribe(observer : IAnimationObserver<'Model, 'Value>) =
         if not observer.IsEmpty then
-            { x with Observers = x.Observers |> HashSet.add observer }
+            let key = observer :> IAnimationObserver<'Model>
+            { x with Observers = x.Observers |> HashMap.add key observer }
         else
             x
 
     /// Removes all observers.
     member x.UnsubscribeAll() =
-        { x with Observers = HashSet.empty }
+        { x with Observers = HashMap.empty }
 
     /// Removes the given observer (if present).
-    member x.Unsubscribe(observer : IObserver<'Model, 'Value>) =
-        { x with Observers = x.Observers |> HashSet.remove observer }
+    member x.Unsubscribe(observer : IAnimationObserver<'Model>) =
+        { x with Observers = x.Observers |> HashMap.remove observer }
 
     /// Notifies all observers.
     member x.Notify(lens : Lens<'Model, IAnimation<'Model>>, name : Symbol, model : 'Model) =
@@ -122,45 +122,63 @@ type private Animation<'Model, 'Value> =
         let model = model |> Optic.set lens ({ x with CurrentState = x.NextState } :> IAnimation<'Model>)
 
         let notify model event =
-            (model, x.Observers)
-            ||> HashSet.fold (fun model obs -> obs.OnNext(model, name, event, x.CurrentValue))
+            (model, x.Observers |> HashMap.toSeq)
+            ||> Seq.fold (fun model (_, obs) -> obs.OnNext(model, name, event, x.CurrentValue))
 
         (model, events) ||> Seq.fold notify
 
-    /// Updates the distance time function of the animation.
-    member x.UpdateSpaceFunction(mapping : ISpaceFunction<'Value> -> ISpaceFunction<'Value>) =
-        { x with SpaceFunction = mapping x.SpaceFunction }
-
-    interface IAnimation<'Model, 'Value> with
+    interface IAnimation<'Model> with
         member x.State = x.CurrentState
         member x.Stop() = x.Stop() :> IAnimation<'Model>
         member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model>
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model>
-        member x.UpdateDistanceTimeFunction(f) = x.UpdateDistanceTimeFunction(f) :> IAnimation<'Model>
+        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model>
+        member x.Notify(lens, name, model) = x.Notify(lens, name, model)
+        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
+        member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
+
+    interface IAnimation<'Model, 'Value> with
+        member x.Value = x.CurrentValue
+        member x.Stop() = x.Stop() :> IAnimation<'Model, 'Value>
+        member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model, 'Value>
+        member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model, 'Value>
+        member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model, 'Value>
+        member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model, 'Value>
+        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model, 'Value>
         member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'Value>
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'Value>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'Value>
-        member x.Notify(lens, name, model) = x.Notify(lens, name, model)
-        member x.UpdateSpaceFunction(f) = x.UpdateSpaceFunction(f) :> IAnimation<'Model, 'Value>
 
 
 module Animation =
 
-    /// Creates an animation from the given space and distance-time functions.
-    let create (spaceFunction : ISpaceFunction<'Value>) (distanceTimeFunction : IDistanceTimeFunction) =
+    [<AbstractClass>]
+    type private SpaceFunction<'Value>() =
+        static let defaultFunction = Func<float, 'Value>(fun _ -> Unchecked.defaultof<'Value>)
+        static member Default = defaultFunction
+
+    /// Empty animation.
+    let empty<'Model, 'Value> : IAnimation<'Model, 'Value> =
         { NextState = State.Stopped
           CurrentState = State.Stopped
-          CurrentValue = spaceFunction.Invoke 0.0
+          CurrentValue = Unchecked.defaultof<'Value>
           CurrentPosition = 0.0
-          SpaceFunction = spaceFunction
-          DistanceTimeFunction = distanceTimeFunction
-          Observers = HashSet.empty } :> IAnimation<'Model, 'Value>
+          SpaceFunction = SpaceFunction.Default
+          DistanceTimeFunction = DistanceTimeFunction.Default
+          Observers = HashMap.empty } :> IAnimation<'Model, 'Value>
 
-    /// Empty animation
-    let empty<'Model, 'Value> : IAnimation<'Model, 'Value> =
-        create SpaceFunction<'Value>.Default DistanceTimeFunction.Default
+    /// Creates an animation from the given space function.
+    let create (spaceFunction : float -> 'Value) =
+        { NextState = State.Stopped
+          CurrentState = State.Stopped
+          CurrentValue = spaceFunction 0.0
+          CurrentPosition = 0.0
+          SpaceFunction = Func<_,_> spaceFunction
+          DistanceTimeFunction = DistanceTimeFunction.Default
+          Observers = HashMap.empty } :> IAnimation<'Model, 'Value>
+
 
 [<AutoOpen>]
 module IAnimationStateQueryExtensions =

@@ -7,8 +7,9 @@ type private DistanceTimeFunction(dtf : Func<MicroTime, bool * float>) =
 
     static let defaultFunction = DistanceTimeFunction(fun _ -> false, 0.0)
 
-    /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending on the given time stamp.
-    member x.Invoke(globalTime : MicroTime) = dtf.Invoke(globalTime)
+    /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending
+    /// on the time elapsed since the start of the animation.
+    member x.Invoke(time : MicroTime) = dtf.Invoke(time)
 
     /// Default distance-time function that does not progress.
     static member Default = defaultFunction
@@ -23,9 +24,9 @@ module AnimationTimeExtensions =
 
         /// Sets the distance-time function of the given animation.
         let distanceTimeFunction (dtf : MicroTime -> bool * float) (animation : IAnimation<'Model, 'Value>) =
-            animation.UpdateDistanceTimeFunction(fun _ ->
+            animation.DistanceTime(fun _ ->
                 DistanceTimeFunction(Func<_,_> dtf) :> IDistanceTimeFunction
-            ) :?> IAnimation<'Model, 'Value>
+            )
 
         /// Sets the duration of the given animation.
         let duration (t : MicroTime) (animation : IAnimation<'Model, 'Value>) =

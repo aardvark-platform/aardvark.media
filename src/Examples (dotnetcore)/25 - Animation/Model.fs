@@ -12,7 +12,9 @@ type Model =
         cameraState : CameraControllerState
         background : C4b
         color : C4b
-        rotation : float
+        rotationX : float
+        rotationZ : float
+        rotation : Rot3d
         animator : Animator<Model>
     }
 

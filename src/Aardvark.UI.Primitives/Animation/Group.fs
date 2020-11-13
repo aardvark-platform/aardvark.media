@@ -3,6 +3,7 @@
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aether
+open System
 
 module private GroupState =
 
@@ -15,7 +16,7 @@ module private GroupState =
     let get (animations : State list) =
         animations |> List.sortBy priority |> List.head
 
-type private Group<'Model> =
+type private Group<'Model, 'Value> =
     {
         /// Current state of the group.
         States : State list
@@ -24,8 +25,11 @@ type private Group<'Model> =
         Members : IAnimation<'Model> list
 
         /// Observers to be notified of changes.
-        Observers : HashSet<IObserver<'Model, unit>>
+        Observers : HashMap<IAnimationObserver<'Model>, IAnimationObserver<'Model, 'Value>>
     }
+
+    /// Returns the value of the animation.
+    member x.Value = Unchecked.defaultof<'Value>
 
     /// Returns the state of the animation.
     member x.State = GroupState.get x.States
@@ -51,24 +55,29 @@ type private Group<'Model> =
     member x.Update(globalTime) =
         { x with Members = x.Members |> List.map (fun a -> a.Update(globalTime)) }
 
-    /// Updates the distance time function of the animation.
-    member x.UpdateDistanceTimeFunction(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
-        { x with Members = x.Members |> List.map (fun a -> a.UpdateDistanceTimeFunction(mapping)) }
+    /// Updates the distance-time function of the animation according to the given mapping.
+    member x.DistanceTime(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
+        { x with Members = x.Members |> List.map (fun a -> a.DistanceTime(mapping)) }
 
     /// Registers a new observer.
-    member x.Subscribe(observer : IObserver<'Model, unit>) =
+    member x.Subscribe(observer : IAnimationObserver<'Model, 'Value>) =
         if not observer.IsEmpty then
-            { x with Observers = x.Observers |> HashSet.add observer }
+            let key = observer :> IAnimationObserver<'Model>
+            { x with Observers = x.Observers |> HashMap.add key observer }
         else
             x
 
     /// Removes all observers.
     member x.UnsubscribeAll() =
-        { x with Observers = HashSet.empty }
+        { x with
+            Members = x.Members |> List.map (fun a -> a.UnsubscribeAll())
+            Observers = HashMap.empty }
 
     /// Removes the given observer (if present).
-    member x.Unsubscribe(observer : IObserver<'Model, unit>) =
-        { x with Observers = x.Observers |> HashSet.remove observer }
+    member x.Unsubscribe(observer : IAnimationObserver<'Model>) =
+        { x with
+            Members = x.Members |> List.map (fun a -> a.Unsubscribe(observer))
+            Observers = x.Observers |> HashMap.remove observer }
 
     /// Notifies all observers, invoking the respective callbacks.
     /// Returns the model computed by the callbacks.
@@ -81,12 +90,12 @@ type private Group<'Model> =
                 animation :: list, model
             )
 
-        let states = members |> List.map (fun a -> a.State)
-        let model = model |> Optic.set lens ({ x with Members = members; States = states } :> IAnimation<'Model>)
+        let next = { x with Members = members; States = members |> List.map (fun a -> a.State) }
+        let model = model |> Optic.set lens (next :> IAnimation<'Model>)
 
         let events =
-            let perMember = (x.States, states) ||> List.map2 Events.compute
-            let perGroup = states |> GroupState.get |> Events.compute x.State
+            let perMember = (x.States, next.States) ||> List.map2 Events.compute
+            let perGroup = next.States |> GroupState.get |> Events.compute x.State
 
             perGroup
             |> List.filter (function
@@ -96,24 +105,34 @@ type private Group<'Model> =
             |> List.sort
 
         let notify model event =
-            (model, x.Observers)
-            ||> HashSet.fold (fun model obs -> obs.OnNext(model, name, event, ()))
+            (model, x.Observers |> HashMap.toSeq)
+            ||> Seq.fold (fun model (_, obs) -> obs.OnNext(model, name, event, next.Value))
 
         (model, events) ||> Seq.fold notify
 
-    interface IAnimation<'Model, unit> with
+    interface IAnimation<'Model> with
         member x.State = x.State
         member x.Stop() = x.Stop() :> IAnimation<'Model>
         member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model>
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model>
-        member x.UpdateDistanceTimeFunction(f) = x.UpdateDistanceTimeFunction(f) :> IAnimation<'Model>
-        member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, unit>
-        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, unit>
-        member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, unit>
+        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model>
         member x.Notify(lens, name, model) = x.Notify(lens, name, model)
-        member x.UpdateSpaceFunction(f) = x :> IAnimation<'Model, unit>
+        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
+        member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
+
+    interface IAnimation<'Model, 'Value> with
+        member x.Value = x.Value
+        member x.Stop() = x.Stop() :> IAnimation<'Model, 'Value>
+        member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model, 'Value>
+        member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model, 'Value>
+        member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model, 'Value>
+        member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model, 'Value>
+        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model, 'Value>
+        member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'Value>
+        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'Value>
+        member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'Value>
 
 
 [<AutoOpen>]
@@ -121,32 +140,30 @@ module AnimationGroupExtensions =
 
     module Animation =
 
-        open System
-
         /// <summary>
         /// Creates an animation group from a list of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the list is empty.</exception>
-        let ofList (animations : IAnimation<'Model> list) =
+        let ofList (animations : #IAnimation<'Model> list) =
             if List.isEmpty animations then
                 raise <| ArgumentException("Animation group cannot be empty")
 
             { States = animations |> List.map (fun a -> a.State)
-              Members = animations
-              Observers = HashSet.empty } :> IAnimation<'Model, unit>
+              Members = animations |> List.map (fun a -> a :> IAnimation<'Model>)
+              Observers = HashMap.empty } :> IAnimation<'Model, unit>
 
         /// <summary>
         /// Creates an animation group from a sequence of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let ofSeq (animations : IAnimation<'Model> list) =
+        let ofSeq (animations : #IAnimation<'Model> seq) =
             animations |> Seq.toList |> ofList
 
         /// <summary>
         /// Creates an animation group from an array of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the array is empty.</exception>
-        let ofArray (animations : IAnimation<'Model>[]) =
+        let ofArray (animations : #IAnimation<'Model>[]) =
             animations |> Array.toList |> ofList
 
         /// Combines two animations.

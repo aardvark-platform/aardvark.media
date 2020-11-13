@@ -26,9 +26,9 @@
     <Compile Include="Animation\Deprecated\AnimationBase.fs" />
     <Compile Include="Animation\Interface.fs" />
     <Compile Include="Animation\DistanceTimeFunction.fs" />
-    <Compile Include="Animation\SpaceFunction.fs" />
     <Compile Include="Animation\Animation.fs" />
     <Compile Include="Animation\Group.fs" />
+    <Compile Include="Animation\Mapping.fs" />
     <Compile Include="Animation\Observer.fs" />
     <Compile Include="Animation\Primitives.fs" />
     <Compile Include="Animation\AnimatorModel.fs" />

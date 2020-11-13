@@ -25,14 +25,18 @@ type EventType =
     /// The animation has finished.
     | Finalize = 5
 
-/// Interface for animation observers.
-type IObserver<'Model, 'Value> =
+// Untyped interface for animation observers.
+type IAnimationObserver<'Model> =
 
     /// Returns whether the observer does not have any callbacks.
     abstract member IsEmpty : bool
 
+/// Interface for animation observers.
+type IAnimationObserver<'Model, 'Value> =
+    inherit IAnimationObserver<'Model>
+
     /// Adds a callback for the given event.
-    abstract member Add : callback: (Symbol -> 'Value -> 'Model -> 'Model) * event: EventType -> IObserver<'Model, 'Value>
+    abstract member Add : callback: (Symbol -> 'Value -> 'Model -> 'Model) * event: EventType -> IAnimationObserver<'Model, 'Value>
 
     /// Invoked on animation events.
     abstract member OnNext : model: 'Model * name: Symbol * event: EventType * value: 'Value -> 'Model
@@ -41,14 +45,9 @@ type IObserver<'Model, 'Value> =
 /// Interface for distance-time functions.
 type IDistanceTimeFunction =
 
-    /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending on the given time stamp.
-    abstract member Invoke : globalTime: MicroTime -> bool * float
-
-/// Interface for space functions
-type ISpaceFunction<'Value> =
-
-    /// Evaluates the space function for the given position parameter within [0, 1].
-    abstract member Invoke : position: float -> 'Value
+    /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending
+    /// on the time elapsed since the start of the animation.
+    abstract member Invoke : time: MicroTime -> bool * float
 
 
 /// The state of an animation.
@@ -88,25 +87,51 @@ type IAnimation<'Model> =
     /// Updates the animation to the given global time.
     abstract member Update : globalTime: MicroTime -> IAnimation<'Model>
 
+    /// Updates the distance-time function of the animation according to the given mapping.
+    abstract member DistanceTime : (IDistanceTimeFunction -> IDistanceTimeFunction) -> IAnimation<'Model>
+
     /// Notifies all observers, invoking the respective callbacks.
     /// Returns the model computed by the callbacks.
     abstract member Notify : lens: Lens<'Model, IAnimation<'Model>> * name: Symbol * model: 'Model -> 'Model
 
-    /// Updates the distance time function of the animation.
-    abstract member UpdateDistanceTimeFunction : (IDistanceTimeFunction -> IDistanceTimeFunction) -> IAnimation<'Model>
+    /// Removes the given observer (if present).
+    abstract member Unsubscribe : observer: IAnimationObserver<'Model> -> IAnimation<'Model>
+
+    /// Removes all observers.
+    abstract member UnsubscribeAll : unit -> IAnimation<'Model>
+
 
 /// Interface for animations.
 type IAnimation<'Model, 'Value> =
     inherit IAnimation<'Model>
 
+    /// Returns the current value of the animation.
+    abstract member Value : 'Value
+
     /// Registers a new observer.
-    abstract member Subscribe : observer: IObserver<'Model, 'Value> -> IAnimation<'Model, 'Value>
+    abstract member Subscribe : observer: IAnimationObserver<'Model, 'Value> -> IAnimation<'Model, 'Value>
 
     /// Removes the given observer (if present).
-    abstract member Unsubscribe : observer: IObserver<'Model, 'Value> -> IAnimation<'Model, 'Value>
+    abstract member Unsubscribe : observer: IAnimationObserver<'Model> -> IAnimation<'Model, 'Value>
 
     /// Removes all observers.
     abstract member UnsubscribeAll : unit -> IAnimation<'Model, 'Value>
 
-    /// Updates the space function of the animation.
-    abstract member UpdateSpaceFunction : (ISpaceFunction<'Value> -> ISpaceFunction<'Value>) -> IAnimation<'Model, 'Value>
+    /// Stops the animation and resets it.
+    abstract member Stop : unit -> IAnimation<'Model, 'Value>
+
+    /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
+    abstract member Start : globalTime: MicroTime -> IAnimation<'Model, 'Value>
+
+    /// Pauses the animation if it is running or has started.
+    abstract member Pause : globalTime: MicroTime -> IAnimation<'Model, 'Value>
+
+    /// Resumes the animation from the point it was paused.
+    /// Has no effect if the animation is not paused.
+    abstract member Resume : globalTime: MicroTime -> IAnimation<'Model, 'Value>
+
+    /// Updates the animation to the given global time.
+    abstract member Update : globalTime: MicroTime -> IAnimation<'Model, 'Value>
+
+    /// Updates the distance-time function of the animation according to the given mapping.
+    abstract member DistanceTime : (IDistanceTimeFunction -> IDistanceTimeFunction) -> IAnimation<'Model, 'Value>

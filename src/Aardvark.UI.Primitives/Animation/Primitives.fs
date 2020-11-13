@@ -10,11 +10,8 @@ module AnimationPrimitives =
         open Aether
 
         /// Creates an animation that linearly interpolates between src and dst.
-        let inline lerp (src : ^Value) (dst : ^Value) =
-            let sf = fun s -> s |> lerp src dst
-
-            Animation.empty
-            |> Animation.spaceFunction sf
+        let inline lerp (src : ^Value) (dst : ^Value) : IAnimation<'Model, ^Value> =
+            Animation.create (lerp src dst)
             |> Animation.seconds 1
 
         /// Creates an animation that linearly interpolates the variable specified by

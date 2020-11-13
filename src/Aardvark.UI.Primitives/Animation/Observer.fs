@@ -2,7 +2,6 @@
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-
 open System
 open Aether
 
@@ -31,9 +30,9 @@ type private Observer<'Model, 'Value> =
         |> Option.map (fun cb -> cb.Invoke(name, value, model))
         |> Option.defaultValue model
 
-    interface IObserver<'Model, 'Value> with
+    interface IAnimationObserver<'Model, 'Value> with
         member x.IsEmpty = x.IsEmpty
-        member x.Add(callback, event) = x.Add(callback, event) :> IObserver<'Model, 'Value>
+        member x.Add(callback, event) = x.Add(callback, event) :> IAnimationObserver<'Model, 'Value>
         member x.OnNext(model, name, event, value) = x.OnNext(model, name, event, value)
 
 
@@ -42,84 +41,89 @@ module Observer =
     /// Creates a new observer with the given callbacks.
     let create (callbacks : Map<EventType, Symbol -> 'Value -> 'Model -> 'Model>) =
         let map = callbacks |> Map.map (fun _ f -> Func<_,_,_,_> f)
-        { Callbacks = HashMap.ofMap map } :> IObserver<'Model, 'Value>
+        { Callbacks = HashMap.ofMap map } :> IAnimationObserver<'Model, 'Value>
 
     /// Empty observer without callbacks.
-    let empty<'Model,'Value> : IObserver<'Model, 'Value> =
-        (create Map.empty) :> IObserver<'Model, 'Value>
+    let empty<'Model,'Value> : IAnimationObserver<'Model, 'Value> =
+        (create Map.empty) :> IAnimationObserver<'Model, 'Value>
 
     /// Returns whether the observer is empty.
-    let isEmpty (observer : IObserver<'Model, 'Value>) =
+    let isEmpty (observer : IAnimationObserver<'Model, 'Value>) =
         observer.IsEmpty
 
 
     /// Adds a callback for the given event type to the observer.
-    let onEvent (event : EventType) (callback : ('Value -> unit)) (observer : IObserver<'Model, 'Value>) =
+    let onEvent (event : EventType) (callback : ('Value -> unit)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer.Add((fun _ value model -> callback value; model), event)
 
     /// Adds a callback for the given event type to the observer.
-    let onEvent' (event : EventType) (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IObserver<'Model, 'Value>) =
+    let onEvent' (event : EventType) (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer.Add(callback, event)
 
 
     /// Adds a callback to the observer that is invoked after the animation is stopped manually.
-    let onStop (callback : ('Value -> unit)) (observer : IObserver<'Model, 'Value>) =
+    let onStop (callback : ('Value -> unit)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent EventType.Stop callback
 
     /// Adds a callback to the observer that is invoked after the animation is stopped manually.
-    let onStop' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IObserver<'Model, 'Value>) =
+    let onStop' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent' EventType.Stop callback
 
 
     /// Adds a callback to the observer that is invoked after the animation is started or restarted.
-    let onStart (callback : ('Value -> unit)) (observer : IObserver<'Model, 'Value>) =
+    let onStart (callback : ('Value -> unit)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent EventType.Start callback
 
     /// Adds a callback to the observer that is invoked after the animation is started or restarted.
-    let onStart' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IObserver<'Model, 'Value>) =
+    let onStart' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent' EventType.Start callback
 
 
     /// Adds a callback to the observer that is invoked after the animation is paused.
-    let onPause (callback : ('Value -> unit)) (observer : IObserver<'Model, 'Value>) =
+    let onPause (callback : ('Value -> unit)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent EventType.Pause callback
 
     /// Adds a callback to the observer that is invoked after the animation is paused.
-    let onPause' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IObserver<'Model, 'Value>) =
+    let onPause' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent' EventType.Pause callback
 
 
     /// Adds a callback to the observer that is invoked after the animation is resumed.
-    let onResume (callback : ('Value -> unit)) (observer : IObserver<'Model, 'Value>) =
+    let onResume (callback : ('Value -> unit)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent EventType.Resume callback
 
     /// Adds a callback to the observer that is invoked after the animation is resumed.
-    let onResume' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IObserver<'Model, 'Value>) =
+    let onResume' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent' EventType.Resume callback
 
 
     /// Adds a callback to the observer that is invoked after each animation tick (including the last tick, as well as start and restart events).
-    let onProgress (callback : ('Value -> unit)) (observer : IObserver<'Model, 'Value>) =
+    let onProgress (callback : ('Value -> unit)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent EventType.Progress callback
 
     /// Adds a callback to the observer that is invoked after each animation tick (including the last tick, as well as start and restart events).
-    let onProgress' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IObserver<'Model, 'Value>) =
+    let onProgress' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent' EventType.Progress callback
 
 
     /// Adds a callback to the observer that is invoked after the animation has finished.
-    let onFinalize (callback : ('Value -> unit)) (observer : IObserver<'Model, 'Value>) =
+    let onFinalize (callback : ('Value -> unit)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent EventType.Finalize callback
 
     /// Adds a callback to the observer that is invoked after the animation has finished.
-    let onFinalize' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IObserver<'Model, 'Value>) =
+    let onFinalize' (callback : (Symbol -> 'Value -> 'Model -> 'Model)) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onEvent' EventType.Finalize callback
 
 
     /// Links the animation to a field in the model by registering
     /// a callback that uses the given lens to modify its value as the animation progresses.
-    let link (lens : Lens<'Model, 'Value>) (observer : IObserver<'Model, 'Value>) =
+    let link (lens : Lens<'Model, 'Value>) (observer : IAnimationObserver<'Model, 'Value>) =
         observer |> onProgress' (fun _ -> Optic.set lens)
+
+    /// Links the animation to a field in the model by registering
+    /// a callback that uses the given lens and mapping to modify its value as the animation progresses.
+    let linkMap (lens : Lens<'Model, 'Output>) (mapping : 'Value -> 'Output) (observer : IAnimationObserver<'Model, 'Value>) =
+        observer |> onProgress' (fun _ value model -> (mapping value, model) ||> Optic.set lens)
 
 
 [<AutoOpen>]
@@ -128,11 +132,11 @@ module AnimationObserverExtensions =
     module Animation =
 
         /// Registers the given observer for the animation.
-        let subscribe (observer : IObserver<'Model, 'Value>) (animation : IAnimation<'Model, 'Value>) =
+        let subscribe (observer : IAnimationObserver<'Model, 'Value>) (animation : IAnimation<'Model, 'Value>) =
             animation.Subscribe(observer)
 
         /// Removes the given observer from the animation (if present).
-        let unsubscribe (observer : IObserver<'Model, 'Value>) (animation : IAnimation<'Model, 'Value>) =
+        let unsubscribe (observer : IAnimationObserver<'Model>) (animation : IAnimation<'Model, 'Value>) =
             animation.Unsubscribe(observer)
 
         /// Removes all observers from the animation.
@@ -207,3 +211,8 @@ module AnimationObserverExtensions =
         /// a callback that uses the given lens to modify its value as the animation progresses.
         let link (lens : Lens<'Model, 'Value>) (animation : IAnimation<'Model, 'Value>) =
             animation |> onProgress' (fun _ -> Optic.set lens)
+
+        /// Links the animation to a field in the model by registering
+        /// a callback that uses the given lens and mapping to modify its value as the animation progresses.
+        let linkMap (lens : Lens<'Model, 'Output>) (mapping : 'Value -> 'Output) (animation : IAnimation<'Model, 'Value>) =
+            animation |> onProgress' (fun _ value model -> (mapping value, model) ||> Optic.set lens)

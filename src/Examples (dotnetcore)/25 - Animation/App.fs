@@ -48,14 +48,17 @@ let update (model : Model) (msg : Message) =
             let colorAnimation =
 
                 let rec dewit model =
-                    model
-                    |> Animation.lerpTo Model.color_ (if model.color = C4b.Green then C4b.Red else C4b.Green)
+                    //model
+                    //|> Animation.lerpTo Model.color_ (if model.color = C4b.Green then C4b.Red else C4b.Green)
+                    Animation.lerp (C4d model.color) (if model.color = C4b.Green then C4d.Red else C4d.Green)
+                    |> Animation.map C4b
+                    |> Animation.link Model.color_
                     |> Animation.seconds 0.5
                     |> Animation.onStart (fun _ ->      Log.warn "[Color] started")
                     |> Animation.onStop (fun _ ->       Log.warn "[Color] stopped")
                     |> Animation.onPause (fun _ ->      Log.warn "[Color] paused")
                     |> Animation.onResume (fun _ ->     Log.warn "[Color] resumed")
-                    |> Animation.onFinalize (fun _ ->   Log.warn "[Color] finished")
+                    |> Animation.onFinalize (Log.warn "[Color] finished: %A")
                     |> Animation.onFinalize' (fun name _ model ->
                         model |> Animator.set name (dewit model)
                     )
@@ -63,8 +66,18 @@ let update (model : Model) (msg : Message) =
                 dewit model
 
             let rotationAnimation =
-                model |> Animation.lerpTo Model.rotation_ (if model.rotation = 0.0 then Constant.PiTimesTwo else 0.0)
-                |> Animation.seconds 2
+                let rotX =
+                    model |> Animation.lerpTo Model.rotationX_ (if model.rotationX = 0.0 then Constant.Pi else 0.0)
+                    |> Animation.seconds 2
+
+                let rotZ =
+                    model |> Animation.lerpTo Model.rotationZ_ (if model.rotationZ = 0.0 then Constant.PiTimesTwo else 0.0)
+                    |> Animation.seconds 4
+
+                (rotX, rotZ) ||> Animation.map2 (fun roll yaw ->
+                    Rot3d.RotationEuler(roll, 0.0, yaw)
+                )
+                |> Animation.link Model.rotation_
                 |> Animation.onStart (fun _ ->      Log.warn "[Rotation] started")
                 |> Animation.onStop (fun _ ->       Log.warn "[Rotation] stopped")
                 |> Animation.onPause (fun _ ->      Log.warn "[Rotation] paused")
@@ -72,9 +85,11 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Rotation] finished")
 
             let animation =
-                colorAnimation
-                |> Animation.andAlso rotationAnimation
+                //[colorAnimation] |> Animation.ofList
+                //|> Animation.andAlso rotationAnimation
+                rotationAnimation
                 |> Animation.subscribe timer
+
 
             model |> Animator.set animSym animation
 
@@ -88,7 +103,7 @@ let update (model : Model) (msg : Message) =
 let viewScene (model : AdaptiveModel) =
     Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.Zero, V3d.One))
     |> Sg.uniform "Color" model.color
-    |> Sg.trafo (model.rotation |> AVal.map Trafo3d.RotationZ)
+    |> Sg.trafo (model.rotation |> AVal.map Trafo3d)
     |> Sg.shader {
         do! DefaultSurfaces.trafo
         do! DefaultSurfaces.sgColor
@@ -161,7 +176,9 @@ let app =
                cameraState = initialCamera
                background = C4b.Black
                color = C4b.Green
-               rotation = 0.0
+               rotation = Rot3d.Identity
+               rotationX = 0.0
+               rotationZ = 0.0
                animator = Animator.initial Model.animator_
             }
         update = update
