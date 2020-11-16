@@ -34,9 +34,6 @@ type private Animation<'Model, 'Value> =
         /// The current value of the animated value.
         CurrentValue : 'Value
 
-        /// The distance along the curve defining the animation space (within [0, 1]).
-        CurrentPosition : float
-
         /// Curve defining the animation values based on
         /// its position (parameterized by arc length in the range of [0, 1]).
         SpaceFunction : Func<float, 'Value>
@@ -53,15 +50,13 @@ type private Animation<'Model, 'Value> =
     member x.Stop() =
         { x with
             NextState = State.Stopped
-            CurrentValue = x.SpaceFunction.Invoke 0.0
-            CurrentPosition = 0.0 }
+            CurrentValue = x.SpaceFunction.Invoke 0.0 }
 
     /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
     member x.Start(globalTime : MicroTime) =
         { x with
             NextState = State.Running globalTime
-            CurrentValue = x.SpaceFunction.Invoke 0.0
-            CurrentPosition = 0.0 }
+            CurrentValue = x.SpaceFunction.Invoke 0.0 }
 
     /// Pauses the animation if it is running or has started.
     member x.Pause(globalTime : MicroTime) =
@@ -84,14 +79,12 @@ type private Animation<'Model, 'Value> =
     member x.Update(globalTime : MicroTime) =
         match x.CurrentState with
         | State.Running startTime ->
-            let f, p = (globalTime - startTime) |> x.DistanceTimeFunction.Invoke
-            let s = p |> clamp 0.0 1.0
+            let f, s = (globalTime - startTime) |> x.DistanceTimeFunction.Invoke
             let v = x.SpaceFunction.Invoke s
 
             { x with
                 NextState = if f then State.Finished else State.Running startTime
-                CurrentValue = v
-                CurrentPosition = s }
+                CurrentValue = v }
         | _ ->
             x
 
@@ -164,7 +157,6 @@ module Animation =
         { NextState = State.Stopped
           CurrentState = State.Stopped
           CurrentValue = Unchecked.defaultof<'Value>
-          CurrentPosition = 0.0
           SpaceFunction = SpaceFunction.Default
           DistanceTimeFunction = DistanceTimeFunction.Default
           Observers = HashMap.empty } :> IAnimation<'Model, 'Value>
@@ -174,7 +166,6 @@ module Animation =
         { NextState = State.Stopped
           CurrentState = State.Stopped
           CurrentValue = spaceFunction 0.0
-          CurrentPosition = 0.0
           SpaceFunction = Func<_,_> spaceFunction
           DistanceTimeFunction = DistanceTimeFunction.Default
           Observers = HashMap.empty } :> IAnimation<'Model, 'Value>

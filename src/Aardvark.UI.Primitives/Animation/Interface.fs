@@ -41,6 +41,14 @@ type IAnimationObserver<'Model, 'Value> =
     /// Invoked on animation events.
     abstract member OnNext : model: 'Model * name: Symbol * event: EventType * value: 'Value -> 'Model
 
+/// Loop mode for animation iterations.
+[<RequireQualifiedAccess>]
+type LoopMode =
+    /// Animation restarts at the beginning.
+    | Repeat
+
+    /// Animation is reversed upon reaching the end.
+    | Mirror
 
 /// Interface for distance-time functions.
 type IDistanceTimeFunction =
@@ -48,6 +56,15 @@ type IDistanceTimeFunction =
     /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending
     /// on the time elapsed since the start of the animation.
     abstract member Invoke : time: MicroTime -> bool * float
+
+    /// Applies an easing function, i.e. an function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
+    abstract member Ease : easing: (float -> float) -> IDistanceTimeFunction
+
+    /// <summary>
+    /// Sets the number of iterations and loop mode.
+    /// </summary>
+    /// <param name="iterations">The number of iterations or a nonpositive value for an unlimited number of iterations.</param>
+    abstract member Loop : iterations: int * mode: LoopMode -> IDistanceTimeFunction
 
 
 /// The state of an animation.
