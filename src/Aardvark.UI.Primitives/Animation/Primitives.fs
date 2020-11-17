@@ -9,6 +9,10 @@ module AnimationPrimitives =
 
         open Aether
 
+        /// Creates an animation that returns a constant value.
+        let constant (value : 'Value) : IAnimation<'Model, 'Value> =
+            Animation.create (fun _ -> value)
+
         /// Creates an animation that linearly interpolates between src and dst.
         let inline lerp (src : ^Value) (dst : ^Value) : IAnimation<'Model, ^Value> =
             Animation.create (lerp src dst)

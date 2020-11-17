@@ -54,6 +54,7 @@ let update (model : Model) (msg : Message) =
                     |> Animation.map C4b
                     |> Animation.link Model.color_
                     |> Animation.seconds 0.5
+                    |> Animation.ease (Easing.InOut EasingFunction.Cubic)
                     |> Animation.onStart (fun _ ->      Log.warn "[Color] started")
                     |> Animation.onStop (fun _ ->       Log.warn "[Color] stopped")
                     |> Animation.onPause (fun _ ->      Log.warn "[Color] paused")
@@ -69,10 +70,14 @@ let update (model : Model) (msg : Message) =
                 let rotX =
                     model |> Animation.lerpTo Model.rotationX_ (if model.rotationX = 0.0 then Constant.Pi else 0.0)
                     |> Animation.seconds 2
+                    |> Animation.ease (Easing.InOut EasingFunction.Sine)
 
                 let rotZ =
                     model |> Animation.lerpTo Model.rotationZ_ (if model.rotationZ = 0.0 then Constant.PiTimesTwo else 0.0)
                     |> Animation.seconds 4
+                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
+                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
+                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
 
                 (rotX, rotZ) ||> Animation.map2 (fun roll yaw ->
                     Rot3d.RotationEuler(roll, 0.0, yaw)
@@ -85,10 +90,10 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Rotation] finished")
 
             let animation =
-                //[colorAnimation] |> Animation.ofList
-                //|> Animation.andAlso rotationAnimation
-                rotationAnimation
+                [colorAnimation] |> Animation.ofList
+                |> Animation.andAlso rotationAnimation
                 |> Animation.subscribe timer
+                |> Animation.loop LoopMode.Mirror
 
 
             model |> Animator.set animSym animation
