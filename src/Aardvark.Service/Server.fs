@@ -89,10 +89,25 @@ module private Tools =
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
 
             let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
+
+            let small =
+                if size <> fbo.Size then
+                    Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                    |> Some
+                else
+                    None
+
             let oldLayout = color.Image.Layout
             device.perform {
                 do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
-                do! Command.Copy(color, tmp)
+                match small with
+                | Some small ->
+                    do! Command.TransformLayout(small, VkImageLayout.TransferDstOptimal)
+                    do! Command.Blit(color, VkImageLayout.TransferSrcOptimal, small.[ImageAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
+                    do! Command.TransformLayout(small, VkImageLayout.TransferSrcOptimal)
+                    do! Command.Copy(small.[ImageAspect.Color, 0, 0], tmp)
+                | None ->
+                    do! Command.Copy(color, tmp)
                 do! Command.TransformLayout(color.Image, oldLayout)
             }
             
@@ -110,6 +125,7 @@ module private Tools =
                     )
                 )
 
+            small |> Option.iter device.Delete
             device.Delete tmp
             result
 
@@ -119,11 +135,26 @@ module private Tools =
 
             let tempImage = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
 
+            let full =
+                if size <> fbo.Size then
+                    Image.create (V3i(fbo.Size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                    |> Some
+                else
+                    None
+
             let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
             let oldLayout = color.Image.Layout
             device.perform {
                 do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
-                do! Command.ResolveMultisamples(color.Image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+
+                match full with
+                | Some full ->
+                    do! Command.TransformLayout(full, VkImageLayout.TransferDstOptimal)
+                    do! Command.ResolveMultisamples(color.Image.[ImageAspect.Color, 0, 0], V3i.Zero, full.[ImageAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+                    do! Command.TransformLayout(full, VkImageLayout.TransferSrcOptimal)
+                    do! Command.Blit(full.[ImageAspect.Color, 0, 0], VkImageLayout.TransferSrcOptimal, tempImage.[ImageAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
+                | None -> 
+                    do! Command.ResolveMultisamples(color.Image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
                 do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
                 do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], tmp)
                 do! Command.TransformLayout(color.Image, oldLayout)
@@ -143,17 +174,19 @@ module private Tools =
                     )
                 )
 
+            full |> Option.iter device.Delete
+            device.Delete tempImage
             device.Delete tmp
             result
 
         type Framebuffer with
             member x.DownloadJpegColor(scale : float, quality : int) =
-                if scale <> 1.0 then failwith "[Vulkan] scale not implemented"
+                let resSize = V2i(max 1 (int (round (scale * float x.Size.X))), max 1 (int (round (scale * float x.Size.Y))))
                 let jpeg = Compressor.Instance
                 if x.Attachments.[DefaultSemantic.Colors].Image.Samples <> 1 then
-                    downloadFBOMS jpeg x.Size quality x
+                    downloadFBOMS jpeg resSize quality x
                 else
-                    downloadFBO jpeg x.Size quality x
+                    downloadFBO jpeg resSize quality x
 
     [<AutoOpen>]
     module GL = 
