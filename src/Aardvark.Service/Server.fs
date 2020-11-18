@@ -43,6 +43,21 @@ type Command =
     | Invalidate
     | WorldPosition of pos : V3d
 
+type RenderQuality =
+    {
+        quality     : float
+        scale       : float
+        framerate   : float
+    }
+    
+module RenderQuality =
+    let full =
+        { 
+            quality = 90.0
+            scale = 1.0
+            framerate = 60.0
+        }
+
 [<AutoOpen>]
 module private Tools = 
     //open TurboJpegWrapper
@@ -132,7 +147,8 @@ module private Tools =
             result
 
         type Framebuffer with
-            member x.DownloadJpegColor(quality : int) =
+            member x.DownloadJpegColor(scale : float, quality : int) =
+                if scale <> 1.0 then failwith "[Vulkan] scale not implemented"
                 let jpeg = Compressor.Instance
                 if x.Attachments.[DefaultSemantic.Colors].Image.Samples <> 1 then
                     downloadFBOMS jpeg x.Size quality x
@@ -175,7 +191,7 @@ module private Tools =
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
 
         type Framebuffer with
-            member x.DownloadJpegColor(quality : int) =
+            member x.DownloadJpegColor(scale : float, quality : int) =
                 let jpeg = Compressor.Instance
                 let ctx = x.Context
                 use __ = ctx.ResourceLock
@@ -185,42 +201,100 @@ module private Tools =
                 let size = color.Size
                 if color.Samples > 1 then
                     let resolved = GL.GenRenderbuffer()
-                    GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, resolved)
-                    GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, color.Size.X, color.Size.Y)
-                    GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
-
                     let fbo = GL.GenFramebuffer()
-                    GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, fbo)
-                    GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, resolved)
-
-                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-
-                    GL.BlitFramebuffer(
-                        0, 0, size.X - 1, size.Y - 1, 
-                        0, 0, size.X - 1, size.Y - 1,
-                        ClearBufferMask.ColorBufferBit,
-                        BlitFramebufferFilter.Nearest
-                    )
-
-                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
-                    GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
-                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
-                    
                     try
-                        ctx |> downloadFBO jpeg size quality
+
+                        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, resolved)
+                        GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, size.X, size.Y)
+                        GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
+
+                        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, fbo)
+                        GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, resolved)
+
+                        GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
+
+                        GL.BlitFramebuffer(
+                            0, 0, size.X, size.Y, 
+                            0, 0, size.X, size.Y,
+                            ClearBufferMask.ColorBufferBit,
+                            BlitFramebufferFilter.Nearest
+                        )
+
+                        GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                        GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo)
+                    
+                        if scale < 1.0 then
+                            let resSize = V2i(max 1 (int (round (scale * float size.X))), max 1 (int (round (scale * float size.Y))))
+                            let scaled = GL.GenRenderbuffer()
+                            let scaledFbo = GL.GenFramebuffer()
+                            try
+                                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, scaled)
+                                GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, resSize.X, resSize.Y)
+                                GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
+
+                            
+                                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, scaledFbo)
+                                GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, scaled)
+
+
+                                GL.BlitFramebuffer(
+                                    0, 0, size.X, size.Y, 
+                                    0, 0, resSize.X, resSize.Y,
+                                    ClearBufferMask.ColorBufferBit,
+                                    BlitFramebufferFilter.Linear
+                                )
+                            
+                                GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                                GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, scaledFbo)
+                                ctx |> downloadFBO jpeg resSize quality
+                            finally
+                                GL.DeleteFramebuffer(scaledFbo)
+                                GL.DeleteRenderbuffer(scaled)
+                                
+                        else
+                            ctx |> downloadFBO jpeg size quality
                     finally
                         GL.DeleteFramebuffer(fbo)
                         GL.DeleteRenderbuffer(resolved)
 
                 else
-                    GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
-                    ctx |> downloadFBO jpeg size quality
+                    if scale < 1.0 then
+                        let resSize = V2i(max 1 (int (round (scale * float size.X))), max 1 (int (round (scale * float size.Y))))
+                        let scaled = GL.GenRenderbuffer()
+                        let scaledFbo = GL.GenFramebuffer()
+                        try
+                            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, scaled)
+                            GL.RenderbufferStorage(RenderbufferTarget.Renderbuffer, RenderbufferStorage.Rgba8, resSize.X, resSize.Y)
+                            GL.BindRenderbuffer(RenderbufferTarget.Renderbuffer, 0)
+
+                            
+                            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, scaledFbo)
+                            GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, scaled)
+                            
+                            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
+
+                            GL.BlitFramebuffer(
+                                0, 0, size.X, size.Y, 
+                                0, 0, resSize.X, resSize.Y,
+                                ClearBufferMask.ColorBufferBit,
+                                BlitFramebufferFilter.Linear
+                            )
+                            
+                            GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
+                            GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, scaledFbo)
+                            ctx |> downloadFBO jpeg resSize quality
+                        finally
+                            GL.DeleteFramebuffer(scaledFbo)
+                            GL.DeleteRenderbuffer(scaled)
+                    else
+                        GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, x.Handle)
+                        ctx |> downloadFBO jpeg size quality
 
     type IFramebuffer with
-        member x.DownloadJpegColor(quality : int) =
+        member x.DownloadJpegColor(scale : float, quality : int) =
             match x with
-                | :? Aardvark.Rendering.GL.Framebuffer as fbo -> fbo.DownloadJpegColor(quality)
-                | :? Aardvark.Rendering.Vulkan.Framebuffer as fbo -> fbo.DownloadJpegColor(quality)
+                | :? Aardvark.Rendering.GL.Framebuffer as fbo -> fbo.DownloadJpegColor(scale, quality)
+                | :? Aardvark.Rendering.Vulkan.Framebuffer as fbo -> fbo.DownloadJpegColor(scale, quality)
                 | _ -> failwith "not implemented"
  
     type WebSocket with
@@ -256,7 +330,7 @@ type ClientInfo =
         session : Guid
         size : V2i
         samples : int
-        quality : int
+        quality : RenderQuality
         time : MicroTime
         clearColor : C4f
     }
@@ -461,6 +535,7 @@ type Server =
         compressor      : Option<JpegCompressor>
         fileSystemRoot  : Option<string>
     }
+    
 
 module private ReadPixel =
     module private Vulkan =
@@ -739,10 +814,12 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         member x.Dispose() =
             x.Dispose()
 
-type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : Quantization * int) =
+type internal JpegClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene, quality : RenderQuality) =
     inherit ClientRenderTask(server, getScene)
     
-    let quantization, quality = quality
+    let mutable quality = quality
+    let mutable quantization = Quantization.ofQuality quality.quality
+    let mutable quantizationQuality = quality.quality
     let runtime = server.runtime
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
     let mutable resolved : Option<IBackendTexture> = None
@@ -767,22 +844,38 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
             | _ ->
                 None
 
+    member x.Quality
+        with get() = quality
+        and set q =
+            quality <- q
+
+
     override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
         let resolved = 
+            let resSize = V2i(max 1 (int (round (quality.scale * float color.Size.X))), max 1 (int (round (quality.scale * float color.Size.Y))))
             match resolved with
-                | Some r when r.Size.XY = color.Size -> Some r
-                | _ -> recreate color.Format color.Size
+                | Some r when r.Size.XY = resSize -> Some r
+                | _ -> recreate color.Format resSize
         let data =
             match gpuCompressorInstance with
                 | Some gpuCompressorInstance ->
                     let resolved = resolved.Value
-                    if color.Samples > 1 then
+                    if color.Samples > 1 || quality.scale <> 1.0 then
                         runtime.ResolveMultisamples(color, resolved, ImageTrafo.Identity)
                     else
                         runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
+
+                    let qual = quality.quality
+                    if quantizationQuality <> qual then
+                        let q = Quantization.ofQuality qual
+                        quantization <- q
+                        gpuCompressorInstance.Quality <- q
+                        quantizationQuality <- qual
+
+
                     gpuCompressorInstance.Compress(resolved.[TextureAspect.Color,0,0])
                 | None -> 
-                    target.DownloadJpegColor(quality)
+                    target.DownloadJpegColor(quality.scale, int (round quality.quality))
         Jpeg data
 
     override x.Release() =
@@ -791,7 +884,7 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
         gpuCompressorInstance <- None
         resolved <- None
 
-    new(server,getScene) = new JpegClientRenderTask(server,getScene,(Quantization.photoshop80,80))
+    new(server,getScene) = new JpegClientRenderTask(server,getScene, RenderQuality.full)
 
 type internal PngClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(server, getScene)     
@@ -1660,10 +1753,10 @@ type internal ClientCreateInfo =
         id              : string
         sceneName       : string
         samples         : int
-        quality         : int       // 0-100
         socket          : WebSocket
         useMapping      : bool
         getSignature    : int -> IFramebufferSignature
+        targetQuality   : RenderQuality
     }
 
 type private DummyObject() =
@@ -1676,8 +1769,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         if info.useMapping then
             new MappedClientRenderTask(info.server, getContent) :> ClientRenderTask
         else
-            let q = Quantization.ofQuality (float info.quality), info.quality
-            new JpegClientRenderTask(info.server, getContent, q) :> ClientRenderTask
+            new JpegClientRenderTask(info.server, getContent, info.targetQuality) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
     let sender = DummyObject()
@@ -1716,7 +1808,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             sceneName = createInfo.sceneName
             session = createInfo.session
             samples = createInfo.samples
-            quality = createInfo.quality
+            quality = createInfo.targetQuality
             size = V2i.II
             time = MicroTime.Now
             clearColor = C4f.Black
@@ -2008,11 +2100,11 @@ module Server =
                 match Map.tryFind "quality" args with
                     | Some q -> 
                         match Int32.TryParse q with
-                            | (true,v) when v >=1 && v <= 100 -> v
+                            | (true,v) when v >=1 && v <= 100 -> float v
                             | _ -> 
                                 Log.warn "could not parse quality. should be int of range [1,100]"
-                                100
-                    | _ -> 100
+                                RenderQuality.full.quality
+                    | _ -> RenderQuality.full.quality
 
             let createInfo =
                 {
@@ -2021,7 +2113,7 @@ module Server =
                     id              = targetId
                     sceneName       = sceneName
                     samples         = samples
-                    quality         = quality
+                    targetQuality   = { RenderQuality.full with quality = quality }
                     socket          = ws
                     useMapping      = useMapping
                     getSignature    = getSignature
@@ -2094,7 +2186,7 @@ module Server =
                             samples = samples
                             time = MicroTime.Now
                             clearColor = clearColor
-                            quality = 100
+                            quality = RenderQuality.full
                         }
 
                     let state = getState clientInfo
@@ -2110,7 +2202,7 @@ module Server =
 
                     match Map.tryFind "fmt" args with
                         | Some "jpg" | None -> 
-                            use t = new JpegClientRenderTask(info, content, (Quantization.photoshop100,100)) :> ClientRenderTask
+                            use t = new JpegClientRenderTask(info, content, RenderQuality.full) :> ClientRenderTask
                             t |> respondOK "image/jpeg"
                         | Some "png" -> 
                             use t = new PngClientRenderTask(info, content) :> ClientRenderTask

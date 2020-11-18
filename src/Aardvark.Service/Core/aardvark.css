@@ -9,9 +9,8 @@ img.rendercontrol {
     user-select: none;
     background-color: black;
     position: relative;
-    left: 50%;
-    top: 50%;
-    transform: translate3d(-50%, -50%, 0);
+    width: 100%;
+    height: 100%;
     pointer-events: none;
 }
 canvas.rendercontrol:focus {
