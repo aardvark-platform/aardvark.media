@@ -877,10 +877,9 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
             if not isDisposed then
                 let t = f()
                 useTransaction t (fun () ->
-                    version.Value <- version.Value + 1
-                
-                )
-                transactor.Enqueue (fun () -> t.Commit())
+                            version.Value <- version.Value + 1
+                        )
+                transactor.Enqueue (fun () -> t.Commit(); t.Dispose())
                 //transactor.Mark [texture :> IAdaptiveObject; version :> IAdaptiveObject]
         )
         
