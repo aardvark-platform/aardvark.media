@@ -247,7 +247,42 @@ class Renderer {
     init() {
         var connect = null;
 
-        
+        var roundTripCap = 10;
+        var roundTripIndex = 0;
+        var roundTripCount = 0;
+        var roundTripTimes = new Float64Array(roundTripCap);
+        var roundtripTimeSum = 0.0;
+        var roundtripTime = 2.0;
+
+
+        var delayed = function (action) {
+            //action();
+            setTimeout(action, 30);
+        };
+
+        var handleCommand = function (data) {
+            if (data.startsWith("#pong_")) {
+                const n = performance.now()
+                const t = new Number(data.substring(6));
+                const dt = n - t;
+
+                if (roundTripCount >= roundTripCap) {
+                    const o = roundTripTimes[roundTripIndex];
+                    roundTripTimes[roundTripIndex] = dt;
+                    roundtripTimeSum += dt - o;
+                }
+                else {
+                    roundTripTimes[roundTripIndex] = dt;
+                    roundtripTimeSum += dt;
+                    roundTripCount++;
+                }
+                roundTripIndex++;
+                if (roundTripIndex >= roundTripCap) roundTripIndex -= roundTripCap;
+
+                roundtripTime = roundtripTimeSum / roundTripCount;
+            }
+
+        }
 
         if (aardvark.localhost && getTopAardvark().openMapping && this.useMapping) {
             var canvas = document.createElement("canvas");
@@ -298,8 +333,9 @@ class Renderer {
 
                 var doPing = function () {
                     if (socket.readyState <= 1) {
-                        socket.send("#ping");
-                        setTimeout(doPing, 1000);
+                        const t = performance.now();
+                        socket.send("#ping_" + t.toFixed(8) + "_" + roundtripTime.toFixed(8));
+                        setTimeout(doPing, 100);
                     }
                 };
 
@@ -318,7 +354,14 @@ class Renderer {
                 };
 
                 socket.onmessage = function (msg) {
-                    self.received(msg);
+                    delayed(function () {
+                        if (typeof msg.data === "string" && msg.data.startsWith("#")) {
+                            handleCommand(msg.data);
+                        }
+                        else {
+                            self.received(msg);
+                        }
+                    });
                 };
 
                 socket.onclose = function () {
@@ -373,8 +416,9 @@ class Renderer {
 
                 var doPing = function () {
                     if (socket.readyState <= 1) {
-                        socket.send("#ping");
-                        setTimeout(doPing, 50);
+                        const t = performance.now();
+                        socket.send("#ping_" + t.toFixed(8) + "_" + roundtripTime.toFixed(8));
+                        setTimeout(doPing, 100);
                     }
                 };
 
@@ -393,7 +437,14 @@ class Renderer {
                 };
 
                 socket.onmessage = function (msg) {
-                    self.received(msg);
+                    delayed(function () {
+                        if (typeof msg.data === "string" && msg.data.startsWith("#")) {
+                            handleCommand(msg.data);
+                        }
+                        else {
+                            self.received(msg);
+                        }
+                    });
                 };
 
                 socket.onclose = function () {
@@ -1190,6 +1241,8 @@ if (!aardvark.connect) {
 
         var url = aardvark.getRelativeUrl('ws', path + wsQuery);
         var eventSocket = new WebSocket(url);
+
+        
 
         var doPing = function () {
             if (eventSocket.readyState <= 1) {

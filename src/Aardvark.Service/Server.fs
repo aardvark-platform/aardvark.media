@@ -1853,7 +1853,11 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         }
 
     let mutable subscription = subscribe()
+    
+    let mutable timeOffset = MicroTime.Zero
+    let mutable ping = MicroTime.Zero
 
+    
 
     let renderLoop() =
         use mm = new MultimediaTimer.Trigger(1)
@@ -1878,67 +1882,60 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
             if size.AllGreater 0 then
                 while tooFast() do mm.Wait()
-                //if sw.IsRunning then
-                //    sumTimes <- sumTimes + sw.MicroTime
-                //    frameCount <- frameCount + 1
                 sw.Restart()
 
-                //if sumTimes > MicroTime.Second && frameCount > 0 then
-                //    printfn "%A" (sumTimes / frameCount)
-                //    sumTimes <- MicroTime.Zero
-                //    frameCount <- 0
+                let inCloud = int createInfo.targetQuality.framerate - framesInCloud.CurrentCount //int info.quality.framerate
+                let expected = ping.TotalSeconds * createInfo.targetQuality.framerate
+
+                Log.line "%d %.3f" inCloud expected
 
 
-                let rendered = 
+
+                if sender.OutOfDate || lastSize <> size || lastBackground <> background then
+                    framesInCloud.Wait()
+                    lastBackground <- background
+                    lastSize <- size
+
                     lock updateLock (fun () ->
                         sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                            if sender.OutOfDate || lastSize <> size || lastBackground <> background then
-                                framesInCloud.Wait()
-                                lastBackground <- background
-                                lastSize <- size
+                            let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
+                            try
+                                let state = getState info
+                                let data = task.Run(token, info, state)
 
-                                let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
-                                try
-                                    let state = getState info
-                                    let data = task.Run(token, info, state)
-
-                                    match data with
-                                        | Jpeg data -> 
-                                            let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
-                                            match res with
-                                                | Choice1Of2() -> ()
-                                                | Choice2Of2 err ->
-                                                    running <- false
-                                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
-                                        | Png data -> 
-                                            Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
+                                match data with
+                                    | Jpeg data -> 
+                                        let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
+                                        match res with
+                                            | Choice1Of2() -> ()
+                                            | Choice2Of2 err ->
+                                                running <- false
+                                                Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                    | Png data -> 
+                                        Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
                                 
-                                        | Mapping img ->
-                                            let data = Pickler.json.Pickle img
-                                            let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
-                                            match res with
-                                                | Choice1Of2() -> ()
-                                                | Choice2Of2 err ->
-                                                    running <- false
-                                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                    | Mapping img ->
+                                        let data = Pickler.json.Pickle img
+                                        let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
+                                        match res with
+                                            | Choice1Of2() -> ()
+                                            | Choice2Of2 err ->
+                                                running <- false
+                                                Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
                                     
-                                with e ->
-                                    running <- false
-                                    Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
-                                true
-                            else
-                                false
+                            with e ->
+                                running <- false
+                                Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
                         )
                     )
-                if rendered then
+
                     createInfo.server.rendered info
 
                 
 
 
     let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)
-
-
+    
     member x.Info = info
     member x.FrameCount = frameCount
     member x.FrameTime = roundTripTime.MicroTime
@@ -1954,6 +1951,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             task <- newTask newInfo getContent
             subscription <- subscribe()
             renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
+            timeOffset <- MicroTime.Zero
+            ping <- MicroTime.Zero
 
     member x.Dispose() =
         if Interlocked.Exchange(&disposed, 1) = 0 then
@@ -1970,7 +1969,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         running <- true
         renderThread.Start()
         socket {
-            
+
             Log.line "[Client] %d: running %s" id info.sceneName
             try
                 while running do
@@ -1979,14 +1978,30 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     match code with
                         | Opcode.Text ->
                             try
-                                
+                                let inline (|Double|_|) (str : string) =
+                                    match System.Double.TryParse(str, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
+                                    | (true, v) -> Some v
+                                    | _ -> None
+
                                 if data.Length > 0 && data.[0] = uint8 '#' then
                                     let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
-                                    match str with
-                                        | "ping" -> 
-                                            do! createInfo.socket.send Opcode.Pong (ByteSegment([||])) true
+                                    if str.StartsWith "ping_" then
+                                        let now = MicroTime.Now
+
+                                        match str.Substring(5).Split('_') with
+                                        | [| Double time; Double p |] ->
+                                            let offset = now - MicroTime.FromMilliseconds time - timeOffset
+                                            timeOffset <- timeOffset + offset
+                                            ping <- MicroTime.FromMilliseconds p
                                         | _ ->
-                                            Log.warn "bad opcode: %A" str
+                                            ()
+
+                                        let remoteTime = now - timeOffset
+                                        let answer = sprintf "#pong_%.8f" remoteTime.TotalMilliseconds
+                                        let segment = ByteSegment(System.Text.Encoding.UTF8.GetBytes answer)
+                                        do! createInfo.socket.send Opcode.Text segment true
+                                    else
+                                        Log.warn "bad opcode: %A" str
                                 else
                                     let msg : Message = Pickler.json.UnPickle data
 
@@ -2006,6 +2021,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                             send (WorldPosition wp)
 
                                         | Rendered ->
+                                            
                                             roundTripTime.Stop()
                                             frameCount <- frameCount + 1
                                             framesInCloud.Release() |> ignore
@@ -2191,6 +2207,8 @@ module Server =
 
             // TODO: get scale/framerate/maxFramesInCloud from attributes
 
+            let quality = { RenderQuality.full with quality = quality }
+
             let createInfo =
                 {
                     server              = info
@@ -2198,11 +2216,11 @@ module Server =
                     id                  = targetId
                     sceneName           = sceneName
                     samples             = samples
-                    targetQuality       = { RenderQuality.full with quality = quality }
+                    targetQuality       = quality
                     socket              = ws
                     useMapping          = useMapping
                     getSignature        = getSignature
-                    maxFramesInCloud    = 16
+                    maxFramesInCloud    = int quality.framerate
                 }            
 
             let client = 
