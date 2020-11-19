@@ -151,6 +151,8 @@ class Renderer {
         this.id = id;
         this.div = document.getElementById(id);
 
+        this.mbit = 1000;
+
         var scene = this.div.getAttribute("data-scene");
         if (!scene) scene = id;
         this.scene = scene;
@@ -256,8 +258,8 @@ class Renderer {
 
 
         var delayed = function (action) {
-            //action();
-            setTimeout(action, 30);
+            action();
+            //setTimeout(action, 30);
         };
 
         var handleCommand = function (data) {
@@ -795,39 +797,55 @@ class Renderer {
 
             this.frameCount++;
 
-
-            var oldUrl = this.img.src;
-            this.img.src = urlCreator.createObjectURL(msg.data);
-            delete msg.data;
-
-            urlCreator.revokeObjectURL(oldUrl);
-
-			this.send(JSON.stringify({ Case: "Rendered" }));
-
-
-            //var shouldSay = this.div.getAttribute("onRendered");
-            //if (shouldSay) {
-            //    if (this.div.onRenderedCode != shouldSay) {
-            //        this.div.onRenderedCode = shouldSay;
-            //        var f = new Function(shouldSay);
-            //        this.div.onRendered = f.bind(this.div);
-            //    }
-            //    this.div.onRendered();
-            //}
-            //else {
-            //    delete this.div.onRenderedCode;
-            //    delete this.div.onRendered;
-            //}
-
+            const self = this;
             if (this.loading) {
-                this.fadeIn();
-            }
+                this.div.addEventListener("keydown", function (evt) {
+                    if (evt.keyCode === 57) {
+                        self.mbit *= 0.5; console.log(self.mbit);
+                    }
+                    else if (evt.keyCode === 48) {
+                        self.mbit *= 2.0; console.log(self.mbit);
+                    }
+                });
 
-            if (this.renderAlways) {
-
-                //artificial render looop (uncommend in invalidate)
-                this.render();
             }
+            let sleepTime = 1000.0 * (msg.data.size * 8) / (self.mbit * 1000000);
+            if (sleepTime < 10) sleepTime = 0;
+
+            setTimeout(function () {
+                var oldUrl = self.img.src;
+                self.img.src = urlCreator.createObjectURL(msg.data);
+                delete msg.data;
+
+                urlCreator.revokeObjectURL(oldUrl);
+
+                self.send(JSON.stringify({ Case: "Rendered" }));
+
+
+                //var shouldSay = this.div.getAttribute("onRendered");
+                //if (shouldSay) {
+                //    if (this.div.onRenderedCode != shouldSay) {
+                //        this.div.onRenderedCode = shouldSay;
+                //        var f = new Function(shouldSay);
+                //        this.div.onRendered = f.bind(this.div);
+                //    }
+                //    this.div.onRendered();
+                //}
+                //else {
+                //    delete this.div.onRenderedCode;
+                //    delete this.div.onRendered;
+                //}
+
+                if (self.loading) {
+                    self.fadeIn();
+                }
+
+                if (self.renderAlways) {
+
+                    //artificial render looop (uncommend in invalidate)
+                    self.render();
+                }
+            }, sleepTime);
         }
         else {
             var o = JSON.parse(msg.data);

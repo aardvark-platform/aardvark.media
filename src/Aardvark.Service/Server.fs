@@ -58,6 +58,27 @@ module RenderQuality =
             framerate = 60.0
         }
 
+    let better (quality : RenderQuality) =
+        if quality.scale < 1.0 then 
+            if quality.quality < 80.0 then
+                { quality with quality = 90.0 }
+            else
+                let ns = 
+                    if quality.scale > 0.6 then 1.0
+                    else 3.0 * quality.scale / 2.0
+
+                { quality with scale = ns; quality = 55.0 }
+        else
+            if quality.quality < 80.0 then { quality with quality = 90.0 }
+            else quality
+
+    let worse (quality : RenderQuality) =
+        if quality.quality > 80.0 then
+            { quality with quality = 55.0 }
+        else 
+            { quality with quality = 90.0; scale = 2.0 * quality.scale / 3.0 }
+
+
 [<AutoOpen>]
 module private Tools = 
     //open TurboJpegWrapper
@@ -772,7 +793,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
             | None ->
                 None
         
-    abstract member ProcessImage : IFramebuffer * IRenderbuffer -> RenderResult
+    abstract member ProcessImage : IFramebuffer * IRenderbuffer * ClientInfo -> RenderResult
     abstract member Release : unit -> unit
 
     member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
@@ -804,7 +825,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
                 Interlocked.Decrement(&threadCount) |> ignore
         )
         compressTime.Start()
-        let data = x.ProcessImage(target, color.Value)
+        let data = x.ProcessImage(target, color.Value, info)
         //let data =
         //    match gpuCompressorInstance with
         //        | Some gpuCompressorInstance ->
@@ -878,13 +899,11 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
             | _ ->
                 None
 
-    member x.Quality
-        with get() = quality
-        and set q =
-            quality <- q
 
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer, info : ClientInfo) =
+        let q = info.quality
+        quality <- q
 
-    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
         let resolved = 
             let resSize = V2i(max 1 (int (round (quality.scale * float color.Size.X))), max 1 (int (round (quality.scale * float color.Size.Y))))
             match resolved with
@@ -933,7 +952,7 @@ type internal PngClientRenderTask internal(server : Server, getScene : IFramebuf
         r
 
 
-    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer, info : ClientInfo) =
         let resolved = 
             match resolved with
                 | Some r when r.Size.XY = color.Size -> r
@@ -1749,7 +1768,7 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
         downloader <- Some d
         d
 
-    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+    override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer, info : ClientInfo) =
         let desiredMapSize = Fun.NextPowerOfTwo (int64 color.Size.X * int64 color.Size.Y * 4L)
 
         let mapping =
@@ -1851,6 +1870,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             time = MicroTime.Now
             clearColor = C4f.Black
         }
+    let mutable quality = createInfo.targetQuality
 
     let mutable subscription = subscribe()
     
@@ -1872,7 +1892,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
         let mutable lastSize = V2i.Zero
         let mutable lastBackground = C4b.Black
-        //let mutable frameCount = 0
+        let mutable frameCount = 0
+        let mutable lastQualityChange = 0
         //let mutable sumTimes = MicroTime.Zero
         while running do 
             let background = requestedBackground
@@ -1884,21 +1905,32 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                 while tooFast() do mm.Wait()
                 sw.Restart()
 
-                let inCloud = int createInfo.targetQuality.framerate - framesInCloud.CurrentCount //int info.quality.framerate
-                let expected = ping.TotalSeconds * createInfo.targetQuality.framerate
-
-                Log.line "%d %.3f" inCloud expected
-
-
 
                 if sender.OutOfDate || lastSize <> size || lastBackground <> background then
+                    if frameCount > lastQualityChange + 60 then
+                        lastQualityChange <- frameCount
+                        let inCloud = int createInfo.targetQuality.framerate - framesInCloud.CurrentCount //int info.quality.framerate
+                        let expected = ping.TotalSeconds * createInfo.targetQuality.framerate
+
+                        Log.line "%d %.3f" inCloud expected
+                        if float inCloud > expected + 6.0 then
+                            quality <- RenderQuality.worse quality
+                            Log.line "worse %d -> %.3f (%0A)" inCloud expected quality
+                        elif float inCloud < expected + 3.0 then
+                            if quality.scale < createInfo.targetQuality.scale || quality.quality < createInfo.targetQuality.quality then
+                                quality <- RenderQuality.better quality
+                                Log.line "better %d -> %.3f (%0A)" inCloud expected quality
+                    
+
+                    frameCount <- frameCount + 1
+
                     framesInCloud.Wait()
                     lastBackground <- background
                     lastSize <- size
 
                     lock updateLock (fun () ->
                         sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                            let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
+                            let info = Interlocked.Change(&info, fun info -> { info with quality = quality; token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
                             try
                                 let state = getState info
                                 let data = task.Run(token, info, state)
@@ -1930,7 +1962,6 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     )
 
                     createInfo.server.rendered info
-
                 
 
 
