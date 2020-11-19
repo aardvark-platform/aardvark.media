@@ -94,7 +94,7 @@ module private Tools =
 
             let small =
                 if size <> fbo.Size then
-                    Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                    Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
                     |> Some
                 else
                     None
@@ -139,7 +139,7 @@ module private Tools =
 
             let full =
                 if size <> fbo.Size then
-                    Image.create (V3i(fbo.Size,1)) 1 1 1 TextureDimension.Texture2D TextureFormat.Rgba8 (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                    Image.create (V3i(fbo.Size,1)) 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
                     |> Some
                 else
                     None
