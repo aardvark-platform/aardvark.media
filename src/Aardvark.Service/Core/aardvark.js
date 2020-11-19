@@ -175,8 +175,8 @@ class Renderer {
 		if (useMapping === "false") useMapping = false; else useMapping = true;
 		this.useMapping = useMapping;
 
-		var onRendered = this.div.getAttribute("onRendered");
-        if (onRendered) this.onRendered = onRendered;
+		//var onRendered = this.div.getAttribute("onRendered");
+  //      if (onRendered) this.onRendered = onRendered;
 
         this.customLoaderImg = this.div.getAttribute("data-customLoaderImg");
         this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
@@ -754,19 +754,19 @@ class Renderer {
 			this.send(JSON.stringify({ Case: "Rendered" }));
 
 
-            var shouldSay = this.div.getAttribute("onRendered");
-            if (shouldSay) {
-                if (this.div.onRenderedCode != shouldSay) {
-                    this.div.onRenderedCode = shouldSay;
-                    var f = new Function(shouldSay);
-                    this.div.onRendered = f.bind(this.div);
-                }
-                this.div.onRendered();
-            }
-            else {
-                delete this.div.onRenderedCode;
-                delete this.div.onRendered;
-            }
+            //var shouldSay = this.div.getAttribute("onRendered");
+            //if (shouldSay) {
+            //    if (this.div.onRenderedCode != shouldSay) {
+            //        this.div.onRenderedCode = shouldSay;
+            //        var f = new Function(shouldSay);
+            //        this.div.onRendered = f.bind(this.div);
+            //    }
+            //    this.div.onRendered();
+            //}
+            //else {
+            //    delete this.div.onRenderedCode;
+            //    delete this.div.onRendered;
+            //}
 
             if (this.loading) {
                 this.fadeIn();
@@ -867,19 +867,19 @@ class Renderer {
                 
 				this.send(JSON.stringify({ Case: "Rendered" }));
 
-                var shouldSay = this.div.getAttribute("onRendered");
-                if (shouldSay) {
-                    if (this.div.onRenderedCode != shouldSay) {
-                        this.div.onRenderedCode = shouldSay;
-                        var f = new Function(shouldSay);
-                        this.div.onRendered = f.bind(this.div);
-                    }
-                    this.div.onRendered();
-                }
-                else {
-                    delete this.div.onRenderedCode;
-                    delete this.div.onRendered;
-                }
+                //var shouldSay = this.div.getAttribute("onRendered");
+                //if (shouldSay) {
+                //    if (this.div.onRenderedCode != shouldSay) {
+                //        this.div.onRenderedCode = shouldSay;
+                //        var f = new Function(shouldSay);
+                //        this.div.onRendered = f.bind(this.div);
+                //    }
+                //    this.div.onRendered();
+                //}
+                //else {
+                //    delete this.div.onRenderedCode;
+                //    delete this.div.onRendered;
+                //}
 
                 if (this.loading) {
                     this.fadeIn();

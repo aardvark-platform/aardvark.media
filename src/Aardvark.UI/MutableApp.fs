@@ -94,7 +94,7 @@ module MutableApp =
         ThreadPoolAdjustment.adjust ()
 
         let sceneStore =
-            ConcurrentDictionary<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>()
+            ConcurrentDictionary<string, Scene * Option<SceneMessages<'msg>> * (ClientInfo -> ClientState)>()
 
         let compressor =
             if useGpuCompression then new JpegCompressor(runtime) |> Some
@@ -112,8 +112,8 @@ module MutableApp =
                     match sceneStore.TryGetValue clientInfo.sceneName with
                         | (true, (scene, update, cam)) -> 
                             match update with
-                                | Some update -> 
-                                    let msgs = update clientInfo
+                                | Some sceneMessages -> 
+                                    let msgs = sceneMessages.preRender clientInfo
                                     if not (Seq.isEmpty msgs) then
                                         app.updateSync clientInfo.session msgs
                                 | None ->
@@ -122,6 +122,20 @@ module MutableApp =
                             Some (cam clientInfo)
                         | _ -> 
                             None
+
+                rendered = fun clientInfo ->
+                    match sceneStore.TryGetValue clientInfo.sceneName with
+                        | (true, (scene, update, cam)) -> 
+                            match update with
+                                | Some sceneMessages -> 
+                                    let msgs = sceneMessages.postRender clientInfo
+                                    if not (Seq.isEmpty msgs) then
+                                        app.updateSync clientInfo.session msgs
+                                | None ->
+                                    ()
+                        | _ ->
+                            ()
+                    
 
                 compressor = compressor
 

@@ -36,10 +36,25 @@ module Updaters =
             }
 
     type RootHandlers<'msg> = Dictionary<string * string, Guid -> string -> list<string> -> seq<'msg>>
+    
+    type SceneMessages<'msg> =
+        {
+            preRender : ClientInfo -> seq<'msg>
+            postRender : ClientInfo -> seq<'msg>
+        }
+
+    module SceneMessages =
+        let map (mapping : 'a -> 'b) (msgs : SceneMessages<'a>) =
+            { 
+                preRender = msgs.preRender >> Seq.map mapping
+                postRender = msgs.postRender >> Seq.map mapping
+            }
+            
+
 
     type UpdateState<'msg> =
         {
-            scenes              : ContraDict<string, Scene * Option<ClientInfo -> seq<'msg>> * (ClientInfo -> ClientState)>
+            scenes              : ContraDict<string, Scene * Option<SceneMessages<'msg>> * (ClientInfo -> ClientState)>
             handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
             references          : Dictionary<string * ReferenceKind, Reference>
             activeChannels      : Dict<string * string, ChannelReader>
@@ -454,26 +469,42 @@ module Updaters =
             att.Dispose()
             inner
             
+
     and SceneUpdater<'msg>(e : SceneNode<'msg>) as this =
         inherit AbstractUpdater<'msg>(e)
             
         let mutable initial = true
         let att = new AttributeUpdater<_>(e.Attributes)
 
-        let renderMessage (info : ClientInfo) =
-            let attributes = e.Attributes.Content.GetValue()
-            match HashMap.tryFind "preRender" attributes with
-                | Some (AttributeValue.Event evt) ->
-                    evt.serverSide info.session this.Id.Value []
-                | _ ->
-                    Seq.empty
+        let sceneMessages =
+            { 
+                preRender = fun (info : ClientInfo) ->
+                    let attributes = e.Attributes.Content.GetValue()
+                    let keys = ["preRender"; "prerender"]
+                    match keys |> List.tryPick (fun k -> HashMap.tryFind k attributes) with
+                        | Some (AttributeValue.Event evt) ->
+                            evt.serverSide info.session this.Id.Value [Pickler.json.PickleToString info.size]
+                        | _ ->
+                            Seq.empty
+                postRender = fun (info : ClientInfo) ->
+                    let attributes = e.Attributes.Content.GetValue()
+
+                    let keys = ["onRendered"; "onRender"; "onrendered"; "onrender"]
+
+                    match keys |> List.tryPick (fun k -> HashMap.tryFind k attributes) with
+                        | Some (AttributeValue.Event evt) ->
+                            evt.serverSide info.session this.Id.Value [Pickler.json.PickleToString info.size]
+                        | _ ->
+                            Seq.empty
+            }
+                    
                     
         override x.CreateElement = Some ("div", None)
 
         override x.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
             if initial then
                 initial <- false
-                state.scenes.[x.Id.Value] <- (e.Scene, Some renderMessage, e.GetClientState)
+                state.scenes.[x.Id.Value] <- (e.Scene, Some sceneMessages, e.GetClientState)
                     
             let id = x.Id.Value
             att.Update(token, state, id, self)
@@ -528,7 +559,7 @@ module Updaters =
             | None ->
                 let subject = new System.Reactive.Subjects.Subject<'inner>()
                 let innerState =
-                    let test = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f -> f >> Seq.map m.Mapping)), getState))
+                    let test = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (SceneMessages.map m.Mapping)), getState))
                     {
                         scenes              = test
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
@@ -581,9 +612,24 @@ module Updaters =
             | Some c -> c
             | None ->
                 let subject = new System.Reactive.Subjects.Subject<'inner>()
+
+                let sceneMessages (_scene : Scene) (msgs : option<SceneMessages<'inner>>) (_getState : ClientInfo -> ClientState) : option<SceneMessages<'outer>> =
+                    match msgs with
+                    | Some msgs -> 
+                        Some
+                            { 
+                                preRender = fun (v : ClientInfo) ->
+                                    msgs.preRender v |> processMsgs v.session
+                                postRender = fun (v : ClientInfo) ->
+                                    msgs.postRender v |> processMsgs v.session
+                            }
+                    | None ->
+                        None
+                    
+
                 let innerState =
                     {
-                        scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (fun f v -> let model = m.model.GetValue() in v |> f |> processMsgs v.session)), getState))
+                        scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, sceneMessages scene msg getState, getState))
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
                         references          = state.references
                         activeChannels      = state.activeChannels

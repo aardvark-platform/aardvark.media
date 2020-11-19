@@ -565,6 +565,7 @@ type Server =
         runtime         : IRuntime
         content         : string -> Option<Scene>
         getState        : ClientInfo -> Option<ClientState>
+        rendered        : ClientInfo -> unit
         compressor      : Option<JpegCompressor>
         fileSystemRoot  : Option<string>
     }
@@ -1781,15 +1782,16 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
 
 type internal ClientCreateInfo =
     {
-        server          : Server
-        session         : Guid
-        id              : string
-        sceneName       : string
-        samples         : int
-        socket          : WebSocket
-        useMapping      : bool
-        getSignature    : int -> IFramebufferSignature
-        targetQuality   : RenderQuality
+        server              : Server
+        session             : Guid
+        id                  : string
+        sceneName           : string
+        samples             : int
+        socket              : WebSocket
+        useMapping          : bool
+        getSignature        : int -> IFramebufferSignature
+        targetQuality       : RenderQuality
+        maxFramesInCloud    : int
     }
 
 type private DummyObject() =
@@ -1806,7 +1808,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let id = Interlocked.Increment(&currentId)
     let sender = DummyObject()
-    let requestedSize : MVar<C4b * V2i> = MVar.empty()
+    let mutable requestedSize = V2i.II
+    let mutable requestedBackground = C4b.Black
+    let framesInCloud = new SemaphoreSlim(createInfo.maxFramesInCloud)
+
     let mutable createInfo = createInfo
     let mutable task = newTask createInfo getContent
     let mutable running = false
@@ -1842,7 +1847,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             session = createInfo.session
             samples = createInfo.samples
             quality = createInfo.targetQuality
-            size = V2i.II
+            size = V2i.Zero
             time = MicroTime.Now
             clearColor = C4f.Black
         }
@@ -1851,41 +1856,82 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
 
     let renderLoop() =
-        while running do
-            let (background, size) = MVar.take requestedSize
+        use mm = new MultimediaTimer.Trigger(1)
+        let sw = System.Diagnostics.Stopwatch()
+
+        let tooFast() =
+            if sw.IsRunning then
+                let fps = 1.0 / (sw.Elapsed.TotalSeconds + 0.0005)
+                fps > info.quality.framerate
+            else
+                false
+
+        let mutable lastSize = V2i.Zero
+        let mutable lastBackground = C4b.Black
+        //let mutable frameCount = 0
+        //let mutable sumTimes = MicroTime.Zero
+        while running do 
+            let background = requestedBackground
+            let size = requestedSize
+
+           
+
             if size.AllGreater 0 then
-                lock updateLock (fun () ->
-                    sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                        let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
-                        try
-                            let state = getState info
-                            let data = task.Run(token, info, state)
-                            match data with
-                                | Jpeg data -> 
-                                    let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
-                                    match res with
-                                        | Choice1Of2() -> ()
-                                        | Choice2Of2 err ->
-                                            running <- false
-                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
-                                | Png data -> 
-                                    Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
+                while tooFast() do mm.Wait()
+                //if sw.IsRunning then
+                //    sumTimes <- sumTimes + sw.MicroTime
+                //    frameCount <- frameCount + 1
+                sw.Restart()
+
+                //if sumTimes > MicroTime.Second && frameCount > 0 then
+                //    printfn "%A" (sumTimes / frameCount)
+                //    sumTimes <- MicroTime.Zero
+                //    frameCount <- 0
+
+
+                let rendered = 
+                    lock updateLock (fun () ->
+                        sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                            if sender.OutOfDate || lastSize <> size || lastBackground <> background then
+                                framesInCloud.Wait()
+                                lastBackground <- background
+                                lastSize <- size
+
+                                let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
+                                try
+                                    let state = getState info
+                                    let data = task.Run(token, info, state)
+
+                                    match data with
+                                        | Jpeg data -> 
+                                            let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
+                                            match res with
+                                                | Choice1Of2() -> ()
+                                                | Choice2Of2 err ->
+                                                    running <- false
+                                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                        | Png data -> 
+                                            Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
                                 
-                                | Mapping img ->
-                                    let data = Pickler.json.Pickle img
-                                    let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
-                                    match res with
-                                        | Choice1Of2() -> ()
-                                        | Choice2Of2 err ->
-                                            running <- false
-                                            Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                        | Mapping img ->
+                                            let data = Pickler.json.Pickle img
+                                            let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
+                                            match res with
+                                                | Choice1Of2() -> ()
+                                                | Choice2Of2 err ->
+                                                    running <- false
+                                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
                                     
-                        with e ->
-                            running <- false
-                            Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
-                    
+                                with e ->
+                                    running <- false
+                                    Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
+                                true
+                            else
+                                false
+                        )
                     )
-                )
+                if rendered then
+                    createInfo.server.rendered info
 
                 
 
@@ -1914,7 +1960,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             task.Dispose()
             subscription.Dispose()
             running <- false
-            MVar.put requestedSize (C4b.Black, V2i.Zero)
+            requestedSize <- V2i.Zero
+            requestedBackground <- C4b.Black
             frameCount <- 0
             roundTripTime.Reset()
             invalidateTime.Reset()
@@ -1947,7 +1994,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         | RequestImage(background, size) ->
                                             invalidateTime.Stop()
                                             roundTripTime.Start()
-                                            MVar.put requestedSize (background, size)
+                                            requestedSize <- size
+                                            requestedBackground <- background
 
                                         | RequestWorldPosition pixel ->
                                             let wp = 
@@ -1960,6 +2008,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         | Rendered ->
                                             roundTripTime.Stop()
                                             frameCount <- frameCount + 1
+                                            framesInCloud.Release() |> ignore
 
                                         | Shutdown ->
                                             running <- false
@@ -2046,6 +2095,7 @@ module Server =
             runtime = r
             content = fun _ -> None
             getState = fun _ -> None
+            rendered = fun _ -> ()
             compressor = compressor
             fileSystemRoot = None
         }
@@ -2139,17 +2189,20 @@ module Server =
                                 RenderQuality.full.quality
                     | _ -> RenderQuality.full.quality
 
+            // TODO: get scale/framerate/maxFramesInCloud from attributes
+
             let createInfo =
                 {
-                    server          = info
-                    session         = sessionId
-                    id              = targetId
-                    sceneName       = sceneName
-                    samples         = samples
-                    targetQuality   = { RenderQuality.full with quality = quality }
-                    socket          = ws
-                    useMapping      = useMapping
-                    getSignature    = getSignature
+                    server              = info
+                    session             = sessionId
+                    id                  = targetId
+                    sceneName           = sceneName
+                    samples             = samples
+                    targetQuality       = { RenderQuality.full with quality = quality }
+                    socket              = ws
+                    useMapping          = useMapping
+                    getSignature        = getSignature
+                    maxFramesInCloud    = 16
                 }            
 
             let client = 
