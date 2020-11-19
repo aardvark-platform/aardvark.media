@@ -1894,7 +1894,8 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         let mutable lastBackground = C4b.Black
         let mutable frameCount = 0
         let mutable lastQualityChange = 0
-        //let mutable sumTimes = MicroTime.Zero
+
+        let mutable continuousCount = 0
         while running do 
             let background = requestedBackground
             let size = requestedSize
@@ -1902,13 +1903,14 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
            
 
             if size.AllGreater 0 then
+                
                 while tooFast() do mm.Wait()
                 sw.Restart()
 
 
                 if sender.OutOfDate || lastSize <> size || lastBackground <> background then
-                    if frameCount > lastQualityChange + 60 then
-                        lastQualityChange <- frameCount
+                    if continuousCount > lastQualityChange + 20 then
+                        lastQualityChange <- continuousCount
                         let inCloud = int createInfo.targetQuality.framerate - framesInCloud.CurrentCount //int info.quality.framerate
                         let expected = ping.TotalSeconds * createInfo.targetQuality.framerate
 
@@ -1963,6 +1965,9 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
                     createInfo.server.rendered info
                 
+                    continuousCount <- continuousCount + 1
+                else
+                    continuousCount <- 0
 
 
     let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)

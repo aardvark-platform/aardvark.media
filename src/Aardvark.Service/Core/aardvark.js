@@ -151,7 +151,8 @@ class Renderer {
         this.id = id;
         this.div = document.getElementById(id);
 
-        this.mbit = 1000;
+        this.mbit = 8192;
+        this.latency = 0;
 
         var scene = this.div.getAttribute("data-scene");
         if (!scene) scene = id;
@@ -196,6 +197,11 @@ class Renderer {
         this.renderAlways = renderAlways;
 
         this.init();
+    }
+
+    delay(action, time) {
+        if (time <= 0.0) action();
+        else setTimeout(action, time);
     }
 
     createLoader() {
@@ -256,11 +262,6 @@ class Renderer {
         var roundtripTimeSum = 0.0;
         var roundtripTime = 2.0;
 
-
-        var delayed = function (action) {
-            action();
-            //setTimeout(action, 30);
-        };
 
         var handleCommand = function (data) {
             if (data.startsWith("#pong_")) {
@@ -356,14 +357,14 @@ class Renderer {
                 };
 
                 socket.onmessage = function (msg) {
-                    delayed(function () {
+                    self.delay(function () {
                         if (typeof msg.data === "string" && msg.data.startsWith("#")) {
                             handleCommand(msg.data);
                         }
                         else {
                             self.received(msg);
                         }
-                    });
+                    }, self.latency);
                 };
 
                 socket.onclose = function () {
@@ -439,14 +440,14 @@ class Renderer {
                 };
 
                 socket.onmessage = function (msg) {
-                    delayed(function () {
+                    self.delay(function () {
                         if (typeof msg.data === "string" && msg.data.startsWith("#")) {
                             handleCommand(msg.data);
                         }
                         else {
                             self.received(msg);
                         }
-                    });
+                    }, self.latency);
                 };
 
                 socket.onclose = function () {
@@ -801,18 +802,29 @@ class Renderer {
             if (this.loading) {
                 this.div.addEventListener("keydown", function (evt) {
                     if (evt.keyCode === 57) {
-                        self.mbit *= 0.5; console.log(self.mbit);
+                        self.mbit *= 0.5;
+                        console.log("sim: " + self.mbit.toFixed(2) + "mbit/s");
                     }
                     else if (evt.keyCode === 48) {
-                        self.mbit *= 2.0; console.log(self.mbit);
+                        self.mbit *= 2.0;
+                        console.log("sim: " + self.mbit.toFixed(2) + "mbit/s");
+                    }
+                    else if (evt.keyCode === 56) {
+                        self.latency += 2.0;
+                        console.log("ping: " + self.latency.toFixed(1) + "ms");
+                    }
+                    else if (evt.keyCode === 55) {
+                        self.latency -= 2.0;
+                        if (self.latency < 0.0) self.latency = 0.0;
+                        console.log("ping: " + self.latency.toFixed(1) + "ms");
                     }
                 });
 
             }
-            let sleepTime = 1000.0 * (msg.data.size * 8) / (self.mbit * 1000000);
+            let sleepTime = 1000.0 * (msg.data.size * 8) / (self.mbit * 1048576);
             if (sleepTime < 10) sleepTime = 0;
 
-            setTimeout(function () {
+            self.delay(function () {
                 var oldUrl = self.img.src;
                 self.img.src = urlCreator.createObjectURL(msg.data);
                 delete msg.data;
