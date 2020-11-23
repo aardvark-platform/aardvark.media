@@ -53,7 +53,7 @@ let update (model : Model) (msg : Message) =
                     Animation.lerp (C4d model.color) (if model.color = C4b.Green then C4d.Red else C4d.Green)
                     |> Animation.map C4b
                     |> Animation.link Model.color_
-                    |> Animation.seconds 0.5
+                    |> Animation.seconds 5
                     |> Animation.ease (Easing.InOut EasingFunction.Cubic)
                     |> Animation.onStart (fun _ ->      Log.warn "[Color] started")
                     |> Animation.onStop (fun _ ->       Log.warn "[Color] stopped")
@@ -73,14 +73,14 @@ let update (model : Model) (msg : Message) =
                     |> Animation.ease (Easing.InOut EasingFunction.Sine)
 
                 let rotZ =
-                    model |> Animation.lerpTo Model.rotationZ_ (if model.rotationZ = 0.0 then Constant.PiTimesTwo else 0.0)
-                    |> Animation.seconds 4
+                    model |> Animation.lerpAngleTo Model.rotationZ_ (if model.rotationZ = 0.0f then (-ConstantF.PiHalf + ConstantF.PiTimesTwo) else 0.0f)
+                    |> Animation.seconds 2
                     |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
                     |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
                     |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
 
                 (rotX, rotZ) ||> Animation.map2 (fun roll yaw ->
-                    Rot3d.RotationEuler(roll, 0.0, yaw)
+                    Rot3d.RotationEuler(roll, 0.0, float yaw)
                 )
                 |> Animation.link Model.rotation_
                 |> Animation.onStart (fun _ ->      Log.warn "[Rotation] started")
@@ -183,7 +183,7 @@ let app =
                color = C4b.Green
                rotation = Rot3d.Identity
                rotationX = 0.0
-               rotationZ = 0.0
+               rotationZ = 0.0f
                animator = Animator.initial Model.animator_
             }
         update = update

@@ -13,7 +13,7 @@ type Model =
         background : C4b
         color : C4b
         rotationX : float
-        rotationZ : float
+        rotationZ : float32
         rotation : Rot3d
         animator : Animator<Model>
     }
