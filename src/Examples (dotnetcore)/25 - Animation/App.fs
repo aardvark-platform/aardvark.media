@@ -11,6 +11,8 @@ open RenderControl.Model
 
 open System.Diagnostics
 
+open Aether
+open Aether.Operators
 
 let initialCamera = {
         FreeFlyController.initial with
@@ -46,34 +48,26 @@ let update (model : Model) (msg : Message) =
                 |> Observer.onResume (fun _ ->     Log.warn "[Group] resumed")
 
             let colorAnimation =
-
-                let rec dewit model =
-                    //model
-                    //|> Animation.lerpTo Model.color_ (if model.color = C4b.Green then C4b.Red else C4b.Green)
-                    Animation.lerp (C4d model.color) (if model.color = C4b.Green then C4d.Red else C4d.Green)
-                    |> Animation.map C4b
-                    |> Animation.link Model.color_
-                    |> Animation.seconds 5
-                    |> Animation.ease (Easing.InOut EasingFunction.Cubic)
-                    |> Animation.onStart (fun _ ->      Log.warn "[Color] started")
-                    |> Animation.onStop (fun _ ->       Log.warn "[Color] stopped")
-                    |> Animation.onPause (fun _ ->      Log.warn "[Color] paused")
-                    |> Animation.onResume (fun _ ->     Log.warn "[Color] resumed")
-                    |> Animation.onFinalize (Log.warn "[Color] finished: %A")
-                    |> Animation.onFinalize' (fun name _ model ->
-                        model |> Animator.set name (dewit model)
-                    )
-
-                dewit model
+                Animation.Primitives.lerp (C4d model.color) (if model.color = C4b.Green then C4d.Red else C4d.Green)
+                |> Animation.map C4b
+                |> Animation.link Model.color_
+                |> Animation.seconds 5
+                |> Animation.ease (Easing.InOut EasingFunction.Cubic)
+                |> Animation.onStart (fun _ ->      Log.warn "[Color] started")
+                |> Animation.onStop (fun _ ->       Log.warn "[Color] stopped")
+                |> Animation.onPause (fun _ ->      Log.warn "[Color] paused")
+                |> Animation.onResume (fun _ ->     Log.warn "[Color] resumed")
+                |> Animation.onFinalize (Log.warn "[Color] finished: %A")
+                |> Animation.loop LoopMode.Mirror
 
             let rotationAnimation =
                 let rotX =
-                    model |> Animation.lerpTo Model.rotationX_ (if model.rotationX = 0.0 then Constant.Pi else 0.0)
+                    model |> Animation.Primitives.lerpTo Model.rotationX_ (if model.rotationX = 0.0 then Constant.Pi else 0.0)
                     |> Animation.seconds 2
                     |> Animation.ease (Easing.InOut EasingFunction.Sine)
 
                 let rotZ =
-                    model |> Animation.lerpAngleTo Model.rotationZ_ (if model.rotationZ = 0.0f then (-ConstantF.PiHalf + ConstantF.PiTimesTwo) else 0.0f)
+                    model |> Animation.Primitives.lerpAngleTo Model.rotationZ_ (if model.rotationZ = 0.0f then (-ConstantF.PiHalf + ConstantF.PiTimesTwo) else 0.0f)
                     |> Animation.seconds 2
                     |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
                     |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
@@ -88,12 +82,37 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onPause (fun _ ->      Log.warn "[Rotation] paused")
                 |> Animation.onResume (fun _ ->     Log.warn "[Rotation] resumed")
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Rotation] finished")
+                |> Animation.loop LoopMode.Mirror
+
+
+            let cameraAnimation =
+                let lens = Model.cameraState_ >-> CameraControllerState.view_
+                let view1 = initialCamera.view
+                let view2 = CameraView.lookAt (V3d(-3.0, 12.0, 6.0)) V3d.OOO V3d.OOI
+                let view3 = CameraView.lookAt (V3d(-5.0, -16.0, 2.0)) V3d.OOO V3d.OOI
+
+                let rec next model =
+                    let src = model |> Optic.get lens
+                    let dst =
+                        if src.Location = view1.Location then view2
+                        elif src.Location = view2.Location then view3
+                        elif src.Location = view3.Location then view1
+                        else view2
+
+                    model |> Animation.Camera.interpolateTo lens dst
+                    |> Animation.seconds 2
+                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
+                    |> Animation.onFinalize' (fun name _ model ->
+                        model |> Animator.set name (next model)
+                    )
+
+                next model
 
             let animation =
-                [colorAnimation] |> Animation.ofList
+                cameraAnimation
                 |> Animation.andAlso rotationAnimation
+                |> Animation.andAlso colorAnimation
                 |> Animation.subscribe timer
-                |> Animation.loop LoopMode.Mirror
 
 
             model |> Animator.set animSym animation
@@ -106,14 +125,27 @@ let update (model : Model) (msg : Message) =
         model |> Animator.update msg
 
 let viewScene (model : AdaptiveModel) =
-    Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.Zero, V3d.One))
-    |> Sg.uniform "Color" model.color
-    |> Sg.trafo (model.rotation |> AVal.map Trafo3d)
-    |> Sg.shader {
-        do! DefaultSurfaces.trafo
-        do! DefaultSurfaces.sgColor
-        do! DefaultSurfaces.simpleLighting
-    }
+    let floor =
+        Sg.quad
+        |> Sg.diffuseTexture DefaultTextures.checkerboard
+        |> Sg.scale 10.0
+        |> Sg.translate 0.0 0.0 -2.0
+        |> Sg.shader {
+            do! DefaultSurfaces.trafo
+            do! DefaultSurfaces.diffuseTexture
+        }
+
+    let box =
+        Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.Zero, V3d.One))
+        |> Sg.uniform "Color" model.color
+        |> Sg.trafo (model.rotation |> AVal.map Trafo3d)
+        |> Sg.shader {
+            do! DefaultSurfaces.trafo
+            do! DefaultSurfaces.sgColor
+            do! DefaultSurfaces.simpleLighting
+        }
+
+    Sg.ofList [floor; box]
 
 
 let view (model : AdaptiveModel) =
