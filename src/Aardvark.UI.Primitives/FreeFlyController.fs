@@ -294,7 +294,7 @@ module FreeFlyController =
     do sw.Start()
 
     let withTime (model : CameraControllerState) =
-        { model with lastTime = Some sw.Elapsed.TotalSeconds; view = model.view.WithLocation(model.view.Location) }
+        { model with lastTime = Some sw.Elapsed.TotalSeconds }
 
     let dummyChange (model : CameraControllerState) =
         { model with view = model.view.WithLocation(model.view.Location) }
@@ -413,25 +413,31 @@ module FreeFlyController =
                             dWorldUp =      dWorldUp
                         }, shouldNotAnimate
 
-                let model = 
+                let shouldNotAnimate =
+                     model.rotateVec.AllTiny &&
+                     model.moveVec.AllTiny &&
+                     model.targetPhiTheta = V2d.Zero &&
+                     model.targetPan.Length <= 0.05 &&
+                     abs model.targetDolly <= 0.05 &&
+                     abs model.targetZoom <= 0.05 &&
+                     jump model |> snd
+
+                let integrate model =
                     match model.lastTime with
-                        | Some last ->
-                            let dt = now - last
-                            let step = Aardvark.UI.Primitives.Integrator.rungeKutta (fun t s -> move s + look s + pan s + dolly s + zoom s + (jump s |> fst))
+                    | Some last ->
+                        let dt = now - last
+                        let step = Aardvark.UI.Primitives.Integrator.rungeKutta (fun t s -> move s + look s + pan s + dolly s + zoom s + (jump s |> fst))
 
-                            Aardvark.UI.Primitives.Integrator.integrate 0.0166666 step model dt
+                        Aardvark.UI.Primitives.Integrator.integrate 0.0166666 step model dt
 
-                        | None -> 
-                            model
-                     
-                if model.rotateVec.AllTiny && model.moveVec.AllTiny && model.targetPhiTheta = V2d.Zero && (model.targetPan.Length <= 0.05) && (abs model.targetDolly <= 0.05) && (abs model.targetZoom <= 0.05) && (jump model |> snd) then
+                    | None ->
+                        model
+
+                if shouldNotAnimate then
                     stopAnimation model
                 else
-                    let model = 
-                        { model with lastTime = Some now; }
-                    if model.animating then 
-                        { model with lastTime = Some now; } |> dummyChange 
-                    else model 
+                    { integrate model with lastTime = Some now }
+                    |> if model.animating then dummyChange else id
 
             | KeyDown Keys.W ->
                 if not model.forward then
@@ -577,14 +583,13 @@ module FreeFlyController =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
             always (onCapturedPointerDown (Some 2) (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f Nop))
-            onlyWhen (state.look %|| state.pan %|| state.dolly %|| state.zoom) (onMouseUp (fun b p -> f (Up b)))
-            always (onKeyDown (KeyDown >> f))
-            always (onKeyUp (KeyUp >> f))           
-            always (onWheelPrevent true (fun x -> f (Wheel x)))
             always (onCapturedPointerUp (Some 2) (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f Nop))
             onlyWhen 
                 (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
                 (onCapturedPointerMove (Some 2) (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
+            always (onKeyDown (KeyDown >> f))
+            always (onKeyUp (KeyUp >> f))
+            always (onWheelPrevent true (fun x -> f (Wheel x)))
             always <| onEvent "onRendered" [] (fun _ -> f Rendered)
             always <| onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick |> f)
             always <| onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick |> f)
