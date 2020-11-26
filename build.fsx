@@ -9,7 +9,10 @@ open Aardvark.Fake
 
 do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
-DefaultSetup.install ["src/Aardvark.Media.sln"]
+if RuntimeInformation.IsOSPlatform OSPlatform.Windows then
+    DefaultSetup.install ["src/Aardvark.Media.sln"]
+else
+    DefaultSetup.install ["src/Aardvark.Media.NonWindows.sln"]
 
 
 entry()
