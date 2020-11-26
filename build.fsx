@@ -6,6 +6,7 @@ open System
 open System.IO
 open System.Diagnostics
 open Aardvark.Fake
+open System.Runtime.InteropServices
 
 do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
