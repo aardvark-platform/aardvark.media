@@ -84,6 +84,11 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Rotation] finished")
                 |> Animation.loop LoopMode.Mirror
 
+            let positionAnimation =
+                model |> Animation.Primitives.lerpTo Model.position_ (if model.position = V3d.NPN then V3d.PNP else V3d.NPN)
+                |> Animation.seconds 1
+                |> Animation.ease (Easing.InOut EasingFunction.Cubic)
+                |> Animation.loop LoopMode.Mirror
 
             let cameraAnimation =
                 let lens = Model.cameraState_ >-> CameraControllerState.view_
@@ -110,6 +115,7 @@ let update (model : Model) (msg : Message) =
 
             let animation =
                 cameraAnimation
+                |> Animation.andAlso positionAnimation
                 |> Animation.andAlso rotationAnimation
                 |> Animation.andAlso colorAnimation
                 |> Animation.subscribe timer
@@ -139,6 +145,7 @@ let viewScene (model : AdaptiveModel) =
         Sg.box' C4b.White (Box3d.FromCenterAndSize(V3d.Zero, V3d.One))
         |> Sg.uniform "Color" model.color
         |> Sg.trafo (model.rotation |> AVal.map Trafo3d)
+        |> Sg.translation model.position
         |> Sg.shader {
             do! DefaultSurfaces.trafo
             do! DefaultSurfaces.sgColor
@@ -159,6 +166,7 @@ let view (model : AdaptiveModel) =
                         //attribute "showLoader" "false"    // optional, default is true
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
                         always <| attribute "data-samples" "8"        // optional, default is 1
+                        always <| onEvent "onRendered" [] (fun _ -> Animation AnimatorMessage.Tick)
                     ])
             (viewScene model)
 
@@ -216,6 +224,7 @@ let app =
                rotation = Rot3d.Identity
                rotationX = 0.0
                rotationZ = 0.0f
+               position = V3d.NPN
                animator = Animator.initial Model.animator_
             }
         update = update

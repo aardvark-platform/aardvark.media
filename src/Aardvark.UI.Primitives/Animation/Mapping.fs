@@ -77,11 +77,15 @@ type private Mapping<'Model, 'T, 'U> =
         let events =
             (x.CurrentState, input.State) ||> Events.compute |> List.sort
 
-        let notify model event =
+        let notify value model event =
             (model, x.Observers |> HashMap.toSeq)
-            ||> Seq.fold (fun model (_, obs) -> obs.OnNext(model, name, event, x.Mapping.Invoke input.Value))
+            ||> Seq.fold (fun model (_, obs) -> obs.OnNext(model, name, event, value))
 
-        (model, events) ||> Seq.fold notify
+        if List.isEmpty events then
+            model
+        else
+            let value = x.Mapping.Invoke(input.Value)
+            (model, events) ||> Seq.fold (notify value)
 
     interface IAnimation<'Model> with
         member x.State = x.CurrentState
@@ -209,8 +213,11 @@ type private Mapping2<'Model, 'T1, 'T2, 'U> =
             (model, x.Observers |> HashMap.toSeq)
             ||> Seq.fold (fun model (_, obs) -> obs.OnNext(model, name, event, value))
 
-        let value = x.Mapping.Invoke(inputA.Value, inputB.Value)
-        (model, events) ||> Seq.fold (notify value)
+        if List.isEmpty events then
+            model
+        else
+            let value = x.Mapping.Invoke(inputA.Value, inputB.Value)
+            (model, events) ||> Seq.fold (notify value)
 
     interface IAnimation<'Model> with
         member x.State = x.State

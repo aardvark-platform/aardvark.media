@@ -9,6 +9,8 @@ type Animator<'Model> =
     {
         Animations : HashMap<Symbol, IAnimation<'Model>>
         TickRate : int
+        [<NonAdaptive>]
+        TickCount : int ref
     }
 
 [<RequireQualifiedAccess>]

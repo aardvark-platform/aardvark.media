@@ -173,6 +173,7 @@ module Animator =
         let tick (lens : Lens<'Model, Animator<'Model>>) (model : 'Model) =
 
             let lensAnim = lens >-> lensAnim
+            let lensTickCount= lens >-> Animator.TickCount_
 
             let update (animations : HashMap<Symbol, IAnimation<'Model>>) =
                 animations |> HashMap.map (fun _ a -> a.Update <| Time.get())
@@ -185,6 +186,7 @@ module Animator =
             |> Optic.map lensAnim update
             |> notifyAll lens
             |> Optic.map lensAnim remove
+            |> Optic.map lensTickCount (fun x -> incr x; x)
 
     /// Processes animation messages.
     let update (msg : AnimatorMessage<'Model>) (model : 'Model) =
@@ -266,20 +268,33 @@ module Animator =
         lens |> Lenses.set
         {
             Animations = HashMap.empty
-            TickRate = 100
+            TickRate = 60
+            TickCount = ref 0
         }
 
-    /// Thread pool that generates tick messages
-    // NOTE: very naive, tick rate probably not accurate
+    /// Thread pool that generates tick messages in case no ticks have been processed.
+    /// Tick messages are generated on demand, because optimally the animations are updated on Rendered messages.
+    /// This thread pool makes sure animations are updated when the scene does not change (e.g. when starting or resuming animations).
+    // NOTE: very naive, tick rate not accurate
     let threads (model : Animator<'Model>) =
+        let timestep = 1000 / model.TickRate
+        let mutable lastTick = !model.TickCount
+
         let rec time() =
             proclist {
-                do! Proc.Sleep(1000 / int model.TickRate)
-                yield AnimatorMessage.Tick
+                do! Proc.Sleep(timestep)
+
+                let tick = !model.TickCount
+
+                if lastTick = tick then
+                    yield AnimatorMessage.Tick
+                else
+                    lastTick <- tick
+
                 yield! time()
             }
 
-        if model.Animations.IsEmpty then
-            ThreadPool.empty
-        else
+        if model.Animations |> HashMap.exists (fun _ a -> a.IsRunning) then
             ThreadPool.add "animationTicks" (time()) ThreadPool.empty
+        else
+            ThreadPool.empty

@@ -15,6 +15,7 @@ type Model =
         rotationX : float
         rotationZ : float32
         rotation : Rot3d
+        position : V3d
         animator : Animator<Model>
     }
 
