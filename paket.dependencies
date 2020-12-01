@@ -44,9 +44,9 @@ nuget Uncodium.Eigensystems              ~> 1.1.0
 
 nuget Chiron
 
-nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.2.3
-nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.2.3
-nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.2.3
+nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.2.4
+nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.2.4
+nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.2.4
 
 group Build
     framework: netstandard2.0
