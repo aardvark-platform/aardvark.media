@@ -33,7 +33,7 @@ module AnimationCameraPrimitives =
                 )
 
             /// Creates an animation that moves the camera view variable specified by
-            /// the lens to the given location. The animation is linked to that variable.
+            /// the lens to the given location. The animation is linked to that variable via an observer with a progress callback.
             let moveTo (lens : Lens<'Model, CameraView>) (dst : V3d) (model : 'Model) =
                 move dst (model |> Optic.get lens)
                 |> Animation.link lens
@@ -55,7 +55,7 @@ module AnimationCameraPrimitives =
                 )
 
             /// Creates an animation that rotates the camera view variable specified by
-            /// the lens to face the given direction. The animation is linked to that variable.
+            /// the lens to face the given direction. The animation is linked to that variable via an observer with a progress callback.
             let rotateDirTo (lens : Lens<'Model, CameraView>) (normalizedDirection : V3d) (model : 'Model) =
                 rotateDir normalizedDirection (model |> Optic.get lens)
                 |> Animation.link lens
@@ -65,7 +65,7 @@ module AnimationCameraPrimitives =
                 camera |> rotateDir (center - camera.Location |> Vec.normalize)
 
             /// Creates an animation that rotates the camera view variable specified by
-            /// the lens to face towards the given location. The animation is linked to that variable.
+            /// the lens to face towards the given location. The animation is linked to that variable via an observer with a progress callback.
             let rotateTo (lens : Lens<'Model, CameraView>) (center : V3d) (model : 'Model) =
                 rotate center (model |> Optic.get lens)
                 |> Animation.link lens
@@ -79,7 +79,7 @@ module AnimationCameraPrimitives =
                 ||> Animation.map2 (fun pos ori -> CameraView.orient pos ori dst.Sky)
 
             /// Creates an animation that interpolates the camera view variable specified by
-            /// the lens to dst. The animation is linked to that variable.
+            /// the lens to dst. The animation is linked to that variable via an observer with a progress callback.
             let interpolateTo (lens : Lens<'Model, CameraView>) (dst : CameraView) (model : 'Model) =
                 interpolate (model |> Optic.get lens) dst
                 |> Animation.link lens
@@ -94,7 +94,7 @@ module AnimationCameraPrimitives =
                 )
 
             /// Creates an animation that orbits the camera view variable specified by
-            /// the lens around the center and axis by the given angle. The animation is linked to that variable.
+            /// the lens around the center and axis by the given angle. The animation is linked to that variable via an observer with a progress callback.
             let orbitTo (lens : Lens<'Model, CameraView>) (center : V3d) (normalizedAxis : V3d) (angleInRadians : float) (model : 'Model) =
                 orbit center normalizedAxis angleInRadians (model |> Optic.get lens)
                 |> Animation.link lens
@@ -114,7 +114,7 @@ module AnimationCameraPrimitives =
                 )
 
             /// Creates an animation that orbits the camera view variable specified by
-            /// the lens around the center and axis by the given angle. The animation is linked to that variable.
+            /// the lens around the center and axis by the given angle. The animation is linked to that variable via an observer with a progress callback.
             let orbitTo' (lens : Lens<'Model, CameraView>) (center : IAnimation<'Model, V3d>) (normalizedAxis : V3d) (angleInRadians : float) (model : 'Model) =
                 orbit' center normalizedAxis angleInRadians (model |> Optic.get lens)
                 |> Animation.link lens

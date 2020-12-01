@@ -62,7 +62,7 @@ module AnimationPrimitives =
                 |> Animation.seconds 1
 
             /// Creates an animation that linearly interpolates the variable specified by
-            /// the lens to dst. The animation is linked to that variable.
+            /// the lens to dst. The animation is linked to that variable via an observer with a progress callback.
             let inline lerpTo (lens : Lens<'Model, ^Value>) (dst : ^Value) (model : 'Model) =
                 lerp (model |> Optic.get lens) dst
                 |> Animation.link lens
@@ -78,7 +78,7 @@ module AnimationPrimitives =
                 |> Animation.map (fun value -> ofDouble <| value % Constant.PiTimesTwo)
 
             /// Creates an animation that linearly interpolates the variable specified by
-            /// the lens to the given angle in radians. The animation is linked to that variable.
+            /// the lens to the given angle in radians. The animation is linked to that variable via an observer with a progress callback.
             /// The value type can be either float or float32.
             let inline lerpAngleTo (lens : Lens<'Model, ^Value>) (dstInRadians : ^Value) (model : 'Model) =
                 lerpAngle (model |> Optic.get lens) dstInRadians
@@ -95,7 +95,7 @@ module AnimationPrimitives =
                 |> Animation.map (ofRot3d)
 
             /// Creates an animation using spherical linear interpolation.
-            /// The animation is linked to the variable specified by the given lens.
+            /// The animation is linked to the variable specified by the given lens via an observer with a progress callback.
             /// The orientation type can be either Rot3d or Rot3f.
             let inline slerpTo (lens : Lens<'Model, ^Rot3>) (dst : ^Rot3) (model : 'Model) =
                 slerp (model |> Optic.get lens) dst
