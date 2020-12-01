@@ -9,6 +9,7 @@ module Cef =
 
     let mutable private initialized = false
     let mutable private tearedDown = false
+    let mutable ProcessPath = Some "Aardvark.Cef.Process.exe"
 
     let getArgs() =
         let args = Environment.GetCommandLineArgs()
@@ -31,7 +32,11 @@ module Cef =
                 System.Environment.Exit(0)
 
             let settings = CefSettings()
-            settings.BrowserSubprocessPath <- "Aardvark.Cef.Process.exe"
+            match ProcessPath with
+            | Some p -> 
+                settings.BrowserSubprocessPath <- p
+            | _ -> ()
+
             settings.MultiThreadedMessageLoop <- CefRuntime.Platform = CefRuntimePlatform.Windows
             settings.NoSandbox <- true
             let path = Path.Combine(System.Environment.CurrentDirectory, "cef_cache")

@@ -6,10 +6,14 @@ open System
 open System.IO
 open System.Diagnostics
 open Aardvark.Fake
+open System.Runtime.InteropServices
 
 do Environment.CurrentDirectory <- __SOURCE_DIRECTORY__
 
-DefaultSetup.install ["src/Aardvark.Media.sln"]
+if RuntimeInformation.IsOSPlatform OSPlatform.Windows then
+    DefaultSetup.install ["src/Aardvark.Media.sln"]
+else
+    DefaultSetup.install ["src/Aardvark.Media.NonWindows.sln"]
 
 
 entry()
