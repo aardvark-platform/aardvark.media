@@ -40,7 +40,7 @@ type private Animation<'Model, 'Value> =
 
         /// Function controlling how the animation position changes over time.
         /// Returns a flag indicating if the animation has finished and the position.
-        DistanceTimeFunction : IDistanceTimeFunction
+        DistanceTimeFunction : DistanceTimeFunction
 
         /// Observers to be notified of changes.
         Observers : HashMap<IAnimationObserver<'Model>, IAnimationObserver<'Model, 'Value>>
@@ -88,9 +88,14 @@ type private Animation<'Model, 'Value> =
         | _ ->
             x
 
-    /// Updates the distance-time function of the animation according to the given mapping.
-    member x.DistanceTime(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
-        { x with DistanceTimeFunction = mapping x.DistanceTimeFunction }
+    member x.Scale(duration) =
+        { x with DistanceTimeFunction = x.DistanceTimeFunction.Scale(duration)}
+
+    member x.Ease(easing, compose) =
+        { x with DistanceTimeFunction = x.DistanceTimeFunction.Ease(easing, compose)}
+
+    member x.Loop(iterations, mode) =
+        { x with DistanceTimeFunction = x.DistanceTimeFunction.Loop(iterations, mode)}
 
     /// Registers a new observer.
     member x.Subscribe(observer : IAnimationObserver<'Model, 'Value>) =
@@ -111,7 +116,7 @@ type private Animation<'Model, 'Value> =
     /// Notifies all observers.
     member x.Notify(lens : Lens<'Model, IAnimation<'Model>>, name : Symbol, model : 'Model) =
 
-        let events = (x.CurrentState, x.NextState) ||> Events.compute
+        let events = (x.CurrentState, x.NextState) ||> Events.compute |> List.sort
         let model = model |> Optic.set lens ({ x with CurrentState = x.NextState } :> IAnimation<'Model>)
 
         let notify model event =
@@ -122,12 +127,15 @@ type private Animation<'Model, 'Value> =
 
     interface IAnimation<'Model> with
         member x.State = x.CurrentState
+        member x.Duration = x.DistanceTimeFunction.Duration
         member x.Stop() = x.Stop() :> IAnimation<'Model>
         member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model>
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
         member x.Notify(lens, name, model) = x.Notify(lens, name, model)
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
@@ -139,7 +147,9 @@ type private Animation<'Model, 'Value> =
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model, 'Value>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model, 'Value>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model, 'Value>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model, 'Value>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'Value>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'Value>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'Value>
         member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'Value>
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'Value>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'Value>
@@ -158,7 +168,7 @@ module Animation =
           CurrentState = State.Stopped
           CurrentValue = Unchecked.defaultof<'Value>
           SpaceFunction = SpaceFunction.Default
-          DistanceTimeFunction = DistanceTimeFunction.Default
+          DistanceTimeFunction = DistanceTimeFunction.empty
           Observers = HashMap.empty } :> IAnimation<'Model, 'Value>
 
     /// Creates an animation from the given space function.
@@ -167,7 +177,7 @@ module Animation =
           CurrentState = State.Stopped
           CurrentValue = spaceFunction 0.0
           SpaceFunction = Func<_,_> spaceFunction
-          DistanceTimeFunction = DistanceTimeFunction.Default
+          DistanceTimeFunction = DistanceTimeFunction.empty
           Observers = HashMap.empty } :> IAnimation<'Model, 'Value>
 
 

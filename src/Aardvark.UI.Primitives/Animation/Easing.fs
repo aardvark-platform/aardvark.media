@@ -79,12 +79,14 @@ module AnimationEasingExtensions =
                 | Easing.OutIn f -> toOutInFunction f
 
         /// Applies the given easing function to the animation.
-        let ease' (easing : float -> float) (animation : IAnimation<'Model, 'Value>) =
-            animation.DistanceTime(fun dtf ->
-                easing |> dtf.Ease
-            )
+        let easeCustom (compose : bool) (easing : float -> float) (animation : IAnimation<'Model, 'Value>) =
+            animation.Ease(easing, compose)
+
+        /// Applies the given easing function to the animation.
+        let ease' (compose : bool) (easing : Easing) (animation : IAnimation<'Model, 'Value>) =
+            animation |> easeCustom compose (toFunction easing)
 
         /// Applies the given easing function to the animation.
         let ease (easing : Easing) (animation : IAnimation<'Model, 'Value>) =
-            animation |> ease' (toFunction easing)
+            animation |> ease' true easing
 

@@ -104,12 +104,14 @@ let update (model : Model) (msg : Message) =
                         elif src.Location = view3.Location then view1
                         else view2
 
-                    model |> Animation.Camera.interpolateTo lens dst
-                    |> Animation.seconds 2
+                    //model |> Animation.Camera.interpolateTo lens dst
+                    model |> Animation.Camera.orbitTo' lens positionAnimation V3d.ZAxis Constant.PiTimesTwo
+                    |> Animation.seconds 5
                     |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
-                    |> Animation.onFinalize' (fun name _ model ->
-                        model |> Animator.set name (next model)
-                    )
+                    |> Animation.loop LoopMode.Repeat
+                    //|> Animation.onFinalize' (fun name _ model ->
+                    //    model |> Animator.set name (next model)
+                    //)
 
                 next model
 

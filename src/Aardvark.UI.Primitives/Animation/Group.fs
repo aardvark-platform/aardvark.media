@@ -16,6 +16,14 @@ module private GroupState =
     let get (animations : State list) =
         animations |> List.sortBy priority |> List.head
 
+    let running (animations : State list) =
+        animations |> List.choose (function
+            | State.Running t -> Some t
+            | _ -> None
+        )
+        |> List.sort
+        |> List.tryHead
+
 type private Group<'Model, 'Value> =
     {
         /// Current state of the group.
@@ -23,6 +31,9 @@ type private Group<'Model, 'Value> =
 
         /// Animations contained in the group.
         Members : IAnimation<'Model> list
+
+        /// Distance-time function of the group.
+        DistanceTimeFunction : DistanceTimeFunction
 
         /// Observers to be notified of changes.
         Observers : HashMap<IAnimationObserver<'Model>, IAnimationObserver<'Model, 'Value>>
@@ -33,6 +44,10 @@ type private Group<'Model, 'Value> =
 
     /// Returns the state of the animation.
     member x.State = GroupState.get x.States
+
+    /// Returns the duration of the group.
+    member x.Duration =
+        x.DistanceTimeFunction.Duration
 
     /// Stops the animation and resets it.
     member x.Stop() =
@@ -53,11 +68,30 @@ type private Group<'Model, 'Value> =
 
     /// Updates the animation to the given global time.
     member x.Update(globalTime) =
-        { x with Members = x.Members |> List.map (fun a -> a.Update(globalTime)) }
+        match GroupState.running x.States with
+        | Some startTimeGroup ->
+            let f, t = x.DistanceTimeFunction.Invoke(globalTime - startTimeGroup)
+            let adjustedGlobalTime = if f then globalTime else startTimeGroup + t * x.Duration
 
-    /// Updates the distance-time function of the animation according to the given mapping.
-    member x.DistanceTime(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
-        { x with Members = x.Members |> List.map (fun a -> a.DistanceTime(mapping)) }
+            { x with Members = x.Members |> List.map (fun a -> a.Update(adjustedGlobalTime)) }
+        | _ ->
+            x
+
+    member x.Scale(duration) =
+        let s = duration / x.Duration
+
+        let scale (a : IAnimation<'Model>) =
+            a.Scale(if isFinite s && not a.Duration.IsZero then a.Duration * s else duration)
+
+        { x with
+            Members = x.Members |> List.map scale
+            DistanceTimeFunction = x.DistanceTimeFunction.Scale(duration) }
+
+    member x.Ease(easing, compose) =
+        { x with DistanceTimeFunction = x.DistanceTimeFunction.Ease(easing, compose)}
+
+    member x.Loop(iterations, mode) =
+        { x with DistanceTimeFunction = x.DistanceTimeFunction.Loop(iterations, mode)}
 
     /// Registers a new observer.
     member x.Subscribe(observer : IAnimationObserver<'Model, 'Value>) =
@@ -112,12 +146,15 @@ type private Group<'Model, 'Value> =
 
     interface IAnimation<'Model> with
         member x.State = x.State
+        member x.Duration = x.Duration
         member x.Stop() = x.Stop() :> IAnimation<'Model>
         member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model>
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
         member x.Notify(lens, name, model) = x.Notify(lens, name, model)
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
@@ -129,7 +166,9 @@ type private Group<'Model, 'Value> =
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model, 'Value>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model, 'Value>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model, 'Value>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model, 'Value>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'Value>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'Value>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'Value>
         member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'Value>
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'Value>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'Value>
@@ -148,8 +187,12 @@ module AnimationGroupExtensions =
             if List.isEmpty animations then
                 raise <| ArgumentException("Animation group cannot be empty")
 
+            let duration =
+                animations |> List.map (fun a -> a.Duration) |> List.sortDescending |> List.head
+
             { States = animations |> List.map (fun a -> a.State)
               Members = animations |> List.map (fun a -> a :> IAnimation<'Model>)
+              DistanceTimeFunction = { DistanceTimeFunction.empty with Duration = duration }
               Observers = HashMap.empty } :> IAnimation<'Model, unit>
 
         /// <summary>

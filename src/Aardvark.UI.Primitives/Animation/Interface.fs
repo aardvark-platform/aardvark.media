@@ -50,23 +50,6 @@ type LoopMode =
     /// Animation is reversed upon reaching the end.
     | Mirror
 
-/// Interface for distance-time functions.
-type IDistanceTimeFunction =
-
-    /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending
-    /// on the time elapsed since the start of the animation.
-    abstract member Invoke : time: MicroTime -> bool * float
-
-    /// Applies an easing function, i.e. an function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
-    abstract member Ease : easing: (float -> float) -> IDistanceTimeFunction
-
-    /// <summary>
-    /// Sets the number of iterations and loop mode.
-    /// </summary>
-    /// <param name="iterations">The number of iterations or a nonpositive value for an unlimited number of iterations.</param>
-    abstract member Loop : iterations: int * mode: LoopMode -> IDistanceTimeFunction
-
-
 /// The state of an animation.
 [<RequireQualifiedAccess>]
 type State =
@@ -88,6 +71,9 @@ type IAnimation<'Model> =
     /// Returns the state of the animation.
     abstract member State : State
 
+    /// Returns the duration of the animation.
+    abstract member Duration : MicroTime
+
     /// Stops the animation and resets it.
     abstract member Stop : unit -> IAnimation<'Model>
 
@@ -104,8 +90,21 @@ type IAnimation<'Model> =
     /// Updates the animation to the given global time.
     abstract member Update : globalTime: MicroTime -> IAnimation<'Model>
 
-    /// Updates the distance-time function of the animation according to the given mapping.
-    abstract member DistanceTime : (IDistanceTimeFunction -> IDistanceTimeFunction) -> IAnimation<'Model>
+    /// Sets the duration of the animation.
+    abstract member Scale : duration: MicroTime -> IAnimation<'Model>
+
+    /// <summary>
+    /// Applies an easing function, i.e. a function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
+    /// </summary>
+    /// <param name="easing">The easing function to apply.</param>
+    /// <param name="compose">Indicates whether easing is composed or overwritten.</param>
+    abstract member Ease : easing: (float -> float) * compose: bool -> IAnimation<'Model>
+
+    /// <summary>
+    /// Sets the number of iterations and loop mode.
+    /// </summary>
+    /// <param name="iterations">The number of iterations or a nonpositive value for an unlimited number of iterations.</param>
+    abstract member Loop : iterations: int * mode: LoopMode -> IAnimation<'Model>
 
     /// Notifies all observers, invoking the respective callbacks.
     /// Returns the model computed by the callbacks.
@@ -150,5 +149,18 @@ type IAnimation<'Model, 'Value> =
     /// Updates the animation to the given global time.
     abstract member Update : globalTime: MicroTime -> IAnimation<'Model, 'Value>
 
-    /// Updates the distance-time function of the animation according to the given mapping.
-    abstract member DistanceTime : (IDistanceTimeFunction -> IDistanceTimeFunction) -> IAnimation<'Model, 'Value>
+    /// Sets the duration of the animation.
+    abstract member Scale : duration: MicroTime -> IAnimation<'Model, 'Value>
+
+    /// <summary>
+    /// Applies an easing function, i.e. a function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
+    /// </summary>
+    /// <param name="easing">The easing function to apply.</param>
+    /// <param name="compose">Indicates whether easing is composed or overwritten.</param>
+    abstract member Ease : easing: (float -> float) * compose: bool -> IAnimation<'Model, 'Value>
+
+    /// <summary>
+    /// Sets the number of iterations and loop mode.
+    /// </summary>
+    /// <param name="iterations">The number of iterations or a nonpositive value for an unlimited number of iterations.</param>
+    abstract member Loop : iterations: int * mode: LoopMode -> IAnimation<'Model, 'Value>

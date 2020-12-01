@@ -30,6 +30,7 @@
     <Compile Include="Animation\Animation.fs" />
     <Compile Include="Animation\Group.fs" />
     <Compile Include="Animation\Mapping.fs" />
+    <Compile Include="Animation\Input.fs" />
     <Compile Include="Animation\Observer.fs" />
     <Compile Include="Animation\Primitives.fs" />
     <Compile Include="Animation\Camera.fs" />

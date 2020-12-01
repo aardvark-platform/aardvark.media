@@ -25,6 +25,51 @@ module AnimationCameraPrimitives =
                         let frame = M33d.Rotation orientation
                         CameraView(sky, location, frame.C1, frame.C2, frame.C0)
 
+            /// Creates an animation that moves the camera view to the given location.
+            let move (dst : V3d) (camera : CameraView) : IAnimation<'Model, CameraView> =
+                Animation.create (fun t ->
+                    let pos = t |> lerp camera.Location dst
+                    camera |> CameraView.withLocation pos
+                )
+
+            /// Creates an animation that moves the camera view variable specified by
+            /// the lens to the given location. The animation is linked to that variable.
+            let moveTo (lens : Lens<'Model, CameraView>) (dst : V3d) (model : 'Model) =
+                move dst (model |> Optic.get lens)
+                |> Animation.link lens
+
+            /// Creates an animation that rotates the camera view to face the given direction.
+            let rotateDir (normalizedDirection : V3d) (camera : CameraView) : IAnimation<'Model, CameraView> =
+                let src = camera.Orientation
+
+                let dst =
+                    let forward = normalizedDirection
+                    let right = Vec.cross forward camera.Sky |> Vec.normalize
+                    let up = Vec.cross right forward |> Vec.normalize
+                    let frame = M33d.FromCols(right, forward, up)
+                    Rot3d.FromM33d frame
+
+                Animation.create (fun t ->
+                    let orientation = Ipol.SlerpShortest(src, dst, t)
+                    CameraView.orient camera.Location orientation camera.Sky
+                )
+
+            /// Creates an animation that rotates the camera view variable specified by
+            /// the lens to face the given direction. The animation is linked to that variable.
+            let rotateDirTo (lens : Lens<'Model, CameraView>) (normalizedDirection : V3d) (model : 'Model) =
+                rotateDir normalizedDirection (model |> Optic.get lens)
+                |> Animation.link lens
+
+            /// Creates an animation that rotates the camera view to face towards the given location.
+            let rotate (center : V3d) (camera : CameraView) : IAnimation<'Model, CameraView> =
+                camera |> rotateDir (center - camera.Location |> Vec.normalize)
+
+            /// Creates an animation that rotates the camera view variable specified by
+            /// the lens to face towards the given location. The animation is linked to that variable.
+            let rotateTo (lens : Lens<'Model, CameraView>) (center : V3d) (model : 'Model) =
+                rotate center (model |> Optic.get lens)
+                |> Animation.link lens
+
             /// Creates an animation that interpolates between the camera views src and dst.
             let interpolate (src : CameraView) (dst : CameraView) : IAnimation<'Model, CameraView> =
                 let animPos = Primitives.lerp src.Location dst.Location
@@ -40,18 +85,36 @@ module AnimationCameraPrimitives =
                 |> Animation.link lens
 
             /// Creates an animation that orbits the camera view around the center and axis by the given angle.
-            let orbit (center : V3d) (normalizedAxis : V3d) (angleInRadians : float) (src : CameraView) : IAnimation<'Model, CameraView> =
+            let orbit (center : V3d) (normalizedAxis : V3d) (angleInRadians : float) (camera : CameraView) : IAnimation<'Model, CameraView> =
                 Animation.create (fun t ->
                     let angle = t |> lerp 0.0 angleInRadians
                     let rotation = Rot3d.Rotation(normalizedAxis, angle)
-                    let location = center + rotation * (src.Location - center)
-                    CameraView.lookAt location center src.Sky
-                    //let orientation = rotation * src.Orientation
-                    //CameraView.orient location orientation src.Sky
+                    let location = center + rotation * (camera.Location - center)
+                    CameraView.lookAt location center camera.Sky
                 )
 
             /// Creates an animation that orbits the camera view variable specified by
             /// the lens around the center and axis by the given angle. The animation is linked to that variable.
             let orbitTo (lens : Lens<'Model, CameraView>) (center : V3d) (normalizedAxis : V3d) (angleInRadians : float) (model : 'Model) =
                 orbit center normalizedAxis angleInRadians (model |> Optic.get lens)
+                |> Animation.link lens
+
+            /// Creates an animation that orbits the camera view around the center and axis by the given angle.
+            let orbit' (center : IAnimation<'Model, V3d>) (normalizedAxis : V3d) (angleInRadians : float) (camera : CameraView) : IAnimation<'Model, CameraView> =
+                let rotation =
+                    Animation.create (fun t ->
+                        let angle = t |> lerp 0.0 angleInRadians
+                        Rot3d.Rotation(normalizedAxis, angle)
+                    )
+
+                (center, rotation)
+                ||> Animation.input (fun center rotation ->
+                    let location = center + rotation * (camera.Location - center)
+                    CameraView.lookAt location center camera.Sky
+                )
+
+            /// Creates an animation that orbits the camera view variable specified by
+            /// the lens around the center and axis by the given angle. The animation is linked to that variable.
+            let orbitTo' (lens : Lens<'Model, CameraView>) (center : IAnimation<'Model, V3d>) (normalizedAxis : V3d) (angleInRadians : float) (model : 'Model) =
+                orbit' center normalizedAxis angleInRadians (model |> Optic.get lens)
                 |> Animation.link lens

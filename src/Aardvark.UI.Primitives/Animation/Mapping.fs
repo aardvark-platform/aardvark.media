@@ -41,9 +41,14 @@ type private Mapping<'Model, 'T, 'U> =
     member x.Update(globalTime) =
         { x with Input = x.Input.Update(globalTime) }
 
-    /// Updates the distance-time function of the animation according to the given mapping.
-    member x.DistanceTime(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
-        { x with Input = x.Input.DistanceTime(mapping) }
+    member x.Scale(duration) =
+        { x with Input = x.Input.Scale(duration)}
+
+    member x.Ease(easing, compose) =
+        { x with Input = x.Input.Ease(easing, compose)}
+
+    member x.Loop(iterations, mode) =
+        { x with Input = x.Input.Loop(iterations, mode)}
 
     /// Registers a new observer.
     member x.Subscribe(observer : IAnimationObserver<'Model, 'U>) =
@@ -89,12 +94,15 @@ type private Mapping<'Model, 'T, 'U> =
 
     interface IAnimation<'Model> with
         member x.State = x.CurrentState
+        member x.Duration = x.Input.Duration
         member x.Stop() = x.Stop() :> IAnimation<'Model>
         member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model>
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
         member x.Notify(lens, name, model) = x.Notify(lens, name, model)
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
@@ -106,59 +114,97 @@ type private Mapping<'Model, 'T, 'U> =
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model, 'U>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model, 'U>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model, 'U>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model, 'U>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'U>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'U>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'U>
         member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'U>
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'U>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'U>
 
 type private Mapping2<'Model, 'T1, 'T2, 'U> =
     {
-        /// The current state of the inputs.
-        States : struct (State * State)
+        /// Current input state.
+        StateA : State
 
-        /// Input animations.
-        Inputs : struct (IAnimation<'Model, 'T1> * IAnimation<'Model, 'T2>)
+        /// Current input state.
+        StateB : State
+
+        /// Input animation.
+        InputA : IAnimation<'Model, 'T1>
+
+        /// Input animation.
+        InputB : IAnimation<'Model, 'T2>
 
         /// Mapping from input to output.
         Mapping : Func<'T1, 'T2, 'U>
+
+        /// Distance-time function of the group.
+        DistanceTimeFunction : DistanceTimeFunction
 
         /// Observers to be notified of changes.
         Observers : HashMap<IAnimationObserver<'Model>, IAnimationObserver<'Model, 'U>>
     }
 
-    member private x.StateA = let struct (a, _) = x.States in a
-    member private x.StateB = let struct (_, b) = x.States in b
-    member private x.InputA = let struct (a, _) = x.Inputs in a
-    member private x.InputB = let struct (_, b) = x.Inputs in b
-
-    /// Returns the state of the animation.
     member x.State =
         GroupState.get [x.StateA; x.StateB]
 
+    member x.Duration =
+        max x.InputA.Duration x.InputB.Duration
+
     /// Stops the animation and resets it.
     member x.Stop() =
-        { x with Inputs = struct (x.InputA.Stop(), x.InputB.Stop()) }
+        { x with
+            InputA = x.InputA.Stop()
+            InputB = x.InputB.Stop() }
 
     /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
     member x.Start(globalTime) =
-        { x with Inputs = struct (x.InputA.Start(globalTime), x.InputB.Start(globalTime)) }
+        { x with
+            InputA = x.InputA.Start(globalTime)
+            InputB = x.InputB.Start(globalTime) }
 
     /// Pauses the animation if it is running or has started.
     member x.Pause(globalTime) =
-        { x with Inputs = struct (x.InputA.Pause(globalTime), x.InputB.Pause(globalTime)) }
+        { x with
+            InputA = x.InputA.Pause(globalTime)
+            InputB = x.InputB.Pause(globalTime) }
 
     /// Resumes the animation from the point it was paused.
     /// Has no effect if the animation is not paused.
     member x.Resume(globalTime) =
-        { x with Inputs = struct (x.InputA.Resume(globalTime), x.InputB.Resume(globalTime)) }
+        { x with
+            InputA = x.InputA.Resume(globalTime)
+            InputB = x.InputB.Resume(globalTime) }
 
     /// Updates the animation to the given global time.
     member x.Update(globalTime) =
-        { x with Inputs = struct (x.InputA.Update(globalTime), x.InputB.Update(globalTime)) }
+        match GroupState.running [x.InputA.State; x.InputB.State] with
+        | Some startTimeGroup ->
+            let f, t = x.DistanceTimeFunction.Invoke(globalTime - startTimeGroup)
+            let adjustedGlobalTime = if f then globalTime else startTimeGroup + t * x.Duration
 
-    /// Updates the distance-time function of the animation according to the given mapping.
-    member x.DistanceTime(mapping : IDistanceTimeFunction -> IDistanceTimeFunction) =
-        { x with Inputs = struct (x.InputA.DistanceTime(mapping), x.InputB.DistanceTime(mapping)) }
+            { x with
+                InputA = x.InputA.Update(adjustedGlobalTime)
+                InputB = x.InputB.Update(adjustedGlobalTime) }
+        | _ ->
+            x
+
+    member x.Scale(duration) =
+        let s = duration / x.Duration
+
+        let scale (a : IAnimation<'Model, _>) =
+            a.Scale(if isFinite s && not a.Duration.IsZero then a.Duration * s else duration)
+
+        { x with
+            InputA = x.InputA |> scale
+            InputB = x.InputB |> scale
+            DistanceTimeFunction = x.DistanceTimeFunction.Scale(duration) }
+
+    member x.Ease(easing, compose) =
+        { x with DistanceTimeFunction = x.DistanceTimeFunction.Ease(easing, compose)}
+
+    member x.Loop(iterations, mode) =
+        { x with DistanceTimeFunction = x.DistanceTimeFunction.Loop(iterations, mode)}
 
     /// Registers a new observer.
     member x.Subscribe(observer : IAnimationObserver<'Model, 'U>) =
@@ -171,13 +217,15 @@ type private Mapping2<'Model, 'T1, 'T2, 'U> =
     /// Removes all observers.
     member x.UnsubscribeAll() =
         { x with
-            Inputs = struct(x.InputA.UnsubscribeAll(), x.InputB.UnsubscribeAll())
+            InputA = x.InputA.UnsubscribeAll()
+            InputB = x.InputB.UnsubscribeAll()
             Observers = HashMap.empty }
 
     /// Removes the given observer (if present).
     member x.Unsubscribe(observer : IAnimationObserver<'Model>) =
         { x with
-            Inputs = struct (x.InputA.Unsubscribe(observer), x.InputB.Unsubscribe(observer))
+            InputA = x.InputA.Unsubscribe(observer)
+            InputB = x.InputB.Unsubscribe(observer)
             Observers = x.Observers |> HashMap.remove observer }
 
     /// Notifies all observers.
@@ -192,7 +240,7 @@ type private Mapping2<'Model, 'T1, 'T2, 'U> =
 
             inputA, inputB, model
 
-        let next = { x with Inputs = struct (inputA, inputB); States = struct (inputA.State, inputB.State) }
+        let next = { x with InputA = inputA; InputB = inputB; StateA = inputA.State; StateB = inputB.State }
         let model = model |> Optic.set lens (next :> IAnimation<'Model>)
 
         let events =
@@ -221,12 +269,15 @@ type private Mapping2<'Model, 'T1, 'T2, 'U> =
 
     interface IAnimation<'Model> with
         member x.State = x.State
+        member x.Duration = max x.InputA.Duration x.InputB.Duration
         member x.Stop() = x.Stop() :> IAnimation<'Model>
         member x.Start(globalTime) = x.Start(globalTime) :> IAnimation<'Model>
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
         member x.Notify(lens, name, model) = x.Notify(lens, name, model)
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
@@ -238,7 +289,9 @@ type private Mapping2<'Model, 'T1, 'T2, 'U> =
         member x.Pause(globalTime) = x.Pause(globalTime) :> IAnimation<'Model, 'U>
         member x.Resume(globalTime) = x.Resume(globalTime) :> IAnimation<'Model, 'U>
         member x.Update(globalTime) = x.Update(globalTime) :> IAnimation<'Model, 'U>
-        member x.DistanceTime(mapping) = x.DistanceTime(mapping) :> IAnimation<'Model, 'U>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'U>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'U>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'U>
         member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'U>
         member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'U>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'U>
@@ -258,9 +311,14 @@ module AnimationMappingExtensions =
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map2 (mapping : 'T1 -> 'T2 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) =
-            { States = struct (x.State, y.State)
-              Inputs = struct (x, y)
+            let duration = max x.Duration y.Duration
+
+            { StateA = x.State
+              StateB = y.State
+              InputA = x
+              InputB = y
               Mapping = Func<_,_,_> mapping
+              DistanceTimeFunction = { DistanceTimeFunction.empty with Duration = duration }
               Observers = HashMap.empty } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animations.

@@ -15,7 +15,7 @@ module private DistanceTimeFunctionUtilities =
 
 type private DistanceTimeFunction =
     {
-        Function : Func<MicroTime, float>
+        Duration : MicroTime
         Easing : Func<float, float>
         Iterations : int
         Mode : LoopMode
@@ -34,16 +34,24 @@ type private DistanceTimeFunction =
     /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending
     /// on the time elapsed since the start of the animation.
     member x.Invoke(localTime : MicroTime) =
-        let p = x.Function.Invoke(localTime)
+        let p = localTime / x.Duration
 
-        if x.Iterations > 0 && int p >= x.Iterations then
+        if x.Duration.IsZero || (x.Iterations > 0 && int p >= x.Iterations) then
             true, x.Iterations |> float |> x.Final
         else
             false, p |> x.Wrap |> x.Easing.Invoke
 
-    /// Applies an easing function, i.e. an function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
-    member x.Ease(easing) =
-        { x with Easing = Func<_,_> (x.Easing.Invoke >> easing)}
+    /// Sets the duration of the animation.
+    member x.Scale(duration) =
+        { x with Duration = duration }
+
+    /// <summary>
+    /// Applies an easing function, i.e. a function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
+    /// </summary>
+    /// <param name="easing">The easing function to apply.</param>
+    /// <param name="compose">Indicates whether easing is composed or overwritten.</param>
+    member x.Ease(easing, compose) =
+        { x with Easing = Func<_,_> (if compose then x.Easing.Invoke >> easing else easing) }
 
     /// <summary>
     /// Sets the number of iterations and loop mode.
@@ -52,37 +60,27 @@ type private DistanceTimeFunction =
     member x.Loop(iterations, mode) =
         { x with Iterations = iterations; Mode = mode }
 
-    interface IDistanceTimeFunction with
-        member x.Invoke(localTime) = x.Invoke(localTime)
-        member x.Ease(easing) = x.Ease(easing) :> IDistanceTimeFunction
-        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IDistanceTimeFunction
 
 module private DistanceTimeFunction =
 
-    let Default =
-        { Function = Func<_,_> (fun _ -> 0.0)
+    let empty =
+        { Duration = MicroTime.Zero
           Easing = Func<_,_> id
           Iterations = 1
           Mode = LoopMode.Repeat }
+
+    let create (duration : MicroTime) =
+        { empty with Duration = duration }
+
 
 [<AutoOpen>]
 module AnimationTimeExtensions =
 
     module Animation =
 
-        /// Sets the distance-time function of the given animation.
-        let distanceTimeFunction (dtf : MicroTime -> float) (animation : IAnimation<'Model, 'Value>) =
-            animation.DistanceTime(fun _ ->
-                { DistanceTimeFunction.Default with
-                    Function = Func<_,_> dtf } :> IDistanceTimeFunction
-            )
-
         /// Sets the duration of the given animation.
         let duration (t : MicroTime) (animation : IAnimation<'Model, 'Value>) =
-            let dtf duration time =
-                time / duration
-
-            animation |> distanceTimeFunction (dtf t)
+            animation.Scale t
 
         /// Sets the duration (in seconds) of the given animation.
         let inline seconds (s : ^Seconds) (animation : IAnimation<'Model, 'Value>) =
@@ -95,7 +93,7 @@ module AnimationTimeExtensions =
         /// Sets the number of iterations and loop mode of the given animation.
         /// A count less than one results in an infinite number of iterations.
         let loop' (mode : LoopMode) (count : int) (animation : IAnimation<'Model, 'Value>) =
-            animation.DistanceTime(fun dtf -> dtf.Loop(count, mode))
+            animation.Loop(count, mode)
 
         /// Loops the given animation infinitely according to the given mode.
         let loop (mode : LoopMode) (animation : IAnimation<'Model, 'Value>) =
