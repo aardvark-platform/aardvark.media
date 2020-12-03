@@ -1122,15 +1122,16 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
 
 
     let changeCursor (cursor : nativeint) =
-        try
-            let cursor = new System.Windows.Forms.Cursor(cursor)
-            let forms = System.Windows.Forms.Application.OpenForms
-            for f in forms do
-                f.BeginInvoke(new System.Action(fun () ->
-                    f.Cursor <- cursor
-                )) |> ignore
-        with e ->
-            ()
+        #if NETCOREAPP3_1 // currently no way to change cursor in netcoreapp apps?
+        () 
+        #else
+        let cursor = new System.Windows.Forms.Cursor(cursor)
+        let forms = System.Windows.Forms.Application.OpenForms
+        for f in forms do
+            f.BeginInvoke(new System.Action(fun () ->
+                f.Cursor <- cursor
+            )) |> ignore
+        #endif
 
     let boxToRect (b : Box2i) =
         CefRectangle(b.Min.X, b.Min.Y, b.SizeX, b.SizeY)
@@ -1215,7 +1216,10 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
     /// Notifies the "main" process to change the cursor-symbol (hovering over text/links/etc.)
     /// </summary>
     override x.OnCursorChange(browser : CefBrowser, cursorHandle : nativeint, a, b) =
-        changeCursor(cursorHandle)
+        try 
+            changeCursor(cursorHandle)
+        with e -> 
+            Report.Line(5, e.Message)
 
     /// <summary>
     /// NO IDEA WHAT THIS IS EXACTLY
