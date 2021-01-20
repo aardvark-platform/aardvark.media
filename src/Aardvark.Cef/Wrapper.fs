@@ -59,8 +59,7 @@ module CefExtensions =
             msg.Arguments.SetBinary(0, CefBinaryValue.Create(arr)) 
                 |> check "could not set message content"
 
-            x.SendProcessMessage(target, msg) 
-                |> check "could not send message"
+            x.GetMainFrame().SendProcessMessage(target, msg)
 
     type CefV8Context with
 
@@ -547,7 +546,7 @@ type RenderProcessHandler() =
 
         )
 
-    override x.OnProcessMessageReceived(browser : CefBrowser, sourceProcess : CefProcessId, message : CefProcessMessage) =
+    override x.OnProcessMessageReceived(browser : CefBrowser, frame : CefFrame, sourceProcess : CefProcessId, message : CefProcessMessage) =
         try
             match IPC.tryGet<IPC.Command> message with
                 | Some cmd ->
@@ -630,8 +629,8 @@ type RenderProcessHandler() =
     override x.GetLoadHandler() =
         base.GetLoadHandler()
 
-    override x.OnBrowserCreated(browser : CefBrowser) =
-        base.OnBrowserCreated(browser)
+    override x.OnBrowserCreated(browser : CefBrowser, extraInfo : CefDictionaryValue) =
+        base.OnBrowserCreated(browser, extraInfo)
 
     override x.OnBrowserDestroyed(browser : CefBrowser) =
         base.OnBrowserDestroyed(browser)
@@ -831,6 +830,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     
     let loadHandler = LoadHandler(this)
     let renderHandler = RenderHandler(this, size, texture)
+    let displayHandler = DisplayHandler()
     let loadResult = MVar.empty()
 
     let messagePump = MessagePump()
@@ -894,7 +894,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
                 browserReady.Wait()
         )
 
-    override x.OnProcessMessageReceived(browser : CefBrowser, sourceProcess : CefProcessId, message : CefProcessMessage) =
+    override x.OnProcessMessageReceived(browser : CefBrowser, frame : CefFrame, sourceProcess : CefProcessId, message : CefProcessMessage) =
         match IPC.tryGet<Event> message with
             | Some e ->
                 messagePump.Enqueue(fun () -> eventSink.OnNext e)
@@ -913,6 +913,8 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     override x.GetLoadHandler() = loadHandler :> CefLoadHandler
         
     override x.GetRenderHandler() = renderHandler :> CefRenderHandler
+
+    override x.GetDisplayHandler() = displayHandler :> CefDisplayHandler
 
     member x.ExecuteAsync(js : string) : Async<string> =
         lock lockObj (fun () ->
@@ -1050,25 +1052,6 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
                 fail "Disposed"
         )
 
-    member x.LoadHtmlAsync (code : string) =
-        lock lockObj (fun () ->
-            if not isDisposed then
-                x.Init()
-                frame.LoadString(code, "http://aardvark.local/index.html")
-                MVar.takeAsync loadResult
-            else
-                fail "Disposed"
-        )
-
-    member x.LoadHtml (code : string) =
-        lock lockObj (fun () ->
-            if not isDisposed then
-                x.Init()
-                frame.LoadString(code, "http://aardvark.local/index.html")
-                MVar.takeAsync loadResult
-            else
-                fail "Disposed"
-        )
 
     interface IDisposable with
         member x.Dispose() = 
@@ -1121,18 +1104,6 @@ and LoadHandler(parent : Client) =
 and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture) =
     inherit CefRenderHandler()
 
-
-    let changeCursor (cursor : nativeint) =
-        try
-            let cursor = new System.Windows.Forms.Cursor(cursor)
-            let forms = System.Windows.Forms.Application.OpenForms
-            for f in forms do
-                f.BeginInvoke(new System.Action(fun () ->
-                    f.Cursor <- cursor
-                )) |> ignore
-        with e ->
-            ()
-
     let boxToRect (b : Box2i) =
         CefRectangle(b.Min.X, b.Min.Y, b.SizeX, b.SizeY)
 
@@ -1176,7 +1147,6 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
     override x.GetViewRect(browser : CefBrowser, rect : byref<CefRectangle>) =
         let s = AVal.force size
         rect <- CefRectangle(0, 0, s.X, s.Y)
-        true
 
     /// <summary>
     /// NO IDEA WHAT THIS IS EXACTLY
@@ -1213,18 +1183,15 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
             ) 
 
     /// <summary>
-    /// Notifies the "main" process to change the cursor-symbol (hovering over text/links/etc.)
-    /// </summary>
-    override x.OnCursorChange(browser : CefBrowser, cursorHandle : nativeint, a, b) =
-        changeCursor(cursorHandle)
-
-    /// <summary>
     /// NO IDEA WHAT THIS IS EXACTLY
     /// </summary>
     override x.OnScrollOffsetChanged(browser : CefBrowser, a, b) =
         ()
 
     override x.OnImeCompositionRangeChanged(browser, selectedRange, characterBounds) =
+        ()
+
+    override x.OnAcceleratedPaint(browser, paintElementType, dirtyRects, sharedHandle) =
         ()
 
     member x.GetPixelValue (pos : V2i) : C4b =
@@ -1239,6 +1206,29 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
                 C4b(r,g,b,a)
             else C4b.Red
         else C4b.Green
+
+and DisplayHandler() =
+    inherit CefDisplayHandler()
+
+    let changeCursor (cursor : nativeint) =
+          try
+              let cursor = new System.Windows.Forms.Cursor(cursor)
+              let forms = System.Windows.Forms.Application.OpenForms
+              for f in forms do
+                  f.BeginInvoke(new System.Action(fun () ->
+                      f.Cursor <- cursor
+                  )) |> ignore
+          with e ->
+              ()
+
+    /// <summary>
+    /// Called when the browser's cursor has changed. If |type| is CT_CUSTOM then
+    /// |custom_cursor_info| will be populated with the custom cursor information.
+    /// Return true if the cursor change was handled or false for default handling.
+    /// </summary>
+    override x.OnCursorChange(browser : CefBrowser, cursorHandle : nativeint, cursorType : CefCursorType, customCursorInfo : CefCursorInfo) =
+        changeCursor(cursorHandle)
+        true
 
 type BrowserProcessHandler() =
     inherit CefBrowserProcessHandler()

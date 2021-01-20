@@ -31,7 +31,7 @@ module Chromium =
             File.WriteAllText(lastPathFile, path)
 
 
-        override x.OnProcessMessageReceived(sourceBrowser, source, msg) =
+        override x.OnProcessMessageReceived(sourceBrowser, frame, source, msg) =
             match IPC.tryReadProcessMessage<Command> msg with
                 | Some command ->
                     match command with
@@ -50,10 +50,10 @@ module Chromium =
                                                 | DialogResult.OK -> 
                                                     let path = dialog.SelectedPath
                                                     use msg = IPC.toProcessMessage (Response.Ok(id, [path]))
-                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                    frame.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
                                                 | _ -> 
                                                     use msg = IPC.toProcessMessage (Response.Abort id)
-                                                    sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                    frame.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
                                     | OpenDialogMode.File -> 
                                         fun () -> 
                                             let apartmentState = Thread.CurrentThread.GetApartmentState()
@@ -62,7 +62,7 @@ module Chromium =
 
                                                 Log.error "[CEF] %s" err
                                                 use msg = IPC.toProcessMessage (Response.Error(id, err))
-                                                sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                frame.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
                                             else
                                                 let dialog = 
                                                     new OpenFileDialog(
@@ -89,10 +89,10 @@ module Chromium =
 
                                                         let files = files |> Array.map PathUtils.toUnixStyle
                                                         use msg = IPC.toProcessMessage (Response.Ok(id, Array.toList files))
-                                                        sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                        frame.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
                                                     | _ -> 
                                                         use msg = IPC.toProcessMessage (Response.Abort id)
-                                                        sourceBrowser.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
+                                                        frame.SendProcessMessage(CefProcessId.Renderer, msg) |> ignore
                                     | _ -> 
                                         Log.warn "unknown openDialogMode"
                                         fun () -> ()
@@ -101,7 +101,7 @@ module Chromium =
                             browser.BeginInvoke(Action(showDialog)) |> ignore
                             true
                 | None ->
-                    base.OnProcessMessageReceived(sourceBrowser, source, msg)
+                    base.OnProcessMessageReceived(sourceBrowser, frame, source, msg)
 
     let init argv = Cef.init argv
  

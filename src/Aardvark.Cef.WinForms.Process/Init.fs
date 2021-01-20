@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Windows.Forms
 open Xilium.CefGlue
+open System.Reflection
 
 module Cef =
     let mutable private initialized = false
@@ -36,7 +37,7 @@ module Cef =
                 if not <| Directory.Exists path then Directory.CreateDirectory path |> ignore
                 settings.CachePath <- path
 
-                settings.BrowserSubprocessPath <- "Aardvark.Cef.WinForms.Process.exe"
+                settings.BrowserSubprocessPath <- Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Aardvark.Cef.WinForms.Process.exe")
                 let args = 
                     if CefRuntime.Platform = CefRuntimePlatform.Windows then argv
                     else Array.append [|"-"|] argv

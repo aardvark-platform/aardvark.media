@@ -4,12 +4,13 @@ open System
 open System.IO
 open Xilium.CefGlue
 open Aardvark.Base
+open System.Reflection
 
 module Cef =
 
     let mutable private initialized = false
     let mutable private tearedDown = false
-    let mutable ProcessPath = Some "Aardvark.Cef.Process.exe"
+    let mutable ProcessPath = Some (Path.Combine(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location), "Aardvark.Cef.Process.exe"))
 
     let getArgs() =
         let args = Environment.GetCommandLineArgs()

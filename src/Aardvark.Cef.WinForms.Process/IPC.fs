@@ -11,7 +11,6 @@ open System.Collections.Generic
 
 open Aardvark.Base
 
-open Xilium.CefGlue.Wrapper
 open Xilium.CefGlue
 
 type CefResult =
