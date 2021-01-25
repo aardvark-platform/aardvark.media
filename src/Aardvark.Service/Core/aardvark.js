@@ -29,9 +29,17 @@ if (aardvark.electron) {
 
     aardvark.openFileDialog = function (config, callback) {
         if (!callback) callback = config;
-        aardvark.electron.remote.dialog.showOpenDialog({ properties: ['openFile', 'multiSelections'] }).then(e => callback(e.filePaths));
+        const props = {properties: ['openFile', 'multiSelections']};
+        const all = {...props, ...config};
+        aardvark.electron.remote.dialog.showOpenDialog(all).then(e => callback(e.filePaths));
     };
 
+    aardvark.saveFileDialog = function (config, callback) {
+        if (!callback) callback = config;
+        const props = { properties: [] };
+        const all = {...props, ...config};
+        aardvark.electron.remote.dialog.showSaveDialog(all).then(e => callback([e.filePath]));
+    };
 }
 
 if (!aardvark.promise)
