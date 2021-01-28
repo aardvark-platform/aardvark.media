@@ -1150,7 +1150,6 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
     /// Called to allow the client to fill in the CefScreenInfo object with appropriate values.
     /// </summary>
     override x.GetScreenInfo(browser : CefBrowser, info : CefScreenInfo) =
-        Log.line "[CEF] GetScreenInfo"
         info.Rectangle <- CefRectangle(0,0,4096, 4096)
         info.AvailableRectangle <- CefRectangle(0,0,4096, 4096)
         true
