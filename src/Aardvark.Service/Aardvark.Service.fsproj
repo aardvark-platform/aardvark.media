@@ -49,6 +49,7 @@
     <EmbeddedResource Include="resources\semantic-overrides.css" />
     <EmbeddedResource Include="resources\fonts.css" />
     <None Include="paket.references" />
+    <None Include="paket.template" />
     <EmbeddedResource Include="resources\essentialstuff.js" />
     <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAUi-qJCY.woff2" />
     <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAXC-q.woff2" />

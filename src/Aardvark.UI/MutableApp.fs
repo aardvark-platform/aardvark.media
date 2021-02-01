@@ -273,7 +273,8 @@ module MutableApp =
                                         )
                                     )
                           with e -> 
-                            Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
+                            Config.updateThreadFailed e
+                            ()
                             //raise e
 
 
