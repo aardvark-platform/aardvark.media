@@ -180,10 +180,13 @@ module AnimationGroupExtensions =
     module Animation =
 
         /// <summary>
-        /// Creates an animation group from a list of animations.
+        /// Creates a parallel animation group from a sequence of animations.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the list is empty.</exception>
-        let ofList (animations : #IAnimation<'Model> list) =
+        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
+        let group (animations : #IAnimation<'Model> seq) =
+            let animations =
+                animations |> List.ofSeq |> List.map (fun a -> a :> IAnimation<'Model>)
+
             if List.isEmpty animations then
                 raise <| ArgumentException("Animation group cannot be empty")
 
@@ -191,24 +194,10 @@ module AnimationGroupExtensions =
                 animations |> List.map (fun a -> a.Duration) |> List.sortDescending |> List.head
 
             { States = animations |> List.map (fun a -> a.State)
-              Members = animations |> List.map (fun a -> a :> IAnimation<'Model>)
+              Members = animations
               DistanceTimeFunction = { DistanceTimeFunction.empty with Duration = duration }
               Observers = HashMap.empty } :> IAnimation<'Model, unit>
 
-        /// <summary>
-        /// Creates an animation group from a sequence of animations.
-        /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let ofSeq (animations : #IAnimation<'Model> seq) =
-            animations |> Seq.toList |> ofList
-
-        /// <summary>
-        /// Creates an animation group from an array of animations.
-        /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the array is empty.</exception>
-        let ofArray (animations : #IAnimation<'Model>[]) =
-            animations |> Array.toList |> ofList
-
-        /// Combines two animations.
+        /// Combines two animations into a parallel group.
         let andAlso (x : IAnimation<'Model>) (y : IAnimation<'Model>) =
-            ofList [x; y]
+            group [x; y]
