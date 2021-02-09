@@ -5,7 +5,7 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Model
 
 // media port of: https://www.w3schools.com/html/html5_draganddrop.asp

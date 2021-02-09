@@ -8,7 +8,7 @@ open Aardvark.UI.Primitives
   
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open DiscoverOpcs.Model
 
 

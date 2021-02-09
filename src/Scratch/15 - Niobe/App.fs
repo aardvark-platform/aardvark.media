@@ -4,7 +4,7 @@ open System
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.SceneGraph
 
 open Aardvark.Application
@@ -14,11 +14,14 @@ open Niobe.Sketching
 
 module StencilAreaMasking =
 
-  let writeZFail =
-      let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
-      let front   = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep)
-      let back    = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
-      StencilMode(front, compare, back, compare)
+    let writeZFailFront, writeZFailBack =
+        { StencilMode.None with DepthFail = StencilOperation.DecrementWrap },
+        { StencilMode.None with DepthFail = StencilOperation.IncrementWrap }
+
+      //let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
+      //let front   = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep)
+      //let back    = new StencilOperation(StencilOperationFunction.Keep, StencilOperationFunction.IncrementWrap, StencilOperationFunction.Keep)
+      //StencilMode(front, compare, back, compare)
 
   //let writeZPass =
   //    let compare = new StencilFunction(StencilCompareFunction.Always, 0, 0xffu)
@@ -26,40 +29,45 @@ module StencilAreaMasking =
   //    let back    = new StencilOperation(StencilOperationFunction.DecrementWrap, StencilOperationFunction.Keep, StencilOperationFunction.Keep)
   //    StencilMode(front, compare, back, compare)
 
-  let readMaskAndReset = 
-      let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
-      let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
-      StencilMode(operation, compare)
+    let readMaskAndReset =
+        { StencilMode.None with
+            Pass = StencilOperation.Zero
+            Fail = StencilOperation.Zero
+            DepthFail = StencilOperation.Zero
+            Comparison = ComparisonFunction.NotEqual }
+      //let compare = new StencilFunction(StencilCompareFunction.NotEqual, 0, 0xffu)
+      //let operation = new StencilOperation(StencilOperationFunction.Zero, StencilOperationFunction.Zero, StencilOperationFunction.Zero)
+      //StencilMode(operation, compare)
 
   // Front = CounterClockwise
   // Back = Clockwise
 
-  let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
-  let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
+    let maskPass = RenderPass.after "mask" RenderPassOrder.Arbitrary RenderPass.main
+    let areaPass = RenderPass.after "area" RenderPassOrder.Arbitrary maskPass
 
-  let maskSG sg = 
-    sg
-      |> Sg.pass maskPass
-      |> Sg.stencilMode (AVal.constant (writeZFail))
-      |> Sg.cullMode (AVal.constant (CullMode.None))
-      |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
+    let maskSG sg = 
+        sg
+            |> Sg.pass maskPass
+            |> Sg.stencilModes' writeZFailFront writeZFailBack
+            |> Sg.cullMode (AVal.constant (CullMode.None))
+            |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
 
-  let fillSG sg =
-    sg
-      |> Sg.pass areaPass
-      |> Sg.stencilMode (AVal.constant (readMaskAndReset))
-      //|> Sg.cullMode (AVal.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
-      //|> Sg.depthTest (AVal.constant DepthTestMode.Less)        // for zpass -> active depth-test
-      |> Sg.cullMode (AVal.constant CullMode.None)
-      |> Sg.depthTest (AVal.constant DepthTestMode.None)
-      |> Sg.blendMode (AVal.constant BlendMode.Blend)
-      |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
+    let fillSG sg =
+        sg
+        |> Sg.pass areaPass
+        |> Sg.stencilMode (AVal.constant (readMaskAndReset))
+        //|> Sg.cullMode (AVal.constant CullMode.CounterClockwise)  // for zpass -> backface-culling
+        //|> Sg.depthTest (AVal.constant DepthTestMode.Less)        // for zpass -> active depth-test
+        |> Sg.cullMode (AVal.constant CullMode.None)
+        |> Sg.depthTest (AVal.constant DepthTest.None)
+        |> Sg.blendMode (AVal.constant BlendMode.Blend)
+        |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors; DefaultSemantic.Stencil])
 
-  let stencilAreaSG sg =
-    [
-      maskSG sg   // one pass by using EXT_stencil_two_side :)
-      fillSG sg
-    ] |> Sg.ofList
+    let stencilAreaSG sg =
+        [
+            maskSG sg   // one pass by using EXT_stencil_two_side :)
+            fillSG sg
+        ] |> Sg.ofList
 
 module App = 
   open Niobe.Utilities
@@ -102,17 +110,17 @@ module App =
     let sceneSG = 
       //Sg.box (AVal.constant C4b.Red) (AVal.constant Box3d.Unit)
       [
-          Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.noEvents |> Sg.translate 0.5 0.5 0.1
-          Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.noEvents |> Sg.translate -0.5 0.5 0.0
-          Sg.sphere' 8 C4b.DarkGreen 0.75 |> Sg.noEvents |> Sg.translate 0.5 -0.5 -0.1
-          Sg.sphere' 8 C4b.DarkMagenta 0.55 |> Sg.noEvents |> Sg.translate -0.5 -0.5 0.0
+          Sg.sphere' 8 C4b.DarkBlue 0.70 |> Sg.translate 0.5 0.5 0.1
+          Sg.sphere' 8 C4b.DarkCyan 0.65 |> Sg.translate -0.5 0.5 0.0
+          Sg.sphere' 8 C4b.DarkGreen 0.75 |> Sg.translate 0.5 -0.5 -0.1
+          Sg.sphere' 8 C4b.DarkMagenta 0.55 |> Sg.translate -0.5 -0.5 0.0
           //Sg.box' C4b.DarkMagenta Box3d.Unit |> Sg.noEvents
       ] |> Sg.ofSeq
         |> Sg.shader {
               do! DefaultSurfaces.trafo
               do! DefaultSurfaces.simpleLighting
           }  
-        |> Sg.depthTest (AVal.constant DepthTestMode.Less)   // depth test active
+        |> Sg.depthTest (AVal.constant DepthTest.Less)   // depth test active
         |> Sg.pass RenderPass.main
         |> Sg.requirePicking
             |> Sg.noEvents
@@ -131,7 +139,7 @@ module App =
 
     let shadowVolumeDebugVis brushes =
       brushes
-        |> Sg.depthTest (AVal.constant DepthTestMode.Less)
+        |> Sg.depthTest (AVal.constant DepthTest.Less)
         |> Sg.cullMode (AVal.constant (CullMode.Back)) // only for testing
         |> Sg.onOff model.shadowVolumeVis
         |> Sg.pass RenderPass.main

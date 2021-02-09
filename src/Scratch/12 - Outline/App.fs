@@ -5,7 +5,7 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Model
 open Aardvark.UI
 open Aardvark.UI.Primitives
@@ -58,11 +58,17 @@ module Shader =
 
 let viewScene (model : AdaptiveModel) =
 
-    let read a =
-        StencilMode(StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
+    let read reference =
+        { StencilMode.None with
+            Comparison = ComparisonFunction.Greater
+            Reference = reference }
 
-    let write a =
-        StencilMode(StencilOperationFunction.Replace, StencilOperationFunction.Replace, StencilOperationFunction.Keep, StencilCompareFunction.Greater, a, 0xffu)
+    let write reference =
+        { StencilMode.None with
+            Pass = StencilOperation.Replace
+            DepthFail = StencilOperation.Replace
+            Reference = reference
+            Comparison = ComparisonFunction.Greater }
 
     let geom1 =
         [
@@ -89,8 +95,8 @@ let viewScene (model : AdaptiveModel) =
         sg
          |> Sg.pass pass0
          |> Sg.trafo model.trafo
-         |> Sg.cullMode (AVal.constant CullMode.Back)
-         |> Sg.depthTest (AVal.constant DepthTestMode.Less)
+         |> Sg.cullMode' CullMode.Back
+         |> Sg.depthTest' DepthTest.Less
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -101,7 +107,7 @@ let viewScene (model : AdaptiveModel) =
         sg
          |> Sg.pass pass0
          |> Sg.trafo model.trafo
-         |> Sg.stencilMode (AVal.constant (write v))
+         |> Sg.stencilMode' (write v)
          |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
@@ -112,8 +118,8 @@ let viewScene (model : AdaptiveModel) =
     let outline sg v pass colour = 
         sg
          |> Sg.trafo model.trafo
-         |> Sg.stencilMode (AVal.constant (read v))
-         |> Sg.depthTest (AVal.constant DepthTestMode.None)
+         |> Sg.stencilMode' (read v)
+         |> Sg.depthTest' DepthTest.None
          |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
          |> Sg.pass pass
          |> Sg.uniform "LineWidth" model.thickness.value
@@ -128,8 +134,8 @@ let viewScene (model : AdaptiveModel) =
     let outLine sg v pass colour = 
         sg
          |> Sg.trafo model.trafo
-         |> Sg.stencilMode (AVal.constant (read v))
-         |> Sg.depthTest (AVal.constant DepthTestMode.None)
+         |> Sg.stencilMode' (read v)
+         |> Sg.depthTest' DepthTest.None
          |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
          |> Sg.pass pass
          |> Sg.uniform "LineWidth" (AVal.constant 5.0)

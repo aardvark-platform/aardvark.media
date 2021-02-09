@@ -1,12 +1,14 @@
 namespace GeoJsonViewer
 
+open Aardvark.Base
+open FSharp.Data.Adaptive
+open Aardvark.Rendering
+open Aardvark.SceneGraph
+
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Events
 
-open Aardvark.Base
-open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
 
 module App =
 

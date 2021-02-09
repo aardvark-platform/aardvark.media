@@ -6,7 +6,7 @@ module TranslateController =
     open FSharp.Data.Adaptive
     
     open Aardvark.SceneGraph
-    open Aardvark.Base.Rendering
+    open Aardvark.Rendering
     open Aardvark.Base.Geometry
     open Aardvark.UI        
 

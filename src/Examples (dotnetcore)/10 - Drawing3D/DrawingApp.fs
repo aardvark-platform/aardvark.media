@@ -2,7 +2,7 @@ module App
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
 
@@ -102,7 +102,7 @@ let scene3D (model : AdaptiveSimpleDrawingModel) =
                 toEffect DefaultSurfaces.thickLine
                 ]
             |> Sg.pass (RenderPass.after "lines" RenderPassOrder.Arbitrary RenderPass.main)
-            |> Sg.depthTest (AVal.constant DepthTestMode.None)                                         
+            |> Sg.depthTest (AVal.constant DepthTest.None)                                         
 
     let spheres =
         model.points 

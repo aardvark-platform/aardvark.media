@@ -7,7 +7,7 @@ open Aardvark.UI.Operators
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.Application
 open Adaptify.FSharp.Core
 open Utils
@@ -315,7 +315,7 @@ let viewScene (model : AdaptiveModel) =
 
     Sg.ofSeq [background; objectSg] 
         |> Sg.blendMode (AVal.constant BlendMode.Blend)
-        |> Sg.depthTest (AVal.constant DepthTestMode.None)
+        |> Sg.depthTest (AVal.constant DepthTest.None)
         //|> Sg.trafo (Trafo3d.FromOrthoNormalBasis(V3d.IOO,V3d.OOI,V3d.OIO) |> AVal.constant)
 
  

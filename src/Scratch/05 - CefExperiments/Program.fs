@@ -111,7 +111,7 @@ module TestApp =
 
     open Aardvark.Base
     open FSharp.Data.Adaptive
-    open Aardvark.Base.Rendering
+    open Aardvark.Rendering
     open Model
 
     type Message = Camera of CameraController.Message
@@ -176,7 +176,7 @@ module TestApp =
 
         open Aardvark.Base
         open FSharp.Data.Adaptive
-        open Aardvark.Base.Rendering
+        open Aardvark.Rendering
         open Model
 
         type Message = Camera of FreeFlyController.Message | CenterScene
@@ -242,7 +242,7 @@ module TestApp =
 
         open Aardvark.Base
         open FSharp.Data.Adaptive
-        open Aardvark.Base.Rendering
+        open Aardvark.Rendering
         open Model
 
         type Message = Nop

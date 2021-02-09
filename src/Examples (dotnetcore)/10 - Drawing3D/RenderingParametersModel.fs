@@ -3,7 +3,7 @@ namespace RenderingParametersModel
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Adaptify
 
 [<ModelType>]

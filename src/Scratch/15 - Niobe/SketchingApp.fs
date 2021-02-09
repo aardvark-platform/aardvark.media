@@ -2,7 +2,7 @@ namespace Niobe.Sketching
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.SceneGraph
 
 open Aardvark.Application
@@ -53,7 +53,7 @@ module Sg =
 
     [ lines; points] 
       |> Sg.ofSeq
-      |> Sg.depthBias (offset |> AVal.map (fun x -> DepthBiasState(x, 0.0, 0.0)))  // using this methode the bias depends on the near-far-plane ratio
+      |> Sg.depthBias (offset |> AVal.map DepthBias.constant)  // using this methode the bias depends on the near-far-plane ratio
     
   let drawFinishedBrush points (color:aval<C4b>) (alpha:aval<float>) (offset:aval<float>) :ISg<'a> =
     
