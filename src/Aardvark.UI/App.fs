@@ -78,7 +78,7 @@ type App<'model, 'mmodel, 'msg> =
                                     try 
                                         app.update state.Value msg
                                     with e -> 
-                                        Log.error "[media] update function failed with: %A" e
+                                        try Config.updateFailed e with e' -> Log.error "[media] Config.updateFailed failed: %s" e.Message
                                         state.Value
 
                                 let newThreads = app.threads newState
