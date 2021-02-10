@@ -1105,7 +1105,7 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
     inherit CefRenderHandler()
 
 
-
+    // actually this method was removed? 
     let changeCursor (cursor : nativeint) =
         #if NETCOREAPP3_1 // currently no way to change cursor in netcoreapp apps?
         () 
@@ -1194,14 +1194,6 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
             parent.Render(fun () ->
                 texture.UpdateAsync(PixFormat.ByteBGRA, V2i(width, height), buffer)
             ) 
-
-    /// Notifies the "main" process to change the cursor-symbol (hovering over text/links/etc.)
-    /// </summary>
-    override x.OnCursorChange(browser : CefBrowser, cursorHandle : nativeint, a, b) =
-        try 
-            changeCursor(cursorHandle)
-        with e -> 
-            Report.Line(5, e.Message)
 
     /// <summary>
     /// NO IDEA WHAT THIS IS EXACTLY
