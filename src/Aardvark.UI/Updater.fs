@@ -591,11 +591,11 @@ module Updaters =
         let processMsgs (client : Guid) (messages : seq<'inner>) =
             match cache with
                 | Some (_, subject, _) ->
-                    let messages = messages |> Seq.cache
-                    m.update client messages
+                    let messages = transact (fun () -> Seq.toList messages)
+                    m.update client (messages :> seq<_>)
                     for msg in messages do subject.OnNext msg
                     let model = m.model.GetValue()
-                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg)) |> Seq.cache
+                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg))
                 | _ ->
                     Seq.empty
 
