@@ -2,103 +2,52 @@
 
 open Aardvark.Base
 open Aether
-open Param.Operators
 
-module private Array =
-
-    let foldi (folder : int -> 'State -> 'T -> 'State) (state : 'State) (array : 'T[]) =
-        let _, result =
-            ((0, state), array) ||> Array.fold (fun (i, state) x ->
-                (i + 1), folder i state x
-            )
-
-        result
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module private GroupSemantics =
-
-    let applyDistanceTime (action : Action) (animation : IAnimation<'Model>) =
-        let adjustLocalTime (localTime : LocalTime) =
-            if animation.Duration.IsFinite then
-                animation.DistanceTime(localTime) |> Param.map ((*) animation.Duration >> LocalTime.max)
-            else
-                ~~localTime
-
-        let adjustGlobalTime (globalTime : Param<GlobalTime>) =
-            match animation.State with
-            | State.Running startTime ->
-                globalTime |> Param.bind (fun t ->
-                    let localTime = t |> LocalTime.relative startTime |> adjustLocalTime
-                    localTime |> Param.map ((+) startTime)
-                )
-            | _ ->
-                globalTime
-
-        match action with
-        | Action.Start (t, l) -> Action.Start(t, l |> adjustLocalTime |> Param.value)
-        | Action.Update t     -> Action.Update (adjustGlobalTime t)
-        | _                   -> action
-
-
-    let perform ((segmentStart, segmentEnd) : LocalTime * LocalTime)
-                (state : State) (action : Action) : (IAnimation<'Model> -> Action) =
-
-        // Relay actions to members, starting them if necessary
-        let start (globalTime : GlobalTime) (groupLocalTime : LocalTime) (animation : IAnimation<'Model>) =
-            if groupLocalTime >= segmentStart && groupLocalTime <= segmentEnd then
-                Action.Start (globalTime, groupLocalTime - segmentStart)
-            else
-                Action.Stop
-
-        let update (globalTime : Param<GlobalTime>) (groupLocalTime : LocalTime) (animation : IAnimation<'Model>) =
-            if not animation.IsRunning && groupLocalTime >= segmentStart && groupLocalTime <= segmentEnd then
-                Action.Start (!globalTime, groupLocalTime - segmentStart)
-            else
-                Action.Update globalTime
-
-        match action, state with
-        | Action.Start (globalTime, groupLocalTime), _ ->
-            start globalTime groupLocalTime
-
-        | Action.Update globalTime, State.Running groupStartTime ->
-            let groupLocalTime = !globalTime |> LocalTime.relative groupStartTime
-            update globalTime groupLocalTime
-
-        | _ ->
-            fun _  -> action
-
-
-type private Parallel<'Model, 'Value> =
+type private Path<'Model, 'Value> =
     {
         StateMachine : StateMachine<'Value>
-        Members : IAnimation<'Model>[]
-        Mapping : System.Func<'Model, IAnimation<'Model>[], 'Value>
+        Members : IAnimation<'Model, 'Value>[]
         DistanceTimeFunction : DistanceTimeFunction
         Observable : Observable<'Model, 'Value>
     }
+
+    member x.Offsets =
+        (LocalTime.zero, x.Members) ||> Array.scan (fun t a -> t + a.TotalDuration)
+
+    member x.TimeSegments =
+        x.Offsets |> Array.pairwise
 
     member x.Value = x.StateMachine.Holder.Value
 
     member x.State = x.StateMachine.Holder.State
 
     member x.Duration =
-        x.Members |> Array.map (fun a -> a.TotalDuration) |> Array.max
+        Array.last x.Offsets |> Duration.ofLocalTime
 
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
 
+    member private x.FindMemberIndex(groupLocalTime : LocalTime) =
+        if groupLocalTime < LocalTime.zero then
+            0
+        elif groupLocalTime > LocalTime.max x.Duration then
+            x.Members.Length - 1
+        else
+            x.TimeSegments |> Array.findIndex (fun (a, b) -> groupLocalTime >= a && groupLocalTime <= b)
+
     member x.DistanceTime(groupLocalTime : LocalTime) =
         x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
 
-    member x.Evaluate(model : 'Model, members : IAnimation<'Model>[], groupLocalTime : LocalTime) =
-        x.DistanceTime(groupLocalTime) |> Param.set (x.Mapping.Invoke(model, members))
+    member x.Evaluate(members : IAnimation<'Model, 'Value>[], groupLocalTime : LocalTime) =
+        let s = x.DistanceTime(groupLocalTime)
+        let i = x.FindMemberIndex(groupLocalTime)
+        s |> Param.set members.[i].Value
 
     member x.Perform(action : Action) =
         let action = x |> GroupSemantics.applyDistanceTime action
 
-        let perform (i : int) (a : IAnimation<'Model>) =
-            let segment = LocalTime.zero, LocalTime.max x.Members.[i].TotalDuration
-            let action = a |> GroupSemantics.perform segment x.State action
+        let perform (i : int) (a : IAnimation<'Model, 'Value>) =
+            let action = a |> GroupSemantics.perform x.TimeSegments.[i] x.State action
             a.Perform(action)
 
         { x with
@@ -108,7 +57,7 @@ type private Parallel<'Model, 'Value> =
     member x.Scale(duration) =
         let s = duration / x.Duration
 
-        let scale (a : IAnimation<'Model>) =
+        let scale (a : IAnimation<'Model, 'Value>) =
             a.Scale(if isFinite s && not a.Duration.IsZero then a.Duration * s else duration)
 
         { x with Members = x.Members |> Array.map scale }
@@ -136,13 +85,13 @@ type private Parallel<'Model, 'Value> =
 
         // Commit members
         let members, model =
-            let arr : IAnimation<'Model>[] = Array.zeroCreate x.Members.Length
+            let arr : IAnimation<'Model, 'Value>[] = Array.zeroCreate x.Members.Length
 
             let model =
                 (model, x.Members) ||> Array.foldi (fun i model animation ->
                     let model = animation.Commit(lens, name, model)
                     let animation = model |> Optic.get lens
-                    arr.[i] <- animation
+                    arr.[i] <- unbox animation
                     model
                 )
 
@@ -150,7 +99,7 @@ type private Parallel<'Model, 'Value> =
 
         // Process all actions, from oldest to newest
         let machine, events =
-            let eval t = x.Evaluate(model, members, t)
+            let eval t = x.Evaluate(members, t)
             x.StateMachine |> StateMachine.run eval
 
         // Notify observers about changes
@@ -188,27 +137,18 @@ type private Parallel<'Model, 'Value> =
 
 
 [<AutoOpen>]
-module AnimationGroupExtensions =
+module AnimationPathExtensions =
 
     module Animation =
 
-        /// <summary>
-        /// Creates a parallel animation group from a sequence of animations.
-        /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let group (animations : #IAnimation<'Model> seq) =
+        let path (animations : #IAnimation<'Model, 'Value> seq) =
             let animations =
-                animations |> Array.ofSeq |> Array.map (fun a -> a :> IAnimation<'Model>)
+                animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation group cannot be empty")
+                raise <| System.ArgumentException("Animation path cannot be empty")
 
             { StateMachine = StateMachine.initial
               Members = animations
-              Mapping = System.Func<_,_,_> (fun _ -> ignore)
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, unit>
-
-        /// Combines two animations into a parallel group.
-        let andAlso (x : IAnimation<'Model>) (y : IAnimation<'Model>) =
-            group [x; y]
+              Observable = Observable.empty } :> IAnimation<'Model, 'Value>

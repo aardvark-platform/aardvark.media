@@ -62,36 +62,103 @@ let update (model : Model) (msg : Message) =
 
             let rotationAnimation =
                 let rotX =
-                    model |> Animation.Primitives.lerpTo Model.rotationX_ (if model.rotationX = 0.0 then Constant.Pi else 0.0)
+                    //model |> Animation.Primitives.lerpAngleTo Model.rotationX_ (if model.rotationX = 0.0 then Constant.Pi else 0.0)
+                    Animation.Primitives.lerpAngle 0.0 Constant.Pi
                     |> Animation.seconds 2
                     |> Animation.ease (Easing.InOut EasingFunction.Sine)
+                    |> Animation.onStart (fun _ ->      Log.warn "[RotX] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[RotX] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[RotX] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[RotX] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[RotX] finished")
+
+                let rotY =
+                    //model |> Animation.Primitives.lerpAngleTo Model.rotationX_ (if model.rotationX = 0.0 then Constant.Pi else 0.0)
+                    Animation.Primitives.lerpAngle 0.0 Constant.Pi
+                    |> Animation.seconds 2
+                    |> Animation.ease (Easing.InOut EasingFunction.Sine)
+                    |> Animation.onStart (fun _ ->      Log.warn "[RotY] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[RotY] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[RotY] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[RotY] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[RotY] finished")
 
                 let rotZ =
-                    model |> Animation.Primitives.lerpAngleTo Model.rotationZ_ (if model.rotationZ = 0.0f then (-ConstantF.PiHalf + ConstantF.PiTimesTwo) else 0.0f)
-                    |> Animation.seconds 2
-                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
-                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
-                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
+                    //model |> Animation.Primitives.lerpAngleTo Model.rotationZ_ (if model.rotationZ = 0.0f then (-ConstantF.PiHalf + ConstantF.PiTimesTwo) else 0.0f)
+                    Animation.Primitives.lerpAngle 0.5f (-ConstantF.Pi + ConstantF.PiTimesTwo)
+                    |> Animation.seconds 4
+                    |> Animation.onStart (Log.warn "[RotZ] started: %f")
+                    //|> Animation.onProgress (Log.warn "[RotZ] progress: %f")
+                    //|> Animation.onStart (fun _ ->      Log.warn "[RotZ] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[RotZ] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[RotZ] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[RotZ] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[RotZ] finished")
+                    |> Animation.map float
 
-                (rotX, rotZ) ||> Animation.map2 (fun roll yaw ->
-                    Rot3d.RotationEuler(roll, 0.0, float yaw)
+                (rotX, rotY, rotZ) |||> Animation.map3 (fun roll pitch yaw ->
+                    Rot3d.RotationEuler(roll, pitch, yaw)
                 )
+                //Animation.path [rotX; rotZ]
+                //rotZ |> Animation.map (fun yaw ->
+                //    Rot3d.RotationEuler(0.0, 0.0, yaw)
+                //)
                 |> Animation.link Model.rotation_
                 |> Animation.onStart (fun _ ->      Log.warn "[Rotation] started")
                 |> Animation.onStop (fun _ ->       Log.warn "[Rotation] stopped")
                 |> Animation.onPause (fun _ ->      Log.warn "[Rotation] paused")
                 |> Animation.onResume (fun _ ->     Log.warn "[Rotation] resumed")
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Rotation] finished")
-                |> Animation.loop LoopMode.Mirror
 
             let positionAnimation =
-                model |> Animation.Primitives.lerpTo Model.position_ (if model.position = V3d.NPN then V3d.PNP else V3d.NPN)
-                |> Animation.seconds 1
+                let segment1 =
+                    model |> Animation.Primitives.lerpTo Model.position_ (V3d(1, 0, 0))
+                    |> Animation.onStart (fun _ ->      Log.warn "[Segment1] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[Segment1] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[Segment1] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[Segment1] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment1] finished")
+                    |> Animation.seconds 0.25
+
+                let segment2 =
+                    Animation.Primitives.lerp (V3d(1, 0, 0)) (V3d(4, 3, 1))
+                    |> Animation.onStart (fun _ ->      Log.warn "[Segment2] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[Segment2] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[Segment2] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[Segment2] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment2] finished")
+
+                let segment3 =
+                    Animation.Primitives.lerp (V3d(4, 3, 1)) (V3d(-3, 1, 6))
+                    |> Animation.onStart (fun _ ->      Log.warn "[Segment3] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[Segment3] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[Segment3] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[Segment3] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment3] finished")
+
+                let segment4 =
+                    Animation.Primitives.lerp (V3d(-3, 1, 6)) (V3d(-5, -10, 3))
+                    |> Animation.onStart (fun _ ->      Log.warn "[Segment4] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[Segment4] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[Segment4] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[Segment4] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment4] finished")
+
+                Animation.path [segment1; segment2; segment3; segment4]
+                //segment1
+                |> Animation.link Model.position_
+                |> Animation.onStart (fun _ ->      Log.warn "[Position] started")
+                |> Animation.onStop (fun _ ->       Log.warn "[Position] stopped")
+                |> Animation.onPause (fun _ ->      Log.warn "[Position] paused")
+                |> Animation.onResume (fun _ ->     Log.warn "[Position] resumed")
+                |> Animation.onFinalize (fun _ ->   Log.warn "[Position] finished")
+                |> Animation.seconds 5
                 |> Animation.ease (Easing.InOut EasingFunction.Cubic)
-                |> Animation.loop LoopMode.Mirror
+                |> Animation.loopN LoopMode.Mirror 2
 
             let cameraAnimation =
                 let lens = Model.cameraState_ >-> CameraControllerState.view_
+                let posLens = Model.position_
                 let view1 = initialCamera.view
                 let view2 = CameraView.lookAt (V3d(-3.0, 12.0, 6.0)) V3d.OOO V3d.OOI
                 let view3 = CameraView.lookAt (V3d(-5.0, -16.0, 2.0)) V3d.OOO V3d.OOI
@@ -104,11 +171,15 @@ let update (model : Model) (msg : Message) =
                         elif src.Location = view3.Location then view1
                         else view2
 
-                    //model |> Animation.Camera.interpolateTo lens dst
-                    model |> Animation.Camera.orbitTo' lens positionAnimation V3d.ZAxis Constant.PiTimesTwo
-                    |> Animation.seconds 5
-                    |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
-                    |> Animation.loop LoopMode.Repeat
+                    model |> Animation.Camera.interpolateTo lens dst
+                    //model |> Animation.Camera.orbitTo' lens positionAnimation V3d.ZAxis Constant.PiTimesTwo
+                    //model |> Animation.Camera.orbitDynamicTo lens posLens V3d.ZAxis Constant.PiTimesTwo
+                    |> Animation.seconds 1
+                    |> Animation.onStart (fun _ ->      Log.warn "[Camera] started")
+                    |> Animation.onStop (fun _ ->       Log.warn "[Camera] stopped")
+                    |> Animation.onPause (fun _ ->      Log.warn "[Camera] paused")
+                    |> Animation.onResume (fun _ ->     Log.warn "[Camera] resumed")
+                    |> Animation.onFinalize (fun _ ->   Log.warn "[Camera] finished")
                     //|> Animation.onFinalize' (fun name _ model ->
                     //    model |> Animator.set name (next model)
                     //)
@@ -116,14 +187,31 @@ let update (model : Model) (msg : Message) =
                 next model
 
             let animation =
-                cameraAnimation
-                |> Animation.andAlso positionAnimation
+                //cameraAnimation
+                //rotationAnimation
+                //|> Animation.ease (Easing.InOut EasingFunction.Quadratic)
+                //|> Animation.ease (Easing.InOut EasingFunction.Quadratic)
+                //|> Animation.loop LoopMode.Mirror
+                //|> Animation.seconds 4
+                //|> Animation.andAlso rotationAnimation
+                //|> Animation.andAlso cameraAnimation
+                //|> Animation.seconds 4
+                //|> Animation.andAlso colorAnimation
+                //|> Animation.andAlso positionAnimation
+                //|> Animation.loop LoopMode.Mirror
+                //|> Animation.seconds 2
+                //|> Animation.andAlso positionAnimation
+                positionAnimation
                 |> Animation.andAlso rotationAnimation
-                |> Animation.andAlso colorAnimation
                 |> Animation.subscribe timer
 
+            let msg =
+                let t = Animator.time()
+                let a = animation.Start(t, LocalTime.Offset <| MicroTime.ofSeconds 2)
+                AnimatorMessage.Set(animSym, a, false)
 
             model |> Animator.set animSym animation
+            //model |> Animator.update msg
 
     | Camera m ->
         { model with cameraState = FreeFlyController.update model.cameraState m }

@@ -71,7 +71,7 @@ module Animator =
         let private sw = Stopwatch.StartNew()
 
         let get() =
-            sw.Elapsed.MicroTime
+            sw.Elapsed.MicroTime |> GlobalTime.Timestamp
 
     [<AutoOpen>]
     module internal Querying =
@@ -98,12 +98,12 @@ module Animator =
                 (fun value model -> model |> Optic.map lens (HashMap.add name value))
 
             /// Notifies animation observers.
-            let notify (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
+            let commit (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
                 let lens = name |> animationLens lens
-                animation.Notify(lens, name, model)
+                animation.Commit(lens, name, model)
 
             /// Update the given animation according to the given function and notifies its observers.
-            let updateNotify (lens : Lens<'Model, Animator<'Model>>)
+            let updateCommit (lens : Lens<'Model, Animator<'Model>>)
                              (name : Symbol) (mapping : IAnimation<'Model> -> IAnimation<'Model>)
                              (animation : IAnimation<'Model>) (model : 'Model) =
 
@@ -111,13 +111,13 @@ module Animator =
 
                 model
                 |> Optic.map (lens >-> lensAnim) (HashMap.add name animation)
-                |> notify lens name animation
+                |> commit lens name animation
 
             /// Alters an animation (if it exists) according to the given function and notifies its observers.
             /// The function returns the updated animation and a flag, indicating if it should be kept in the map or removed.
             let tryUpdateNotify (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (mapping : IAnimation<'Model> -> IAnimation<'Model>) (model : 'Model) =
                 tryGetUntyped lens name model
-                |> Option.map (fun anim -> (anim, model) ||> updateNotify lens name mapping)
+                |> Option.map (fun anim -> (anim, model) ||> updateCommit lens name mapping)
                 |> Option.defaultValue model
 
             /// Notifies the animation observers to compute a new model.
@@ -127,7 +127,7 @@ module Animator =
 
                 (model, animator.Animations)
                 ||> HashMap.fold (fun model name animation ->
-                    model |> notify lens name animation
+                    model |> commit lens name animation
                 )
 
         /// Sets the tick rate.
@@ -143,9 +143,9 @@ module Animator =
                 if start then
                     animation.Start <| Time.get()
                 else
-                    animation.Stop()
+                    animation
 
-            (animation, model) ||> updateNotify lens name mapping
+            (animation, model) ||> updateCommit lens name mapping
 
         /// Removes an animation.
         let remove (name : Symbol) (animator : Animator<'Model>) =
@@ -176,7 +176,7 @@ module Animator =
             let lensTickCount= lens >-> Animator.TickCount_
 
             let update (animations : HashMap<Symbol, IAnimation<'Model>>) =
-                animations |> HashMap.map (fun _ a -> a.Update <| Time.get())
+                animations |> HashMap.map (fun _ a -> a.Update <| (Time.get() |> Param.unsignaled))
 
             let remove (animations : HashMap<Symbol, IAnimation<'Model>>) =
                 animations |> HashMap.filter (fun _ a -> not a.IsFinished)

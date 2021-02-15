@@ -118,3 +118,19 @@ module AnimationCameraPrimitives =
             let orbitTo' (lens : Lens<'Model, CameraView>) (center : IAnimation<'Model, V3d>) (normalizedAxis : V3d) (angleInRadians : float) (model : 'Model) =
                 orbit' center normalizedAxis angleInRadians (model |> Optic.get lens)
                 |> Animation.link lens
+
+            /// Creates an animation that orbits the camera view around the center and axis by the given angle.
+            let orbitDynamic (center : Lens<'Model, V3d>) (normalizedAxis : V3d) (angleInRadians : float) (camera : CameraView) : IAnimation<'Model, CameraView> =
+                Animation.create' (fun m t ->
+                    let angle = t |> lerp 0.0 angleInRadians
+                    let rotation = Rot3d.Rotation(normalizedAxis, angle)
+                    let center = m |> Optic.get center
+                    let location = center + rotation * (camera.Location - center)
+                    CameraView.lookAt location center camera.Sky
+                )
+
+            /// Creates an animation that orbits the camera view variable specified by
+            /// the lens around the center and axis by the given angle. The animation is linked to that variable via an observer with a progress callback.
+            let orbitDynamicTo (lens : Lens<'Model, CameraView>) (center : Lens<'Model, V3d>) (normalizedAxis : V3d) (angleInRadians : float) (model : 'Model) =
+                orbitDynamic center normalizedAxis angleInRadians (model |> Optic.get lens)
+                |> Animation.link lens

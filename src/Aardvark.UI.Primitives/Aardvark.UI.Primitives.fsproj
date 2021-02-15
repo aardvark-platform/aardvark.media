@@ -24,11 +24,15 @@
     <Compile Include="TrafoControls\ScaleController.fs" />
     <Compile Include="Animation\Deprecated\Model.fs" />
     <Compile Include="Animation\Deprecated\AnimationBase.fs" />
+    <Compile Include="Animation\Param.fs" />
+    <Compile Include="Animation\Time.fs" />
     <Compile Include="Animation\Interface.fs" />
     <Compile Include="Animation\DistanceTimeFunction.fs" />
     <Compile Include="Animation\Easing.fs" />
+    <Compile Include="Animation\StateMachine.fs" />
     <Compile Include="Animation\Animation.fs" />
     <Compile Include="Animation\Group.fs" />
+    <Compile Include="Animation\Path.fs" />
     <Compile Include="Animation\Mapping.fs" />
     <Compile Include="Animation\Input.fs" />
     <Compile Include="Animation\Observer.fs" />

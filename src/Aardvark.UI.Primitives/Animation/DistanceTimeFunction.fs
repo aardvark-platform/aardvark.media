@@ -7,17 +7,21 @@ open Aardvark.Base
 module private DistanceTimeFunctionUtilities =
 
     let inline repeat (s : float) =
-        s % 1.0
+        if s = 0.0 then
+            0.0
+        else
+            let t = s % 1.0
+            if t = 0.0 then 1.0 else t
 
     let inline mirror (s : float) =
         let t = s % 1.0
         if int s % 2 = 0 then t else 1.0 - t
 
+
 type private DistanceTimeFunction =
     {
-        Duration : MicroTime
         Easing : Func<float, float>
-        Iterations : int
+        Iterations : Iterations
         Mode : LoopMode
     }
 
@@ -26,24 +30,17 @@ type private DistanceTimeFunction =
         | LoopMode.Repeat -> repeat s
         | LoopMode.Mirror -> mirror s
 
-    member inline private x.Final(s : float) =
-        match x.Mode with
-        | LoopMode.Repeat -> 1.0
-        | LoopMode.Mirror -> mirror s
+    /// Returns a position within [0, 1] depending on the time elapsed since the start of the animation.
+    member x.Invoke(t : float) =
+        if isFinite t then
+            let tmax = float x.Iterations
+            let wrapped = x.Wrap(t |> clamp 0.0 tmax)
+            let eased = x.Easing.Invoke(wrapped)
 
-    /// Returns a flag indicating if the animation has finished, and a position within [0, 1] depending
-    /// on the time elapsed since the start of the animation.
-    member x.Invoke(localTime : MicroTime) =
-        let p = localTime / x.Duration
-
-        if x.Duration.IsZero || (x.Iterations > 0 && int p >= x.Iterations) then
-            true, x.Iterations |> float |> x.Final
+            eased |> Param.create (t < 0.0 || t > tmax)
         else
-            false, p |> x.Wrap |> x.Easing.Invoke
-
-    /// Sets the duration of the animation.
-    member x.Scale(duration) =
-        { x with Duration = duration }
+            Log.warn "[Animation] Distance-time function invoked with %f" t
+            Param.signaled 0.0
 
     /// <summary>
     /// Applies an easing function, i.e. a function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
@@ -61,16 +58,13 @@ type private DistanceTimeFunction =
         { x with Iterations = iterations; Mode = mode }
 
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private DistanceTimeFunction =
 
     let empty =
-        { Duration = MicroTime.Zero
-          Easing = Func<_,_> id
-          Iterations = 1
+        { Easing = Func<_,_> id
+          Iterations = Iterations.Finite 1
           Mode = LoopMode.Repeat }
-
-    let create (duration : MicroTime) =
-        { empty with Duration = duration }
 
 
 [<AutoOpen>]
@@ -79,22 +73,37 @@ module AnimationTimeExtensions =
     module Animation =
 
         /// Sets the duration of the given animation.
-        let duration (t : MicroTime) (animation : IAnimation<'Model, 'Value>) =
+        let duration (t : Duration) (animation : IAnimation<'Model, 'Value>) =
             animation.Scale t
+
+        /// Sets the duration (in ninutes) of the given animation.
+        let inline minutes (m : ^Minutes) (animation : IAnimation<'Model, 'Value>) =
+            animation |> duration (Duration.ofMinutes m)
 
         /// Sets the duration (in seconds) of the given animation.
         let inline seconds (s : ^Seconds) (animation : IAnimation<'Model, 'Value>) =
-            animation |> duration (MicroTime.ofSeconds s)
+            animation |> duration (Duration.ofSeconds s)
 
         /// Sets the duration (in milliseconds) of the given animation.
         let inline milliseconds (ms : ^Milliseconds) (animation : IAnimation<'Model, 'Value>) =
-            animation |> duration (MicroTime.ofMilliseconds ms)
+            animation |> duration (Duration.ofMilliseconds ms)
+
+        /// Sets the duration (in microseconds) of the given animation.
+        let inline microseconds (us : ^Microseconds) (animation : IAnimation<'Model, 'Value>) =
+            animation |> duration (Duration.ofMicroseconds us)
+
+        /// Sets the duration (in nanoseconds) of the given animation.
+        let inline nanoseconds (ns : ^Nanoseconds) (animation : IAnimation<'Model, 'Value>) =
+            animation |> duration (Duration.ofNanoseconds ns)
 
         /// Sets the number of iterations and loop mode of the given animation.
-        /// A count less than one results in an infinite number of iterations.
-        let loop' (mode : LoopMode) (count : int) (animation : IAnimation<'Model, 'Value>) =
+        let loop' (mode : LoopMode) (count : Iterations) (animation : IAnimation<'Model, 'Value>) =
             animation.Loop(count, mode)
 
         /// Loops the given animation infinitely according to the given mode.
         let loop (mode : LoopMode) (animation : IAnimation<'Model, 'Value>) =
-            animation |> loop' mode -1
+            animation |> loop' mode Iterations.Infinite
+
+        /// Sets the number of iterations (must be > 0) and loop mode of the given animation.
+        let loopN (mode : LoopMode) (count : int) (animation : IAnimation<'Model, 'Value>) =
+            animation |> loop' mode (Iterations.Finite count)
