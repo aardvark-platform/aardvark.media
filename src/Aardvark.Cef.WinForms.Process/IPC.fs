@@ -11,7 +11,6 @@ open System.Collections.Generic
 
 open Aardvark.Base
 
-open Xilium.CefGlue.Wrapper
 open Xilium.CefGlue
 
 type CefResult =
@@ -31,7 +30,7 @@ module private CefV8ContextExt =
                 if entered then
                     let exited = x.Exit()
                     if not exited then 
-                        failwith "[Cef] could not exit CefV8Context"
+                        failwith "[CEF] could not exit CefV8Context"
 
 [<AutoOpen>]
 module Patterns =

@@ -28,8 +28,6 @@ type Browser(signature : IFramebufferSignature, time : aval<System.DateTime>, ru
     
     member x.LoadUrlAsync (url : string) = client.LoadUrlAsync url
     member x.LoadUrl (url : string) = client.LoadUrl url
-    member x.LoadHtmlAsync (code : string) = client.LoadHtmlAsync code
-    member x.LoadHtml (code : string) = client.LoadHtml code
 
     member x.Runtime = runtime
     member x.FramebufferSignature = signature

@@ -127,8 +127,8 @@ module private Tools =
                     )
                 )
 
-            small |> Option.iter device.Delete
-            device.Delete tmp
+            small |> Option.iter (fun s -> s.Dispose())
+            tmp.Dispose()
             result
 
         let downloadFBOMS (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
@@ -176,9 +176,9 @@ module private Tools =
                     )
                 )
 
-            full |> Option.iter device.Delete
-            device.Delete tempImage
-            device.Delete tmp
+            full |> Option.iter (fun f -> f.Dispose())
+            tempImage.Dispose()
+            tmp.Dispose()
             result
 
         type Framebuffer with
@@ -588,7 +588,7 @@ module private ReadPixel =
 
             let result = temp.Memory.Mapped (fun ptr -> NativeInt.read<uint32> ptr)
             let frac = float (result &&& 0xFFFFFFu) / float ((1 <<< 24) - 1)
-            img.Device.Delete temp
+            temp.Dispose()
             frac
 
     let downloadDepth (pixel : V2i) (img : IBackendTexture) =
@@ -979,7 +979,7 @@ module internal RawDownload =
                 match tempImage with
                     | Some t when t.Size.XY = size -> t
                     | _ ->
-                        tempImage |> Option.iter device.Delete
+                        tempImage |> Option.iter (fun i -> i.Dispose())
                         let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit ||| VkImageUsageFlags.ColorAttachmentBit) device
                         tempImage <- Some t
                         t
@@ -989,7 +989,7 @@ module internal RawDownload =
                 match tempBuffer with
                     | Some b when b.Size = size -> b
                     | _ ->
-                        tempBuffer |> Option.iter device.Delete
+                        tempBuffer |> Option.iter (fun i -> i.Dispose())
                         let b = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
                         tempBuffer <- Some b
                         b
@@ -1027,8 +1027,8 @@ module internal RawDownload =
                 )
 
             member x.Dispose() =
-                tempImage |> Option.iter device.Delete
-                tempBuffer |> Option.iter device.Delete
+                tempImage |> Option.iter (fun i -> i.Dispose())
+                tempBuffer |> Option.iter (fun i -> i.Dispose())
 
 
             interface IDownloader with
@@ -1047,7 +1047,7 @@ module internal RawDownload =
                 match tempBuffer with
                     | Some b when b.Size = size -> b
                     | _ ->
-                        tempBuffer |> Option.iter device.Delete
+                        tempBuffer |> Option.iter (fun i -> i.Dispose())
                         let b = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
                         tempBuffer <- Some b
                         b
@@ -1079,7 +1079,7 @@ module internal RawDownload =
                 )
 
             member x.Dispose() =
-                tempBuffer |> Option.iter device.Delete
+                tempBuffer |> Option.iter (fun i -> i.Dispose())
 
 
             interface IDownloader with
@@ -1118,7 +1118,7 @@ module internal RawDownload =
                     Marshal.Copy(ptr, dst, nativeint size)
                 )
 
-                Image.delete tempImage device
+                tempImage.Dispose()
             else
                 let lineSize = 4L * int64 image.Size.X
                 let size = lineSize * int64 image.Size.Y

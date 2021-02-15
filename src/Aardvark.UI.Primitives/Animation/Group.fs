@@ -4,16 +4,6 @@ open Aardvark.Base
 open Aether
 open Param.Operators
 
-module private Array =
-
-    let foldi (folder : int -> 'State -> 'T -> 'State) (state : 'State) (array : 'T[]) =
-        let _, result =
-            ((0, state), array) ||> Array.fold (fun (i, state) x ->
-                (i + 1), folder i state x
-            )
-
-        result
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private GroupSemantics =
 

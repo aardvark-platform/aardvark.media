@@ -57,6 +57,7 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Compile Include="OpenDialog.fs" />
+    <Compile Include="SaveDialog.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />

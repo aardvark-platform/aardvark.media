@@ -11,7 +11,6 @@ open System.Collections.Generic
 
 open Aardvark.Base
 
-open Xilium.CefGlue.Wrapper
 open Xilium.CefGlue
 open Aardvark.Cef
 
@@ -94,7 +93,7 @@ type AardvarkIO(browser : CefBrowser) as this =
                 let id = Interlocked.Increment(&currentId)
                 reactions.[id] <- (ctx, f)
                 use msg = IPC.toProcessMessage (OpenDialog(id, config))
-                browser.SendProcessMessage(CefProcessId.Browser, msg) |> ignore
+                browser.GetMainFrame().SendProcessMessage(CefProcessId.Browser, msg) |> ignore
 
                 NoRet
             | _ ->
