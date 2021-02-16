@@ -1,6 +1,5 @@
 ﻿namespace Aardvark.UI.Anewmation
 
-open System
 open Aardvark.Base
 
 [<AutoOpen>]
@@ -86,9 +85,29 @@ module AnimationPrimitives =
                 |> Animation.link lens
 
 
+            /// Creates an animation using spherical linear interpolation between the given orientations.
+            /// The orientation type can be either Rot3d or Rot3f.
+            let inline slerp (src : ^Rot3) (dst : ^Rot3) : IAnimation<'Model, ^Rot3> =
+                let src, dst = toRot3d src, toRot3d dst
+
+                Animation.create (fun t -> Rot.SlerpShortest(src, dst, t))
+                |> Animation.seconds 1
+                |> Animation.map (ofRot3d)
+
+            /// Creates an animation using spherical linear interpolation.
+            /// The animation is linked to the variable specified by the given lens via an observer with a progress callback.
+            /// The orientation type can be either Rot3d or Rot3f.
+            let inline slerpTo (lens : Lens<'Model, ^Rot3>) (dst : ^Rot3) (model : 'Model) =
+                slerp (model |> Optic.get lens) dst
+                |> Animation.link lens
+
+
             /// Creates a sequence of animations that interpolate between pairs of the given points.
             /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
-            let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> seq =
+            let inline path' (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
+                             (distance : ^Value -> ^Value -> float)
+                             (points : ^Value seq) : IAnimation<'Model, ^Value> seq =
+
                 let length = Seq.length points
 
                 if length = 0 then
@@ -108,30 +127,26 @@ module AnimationPrimitives =
                     Seq.zip segments lengths
                     |> Seq.filter (fun (_, l) -> l > 0.0)
                     |> Seq.map (fun ((a, b), l) ->
-                        lerp a b |> Animation.seconds l
+                        interpolate a b |> Animation.seconds l
                     )
 
-            /// Creates an animation that linearly interpolates between the given points. Coinciding points are ignored.
-            let inline linearPath (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
+            /// Creates an animation that interpolates between the given points. Coinciding points are ignored.
+            let inline path (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
+                            (distance : ^Value -> ^Value -> float)
+                            (points : ^Value seq) : IAnimation<'Model, ^Value> =
+
                 if Seq.isEmpty points then
                     Log.warn "[Animation] empty linear path"
                     Animation.empty
                 else
-                    points |> linearPath' distance |> Animation.path
+                    points |> path' interpolate distance |> Animation.path
 
 
-            /// Creates an animation using spherical linear interpolation between the given orientations.
-            /// The orientation type can be either Rot3d or Rot3f.
-            let inline slerp (src : ^Rot3) (dst : ^Rot3) : IAnimation<'Model, ^Rot3> =
-                let src, dst = toRot3d src, toRot3d dst
+            /// Creates a sequence of animations that interpolate linearly between pairs of the given points.
+            /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
+            let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> seq =
+                points |> path' lerp distance
 
-                Animation.create (fun t -> Rot.SlerpShortest(src, dst, t))
-                |> Animation.seconds 1
-                |> Animation.map (ofRot3d)
-
-            /// Creates an animation using spherical linear interpolation.
-            /// The animation is linked to the variable specified by the given lens via an observer with a progress callback.
-            /// The orientation type can be either Rot3d or Rot3f.
-            let inline slerpTo (lens : Lens<'Model, ^Rot3>) (dst : ^Rot3) (model : 'Model) =
-                slerp (model |> Optic.get lens) dst
-                |> Animation.link lens
+            /// Creates an animation that linearly interpolates between the given points. Coinciding points are ignored.
+            let inline linearPath (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
+                points |> path lerp distance

@@ -13,18 +13,6 @@ module AnimationCameraPrimitives =
             open Aether
             open Animation
 
-            [<AutoOpen>]
-            module private CameraViewExtensions =
-                type CameraView with
-                    member x.Orientation =
-                        let frame = M33d.FromCols(x.Right, x.Forward, x.Up) |> Mat.Orthonormalized
-                        Rot3d.FromM33d frame
-
-                module CameraView =
-                    let orient (location : V3d) (orientation : Rot3d) (sky : V3d) =
-                        let frame = M33d.Rotation orientation
-                        CameraView(sky, location, frame.C1, frame.C2, frame.C0)
-
             /// Creates an animation that moves the camera view to the given location.
             let move (dst : V3d) (camera : CameraView) : IAnimation<'Model, CameraView> =
                 Animation.create (fun t ->
@@ -50,7 +38,7 @@ module AnimationCameraPrimitives =
                     Rot3d.FromM33d frame
 
                 Animation.create (fun t ->
-                    let orientation = Ipol.SlerpShortest(src, dst, t)
+                    let orientation = Rot.SlerpShortest(src, dst, t)
                     CameraView.orient camera.Location orientation camera.Sky
                 )
 
@@ -134,3 +122,34 @@ module AnimationCameraPrimitives =
             let orbitDynamicTo (lens : Lens<'Model, CameraView>) (center : Lens<'Model, V3d>) (normalizedAxis : V3d) (angleInRadians : float) (model : 'Model) =
                 orbitDynamic center normalizedAxis angleInRadians (model |> Optic.get lens)
                 |> Animation.link lens
+
+            /// <summary>
+            /// Creates a sequence of animations that interpolate linearly between pairs of the given camera views.
+            /// </summary>
+            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
+            let linearPath' (points : CameraView seq) : IAnimation<'Model, CameraView> seq =
+
+                if Seq.isEmpty points then
+                    raise <| System.ArgumentException("Camera path cannot be empty")
+
+                let sky = (points |> Seq.head).Sky
+                let positions = points |> Seq.map CameraView.location
+                let orientations = points |> Seq.map CameraView.orientation
+
+                let interp (p : V3d, o : Rot3d) (p' : V3d, o' : Rot3d) =
+                    (Primitives.lerp p p', Primitives.slerp o o')
+                    ||> Animation.map2 (fun l o -> l, o)
+
+                let dist (x : V3d, _) (y : V3d, _) =
+                    Vec.distance x y
+
+                Seq.zip positions orientations
+                |> Primitives.path' interp dist
+                |> Seq.map (Animation.map (fun (l, o) -> CameraView.orient l o sky))
+
+            /// <summary>
+            /// Creates an animation that interpolates linearly between the given camera views.
+            /// </summary>
+            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
+            let linearPath (points : CameraView seq) : IAnimation<'Model, CameraView> =
+                points |> linearPath' |> Animation.path

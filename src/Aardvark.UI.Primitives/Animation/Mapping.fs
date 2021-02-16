@@ -19,7 +19,7 @@ type private MappingObserver<'Model, 'T, 'U> =
 
 type private Mapping<'Model, 'T, 'U> =
     {
-        Value : 'U
+        Value : System.Func<'U>
         Input : IAnimation<'Model, 'T>
         Mapping : System.Func<'Model, 'T, 'U>
         Observable : Observable<'Model, 'T>
@@ -61,7 +61,12 @@ type private Mapping<'Model, 'T, 'U> =
         let model = x.Input.Commit(lens, name, model)
         let input = model |> Optic.get lens |> unbox<IAnimation<'Model, 'T>>
 
-        model |> Optic.set lens ({ x with Input = input; Value = x.Mapping.Invoke(model, input.Value) } :> IAnimation<'Model>)
+        model |> Optic.set lens (
+            { x with
+                Input = input
+                Value = System.Func<_> (fun _ -> x.Mapping.Invoke(model, input.Value))
+            } :> IAnimation<'Model>
+        )
 
     interface IAnimation<'Model> with
         member x.State = x.Input.State
@@ -77,7 +82,7 @@ type private Mapping<'Model, 'T, 'U> =
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
 
     interface IAnimation<'Model, 'U> with
-        member x.Value = x.Value
+        member x.Value = x.Value.Invoke()
         member x.Perform(action) = x.Perform(action) :> IAnimation<'Model, 'U>
         member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'U>
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'U>
@@ -94,7 +99,7 @@ module AnimationMappingExtensions =
 
         /// Returns a new animation that applies the mapping function to the input animation.
         let map' (mapping : 'Model -> 'T -> 'U) (animation : IAnimation<'Model, 'T>) =
-            { Value = Unchecked.defaultof<'U>
+            { Value = System.Func<_> (fun _ -> Unchecked.defaultof<'U>)
               Input = animation
               Mapping = System.Func<_,_,_> mapping
               Observable = Observable.empty } :> IAnimation<'Model, 'U>

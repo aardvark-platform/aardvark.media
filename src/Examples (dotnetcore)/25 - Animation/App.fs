@@ -137,7 +137,7 @@ let update (model : Model) (msg : Message) =
             let cameraAnimation =
                 let lens = Model.cameraState_ >-> CameraControllerState.view_
                 let posLens = Model.position_
-                let view1 = initialCamera.view
+                let view1 = model.cameraState.view
                 let view2 = CameraView.lookAt (V3d(-3.0, 12.0, 6.0)) V3d.OOO V3d.OOI
                 let view3 = CameraView.lookAt (V3d(-5.0, -16.0, 2.0)) V3d.OOO V3d.OOI
 
@@ -149,15 +149,19 @@ let update (model : Model) (msg : Message) =
                         elif src.Location = view3.Location then view1
                         else view2
 
-                    model |> Animation.Camera.interpolateTo lens dst
+                    //model |> Animation.Camera.interpolateTo lens dst
                     //model |> Animation.Camera.orbitTo' lens positionAnimation V3d.ZAxis Constant.PiTimesTwo
                     //model |> Animation.Camera.orbitDynamicTo lens posLens V3d.ZAxis Constant.PiTimesTwo
-                    |> Animation.seconds 1
+                    Animation.Camera.linearPath [view1; view2; view3]
+                    |> Animation.link lens
+                    |> Animation.seconds 5
                     |> Animation.onStart (fun _ ->      Log.warn "[Camera] started")
                     |> Animation.onStop (fun _ ->       Log.warn "[Camera] stopped")
                     |> Animation.onPause (fun _ ->      Log.warn "[Camera] paused")
                     |> Animation.onResume (fun _ ->     Log.warn "[Camera] resumed")
                     |> Animation.onFinalize (fun _ ->   Log.warn "[Camera] finished")
+                    |> Animation.ease (Easing.InOut EasingFunction.Cubic)
+                    |> Animation.loopN LoopMode.Mirror 2
                     //|> Animation.onFinalize' (fun name _ model ->
                     //    model |> Animator.set name (next model)
                     //)
@@ -165,7 +169,10 @@ let update (model : Model) (msg : Message) =
                 next model
 
             let animation =
-                //cameraAnimation
+                let delay =
+                    Animation.empty |> Animation.seconds 2
+
+                cameraAnimation
                 //rotationAnimation
                 //|> Animation.ease (Easing.InOut EasingFunction.Quadratic)
                 //|> Animation.ease (Easing.InOut EasingFunction.Quadratic)
@@ -181,10 +188,7 @@ let update (model : Model) (msg : Message) =
                 //|> Animation.andAlso positionAnimation
                 //positionAnimation
                 //|> Animation.andAlso rotationAnimation
-                let delay =
-                    Animation.empty |> Animation.seconds 2
-
-                Animation.sequential [positionAnimation; delay; rotationAnimation; colorAnimation]
+                //Animation.sequential [positionAnimation; delay; rotationAnimation; colorAnimation]
                 |> Animation.subscribe timer
 
             let msg =
