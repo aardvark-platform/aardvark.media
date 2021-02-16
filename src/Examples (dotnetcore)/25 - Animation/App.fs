@@ -111,41 +111,19 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Rotation] finished")
 
             let positionAnimation =
-                let segment1 =
-                    model |> Animation.Primitives.lerpTo Model.position_ (V3d(1, 0, 0))
-                    |> Animation.onStart (fun _ ->      Log.warn "[Segment1] started")
-                    |> Animation.onStop (fun _ ->       Log.warn "[Segment1] stopped")
-                    |> Animation.onPause (fun _ ->      Log.warn "[Segment1] paused")
-                    |> Animation.onResume (fun _ ->     Log.warn "[Segment1] resumed")
-                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment1] finished")
-                    |> Animation.seconds 0.25
 
-                let segment2 =
-                    Animation.Primitives.lerp (V3d(1, 0, 0)) (V3d(4, 3, 1))
-                    |> Animation.onStart (fun _ ->      Log.warn "[Segment2] started")
-                    |> Animation.onStop (fun _ ->       Log.warn "[Segment2] stopped")
-                    |> Animation.onPause (fun _ ->      Log.warn "[Segment2] paused")
-                    |> Animation.onResume (fun _ ->     Log.warn "[Segment2] resumed")
-                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment2] finished")
+                let segments =
+                    Animation.Primitives.linearPath' Vec.distance [model.position; V3d(1, 0, 0); V3d(4, 3, 1); V3d(-3, 1, 6); V3d(-5, -10, 3)]
+                    |> Seq.mapi (fun index animation ->
+                        animation
+                        |> Animation.onStart (fun _ ->      Log.warn "[Segment%d] started" index)
+                        |> Animation.onStop (fun _ ->       Log.warn "[Segment%d] stopped" index)
+                        |> Animation.onPause (fun _ ->      Log.warn "[Segment%d] paused" index)
+                        |> Animation.onResume (fun _ ->     Log.warn "[Segment%d] resumed" index)
+                        |> Animation.onFinalize (fun _ ->   Log.warn "[Segment%d] finished" index)
+                    )
 
-                let segment3 =
-                    Animation.Primitives.lerp (V3d(4, 3, 1)) (V3d(-3, 1, 6))
-                    |> Animation.onStart (fun _ ->      Log.warn "[Segment3] started")
-                    |> Animation.onStop (fun _ ->       Log.warn "[Segment3] stopped")
-                    |> Animation.onPause (fun _ ->      Log.warn "[Segment3] paused")
-                    |> Animation.onResume (fun _ ->     Log.warn "[Segment3] resumed")
-                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment3] finished")
-
-                let segment4 =
-                    Animation.Primitives.lerp (V3d(-3, 1, 6)) (V3d(-5, -10, 3))
-                    |> Animation.onStart (fun _ ->      Log.warn "[Segment4] started")
-                    |> Animation.onStop (fun _ ->       Log.warn "[Segment4] stopped")
-                    |> Animation.onPause (fun _ ->      Log.warn "[Segment4] paused")
-                    |> Animation.onResume (fun _ ->     Log.warn "[Segment4] resumed")
-                    |> Animation.onFinalize (fun _ ->   Log.warn "[Segment4] finished")
-
-                Animation.path [segment1; segment2; segment3; segment4]
-                //segment1
+                Animation.path segments
                 |> Animation.link Model.position_
                 |> Animation.onStart (fun _ ->      Log.warn "[Position] started")
                 |> Animation.onStop (fun _ ->       Log.warn "[Position] stopped")

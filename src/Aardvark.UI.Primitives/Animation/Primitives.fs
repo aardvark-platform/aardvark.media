@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.UI.Anewmation
 
+open System
 open Aardvark.Base
 
 [<AutoOpen>]
@@ -85,12 +86,46 @@ module AnimationPrimitives =
                 |> Animation.link lens
 
 
+            /// Creates a sequence of animations that interpolate between pairs of the given points.
+            /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
+            let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> seq =
+                let length = Seq.length points
+
+                if length = 0 then
+                    Seq.empty
+
+                elif length = 1 then
+                    points |> Seq.map constant
+
+                else
+                    let segments = points |> Seq.pairwise
+
+                    let lengths =
+                        let l = segments |> Seq.map (uncurry distance)
+                        let m = l |> Seq.max
+                        l |> Seq.map (fun l -> if m > 0.0 then l / m else 0.0)
+
+                    Seq.zip segments lengths
+                    |> Seq.filter (fun (_, l) -> l > 0.0)
+                    |> Seq.map (fun ((a, b), l) ->
+                        lerp a b |> Animation.seconds l
+                    )
+
+            /// Creates an animation that linearly interpolates between the given points. Coinciding points are ignored.
+            let inline linearPath (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
+                if Seq.isEmpty points then
+                    Log.warn "[Animation] empty linear path"
+                    Animation.empty
+                else
+                    points |> linearPath' distance |> Animation.path
+
+
             /// Creates an animation using spherical linear interpolation between the given orientations.
             /// The orientation type can be either Rot3d or Rot3f.
             let inline slerp (src : ^Rot3) (dst : ^Rot3) : IAnimation<'Model, ^Rot3> =
                 let src, dst = toRot3d src, toRot3d dst
 
-                Animation.create (fun t -> Ipol.SlerpShortest(src, dst, t))
+                Animation.create (fun t -> Rot.SlerpShortest(src, dst, t))
                 |> Animation.seconds 1
                 |> Animation.map (ofRot3d)
 
