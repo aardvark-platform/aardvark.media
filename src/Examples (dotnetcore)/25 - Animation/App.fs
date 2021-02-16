@@ -51,7 +51,7 @@ let update (model : Model) (msg : Message) =
                 Animation.Primitives.lerp (C4d model.color) (if model.color = C4b.Green then C4d.Red else C4d.Green)
                 |> Animation.map C4b
                 |> Animation.link Model.color_
-                |> Animation.seconds 5
+                |> Animation.seconds 1
                 |> Animation.ease (Easing.InOut EasingFunction.Cubic)
                 |> Animation.onStart (fun _ ->      Log.warn "[Color] started")
                 |> Animation.onStop (fun _ ->       Log.warn "[Color] stopped")
@@ -85,7 +85,7 @@ let update (model : Model) (msg : Message) =
 
                 let rotZ =
                     //model |> Animation.Primitives.lerpAngleTo Model.rotationZ_ (if model.rotationZ = 0.0f then (-ConstantF.PiHalf + ConstantF.PiTimesTwo) else 0.0f)
-                    Animation.Primitives.lerpAngle 0.5f (-ConstantF.Pi + ConstantF.PiTimesTwo)
+                    Animation.Primitives.lerpAngle 0.0f (-ConstantF.Pi + ConstantF.PiTimesTwo)
                     |> Animation.seconds 4
                     |> Animation.onStart (Log.warn "[RotZ] started: %f")
                     //|> Animation.onProgress (Log.warn "[RotZ] progress: %f")
@@ -179,8 +179,12 @@ let update (model : Model) (msg : Message) =
                 //|> Animation.loop LoopMode.Mirror
                 //|> Animation.seconds 2
                 //|> Animation.andAlso positionAnimation
-                positionAnimation
-                |> Animation.andAlso rotationAnimation
+                //positionAnimation
+                //|> Animation.andAlso rotationAnimation
+                let delay =
+                    Animation.empty |> Animation.seconds 2
+
+                Animation.sequential [positionAnimation; delay; rotationAnimation; colorAnimation]
                 |> Animation.subscribe timer
 
             let msg =

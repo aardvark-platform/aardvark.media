@@ -58,7 +58,7 @@ module private GroupSemantics =
             fun _  -> action
 
 
-type private Parallel<'Model, 'Value> =
+type private ConcurrentGroup<'Model, 'Value> =
     {
         StateMachine : StateMachine<'Value>
         Members : IAnimation<'Model>[]
@@ -183,12 +183,12 @@ module AnimationGroupExtensions =
     module Animation =
 
         /// <summary>
-        /// Creates a parallel animation group from a sequence of animations.
+        /// Creates a concurrent animation group from a sequence of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let group (animations : #IAnimation<'Model> seq) =
+        let concurrent (animations : IAnimation<'Model> seq) =
             let animations =
-                animations |> Array.ofSeq |> Array.map (fun a -> a :> IAnimation<'Model>)
+                animations |> Array.ofSeq
 
             if animations.Length = 0 then
                 raise <| System.ArgumentException("Animation group cannot be empty")
@@ -199,6 +199,6 @@ module AnimationGroupExtensions =
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, unit>
 
-        /// Combines two animations into a parallel group.
+        /// Combines two animations into a concurrent group.
         let andAlso (x : IAnimation<'Model>) (y : IAnimation<'Model>) =
-            group [x; y]
+            concurrent [x; y]

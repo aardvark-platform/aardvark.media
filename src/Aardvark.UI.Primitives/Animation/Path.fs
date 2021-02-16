@@ -3,6 +3,87 @@
 open Aardvark.Base
 open Aether
 
+type private Adapter<'Model, 'Value> =
+    {
+        StateMachine : StateMachine<'Value>
+        Animation : IAnimation<'Model>
+        Observable : Observable<'Model, 'Value>
+    }
+
+    member x.Perform(action) =
+        { x with
+            StateMachine = x.StateMachine |> StateMachine.enqueue action
+            Animation = x.Animation.Perform(action) }
+
+    member x.Scale(duration) =
+        { x with Animation = x.Animation.Scale(duration) }
+
+    member x.Ease(easing, compose) =
+        { x with Animation = x.Animation.Ease(easing, compose) }
+
+    member x.Loop(iterations, mode) =
+        { x with Animation = x.Animation.Loop(iterations, mode) }
+
+    member x.Subscribe(observer : IAnimationObserver<'Model, 'Value>) =
+        { x with Observable = x.Observable |> Observable.subscribe observer }
+
+    member x.UnsubscribeAll() =
+        { x with
+            Animation = x.Animation.UnsubscribeAll()
+            Observable = Observable.empty }
+
+    member x.Unsubscribe(observer : IAnimationObserver<'Model>) =
+        { x with
+            Animation = x.Animation.Unsubscribe(observer)
+            Observable = x.Observable |> Observable.unsubscribe observer }
+
+    member x.Commit(lens : Lens<'Model, IAnimation<'Model>>, name : Symbol, model : 'Model) =
+
+        // Commit wrapped animation and input
+        let animation, model =
+            let model = x.Animation.Commit(lens, name, model)
+            let animation = model |> Optic.get lens
+            animation,  model
+
+        // Process all actions, from oldest to newest
+        let machine, events =
+            let eval = fun _ -> Unchecked.defaultof<'Value> |> Param.create animation.IsFinished
+            x.StateMachine |> StateMachine.run eval
+
+        // Notify observers about changes
+        let model =
+            model |> Optic.set lens (
+                { x with
+                    StateMachine = machine;
+                    Animation = animation } :> IAnimation<'Model>
+            )
+
+        x.Observable |> Observable.notify name events model
+
+    interface IAnimation<'Model> with
+        member x.State = x.StateMachine.Holder.State
+        member x.Duration = x.Animation.Duration
+        member x.TotalDuration = x.Animation.TotalDuration
+        member x.DistanceTime(localTime) = x.Animation.DistanceTime(localTime)
+        member x.Perform(action) = x.Perform(action) :> IAnimation<'Model>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
+        member x.Commit(lens, name, model) = x.Commit(lens, name, model)
+        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
+        member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
+
+    interface IAnimation<'Model, 'Value> with
+        member x.Value = x.StateMachine.Holder.Value
+        member x.Perform(action) = x.Perform(action) :> IAnimation<'Model, 'Value>
+        member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'Value>
+        member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'Value>
+        member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'Value>
+        member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'Value>
+        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'Value>
+        member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'Value>
+
+
 type private Path<'Model, 'Value> =
     {
         StateMachine : StateMachine<'Value>
@@ -141,6 +222,10 @@ module AnimationPathExtensions =
 
     module Animation =
 
+        /// <summary>
+        /// Creates a sequential animation group from a sequence of animations.
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
         let path (animations : #IAnimation<'Model, 'Value> seq) =
             let animations =
                 animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
@@ -152,3 +237,16 @@ module AnimationPathExtensions =
               Members = animations
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+
+
+        let private adapter (animation : IAnimation<'Model>) : IAnimation<'Model, 'Value> =
+            { StateMachine = StateMachine.initial
+              Animation = animation
+              Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+
+        /// <summary>
+        /// Creates a sequential animation group from a sequence of animations.
+        /// </summary>
+        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
+        let sequential (animations : IAnimation<'Model> seq) : IAnimation<'Model, unit> =
+            animations |> Seq.map adapter |> path
