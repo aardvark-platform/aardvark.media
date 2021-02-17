@@ -22,7 +22,7 @@ type private Animation<'Model, 'Value> =
         x.DistanceTimeFunction.Invoke(localTime / x.Duration)
 
     member x.Evaluate(model : 'Model, localTime : LocalTime) =
-        x.DistanceTime(localTime) |> Param.map (fun s -> x.SpaceFunction.Invoke(model, s))
+        x.SpaceFunction.Invoke(model, x.DistanceTime(localTime))
 
     member x.Perform(action : Action) =
         { x with StateMachine = x.StateMachine |> StateMachine.enqueue action }

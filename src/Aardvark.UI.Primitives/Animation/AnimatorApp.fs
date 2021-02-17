@@ -97,6 +97,19 @@ module Animator =
                 (fun model -> model |> Optic.get lens |> HashMap.find name),
                 (fun value model -> model |> Optic.map lens (HashMap.add name value))
 
+            /// Updates a single animation
+            let update (globalTime : GlobalTime) (animation : IAnimation<'Model>) =
+                match animation.State with
+                | State.Running startTime ->
+                    let endTime = startTime + animation.TotalDuration
+
+                    if globalTime > endTime then
+                        animation.Perform <| Action.Update(endTime, true)
+                    else
+                        animation.Perform <| Action.Update(globalTime, false)
+                | _ ->
+                    animation.Perform <| Action.Update(globalTime, false)
+
             /// Notifies animation observers.
             let commit (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
                 let lens = name |> animationLens lens
@@ -176,7 +189,7 @@ module Animator =
             let lensTickCount= lens >-> Animator.TickCount_
 
             let update (animations : HashMap<Symbol, IAnimation<'Model>>) =
-                animations |> HashMap.map (fun _ a -> a.Update <| (Time.get() |> Param.unsignaled))
+                animations |> HashMap.map (fun _ a -> a |> update (Time.get()))
 
             let remove (animations : HashMap<Symbol, IAnimation<'Model>>) =
                 animations |> HashMap.filter (fun _ a -> not a.IsFinished)

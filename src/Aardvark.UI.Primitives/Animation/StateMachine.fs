@@ -30,24 +30,22 @@ type private Observable<'Model, 'Value> =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateHolder =
 
-    open Param.Operators
-
     let initial<'Value> =
         { State = State.Stopped; Value = Unchecked.defaultof<'Value> }
 
-    let processAction (eval : LocalTime -> Param<'Value>) (action : Action) (holder : StateHolder<'Value>) =
+    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (holder : StateHolder<'Value>) =
         match action with
         | Action.Stop ->
             match holder.State with
             | State.Stopped -> holder, []
             | _ ->
-                let value = eval LocalTime.zero
-                let holder = { State = State.Stopped; Value = !value }
+                let value = evaluate LocalTime.zero
+                let holder = { State = State.Stopped; Value = value }
                 holder, [EventType.Stop]
 
         | Action.Start (globalTime, startFrom) ->
-            let value = eval startFrom
-            let holder = { State = State.Running (globalTime - startFrom); Value = !value }
+            let value = evaluate startFrom
+            let holder = { State = State.Running (globalTime - startFrom); Value = value }
             holder, [EventType.Start; EventType.Progress]
 
         | Action.Pause globalTime ->
@@ -64,13 +62,13 @@ module private StateHolder =
                 holder, [EventType.Resume]
             | _ -> holder, []
 
-        | Action.Update globalTime ->
+        | Action.Update (globalTime, finalize) ->
             match holder.State with
             | State.Running startTime ->
-                let value = globalTime |> Param.bind (LocalTime.relative startTime >> eval)
-                let holder = { holder with Value = !value }
+                let value = globalTime |> LocalTime.relative startTime |> evaluate
+                let holder = { holder with Value = value }
 
-                if value.Flag then
+                if finalize then
                     { holder with State = State.Finished },
                     [EventType.Progress; EventType.Finalize]
                 else
@@ -93,10 +91,10 @@ module private StateMachine =
     let enqueue (action : Action) (machine : StateMachine<'Value>) =
         { machine with Actions = action :: machine.Actions }
 
-    let run (eval : LocalTime -> Param<'Value>) (machine : StateMachine<'Value>) =
+    let run (evaluate : LocalTime -> 'Value) (machine : StateMachine<'Value>) =
         let holder, events =
             (machine.Actions, (machine.Holder, [])) ||> List.foldBack (fun action (state, triggers) ->
-                let updated, events = state |> StateHolder.processAction eval action
+                let updated, events = state |> StateHolder.processAction evaluate action
                 let triggered = events |> List.map (trigger updated.Value)
                 updated, triggers @ triggered
             )

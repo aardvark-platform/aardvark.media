@@ -17,6 +17,11 @@ module private DistanceTimeFunctionUtilities =
         let t = s % 1.0
         if int s % 2 = 0 then t else 1.0 - t
 
+    let inline wrap (mode : LoopMode) (s : float) =
+        match mode with
+        | LoopMode.Repeat -> repeat s
+        | LoopMode.Mirror -> mirror s
+
 
 type private DistanceTimeFunction =
     {
@@ -25,25 +30,18 @@ type private DistanceTimeFunction =
         Mode : LoopMode
     }
 
-    member inline private x.Wrap(s : float) =
-        match x.Mode with
-        | LoopMode.Repeat -> repeat s
-        | LoopMode.Mirror -> mirror s
-
-    /// Returns a position within [0, 1] depending on the time elapsed since the start of the animation.
+    /// Returns the normalized distance along the space curve based on the given local time stamp.
     member x.Invoke(t : float) =
-        if isFinite t then
-            let tmax = float x.Iterations
-            let wrapped = x.Wrap(t |> clamp 0.0 tmax)
-            let eased = x.Easing.Invoke(wrapped)
-
-            eased |> Param.create (t < 0.0 || t > tmax)
-        else
+        if not <| isFinite t then
             Log.warn "[Animation] Distance-time function invoked with %f" t
-            Param.signaled 0.0
+
+        let tmax = float x.Iterations
+
+        if t < 0.0 || t > tmax then t
+        else x.Easing.Invoke(t |> clamp 0.0 tmax |> wrap x.Mode)
 
     /// <summary>
-    /// Applies an easing function, i.e. a function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
+    /// Applies an easing function, i.e. a function f: s -> s on the normalized distance s where f(0) = 0 and f(1) = 1.
     /// </summary>
     /// <param name="easing">The easing function to apply.</param>
     /// <param name="compose">Indicates whether easing is composed or overwritten.</param>

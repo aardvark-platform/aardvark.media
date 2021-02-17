@@ -47,7 +47,7 @@ type private Adapter<'Model, 'Value> =
 
         // Process all actions, from oldest to newest
         let machine, events =
-            let eval = fun _ -> Unchecked.defaultof<'Value> |> Param.create animation.IsFinished
+            let eval = fun _ -> Unchecked.defaultof<'Value>
             x.StateMachine |> StateMachine.run eval
 
         // Notify observers about changes
@@ -96,7 +96,9 @@ type private Path<'Model, 'Value> =
         (LocalTime.zero, x.Members) ||> Array.scan (fun t a -> t + a.TotalDuration)
 
     member x.TimeSegments =
-        x.Offsets |> Array.pairwise
+        Array.init (x.Offsets.Length - 1) (fun i ->
+            GroupSemantics.Segment.create x.Offsets.[i] x.Offsets.[i + 1]
+        )
 
     member x.Value = x.StateMachine.Holder.Value
 
@@ -114,21 +116,16 @@ type private Path<'Model, 'Value> =
         elif groupLocalTime > LocalTime.max x.Duration then
             x.Members.Length - 1
         else
-            x.TimeSegments |> Array.findIndex (fun (a, b) -> groupLocalTime >= a && groupLocalTime <= b)
+            x.TimeSegments |> Array.findIndex (fun s -> groupLocalTime >= s.Start && groupLocalTime <= s.End)
 
     member x.DistanceTime(groupLocalTime : LocalTime) =
         x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
-
-    member x.Evaluate(members : IAnimation<'Model, 'Value>[], groupLocalTime : LocalTime) =
-        let s = x.DistanceTime(groupLocalTime)
-        let i = x.FindMemberIndex(groupLocalTime)
-        s |> Param.set members.[i].Value
 
     member x.Perform(action : Action) =
         let action = x |> GroupSemantics.applyDistanceTime action
 
         let perform (i : int) (a : IAnimation<'Model, 'Value>) =
-            let action = a |> GroupSemantics.perform x.TimeSegments.[i] x.State action
+            let action = a |> GroupSemantics.perform x.TimeSegments.[i] x.Duration x.State action
             a.Perform(action)
 
         { x with
@@ -180,7 +177,7 @@ type private Path<'Model, 'Value> =
 
         // Process all actions, from oldest to newest
         let machine, events =
-            let eval t = x.Evaluate(members, t)
+            let eval t = let i = x.FindMemberIndex(t) in members.[i].Value
             x.StateMachine |> StateMachine.run eval
 
         // Notify observers about changes

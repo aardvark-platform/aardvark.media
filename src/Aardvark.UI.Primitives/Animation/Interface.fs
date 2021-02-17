@@ -40,7 +40,7 @@ type Action =
     | Resume of globalTime: GlobalTime
 
     /// Update the animation to the given global time.
-    | Update of globalTime: Param<GlobalTime>
+    | Update of globalTime: GlobalTime * finalize: bool
 
 
 /// The state of an animation.
@@ -122,8 +122,8 @@ type IAnimation<'Model> =
     /// Returns the total duration of the animation.
     abstract member TotalDuration : Duration
 
-    /// Returns a position within [0, 1] based on the given local time stamp.
-    abstract member DistanceTime : LocalTime -> Param<float>
+    /// Returns the normalized distance along the space curve based on the given local time stamp.
+    abstract member DistanceTime : LocalTime -> float
 
     /// Performs the given action.
     abstract member Perform : Action -> IAnimation<'Model>
@@ -132,7 +132,7 @@ type IAnimation<'Model> =
     abstract member Scale : duration: Duration -> IAnimation<'Model>
 
     /// <summary>
-    /// Applies an easing function, i.e. a function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
+    /// Applies an easing function, i.e. a function f: s -> s on the normalized distance s where f(0) = 0 and f(1) = 1.
     /// </summary>
     /// <param name="easing">The easing function to apply.</param>
     /// <param name="compose">Indicates whether easing is composed or overwritten.</param>
@@ -179,7 +179,7 @@ type IAnimation<'Model, 'Value> =
     abstract member Scale : duration: Duration -> IAnimation<'Model, 'Value>
 
     /// <summary>
-    /// Applies an easing function, i.e. a function f: [0, 1] -> [0, 1] with f(0) = 0 and f(1) = 1.
+    /// Applies an easing function, i.e. a function f: s -> s on the normalized distance s where f(0) = 0 and f(1) = 1.
     /// </summary>
     /// <param name="easing">The easing function to apply.</param>
     /// <param name="compose">Indicates whether easing is composed or overwritten.</param>
@@ -231,8 +231,9 @@ module IAnimationExtensions =
             x.Perform <| Action.Resume(globalTime)
 
         /// Updates the animation to the given global time.
-        member x.Update(globalTime: Param<GlobalTime>) =
-            x.Perform <| Action.Update(globalTime)
+        member x.Update(globalTime: GlobalTime, finalize: bool) =
+            x.Perform <| Action.Update(globalTime, finalize)
+
 
     type IAnimation<'Model, 'Value> with
 
@@ -258,5 +259,5 @@ module IAnimationExtensions =
              x.Perform <| Action.Resume(globalTime)
 
          /// Updates the animation to the given global time.
-         member x.Update(globalTime: Param<GlobalTime>) =
-             x.Perform <| Action.Update(globalTime)
+         member x.Update(globalTime: GlobalTime, finalize: bool) =
+             x.Perform <| Action.Update(globalTime, finalize)

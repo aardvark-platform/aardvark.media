@@ -2,60 +2,78 @@
 
 open Aardvark.Base
 open Aether
-open Param.Operators
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private GroupSemantics =
 
+    [<Struct>]
+    type Segment =
+        { Start : LocalTime; End : LocalTime }
+
+    [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+    module Segment =
+
+        let create (s : LocalTime) (e : LocalTime) =
+            { Start = s; End = e}
+
+        let ofDuration (d : Duration) =
+            { Start = LocalTime.zero; End = LocalTime.max d}
+
     let applyDistanceTime (action : Action) (animation : IAnimation<'Model>) =
         let adjustLocalTime (localTime : LocalTime) =
-            if animation.Duration.IsFinite then
-                animation.DistanceTime(localTime) |> Param.map ((*) animation.Duration >> LocalTime.max)
+            let d = animation.Duration
+            if d.IsFinite then
+                LocalTime.max (d * animation.DistanceTime(localTime))
             else
-                ~~localTime
+                localTime
 
-        let adjustGlobalTime (globalTime : Param<GlobalTime>) =
+        let adjustGlobalTime (globalTime : GlobalTime) =
             match animation.State with
             | State.Running startTime ->
-                globalTime |> Param.bind (fun t ->
-                    let localTime = t |> LocalTime.relative startTime |> adjustLocalTime
-                    localTime |> Param.map ((+) startTime)
-                )
+                let localTime = globalTime |> LocalTime.relative startTime
+                startTime + adjustLocalTime localTime
             | _ ->
                 globalTime
 
         match action with
-        | Action.Start (t, l) -> Action.Start(t, l |> adjustLocalTime |> Param.value)
-        | Action.Update t     -> Action.Update (adjustGlobalTime t)
-        | _                   -> action
+        | Action.Start (t, l)   -> Action.Start (t, l |> adjustLocalTime)
+        | Action.Update (t, f)  -> Action.Update (adjustGlobalTime t, f)
+        | _                     -> action
 
 
-    let perform ((segmentStart, segmentEnd) : LocalTime * LocalTime)
-                (state : State) (action : Action) : (IAnimation<'Model> -> Action) =
+    let perform (segment : Segment) (duration : Duration) (state : State) (action : Action) : (IAnimation<'Model> -> Action) =
+
+        let outOfBounds t =
+            (t < segment.Start && segment.Start <> LocalTime.zero) ||
+            (t > segment.End && segment.End <> LocalTime.max duration)
 
         // Relay actions to members, starting them if necessary
-        let start (globalTime : GlobalTime) (groupLocalTime : LocalTime) (animation : IAnimation<'Model>) =
-            if groupLocalTime >= segmentStart && groupLocalTime <= segmentEnd then
-                Action.Start (globalTime, groupLocalTime - segmentStart)
-            else
+        let start (globalTime : GlobalTime) (groupLocalTime : LocalTime) =
+            if outOfBounds groupLocalTime then
                 Action.Stop
-
-        let update (globalTime : Param<GlobalTime>) (groupLocalTime : LocalTime) (animation : IAnimation<'Model>) =
-            if not animation.IsRunning && groupLocalTime >= segmentStart && groupLocalTime <= segmentEnd then
-                Action.Start (!globalTime, groupLocalTime - segmentStart)
             else
-                Action.Update globalTime
+                Action.Start (globalTime, groupLocalTime - segment.Start)
+
+        let update (finalize : bool) (globalTime : GlobalTime) (groupLocalTime : LocalTime) (animation : IAnimation<'Model>) =
+            if outOfBounds groupLocalTime then
+                Action.Update (globalTime, true)
+            else
+                if animation.IsRunning then
+                    Action.Update (globalTime, finalize)
+                else
+                    Action.Start (globalTime, groupLocalTime - segment.Start)
+
 
         match action, state with
         | Action.Start (globalTime, groupLocalTime), _ ->
-            start globalTime groupLocalTime
+            fun _ -> start globalTime groupLocalTime
 
-        | Action.Update globalTime, State.Running groupStartTime ->
-            let groupLocalTime = !globalTime |> LocalTime.relative groupStartTime
-            update globalTime groupLocalTime
+        | Action.Update (globalTime, finalize), State.Running groupStartTime ->
+            let groupLocalTime = globalTime |> LocalTime.relative groupStartTime
+            update finalize globalTime groupLocalTime
 
         | _ ->
-            fun _  -> action
+            fun _ -> action
 
 
 type private ConcurrentGroup<'Model, 'Value> =
@@ -80,15 +98,12 @@ type private ConcurrentGroup<'Model, 'Value> =
     member x.DistanceTime(groupLocalTime : LocalTime) =
         x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
 
-    member x.Evaluate(model : 'Model, members : IAnimation<'Model>[], groupLocalTime : LocalTime) =
-        x.DistanceTime(groupLocalTime) |> Param.set (x.Mapping.Invoke(model, members))
-
     member x.Perform(action : Action) =
         let action = x |> GroupSemantics.applyDistanceTime action
 
         let perform (i : int) (a : IAnimation<'Model>) =
-            let segment = LocalTime.zero, LocalTime.max x.Members.[i].TotalDuration
-            let action = a |> GroupSemantics.perform segment x.State action
+            let segment = GroupSemantics.Segment.ofDuration x.Members.[i].TotalDuration
+            let action = a |> GroupSemantics.perform segment x.Duration x.State action
             a.Perform(action)
 
         { x with
@@ -140,7 +155,7 @@ type private ConcurrentGroup<'Model, 'Value> =
 
         // Process all actions, from oldest to newest
         let machine, events =
-            let eval t = x.Evaluate(model, members, t)
+            let eval _ = x.Mapping.Invoke(model, members)
             x.StateMachine |> StateMachine.run eval
 
         // Notify observers about changes

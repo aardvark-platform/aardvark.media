@@ -24,7 +24,6 @@
     <Compile Include="TrafoControls\ScaleController.fs" />
     <Compile Include="Animation\Deprecated\Model.fs" />
     <Compile Include="Animation\Deprecated\AnimationBase.fs" />
-    <Compile Include="Animation\Param.fs" />
     <Compile Include="Animation\Time.fs" />
     <Compile Include="Animation\Interface.fs" />
     <Compile Include="Animation\DistanceTimeFunction.fs" />

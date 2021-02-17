@@ -54,7 +54,7 @@ type private InputMapping<'Model, 'T, 'Input, 'U> =
 
         // Process all actions, from oldest to newest
         let machine, events =
-            let eval = fun _ -> x.Mapping.Invoke(model, animation.Value, input.Value) |> Param.create animation.IsFinished
+            let eval = fun _ -> x.Mapping.Invoke(model, animation.Value, input.Value)
             x.StateMachine |> StateMachine.run eval
 
         // Notify observers about changes

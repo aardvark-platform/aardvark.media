@@ -125,17 +125,17 @@ let update (model : Model) (msg : Message) =
                         |> Animation.onFinalize (fun _ ->   Log.warn "[Segment%d] finished" index)
                     )
 
-                //Animation.path segments
-                model |> Animation.Primitives.lerpTo Model.position_ (V3d(1, 0, 0))
-                //|> Animation.link Model.position_
+                Animation.path segments
+                //model |> Animation.Primitives.lerpTo Model.position_ (V3d(1, 0, 0))
+                |> Animation.link Model.position_
                 |> Animation.onStart (fun _ ->      Log.warn "[Position] started")
                 |> Animation.onStop (fun _ ->       Log.warn "[Position] stopped")
                 |> Animation.onPause (fun _ ->      Log.warn "[Position] paused")
                 |> Animation.onResume (fun _ ->     Log.warn "[Position] resumed")
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Position] finished")
-                |> Animation.seconds 1
-                |> Animation.ease (Easing.In EasingFunction.Sine)
-                |> Animation.ease (Easing.Out <| EasingFunction.Overshoot 2.0)
+                |> Animation.seconds 5
+                //|> Animation.ease (Easing.In EasingFunction.Sine)
+                |> Animation.ease (Easing.InOut <| EasingFunction.Overshoot 2.0)
                 //|> Animation.ease (Easing.Out <| EasingFunction.Elastic(1.0, 0.15))
                 //|> Animation.ease (Easing.InOut EasingFunction.Cubic)
                 //|> Animation.loopN LoopMode.Mirror 2
@@ -195,6 +195,7 @@ let update (model : Model) (msg : Message) =
                 positionAnimation
                 //|> Animation.andAlso rotationAnimation
                 //Animation.sequential [positionAnimation; delay; rotationAnimation; colorAnimation]
+                |> Animation.loopN LoopMode.Mirror 3
                 |> Animation.subscribe timer
 
             let msg =
