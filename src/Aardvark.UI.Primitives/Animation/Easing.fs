@@ -84,55 +84,49 @@ module AnimationEasingExtensions =
             let inline overshootOutIn s t = outIn (overshootIn s) (overshootOut s) t
 
             // Elastic
-            let elasticInImpl b c a p t =
-                if t = 0.0 then b
-                elif t = 1.0 then b + c
+            let inline elasticParams upper amplitude period =
+                if amplitude < upper then
+                    struct (upper, period / 4.0)
                 else
-                    let a, s =
-                        if a < abs c then
-                            c, p / 4.0
-                        else
-                            a, p / Constant.PiTimesTwo * asin (c / a)
+                    struct (amplitude, (period / Constant.PiTimesTwo) * asin (upper / amplitude))
 
-                    let t = t - 1.0
-                    b - a * (pow 2.0 (10.0 * t)) * sin ((t - s) * Constant.PiTimesTwo / p)
+            let inline elasticPower sign period s t =
+                (pow 2.0 (sign * 10.0 * t)) * sin ((t - s) * Constant.PiTimesTwo / period)
 
-            let elasticOutImpl c a p t =
+            let elasticInImpl lower upper amplitude period t =
+                if t = 0.0 then lower
+                elif t = 1.0 then lower + upper
+                else
+                    let struct (a, s) = elasticParams upper amplitude period
+                    lower - a * elasticPower 1.0 period s (t - 1.0)
+
+            let elasticOutImpl upper amplitude period t =
                 if t = 0.0 then 0.0
-                elif t = 1.0 then c
+                elif t = 1.0 then upper
                 else
-                    let a, s =
-                        if a < c then
-                            c, p / 4.0
-                        else
-                            a, p / Constant.PiTimesTwo * asin (c / a)
+                    let struct (a, s) = elasticParams upper amplitude period
+                    upper + a * elasticPower -1.0 period s t
 
-                    c + a * (pow 2.0 (-10.0 * t)) * sin ((t - s) * Constant.PiTimesTwo / p)
+            let inline elasticIn amplitude period t =
+                t |> elasticInImpl 0.0 1.0 amplitude period
 
-            let inline elasticIn a p t =
-                t |> elasticInImpl 0.0 1.0 a p
+            let inline elasticOut amplitude period t =
+                t |> elasticOutImpl 1.0 amplitude period
 
-            let inline elasticOut a p t =
-                t |> elasticOutImpl 1.0 a p
-
-            let elasticInOut a p t =
+            let elasticInOut amplitude period t =
                 if t = 0.0 then 0.0
                 elif t = 1.0 then 1.0
                 else
                     let t = t * 2.0
+                    let struct (a, s) = elasticParams 1.0 amplitude period
 
-                    let a, s =
-                        if a < 1.0 then
-                            1.0, p / 4.0
-                        else
-                            a, p / Constant.PiTimesTwo * asin (1.0 / a)
+                    if t < 1.0 then -0.5 * a * elasticPower 1.0 period s (t - 1.0)
+                    else 1.0 + 0.5 * a * elasticPower -1.0 period s (t - 1.0)
 
-                    if t < 1.0 then -0.5 * a * (pow 2.0 (10.0 * (t - 1.0))) * sin ((t - 1.0 - s) * Constant.PiTimesTwo / p)
-                    else 1.0 + 0.5 * a * (pow 2.0 (-10.0 * (t - 1.0))) * sin ((t - 1.0 - s) * Constant.PiTimesTwo / p)
+            let inline elasticOutIn amplitude period t =
+                if t < 0.5 then (2.0 * t) |> elasticOutImpl 0.5 amplitude period
+                else (2.0 * t - 1.0) |> elasticInImpl 0.5 0.5 amplitude period
 
-            let inline elasticOutIn a p t =
-                if t < 0.5 then t |> elasticOutImpl 0.5 a p
-                else (2.0 * t - 1.0) |> elasticInImpl 0.5 0.5 a p
 
             let toInFunction = function
                 | EasingFunction.Quadratic      -> quadIn
