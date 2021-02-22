@@ -32,8 +32,8 @@ type MyCefClient(browser : CefWebBrowser) =
         File.WriteAllText(lastPathFile, path)
 
 
-    override x.OnProcessMessageReceived(sourceBrowser, source, msg) =
-        base.OnProcessMessageReceived(sourceBrowser, source, msg)
+    //override x.OnProcessMessageReceived(sourceBrowser, source, msg) =
+    //    base.OnProcessMessageReceived(sourceBrowser, source, msg)
 
 type AardvarkCefBrowser() =
     inherit CefWebBrowser()
