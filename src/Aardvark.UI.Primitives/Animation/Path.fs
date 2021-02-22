@@ -116,7 +116,11 @@ type private Path<'Model, 'Value> =
         elif groupLocalTime > LocalTime.max x.Duration then
             x.Members.Length - 1
         else
-            x.TimeSegments |> Array.findIndex (fun s -> groupLocalTime >= s.Start && groupLocalTime <= s.End)
+            x.TimeSegments |> Array.binarySearch (fun s ->
+                if groupLocalTime < s.Start then -1
+                elif groupLocalTime > s.End then 1
+                else 0
+            ) |> ValueOption.get
 
     member x.DistanceTime(groupLocalTime : LocalTime) =
         x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)

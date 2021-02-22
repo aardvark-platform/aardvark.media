@@ -19,26 +19,68 @@ module private GroupSemantics =
         let ofDuration (d : Duration) =
             { Start = LocalTime.zero; End = LocalTime.max d}
 
+
+    let wrap (action : Action) (previousIteration : int) (iterations : Iterations) (animation : IAnimation<'Model>) =
+
+        let getIteration (localTime : LocalTime) =
+            let i =
+                let d = (max localTime LocalTime.zero) / animation.Duration
+
+                if d % 1.0 = 0.0 then
+                    max 0 (int d - 1)
+                else
+                    int d
+
+            match iterations with
+            | Iterations.Finite n -> min i (n - 1)
+            | Iterations.Infinite -> i
+
+        let wrapAction (startTime : GlobalTime) (localTime : LocalTime) =
+            let currentIteration = getIteration localTime
+
+            if currentIteration <> previousIteration then
+                let t = LocalTime.max ((max currentIteration previousIteration) * animation.Duration)
+                currentIteration, ValueSome <| Action.Update (startTime + t, true)
+            else
+                previousIteration, ValueNone
+
+        match action with
+        | Action.Update (globalTime, finalize) ->
+            match animation.State with
+            | State.Running startTime ->
+                let localTime = globalTime |> LocalTime.relative startTime
+                wrapAction startTime localTime
+
+            | _ ->
+                previousIteration, ValueNone
+
+        | _ ->
+            previousIteration, ValueNone
+
+
     let applyDistanceTime (action : Action) (animation : IAnimation<'Model>) =
-        let adjustLocalTime (localTime : LocalTime) =
+        let apply (localTime : LocalTime) =
             let d = animation.Duration
             if d.IsFinite then
                 LocalTime.max (d * animation.DistanceTime(localTime))
             else
                 localTime
 
-        let adjustGlobalTime (globalTime : GlobalTime) =
+        match action with
+        | Action.Start (globalTime, startFrom) ->
+            Action.Start (globalTime, apply startFrom)
+
+        | Action.Update (globalTime, finalize) ->
             match animation.State with
             | State.Running startTime ->
                 let localTime = globalTime |> LocalTime.relative startTime
-                startTime + adjustLocalTime localTime
-            | _ ->
-                globalTime
+                Action.Update (startTime + apply localTime, finalize)
 
-        match action with
-        | Action.Start (t, l)   -> Action.Start (t, l |> adjustLocalTime)
-        | Action.Update (t, f)  -> Action.Update (adjustGlobalTime t, f)
-        | _                     -> action
+            | _ ->
+                action
+
+        | _ ->
+            action
 
 
     let perform (segment : Segment) (duration : Duration) (state : State) (action : Action) : (IAnimation<'Model> -> Action) =

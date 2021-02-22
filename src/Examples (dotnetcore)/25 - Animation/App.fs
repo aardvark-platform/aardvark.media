@@ -134,9 +134,9 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onResume (fun _ ->     Log.warn "[Position] resumed")
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Position] finished")
                 |> Animation.seconds 10
-                //|> Animation.ease (Easing.In EasingFunction.Sine)
+                |> Animation.ease (Easing.In EasingFunction.Sine)
                 //|> Animation.ease (Easing.InOut <| EasingFunction.Overshoot 2.0)
-                |> Animation.ease (Easing.OutIn <| EasingFunction.Elastic(1.0, 0.05))
+                |> Animation.ease (Easing.Out <| EasingFunction.Elastic(1.0, 0.05))
                 //|> Animation.ease (Easing.InOut EasingFunction.Cubic)
                 //|> Animation.loopN LoopMode.Mirror 2
 

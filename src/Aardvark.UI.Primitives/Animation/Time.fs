@@ -2,7 +2,9 @@
 
 open Aardvark.Base
 
-[<RequireQualifiedAccess; DefaultAugmentation(false)>]
+[<Struct>]
+[<RequireQualifiedAccess>]
+[<DefaultAugmentation(false)>]
 type Duration =
     | Finite of MicroTime
     | Infinite
@@ -34,6 +36,7 @@ type Duration =
         | Duration.Infinite, Duration.Finite _ -> infinity
 
 
+[<Struct>]
 [<RequireQualifiedAccess>]
 type GlobalTime =
     | Timestamp of MicroTime
@@ -66,7 +69,7 @@ type GlobalTime =
         | _ -> Infinity
 
 
-and [<RequireQualifiedAccess>] LocalTime =
+and [<Struct; RequireQualifiedAccess>] LocalTime =
     | Offset of MicroTime
     | Infinity
 

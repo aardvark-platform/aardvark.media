@@ -38,7 +38,7 @@ type private DistanceTimeFunction =
         let tmax = float x.Iterations
 
         if t < 0.0 || t > tmax then t
-        else x.Easing.Invoke(t |> clamp 0.0 tmax |> wrap x.Mode)
+        else x.Easing.Invoke(t |> wrap x.Mode)
 
     /// <summary>
     /// Applies an easing function, i.e. a function f: s -> s on the normalized distance s where f(0) = 0 and f(1) = 1.
