@@ -6,18 +6,18 @@ open Aardvark.Base
 [<AutoOpen>]
 module private DistanceTimeFunctionUtilities =
 
-    let inline repeat (s : float) =
+    let repeat (s : float) =
         if s = 0.0 then
             0.0
         else
             let t = s % 1.0
             if t = 0.0 then 1.0 else t
 
-    let inline mirror (s : float) =
+    let mirror (s : float) =
         let t = s % 1.0
         if int s % 2 = 0 then t else 1.0 - t
 
-    let inline wrap (mode : LoopMode) (s : float) =
+    let wrap (mode : LoopMode) (s : float) =
         match mode with
         | LoopMode.Repeat -> repeat s
         | LoopMode.Mirror -> mirror s
@@ -29,6 +29,12 @@ type private DistanceTimeFunction =
         Iterations : Iterations
         Mode : LoopMode
     }
+
+    /// Returns whether the returned distance can decrease with increasing parameter.
+    member x.Bidirectional =
+        match x.Mode with
+        | LoopMode.Repeat -> false
+        | LoopMode.Mirror -> true
 
     /// Returns the normalized distance along the space curve based on the given local time stamp.
     member x.Invoke(t : float) =

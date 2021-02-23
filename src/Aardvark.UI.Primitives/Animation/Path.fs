@@ -110,6 +110,9 @@ type private Path<'Model, 'Value> =
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
 
+    member x.Bidirectional =
+        x.DistanceTimeFunction.Bidirectional
+
     member private x.FindMemberIndex(groupLocalTime : LocalTime) =
         if groupLocalTime < LocalTime.zero then
             0
@@ -129,7 +132,7 @@ type private Path<'Model, 'Value> =
         let action = x |> GroupSemantics.applyDistanceTime action
 
         let perform (i : int) (a : IAnimation<'Model, 'Value>) =
-            let action = a |> GroupSemantics.perform x.TimeSegments.[i] x.Duration x.State action
+            let action = a |> GroupSemantics.perform x.TimeSegments.[i] x.Bidirectional x.Duration x.State action
             a.Perform(action)
 
         { x with

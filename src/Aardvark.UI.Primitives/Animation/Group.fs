@@ -20,44 +20,6 @@ module private GroupSemantics =
             { Start = LocalTime.zero; End = LocalTime.max d}
 
 
-    let wrap (action : Action) (previousIteration : int) (iterations : Iterations) (animation : IAnimation<'Model>) =
-
-        let getIteration (localTime : LocalTime) =
-            let i =
-                let d = (max localTime LocalTime.zero) / animation.Duration
-
-                if d % 1.0 = 0.0 then
-                    max 0 (int d - 1)
-                else
-                    int d
-
-            match iterations with
-            | Iterations.Finite n -> min i (n - 1)
-            | Iterations.Infinite -> i
-
-        let wrapAction (startTime : GlobalTime) (localTime : LocalTime) =
-            let currentIteration = getIteration localTime
-
-            if currentIteration <> previousIteration then
-                let t = LocalTime.max ((max currentIteration previousIteration) * animation.Duration)
-                currentIteration, ValueSome <| Action.Update (startTime + t, true)
-            else
-                previousIteration, ValueNone
-
-        match action with
-        | Action.Update (globalTime, finalize) ->
-            match animation.State with
-            | State.Running startTime ->
-                let localTime = globalTime |> LocalTime.relative startTime
-                wrapAction startTime localTime
-
-            | _ ->
-                previousIteration, ValueNone
-
-        | _ ->
-            previousIteration, ValueNone
-
-
     let applyDistanceTime (action : Action) (animation : IAnimation<'Model>) =
         let apply (localTime : LocalTime) =
             let d = animation.Duration
@@ -83,11 +45,21 @@ module private GroupSemantics =
             action
 
 
-    let perform (segment : Segment) (duration : Duration) (state : State) (action : Action) : (IAnimation<'Model> -> Action) =
+    let perform (segment : Segment) (bidirectional : bool) (duration : Duration)
+                (state : State) (action : Action) : (IAnimation<'Model> -> Action) =
 
         let outOfBounds t =
             (t < segment.Start && segment.Start <> LocalTime.zero) ||
             (t > segment.End && segment.End <> LocalTime.max duration)
+
+        let endTime groupLocalTime globalTime =
+            let endLocalTime =
+                if groupLocalTime < segment.Start && bidirectional then
+                    segment.Start
+                else
+                    segment.End
+
+            globalTime + (endLocalTime - groupLocalTime)
 
         // Relay actions to members, starting them if necessary
         let start (globalTime : GlobalTime) (groupLocalTime : LocalTime) =
@@ -98,7 +70,7 @@ module private GroupSemantics =
 
         let update (finalize : bool) (globalTime : GlobalTime) (groupLocalTime : LocalTime) (animation : IAnimation<'Model>) =
             if outOfBounds groupLocalTime then
-                Action.Update (globalTime, true)
+                Action.Update (globalTime |> endTime groupLocalTime, true)
             else
                 if animation.IsRunning then
                     Action.Update (globalTime, finalize)
@@ -140,12 +112,15 @@ type private ConcurrentGroup<'Model, 'Value> =
     member x.DistanceTime(groupLocalTime : LocalTime) =
         x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
 
+    member x.Bidirectional =
+        x.DistanceTimeFunction.Bidirectional
+
     member x.Perform(action : Action) =
         let action = x |> GroupSemantics.applyDistanceTime action
 
         let perform (i : int) (a : IAnimation<'Model>) =
             let segment = GroupSemantics.Segment.ofDuration x.Members.[i].TotalDuration
-            let action = a |> GroupSemantics.perform segment x.Duration x.State action
+            let action = a |> GroupSemantics.perform segment x.Bidirectional x.Duration x.State action
             a.Perform(action)
 
         { x with
