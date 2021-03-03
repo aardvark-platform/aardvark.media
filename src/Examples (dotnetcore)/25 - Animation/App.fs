@@ -114,9 +114,17 @@ let update (model : Model) (msg : Message) =
 
             let positionAnimation =
 
+                let points =
+                    [| V3d(1, 1, 1); V3d(1, 1, 1); V3d(1, 1, 1);
+                       V3d(0, 4, 2); V3d(0, 4, 2);
+                       V3d(1, 2, 2); V3d(1, 2, 2);
+                       V3d(4, 3, 1);
+                       V3d(-3, 1, 6); V3d(-3, 1, 6);
+                       V3d(-5, -10, 3); V3d(-5, -10, 3) |]
+
                 let segments =
-                    Animation.Primitives.linearPath' Vec.distance [model.position; V3d(1, 0, 0); V3d(4, 3, 1); V3d(-3, 1, 6); V3d(-5, -10, 3)]
-                    |> Seq.mapi (fun index animation ->
+                    Animation.Primitives.smoothPath' Vec.distance points
+                    |> Array.mapi (fun index animation ->
                         animation
                         |> Animation.onStart (fun _ ->      Log.warn "[Segment%d] started" index)
                         |> Animation.onStop (fun _ ->       Log.warn "[Segment%d] stopped" index)
@@ -134,11 +142,11 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onResume (fun _ ->     Log.warn "[Position] resumed")
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Position] finished")
                 |> Animation.seconds 10
-                |> Animation.ease (Easing.In EasingFunction.Sine)
+                //|> Animation.ease (Easing.In EasingFunction.Sine)
                 //|> Animation.ease (Easing.InOut <| EasingFunction.Overshoot 2.0)
-                |> Animation.ease (Easing.Out <| EasingFunction.Elastic(1.0, 0.05))
+                //|> Animation.ease (Easing.Out <| EasingFunction.Elastic(1.0, 0.05))
                 //|> Animation.ease (Easing.InOut EasingFunction.Cubic)
-                //|> Animation.loopN LoopMode.Mirror 2
+                |> Animation.loopN LoopMode.Mirror 2
 
             let cameraAnimation =
                 let lens = Model.cameraState_ >-> CameraControllerState.view_
@@ -235,7 +243,51 @@ let viewScene (model : AdaptiveModel) =
             do! DefaultSurfaces.simpleLighting
         }
 
-    Sg.ofList [floor; box]
+    let points =
+        [| V3d(1, 1, 1); V3d(1, 1, 1); V3d(1, 1, 1);
+           V3d(0, 4, 2); V3d(0, 4, 2);
+           V3d(1, 2, 2); V3d(1, 2, 2);
+           V3d(4, 3, 1);
+           V3d(-3, 1, 6); V3d(-3, 1, 6);
+           V3d(-5, -10, 3); V3d(-5, -10, 3) |]
+
+    let spline =
+        points |> Splines.catmullRom Vec.distance
+
+    Log.warn "segments: %d" spline.Length
+
+    let lines =
+        spline |> Array.collect (fun s ->
+            [| 0.0 .. 0.1 .. 1.0 |]
+            |> Array.map s.Evaluate
+            |> Array.pairwise
+            |> Array.map Line3d
+        )
+
+    let lengths =
+        lines |> Array.map (fun l -> Vec.distance l.P0 l.P1)
+
+    let controlSg =
+        points
+        |> Array.map (fun pos ->
+            Sg.box' C4b.Lime (Box3d.FromCenterAndSize(V3d.Zero, V3d(0.05)))
+            |> Sg.translation' pos
+        )
+        |> Sg.ofArray
+        |> Sg.shader {
+            do! DefaultSurfaces.trafo
+            do! DefaultSurfaces.vertexColor
+            do! DefaultSurfaces.simpleLighting
+        }
+
+    let splineSg =
+        Sg.lines (AVal.constant C4b.Aquamarine) (AVal.constant lines)
+        |> Sg.shader {
+            do! DefaultSurfaces.trafo
+            do! DefaultSurfaces.vertexColor
+        }
+
+    Sg.ofList [floor; controlSg; splineSg; box]
 
 
 let view (model : AdaptiveModel) =

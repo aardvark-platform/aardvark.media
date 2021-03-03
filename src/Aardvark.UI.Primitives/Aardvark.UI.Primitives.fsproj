@@ -36,6 +36,7 @@
     <Compile Include="Animation\Input.fs" />
     <Compile Include="Animation\Observer.fs" />
     <Compile Include="Animation\Primitives.fs" />
+    <Compile Include="Animation\Splines.fs" />
     <Compile Include="Animation\Camera.fs" />
     <Compile Include="Animation\AnimatorModel.fs" />
     <Compile Include="Animation\AnimatorApp.fs" />
