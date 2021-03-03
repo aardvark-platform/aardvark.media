@@ -7,10 +7,37 @@ module AnimationSplinePrimitives =
 
     module Splines =
 
-        [<Struct>]
-        type CatmullRom<'T>(evaluate : float -> 'T, length : float) =
+        type CatmullRom<'T>(distance : ^T -> ^T -> float, evaluate : float -> 'T, samples : int) =
+            let tj = Array.init samples (fun i -> float i / float (samples - 1))
+            let pj = tj |> Array.map evaluate
+            let sj = (0.0, Array.pairwise pj) ||> Array.scan (fun d (a, b) -> d + distance a b)
+
+            let length = Array.last sj
+            do for i in 0 .. sj.Length - 1 do
+                sj.[i] <- sj.[i] / length
+
+            let segments =
+                Array.init (sj.Length - 1) (fun i ->
+                    struct {| Start = sj.[i]; End = sj.[i + 1] |}
+                )
+
+            let lookup s =
+                let i =
+                    if s < 0.0 then 0
+                    elif s > 1.0 then segments.Length - 1
+                    else
+                        segments |> Array.binarySearch (fun segment ->
+                            if s < segment.Start then -1 elif s > segment.End then 1 else 0
+                        ) |> ValueOption.get
+
+                let a = segments.[i].Start
+                let b = segments.[i].End
+                let t = (s - a) / (b - a)
+
+                tj.[i] + t * (tj.[i + 1] - tj.[i])
+
             member x.Length = length
-            member x.Evaluate(t) = evaluate t
+            member x.Evaluate(s) = s |> lookup |> evaluate
 
 
         let inline catmullRom (distance : ^T -> ^T -> float) (points : ^T[]) =
@@ -25,7 +52,7 @@ module AnimationSplinePrimitives =
                 let t2 = tj.[index + 2]
                 let t3 = tj.[index + 3]
 
-                let eval t =
+                let evaluate t =
                     let t = t1 + t * (t2 - t1)
                     let a1 = scale ((t1 - t) / (t1 - t0)) pj.[index + 0] + scale ((t - t0) / (t1 - t0)) pj.[index + 1]
                     let a2 = scale ((t2 - t) / (t2 - t1)) pj.[index + 1] + scale ((t - t1) / (t2 - t1)) pj.[index + 2]
@@ -34,7 +61,7 @@ module AnimationSplinePrimitives =
                     let b2 = scale ((t3 - t) / (t3 - t1)) a2 + scale ((t - t1) / (t3 - t1)) a3
                     scale ((t2 - t) / (t2 - t1)) b1 + scale ((t - t1) / (t2 - t1)) b2
 
-                CatmullRom(eval, t2 - t1)
+                CatmullRom(distance, evaluate, 32)
 
 
             if Array.isEmpty points then
@@ -60,7 +87,7 @@ module AnimationSplinePrimitives =
                 // At this point n is the number of control points + 1, or number of final points
                 // minus 1 since we compute and add a point to each end.
                 if n = 2 then
-                    [| CatmullRom((fun _ -> pj.[1]), zero) |]
+                    [| CatmullRom((fun _ _ -> 0.0), (fun _ -> pj.[1]), 1) |]
                 else
                     pj.[0] <- scale 2.0 (pj.[1] - pj.[2])
                     tj.[0] <- LanguagePrimitives.GenericZero
