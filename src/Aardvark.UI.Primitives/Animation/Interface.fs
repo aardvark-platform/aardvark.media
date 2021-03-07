@@ -142,6 +142,7 @@ type IAnimation<'Model> =
     /// Sets the number of iterations and loop mode.
     /// </summary>
     /// <param name="iterations">The number of iterations.</param>
+    /// <param name="mode">The loop or wrap mode.</param>
     abstract member Loop : iterations: Iterations * mode: LoopMode -> IAnimation<'Model>
 
     /// Commits the animation, i.e. processes all actions performed since the last commit
@@ -189,6 +190,7 @@ type IAnimation<'Model, 'Value> =
     /// Sets the number of iterations and loop mode.
     /// </summary>
     /// <param name="iterations">The number of iterations.</param>
+    /// <param name="mode">The loop or wrap mode.</param>
     abstract member Loop : iterations: Iterations * mode: LoopMode -> IAnimation<'Model, 'Value>
 
 

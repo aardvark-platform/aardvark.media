@@ -58,6 +58,7 @@ type private DistanceTimeFunction =
     /// Sets the number of iterations and loop mode.
     /// </summary>
     /// <param name="iterations">The number of iterations or a nonpositive value for an unlimited number of iterations.</param>
+    /// <param name="mode">The loop or wrap mode.</param>
     member x.Loop(iterations, mode) =
         { x with Iterations = iterations; Mode = mode }
 
