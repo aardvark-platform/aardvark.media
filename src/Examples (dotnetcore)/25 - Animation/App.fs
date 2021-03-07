@@ -21,6 +21,16 @@ let initialCamera = {
 
 let animSym = Sym.ofString "colorAndRotationAnim"
 
+let points =
+    [| V3d(1, 1, 1); V3d(1, 1, 1); V3d(1, 1, 1);
+       V3d(0, 4, 2); V3d(0, 4, 2);
+       V3d(1, 2, 2); V3d(1, 2, 2);
+       V3d(4, 3, 1);
+       V3d(-3, 1, 6); V3d(-3, 1, 6);
+       V3d(-5, -14, 3); V3d(-5, -14, 3) |]
+
+let error = 0.02
+
 let update (model : Model) (msg : Message) =
     match msg with
     | ToggleBackground ->
@@ -114,16 +124,8 @@ let update (model : Model) (msg : Message) =
 
             let positionAnimation =
 
-                let points =
-                    [| V3d(1, 1, 1); V3d(1, 1, 1); V3d(1, 1, 1);
-                       V3d(0, 4, 2); V3d(0, 4, 2);
-                       V3d(1, 2, 2); V3d(1, 2, 2);
-                       V3d(4, 3, 1);
-                       V3d(-3, 1, 6); V3d(-3, 1, 6);
-                       V3d(-5, -10, 3); V3d(-5, -10, 3) |]
-
                 let segments =
-                    Animation.Primitives.smoothPath' Vec.distance points
+                    Animation.Primitives.smoothPath' Vec.distance error points
                     |> Array.mapi (fun index animation ->
                         animation
                         |> Animation.onStart (fun _ ->      Log.warn "[Segment%d] started" index)
@@ -143,8 +145,8 @@ let update (model : Model) (msg : Message) =
                 |> Animation.onFinalize (fun _ ->   Log.warn "[Position] finished")
                 |> Animation.seconds 10
                 |> Animation.ease (Easing.In EasingFunction.Sine)
-                //|> Animation.ease (Easing.InOut <| EasingFunction.Overshoot 2.0)
-                |> Animation.ease (Easing.Out <| EasingFunction.Elastic(1.0, 0.1))
+                |> Animation.ease (Easing.Out <| EasingFunction.Overshoot 2.0)
+                //|> Animation.ease (Easing.Out <| EasingFunction.Elastic(0.5, 0.1))
                 //|> Animation.ease (Easing.InOut EasingFunction.Cubic)
                 |> Animation.loopN LoopMode.Mirror 2
 
@@ -243,29 +245,57 @@ let viewScene (model : AdaptiveModel) =
             do! DefaultSurfaces.simpleLighting
         }
 
-    let points =
-        [| V3d(1, 1, 1); V3d(1, 1, 1); V3d(1, 1, 1);
-           V3d(0, 4, 2); V3d(0, 4, 2);
-           V3d(1, 2, 2); V3d(1, 2, 2);
-           V3d(4, 3, 1);
-           V3d(-3, 1, 6); V3d(-3, 1, 6);
-           V3d(-5, -10, 3); V3d(-5, -10, 3) |]
-
     let spline =
-        points |> Splines.catmullRom Vec.distance
+        points |> Splines.catmullRom Vec.distance error
 
     Log.warn "segments: %d" spline.Length
 
+    let p0 = spline.[2].Evaluate 0.9
+    let p1 = spline.[2].Evaluate 1.0
+    let d = Vec.distance p0 p1
+
     let lines =
         spline |> Array.collect (fun s ->
-            [| 0.0 .. 0.1 .. 1.0 |]
+            [| 0.0 .. 0.01 .. 1.0 |]
             |> Array.map s.Evaluate
             |> Array.pairwise
             |> Array.map Line3d
         )
 
-    let lengths =
-        lines |> Array.map (fun l -> Vec.distance l.P0 l.P1)
+    spline |> Array.iteri (fun i s ->
+        let points =
+            [| 0.0 .. 0.0001 .. 1.0 |]
+            |> Array.map s.Evaluate
+
+        let distances =
+            points
+            |> Array.pairwise
+            |> Array.map (fun (a, b) -> Vec.distance a b)
+
+        let min = distances |> Array.min
+        let max = distances |> Array.max
+
+        Log.warn "Segment %d: n = %d, min = %f, max = %f, dev = %f" i s.Samples.Length min max (min / max)
+    )
+
+    let samplesSg =
+        spline |> Array.collect (fun s ->
+            //[| 0.0 .. 0.01 .. 1.0 |]
+            s.Samples
+            |> Array.map (fun t -> t, s.Evaluate(t))
+        )
+        |> Array.map (fun (t, pos) ->
+            let color = t |> lerp C4b.Blue C4b.Red
+
+            Sg.box' color (Box3d.FromCenterAndSize(V3d.Zero, V3d(0.015)))
+            |> Sg.translation' pos
+        )
+        |> Sg.ofArray
+        |> Sg.shader {
+            do! DefaultSurfaces.trafo
+            do! DefaultSurfaces.vertexColor
+            do! DefaultSurfaces.simpleLighting
+        }
 
     let controlSg =
         points
@@ -287,7 +317,7 @@ let viewScene (model : AdaptiveModel) =
             do! DefaultSurfaces.vertexColor
         }
 
-    Sg.ofList [floor; controlSg; splineSg; box]
+    Sg.ofList [floor; samplesSg; box]
 
 
 let view (model : AdaptiveModel) =
