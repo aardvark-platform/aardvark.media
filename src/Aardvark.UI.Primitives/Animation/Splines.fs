@@ -16,9 +16,9 @@ module AnimationSplinePrimitives =
                 mutable Length : float
             }
 
-        /// Represents a Catmull-Rom spline segment, parameterized by arc length.
+        /// Represents a spline segment, parameterized by normalized arc length.
         /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
-        type CatmullRom<'T>(distance : 'T -> 'T -> float, evaluate : float -> 'T, epsilon : float) =
+        type Spline<'T>(distance : 'T -> 'T -> float, evaluate : float -> 'T, epsilon : float) =
 
             let full =
                 let p0 = evaluate 0.0
@@ -106,7 +106,7 @@ module AnimationSplinePrimitives =
 
         /// Computes a Catmull-Rom spline from the given points, parameterized by arc length.
         /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
-        let inline catmullRom (distance : ^T -> ^T -> float) (epsilon : float) (points : ^T[]) : CatmullRom< ^T>[] =
+        let inline catmullRom (distance : ^T -> ^T -> float) (epsilon : float) (points : ^T[]) : Spline< ^T>[] =
 
             // Evaluation of a single segment (4 control points)
             let segment (tj : float[]) (pj : ^T[]) (index : int) =
@@ -124,7 +124,7 @@ module AnimationSplinePrimitives =
                     let b2 = scale ((t3 - t) / (t3 - t1)) a2 + scale ((t - t1) / (t3 - t1)) a3
                     scale ((t2 - t) / (t2 - t1)) b1 + scale ((t - t1) / (t2 - t1)) b2
 
-                CatmullRom(distance, evaluate, epsilon)
+                Spline(distance, evaluate, epsilon)
 
 
             if Array.isEmpty points then
@@ -154,7 +154,7 @@ module AnimationSplinePrimitives =
                 if n = 2 then
                     let zeroDist _ _ = 0.0
                     let constPoint _ = pj.[1]
-                    [| CatmullRom(zeroDist, constPoint, infinity) |]
+                    [| Spline(zeroDist, constPoint, infinity) |]
                 else
                     pj.[0] <- pj.[1] + (pj.[1] - pj.[2])
                     tj.[0] <- 0.0
