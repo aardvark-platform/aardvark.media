@@ -102,49 +102,53 @@ module AnimationPrimitives =
                 |> Animation.link lens
 
 
-            /// Creates a sequence of animations that interpolate between pairs of the given points.
+            /// Creates an array of animations that interpolate between pairs of the given points.
             /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
             let inline path' (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                              (distance : ^Value -> ^Value -> float)
-                             (points : ^Value seq) : IAnimation<'Model, ^Value> seq =
+                             (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
 
-                let length = Seq.length points
+                let pj = Array.ofSeq points
+                let dj = Array.zeroCreate pj.Length
 
-                if length = 0 then
-                    Seq.empty
-
-                elif length = 1 then
-                    points |> Seq.map constant
-
+                // Filter duplicates and create animations
+                if Array.isEmpty pj then
+                    [||]
                 else
-                    let segments = points |> Seq.pairwise
+                    let mutable n = 1
 
-                    let lengths =
-                        let l = segments |> Seq.map (uncurry distance)
-                        let m = l |> Seq.max
-                        l |> Seq.map (fun l -> if m > 0.0 then l / m else 0.0)
+                    for i in 1 .. pj.Length - 1 do
+                        let d = distance pj.[n - 1] pj.[i]
+                        if d.ApproximateEquals 0.0 then
+                            Log.warn "[Animation] Ignoring duplicate control point in path"
+                        else
+                            pj.[n] <- pj.[i]
+                            dj.[n] <- d
+                            inc &n
 
-                    Seq.zip segments lengths
-                    |> Seq.filter (fun (_, l) -> l > 0.0)
-                    |> Seq.map (fun ((a, b), l) ->
-                        interpolate a b |> Animation.seconds l
-                    )
+                    if n = 1 then
+                        [| constant pj.[0] |]
+                    else
+                        let maxLength = dj |> Array.max
+
+                        let segments = Array.zeroCreate (n - 1)
+                        for i in 0 .. (n - 2) do
+                            let d = dj.[i + 1] / maxLength
+                            segments.[i] <- interpolate pj.[i] pj.[i + 1] |> Animation.seconds d
+
+                        segments
 
             /// Creates an animation that interpolates between the given points. Coinciding points are ignored.
             let inline path (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                             (distance : ^Value -> ^Value -> float)
                             (points : ^Value seq) : IAnimation<'Model, ^Value> =
 
-                if Seq.isEmpty points then
-                    Log.warn "[Animation] empty linear path"
-                    Animation.empty
-                else
-                    points |> path' interpolate distance |> Animation.path
+                points |> path' interpolate distance |> Animation.path
 
 
-            /// Creates a sequence of animations that interpolate linearly between pairs of the given points.
+            /// Creates an array of animations that interpolate linearly between pairs of the given points.
             /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
-            let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> seq =
+            let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 points |> path' lerp distance
 
             /// Creates an animation that linearly interpolates between the given points. Coinciding points are ignored.
