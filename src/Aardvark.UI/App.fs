@@ -159,7 +159,7 @@ type App<'model, 'mmodel, 'msg> =
         app
 
     interface IApp<'model, 'msg, 'msg> with
-        member x.Start() = x.start()
+        member x.Start _ = x.start()
         member x.ToOuter(_,_) = Seq.empty
         member x.ToInner(_,_) = Seq.empty
 

@@ -232,7 +232,7 @@ module Static =
     let subApp (app : App<'model,'mmodel,'innermsg>) : DomNode<'msg> =
         DomNode.SubApp
             { new IApp<'model,'innermsg,'msg> with
-                member x.Start() = app.start()
+                member x.Start _ = app.start()
                 member x.ToInner (_,_)= Seq.empty
                 member x.ToOuter (_,_) = Seq.empty
             }
@@ -240,7 +240,7 @@ module Static =
     let subApp' (mapOut : 'model -> 'innermsg -> seq<'msg>) (mapIn : 'model -> 'msg -> seq<'innermsg>) (att : list<string * AttributeValue<'msg>>) (app : App<'model,'mmodel,'innermsg>) : DomNode<'msg> =
         DomNode.SubApp
             { new IApp<'model,'innermsg,'msg> with
-                member x.Start() = app.start()
+                member x.Start _ = app.start()
                 member x.ToInner (model, msg) = mapIn model msg
                 member x.ToOuter (model, msg) = mapOut model msg
             }

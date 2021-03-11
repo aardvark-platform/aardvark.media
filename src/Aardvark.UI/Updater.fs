@@ -674,7 +674,7 @@ module Updaters =
                     member x.Text n     = TextUpdater(n) :> IUpdater<_>
                     member x.Page n     = Foo.NewUpdater(n.Content(request), request)
                     member x.SubApp n   = 
-                        let mapp = n.App.Start()
+                        let mapp = n.App.Start request
                         let updater = Foo.NewUpdater(mapp.ui, request)
                         SubAppUpdater(n, mapp, updater) :> IUpdater<_>
                     member x.Map n      = MapUpdater(n, Foo.NewUpdater(n.Node, request)) :> IUpdater<_>

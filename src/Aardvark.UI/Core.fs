@@ -460,6 +460,7 @@ module SceneEventProcessor =
 
 type Request =
     {
+        session : Guid
         requestPath : string
         queryParams : Map<string, string>
     }
@@ -569,7 +570,7 @@ type RenderCommand<'msg> =
 type IApp<'model, 'msg, 'outer> =
     abstract member ToOuter : 'model * 'msg -> seq<'outer>
     abstract member ToInner : 'model * 'outer -> seq<'msg>
-    abstract member Start : unit -> MutableApp<'model, 'msg>
+    abstract member Start : Request -> MutableApp<'model, 'msg>
         
 and MutableApp<'model, 'msg> =
     {

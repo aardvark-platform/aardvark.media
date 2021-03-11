@@ -149,6 +149,7 @@ module MutableApp =
 
                     let request = 
                         {
+                            session = sessionId
                             requestPath = context.request.path
                             queryParams = context.request.query |> List.choose (function (k, Some v) -> Some (k,v) | _ -> None) |> Map.ofList
                         }
