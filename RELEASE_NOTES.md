@@ -1,3 +1,6 @@
+### 5.2.0-prerelease0001
+ - remoting
+
 ### 5.1.1
  - updated packages
 
