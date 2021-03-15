@@ -211,35 +211,35 @@ module Updaters =
                 state.references.[(r.name, r.kind)] <- r
 
             match node.Boot with
-                | Some boot ->
-                    let id = "NOT AN ID"
-                    let code = boot id
+            | Some boot ->
+                let id = "NOT AN ID"
+                let code = boot id
 
-                    if Map.isEmpty node.Channels then
-                        Raw code
-                    else 
-                        for (name, c) in Map.toSeq node.Channels do
-                            state.activeChannels.[(id,name)] <- c.GetReader()
+                if Map.isEmpty node.Channels then
+                    Raw code
+                else 
+                    for (name, c) in Map.toSeq node.Channels do
+                        state.activeChannels.[(id,name)] <- c.GetReader()
 
-                        let prefix = 
-                            node.Channels 
-                            |> Map.toList
-                            |> List.map (fun (name, _) -> 
-                                sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" name id name
-                            ) 
-                            |> String.concat "\r\n"
+                    let prefix = 
+                        node.Channels 
+                        |> Map.toList
+                        |> List.map (fun (name, _) -> 
+                            sprintf "var %s = aardvark.getChannel(\"%s\", \"%s\");" name id name
+                        ) 
+                        |> String.concat "\r\n"
                         
-                        Raw (prefix + "\r\n" + code)
+                    Raw (prefix + "\r\n" + code)
                         
-                | None ->
-                    JSExpr.Nop
+            | None ->
+                JSExpr.Nop
 
         let shutdown() =
             match node.Shutdown with
-                | Some shutdown ->
-                    Raw (shutdown "NOT AN ID")
-                | None ->
-                    JSExpr.Nop
+            | Some shutdown ->
+                Raw (shutdown "NOT AN ID")
+            | None ->
+                JSExpr.Nop
                             
         abstract member PerformUpdate : AdaptiveToken * UpdateState<'msg> * Option<JSExpr -> JSExpr> -> JSExpr
         abstract member PerformDestroy : UpdateState<'msg> * JSExpr -> JSExpr
@@ -371,87 +371,87 @@ module Updaters =
 
                 for (i,op) in IndexListDelta.toSeq ops do
                     match op with
-                        | ElementOperation.Remove ->
-                            let (_,s,_) = neighbours i
-                            toUpdate <- IndexList.remove i toUpdate
-                            match s with
-                                | Some n -> 
-                                    let n = !n
-                                    content.Remove(i, Unchecked.defaultof<_>) |> ignore
-                                    match n.Id with
-                                        | Some id -> 
-                                            let self = { name = id }
-                                            yield JSExpr.Let(self, GetElementById id,
-                                                JSExpr.Sequential [
-                                                    n.Destroy(state, JSExpr.Var self)
-                                                    JSExpr.Remove (JSExpr.Var self)
-                                                ]
-                                            )
-                                        | _ ->
-                                            yield n.Destroy(state, JSExpr.Nop)
-                                | None ->
-                                    failwith "[Media] UI Updater. trying to remove non existent objects (locking issue?)"
+                    | ElementOperation.Remove ->
+                        let (_,s,_) = neighbours i
+                        toUpdate <- IndexList.remove i toUpdate
+                        match s with
+                        | Some n -> 
+                            let n = !n
+                            content.Remove(i, Unchecked.defaultof<_>) |> ignore
+                            match n.Id with
+                                | Some id -> 
+                                    let self = { name = id }
+                                    yield JSExpr.Let(self, GetElementById id,
+                                        JSExpr.Sequential [
+                                            n.Destroy(state, JSExpr.Var self)
+                                            JSExpr.Remove (JSExpr.Var self)
+                                        ]
+                                    )
+                                | _ ->
+                                    yield n.Destroy(state, JSExpr.Nop)
+                        | None ->
+                            failwith "[Media] UI Updater. trying to remove non existent objects (locking issue?)"
 
-                        | ElementOperation.Set newElement ->
-                            let (l,s,r) = neighbours i
+                    | ElementOperation.Set newElement ->
+                        let (l,s,r) = neighbours i
                                     
-                            let (|HasId|_|) (n : ref<IUpdater<'msg>>) =
-                                match n.Value.Id with
-                                    | Some id -> Some (id, n.Value)
-                                    | _ -> None
+                        let (|HasId|_|) (n : ref<IUpdater<'msg>>) =
+                            match n.Value.Id with
+                            | Some id -> Some (id, n.Value)
+                            | _ -> None
 
-                            let insert =
-                                match l, r with
-                                    | _, Some (ri, HasId(rid, r))  ->
-                                        fun v -> JSExpr.InsertBefore(GetElementById rid, v)
+                        let insert =
+                            match l, r with
+                            | _, Some (ri, HasId(rid, r))  ->
+                                fun v -> JSExpr.InsertBefore(GetElementById rid, v)
 
-                                    | Some (li, HasId(lid, l)), _ ->
-                                        fun v -> JSExpr.InsertAfter(GetElementById lid, v)
+                            | Some (li, HasId(lid, l)), _ ->
+                                fun v -> JSExpr.InsertAfter(GetElementById lid, v)
 
-                                    | _ ->
-                                        fun v -> JSExpr.AppendChild(self, v)
+                            | _ ->
+                                fun v -> JSExpr.AppendChild(self, v)
 
-                            match s with
-                                | Some ref ->
-                                    let oldElement = !ref
-                                    ref := newElement
-                                    toUpdate <- IndexList.remove i toUpdate
-                                    match oldElement.Id, newElement.Id with
-                                        | Some o, Some id ->
-                                            let vo = { name = o }
-                                            yield 
-                                                JSExpr.Let(vo,  GetElementById o,
-                                                    JSExpr.Sequential [
-                                                        oldElement.Destroy(state, Var vo)
-                                                        newElement.Update(token, state, Some (fun n -> JSExpr.Replace(Var vo, n)))
-                                                    ]
-                                                )
+                        match s with
+                            | Some ref ->
+                                let oldElement = !ref
+                                ref := newElement
+                                toUpdate <- IndexList.remove i toUpdate
+                                match oldElement.Id, newElement.Id with
+                                | Some o, Some id ->
+                                    let vo = { name = o }
+                                    yield 
+                                        JSExpr.Let(vo,  GetElementById o,
+                                            JSExpr.Sequential [
+                                                oldElement.Destroy(state, Var vo)
+                                                newElement.Update(token, state, Some (fun n -> JSExpr.Replace(Var vo, n)))
+                                            ]
+                                        )
 
-                                        | None, Some id ->
-                                            yield
-                                                JSExpr.Sequential [
-                                                    oldElement.Destroy(state, JSExpr.Nop)
-                                                    newElement.Update(token, state, Some insert)
-                                                ]
+                                | None, Some id ->
+                                    yield
+                                        JSExpr.Sequential [
+                                            oldElement.Destroy(state, JSExpr.Nop)
+                                            newElement.Update(token, state, Some insert)
+                                        ]
 
-                                        | Some o, None ->
-                                            yield
-                                                JSExpr.Sequential [
-                                                    oldElement.Destroy(state, GetElementById o)
-                                                    newElement.Update(token, state, None)
-                                                ]
+                                | Some o, None ->
+                                    yield
+                                        JSExpr.Sequential [
+                                            oldElement.Destroy(state, GetElementById o)
+                                            newElement.Update(token, state, None)
+                                        ]
 
-                                        | None, None ->
-                                            yield
-                                                JSExpr.Sequential [
-                                                    oldElement.Destroy(state, JSExpr.Nop)
-                                                    newElement.Update(token, state, None)
-                                                ]
+                                | None, None ->
+                                    yield
+                                        JSExpr.Sequential [
+                                            oldElement.Destroy(state, JSExpr.Nop)
+                                            newElement.Update(token, state, None)
+                                        ]
                                                     
 
-                                | _ ->
-                                    content.Add(i, ref newElement) |> ignore
-                                    yield newElement.Update(token, state, Some insert)
+                            | _ ->
+                                content.Add(i, ref newElement) |> ignore
+                                yield newElement.Update(token, state, Some insert)
 
                 for u in toUpdate do
                     yield u.Update(token, state, None)
@@ -514,7 +514,7 @@ module Updaters =
             state.scenes.Remove(x.Id.Value) |> ignore
             att.Dispose()
             initial <- true
-            JSExpr.Nop
+            JSExpr.DestroyRenderer self
         
     and TextUpdater<'msg>(e : TextNode<'msg>) =
         inherit AbstractUpdater<'msg>(e)
@@ -590,22 +590,22 @@ module Updaters =
 
         let processMsgs (client : Guid) (messages : seq<'inner>) =
             match cache with
-                | Some (_, subject, _) ->
-                    let messages = transact (fun () -> Seq.toList messages)
-                    m.update client (messages :> seq<_>)
-                    for msg in messages do subject.OnNext msg
-                    let model = m.model.GetValue()
-                    messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg))
-                | _ ->
-                    Seq.empty
+            | Some (_, subject, _) ->
+                let messages = transact (fun () -> Seq.toList messages)
+                m.update client (messages :> seq<_>)
+                for msg in messages do subject.OnNext msg
+                let model = m.model.GetValue()
+                messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg))
+            | _ ->
+                Seq.empty
 
         let mapMsg handler (client : Guid) (bla : string) (args : list<string>) =
             match cache with
-                | Some (_, subject, _) ->
-                    let messages = handler client bla args
-                    processMsgs client messages
-                | None ->
-                    Seq.empty
+            | Some (_, subject, _) ->
+                let messages = handler client bla args
+                processMsgs client messages
+            | None ->
+                Seq.empty
 
         let get (state : UpdateState<'outer>) =
             match cache with    
@@ -642,7 +642,6 @@ module Updaters =
                         let msgs = n.App.ToInner(m.model.GetValue(), msg)
                         m.update Guid.Empty msgs
                         for m in msgs do subject.OnNext m
-
                     )
 
                 cache <- Some (innerState, subject, subscription)
@@ -654,14 +653,14 @@ module Updaters =
 
         override x.PerformDestroy(state : UpdateState<'outer>, self : JSExpr) =
             match cache with
-                | Some (innerState, subject, subscription) ->
-                    subscription.Dispose()
-                    m.shutdown()
-                    subject.Dispose()
-                    cache <- None
-                    inner.Destroy(innerState, self)
-                | None ->
-                    JSExpr.Nop
+            | Some (innerState, subject, subscription) ->
+                subscription.Dispose()
+                m.shutdown()
+                subject.Dispose()
+                cache <- None
+                inner.Destroy(innerState, self)
+            | None ->
+                JSExpr.Nop
             
     and internal Foo () =
         static member NewUpdater<'msg>(x : DomNode<'msg>, request : Request) : IUpdater<'msg> =

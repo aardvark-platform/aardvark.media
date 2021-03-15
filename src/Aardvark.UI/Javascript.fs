@@ -26,6 +26,7 @@ type JSExpr =
     | Raw of code : string
     | Sequential of list<JSExpr>
     | GetElementById of string
+    | DestroyRenderer of JSExpr
     | Let of JSVar * JSExpr * JSExpr
     | Var of JSVar
     | Nop
@@ -50,6 +51,7 @@ module JSExpr =
     let rec eliminateDeadBindings (e : JSExpr) : State<Set<JSVar>, JSExpr> =
         state {
             match e with
+                
                 | Raw _ | Body | Nop | CreateElement _ | GetElementById _ ->
                     return e
 
@@ -75,6 +77,10 @@ module JSExpr =
                     let! children = children |> List.rev |> List.mapS eliminateDeadBindings |> State.map List.rev
                     return Sequential children
 
+
+                | DestroyRenderer(t) ->
+                    let! t = eliminateDeadBindings t
+                    return DestroyRenderer t
 
                 | InnerText(t, text) ->
                     let! t = eliminateDeadBindings t
@@ -125,6 +131,17 @@ module JSExpr =
 
             | Nop ->
                 ""
+
+            | DestroyRenderer(t) ->
+                let t = toStringInternal t
+                let destroy = 
+                    String.concat "\r\n" [
+                        sprintf "const s = %s;" t
+                        sprintf "if(s.renderer) {"
+                        sprintf "   s.renderer.destroy();"
+                        sprintf "}"
+                    ]
+                sprintf "(function() { %s })()" destroy
 
             | CreateElement(tag,ns) ->
                 match ns with

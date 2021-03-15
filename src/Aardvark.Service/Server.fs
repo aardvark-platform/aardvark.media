@@ -524,8 +524,8 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
     let release() =
         refCount <- refCount - 1
         if refCount = 0 then
-            destroy()
-            //timer.Change(Config.deleteTimeout, Timeout.Infinite) |> ignore
+            //destroy()
+            timer.Change(Config.deleteTimeout, Timeout.Infinite) |> ignore
             
     member x.Scene = scene
                     

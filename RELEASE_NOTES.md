@@ -1,7 +1,9 @@
+### 5.2.0-prerelease0003
+ - fixed renderer removal
+ 
 ### 5.2.0-prerelease0002
  - IApp.Start now gets Request
  - Request includes session
-
 
 ### 5.2.0-prerelease0001
  - remoting

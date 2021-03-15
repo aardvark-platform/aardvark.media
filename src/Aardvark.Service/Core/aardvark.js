@@ -565,7 +565,7 @@ class Renderer {
             }
         };
         check();
-        setInterval(check, 50);
+        this.timer = setInterval(check, 50);
     }
 
     change(scene, samples) {
@@ -997,6 +997,14 @@ class Renderer {
         this.send(JSON.stringify({ Case: "RequestImage", background: { A: 255, B: color.b, G: color.g, R: color.r }, size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
     }
 
+    destroy() {
+        if (this.socket) {
+            this.isOpen = false;
+            this.socket.close();
+            delete this.socket;
+            clearTimeout(this.timer);
+        }
+    }
 }
 
 if (!aardvark.addReferences) {
@@ -1260,6 +1268,8 @@ if (!aardvark.getWorldPosition) {
         r.getWorldPosition(pixel, callback)
     };
 }
+
+
 
 if (!aardvark.connect) {
     aardvark.connect = function (path) {
