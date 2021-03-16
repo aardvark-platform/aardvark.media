@@ -755,9 +755,9 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         match target with
             | Some fbo ->
                 match Map.tryFind DefaultSemantic.Depth fbo.Attachments with
-                    | Some (:? IBackendTextureOutputView as t) ->
+                    | Some (:? ITextureLevel as t) ->
                         if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller t.Size.XY then
-                            ReadPixel.downloadDepth pixel t.texture
+                            ReadPixel.downloadDepth pixel t.Texture
                         else
                             None
                     | _ ->
@@ -769,9 +769,9 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         match target with
             | Some fbo ->
                 match Map.tryFind DefaultSemantic.Depth fbo.Attachments with
-                    | Some (:? IBackendTextureOutputView as t) ->
+                    | Some (:? ITextureLevel as t) ->
                         if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller t.Size.XY then
-                            match ReadPixel.downloadDepth pixel t.texture with
+                            match ReadPixel.downloadDepth pixel t.Texture with
                                 | Some depth ->
                                     let tc = (V2d pixel + V2d(0.5, 0.5)) / V2d t.Size.XY
 
@@ -895,7 +895,7 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
                 gpuCompressorInstance <- Some instance
 
                 resolved |> Option.iter runtime.DeleteTexture
-                let r = runtime.CreateTexture(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+                let r = runtime.CreateTexture2D(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
                 resolved <- Some r
                 Some r
 
@@ -950,7 +950,7 @@ type internal PngClientRenderTask internal(server : Server, getScene : IFramebuf
 
     let recreate  (fmt : RenderbufferFormat) (size : V2i) =
         resolved |> Option.iter runtime.DeleteTexture
-        let r = runtime.CreateTexture(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+        let r = runtime.CreateTexture2D(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
         resolved <- Some r
         r
 

@@ -1146,7 +1146,13 @@ and RenderHandler(parent : Client, size : aval<V2i>, texture : IStreamingTexture
     /// </summary>
     override x.GetViewRect(browser : CefBrowser, rect : byref<CefRectangle>) =
         let s = AVal.force size
-        rect <- CefRectangle(0, 0, s.X, s.Y)
+        rect <- 
+            // check if size is valid, will otherwise crash the application in a really bad way
+            if Vec.anySmaller s 1 then
+                Log.warn "[CEF] invalid output size %A" s 
+                CefRectangle(0, 0, 1, 1)
+            else
+                CefRectangle(0, 0, s.X, s.Y)
 
     /// <summary>
     /// NO IDEA WHAT THIS IS EXACTLY

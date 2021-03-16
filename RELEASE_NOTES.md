@@ -8,6 +8,10 @@
 ### 5.2.0-prerelease0001
  - remoting
 
+### 5.1.2
+- updated Aardvark.Base
+- updated Aardvark.Rendering (breaking changes)
+
 ### 5.1.1
  - updated packages
 

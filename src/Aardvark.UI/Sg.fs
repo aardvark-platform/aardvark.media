@@ -349,18 +349,18 @@ module ``F# Sg`` =
 
         /// Sets the uniform with the given name to the given value.
         /// The name can be a string, Symbol, or TypedSymbol.
-        let inline uniform (name : ^Name) (value : aval< ^a>) (sg : ISg<'msg>) =
+        let inline uniform (name : ^Name) (value : aval<'Value>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.uniform name value)
 
         /// Sets the uniform with the given name to the given value.
         /// The name can be a string, Symbol, or TypedSymbol.
-        let inline uniform' (name : ^Name) (value : ^a) (sg : ISg<'msg>) =
+        let inline uniform' (name : ^Name) (value : 'Value) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.uniform' name value)
 
 
         /// Sets the given texture to the slot with the given name.
         /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
-        let inline texture (name : ^Name) (tex : aval< ^a>) (sg : ISg<'msg>) =
+        let inline texture (name : ^Name) (tex : aval<'Texture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.texture name tex)
 
         /// Sets the given texture to the slot with the given name.
@@ -370,7 +370,7 @@ module ``F# Sg`` =
 
 
         /// Sets the given diffuse texture.
-        let inline diffuseTexture (tex : aval<#ITexture>) (sg : ISg<'msg>) =
+        let diffuseTexture (tex : aval<#ITexture>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.diffuseTexture tex)
 
         /// Sets the given diffuse texture.
@@ -527,12 +527,12 @@ module ``F# Sg`` =
 
         /// Sets the blend constant color.
         /// The color must be compatible with C4f.
-        let inline blendConstant (color : aval< ^a>) (sg : ISg<'msg>) =
+        let inline blendConstant (color : aval< ^Value>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.blendConstant color)
 
         /// Sets the blend constant color.
         /// The color must be compatible with C4f.
-        let inline blendConstant' (color : ^a) (sg : ISg<'msg>) =
+        let inline blendConstant' (color : ^Value) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.blendConstant' color)
 
 
@@ -798,12 +798,12 @@ module ``F# Sg`` =
 
         /// Provides a vertex attribute with the given name by supplying an array of values.
         /// The name can be a string, Symbol, or TypedSymbol.
-        let inline vertexAttribute (name : ^Name) (value : aval< ^a[]>) (sg : ISg<'msg>) =
+        let inline vertexAttribute (name : ^Name) (value : aval<'Value[]>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.vertexAttribute name value)
 
         /// Provides a vertex attribute with the given name by supplying an array of values.
         /// The name can be a string, Symbol, or TypedSymbol.
-        let inline vertexAttribute' (name : ^Name) (value : ^a[]) (sg : ISg<'msg>) =
+        let inline vertexAttribute' (name : ^Name) (value : 'Value[]) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.vertexAttribute' name value)
 
         /// Provides a vertex attribute with the given name by supplying a BufferView.
@@ -819,24 +819,24 @@ module ``F# Sg`` =
         /// Provides a vertex attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
-        let inline vertexBufferValue (name : ^Name) (value : aval< ^a>) (sg : ISg<'msg>) =
+        let inline vertexBufferValue (name : ^Name) (value : aval< ^Value>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.vertexBufferValue name value)
 
         /// Provides a vertex attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
-        let inline vertexBufferValue' (name : ^Name) (value : ^a) (sg : ISg<'msg>) =
+        let inline vertexBufferValue' (name : ^Name) (value : ^Value) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.vertexBufferValue' name value)
 
 
         /// Provides an instance attribute with the given name by supplying an array of values.
         /// The name can be a string, Symbol, or TypedSymbol.
-        let inline instanceAttribute (name : ^Name) (value : aval< ^a[]>) (sg : ISg<'msg>) =
+        let inline instanceAttribute (name : ^Name) (value : aval<'Value[]>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceAttribute name value)
 
         /// Provides an instance attribute with the given name by supplying an array of values.
         /// The name can be a string, Symbol, or TypedSymbol.
-        let inline instanceAttribute' (name : ^Name) (value : ^a[]) (sg : ISg<'msg>) =
+        let inline instanceAttribute' (name : ^Name) (value : 'Value[]) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceAttribute' name value)
 
         /// Provides an index attribute with the given name by supplying a BufferView.
@@ -852,22 +852,22 @@ module ``F# Sg`` =
         /// Provides a instance attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
-        let inline instanceBufferValue (name : ^Name) (value : aval< ^a>) (sg : ISg<'msg>) =
+        let inline instanceBufferValue (name : ^Name) (value : aval< ^Value>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceBufferValue name value)
 
         /// Provides a instance attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
-        let inline instanceBufferValue' (name : ^Name) (value : ^a) (sg : ISg<'msg>) =
+        let inline instanceBufferValue' (name : ^Name) (value : ^Value) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceBufferValue' name value)
 
 
         /// Provides the given vertex indices.
-        let index<'msg, 'a when 'a : struct> (value : aval<'a[]>) (sg : ISg<'msg>) =
+        let index<'msg, 'Value when 'Value : struct> (value : aval<'Value[]>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.index value)
 
         /// Provides the given vertex indices.
-        let index'<'msg, 'a when 'a : struct> (value : 'a[]) (sg : ISg<'msg>) =
+        let index'<'msg, 'Value when 'Value : struct> (value : 'Value[]) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.index' value)
 
         /// Provides vertex indices by supplying a BufferView.
