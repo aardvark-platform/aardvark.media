@@ -112,7 +112,9 @@ module Reflection =
                 Some name
 
         else
-            None
+            // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
+            if n.StartsWith "resources." then Some n 
+            else None
 
     let private isNetFramework (assembly : Assembly) =
         let attributeValue = assembly.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>()
