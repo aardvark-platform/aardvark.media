@@ -113,7 +113,7 @@ module Reflection =
 
         else
             // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
-            if n.StartsWith "resources." then Some n 
+            if n.StartsWith "resources/" then Some n 
             else None
 
     let private isNetFramework (assembly : Assembly) =
