@@ -1,3 +1,6 @@
+### 5.2.0-prerelease0004
+ - merged latest v51
+ 
 ### 5.2.0-prerelease0003
  - fixed renderer removal
  
