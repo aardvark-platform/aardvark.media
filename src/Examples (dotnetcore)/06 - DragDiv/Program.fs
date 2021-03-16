@@ -12,6 +12,8 @@ open Suave.Successful
 open Suave.Operators
 open Aardium
 
+type Resources = Resources
+
 [<EntryPoint; STAThread>]
 let main argv = 
     
@@ -24,8 +26,8 @@ let main argv =
         App.app |> App.start
 
     WebPart.startServer 4321 [ 
+        Reflection.assemblyWebPart typeof<Resources>.Assembly
         MutableApp.toWebPart' app.Runtime false instance
-        prefix "/resources" >=> Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
         Suave.Files.browseHome
     ] |> ignore
      
