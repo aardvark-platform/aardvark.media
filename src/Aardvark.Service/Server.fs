@@ -1879,6 +1879,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     
     let mutable timeOffset = MicroTime.Zero
     let mutable ping = MicroTime.Zero
+    let runLock = obj()
 
     
 
@@ -1900,77 +1901,84 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
         let mutable continuousCount = 0
         while running do 
-            let background = requestedBackground
-            let size = requestedSize
+            try
+                lock runLock (fun _ -> 
+                    let background = requestedBackground
+                    let size = requestedSize
 
            
 
-            if size.AllGreater 0 then
+                    if size.AllGreater 0 && running then
                 
-                while tooFast() do mm.Wait()
-                sw.Restart()
+                        while tooFast() do mm.Wait()
+                        sw.Restart()
 
 
-                if sender.OutOfDate || lastSize <> size || lastBackground <> background then
-                    if continuousCount > lastQualityChange + 20 then
-                        lastQualityChange <- continuousCount
-                        let inCloud = int createInfo.targetQuality.framerate - framesInCloud.CurrentCount //int info.quality.framerate
-                        let expected = ping.TotalSeconds * createInfo.targetQuality.framerate
+                        if sender.OutOfDate || lastSize <> size || lastBackground <> background then
+                            if continuousCount > lastQualityChange + 20 then
+                                lastQualityChange <- continuousCount
+                                let inCloud = int createInfo.targetQuality.framerate - framesInCloud.CurrentCount //int info.quality.framerate
+                                let expected = ping.TotalSeconds * createInfo.targetQuality.framerate
 
-                        Log.line "%d %.3f" inCloud expected
-                        if float inCloud > expected + 6.0 then
-                            quality <- RenderQuality.worse quality
-                            Log.line "worse %d -> %.3f (%0A)" inCloud expected quality
-                        elif float inCloud < expected + 3.0 then
-                            if quality.scale < createInfo.targetQuality.scale || quality.quality < createInfo.targetQuality.quality then
-                                quality <- RenderQuality.better quality
-                                Log.line "better %d -> %.3f (%0A)" inCloud expected quality
+                                Log.line "%d %.3f" inCloud expected
+                                if float inCloud > expected + 6.0 then
+                                    quality <- RenderQuality.worse quality
+                                    Log.line "worse %d -> %.3f (%0A)" inCloud expected quality
+                                elif float inCloud < expected + 3.0 then
+                                    if quality.scale < createInfo.targetQuality.scale || quality.quality < createInfo.targetQuality.quality then
+                                        quality <- RenderQuality.better quality
+                                        Log.line "better %d -> %.3f (%0A)" inCloud expected quality
                     
 
-                    frameCount <- frameCount + 1
+                            frameCount <- frameCount + 1
 
-                    framesInCloud.Wait()
-                    lastBackground <- background
-                    lastSize <- size
+                            framesInCloud.Wait()
+                            lastBackground <- background
+                            lastSize <- size
 
-                    lock updateLock (fun () ->
-                        sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                            let info = Interlocked.Change(&info, fun info -> { info with quality = quality; token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
-                            try
-                                let state = getState info
-                                let data = task.Run(token, info, state)
+                            lock updateLock (fun () ->
+                                sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                                    let info = Interlocked.Change(&info, fun info -> { info with quality = quality; token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
+                                    try
+                                        let state = getState info
+                                        let data = task.Run(token, info, state)
 
-                                match data with
-                                    | Jpeg data -> 
-                                        let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
-                                        match res with
-                                            | Choice1Of2() -> ()
-                                            | Choice2Of2 err ->
-                                                running <- false
-                                                Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
-                                    | Png data -> 
-                                        Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
+                                        match data with
+                                            | Jpeg data -> 
+                                                let res = createInfo.socket.send Opcode.Binary (ByteSegment data) true |> Async.RunSynchronously
+                                                match res with
+                                                    | Choice1Of2() -> ()
+                                                    | Choice2Of2 err ->
+                                                        running <- false
+                                                        Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                            | Png data -> 
+                                                Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
                                 
-                                    | Mapping img ->
-                                        let data = Pickler.json.Pickle img
-                                        let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
-                                        match res with
-                                            | Choice1Of2() -> ()
-                                            | Choice2Of2 err ->
-                                                running <- false
-                                                Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                            | Mapping img ->
+                                                let data = Pickler.json.Pickle img
+                                                let res = createInfo.socket.send Opcode.Text (ByteSegment data) true |> Async.RunSynchronously
+                                                match res with
+                                                    | Choice1Of2() -> ()
+                                                    | Choice2Of2 err ->
+                                                        running <- false
+                                                        Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
                                     
-                            with e ->
-                                running <- false
-                                Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
-                        )
-                    )
+                                    with e ->
+                                        running <- false
+                                        Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
+                                )
+                            )
 
-                    createInfo.server.rendered info
+                            createInfo.server.rendered info
                 
-                    continuousCount <- continuousCount + 1
-                else
-                    continuousCount <- 0
+                            continuousCount <- continuousCount + 1
+                        else
+                            continuousCount <- 0
+
+                )
+            with e -> 
+                // still a bug, shudown results in tranaction.commit with 0 object in the queue.
+                Log.warn "[Media, renderLoop] %A" e
 
 
     let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)
@@ -1984,25 +1992,29 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
 
     member x.Revive(newInfo : ClientCreateInfo) =
-        if Interlocked.Exchange(&disposed, 0) = 1 then
-            Log.line "[Client] %d: revived" id
-            createInfo <- newInfo
-            task <- newTask newInfo getContent
-            subscription <- subscribe()
-            renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
-            timeOffset <- MicroTime.Zero
-            ping <- MicroTime.Zero
+        lock runLock (fun _ -> 
+            if Interlocked.Exchange(&disposed, 0) = 1 then
+                Log.line "[Client] %d: revived" id
+                createInfo <- newInfo
+                task <- newTask newInfo getContent
+                subscription <- subscribe()
+                renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
+                timeOffset <- MicroTime.Zero
+                ping <- MicroTime.Zero
+        )
 
     member x.Dispose() =
-        if Interlocked.Exchange(&disposed, 1) = 0 then
-            task.Dispose()
-            subscription.Dispose()
-            running <- false
-            requestedSize <- V2i.Zero
-            requestedBackground <- C4b.Black
-            frameCount <- 0
-            roundTripTime.Reset()
-            invalidateTime.Reset()
+        lock runLock (fun _ -> 
+            if Interlocked.Exchange(&disposed, 1) = 0 then
+                task.Dispose()
+                subscription.Dispose()
+                running <- false
+                requestedSize <- V2i.Zero
+                requestedBackground <- C4b.Black
+                frameCount <- 0
+                roundTripTime.Reset()
+                invalidateTime.Reset()
+        )
 
     member x.Run =
         running <- true
