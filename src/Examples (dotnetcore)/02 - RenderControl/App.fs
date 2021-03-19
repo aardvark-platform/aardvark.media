@@ -23,28 +23,29 @@ let update (model : Model) (msg : Message) =
         | CenterScene -> 
             { model with cameraState = initialCamera }
 
-let viewScene (model : AdaptiveModel) =
-    Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
-     |> Sg.shader {
+let viewScene (model : AdaptiveModel) (cam : aval<Camera>) =
+    let blub (view : aval<Trafo3d>) (proj : aval<Trafo3d>)=
+        Sg.draw IndexedGeometryMode.TriangleList
+        |> Sg.vertexAttribute DefaultSemantic.Positions (AVal.constant [|V3d.OOO; V3d.IOO; V3d.OOI|])
+        |> Sg.index (AVal.constant [|0;1;2|])
+        |> Sg.shader {
             do! DefaultSurfaces.trafo
-            do! DefaultSurfaces.vertexColor
-            do! DefaultSurfaces.simpleLighting
+            do! DefaultSurfaces.constantColor C4f.White
         }
+        |> Sg.viewTrafo view
+        |> Sg.projTrafo proj
 
+    let comp() = 
+        Aardvark.Service.Scene.custom (fun (values : Aardvark.Service.ClientValues) ->
+            blub values.viewTrafo values.projTrafo
+            |> Aardvark.SceneGraph.RuntimeSgExtensions.Sg.compile values.runtime values.signature
+        )
+
+    DomNode.RenderControl(FreeFlyController.attributes model.cameraState Camera, cam, comp(), None)
 
 let view (model : AdaptiveModel) =
-
-    let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant) 
-                    (AttributeMap.ofListCond [ 
-                        always <| style "width: 100%; grid-row: 2; height:100%"; 
-                        always <| attribute "showFPS" "true";         // optional, default is false
-                        "style", model.background |> AVal.map(fun c -> sprintf "background: #%02X%02X%02X" c.R c.G c.B |> AttributeValue.String |> Some)
-                        //attribute "showLoader" "false"    // optional, default is true
-                        //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                        always <| attribute "data-samples" "8"        // optional, default is 1
-                    ]) 
-            (viewScene model)
+    let cam = model.cameraState.view |> AVal.map (fun view -> { cameraView = view; frustum = Frustum.perspective 60.0 0.2 500.0 1.0 })
+    let renderControl = viewScene model cam
 
 
     div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
