@@ -15,7 +15,12 @@ let main argv =
     Aardium.init()
     
     use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    let mutable mapp : Option<MutableApp<_,_>> = None
+    let sendMessage (msg : Inc.Model.Message) = match mapp with None -> () | Some mapp -> mapp.update (Guid.NewGuid()) (Seq.singleton msg)
+    let instance = 
+        let i = App.app sendMessage |> App.start
+        mapp <- Some i
+        i
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 

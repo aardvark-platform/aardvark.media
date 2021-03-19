@@ -14,9 +14,27 @@ let readFileNonCrashing path =
     use r = new StreamReader(fs)
     r.ReadToEnd()
 
-let update (model : Model) (msg : Message) =
+let watcher (path : string) cb =
+    let dir = Path.GetDirectoryName path
+    let file = Path.GetFileName path
+    let w = new FileSystemWatcher(dir)
+    w.NotifyFilter <- NotifyFilters.LastWrite
+    w.Filter <- file
+    w.EnableRaisingEvents <- true
+    w.Changed.Add cb
+    w
+
+let update (send : Message -> unit) (model : Model) (msg : Message) =
     match msg with
-        | SetPath p -> { model with FilePath = Some p; Content = readFileNonCrashing p }
+        | SetPath p -> 
+            match model.Watcher with | Some w -> w.Dispose() | None -> ()
+            let watcher = watcher p (fun _ -> readFileNonCrashing p |> SetContent |> send)
+            let content = readFileNonCrashing p
+            { model with 
+                FilePath = Some p
+                Content = content
+                Watcher = Some watcher
+            }
         | SetContent c -> { model with Content = c }
 
 let view (model : AdaptiveModel) =
@@ -35,52 +53,17 @@ let view (model : AdaptiveModel) =
         div [] [Incremental.text model.Content]
     ]
 
-let watcher (path : string) cb =
-    let dir = Path.GetDirectoryName path
-    let file = Path.GetFileName path
-    let w = new FileSystemWatcher(dir)
-    w.NotifyFilter <- NotifyFilters.LastWrite
-    w.Filter <- file
-    w.EnableRaisingEvents <- true
-    w.Changed.Add cb
-    w
 
-let watcherThread path =
-    let mvar = MVar.create ""
-    let cb evt = 
-        let filecontent = readFileNonCrashing path
-        MVar.put mvar filecontent
-
-    // schaut iwie sheiße aus
-    ignore (watcher path cb)
-
-    let rec puller() =
-        proclist {
-            do! Async.SwitchToThreadPool() // das muss hier stehen sonst blockt alles
-
-            yield SetContent (MVar.take mvar)
-            yield! puller()
-        }
-
-    puller()
-
-let threads (model : Model) = 
-    match model.FilePath with
-    | Some path -> 
-        ThreadPool.empty
-        |> ThreadPool.add "puller" (watcherThread path)
-    | None -> ThreadPool.empty
-
-
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app (send : Message -> unit) =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
     {
         unpersist = Unpersist.instance     
-        threads = threads 
+        threads = fun _ -> ThreadPool.empty 
         initial = 
             {   
                 FilePath = None
+                Watcher = None
                 Content = "content"
             }
-        update = update 
+        update = update send
         view = view
     }

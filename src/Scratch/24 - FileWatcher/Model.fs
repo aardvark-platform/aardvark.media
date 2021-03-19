@@ -4,6 +4,7 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
 open Adaptify
+open System.IO
 
 type Message = 
     | SetContent of string
@@ -13,5 +14,6 @@ type Message =
 type Model = 
     {
         FilePath : Option<string>
+        Watcher : Option<FileSystemWatcher>
         Content : string
     }
