@@ -539,12 +539,12 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
             let task = create()
 
             { new AbstractRenderTask() with
-                member x.FramebufferSignature = task.FramebufferSignature
-                member x.Runtime = task.Runtime
-                member x.PerformUpdate(t,rt) = task.Update(t, rt)
-                member x.Perform(t,rt,o,q) =  task.Run(t, rt, o, q)
+                member __.FramebufferSignature = task.FramebufferSignature
+                member __.Runtime = task.Runtime
+                member __.PerformUpdate(t,rt) = task.Update(t, rt)
+                member __.Perform(t,rt,o,q) =  task.Run(t, rt, o, q)
                 
-                member x.Release() = 
+                member __.Release() = 
                     lock x (fun () ->
                         release()
                     )

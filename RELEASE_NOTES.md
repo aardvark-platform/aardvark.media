@@ -1,3 +1,6 @@
+### 5.2.0-prerelease0005
+ - fixed dispose/render races
+
 ### 5.2.0-prerelease0004
  - merged latest v51
  
