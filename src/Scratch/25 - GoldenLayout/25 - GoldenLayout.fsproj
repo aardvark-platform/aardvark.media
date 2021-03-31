@@ -12,7 +12,9 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="resources\goldenAard.js" />
+    <EmbeddedResource Include="resources\goldenAard.js">
+      <LogicalName>resources/goldenAard.js</LogicalName>
+    </EmbeddedResource>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />

@@ -26,6 +26,32 @@
             minimise: 'minimise',
             popout: 'open in new window'
         },
-        content: [ /* see item config */ ]
+        content: [{
+        type: 'row',
+        content:[{
+            type: 'component',
+            componentName: 'testComponent',
+            componentState: { label: 'A' }
+        },{
+            type: 'column',
+            content:[{
+                type: 'component',
+                componentName: 'testComponent',
+                componentState: { label: 'B' }
+            },{
+                type: 'component',
+                componentName: 'testComponent',
+                componentState: { label: 'C' }
+            }]
+        }]
+    }]
     });
-};
+
+    layout.registerComponent( 'testComponent', function( container, componentState ){
+        container.getElement().html("<iframe src='./?page=render' width='900' height='400' name='SELFHTML_in_a_box'>");
+    });
+
+    layout.init();
+}
+
+aardvark.initLayout = initLayout;

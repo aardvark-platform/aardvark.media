@@ -6,10 +6,13 @@ open Aardvark.UI.Primitives
 open Adaptify
 
 type Message = 
-    | Inc
+    | Camera of FreeFlyController.Message
+    | CenterScene
+    | ToggleBackground
 
 [<ModelType>]
 type Model = 
     {
-        value : int
+        cameraState : CameraControllerState
+        background : C4b
     }

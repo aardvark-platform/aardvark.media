@@ -9,6 +9,8 @@ open Inc
 open Suave
 open Suave.WebPart
 
+type Resources = Resources
+
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
@@ -26,6 +28,7 @@ let main argv =
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
     WebPart.startServerLocalhost 4321 [ 
+        Reflection.assemblyWebPart typeof<Resources>.Assembly
         MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
     ] |> ignore
