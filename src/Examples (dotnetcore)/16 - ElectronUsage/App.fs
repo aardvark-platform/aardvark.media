@@ -53,7 +53,7 @@ let onSaveFile (chosen : string -> 'msg) =
 
 
 let dependencies = [
-    { name = "helpers"; url = "helper.js"; kind = Script }
+    { name = "helper"; url = "resources/helper.js"; kind = Script }
 ]
 
 let view (model : AdaptiveModel) =

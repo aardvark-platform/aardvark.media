@@ -7,6 +7,8 @@ open Aardium
 open Suave
 open Suave.WebPart
 
+type Resources = Resources
+
 [<EntryPoint; STAThread>]
 let main argv = 
 
@@ -21,7 +23,7 @@ let main argv =
 
     WebPart.startServer 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
-        Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
+        Reflection.assemblyWebPart typeof<Resources>.Assembly
     ] |> ignore
     
     Aardium.run {

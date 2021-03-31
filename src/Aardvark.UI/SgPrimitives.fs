@@ -46,6 +46,9 @@ module SgPrimitives =
         let lines (color : aval<C4b>) (lines : aval<Line3d[]>) =
             Sg.lines color lines |> Sg.noEvents
 
+        let lines' (color : C4b) (lines : Line3d[]) =
+            Sg.lines' color lines |> Sg.noEvents
+
         let triangles (color : aval<C4b>) (triangles : aval<Triangle3d[]>) =
             Sg.triangles color triangles |> Sg.noEvents
 

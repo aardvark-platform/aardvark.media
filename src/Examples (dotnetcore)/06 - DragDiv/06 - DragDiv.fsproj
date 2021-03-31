@@ -18,7 +18,9 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
-    <EmbeddedResource Include="DragUtilities.js" />
+    <EmbeddedResource Include="resources/DragUtilities.js">
+      <LogicalName>resources/DragUtilities.js</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />
