@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "25 - GoldenLayout", "Scratch\25 - GoldenLayout\25 - GoldenLayout.fsproj", "{F009F0FC-3662-46F7-B298-E409E37ABBE7}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "25 - BackgroundOperation", "Examples (dotnetcore)\25 - BackgroundOperation\25 - BackgroundOperation.fsproj", "{D7F9D54A-3A5B-4033-849F-A34342AFB33F}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "24 - Channels", "Examples (dotnetcore)\24 - Channels\24 - Channels.fsproj", "{389F94B9-4093-4CB1-9B24-DF7115D1CE9D}"
@@ -102,6 +104,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F009F0FC-3662-46F7-B298-E409E37ABBE7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F009F0FC-3662-46F7-B298-E409E37ABBE7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F009F0FC-3662-46F7-B298-E409E37ABBE7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F009F0FC-3662-46F7-B298-E409E37ABBE7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{D7F9D54A-3A5B-4033-849F-A34342AFB33F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{D7F9D54A-3A5B-4033-849F-A34342AFB33F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D7F9D54A-3A5B-4033-849F-A34342AFB33F}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -275,6 +281,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{F009F0FC-3662-46F7-B298-E409E37ABBE7} = {15625EF2-D2BB-40F3-9F94-3E101FFD3366}
 		{D7F9D54A-3A5B-4033-849F-A34342AFB33F} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 		{389F94B9-4093-4CB1-9B24-DF7115D1CE9D} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 		{E1E09C2E-3304-47D2-90BC-94253D1589CB} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
