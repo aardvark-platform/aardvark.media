@@ -12,13 +12,15 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="SvgDragUtilities.js"/>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
+    <EmbeddedResource Include="resources/SvgDragUtilities.js">
+      <LogicalName>resources/SvgDragUtilities.js</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />
