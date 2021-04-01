@@ -48,7 +48,7 @@
     });
 
     layout.registerComponent( 'testComponent', function( container, componentState ){
-        container.getElement().html("<iframe src='./?page=render' width='900' height='400' name='SELFHTML_in_a_box'>");
+        container.getElement().html("<iframe src='./?page=render' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
     });
 
     layout.init();

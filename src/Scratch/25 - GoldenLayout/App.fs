@@ -21,13 +21,13 @@ let update (model : Model) (msg : Message) =
     | CenterScene ->
         { model with cameraState = initialCamera }
 
-let dependencies = [
+let dependencies = Html.semui @ [
     { name = "js"; url = "http://code.jquery.com/jquery-1.11.1.min.js"; kind = Script }
     { name = "Golden"; url = "https://golden-layout.com/files/latest/js/goldenlayout.min.js"; kind = Script }
     { name = "GoldenCSS"; url = "https://golden-layout.com/files/latest/css/goldenlayout-base.css"; kind = Stylesheet }
     { name = "Theme"; url = "https://golden-layout.com/files/latest/css/goldenlayout-dark-theme.css"; kind = Stylesheet }
     { name = "GoldenAard"; url = "resources/goldenAard.js"; kind = Script }
-]
+] 
 
 let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
@@ -49,21 +49,22 @@ let view3d (model : AdaptiveModel) =
                         //attribute "showLoader" "false"    // optional, default is true
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
                         always <| attribute "data-samples" "8"        // optional, default is 1
+                        always <| attribute "showLoader" "false"
                     ])
             (viewScene model)
 
 
-    div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
-        div [style "grid-row: 1"] [
-            text "Hello 3D"
+    require Html.semui (
+        div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%;background-color:rgb(34,34,34);" ] [
+            div [style "grid-row: 1"] [
+                button [clazz "ui inverted tiny button"; style "position:absolute;top:30px;z-index:10000"; onClick (fun _ -> CenterScene)] [text "Center Scene"]
+                button [clazz "ui inverted tiny button"; style "position:absolute;top:65px;z-index:10000"; onClick (fun _ -> ToggleBackground)] [text "Change Background"]
+            ]
+            renderControl
             br []
-            button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
-            button [onClick (fun _ -> ToggleBackground)] [text "Change Background"]
+            div [style "color:white"] [text "use first person shooter WASD + mouse controls to control the 3d scene"]
         ]
-        renderControl
-        br []
-        text "use first person shooter WASD + mouse controls to control the 3d scene"
-    ]
+    )
 
 let view (model : AdaptiveModel) =
 
@@ -92,7 +93,7 @@ let app =
         initial = 
             {   
                 cameraState = initialCamera
-                background = C4b.Black
+                background = C4b(34,34,34)
             }
         update = update 
         view = view
