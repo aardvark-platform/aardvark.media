@@ -2,10 +2,6 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "25 - Animation", "Examples (dotnetcore)\25 - Animation\25 - Animation.fsproj", "{C9B9A48A-6D92-4191-B09E-886282194C6B}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "07 - UIUpdatePerformance", "Scratch\07 - UIUpdatePerformance\07 - UIUpdatePerformance.fsproj", "{16E1296F-4A35-4237-81B0-6450A065535E}"
-EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}"
@@ -49,20 +45,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scratch", "Scratch", "{6886
 		Scratch\new-media.fsx = Scratch\new-media.fsx
 	EndProjectSection
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - Animation", "Examples (dotnetcore)\26 - Animation\26 - Animation.fsproj", "{23915B0F-35FA-4879-B8B4-D53295C864E2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{C9B9A48A-6D92-4191-B09E-886282194C6B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{16E1296F-4A35-4237-81B0-6450A065535E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{16E1296F-4A35-4237-81B0-6450A065535E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{16E1296F-4A35-4237-81B0-6450A065535E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{16E1296F-4A35-4237-81B0-6450A065535E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -107,13 +97,15 @@ Global
 		{8D161B57-D086-4848-85E1-A77A3F1D9215}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8D161B57-D086-4848-85E1-A77A3F1D9215}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8D161B57-D086-4848-85E1-A77A3F1D9215}.Release|Any CPU.Build.0 = Release|Any CPU
+		{23915B0F-35FA-4879-B8B4-D53295C864E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{23915B0F-35FA-4879-B8B4-D53295C864E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{23915B0F-35FA-4879-B8B4-D53295C864E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{23915B0F-35FA-4879-B8B4-D53295C864E2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{C9B9A48A-6D92-4191-B09E-886282194C6B} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
-		{16E1296F-4A35-4237-81B0-6450A065535E} = {6886C4F9-BA04-4E56-8687-672B6A9822DF}
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
 		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
 		{F20C78DD-06CB-44E8-90DB-6DE144863078} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
@@ -125,6 +117,7 @@ Global
 		{7B055C74-1C24-4CB0-96E4-02E01914F60A} = {6D553C3F-E56A-4B26-8018-DA17A4B4C407}
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{8D161B57-D086-4848-85E1-A77A3F1D9215} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{23915B0F-35FA-4879-B8B4-D53295C864E2} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}
