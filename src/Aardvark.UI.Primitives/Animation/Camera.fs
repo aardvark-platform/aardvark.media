@@ -124,17 +124,19 @@ module AnimationCameraPrimitives =
                 |> Animation.link lens
 
             /// <summary>
-            /// Creates a sequence of animations that interpolate linearly between pairs of the given camera views.
+            /// Creates an array of animations that interpolate linearly between pairs of the given camera views.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-            let linearPath' (points : CameraView seq) : IAnimation<'Model, CameraView> seq =
+            let linearPath' (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
 
-                if Seq.isEmpty points then
+                let points = Array.ofSeq points
+
+                if Array.isEmpty points then
                     raise <| System.ArgumentException("Camera path cannot be empty")
 
-                let sky = (points |> Seq.head).Sky
-                let positions = points |> Seq.map CameraView.location
-                let orientations = points |> Seq.map CameraView.orientation
+                let sky = points.[0].Sky
+                let positions = points |> Array.map CameraView.location
+                let orientations = points |> Array.map CameraView.orientation
 
                 let interp (p : V3d, o : Rot3d) (p' : V3d, o' : Rot3d) =
                     (Primitives.lerp p p', Primitives.slerp o o')
@@ -143,9 +145,9 @@ module AnimationCameraPrimitives =
                 let dist (x : V3d, _) (y : V3d, _) =
                     Vec.distance x y
 
-                Seq.zip positions orientations
+                Array.zip positions orientations
                 |> Primitives.path' interp dist
-                |> Seq.map (Animation.map (fun (l, o) -> CameraView.orient l o sky))
+                |> Array.map (Animation.map (fun (l, o) -> CameraView.orient l o sky))
 
             /// <summary>
             /// Creates an animation that interpolates linearly between the given camera views.
@@ -153,3 +155,41 @@ module AnimationCameraPrimitives =
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let linearPath (points : CameraView seq) : IAnimation<'Model, CameraView> =
                 points |> linearPath' |> Animation.path
+
+            /// <summary>
+            /// Creates an array of animations that smoothly interpolate between the given camera views.
+            /// The animations are scaled according to the distance between the camera view locations. Coinciding camera views are ignored.
+            /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
+            /// </summary>
+            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
+            let smoothPath' (epsilon : float) (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
+                let points = Array.ofSeq points
+
+                if Seq.isEmpty points then
+                    raise <| System.ArgumentException("Camera path cannot be empty")
+
+                let sky = points.[0].Sky
+
+                let locations =
+                    points
+                    |> Array.map CameraView.location
+                    |> Primitives.smoothPath' Vec.distance epsilon
+
+                let orientations =
+                    points
+                    |> Array.map CameraView.orientation
+                    |> Primitives.path' Primitives.slerp (fun _ _ -> 1.0)
+
+                (locations, orientations)
+                ||> Array.map2 (fun l o ->
+                    let o = o |> Animation.duration l.Duration
+                    (l, o) ||> Animation.map2 (fun l o -> CameraView.orient l o sky)
+                )
+
+            /// <summary>
+            /// Creates an animation that smoothly interpolates between the given camera views. Coinciding camera views are ignored.
+            /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
+            /// </summary>
+            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
+            let smoothPath (epsilon : float) (points : CameraView seq) : IAnimation<'Model, CameraView> =
+                points |> smoothPath' epsilon |> Animation.path

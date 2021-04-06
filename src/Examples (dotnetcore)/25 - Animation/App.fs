@@ -168,7 +168,8 @@ let update (model : Model) (msg : Message) =
                     //model |> Animation.Camera.interpolateTo lens dst
                     //model |> Animation.Camera.orbitTo' lens positionAnimation V3d.ZAxis Constant.PiTimesTwo
                     //model |> Animation.Camera.orbitDynamicTo lens posLens V3d.ZAxis Constant.PiTimesTwo
-                    Animation.Camera.linearPath [view1; view2; view3]
+                    [view1; view2; view3]
+                    |> Animation.Camera.smoothPath error
                     |> Animation.link lens
                     |> Animation.seconds 5
                     |> Animation.onStart (fun _ ->      Log.warn "[Camera] started")
@@ -188,7 +189,7 @@ let update (model : Model) (msg : Message) =
                 let delay =
                     Animation.empty |> Animation.seconds 2
 
-                //cameraAnimation
+                cameraAnimation
                 //rotationAnimation
                 //|> Animation.ease (Easing.InOut EasingFunction.Quadratic)
                 //|> Animation.ease (Easing.InOut EasingFunction.Quadratic)
@@ -202,7 +203,7 @@ let update (model : Model) (msg : Message) =
                 //|> Animation.loop LoopMode.Mirror
                 //|> Animation.seconds 2
                 //|> Animation.andAlso positionAnimation
-                positionAnimation
+                //positionAnimation
                 //|> Animation.andAlso rotationAnimation
                 //Animation.sequential [positionAnimation; delay; rotationAnimation; colorAnimation]
                 //|> Animation.loopN LoopMode.Mirror 3
