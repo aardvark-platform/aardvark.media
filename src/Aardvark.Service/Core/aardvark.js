@@ -411,7 +411,15 @@ class Renderer {
 
             img.style.cursor = "default";
 
-            var url = aardvark.getScriptRelativeUrl("ws", "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples + "&quality=" + this.quality);
+            var ws = "ws";
+            if (location && location.protocol) {
+                if (location.protocol == "https:") {
+                    console.warn("upgrad to wss");
+                    ws = "wss";
+                }
+            }
+
+            var url = aardvark.getScriptRelativeUrl(ws, "render/" + this.id + "?session=" + aardvark.guid + "&scene=" + this.scene + "&samples=" + this.samples + "&quality=" + this.quality);
 
             var self = this;
 
@@ -1286,8 +1294,14 @@ if (!aardvark.connect) {
         while (match = search.exec(query))
             wsQuery = wsQuery + "&" + decode(match[1]) + "=" + decode(match[2]);
 
-
-        var url = aardvark.getRelativeUrl('ws', path + wsQuery);
+        var ws = "ws";
+        if (location && location.protocol) {
+            if (location.protocol == "https:") {
+                console.warn("upgrade to wss");
+                ws = "wss";
+            }
+        }
+        var url = aardvark.getRelativeUrl(ws, path + wsQuery);
         var eventSocket = new WebSocket(url);
 
         
