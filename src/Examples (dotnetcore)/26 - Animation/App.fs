@@ -337,10 +337,10 @@ let view (model : AdaptiveModel) =
             (viewScene model)
 
     let colorAnimationPaused =
-        model.animator |> Animator.isPaused' animSym
+        model.animator |> AdaptiveAnimator.isPaused animSym
 
     let colorAnimationRunning =
-        model.animator |> Animator.isRunning' animSym
+        model.animator |> AdaptiveAnimator.isRunning animSym
 
     div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%" ] [
         div [style "grid-row: 1"] [

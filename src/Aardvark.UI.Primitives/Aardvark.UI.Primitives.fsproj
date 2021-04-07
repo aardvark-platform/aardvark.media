@@ -41,7 +41,6 @@
     <Compile Include="Animation\AnimatorModel.fs" />
     <Compile Include="Animation\AnimatorApp.fs" />
     <Compile Include="Animation\Querying.fs" />
-    <Compile Include="Animation\QueryingAdaptive.fs" />
     <Compile Include="IntegrationHelpers.fs" />
     <Compile Include="TouchStick.fs" />
     <Compile Include="CameraModel.fs" />
