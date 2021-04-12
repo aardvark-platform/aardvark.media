@@ -101,7 +101,7 @@ module OrbitController =
             { model with dragStart = None; lastRender = None }
 
         | Wheel delta ->
-            OrbitState.withView { model with targetRadius = clamp model.radiusRange.Min model.radiusRange.Max (model.targetRadius + delta.Y * model.zoomSensitivity) }
+            OrbitState.withView { model with targetRadius = clamp model.radiusRange.Min model.radiusRange.Max (model.targetRadius - delta.Y * model.zoomSensitivity) }
 
         | MouseMove p ->
             match model.dragStart with
@@ -138,7 +138,6 @@ module OrbitController =
             let model = 
                 if abs dphi > 0.0 then
                     if Fun.IsTiny(dphi, 1E-4) then
-                        Log.warn "phi done"
                         OrbitState.withView { model with phi = model.targetPhi }
                     else
                         OrbitState.withView { model with phi = model.phi + part * dphi }
@@ -148,7 +147,6 @@ module OrbitController =
             let model = 
                 if abs dtheta > 0.0 then
                     if Fun.IsTiny(dtheta, 1E-4) then
-                        Log.warn "theta done"
                         OrbitState.withView { model with theta = model.targetTheta }
                     else
                         OrbitState.withView { model with theta  = model.theta + part * dtheta }
@@ -158,7 +156,6 @@ module OrbitController =
             let model = 
                 if abs dradius > 0.0 then
                     if Fun.IsTiny(dradius, 1E-4) then
-                        Log.warn "radius done"
                         OrbitState.withView { model with radius = model.targetRadius }
                     else
                         OrbitState.withView { model with radius  = model.radius + part * dradius }
@@ -168,7 +165,6 @@ module OrbitController =
             let model = 
                 if dcenter.Length > 0.0 then
                     if Fun.ApproximateEquals(V3d.Zero, dcenter, 1E-4) then
-                        Log.warn "center done"
                         OrbitState.withView { model with center = model.targetCenter }
                     else
                         OrbitState.withView { model with center  = model.center + part * dcenter }
@@ -191,6 +187,10 @@ module OrbitController =
             onlyWhen down <| onCapturedPointerMove None (fun k p -> MouseMove p |> f)
         ]
         
+    let controlledControlWithClientValues (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+        let attributes = AttributeMap.union att (attributes state f)
+        let cam = AVal.map2 Camera.create state.view frustum
+        Incremental.renderControlWithClientValues' cam attributes config sg
 
     let controlledControl (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         let cam = AVal.map2 Camera.create model.view  frustum
