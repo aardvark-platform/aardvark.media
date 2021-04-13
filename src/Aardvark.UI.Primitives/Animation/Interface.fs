@@ -219,6 +219,11 @@ module IAnimationExtensions =
         member x.Start(globalTime: GlobalTime, startFrom: LocalTime) =
             x.Perform <| Action.Start(globalTime, startFrom)
 
+        /// Starts the animation from the given normalized position.
+        member x.Start(globalTime: GlobalTime, startFrom: float) =
+            let lt = if startFrom = 0.0 then LocalTime.zero else startFrom |> LocalTime.get x.Duration
+            x.Perform <| Action.Start(globalTime, lt)
+
         /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
         member x.Start(globalTime: GlobalTime) =
             x.Perform <| Action.Start(globalTime, LocalTime.zero)
@@ -239,27 +244,32 @@ module IAnimationExtensions =
 
     type IAnimation<'Model, 'Value> with
 
-         /// Stops the animation and resets it.
-         member x.Stop() =
-             x.Perform Action.Stop
+        /// Stops the animation and resets it.
+        member x.Stop() =
+            x.Perform Action.Stop
 
-         /// Starts the animation from the given start time (local timestamp relative to globalTime).
-         member x.Start(globalTime: GlobalTime, startFrom: LocalTime) =
-             x.Perform <| Action.Start(globalTime, startFrom)
+        /// Starts the animation from the given start time (local timestamp relative to globalTime).
+        member x.Start(globalTime: GlobalTime, startFrom: LocalTime) =
+            x.Perform <| Action.Start(globalTime, startFrom)
 
-         /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
-         member x.Start(globalTime: GlobalTime) =
-             x.Perform <| Action.Start(globalTime, LocalTime.zero)
+        /// Starts the animation from the given normalized position.
+        member x.Start(globalTime: GlobalTime, startFrom: float) =
+            let lt = if startFrom = 0.0 then LocalTime.zero else startFrom |> LocalTime.get x.Duration
+            x.Perform <| Action.Start(globalTime, lt)
 
-         /// Pauses the animation if it is running or has started.
-         member x.Pause(globalTime: GlobalTime) =
-             x.Perform <| Action.Pause(globalTime)
+        /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
+        member x.Start(globalTime: GlobalTime) =
+            x.Perform <| Action.Start(globalTime, LocalTime.zero)
 
-         /// Resumes the animation from the point it was paused.
-         /// Has no effect if the animation is not paused.
-         member x.Resume(globalTime: GlobalTime) =
-             x.Perform <| Action.Resume(globalTime)
+        /// Pauses the animation if it is running or has started.
+        member x.Pause(globalTime: GlobalTime) =
+            x.Perform <| Action.Pause(globalTime)
 
-         /// Updates the animation to the given global time.
-         member x.Update(globalTime: GlobalTime, finalize: bool) =
-             x.Perform <| Action.Update(globalTime, finalize)
+        /// Resumes the animation from the point it was paused.
+        /// Has no effect if the animation is not paused.
+        member x.Resume(globalTime: GlobalTime) =
+            x.Perform <| Action.Resume(globalTime)
+
+        /// Updates the animation to the given global time.
+        member x.Update(globalTime: GlobalTime, finalize: bool) =
+            x.Perform <| Action.Update(globalTime, finalize)

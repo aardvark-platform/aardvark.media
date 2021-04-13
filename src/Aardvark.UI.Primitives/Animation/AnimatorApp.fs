@@ -108,7 +108,7 @@ module Animator =
                     else
                         animation.Perform <| Action.Update(globalTime, false)
                 | _ ->
-                    animation.Perform <| Action.Update(globalTime, false)
+                    animation
 
             /// Notifies animation observers.
             let commit (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
@@ -151,12 +151,11 @@ module Animator =
             { animator with TickRate = rate |> clamp 1 1000 }
 
         /// Adds a new animation.
-        let add (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (start : bool) (animation : IAnimation<'Model>) (model : 'Model) =
+        let add (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float option) (animation : IAnimation<'Model>) (model : 'Model) =
             let mapping (animation : IAnimation<'Model>) =
-                if start then
-                    animation.Start <| Time.get()
-                else
-                    animation
+                match startFrom with
+                | Some t -> animation.Start(Time.get(), t)
+                | _ -> animation
 
             (animation, model) ||> updateCommit lens name mapping
 
@@ -171,8 +170,8 @@ module Animator =
             |> if discard then Optic.map lens (remove name) else id
 
         /// Starts or restarts the animation with the given name.
-        let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-            model |> tryUpdateNotify lens name (fun a -> a.Start <| Time.get())
+        let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float) (model : 'Model) =
+            model |> tryUpdateNotify lens name (fun a -> a.Start(Time.get(), startFrom))
 
         /// Pauses the animation with the given name.
         let pause (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
@@ -198,7 +197,7 @@ module Animator =
             model
             |> Optic.map lensAnim update
             |> notifyAll lens
-            |> Optic.map lensAnim remove
+            //|> Optic.map lensAnim remove
             |> Optic.map lensTickCount (fun x -> incr x; x)
 
     /// Processes animation messages.
@@ -209,8 +208,8 @@ module Animator =
         | AnimatorMessage.Tick ->
             model |> tick lens
 
-        | AnimatorMessage.Set (name, animation, start) ->
-            model |> add lens name start animation
+        | AnimatorMessage.Set (name, animation, startFrom) ->
+            model |> add lens name startFrom animation
 
         | AnimatorMessage.Remove name ->
             model |> Optic.map lens (remove name)
@@ -218,8 +217,8 @@ module Animator =
         | AnimatorMessage.Stop (name, remove) ->
             model |> stop lens name remove
 
-        | AnimatorMessage.Start name ->
-            model |> start lens name
+        | AnimatorMessage.Start (name, startFrom) ->
+            model |> start lens name startFrom
 
         | AnimatorMessage.Pause name ->
             model |> pause lens name
@@ -232,9 +231,14 @@ module Animator =
 
     /// Adds or updates an animation with the given name.
     /// The name can be a string or Symbol.
-    let inline set (name : ^Name) (animation : IAnimation<'Model>) (model : 'Model) =
+    let inline setFrom (name : ^Name) (animation : IAnimation<'Model>) (startFrom : float) (model : 'Model) =
         let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Set(sym, animation, true))
+        model |> update (AnimatorMessage.Set(sym, animation, Some startFrom))
+
+    /// Adds or updates an animation with the given name.
+    /// The name can be a string or Symbol.
+    let inline set (name : ^Name) (animation : IAnimation<'Model>) (model : 'Model) =
+        model |> setFrom name animation 0.0
 
     /// Adds an animation without a name.
     let inline add (animation : IAnimation<'Model>) (model : 'Model) =
@@ -257,7 +261,7 @@ module Animator =
     /// The name can be a string or Symbol.
     let inline start (name : ^Name) (model : 'Model) =
         let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Start sym)
+        model |> update (AnimatorMessage.Start(sym, 0.0))
 
     /// Pauses the animation with the given name if it exists.
     /// The name can be a string or Symbol.

@@ -9,12 +9,10 @@ open Aardvark.UI
 open Suave
 open Suave.WebPart
 open Aardium
-open RenderControl
-
-
+open AdvancedAnimations
 
 [<EntryPoint; STAThread>]
-let main argv = 
+let main argv =
     Aardvark.Init()
     Aardium.init()
 
@@ -30,17 +28,17 @@ let main argv =
             let app = new OpenGlApplication()
             app.Runtime :> IRuntime, app :> IDisposable
     use __ = disposable
-    
+
     let app = App.app
 
-    let instance = 
+    let instance =
         app |> App.start
 
-    WebPart.startServer 4321 [ 
+    WebPart.startServer 4321 [
         MutableApp.toWebPart' runtime false instance
         Suave.Files.browseHome
     ] |> ignore
-    
+
 
     Aardium.run {
         url "http://localhost:4321/"
@@ -48,4 +46,4 @@ let main argv =
         height 768
         debug true
     }
-    0 
+    0

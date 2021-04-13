@@ -16,10 +16,10 @@ type Animator<'Model> =
 [<RequireQualifiedAccess>]
 type AnimatorMessage<'Model> =
     | Tick
-    | Set of name: Symbol * animation: IAnimation<'Model> * start: bool
-    | Remove of name: Symbol
-    | Stop of name: Symbol * remove: bool
-    | Start of name: Symbol
-    | Pause of name: Symbol
-    | Resume of name: Symbol
+    | Set         of name: Symbol * animation: IAnimation<'Model> * startFrom: float option
+    | Remove      of name: Symbol
+    | Stop        of name: Symbol * remove: bool
+    | Start       of name: Symbol * startFrom: float
+    | Pause       of name: Symbol
+    | Resume      of name: Symbol
     | SetTickRate of rate: int

@@ -132,3 +132,6 @@ module LocalTime =
     let max = function
         | Duration.Finite d -> LocalTime.Offset d
         | Duration.Infinite -> LocalTime.Infinity
+
+    let get (duration : Duration) (t : float) =
+        max (t * duration)
