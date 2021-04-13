@@ -2,13 +2,14 @@
 
 open Aardvark.Base
 open Aether
+open OptimizedClosures
 
 type private InputMapping<'Model, 'T, 'Input, 'U> =
     {
         StateMachine : StateMachine<'U>
         Animation : IAnimation<'Model, 'T>
         Input : IAnimation<'Model, 'Input>
-        Mapping : System.Func<'Model, 'T, 'Input, 'U>
+        Mapping : FSharpFunc<'Model, 'T, 'Input, 'U>
         Observable : Observable<'Model, 'U>
     }
 
@@ -27,18 +28,13 @@ type private InputMapping<'Model, 'T, 'Input, 'U> =
     member x.Loop(iterations, mode) =
         { x with Animation = x.Animation.Loop(iterations, mode) }
 
-    member x.Subscribe(observer : IAnimationObserver<'Model, 'U>) =
-        { x with Observable = x.Observable |> Observable.subscribe observer }
+    member x.Subscribe(event : EventType, callback : Symbol -> 'U -> 'Model -> 'Model) =
+        { x with Observable = x.Observable |> Observable.subscribe event callback }
 
     member x.UnsubscribeAll() =
         { x with
             Animation = x.Animation.UnsubscribeAll()
             Observable = Observable.empty }
-
-    member x.Unsubscribe(observer : IAnimationObserver<'Model>) =
-        { x with
-            Animation = x.Animation.Unsubscribe(observer)
-            Observable = x.Observable |> Observable.unsubscribe observer }
 
     member x.Commit(lens : Lens<'Model, IAnimation<'Model>>, name : Symbol, model : 'Model) =
 
@@ -78,7 +74,6 @@ type private InputMapping<'Model, 'T, 'Input, 'U> =
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
         member x.Commit(lens, name, model) = x.Commit(lens, name, model)
-        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
 
     interface IAnimation<'Model, 'U> with
@@ -87,8 +82,7 @@ type private InputMapping<'Model, 'T, 'Input, 'U> =
         member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'U>
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'U>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'U>
-        member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'U>
-        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'U>
+        member x.Subscribe(event, callback) = x.Subscribe(event, callback) :> IAnimation<'Model, 'U>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'U>
 
 
@@ -105,7 +99,7 @@ module AnimationInputExtensions =
             { StateMachine = StateMachine.initial
               Animation = animation
               Input = input.UnsubscribeAll()
-              Mapping = System.Func<_,_,_,_> (fun model value input -> value |> mapping model input)
+              Mapping = FSharpFunc<_,_,_,_>.Adapt (fun model value input -> value |> mapping model input)
               Observable = Observable.empty } :> IAnimation<'Model, 'U>
 
         /// Applies the given input animation using the given mapping function.

@@ -93,21 +93,21 @@ type Iterations =
         | Infinite -> infinity
 
 
-// Untyped interface for animation observers.
-type IAnimationObserver<'Model> =
+//// Untyped interface for animation observers.
+//type IAnimationObserver<'Model> =
 
-    /// Returns whether the observer does not have any callbacks.
-    abstract member IsEmpty : bool
+//    /// Returns whether the observer does not have any callbacks.
+//    abstract member IsEmpty : bool
 
-/// Interface for animation observers.
-type IAnimationObserver<'Model, 'Value> =
-    inherit IAnimationObserver<'Model>
+///// Interface for animation observers.
+//type IAnimationObserver<'Model, 'Value> =
+//    inherit IAnimationObserver<'Model>
 
-    /// Adds a callback for the given event.
-    abstract member Add : callback: (Symbol -> 'Value -> 'Model -> 'Model) * event: EventType -> IAnimationObserver<'Model, 'Value>
+//    /// Adds a callback for the given event.
+//    abstract member Add : callback: (Symbol -> 'Value -> 'Model -> 'Model) * event: EventType -> IAnimationObserver<'Model, 'Value>
 
-    /// Invoked on animation events.
-    abstract member OnNext : model: 'Model * name: Symbol * event: EventType * value: 'Value -> 'Model
+//    /// Invoked on animation events.
+//    abstract member OnNext : model: 'Model * name: Symbol * event: EventType * value: 'Value -> 'Model
 
 
 /// Untyped Interface for animations.
@@ -150,10 +150,7 @@ type IAnimation<'Model> =
     /// Returns the model computed by the callbacks.
     abstract member Commit : lens: Lens<'Model, IAnimation<'Model>> * name: Symbol * model: 'Model -> 'Model
 
-    /// Removes the given observer (if present).
-    abstract member Unsubscribe : observer: IAnimationObserver<'Model> -> IAnimation<'Model>
-
-    /// Removes all observers.
+    /// Removes all callbacks.
     abstract member UnsubscribeAll : unit -> IAnimation<'Model>
 
 
@@ -164,11 +161,8 @@ type IAnimation<'Model, 'Value> =
     /// Returns the current value of the animation.
     abstract member Value : 'Value
 
-    /// Registers a new observer.
-    abstract member Subscribe : observer: IAnimationObserver<'Model, 'Value> -> IAnimation<'Model, 'Value>
-
-    /// Removes the given observer (if present).
-    abstract member Unsubscribe : observer: IAnimationObserver<'Model> -> IAnimation<'Model, 'Value>
+    /// Registers a new callback.
+    abstract member Subscribe : event: EventType * callback: (Symbol -> 'Value -> 'Model -> 'Model) -> IAnimation<'Model, 'Value>
 
     /// Removes all observers.
     abstract member UnsubscribeAll : unit -> IAnimation<'Model, 'Value>

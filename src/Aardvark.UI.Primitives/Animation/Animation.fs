@@ -36,14 +36,11 @@ type private Animation<'Model, 'Value> =
     member x.Loop(iterations, mode) =
         { x with DistanceTimeFunction = x.DistanceTimeFunction.Loop(iterations, mode)}
 
-    member x.Subscribe(observer : IAnimationObserver<'Model, 'Value>) =
-        { x with Observable = x.Observable |> Observable.subscribe observer }
+    member x.Subscribe(event : EventType, callback : Symbol -> 'Value -> 'Model -> 'Model) =
+        { x with Observable = x.Observable |> Observable.subscribe event callback }
 
     member x.UnsubscribeAll() =
         { x with Observable = Observable.empty }
-
-    member x.Unsubscribe(observer : IAnimationObserver<'Model>) =
-        { x with Observable = x.Observable |> Observable.unsubscribe observer }
 
     member x.Commit(lens : Lens<'Model, IAnimation<'Model>>, name : Symbol, model : 'Model) =
 
@@ -67,7 +64,6 @@ type private Animation<'Model, 'Value> =
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
         member x.Commit(lens, name, model) = x.Commit(lens, name, model)
-        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
 
     interface IAnimation<'Model, 'Value> with
@@ -76,8 +72,7 @@ type private Animation<'Model, 'Value> =
         member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'Value>
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'Value>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'Value>
-        member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'Value>
-        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'Value>
+        member x.Subscribe(event, callback) = x.Subscribe(event, callback) :> IAnimation<'Model, 'Value>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'Value>
 
 

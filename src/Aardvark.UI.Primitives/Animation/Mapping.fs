@@ -2,27 +2,13 @@
 
 open Aardvark.Base
 open Aether
-
-type private MappingObserver<'Model, 'T, 'U> =
-    {
-        Output : IAnimationObserver<'Model, 'U>
-        Mapping : System.Func<'Model, 'T, 'U>
-    }
-
-    member x.OnNext(model, name, event, value) =
-        x.Output.OnNext(model, name, event, x.Mapping.Invoke(model, value))
-
-    interface IAnimationObserver<'Model, 'T> with
-        member x.IsEmpty = x.Output.IsEmpty
-        member x.Add(callback, event) = x :> IAnimationObserver<'Model, 'T>
-        member x.OnNext(model, name, event, value) = x.OnNext(model, name, event, value)
+open OptimizedClosures
 
 type private Mapping<'Model, 'T, 'U> =
     {
         Value : System.Func<'U>
         Input : IAnimation<'Model, 'T>
-        Mapping : System.Func<'Model, 'T, 'U>
-        Observable : Observable<'Model, 'T>
+        Mapping : FSharpFunc<'Model, 'T, 'U>
     }
 
     member x.Perform(action) =
@@ -37,25 +23,14 @@ type private Mapping<'Model, 'T, 'U> =
     member x.Loop(iterations, mode) =
         { x with Input = x.Input.Loop(iterations, mode)}
 
-    member x.Subscribe(observer : IAnimationObserver<'Model, 'U>) =
-        let mapped = { Output = observer; Mapping = x.Mapping }
-        { x with
-            Input = x.Input.Subscribe(mapped)
-            Observable = x.Observable |> Observable.add observer mapped }
+    member x.Subscribe(event : EventType, callback : Symbol -> 'U -> 'Model -> 'Model) =
+        let mapped name value model =
+            model |> callback name (x.Mapping.Invoke(model, value))
+
+        { x with Input = x.Input.Subscribe(event, mapped) }
 
     member x.UnsubscribeAll() =
-        { x with
-            Input = x.Input.UnsubscribeAll()
-            Observable = Observable.empty }
-
-    member x.Unsubscribe(observer : IAnimationObserver<'Model>) =
-        match x.Observable |> Observable.tryRemove observer with
-        | Some (mapped, observable) ->
-            { x with
-                Input = x.Input.Unsubscribe(mapped)
-                Observable = observable }
-        | _ ->
-            x
+        { x with Input = x.Input.UnsubscribeAll()}
 
     member x.Commit(lens : Lens<'Model, IAnimation<'Model>>, name : Symbol, model : 'Model) =
         let model = x.Input.Commit(lens, name, model)
@@ -78,7 +53,6 @@ type private Mapping<'Model, 'T, 'U> =
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
         member x.Commit(lens, name, model) = x.Commit(lens, name, model)
-        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
 
     interface IAnimation<'Model, 'U> with
@@ -87,8 +61,7 @@ type private Mapping<'Model, 'T, 'U> =
         member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'U>
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'U>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'U>
-        member x.Subscribe(observer) = x.Subscribe(observer) :> IAnimation<'Model, 'U>
-        member x.Unsubscribe(observer) = x.Unsubscribe(observer) :> IAnimation<'Model, 'U>
+        member x.Subscribe(event, callback) = x.Subscribe(event, callback) :> IAnimation<'Model, 'U>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'U>
 
 
@@ -101,8 +74,7 @@ module AnimationMappingExtensions =
         let map' (mapping : 'Model -> 'T -> 'U) (animation : IAnimation<'Model, 'T>) =
             { Value = System.Func<_> (fun _ -> Unchecked.defaultof<'U>)
               Input = animation
-              Mapping = System.Func<_,_,_> mapping
-              Observable = Observable.empty } :> IAnimation<'Model, 'U>
+              Mapping = FSharpFunc<_,_,_>.Adapt mapping } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animation.
         let map (mapping : 'T -> 'U) (animation : IAnimation<'Model, 'T>) =
@@ -118,7 +90,7 @@ module AnimationMappingExtensions =
 
             { StateMachine = StateMachine.initial
               Members = [| x; y |]
-              Mapping = System.Func<_,_,_> eval
+              Mapping = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, 'U>
 
@@ -136,7 +108,7 @@ module AnimationMappingExtensions =
 
             { StateMachine = StateMachine.initial
               Members = [| x; y; z |]
-              Mapping = System.Func<_,_,_> eval
+              Mapping = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, 'U>
 

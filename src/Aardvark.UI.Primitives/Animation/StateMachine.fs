@@ -3,6 +3,7 @@
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aether
+open OptimizedClosures
 
 type private StateHolder<'Value> =
     {
@@ -22,9 +23,12 @@ type private EventTrigger<'Value> =
         Value : 'Value
     }
 
+type private Callback<'Model, 'Value> =
+    FSharpFunc<Symbol, 'Value, 'Model, 'Model>
+
 type private Observable<'Model, 'Value> =
     {
-        Observers : HashMap<IAnimationObserver<'Model>, IAnimationObserver<'Model, 'Value>>
+        Callbacks : HashMap<EventType, Callback<'Model, 'Value>>
     }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -106,28 +110,23 @@ module private StateMachine =
 module private Observable =
 
     let empty : Observable<'Model, 'Value> =
-        { Observers = HashMap.empty }
+        { Callbacks = HashMap.empty }
 
-    let add (key : IAnimationObserver<'Model>) (value : IAnimationObserver<'Model, 'Value>) (observable : Observable<'Model, 'Value>) =
-        if not value.IsEmpty then
-            { Observers = observable.Observers |> HashMap.add key value }
-        else
-            observable
+    let subscribe (event : EventType) (callback : Symbol -> 'Value -> 'Model -> 'Model) (observable : Observable<'Model, 'Value>) =
+        let update (value : Callback<'Model, 'Value> voption) =
+            match value with
+            | ValueSome cbs -> Callback.Adapt (fun name value model -> cbs.Invoke(name, value, model) |> callback name value)
+            | _ -> Callback.Adapt callback
 
-    let tryRemove (key : IAnimationObserver<'Model>) (observable : Observable<'Model, 'Value>) =
-        match observable.Observers |> HashMap.tryRemove key with
-        | Some (removed, result) -> Some (removed, { Observers = result })
-        | _ -> None
+        { observable with
+            Callbacks = observable.Callbacks |> HashMap.updateV event update }
 
-    let subscribe (observer : IAnimationObserver<'Model, 'Value>) (observable : Observable<'Model, 'Value>) =
-        observable |> add (observer :> IAnimationObserver<'Model>) observer
-
-    let unsubscribe (observer : IAnimationObserver<'Model>) (observable : Observable<'Model, 'Value>) =
-        { Observers = observable.Observers |> HashMap.remove observer }
+    let private trigger (event : EventType) (name : Symbol) (value : 'Value) (model : 'Model) (observable : Observable<'Model, 'Value>) =
+        match observable.Callbacks |> HashMap.tryFindV event with
+        | ValueSome cb -> cb.Invoke(name, value, model)
+        | _ -> model
 
     let notify (name : Symbol) (events : EventTrigger<'Value> list) (model : 'Model) (observable : Observable<'Model, 'Value>) =
-        let invoke model event =
-            (model, observable.Observers |> HashMap.toSeq)
-            ||> Seq.fold (fun model (_, obs) -> obs.OnNext(model, name, event.Type, event.Value))
-
-        (model, events) ||> Seq.fold invoke
+        (model, events) ||> List.fold (fun model event ->
+            observable |> trigger event.Type name event.Value model
+        )
