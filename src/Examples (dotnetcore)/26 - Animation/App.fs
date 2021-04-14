@@ -51,7 +51,7 @@ module App =
             { model with camera = m |> OrbitController.update model.camera }
 
         | Animation msg ->
-            model |> Animator.update Model.animator_ msg
+            model |> Animator.update msg
 
         | _ ->
             model

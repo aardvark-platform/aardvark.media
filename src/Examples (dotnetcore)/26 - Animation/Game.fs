@@ -1,9 +1,7 @@
 ﻿namespace AdvancedAnimations
 
 open Aardvark.Base
-open Aardvark.Rendering
 open Aardvark.UI
-open Aardvark.UI.Primitives
 open Aardvark.UI.Anewmation
 open FSharp.Data.Adaptive
 open Aether
@@ -69,9 +67,9 @@ module Animations =
         |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
         |> Animation.seconds 1.0
         |> Animation.link lens
-        |> Animation.onFinalize' (fun name _ model ->
+        |> Animation.onFinalize (fun name _ model ->
             match model |> Optic.get Lens.hovered with
-            | Some hovered when hovered = id -> model |> Animator.start Model.animator_ name
+            | Some hovered when hovered = id -> model |> Animator.start name
             | _ -> model
         )
 
@@ -89,12 +87,12 @@ module Game =
                     let name = AnimationId.get id "bob"
                     let anim = Animations.bob id
                     let pos = rnd.UniformDouble()
-                    model |> Animator.set Model.animator_ name anim |> Animator.startFrom Model.animator_ name pos
+                    model |> Animator.set name anim |> Animator.startFrom name pos
 
                 let addShake model =
                     let name = AnimationId.get id "shake"
                     let anim = id |> Animations.shake (Constant.Pi / 10.0)
-                    model |> Animator.set Model.animator_ name anim |> Animator.start Model.animator_ name |> Animator.pause Model.animator_ name
+                    model |> Animator.set name anim |> Animator.start name |> Animator.pause name
 
                 model
                 |> addBob
@@ -106,8 +104,8 @@ module Game =
             let shake = AnimationId.get id "shake"
 
             model
-            |> Animator.pause Model.animator_ bob
-            |> Animator.start Model.animator_ shake
+            |> Animator.pause bob
+            |> Animator.start shake
             |> Optic.set Lens.hovered (Some id)
 
         | Unhover ->
@@ -115,7 +113,7 @@ module Game =
             | Some id ->
                 let bob = AnimationId.get id "bob"
                 model
-                |> Animator.resume Model.animator_ bob
+                |> Animator.resume bob
                 |> Optic.set Lens.hovered None
 
             | _ ->

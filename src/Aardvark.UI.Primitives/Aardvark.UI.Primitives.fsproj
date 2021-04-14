@@ -29,8 +29,11 @@
     <Compile Include="Animation\DistanceTimeFunction.fs" />
     <Compile Include="Animation\Easing.fs" />
     <Compile Include="Animation\StateMachine.fs" />
+    <Compile Include="Animation\Observable.fs" />
     <Compile Include="Animation\Animation.fs" />
-    <Compile Include="Animation\Group.fs" />
+    <Compile Include="Animation\Adapter.fs" />
+    <Compile Include="Animation\Groups.fs" />
+    <Compile Include="Animation\Concurrent.fs" />
     <Compile Include="Animation\Path.fs" />
     <Compile Include="Animation\Mapping.fs" />
     <Compile Include="Animation\Input.fs" />

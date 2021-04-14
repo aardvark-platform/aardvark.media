@@ -18,10 +18,41 @@ module InternalAnimatorUtilities =
             let inline symbol (_ : ^z) (name : ^Name) =
                 ((^z or ^Name) : (static member GetSymbol : ^Name -> Symbol) (name))
 
+    // We cache the lenses for each model type so the user doesn't have to keep passing them around.
+    module Lenses =
+        open Aether
+        open System
+        open System.Collections.Concurrent
+
+        let private cache = ConcurrentDictionary<Type, obj>()
+
+        let get<'Model> : Lens<'Model, Animator<'Model>>=
+            let t = typeof<'Model>
+            match cache.TryGetValue(t) with
+            | (true, lens) -> lens |> unbox
+            | _ ->
+                let message =
+                    let keys = cache.Keys |> Seq.toArray |> Array.map (string >> (+) "      ")
+
+                    if keys.Length > 0 then
+                        let n = Environment.NewLine
+                        let lines = n + (keys |> String.concat n)
+                        sprintf "[Animation] Lens for model type '%A' not found. There are %d lenses for the following types:%s" t keys.Length lines
+                    else
+                        "[Animation] No lenses registered. Did you call Animator.initial?"
+
+                Log.error "%s" message
+                raise <| KeyNotFoundException()
+
+        let set (lens : Lens<'Model, Animator<'Model>>) =
+            let t = typeof<'Model>
+            let lens = box lens
+            cache.AddOrUpdate(t, lens, fun _ _ -> lens) |> ignore
+
 module Animator =
     open Aether
-    open Aether.Operators
     open Aardvark.UI.Anewmation
+    open InternalAnimatorUtilities
 
     // Global time for animations
     module private Time =
@@ -35,10 +66,6 @@ module Animator =
     [<AutoOpen>]
     module private Implementation =
 
-        let lensAnimation (lens : Lens<'Model, Animator<'Model>>) (index : int) : Lens<'Model, IAnimation<'Model>> =
-            (fun model -> (model |> Optic.get lens).Animations.[index].Animation),
-            (fun value model -> (model |> Optic.get lens).Animations.[index].Animation <- value; model)
-
         /// Processes an animation tick and updates the model accoringly.
         let tick (lens : Lens<'Model, Animator<'Model>>) (model : 'Model) =
             let animator = model |> Optic.get lens
@@ -47,9 +74,7 @@ module Animator =
             // Update all running animations
             let globalTime = Time.get()
 
-            for i in 0 .. animations.Count - 1 do
-                let a = animations.[i].Animation
-
+            for a in animations do
                 match a.State with
                 | State.Running startTime ->
                     let action =
@@ -60,29 +85,27 @@ module Animator =
                         else
                             Action.Update(globalTime, false)
 
-                    animations.[i].Animation <- a.Perform action
+                    a.Perform action
 
                 | _ -> ()
 
             // Notify all observers
             let mutable model = model
 
-            for i in 0 .. animations.Count - 1 do
-                let lens = i |> lensAnimation lens
+            for a in animations do
+                model <- a.Commit(model)
 
-                let name = animations.[i].Name
-                let animation = animations.[i].Animation
-                model <- animation.Commit(lens, name, model)
-
+            // Increase tick count
             model |> Optic.map lens (fun a -> inc &a.TickCount; a)
 
         let set (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
             let animator = model |> Optic.get lens
             let animations = animator.Animations
+            let instance = animation.Create(name)
 
             let rec loop i =
-                if i >= animations.Count then animations.Add({ Name = name; Animation = animation }) else
-                if animations.[i].Name = name then animations.[i].Animation <- animation else loop (i + 1)
+                if i >= animations.Count then animations.Add(instance) else
+                if animations.[i].Name = name then animations.[i] <- instance else loop (i + 1)
 
             loop 0
             model
@@ -98,17 +121,15 @@ module Animator =
             loop 0
             model
 
-        let private perform (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (action : IAnimation<'Model> -> IAnimation<'Model>) (model : 'Model) =
+        let private perform (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (action : IAnimationInstance<'Model> -> unit) (model : 'Model) =
             let animator = model |> Optic.get lens
             let animations = animator.Animations
 
             let rec loop i =
                 if i < animations.Count then
                     if animations.[i].Name = name then
-                        let animation = action animations.[i].Animation
-                        let lens = i |> lensAnimation lens
-                        animations.[i].Animation <- animation
-                        animation.Commit(lens, name, model)
+                        action animations.[i]
+                        animations.[i].Commit(model)
                     else
                         loop (i + 1)
                 else
@@ -121,8 +142,8 @@ module Animator =
 
         let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float) (restart : bool) (model : 'Model) =
             model |> perform lens name (fun a ->
-                if restart || not a.IsRunning then a.Start(Time.get(), startFrom)
-                else a
+                if restart || not a.IsRunning then
+                    a.Start(Time.get(), startFrom)
             )
 
         let pause (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
@@ -132,7 +153,9 @@ module Animator =
             model |> perform lens name (fun a -> a.Resume <| Time.get())
 
     /// Processes animation messages.
-    let update (lens : Lens<'Model, Animator<'Model>>) (msg : AnimatorMessage<'Model>) (model : 'Model) =
+    let update (msg : AnimatorMessage<'Model>) (model : 'Model) =
+        let lens = Lenses.get<'Model>
+
         match msg with
         | AnimatorMessage.Tick ->
             model |> tick lens
@@ -157,42 +180,42 @@ module Animator =
 
 
     /// Adds or updates an animation with the given name.
-    let set (lens : Lens<'Model, Animator<'Model>>)  (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Set (name, animation))
+    let set (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
+        model |> update (AnimatorMessage.Set (name, animation))
 
     /// Removes the animation with the given name if it exists.
-    let remove (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Remove name)
+    let remove (name : Symbol) (model : 'Model) =
+        model |> update (AnimatorMessage.Remove name)
 
     /// Stops the animation with the given name if it exists.
-    let stop (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Stop name)
+    let stop (name : Symbol) (model : 'Model) =
+        model |> update (AnimatorMessage.Stop name)
 
     /// Starts the animation with the given name if it exists and it is not running.
-    let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Start (name, 0.0, false))
+    let start (name : Symbol) (model : 'Model) =
+        model |> update (AnimatorMessage.Start (name, 0.0, false))
 
     /// Starts the animation with the given name if it exists and it is not running.
     /// The animation is started from the given normalized position.
-    let startFrom (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Start (name, startFrom, false))
+    let startFrom (name : Symbol) (startFrom : float) (model : 'Model) =
+        model |> update (AnimatorMessage.Start (name, startFrom, false))
 
     /// Starts or restarts the animation with the given name if it exists.
-    let restart (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Start (name, 0.0, true))
+    let restart (name : Symbol) (model : 'Model) =
+        model |> update (AnimatorMessage.Start (name, 0.0, true))
 
     /// Starts or restarts the animation with the given name if it exists.
     /// The animation is started from the given normalized position.
-    let restartFrom (lens : Lens<'Model, Animator<'Model>>)  (name : Symbol) (startFrom : float) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Start (name, startFrom, true))
+    let restartFrom  (name : Symbol) (startFrom : float) (model : 'Model) =
+        model |> update (AnimatorMessage.Start (name, startFrom, true))
 
     /// Pauses the animation with the given name if it exists.
-    let pause (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Pause name)
+    let pause (name : Symbol) (model : 'Model) =
+        model |> update (AnimatorMessage.Pause name)
 
     /// Resumes the paused animation with the given name if it exists.
-    let resume (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-        model |> update lens (AnimatorMessage.Resume name)
+    let resume (name : Symbol) (model : 'Model) =
+        model |> update (AnimatorMessage.Resume name)
 
     /// Returns the current global time for all animators.
     let time() =
@@ -201,7 +224,7 @@ module Animator =
     /// Creates an initial state for the animator.
     /// The lens is cached and used to update the manager in the containing model.
     let initial (lens : Lens<'Model, Animator<'Model>>) : Animator<'Model> =
-        //lens |> Lenses.set
+        lens |> Lenses.set
         {
             Animations = List()
             TickRate = 60
@@ -228,7 +251,7 @@ module Animator =
                 yield! time()
             }
 
-        if model.Animations.Exists (fun a -> a.Animation.IsRunning) then
+        if model.Animations.Exists (fun a -> a.IsRunning) then
             ThreadPool.add "animationTicks" (time()) ThreadPool.empty
         else
             ThreadPool.empty

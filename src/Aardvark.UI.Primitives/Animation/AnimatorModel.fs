@@ -3,15 +3,9 @@
 open Aardvark.Base
 open System.Collections.Generic
 
-type Animation<'Model> =
-    {
-        Name : Symbol
-        mutable Animation : IAnimation<'Model>
-    }
-
 type Animator<'Model> =
     {
-        Animations : List<Animation<'Model>>
+        Animations : List<IAnimationInstance<'Model>>
         TickRate : int
         mutable TickCount : int
     }

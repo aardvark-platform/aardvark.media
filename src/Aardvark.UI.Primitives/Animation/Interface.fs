@@ -1,7 +1,6 @@
 ﻿namespace Aardvark.UI.Anewmation
 
 open Aardvark.Base
-open Aether
 
 /// Event types for animations.
 [<RequireQualifiedAccess>]
@@ -93,11 +92,7 @@ type Iterations =
         | Infinite -> infinity
 
 
-/// Untyped Interface for animations.
-type IAnimation<'Model> =
-
-    /// Returns the state of the animation.
-    abstract member State : State
+type IAnimation =
 
     /// Returns the duration (per iteration) of the animation.
     abstract member Duration : Duration
@@ -108,8 +103,42 @@ type IAnimation<'Model> =
     /// Returns the normalized distance along the space curve based on the given local time stamp.
     abstract member DistanceTime : LocalTime -> float
 
+
+type IAnimationInstance<'Model> =
+    inherit IAnimation
+
+    /// The name of the animation instance.
+    abstract member Name : Symbol
+
+    /// Returns the current state of the animation instance.
+    abstract member State : State
+
     /// Performs the given action.
-    abstract member Perform : Action -> IAnimation<'Model>
+    abstract member Perform : Action -> unit
+
+    /// Commits the animation, i.e. processes all actions performed since the last commit
+    /// and notifies all observers of triggered events, invoking the respective callbacks.
+    /// Returns the model computed by the callbacks.
+    abstract member Commit : 'Model -> 'Model
+
+    /// Returns the animation definition of this instance.
+    abstract member Definition : IAnimation<'Model>
+
+and IAnimationInstance<'Model, 'Value> =
+    inherit IAnimationInstance<'Model>
+
+    /// Returns the current value of the animation instance.
+    abstract member Value : 'Value
+
+    /// Returns the animation definition of this instance.
+    abstract member Definition : IAnimation<'Model, 'Value>
+
+
+and IAnimation<'Model> =
+    inherit IAnimation
+
+    /// Creates an animation instance with the given name.
+    abstract member Create : name: Symbol -> IAnimationInstance<'Model>
 
     /// Sets the duration (per iteration) of the animation.
     abstract member Scale : duration: Duration -> IAnimation<'Model>
@@ -128,30 +157,14 @@ type IAnimation<'Model> =
     /// <param name="mode">The loop or wrap mode.</param>
     abstract member Loop : iterations: Iterations * mode: LoopMode -> IAnimation<'Model>
 
-    /// Commits the animation, i.e. processes all actions performed since the last commit
-    /// and notifies all observers of triggered events, invoking the respective callbacks.
-    /// Returns the model computed by the callbacks.
-    abstract member Commit : lens: Lens<'Model, IAnimation<'Model>> * name: Symbol * model: 'Model -> 'Model
-
     /// Removes all callbacks.
     abstract member UnsubscribeAll : unit -> IAnimation<'Model>
 
-
-/// Interface for animations.
-type IAnimation<'Model, 'Value> =
+and IAnimation<'Model, 'Value> =
     inherit IAnimation<'Model>
 
-    /// Returns the current value of the animation.
-    abstract member Value : 'Value
-
-    /// Registers a new callback.
-    abstract member Subscribe : event: EventType * callback: (Symbol -> 'Value -> 'Model -> 'Model) -> IAnimation<'Model, 'Value>
-
-    /// Removes all observers.
-    abstract member UnsubscribeAll : unit -> IAnimation<'Model, 'Value>
-
-    /// Performs the given action.
-    abstract member Perform : Action -> IAnimation<'Model, 'Value>
+    /// Creates an animation instance with the given name.
+    abstract member Create : name: Symbol -> IAnimationInstance<'Model, 'Value>
 
     /// Sets the duration (per iteration) of the animation.
     abstract member Scale : duration: Duration -> IAnimation<'Model, 'Value>
@@ -170,11 +183,17 @@ type IAnimation<'Model, 'Value> =
     /// <param name="mode">The loop or wrap mode.</param>
     abstract member Loop : iterations: Iterations * mode: LoopMode -> IAnimation<'Model, 'Value>
 
+    /// Registers a new callback.
+    abstract member Subscribe : event: EventType * callback: (Symbol -> 'Value -> 'Model -> 'Model) -> IAnimation<'Model, 'Value>
+
+    /// Removes all callbacks.
+    abstract member UnsubscribeAll : unit -> IAnimation<'Model, 'Value>
+
 
 [<AutoOpen>]
-module IAnimationExtensions =
+module IAnimationInstanceExtensions =
 
-    type IAnimation<'Model> with
+    type IAnimationInstance<'Model> with
 
         /// Returns whether the animation is running.
         member x.IsRunning = x.State |> function State.Running _ -> true | _ -> false
@@ -198,40 +217,7 @@ module IAnimationExtensions =
 
         /// Starts the animation from the given normalized position.
         member x.Start(globalTime: GlobalTime, startFrom: float) =
-            let lt = if startFrom = 0.0 then LocalTime.zero else startFrom |> LocalTime.get x.Duration
-            x.Perform <| Action.Start(globalTime, lt)
-
-        /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
-        member x.Start(globalTime: GlobalTime) =
-            x.Perform <| Action.Start(globalTime, LocalTime.zero)
-
-        /// Pauses the animation if it is running or has started.
-        member x.Pause(globalTime: GlobalTime) =
-            x.Perform <| Action.Pause(globalTime)
-
-        /// Resumes the animation from the point it was paused.
-        /// Has no effect if the animation is not paused.
-        member x.Resume(globalTime: GlobalTime) =
-            x.Perform <| Action.Resume(globalTime)
-
-        /// Updates the animation to the given global time.
-        member x.Update(globalTime: GlobalTime, finalize: bool) =
-            x.Perform <| Action.Update(globalTime, finalize)
-
-
-    type IAnimation<'Model, 'Value> with
-
-        /// Stops the animation and resets it.
-        member x.Stop() =
-            x.Perform Action.Stop
-
-        /// Starts the animation from the given start time (local timestamp relative to globalTime).
-        member x.Start(globalTime: GlobalTime, startFrom: LocalTime) =
-            x.Perform <| Action.Start(globalTime, startFrom)
-
-        /// Starts the animation from the given normalized position.
-        member x.Start(globalTime: GlobalTime, startFrom: float) =
-            let lt = if startFrom = 0.0 then LocalTime.zero else startFrom |> LocalTime.get x.Duration
+            let lt = if startFrom = 0.0 then LocalTime.zero else startFrom |> LocalTime.get x.Definition.Duration
             x.Perform <| Action.Start(globalTime, lt)
 
         /// Starts the animation from the beginning (i.e. sets its start time to the given global time).

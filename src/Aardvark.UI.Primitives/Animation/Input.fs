@@ -1,23 +1,43 @@
 ﻿namespace Aardvark.UI.Anewmation
 
 open Aardvark.Base
-open Aether
 open OptimizedClosures
 
-type private InputMapping<'Model, 'T, 'Input, 'U> =
+type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definition : InputMapping<'Model, 'T, 'Input, 'U>) =
+    inherit AbstractAnimationInstance<'Model, 'U, InputMapping<'Model, 'T, 'Input, 'U>>(name, definition)
+
+    let wrapped = definition.Animation.Create(name)
+    let input = definition.Input.Create(name)
+
+    override x.Perform(action) =
+        wrapped.Perform(action)
+        input.Perform(action)
+        StateMachine.enqueue action &x.StateMachine
+
+    override x.Commit(model) =
+        // Commit members
+        let mutable result = model |> wrapped.Commit |> input.Commit
+
+        //// Process all actions, from oldest to newest
+        let evaluate _ = definition.Mapping.Invoke(result, wrapped.Value, input.Value)
+        let events = StateMachine.run evaluate &x.StateMachine
+
+        // Notify observers about changes
+        Observable.notify x.Definition.Observable x.Name events &result
+
+        result
+
+
+and private InputMapping<'Model, 'T, 'Input, 'U> =
     {
-        StateMachine : StateMachine<'U>
         Animation : IAnimation<'Model, 'T>
         Input : IAnimation<'Model, 'Input>
         Mapping : FSharpFunc<'Model, 'T, 'Input, 'U>
         Observable : Observable<'Model, 'U>
     }
 
-    member x.Perform(action) =
-        { x with
-            StateMachine = x.StateMachine |> StateMachine.enqueue action
-            Animation = x.Animation.Perform(action)
-            Input = x.Input.Perform(action) }
+    member x.Create(name) =
+        InputMappingInstance(name, x)
 
     member x.Scale(duration) =
         { x with Animation = x.Animation.Scale(duration) }
@@ -36,49 +56,20 @@ type private InputMapping<'Model, 'T, 'Input, 'U> =
             Animation = x.Animation.UnsubscribeAll()
             Observable = Observable.empty }
 
-    member x.Commit(lens : Lens<'Model, IAnimation<'Model>>, name : Symbol, model : 'Model) =
-
-        // Commit wrapped animation and input
-        let animation, input, model =
-            let model = x.Animation.Commit(lens, name, model)
-            let animation = model |> Optic.get lens |> unbox<IAnimation<'Model, 'T>>
-
-            let model = x.Input.Commit(lens, name, model)
-            let input = model |> Optic.get lens |> unbox<IAnimation<'Model, 'Input>>
-
-            animation, input, model
-
-        // Process all actions, from oldest to newest
-        let machine, events =
-            let eval = fun _ -> x.Mapping.Invoke(model, animation.Value, input.Value)
-            x.StateMachine |> StateMachine.run eval
-
-        // Notify observers about changes
-        let model =
-            model |> Optic.set lens (
-                { x with
-                    StateMachine = machine;
-                    Animation = animation
-                    Input = input } :> IAnimation<'Model>
-            )
-
-        x.Observable |> Observable.notify name events model
-
-    interface IAnimation<'Model> with
-        member x.State = x.StateMachine.Holder.State
+    interface IAnimation with
         member x.Duration = x.Animation.Duration
         member x.TotalDuration = x.Animation.TotalDuration
         member x.DistanceTime(localTime) = x.Animation.DistanceTime(localTime)
-        member x.Perform(action) = x.Perform(action) :> IAnimation<'Model>
+
+    interface IAnimation<'Model> with
+        member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>
         member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model>
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model>
-        member x.Commit(lens, name, model) = x.Commit(lens, name, model)
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model>
 
     interface IAnimation<'Model, 'U> with
-        member x.Value = x.StateMachine.Holder.Value
-        member x.Perform(action) = x.Perform(action) :> IAnimation<'Model, 'U>
+        member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model, 'U>
         member x.Scale(duration) = x.Scale(duration) :> IAnimation<'Model, 'U>
         member x.Ease(easing, compose) = x.Ease(easing, compose) :> IAnimation<'Model, 'U>
         member x.Loop(iterations, mode) = x.Loop(iterations, mode) :> IAnimation<'Model, 'U>
@@ -96,8 +87,7 @@ module AnimationInputExtensions =
         /// the resulting animation. Likewise, the state and events of the resulting animation remain independent of the input
         /// animation.
         let input' (mapping : 'Model -> 'Input -> 'T -> 'U) (input : IAnimation<'Model, 'Input>) (animation : IAnimation<'Model, 'T>) =
-            { StateMachine = StateMachine.initial
-              Animation = animation
+            { Animation = animation
               Input = input.UnsubscribeAll()
               Mapping = FSharpFunc<_,_,_,_>.Adapt (fun model value input -> value |> mapping model input)
               Observable = Observable.empty } :> IAnimation<'Model, 'U>

@@ -1,13 +1,13 @@
 ﻿namespace Aardvark.UI.Anewmation
 
 open Aardvark.Base
-open Aether
+open OptimizedClosures
 
-type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Model, 'Value>) =
-    inherit AbstractAnimationInstance<'Model, 'Value, Path<'Model, 'Value>>(name, definition)
+type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition : ConcurrentGroup<'Model, 'Value>) =
+    inherit AbstractAnimationInstance<'Model, 'Value, ConcurrentGroup<'Model, 'Value>>(name, definition)
 
     let members = definition.Members |> Array.map (fun a -> a.Create name)
-    let segments = definition.TimeSegments
+    let segments = definition.Members |> Array.map (fun a -> Groups.Segment.ofDuration a.Duration)
     let bidirectional = definition.DistanceTimeFunction.Bidirectional
 
     override x.Perform(action) =
@@ -27,7 +27,7 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
             )
 
         // Process all actions, from oldest to newest
-        let evaluate t = let i = definition.FindMemberIndex(t) in members.[i].Value
+        let evaluate _ = definition.Mapping.Invoke(result, members)
         let events = StateMachine.run evaluate &x.StateMachine
 
         // Notify observers about changes
@@ -36,41 +36,22 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
         result
 
 
-and private Path<'Model, 'Value> =
+and private ConcurrentGroup<'Model, 'Value> =
     {
-        Members : IAnimation<'Model, 'Value>[]
+        Members : IAnimation<'Model>[]
+        Mapping : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>
         DistanceTimeFunction : DistanceTimeFunction
         Observable : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
-        PathInstance(name, x)
-
-    member x.Offsets =
-        (LocalTime.zero, x.Members) ||> Array.scan (fun t a -> t + a.TotalDuration)
-
-    member x.TimeSegments : Groups.Segment[] =
-        Array.init (x.Offsets.Length - 1) (fun i ->
-            Groups.Segment.create x.Offsets.[i] x.Offsets.[i + 1]
-        )
+        ConcurrentGroupInstance(name, x)
 
     member x.Duration =
-        Array.last x.Offsets |> Duration.ofLocalTime
+        x.Members |> Array.map (fun a -> a.TotalDuration) |> Array.max
 
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
-
-    member x.FindMemberIndex(groupLocalTime : LocalTime) : int =
-        if groupLocalTime < LocalTime.zero then
-            0
-        elif groupLocalTime > LocalTime.max x.Duration then
-            x.Members.Length - 1
-        else
-            x.TimeSegments |> Array.binarySearch (fun s ->
-                if groupLocalTime < s.Start then -1
-                elif groupLocalTime > s.End then 1
-                else 0
-            ) |> ValueOption.get
 
     member x.DistanceTime(groupLocalTime : LocalTime) =
         x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
@@ -78,7 +59,7 @@ and private Path<'Model, 'Value> =
     member x.Scale(duration) =
         let s = duration / x.Duration
 
-        let scale (a : IAnimation<'Model, 'Value>) =
+        let scale (a : IAnimation<'Model>) =
             a.Scale(if isFinite s && not a.Duration.IsZero then a.Duration * s else duration)
 
         { x with Members = x.Members |> Array.map scale }
@@ -117,30 +98,27 @@ and private Path<'Model, 'Value> =
         member x.Subscribe(event, callback) = x.Subscribe(event, callback) :> IAnimation<'Model, 'Value>
         member x.UnsubscribeAll() = x.UnsubscribeAll() :> IAnimation<'Model, 'Value>
 
-
 [<AutoOpen>]
-module AnimationPathExtensions =
+module AnimationGroupExtensions =
 
     module Animation =
 
         /// <summary>
-        /// Creates a sequential animation group from a sequence of animations.
+        /// Creates a concurrent animation group from a sequence of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let path (animations : #IAnimation<'Model, 'Value> seq) =
+        let concurrent (animations : IAnimation<'Model> seq) =
             let animations =
-                animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
+                animations |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation path cannot be empty")
+                raise <| System.ArgumentException("Animation group cannot be empty")
 
             { Members = animations
+              Mapping = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+              Observable = Observable.empty } :> IAnimation<'Model, unit>
 
-        /// <summary>
-        /// Creates a sequential animation group from a sequence of animations.
-        /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let sequential (animations : IAnimation<'Model> seq) : IAnimation<'Model, unit> =
-            animations |> Seq.map Animation.adapter |> path
+        /// Combines two animations into a concurrent group.
+        let andAlso (x : IAnimation<'Model>) (y : IAnimation<'Model>) =
+            concurrent [x; y]
