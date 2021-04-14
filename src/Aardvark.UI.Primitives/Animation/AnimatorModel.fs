@@ -1,25 +1,27 @@
 ﻿namespace Aardvark.UI.Anewmation
 
 open Aardvark.Base
-open FSharp.Data.Adaptive
-open Adaptify
+open System.Collections.Generic
 
-[<ModelType>]
+type Animation<'Model> =
+    {
+        Name : Symbol
+        mutable Animation : IAnimation<'Model>
+    }
+
 type Animator<'Model> =
     {
-        Animations : HashMap<Symbol, IAnimation<'Model>>
+        Animations : List<Animation<'Model>>
         TickRate : int
-        [<NonAdaptive>]
-        TickCount : int ref
+        mutable TickCount : int
     }
 
 [<RequireQualifiedAccess>]
 type AnimatorMessage<'Model> =
     | Tick
-    | Set         of name: Symbol * animation: IAnimation<'Model> * startFrom: float option
+    | Set         of name: Symbol * animation: IAnimation<'Model>
     | Remove      of name: Symbol
-    | Stop        of name: Symbol * remove: bool
-    | Start       of name: Symbol * startFrom: float
+    | Stop        of name: Symbol
+    | Start       of name: Symbol * startFrom: float * restart: bool
     | Pause       of name: Symbol
     | Resume      of name: Symbol
-    | SetTickRate of rate: int

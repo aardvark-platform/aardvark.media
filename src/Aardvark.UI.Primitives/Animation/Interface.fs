@@ -93,23 +93,6 @@ type Iterations =
         | Infinite -> infinity
 
 
-//// Untyped interface for animation observers.
-//type IAnimationObserver<'Model> =
-
-//    /// Returns whether the observer does not have any callbacks.
-//    abstract member IsEmpty : bool
-
-///// Interface for animation observers.
-//type IAnimationObserver<'Model, 'Value> =
-//    inherit IAnimationObserver<'Model>
-
-//    /// Adds a callback for the given event.
-//    abstract member Add : callback: (Symbol -> 'Value -> 'Model -> 'Model) * event: EventType -> IAnimationObserver<'Model, 'Value>
-
-//    /// Invoked on animation events.
-//    abstract member OnNext : model: 'Model * name: Symbol * event: EventType * value: 'Value -> 'Model
-
-
 /// Untyped Interface for animations.
 type IAnimation<'Model> =
 

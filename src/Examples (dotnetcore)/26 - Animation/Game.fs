@@ -71,7 +71,7 @@ module Animations =
         |> Animation.link lens
         |> Animation.onFinalize' (fun name _ model ->
             match model |> Optic.get Lens.hovered with
-            | Some hovered when hovered = id -> model |> Animator.start name
+            | Some hovered when hovered = id -> model |> Animator.start Model.animator_ name
             | _ -> model
         )
 
@@ -89,27 +89,25 @@ module Game =
                     let name = AnimationId.get id "bob"
                     let anim = Animations.bob id
                     let pos = rnd.UniformDouble()
-                    model |> Animator.setFrom name anim pos
+                    model |> Animator.set Model.animator_ name anim |> Animator.startFrom Model.animator_ name pos
 
                 let addShake model =
                     let name = AnimationId.get id "shake"
                     let anim = id |> Animations.shake (Constant.Pi / 10.0)
-                    model |> Animator.set name anim |> Animator.pause name
+                    model |> Animator.set Model.animator_ name anim |> Animator.start Model.animator_ name |> Animator.pause Model.animator_ name
 
-                model |> addBob |> addShake
+                model
+                |> addBob
+                |> addShake
             )
 
         | Hover id ->
             let bob = AnimationId.get id "bob"
             let shake = AnimationId.get id "shake"
 
-            let startIfNotRunning (name : Symbol) (model : Model) =
-                if model |> Animator.isRunning name then model
-                else model |> Animator.start name
-
             model
-            |> Animator.pause bob
-            |> startIfNotRunning shake
+            |> Animator.pause Model.animator_ bob
+            |> Animator.start Model.animator_ shake
             |> Optic.set Lens.hovered (Some id)
 
         | Unhover ->
@@ -117,7 +115,7 @@ module Game =
             | Some id ->
                 let bob = AnimationId.get id "bob"
                 model
-                |> Animator.resume bob
+                |> Animator.resume Model.animator_ bob
                 |> Optic.set Lens.hovered None
 
             | _ ->

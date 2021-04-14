@@ -47,6 +47,7 @@ type Model =
     {
         state : GameState
         camera : OrbitState
+        [<NonAdaptive>]
         animator : Animator<Model>
     }
 

@@ -34,7 +34,7 @@
     <Compile Include="Animation\Path.fs" />
     <Compile Include="Animation\Mapping.fs" />
     <Compile Include="Animation\Input.fs" />
-    <Compile Include="Animation\Observer.fs" />
+    <Compile Include="Animation\Callbacks.fs" />
     <Compile Include="Animation\Primitives.fs" />
     <Compile Include="Animation\Splines.fs" />
     <Compile Include="Animation\Camera.fs" />

@@ -2,6 +2,7 @@
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
+open System.Collections.Generic
 
 // Need to be public for inlined functions with SRTPs
 module InternalAnimatorUtilities =
@@ -17,51 +18,9 @@ module InternalAnimatorUtilities =
             let inline symbol (_ : ^z) (name : ^Name) =
                 ((^z or ^Name) : (static member GetSymbol : ^Name -> Symbol) (name))
 
-    // We cache the lenses for each model type so the user doesn't have to keep passing them around.
-    module Lenses =
-        open Aether
-        open System
-        open System.Collections.Generic
-        open System.Collections.Concurrent
-
-        let private cache = ConcurrentDictionary<Type, obj>()
-
-        let get<'Model> : Lens<'Model, Animator<'Model>>=
-            let t = typeof<'Model>
-            match cache.TryGetValue(t) with
-            | (true, lens) -> lens |> unbox
-            | _ ->
-                let message =
-                    let keys = cache.Keys |> Seq.toArray |> Array.map (string >> (+) "      ")
-
-                    if keys.Length > 0 then
-                        let n = Environment.NewLine
-                        let lines = n + (keys |> String.concat n)
-                        sprintf "[Animation] Lens for model type '%A' not found. There are %d lenses for the following types:%s" t keys.Length lines
-                    else
-                        "[Animation] No lenses registered. Did you call Animator.initial?"
-
-                Log.error "%s" message
-                raise <| KeyNotFoundException()
-
-        let set (lens : Lens<'Model, Animator<'Model>>) =
-            let t = typeof<'Model>
-            let lens = box lens
-            cache.AddOrUpdate(t, lens, fun _ _ -> lens) |> ignore
-
-    // Utility to generate names.
-    module Name =
-        let mutable private next = 0
-        let get() =
-            let id, _ = next, inc &next
-            Sym.ofString <| sprintf "_animation%d" id
-
-
 module Animator =
     open Aether
     open Aether.Operators
-    open InternalAnimatorUtilities
-    open InternalAnimatorUtilities.Converters
     open Aardvark.UI.Anewmation
 
     // Global time for animations
@@ -74,151 +33,121 @@ module Animator =
             sw.Elapsed.MicroTime |> GlobalTime.Timestamp
 
     [<AutoOpen>]
-    module internal Querying =
-
-        // Tries to get the (untyped) animation with the given name.
-        let inline tryGetUntyped (lens : Lens<'Model, Animator<'Model>>) (name : ^Name) (model : 'Model) =
-            let sym = name |> symbol Unchecked.defaultof<NameConverter>
-            let animator = model |> Optic.get lens
-            animator.Animations |> HashMap.tryFind sym
-
-    [<AutoOpen>]
     module private Implementation =
 
-        [<AutoOpen>]
-        module private Utility =
-
-            let lensAnim =
-                (fun (self : Animator<'Model>) -> self.Animations),
-                (fun value (self : Animator<'Model>) -> { self with Animations = value })
-
-            let animationLens (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) : Lens<'Model, IAnimation<'Model>> =
-                let lens = lens >-> lensAnim
-                (fun model -> model |> Optic.get lens |> HashMap.find name),
-                (fun value model -> model |> Optic.map lens (HashMap.add name value))
-
-            /// Updates a single animation
-            let update (globalTime : GlobalTime) (animation : IAnimation<'Model>) =
-                match animation.State with
-                | State.Running startTime ->
-                    let endTime = startTime + animation.TotalDuration
-
-                    if globalTime > endTime then
-                        animation.Perform <| Action.Update(endTime, true)
-                    else
-                        animation.Perform <| Action.Update(globalTime, false)
-                | _ ->
-                    animation
-
-            /// Notifies animation observers.
-            let commit (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
-                let lens = name |> animationLens lens
-                animation.Commit(lens, name, model)
-
-            /// Update the given animation according to the given function and notifies its observers.
-            let updateCommit (lens : Lens<'Model, Animator<'Model>>)
-                             (name : Symbol) (mapping : IAnimation<'Model> -> IAnimation<'Model>)
-                             (animation : IAnimation<'Model>) (model : 'Model) =
-
-                let animation = mapping animation
-
-                model
-                |> Optic.map (lens >-> lensAnim) (HashMap.add name animation)
-                |> commit lens name animation
-
-            /// Alters an animation (if it exists) according to the given function and notifies its observers.
-            /// The function returns the updated animation and a flag, indicating if it should be kept in the map or removed.
-            let tryUpdateNotify (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (mapping : IAnimation<'Model> -> IAnimation<'Model>) (model : 'Model) =
-                tryGetUntyped lens name model
-                |> Option.map (fun anim -> (anim, model) ||> updateCommit lens name mapping)
-                |> Option.defaultValue model
-
-            /// Notifies the animation observers to compute a new model.
-            let notifyAll (lens : Lens<'Model, Animator<'Model>>) (model : 'Model) =
-                let animator =
-                    model |> Optic.get lens
-
-                (model, animator.Animations)
-                ||> HashMap.fold (fun model name animation ->
-                    model |> commit lens name animation
-                )
-
-        /// Sets the tick rate.
-        let setTickRate (rate : int) (animator : Animator<'Model>) =
-            if rate < 1 || rate > 1000 then
-                Log.warn "Animation tick rate must be within [1, 1000] Hz"
-
-            { animator with TickRate = rate |> clamp 1 1000 }
-
-        /// Adds a new animation.
-        let add (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float option) (animation : IAnimation<'Model>) (model : 'Model) =
-            let mapping (animation : IAnimation<'Model>) =
-                match startFrom with
-                | Some t -> animation.Start(Time.get(), t)
-                | _ -> animation
-
-            (animation, model) ||> updateCommit lens name mapping
-
-        /// Removes an animation.
-        let remove (name : Symbol) (animator : Animator<'Model>) =
-            { animator with Animations = animator.Animations |> HashMap.remove name }
-
-        /// Stops an animation and removes it optionally.
-        let stop (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (discard : bool) (model : 'Model) =
-            model
-            |> tryUpdateNotify lens name (fun a -> a.Stop())
-            |> if discard then Optic.map lens (remove name) else id
-
-        /// Starts or restarts the animation with the given name.
-        let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float) (model : 'Model) =
-            model |> tryUpdateNotify lens name (fun a -> a.Start(Time.get(), startFrom))
-
-        /// Pauses the animation with the given name.
-        let pause (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-            model |> tryUpdateNotify lens name (fun a -> a.Pause <| Time.get())
-
-        /// Resumes the animation with the given name.
-        let resume (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-            model |> tryUpdateNotify lens name (fun a -> a.Resume <| Time.get())
+        let lensAnimation (lens : Lens<'Model, Animator<'Model>>) (index : int) : Lens<'Model, IAnimation<'Model>> =
+            (fun model -> (model |> Optic.get lens).Animations.[index].Animation),
+            (fun value model -> (model |> Optic.get lens).Animations.[index].Animation <- value; model)
 
         /// Processes an animation tick and updates the model accoringly.
         let tick (lens : Lens<'Model, Animator<'Model>>) (model : 'Model) =
+            let animator = model |> Optic.get lens
+            let animations = animator.Animations
 
-            let lensAnim = lens >-> lensAnim
-            let lensTickCount= lens >-> Animator.TickCount_
+            // Update all running animations
+            let globalTime = Time.get()
 
-            let update (animations : HashMap<Symbol, IAnimation<'Model>>) =
-                animations |> HashMap.map (fun _ a -> a |> update (Time.get()))
+            for i in 0 .. animations.Count - 1 do
+                let a = animations.[i].Animation
 
-            let remove (animations : HashMap<Symbol, IAnimation<'Model>>) =
-                animations |> HashMap.filter (fun _ a -> not a.IsFinished)
+                match a.State with
+                | State.Running startTime ->
+                    let action =
+                        let endTime = startTime + a.TotalDuration
 
-            // Update all animations, notify observers, and remove finished animations
+                        if globalTime > endTime then
+                            Action.Update(endTime, true)
+                        else
+                            Action.Update(globalTime, false)
+
+                    animations.[i].Animation <- a.Perform action
+
+                | _ -> ()
+
+            // Notify all observers
+            let mutable model = model
+
+            for i in 0 .. animations.Count - 1 do
+                let lens = i |> lensAnimation lens
+
+                let name = animations.[i].Name
+                let animation = animations.[i].Animation
+                model <- animation.Commit(lens, name, model)
+
+            model |> Optic.map lens (fun a -> inc &a.TickCount; a)
+
+        let set (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
+            let animator = model |> Optic.get lens
+            let animations = animator.Animations
+
+            let rec loop i =
+                if i >= animations.Count then animations.Add({ Name = name; Animation = animation }) else
+                if animations.[i].Name = name then animations.[i].Animation <- animation else loop (i + 1)
+
+            loop 0
             model
-            |> Optic.map lensAnim update
-            |> notifyAll lens
-            //|> Optic.map lensAnim remove
-            |> Optic.map lensTickCount (fun x -> incr x; x)
+
+        let remove (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+            let animator = model |> Optic.get lens
+            let animations = animator.Animations
+
+            let rec loop i =
+                if i < animations.Count then
+                    if animations.[i].Name = name then animations.RemoveAt i else loop (i + 1)
+
+            loop 0
+            model
+
+        let private perform (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (action : IAnimation<'Model> -> IAnimation<'Model>) (model : 'Model) =
+            let animator = model |> Optic.get lens
+            let animations = animator.Animations
+
+            let rec loop i =
+                if i < animations.Count then
+                    if animations.[i].Name = name then
+                        let animation = action animations.[i].Animation
+                        let lens = i |> lensAnimation lens
+                        animations.[i].Animation <- animation
+                        animation.Commit(lens, name, model)
+                    else
+                        loop (i + 1)
+                else
+                    model
+
+            loop 0
+
+        let stop (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+            model |> perform lens name (fun a -> a.Stop())
+
+        let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float) (restart : bool) (model : 'Model) =
+            model |> perform lens name (fun a ->
+                if restart || not a.IsRunning then a.Start(Time.get(), startFrom)
+                else a
+            )
+
+        let pause (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+            model |> perform lens name (fun a -> a.Pause <| Time.get())
+
+        let resume (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+            model |> perform lens name (fun a -> a.Resume <| Time.get())
 
     /// Processes animation messages.
-    let update (msg : AnimatorMessage<'Model>) (model : 'Model) =
-        let lens = Lenses.get<'Model>
-
+    let update (lens : Lens<'Model, Animator<'Model>>) (msg : AnimatorMessage<'Model>) (model : 'Model) =
         match msg with
         | AnimatorMessage.Tick ->
             model |> tick lens
 
-        | AnimatorMessage.Set (name, animation, startFrom) ->
-            model |> add lens name startFrom animation
+        | AnimatorMessage.Set (name, animation) ->
+            model |> set lens name animation
 
         | AnimatorMessage.Remove name ->
-            model |> Optic.map lens (remove name)
+            model |> remove lens name
 
-        | AnimatorMessage.Stop (name, remove) ->
-            model |> stop lens name remove
+        | AnimatorMessage.Stop name ->
+            model |> stop lens name
 
-        | AnimatorMessage.Start (name, startFrom) ->
-            model |> start lens name startFrom
+        | AnimatorMessage.Start (name, startFrom, restart) ->
+            model |> start lens name startFrom restart
 
         | AnimatorMessage.Pause name ->
             model |> pause lens name
@@ -226,54 +155,44 @@ module Animator =
         | AnimatorMessage.Resume name ->
             model |> resume lens name
 
-        | AnimatorMessage.SetTickRate rate ->
-            model |> Optic.map lens (setTickRate rate)
 
     /// Adds or updates an animation with the given name.
-    /// The name can be a string or Symbol.
-    let inline setFrom (name : ^Name) (animation : IAnimation<'Model>) (startFrom : float) (model : 'Model) =
-        let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Set(sym, animation, Some startFrom))
-
-    /// Adds or updates an animation with the given name.
-    /// The name can be a string or Symbol.
-    let inline set (name : ^Name) (animation : IAnimation<'Model>) (model : 'Model) =
-        model |> setFrom name animation 0.0
-
-    /// Adds an animation without a name.
-    let inline add (animation : IAnimation<'Model>) (model : 'Model) =
-        let sym = Name.get()
-        model |> set sym animation
+    let set (lens : Lens<'Model, Animator<'Model>>)  (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Set (name, animation))
 
     /// Removes the animation with the given name if it exists.
-    /// The name can be a string or Symbol.
-    let inline remove (name : ^Name) (model : 'Model) =
-        let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Remove sym)
+    let remove (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Remove name)
 
     /// Stops the animation with the given name if it exists.
-    /// The name can be a string or Symbol.
-    let inline stop (name : ^Name) (model : 'Model) =
-        let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Stop(sym, false))
+    let stop (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Stop name)
+
+    /// Starts the animation with the given name if it exists and it is not running.
+    let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Start (name, 0.0, false))
+
+    /// Starts the animation with the given name if it exists and it is not running.
+    /// The animation is started from the given normalized position.
+    let startFrom (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Start (name, startFrom, false))
 
     /// Starts or restarts the animation with the given name if it exists.
-    /// The name can be a string or Symbol.
-    let inline start (name : ^Name) (model : 'Model) =
-        let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Start(sym, 0.0))
+    let restart (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Start (name, 0.0, true))
+
+    /// Starts or restarts the animation with the given name if it exists.
+    /// The animation is started from the given normalized position.
+    let restartFrom (lens : Lens<'Model, Animator<'Model>>)  (name : Symbol) (startFrom : float) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Start (name, startFrom, true))
 
     /// Pauses the animation with the given name if it exists.
-    /// The name can be a string or Symbol.
-    let inline pause (name : ^Name) (model : 'Model) =
-        let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Pause sym)
+    let pause (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Pause name)
 
     /// Resumes the paused animation with the given name if it exists.
-    /// The name can be a string or Symbol.
-    let inline resume (name : ^Name) (model : 'Model) =
-        let sym = name |> symbol Unchecked.defaultof<NameConverter>
-        model |> update (AnimatorMessage.Resume sym)
+    let resume (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
+        model |> update lens (AnimatorMessage.Resume name)
 
     /// Returns the current global time for all animators.
     let time() =
@@ -282,11 +201,11 @@ module Animator =
     /// Creates an initial state for the animator.
     /// The lens is cached and used to update the manager in the containing model.
     let initial (lens : Lens<'Model, Animator<'Model>>) : Animator<'Model> =
-        lens |> Lenses.set
+        //lens |> Lenses.set
         {
-            Animations = HashMap.empty
+            Animations = List()
             TickRate = 60
-            TickCount = ref 0
+            TickCount = 0
         }
 
     /// Thread pool that generates tick messages in case no ticks have been processed.
@@ -295,23 +214,21 @@ module Animator =
     // NOTE: very naive, tick rate not accurate
     let threads (model : Animator<'Model>) =
         let timestep = 1000 / model.TickRate
-        let mutable lastTick = !model.TickCount
+        let mutable lastTick = model.TickCount
 
         let rec time() =
             proclist {
                 do! Proc.Sleep(timestep)
 
-                let tick = !model.TickCount
-
-                if lastTick = tick then
+                if lastTick = model.TickCount then
                     yield AnimatorMessage.Tick
                 else
-                    lastTick <- tick
+                    lastTick <- model.TickCount
 
                 yield! time()
             }
 
-        if model.Animations |> HashMap.exists (fun _ a -> a.IsRunning) then
+        if model.Animations.Exists (fun a -> a.Animation.IsRunning) then
             ThreadPool.add "animationTicks" (time()) ThreadPool.empty
         else
             ThreadPool.empty

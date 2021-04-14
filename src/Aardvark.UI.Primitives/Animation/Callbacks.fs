@@ -4,7 +4,7 @@ open Aardvark.Base
 open Aether
 
 [<AutoOpen>]
-module AnimationObserverExtensions =
+module AnimationCallbackExtensions =
 
     module Animation =
 
