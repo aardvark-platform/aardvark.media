@@ -66,7 +66,6 @@ module Animator =
     [<AutoOpen>]
     module private Implementation =
 
-        /// Processes an animation tick and updates the model accoringly.
         let tick (lens : Lens<'Model, Animator<'Model>>) (model : 'Model) =
             let animator = model |> Optic.get lens
             let animations = animator.Animations
@@ -98,17 +97,26 @@ module Animator =
             // Increase tick count
             model |> Optic.map lens (fun a -> inc &a.TickCount; a)
 
-        let set (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
+        let create (lens : Lens<'Model, Animator<'Model>>)
+                   (name : Symbol)
+                   (animation : IAnimation<'Model>)
+                   (action : GlobalTime -> IAnimationInstance<'Model> -> unit)
+                   (model : 'Model) =
+
             let animator = model |> Optic.get lens
             let animations = animator.Animations
             let instance = animation.Create(name)
+
+            let globalTime = Time.get()
+            instance |> action globalTime
 
             let rec loop i =
                 if i >= animations.Count then animations.Add(instance) else
                 if animations.[i].Name = name then animations.[i] <- instance else loop (i + 1)
 
             loop 0
-            model
+
+            instance.Commit(model)
 
         let remove (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
             let animator = model |> Optic.get lens
@@ -121,14 +129,15 @@ module Animator =
             loop 0
             model
 
-        let private perform (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (action : IAnimationInstance<'Model> -> unit) (model : 'Model) =
+        let perform (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (action : GlobalTime -> IAnimationInstance<'Model> -> unit) (model : 'Model) =
             let animator = model |> Optic.get lens
             let animations = animator.Animations
 
             let rec loop i =
                 if i < animations.Count then
                     if animations.[i].Name = name then
-                        action animations.[i]
+                        let globalTime = Time.get()
+                        animations.[i] |> action globalTime
                         animations.[i].Commit(model)
                     else
                         loop (i + 1)
@@ -137,20 +146,25 @@ module Animator =
 
             loop 0
 
-        let stop (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-            model |> perform lens name (fun a -> a.Stop())
+        let iterate (lens : Lens<'Model, Animator<'Model>>) (action : GlobalTime -> IAnimationInstance<'Model> -> unit) (model : 'Model) =
+            let animator = model |> Optic.get lens
+            let globalTime = Time.get()
 
-        let start (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (startFrom : float) (restart : bool) (model : 'Model) =
-            model |> perform lens name (fun a ->
-                if restart || not a.IsRunning then
-                    a.Start(Time.get(), startFrom)
-            )
+            for a in animator.Animations do
+                a |> action globalTime
 
-        let pause (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-            model |> perform lens name (fun a -> a.Pause <| Time.get())
+            let mutable model = model
 
-        let resume (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-            model |> perform lens name (fun a -> a.Resume <| Time.get())
+            for a in animator.Animations do
+                model <- a.Commit(model)
+
+            model
+
+        let filter (lens : Lens<'Model, Animator<'Model>>) (predicate : IAnimationInstance<'Model> -> bool) (model : 'Model) =
+            let animator = model |> Optic.get lens
+            animator.Animations.RemoveAll(System.Predicate predicate) |> ignore
+            model
+
 
     /// Processes animation messages.
     let update (msg : AnimatorMessage<'Model>) (model : 'Model) =
@@ -160,66 +174,125 @@ module Animator =
         | AnimatorMessage.Tick ->
             model |> tick lens
 
-        | AnimatorMessage.Set (name, animation) ->
-            model |> set lens name animation
+        | AnimatorMessage.Create (name, animation, action) ->
+            model |> create lens name animation action
+
+        | AnimatorMessage.Perform (name, action) ->
+            model |> perform lens name action
 
         | AnimatorMessage.Remove name ->
             model |> remove lens name
 
-        | AnimatorMessage.Stop name ->
-            model |> stop lens name
+        | AnimatorMessage.Iterate action ->
+            model |> iterate lens action
 
-        | AnimatorMessage.Start (name, startFrom, restart) ->
-            model |> start lens name startFrom restart
-
-        | AnimatorMessage.Pause name ->
-            model |> pause lens name
-
-        | AnimatorMessage.Resume name ->
-            model |> resume lens name
+        | AnimatorMessage.Filter predicate ->
+            model |> filter lens predicate
 
 
-    /// Adds or updates an animation with the given name.
-    let set (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
-        model |> update (AnimatorMessage.Set (name, animation))
+    /// Performs the action for every animation instance.
+    let iterate (action : GlobalTime -> IAnimationInstance<'Model> -> unit) (model : 'Model) =
+        model |> update (AnimatorMessage.Iterate action)
 
-    /// Removes the animation with the given name if it exists.
+    /// Removes every animation instance for which the given predicate returns false.
+    let filter (predicate : IAnimationInstance<'Model> -> bool) (model : 'Model) =
+        model |> update (AnimatorMessage.Filter predicate)
+
+    /// Creates an instance of the given animation with the given name, and performs the given action.
+    /// Replaces any existing instance with the given name.
+    let createAndPerform (name : Symbol) (animation : IAnimation<'Model>) (action : GlobalTime -> IAnimationInstance<'Model> -> unit) (model : 'Model) =
+        model |> update (AnimatorMessage.Create (name, animation, action))
+
+    /// Creates an instance of the given animation with the given name.
+    /// Replaces any existing instance with the given name.
+    let create (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
+        model |> createAndPerform name animation (fun _ -> ignore)
+
+    /// Creates and starts an instance of the given animation with the given name.
+    /// Replaces any existing instance with the given name.
+    let createAndStart (name : Symbol) (animation : IAnimation<'Model>) (model : 'Model) =
+        model |> createAndPerform name animation (fun t a -> a.Start(t))
+
+    /// Creates and starts an instance of the given animation with the given name.
+    /// The animation is started from the given normalized position.
+    /// Replaces any existing instance with the given name.
+    let createAndStartFrom (name : Symbol) (animation : IAnimation<'Model>) (startFrom : float) (model : 'Model) =
+        model |> createAndPerform name animation (fun t a -> a.Start(t, startFrom))
+
+    /// Creates and starts an instance of the given animation with the given name.
+    /// The animation is started from the given local time.
+    /// Replaces any existing instance with the given name.
+    let createAndStartFromLocal (name : Symbol) (animation : IAnimation<'Model>) (startFrom : LocalTime) (model : 'Model) =
+        model |> createAndPerform name animation (fun t a -> a.Start(t, startFrom))
+
+    /// Performs the action for the animation instance with given name if it exists.
+    let perform (name : Symbol) (action : GlobalTime -> IAnimationInstance<'Model> -> unit) (model : 'Model) =
+        model |> update (AnimatorMessage.Perform (name, action))
+
+    /// Removes the animation instance with the given name if it exists.
     let remove (name : Symbol) (model : 'Model) =
         model |> update (AnimatorMessage.Remove name)
 
-    /// Stops the animation with the given name if it exists.
+    /// Removes all animation instances.
+    let removeAll (model : 'Model) =
+        model |> filter (fun _ -> true)
+
+    /// Removes all finished animation instances.
+    let removeFinished (model : 'Model) =
+        model |> filter (fun a -> a.IsFinished)
+
+    /// Stops the animation instance with the given name if it exists.
     let stop (name : Symbol) (model : 'Model) =
-        model |> update (AnimatorMessage.Stop name)
+        model |> perform name (fun _ a -> a.Stop())
 
-    /// Starts the animation with the given name if it exists and it is not running.
+    /// Starts the animation instance with the given name if it exists and it is not running or paused.
     let start (name : Symbol) (model : 'Model) =
-        model |> update (AnimatorMessage.Start (name, 0.0, false))
+        model |> perform name (fun t a ->
+            if a.IsStopped || a.IsFinished then a.Start(t)
+        )
 
-    /// Starts the animation with the given name if it exists and it is not running.
+    /// Starts or resumes the animation instance with the given name if it exists and it is not running.
+    let startOrResume (name : Symbol) (model : 'Model) =
+        model |> perform name (fun t a ->
+            if a.IsPaused then a.Resume(t)
+            elif a.IsStopped || a.IsFinished then a.Start(t)
+        )
+
+    /// Starts the animation instance with the given name if it exists and it is not running or paused.
     /// The animation is started from the given normalized position.
     let startFrom (name : Symbol) (startFrom : float) (model : 'Model) =
-        model |> update (AnimatorMessage.Start (name, startFrom, false))
+        model |> perform name (fun t a ->
+            if a.IsStopped || a.IsFinished then a.Start(t, startFrom)
+        )
 
-    /// Starts or restarts the animation with the given name if it exists.
+    /// Starts the animation instance with the given name if it exists and it is not running or paused.
+    /// The animation is started from the given local time.
+    let startFromLocal (name : Symbol) (startFrom : LocalTime) (model : 'Model) =
+        model |> perform name (fun t a ->
+            if a.IsStopped || a.IsFinished then a.Start(t, startFrom)
+        )
+
+    /// Starts or restarts the animation instance with the given name if it exists.
     let restart (name : Symbol) (model : 'Model) =
-        model |> update (AnimatorMessage.Start (name, 0.0, true))
+        model |> perform name (fun t a -> a.Start(t))
 
-    /// Starts or restarts the animation with the given name if it exists.
+    /// Starts or restarts the animation instance with the given name if it exists.
     /// The animation is started from the given normalized position.
-    let restartFrom  (name : Symbol) (startFrom : float) (model : 'Model) =
-        model |> update (AnimatorMessage.Start (name, startFrom, true))
+    let restartFrom (name : Symbol) (startFrom : float) (model : 'Model) =
+        model |> perform name (fun t a -> a.Start(t, startFrom))
 
-    /// Pauses the animation with the given name if it exists.
+    /// Starts or restarts the animation instance with the given name if it exists.
+    /// The animation is started from the given local time.
+    let restartFromLocal (name : Symbol) (startFrom : LocalTime) (model : 'Model) =
+        model |> perform name (fun t a -> a.Start(t, startFrom))
+
+    /// Pauses the animation instance with the given name if it exists.
     let pause (name : Symbol) (model : 'Model) =
-        model |> update (AnimatorMessage.Pause name)
+        model |> perform name (fun t a -> a.Pause(t))
 
-    /// Resumes the paused animation with the given name if it exists.
+    /// Resumes the paused animation instance with the given name if it exists.
     let resume (name : Symbol) (model : 'Model) =
-        model |> update (AnimatorMessage.Resume name)
-
-    /// Returns the current global time for all animators.
-    let time() =
-        Time.get()
+        model |> perform name (fun t a -> a.Resume(t))
 
     /// Creates an initial state for the animator.
     /// The lens is cached and used to update the manager in the containing model.

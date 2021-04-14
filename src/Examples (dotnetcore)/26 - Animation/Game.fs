@@ -87,12 +87,12 @@ module Game =
                     let name = AnimationId.get id "bob"
                     let anim = Animations.bob id
                     let pos = rnd.UniformDouble()
-                    model |> Animator.set name anim |> Animator.startFrom name pos
+                    model |> Animator.createAndStartFrom name anim pos
 
                 let addShake model =
                     let name = AnimationId.get id "shake"
                     let anim = id |> Animations.shake (Constant.Pi / 10.0)
-                    model |> Animator.set name anim |> Animator.start name |> Animator.pause name
+                    model |> Animator.create name anim
 
                 model
                 |> addBob

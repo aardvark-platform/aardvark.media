@@ -2,43 +2,43 @@
 
 open Aardvark.Base
 
-/// Event types for animations.
+/// Event types for animation instances.
 [<RequireQualifiedAccess>]
 type EventType =
-    /// The animation was started or restarted.
+    /// The animation instance was started or restarted.
     | Start
 
-    /// The animation was resumed after being paused.
+    /// The animation instance was resumed after being paused.
     | Resume
 
-    /// The animation was updated.
+    /// The animation instance was updated.
     | Progress
 
-    /// The animation was paused.
+    /// The animation instance was paused.
     | Pause
 
-    /// The animation was stopped manually.
+    /// The animation instance was stopped manually.
     | Stop
 
-    /// The animation has finished.
+    /// The animation instance has finished.
     | Finalize
 
-/// Actions that can be performed on animations.
+/// Actions that can be performed on animation instances.
 [<RequireQualifiedAccess>]
 type Action =
-    /// Stop the animation and reset it.
+    /// Stop the animation instance and reset it.
     | Stop
 
-    /// Start the animation from the given start time (local timestamp relative to globalTime).
+    /// Start the animation instance from the given start time (local timestamp relative to globalTime).
     | Start  of globalTime: GlobalTime * startFrom: LocalTime
 
-    /// Pause the animation if it is running.
+    /// Pause the animation instance if it is running.
     | Pause  of globalTime: GlobalTime
 
-    /// Resume the animation from the point it was paused.
+    /// Resume the animation instance from the point it was paused.
     | Resume of globalTime: GlobalTime
 
-    /// Update the animation to the given global time.
+    /// Update the animation instance to the given global time.
     | Update of globalTime: GlobalTime * finalize: bool
 
 
@@ -116,7 +116,7 @@ type IAnimationInstance<'Model> =
     /// Performs the given action.
     abstract member Perform : Action -> unit
 
-    /// Commits the animation, i.e. processes all actions performed since the last commit
+    /// Commits the animation instance, i.e. processes all actions performed since the last commit
     /// and notifies all observers of triggered events, invoking the respective callbacks.
     /// Returns the model computed by the callbacks.
     abstract member Commit : 'Model -> 'Model
@@ -195,44 +195,44 @@ module IAnimationInstanceExtensions =
 
     type IAnimationInstance<'Model> with
 
-        /// Returns whether the animation is running.
+        /// Returns whether the animation instance is running.
         member x.IsRunning = x.State |> function State.Running _ -> true | _ -> false
 
-        /// Returns whether the animation is stopped.
+        /// Returns whether the animation instance is stopped.
         member x.IsStopped = x.State = State.Stopped
 
-        /// Returns whether the animation is finished.
+        /// Returns whether the animation instance is finished.
         member x.IsFinished = x.State = State.Finished
 
-        /// Returns whether the animation is paused.
+        /// Returns whether the animation instance is paused.
         member x.IsPaused = x.State |> function State.Paused _ -> true | _ -> false
 
-        /// Stops the animation and resets it.
+        /// Stops the animation instance and resets it.
         member x.Stop() =
             x.Perform Action.Stop
 
-        /// Starts the animation from the given start time (local timestamp relative to globalTime).
+        /// Starts the animation instance from the given start time (local timestamp relative to globalTime).
         member x.Start(globalTime: GlobalTime, startFrom: LocalTime) =
             x.Perform <| Action.Start(globalTime, startFrom)
 
-        /// Starts the animation from the given normalized position.
+        /// Starts the animation instance from the given normalized position.
         member x.Start(globalTime: GlobalTime, startFrom: float) =
             let lt = if startFrom = 0.0 then LocalTime.zero else startFrom |> LocalTime.get x.Definition.Duration
             x.Perform <| Action.Start(globalTime, lt)
 
-        /// Starts the animation from the beginning (i.e. sets its start time to the given global time).
+        /// Starts the animation instance from the beginning (i.e. sets its start time to the given global time).
         member x.Start(globalTime: GlobalTime) =
             x.Perform <| Action.Start(globalTime, LocalTime.zero)
 
-        /// Pauses the animation if it is running or has started.
+        /// Pauses the animation instance if it is running or has started.
         member x.Pause(globalTime: GlobalTime) =
             x.Perform <| Action.Pause(globalTime)
 
-        /// Resumes the animation from the point it was paused.
-        /// Has no effect if the animation is not paused.
+        /// Resumes the animation instance from the point it was paused.
+        /// Has no effect if the animation instance is not paused.
         member x.Resume(globalTime: GlobalTime) =
             x.Perform <| Action.Resume(globalTime)
 
-        /// Updates the animation to the given global time.
+        /// Updates the animation instance to the given global time.
         member x.Update(globalTime: GlobalTime, finalize: bool) =
             x.Perform <| Action.Update(globalTime, finalize)

@@ -117,7 +117,7 @@ module AnimationPrimitives =
                 else
                     let mutable n = 1
 
-                    for i in 1 .. pj.Length - 1 do
+                    for i = 1 to pj.Length - 1 do
                         let d = distance pj.[n - 1] pj.[i]
                         if d.ApproximateEquals 0.0 then
                             Log.warn "[Animation] Ignoring duplicate control point in path"
@@ -132,7 +132,7 @@ module AnimationPrimitives =
                         let maxLength = dj |> Array.max
 
                         let segments = Array.zeroCreate (n - 1)
-                        for i in 0 .. (n - 2) do
+                        for i = 0 to (n - 2) do
                             let d = dj.[i + 1] / maxLength
                             segments.[i] <- interpolate pj.[i] pj.[i + 1] |> Animation.seconds d
 

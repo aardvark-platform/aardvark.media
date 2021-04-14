@@ -70,7 +70,7 @@ module AnimationSplinePrimitives =
                 let n = s.Length
                 let mutable sum = KahanSum.Zero
 
-                for i in 1 .. n - 1 do
+                for i = 1 to n - 1 do
                     sum <- sum + s.[i - 1].Length
                     s.[i - 1].End <- sum.Value
                     s.[i].Start <- sum.Value
@@ -78,7 +78,7 @@ module AnimationSplinePrimitives =
                 sum <- sum + s.[n - 1].Length
                 s.[n - 1].End <- sum.Value
 
-                for i in 0 .. n - 1 do
+                for i = 0 to n - 1 do
                     s.[i].Start <- s.[i].Start / sum.Value
                     s.[i].End <- s.[i].End / sum.Value
 
@@ -139,7 +139,7 @@ module AnimationSplinePrimitives =
                 let mutable n = 2
                 let mutable sum = KahanSum.Zero
 
-                for i in 1 .. points.Length - 1 do
+                for i = 1 to points.Length - 1 do
                     let d = sqrt (distance pj.[n - 1] points.[i])
                     if d.ApproximateEquals 0.0 then
                         Log.warn "[Animation] Ignoring duplicate control point in spline"
@@ -163,7 +163,7 @@ module AnimationSplinePrimitives =
                     tj.[n] <- tj.[n - 1] + sqrt (distance pj.[n - 1] pj.[n])
 
                     let d = sqrt (distance pj.[0] pj.[1])
-                    for i in 1 .. n do
+                    for i = 1 to n do
                         tj.[i] <- tj.[i] + d
 
                     Array.init (n - 2) (segment tj pj)
