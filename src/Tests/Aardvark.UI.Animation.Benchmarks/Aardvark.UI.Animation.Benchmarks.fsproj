@@ -19,7 +19,9 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="UpdateLoop.fs" />
+    <Compile Include="Common.fs" />
+    <Compile Include="SimpleLoop.fs" />
+    <Compile Include="AddRemoveStress.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>

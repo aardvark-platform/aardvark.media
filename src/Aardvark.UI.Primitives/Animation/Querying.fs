@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI.Anewmation
 
 open Aardvark.Base
+open FSharp.Data.Adaptive
 
 [<AutoOpen>]
 module AnimatorQuerying =
@@ -20,13 +21,7 @@ module AnimatorQuerying =
         let inline tryGetUntyped (name : ^Name) (model : 'Model) =
             let sym = name |> symbol Unchecked.defaultof<NameConverter>
             let animator = model |> Optic.get Lenses.get<'Model>
-            let animations = animator.Animations
-
-            let rec loop i =
-                if i >= animations.Count then None else
-                if animations.[i].Name = sym then Some animations.[i] else loop (i + 1)
-
-            loop 0
+            animator.Animations |> HashMap.tryFind sym
 
         /// <summary>
         /// Gets the (untyped) animation instance with the given name.

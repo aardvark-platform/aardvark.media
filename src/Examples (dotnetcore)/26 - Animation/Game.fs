@@ -40,6 +40,10 @@ module Animations =
         (fun model -> model |> Optic.get lens |> HashMap.find id),
         (fun value model -> model |> Optic.map lens (HashMap.add id value))
 
+    let private xzLens : Lens<V3d, V2d> =
+        (fun v -> v.XZ),
+        (fun xz v -> V3d(xz.X, v.Y, xz.Y))
+
     let private zLens : Lens<V3d, float> =
         (fun v -> v.Z),
         (fun z v -> V3d(v.XY, z))
@@ -49,6 +53,9 @@ module Animations =
 
     let private getEntityYawLens (id : V2i) =
         getEntityLens id >-> Entity.rotation_ >-> zLens
+
+    let private getEntityColorLens (id : V2i) =
+        getEntityLens id >-> Entity.color_
 
     let bob (id : V2i) =
         let lens = getEntityHeightLens id
@@ -72,6 +79,18 @@ module Animations =
             | Some hovered when hovered = id -> model |> Animator.start name
             | _ -> model
         )
+
+    let fade (color : C3d) (id : V2i) (model : Model) =
+        let lens = getEntityColorLens id
+
+        let name = AnimationId.get id "fade"
+
+        let animation =
+            model |> Animation.Primitives.lerpTo lens color
+            |> Animation.ease (Easing.Out EasingFunction.Quadratic)
+            |> Animation.milliseconds 75
+
+        model |> Animator.createAndStart name animation
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Game =
@@ -106,6 +125,7 @@ module Game =
             model
             |> Animator.pause bob
             |> Animator.start shake
+            |> Animations.fade Scene.Properties.Box.colorHovered id
             |> Optic.set Lens.hovered (Some id)
 
         | Unhover ->
@@ -114,6 +134,7 @@ module Game =
                 let bob = AnimationId.get id "bob"
                 model
                 |> Animator.resume bob
+                |> Animations.fade Scene.Properties.Box.color id
                 |> Optic.set Lens.hovered None
 
             | _ ->

@@ -73,7 +73,7 @@ module Animator =
             // Update all running animations
             let globalTime = Time.get()
 
-            for a in animations do
+            for (_, a) in animations do
                 match a.State with
                 | State.Running startTime ->
                     let action =
@@ -91,7 +91,7 @@ module Animator =
             // Notify all observers
             let mutable model = model
 
-            for a in animations do
+            for (_, a) in animations do
                 model <- a.Commit(model)
 
             // Increase tick count
@@ -103,68 +103,52 @@ module Animator =
                    (action : GlobalTime -> IAnimationInstance<'Model> -> unit)
                    (model : 'Model) =
 
-            let animator = model |> Optic.get lens
-            let animations = animator.Animations
             let instance = animation.Create(name)
 
             let globalTime = Time.get()
             instance |> action globalTime
 
-            let rec loop i =
-                if i >= animations.Count then animations.Add(instance) else
-                if animations.[i].Name = name then animations.[i] <- instance else loop (i + 1)
-
-            loop 0
-
             instance.Commit(model)
+            |> Optic.map lens (fun animator ->
+                { animator with Animations = animator.Animations |> HashMap.add name instance }
+            )
 
         let remove (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
-            let animator = model |> Optic.get lens
-            let animations = animator.Animations
-
-            let rec loop i =
-                if i < animations.Count then
-                    if animations.[i].Name = name then animations.RemoveAt i else loop (i + 1)
-
-            loop 0
-            model
+            model |> Optic.map lens (fun animator ->
+                { animator with Animations = animator.Animations |> HashMap.remove name }
+            )
 
         let perform (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (action : GlobalTime -> IAnimationInstance<'Model> -> unit) (model : 'Model) =
             let animator = model |> Optic.get lens
             let animations = animator.Animations
 
-            let rec loop i =
-                if i < animations.Count then
-                    if animations.[i].Name = name then
-                        let globalTime = Time.get()
-                        animations.[i] |> action globalTime
-                        animations.[i].Commit(model)
-                    else
-                        loop (i + 1)
-                else
-                    model
+            match animations |> HashMap.tryFind name with
+            | Some inst ->
+                let globalTime = Time.get()
+                inst |> action globalTime
+                inst.Commit(model)
 
-            loop 0
+            | _ ->
+                model
 
         let iterate (lens : Lens<'Model, Animator<'Model>>) (action : GlobalTime -> IAnimationInstance<'Model> -> unit) (model : 'Model) =
             let animator = model |> Optic.get lens
             let globalTime = Time.get()
 
-            for a in animator.Animations do
+            for (_, a) in animator.Animations do
                 a |> action globalTime
 
             let mutable model = model
 
-            for a in animator.Animations do
+            for (_, a) in animator.Animations do
                 model <- a.Commit(model)
 
             model
 
         let filter (lens : Lens<'Model, Animator<'Model>>) (predicate : IAnimationInstance<'Model> -> bool) (model : 'Model) =
-            let animator = model |> Optic.get lens
-            animator.Animations.RemoveAll(System.Predicate predicate) |> ignore
-            model
-
+            model |> Optic.map lens (fun animator ->
+                { animator with Animations = animator.Animations |> HashMap.filter (fun _ inst -> predicate inst) }
+            )
 
     /// Processes animation messages.
     let update (msg : AnimatorMessage<'Model>) (model : 'Model) =
@@ -299,7 +283,7 @@ module Animator =
     let initial (lens : Lens<'Model, Animator<'Model>>) : Animator<'Model> =
         lens |> Lenses.set
         {
-            Animations = List()
+            Animations = HashMap.empty
             TickRate = 60
             TickCount = 0
         }
@@ -324,7 +308,7 @@ module Animator =
                 yield! time()
             }
 
-        if model.Animations.Exists (fun a -> a.IsRunning) then
+        if model.Animations |> HashMap.exists (fun _ a -> a.IsRunning) then
             ThreadPool.add "animationTicks" (time()) ThreadPool.empty
         else
             ThreadPool.empty

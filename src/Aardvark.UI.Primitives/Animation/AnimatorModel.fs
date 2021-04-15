@@ -1,11 +1,11 @@
 ﻿namespace Aardvark.UI.Anewmation
 
 open Aardvark.Base
-open System.Collections.Generic
+open FSharp.Data.Adaptive
 
 type Animator<'Model> =
     {
-        Animations : List<IAnimationInstance<'Model>>
+        Animations : HashMap<Symbol, IAnimationInstance<'Model>>
         TickRate : int
         mutable TickCount : int
     }

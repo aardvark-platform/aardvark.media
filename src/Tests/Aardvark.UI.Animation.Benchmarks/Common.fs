@@ -3,7 +3,6 @@
 open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI.Anewmation
-open BenchmarkDotNet.Attributes;
 
 open Aether
 
@@ -74,29 +73,20 @@ module Animations =
         |> Animation.loop LoopMode.Mirror
 
     let add (rnd : RandomSystem) (count : int) (model : Model) =
-        (model, [| 1 .. count |]) ||> Array.fold (fun model i ->
+        (model, [| 0 .. count - 1 |]) ||> Array.fold (fun model i ->
             model
             |> Animator.createAndStart (Sym.ofString (sprintf "int%d" i)) (simpleIntLerp rnd)
             |> Animator.createAndStart (Sym.ofString (sprintf "float%d" i)) (simpleFloatLerp rnd)
             |> Animator.createAndStart (Sym.ofString (sprintf "path%d" i)) (linearPath rnd)
         )
 
-[<MemoryDiagnoser>]
-type UpdateLoop() =
-    [<DefaultValue; Params(10, 50, 100)>]
-    val mutable Count : int
+    let getRandomName (rnd : RandomSystem) (countPerType : int) =
+        let kind = rnd.UniformInt(3)
+        let index = rnd.UniformInt(countPerType)
 
-    let iterations = 1000
-    let mutable model = Unchecked.defaultof<_>
+        let baseName =
+            if kind = 0 then "int"
+            elif kind = 1 then "float"
+            else "path"
 
-    [<GlobalSetup>]
-    member x.Init() =
-        let rnd = RandomSystem(0)
-        model <- Model.initial |> Animations.add rnd x.Count
-
-    [<Benchmark>]
-    member x.UpdateLoop() =
-        for _ = 0 to iterations - 1 do
-            model <- model |> Animator.update AnimatorMessage.Tick
-
-        model.SomeInt
+        Sym.ofString <| sprintf "%s%d" baseName index

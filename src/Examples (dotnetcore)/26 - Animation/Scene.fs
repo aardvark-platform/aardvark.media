@@ -9,7 +9,7 @@ open FSharp.Data.Adaptive
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Scene =
 
-    module Dimensions =
+    module Properties =
 
         module Floor =
             let scale = V3d(18.0, 18.0, 1.0)
@@ -21,6 +21,8 @@ module Scene =
         module Box =
             let size = V3d(1.0, 1.0, 0.25)
             let margin = V2d(0.75, 0.75)
+            let color = C3d.PaleGreen
+            let colorHovered = C3d.DodgerBlue
 
 
     [<AutoOpen>]
@@ -33,8 +35,8 @@ module Scene =
                 let bb = Box3d.FromCenterAndSize(V3d.Zero, V3d(1.0, 1.0, 1.0))
                 Sg.box' C4b.White bb
                 |> Sg.diffuseTexture DefaultTextures.checkerboard
-                |> Sg.scaling' Dimensions.Floor.scale
-                |> Sg.translate 0.0 0.0 Dimensions.Floor.height
+                |> Sg.scaling' Properties.Floor.scale
+                |> Sg.translate 0.0 0.0 Properties.Floor.height
                 |> Sg.uniform "LightViewProj" (Shadows.lightViewProj scene.lightDirection)
                 |> Sg.uniform "LightDirection" scene.lightDirection
                 |> Sg.texture "ShadowTexture" shadowMap
@@ -53,8 +55,8 @@ module Scene =
                 aset {
                     for (id, b) in map |> AMap.toASet do
                         let trafo =
-                            (b.position, b.scale, b.rotation) |||> AVal.map3 (fun t s r ->
-                                Trafo3d(Shift3d t * Scale3d s * Rot3d.RotationEuler r)
+                            (b.position, b.rotation, b.scale) |||> AVal.map3 (fun t r s ->
+                                Trafo3d(Shift3d t * Rot3d.RotationEuler r * Scale3d s)
                             )
 
                         boxSg
@@ -105,23 +107,23 @@ module Scene =
         ]
 
     let entityIndices =
-        let grid = Dimensions.Grid.size
+        let grid = Properties.Grid.size
         [0 .. grid.X * grid.Y - 1] |> List.map (fun i ->
             V2i(i % grid.X, i / grid.X)
         )
 
     let initial =
-        let h = V2d Dimensions.Grid.size * 0.5
-        let p0 = -(h - 0.5) * (Dimensions.Box.size.XY + Dimensions.Box.margin)
+        let h = V2d Properties.Grid.size * 0.5
+        let p0 = -(h - 0.5) * (Properties.Box.size.XY + Properties.Box.margin)
 
         let getPosition (i : V2i) =
-            p0 + V2d i * (Dimensions.Box.size.XY + Dimensions.Box.margin)
+            p0 + V2d i * (Properties.Box.size.XY + Properties.Box.margin)
 
         let createEntitity (i : V2i) =
             { position = V3d(getPosition i, 0.0)
               rotation = V3d.Zero
-              scale = Dimensions.Box.size
-              color = C3d.PaleGreen
+              scale = Properties.Box.size
+              color = Properties.Box.color
               alpha = 1.0 }
 
         let entities =

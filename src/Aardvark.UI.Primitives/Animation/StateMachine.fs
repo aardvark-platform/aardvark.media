@@ -30,7 +30,6 @@ type private EventTrigger<'Value> =
         Value : 'Value
     }
 
-
 type private EventQueue<'Value> =
     struct
         val mutable Data : EventTrigger<'Value>[]

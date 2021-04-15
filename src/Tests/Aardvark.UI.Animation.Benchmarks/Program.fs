@@ -14,5 +14,5 @@ module Program =
             let job = Job.ShortRun.WithToolchain(InProcess.Emit.InProcessEmitToolchain.Instance)
             ManualConfig.Create(DefaultConfig.Instance).AddJob(job)
 
-        BenchmarkSwitcher.FromAssembly(typeof<UpdateLoop>.Assembly).Run(argv, cfg) |> ignore;
+        BenchmarkSwitcher.FromAssembly(typeof<SimpleLoop>.Assembly).Run(argv, cfg) |> ignore;
         0
