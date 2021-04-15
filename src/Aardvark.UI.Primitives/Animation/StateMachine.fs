@@ -69,7 +69,7 @@ type private EventQueue<'Value> =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateHolder =
 
-    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (queue : EventQueue<'Value> inref) (holder : StateHolder<'Value> byref)  =
+    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (queue : EventQueue<'Value> byref) (holder : StateHolder<'Value> byref)  =
         match action with
         | Action.Stop ->
             match holder.State with
@@ -115,10 +115,10 @@ module private StateHolder =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateMachine =
 
-    let enqueue (action : Action) (machine : StateMachine<'Value> inref) =
+    let enqueue (action : Action) (machine : StateMachine<'Value> byref) =
         machine.Actions.Add(action)
 
-    let run (evaluate : LocalTime -> 'Value) (queue : EventQueue<'Value> inref) (machine : StateMachine<'Value> byref) =
+    let run (evaluate : LocalTime -> 'Value) (queue : EventQueue<'Value> byref) (machine : StateMachine<'Value> byref) =
         for action in machine.Actions do
             StateHolder.processAction evaluate action &queue &machine.Holder
 
