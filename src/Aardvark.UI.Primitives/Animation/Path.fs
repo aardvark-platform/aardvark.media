@@ -6,8 +6,8 @@ open Aether
 type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, Path<'Model, 'Value>>(name, definition)
 
-    let members = definition.Members |> Array.map (fun a -> a.Create name)
-    let segments = definition.TimeSegments
+    let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
+    let segments = definition.Members.Segments
     let bidirectional = definition.DistanceTimeFunction.Bidirectional
 
     override x.Perform(action) =
@@ -36,9 +36,33 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
         result
 
 
+and private PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
+    let offsets =
+        ValueCache (fun _ ->
+            (LocalTime.zero, members) ||> Array.scan (fun t a -> t + a.TotalDuration)
+        )
+
+    let segments =
+        ValueCache (fun _ ->
+            let offsets = offsets.Value
+            Array.init (offsets.Length - 1) (fun i ->
+                Groups.Segment.create offsets.[i] offsets.[i + 1]
+            )
+        )
+
+    let duration =
+        ValueCache (fun _ ->
+            Array.last offsets.Value |> Duration.ofLocalTime
+        )
+
+    member x.Data : IAnimation<'Model, 'Value>[] = members
+    member x.Segments : Groups.Segment[] = segments.Value
+    member x.GroupDuration : Duration = duration.Value
+
+
 and private Path<'Model, 'Value> =
     {
-        Members : IAnimation<'Model, 'Value>[]
+        Members : PathMembers<'Model, 'Value>
         DistanceTimeFunction : DistanceTimeFunction
         Observable : Observable<'Model, 'Value>
     }
@@ -46,16 +70,8 @@ and private Path<'Model, 'Value> =
     member x.Create(name) =
         PathInstance(name, x)
 
-    member x.Offsets =
-        (LocalTime.zero, x.Members) ||> Array.scan (fun t a -> t + a.TotalDuration)
-
-    member x.TimeSegments : Groups.Segment[] =
-        Array.init (x.Offsets.Length - 1) (fun i ->
-            Groups.Segment.create x.Offsets.[i] x.Offsets.[i + 1]
-        )
-
     member x.Duration =
-        Array.last x.Offsets |> Duration.ofLocalTime
+        x.Members.GroupDuration
 
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
@@ -64,9 +80,9 @@ and private Path<'Model, 'Value> =
         if groupLocalTime < LocalTime.zero then
             0
         elif groupLocalTime > LocalTime.max x.Duration then
-            x.Members.Length - 1
+            x.Members.Data.Length - 1
         else
-            x.TimeSegments |> Array.binarySearch (fun s ->
+            x.Members.Segments |> Array.binarySearch (fun s ->
                 if groupLocalTime < s.Start then -1
                 elif groupLocalTime > s.End then 1
                 else 0
@@ -81,7 +97,7 @@ and private Path<'Model, 'Value> =
         let scale (a : IAnimation<'Model, 'Value>) =
             a.Scale(if isFinite s && not a.Duration.IsZero then a.Duration * s else duration)
 
-        { x with Members = x.Members |> Array.map scale }
+        { x with Members = PathMembers (x.Members.Data |> Array.map scale) }
 
     member x.Ease(easing, compose) =
         { x with DistanceTimeFunction = x.DistanceTimeFunction.Ease(easing, compose)}
@@ -94,7 +110,7 @@ and private Path<'Model, 'Value> =
 
     member x.UnsubscribeAll() =
         { x with
-            Members = x.Members |> Array.map (fun a -> a.UnsubscribeAll())
+            Members = PathMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
             Observable = Observable.empty }
 
     interface IAnimation with
@@ -134,7 +150,7 @@ module AnimationPathExtensions =
             if animations.Length = 0 then
                 raise <| System.ArgumentException("Animation path cannot be empty")
 
-            { Members = animations
+            { Members = PathMembers animations
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, 'Value>
 

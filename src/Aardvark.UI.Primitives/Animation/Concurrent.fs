@@ -6,8 +6,8 @@ open OptimizedClosures
 type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition : ConcurrentGroup<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, ConcurrentGroup<'Model, 'Value>>(name, definition)
 
-    let members = definition.Members |> Array.map (fun a -> a.Create name)
-    let segments = definition.Members |> Array.map (fun a -> Groups.Segment.ofDuration a.Duration)
+    let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
+    let segments = definition.Members.Data |> Array.map (fun a -> Groups.Segment.ofDuration a.Duration)
     let bidirectional = definition.DistanceTimeFunction.Bidirectional
 
     override x.Perform(action) =
@@ -35,10 +35,18 @@ type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition :
 
         result
 
+and private ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
+    let duration =
+        ValueCache (fun _ ->
+            members |> Array.map (fun a -> a.TotalDuration) |> Array.max
+        )
+
+    member x.Data : IAnimation<'Model>[] = members
+    member x.GroupDuration : Duration = duration.Value
 
 and private ConcurrentGroup<'Model, 'Value> =
     {
-        Members : IAnimation<'Model>[]
+        Members : ConcurrentGroupMembers<'Model>
         Mapping : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>
         DistanceTimeFunction : DistanceTimeFunction
         Observable : Observable<'Model, 'Value>
@@ -48,7 +56,7 @@ and private ConcurrentGroup<'Model, 'Value> =
         ConcurrentGroupInstance(name, x)
 
     member x.Duration =
-        x.Members |> Array.map (fun a -> a.TotalDuration) |> Array.max
+        x.Members.GroupDuration
 
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
@@ -62,7 +70,7 @@ and private ConcurrentGroup<'Model, 'Value> =
         let scale (a : IAnimation<'Model>) =
             a.Scale(if isFinite s && not a.Duration.IsZero then a.Duration * s else duration)
 
-        { x with Members = x.Members |> Array.map scale }
+        { x with Members = ConcurrentGroupMembers (x.Members.Data |> Array.map scale) }
 
     member x.Ease(easing, compose) =
         { x with DistanceTimeFunction = x.DistanceTimeFunction.Ease(easing, compose)}
@@ -75,7 +83,7 @@ and private ConcurrentGroup<'Model, 'Value> =
 
     member x.UnsubscribeAll() =
         { x with
-            Members = x.Members |> Array.map (fun a -> a.UnsubscribeAll())
+            Members = ConcurrentGroupMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
             Observable = Observable.empty }
 
     interface IAnimation with
@@ -114,7 +122,7 @@ module AnimationGroupExtensions =
             if animations.Length = 0 then
                 raise <| System.ArgumentException("Animation group cannot be empty")
 
-            { Members = animations
+            { Members = ConcurrentGroupMembers animations
               Mapping = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, unit>

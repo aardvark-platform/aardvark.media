@@ -117,7 +117,7 @@ module AnimationMappingExtensions =
                 let y = unbox<IAnimationInstance<'Model, 'T2>> arr.[1]
                 mapping model x.Value y.Value
 
-            { Members = [| x; y |]
+            { Members = ConcurrentGroupMembers [| x; y |]
               Mapping = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, 'U>
@@ -134,7 +134,7 @@ module AnimationMappingExtensions =
                 let z = unbox<IAnimationInstance<'Model, 'T3>> arr.[2]
                 mapping model x.Value y.Value z.Value
 
-            { Members = [| x; y; z |]
+            { Members = ConcurrentGroupMembers [| x; y; z |]
               Mapping = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, 'U>
