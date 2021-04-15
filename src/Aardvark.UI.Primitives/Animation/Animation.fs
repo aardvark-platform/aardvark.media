@@ -5,12 +5,14 @@ open OptimizedClosures
 
 [<AbstractClass>]
 type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definition :> IAnimation<'Model, 'Value>>(name : Symbol, definition : 'Definition) =
-    let mutable stateMachine = StateMachine.initial<'Value>
+    let mutable eventQueue = EventQueue<'Value>.Empty
+    let mutable stateMachine = StateMachine<'Value>.Empty
 
     member x.Name = name
     member x.State = stateMachine.Holder.State
     member x.Value = stateMachine.Holder.Value
     member x.Definition = definition
+    member x.EventQueue = &eventQueue
     member x.StateMachine = &stateMachine
 
     abstract member Perform : Action -> unit
@@ -42,10 +44,10 @@ type private AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anima
     override x.Commit(model) =
         let definition = x.Definition
         let evaluate t = definition.Evaluate(model, t)
-        let events = StateMachine.run evaluate &x.StateMachine
+        StateMachine.run evaluate &x.EventQueue &x.StateMachine
 
         let mutable result = model
-        Observable.notify x.Definition.Observable x.Name events &result
+        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
         result
 
 /// An animation consists of a space function and a distance-time function.

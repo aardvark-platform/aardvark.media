@@ -28,10 +28,10 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
 
         // Process all actions, from oldest to newest
         let evaluate t = let i = definition.FindMemberIndex(t) in members.[i].Value
-        let events = StateMachine.run evaluate &x.StateMachine
+        StateMachine.run evaluate &x.EventQueue &x.StateMachine
 
         // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name events &result
+        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
 
         result
 

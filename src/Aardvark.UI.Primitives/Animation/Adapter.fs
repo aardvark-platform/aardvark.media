@@ -18,10 +18,10 @@ type private AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter
 
         // Process all actions, from oldest to newest
         let evaluate _ = Unchecked.defaultof<'Value>
-        let events = StateMachine.run evaluate &x.StateMachine
+        StateMachine.run evaluate &x.EventQueue &x.StateMachine
 
         // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name events &result
+        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
 
         result
 

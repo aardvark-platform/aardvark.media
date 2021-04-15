@@ -28,10 +28,10 @@ type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition :
 
         // Process all actions, from oldest to newest
         let evaluate _ = definition.Mapping.Invoke(result, members)
-        let events = StateMachine.run evaluate &x.StateMachine
+        StateMachine.run evaluate &x.EventQueue &x.StateMachine
 
         // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name events &result
+        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
 
         result
 

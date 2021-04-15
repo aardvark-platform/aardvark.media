@@ -15,7 +15,12 @@ type private StateMachine<'Value> =
         val mutable Holder : StateHolder<'Value>
         val Actions : List<Action>
 
-        new (holder) = { Holder = holder; Actions = List() }
+        private new (holder) = { Holder = holder; Actions = List() }
+
+        static member Empty =
+            StateMachine<'Value>(
+                StateHolder<'Value>(State.Stopped, Unchecked.defaultof<_>)
+            )
     end
 
 [<Struct>]
@@ -25,13 +30,46 @@ type private EventTrigger<'Value> =
         Value : 'Value
     }
 
+
+type private EventQueue<'Value> =
+    struct
+        val mutable Data : EventTrigger<'Value>[]
+        val mutable Count : int
+        val mutable Index : int
+
+        private new (data, count, index) =
+            { Data = data; Count = count; Index = index }
+
+        static member Empty =
+            EventQueue<'Value>(Array.zeroCreate 1, 0, 0)
+
+        member x.Clear() =
+            x.Count <- 0
+            x.Index <- 0
+
+        member x.Enqueue(event : EventTrigger<'Value>) =
+            if x.Count >= x.Data.Length then
+                if x.Index = x.Count then
+                    x.Clear()
+                else
+                    System.Array.Resize(&x.Data, x.Data.Length * 2)
+
+            x.Data.[x.Count] <- event
+            x.Count <- x.Count + 1
+
+        member x.Dequeue(result : EventTrigger<'Value> outref) =
+            if x.Index < x.Count then
+                result <- x.Data.[x.Index]
+                x.Index <- x.Index + 1
+                true
+            else
+                false
+    end
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateHolder =
 
-    let initial<'Value> =
-        StateHolder(State.Stopped, Unchecked.defaultof<'Value>)
-
-    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (triggers : List<EventTrigger<'Value>>) (holder : byref<StateHolder<'Value>>)  =
+    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (queue : EventQueue<'Value> inref) (holder : StateHolder<'Value> byref)  =
         match action with
         | Action.Stop ->
             match holder.State with
@@ -39,37 +77,37 @@ module private StateHolder =
             | _ ->
                 holder.State <- State.Stopped
                 holder.Value <- evaluate LocalTime.zero
-                triggers.Add({ Type = EventType.Stop; Value = holder.Value })
+                queue.Enqueue { Type = EventType.Stop; Value = holder.Value }
 
         | Action.Start (globalTime, startFrom) ->
             holder.Value <- evaluate startFrom
             holder.State <- State.Running (globalTime - startFrom)
-            triggers.Add({ Type = EventType.Start; Value = holder.Value })
-            triggers.Add({ Type = EventType.Progress; Value = holder.Value })
+            queue.Enqueue { Type = EventType.Start; Value = holder.Value }
+            queue.Enqueue { Type = EventType.Progress; Value = holder.Value }
 
         | Action.Pause globalTime ->
             match holder.State with
             | State.Running startTime ->
                 holder.State <- State.Paused (startTime, globalTime)
-                triggers.Add({ Type = EventType.Pause; Value = holder.Value })
+                queue.Enqueue { Type = EventType.Pause; Value = holder.Value }
             | _ -> ()
 
         | Action.Resume globalTime ->
             match holder.State with
             | State.Paused (startTime, pauseTime) ->
                 holder.State <- State.Running (globalTime - (pauseTime - startTime))
-                triggers.Add({ Type = EventType.Resume; Value = holder.Value })
+                queue.Enqueue { Type = EventType.Resume; Value = holder.Value }
             | _ -> ()
 
         | Action.Update (globalTime, finalize) ->
             match holder.State with
             | State.Running startTime ->
                 holder.Value <- globalTime |> LocalTime.relative startTime |> evaluate
-                triggers.Add({ Type = EventType.Progress; Value = holder.Value })
+                queue.Enqueue { Type = EventType.Progress; Value = holder.Value }
 
                 if finalize then
                     holder.State <- State.Finished
-                    triggers.Add({ Type = EventType.Finalize; Value = holder.Value })
+                    queue.Enqueue { Type = EventType.Finalize; Value = holder.Value }
             | _ ->
                 ()
 
@@ -77,17 +115,11 @@ module private StateHolder =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateMachine =
 
-    let initial<'Value> =
-        StateMachine(StateHolder.initial<'Value>)
-
-    let enqueue (action : Action) (machine : byref<StateMachine<'Value>>) =
+    let enqueue (action : Action) (machine : StateMachine<'Value> inref) =
         machine.Actions.Add(action)
 
-    let run (evaluate : LocalTime -> 'Value) (machine : byref<StateMachine<'Value>>) =
-        let triggers = List()
-
+    let run (evaluate : LocalTime -> 'Value) (queue : EventQueue<'Value> inref) (machine : StateMachine<'Value> byref) =
         for action in machine.Actions do
-            StateHolder.processAction evaluate action triggers &machine.Holder
+            StateHolder.processAction evaluate action &queue &machine.Holder
 
         machine.Actions.Clear()
-        triggers

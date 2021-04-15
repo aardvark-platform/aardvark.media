@@ -2,7 +2,6 @@
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open System.Collections.Generic
 open OptimizedClosures
 
 type private Callback<'Model, 'Value> =
@@ -24,13 +23,14 @@ module private Observable =
 
         observable |> HashMap.updateV event update
 
-    let private trigger (observable : Observable<'Model, 'Value>) (name : Symbol) (event : EventType) (value : 'Value) (model : byref<'Model>) =
+    let private trigger (observable : Observable<'Model, 'Value>) (name : Symbol) (event : EventType) (value : inref<'Value>) (model : byref<'Model>) =
         match observable |> HashMap.tryFindV event with
         | ValueSome cb -> model <- cb.Invoke(name, value, model)
         | _ -> ()
-        ()
 
-    let notify (observable : Observable<'Model, 'Value>) (name : Symbol) (events : List<EventTrigger<'Value>>) (model : byref<'Model>) =
-        for event in events do
-            trigger observable name event.Type event.Value &model
+    let notify (observable : Observable<'Model, 'Value>) (name : Symbol) (events : EventQueue<'Value> inref) (model : byref<'Model>) =
+        let mutable event = Unchecked.defaultof<_>
+
+        while events.Dequeue &event do
+            trigger observable name event.Type &event.Value &model
 
