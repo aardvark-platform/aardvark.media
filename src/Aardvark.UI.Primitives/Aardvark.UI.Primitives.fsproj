@@ -25,6 +25,7 @@
     <Compile Include="Animation\Deprecated\Model.fs" />
     <Compile Include="Animation\Deprecated\AnimationBase.fs" />
     <Compile Include="Animation\ValueCache.fs" />
+    <Compile Include="Animation\ArrayQueue.fs" />
     <Compile Include="Animation\Time.fs" />
     <Compile Include="Animation\Interface.fs" />
     <Compile Include="Animation\DistanceTimeFunction.fs" />
@@ -42,6 +43,7 @@
     <Compile Include="Animation\Primitives.fs" />
     <Compile Include="Animation\Splines.fs" />
     <Compile Include="Animation\Camera.fs" />
+    <Compile Include="Animation\AnimatorSlot.fs" />
     <Compile Include="Animation\AnimatorModel.fs" />
     <Compile Include="Animation\AnimatorApp.fs" />
     <Compile Include="Animation\Querying.fs" />

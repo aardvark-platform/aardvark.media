@@ -30,40 +30,8 @@ type private EventTrigger<'Value> =
         Value : 'Value
     }
 
-type private EventQueue<'Value> =
-    struct
-        val mutable Data : EventTrigger<'Value>[]
-        val mutable Count : int
-        val mutable Index : int
+type private EventQueue<'Value> = ArrayQueue<EventTrigger<'Value>>
 
-        private new (data, count, index) =
-            { Data = data; Count = count; Index = index }
-
-        static member Empty =
-            EventQueue<'Value>(Array.zeroCreate 1, 0, 0)
-
-        member x.Clear() =
-            x.Count <- 0
-            x.Index <- 0
-
-        member x.Enqueue(event : EventTrigger<'Value>) =
-            if x.Count >= x.Data.Length then
-                if x.Index = x.Count then
-                    x.Clear()
-                else
-                    System.Array.Resize(&x.Data, x.Data.Length * 2)
-
-            x.Data.[x.Count] <- event
-            x.Count <- x.Count + 1
-
-        member x.Dequeue(result : EventTrigger<'Value> outref) =
-            if x.Index < x.Count then
-                result <- x.Data.[x.Index]
-                x.Index <- x.Index + 1
-                true
-            else
-                false
-    end
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateHolder =

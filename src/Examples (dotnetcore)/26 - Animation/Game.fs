@@ -80,17 +80,58 @@ module Animations =
             | _ -> model
         )
 
-    let fade (color : C3d) (id : V2i) (model : Model) =
+    let private fade (color : C3d) (id : V2i) =
         let lens = getEntityColorLens id
+        Animation.Primitives.lerpTo lens color
+        >> Animation.ease (Easing.Out EasingFunction.Quadratic)
 
-        let name = AnimationId.get id "fade"
+    let fadeHover (id : V2i) =
+        fade Scene.Properties.Box.colorHovered id
+        >> Animation.milliseconds 75
 
-        let animation =
-            model |> Animation.Primitives.lerpTo lens color
-            |> Animation.ease (Easing.Out EasingFunction.Quadratic)
-            |> Animation.milliseconds 75
+    let fadeUnhover (id : V2i) =
+        fade Scene.Properties.Box.color id
+        >> Animation.seconds 2
 
-        model |> Animator.createAndStart name animation
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module Transitions =
+
+    let initialize (model : Model) =
+        let rnd = RandomSystem()
+
+        (model, Scene.entityIndices) ||> List.fold (fun model id ->
+            let addBob model =
+                let name = AnimationId.get id "bob"
+                let anim = Animations.bob id
+                let pos = rnd.UniformDouble()
+                model |> Animator.createAndStartFrom name anim pos
+
+            let addShake model =
+                let name = AnimationId.get id "shake"
+                let anim = Animations.shake (Constant.Pi / 10.0) id
+                model |> Animator.create name anim
+
+            model |> addBob |> addShake
+        )
+
+    let hover (id : V2i) (model : Model) =
+        let bob = AnimationId.get id "bob"
+        let shake = AnimationId.get id "shake"
+        let fade = AnimationId.get id "fade"
+
+        model
+        |> Animator.pause bob
+        |> Animator.start shake
+        |> Animator.createAndStart fade (model |> Animations.fadeHover id)
+
+    let unhover (id : V2i) (model : Model) =
+        let bob = AnimationId.get id "bob"
+        let fade = AnimationId.get id "fade"
+
+        model
+        |> Animator.resume bob
+        |> Animator.createAndStartDelayed fade (Animations.fadeUnhover id)
+        |> Optic.set Lens.hovered None
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Game =
@@ -98,44 +139,22 @@ module Game =
     let update (model : Model) (message : GameMessage) =
         match message with
         | Initialize ->
-            let rnd = RandomSystem()
+            model |> Transitions.initialize
 
-            (model, Scene.entityIndices) ||> List.fold (fun model id ->
-
-                let addBob model =
-                    let name = AnimationId.get id "bob"
-                    let anim = Animations.bob id
-                    let pos = rnd.UniformDouble()
-                    model |> Animator.createAndStartFrom name anim pos
-
-                let addShake model =
-                    let name = AnimationId.get id "shake"
-                    let anim = id |> Animations.shake (Constant.Pi / 10.0)
-                    model |> Animator.create name anim
-
-                model
-                |> addBob
-                |> addShake
-            )
-
-        | Hover id ->
-            let bob = AnimationId.get id "bob"
-            let shake = AnimationId.get id "shake"
-
+        | Hover id when not (model |> Optic.get Lens.hovered |> Option.contains id) ->
             model
-            |> Animator.pause bob
-            |> Animator.start shake
-            |> Animations.fade Scene.Properties.Box.colorHovered id
+            |> Transitions.hover id
             |> Optic.set Lens.hovered (Some id)
 
         | Unhover ->
             match model |> Optic.get Lens.hovered with
             | Some id ->
-                let bob = AnimationId.get id "bob"
                 model
-                |> Animator.resume bob
-                |> Animations.fade Scene.Properties.Box.color id
+                |> Transitions.unhover id
                 |> Optic.set Lens.hovered None
 
             | _ ->
                 model
+
+        | _ ->
+            model
