@@ -28,9 +28,8 @@ module private Observable =
         | ValueSome cb -> model <- cb.Invoke(name, value, model)
         | _ -> ()
 
-    let notify (observable : Observable<'Model, 'Value>) (name : Symbol) (events : EventQueue<'Value> byref) (model : byref<'Model>) =
+    let notify (observable : Observable<'Model, 'Value>) (name : Symbol) (events : EventQueue<'Value>) (model : byref<'Model>) =
         let mutable event = Unchecked.defaultof<_>
 
         while events.Dequeue &event do
             trigger observable name event.Type &event.Value &model
-

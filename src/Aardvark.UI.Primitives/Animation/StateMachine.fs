@@ -2,25 +2,22 @@
 
 open System.Collections.Generic
 
+[<Struct>]
 type private StateHolder<'Value> =
-    struct
-        val mutable State : State
-        val mutable Value : 'Value
-
-        new (state, value) = { State = state; Value = value }
-    end
+    {
+        mutable State : State
+        mutable Value : 'Value
+    }
 
 type private StateMachine<'Value> =
-    struct
+    class
         val mutable Holder : StateHolder<'Value>
         val Actions : List<Action>
 
-        private new (holder) = { Holder = holder; Actions = List() }
-
-        static member Empty =
-            StateMachine<'Value>(
-                StateHolder<'Value>(State.Stopped, Unchecked.defaultof<_>)
-            )
+        new () = {
+            Holder = { State = State.Stopped; Value = Unchecked.defaultof<_>};
+            Actions = List()
+        }
     end
 
 [<Struct>]
@@ -36,7 +33,7 @@ type private EventQueue<'Value> = ArrayQueue<EventTrigger<'Value>>
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateHolder =
 
-    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (queue : EventQueue<'Value> byref) (holder : StateHolder<'Value> byref)  =
+    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (queue : EventQueue<'Value>) (holder : StateHolder<'Value> byref)  =
         match action with
         | Action.Stop ->
             match holder.State with
@@ -82,11 +79,11 @@ module private StateHolder =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateMachine =
 
-    let enqueue (action : Action) (machine : StateMachine<'Value> byref) =
+    let enqueue (action : Action) (machine : StateMachine<'Value>) =
         machine.Actions.Add(action)
 
-    let run (evaluate : LocalTime -> 'Value) (queue : EventQueue<'Value> byref) (machine : StateMachine<'Value> byref) =
+    let run (evaluate : LocalTime -> 'Value) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>) =
         for action in machine.Actions do
-            StateHolder.processAction evaluate action &queue &machine.Holder
+            StateHolder.processAction evaluate action queue &machine.Holder
 
         machine.Actions.Clear()

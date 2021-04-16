@@ -16,7 +16,7 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
         for i = 0 to members.Length - 1 do
             members.[i] |> Groups.perform segments.[i] bidirectional action x
 
-        StateMachine.enqueue action &x.StateMachine
+        StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model) =
 
@@ -28,10 +28,10 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
 
         // Process all actions, from oldest to newest
         let evaluate t = let i = definition.FindMemberIndex(t) in members.[i].Value
-        StateMachine.run evaluate &x.EventQueue &x.StateMachine
+        StateMachine.run evaluate x.EventQueue x.StateMachine
 
         // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
+        Observable.notify x.Definition.Observable x.Name x.EventQueue &result
 
         result
 

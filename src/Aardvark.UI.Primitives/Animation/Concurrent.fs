@@ -16,7 +16,7 @@ type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition :
         for i = 0 to members.Length - 1 do
             members.[i] |> Groups.perform segments.[i] bidirectional action x
 
-        StateMachine.enqueue action &x.StateMachine
+        StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model) =
 
@@ -28,10 +28,10 @@ type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition :
 
         // Process all actions, from oldest to newest
         let evaluate _ = definition.Mapping.Invoke(result, members)
-        StateMachine.run evaluate &x.EventQueue &x.StateMachine
+        StateMachine.run evaluate x.EventQueue x.StateMachine
 
         // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
+        Observable.notify x.Definition.Observable x.Name x.EventQueue &result
 
         result
 

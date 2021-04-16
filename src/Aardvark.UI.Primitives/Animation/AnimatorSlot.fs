@@ -22,7 +22,7 @@ type private DelayedAnimation<'Model> =
 
 type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) =
     let mutable current = instance
-    let mutable queue = ArrayQueue<DelayedAnimation<'Model>>.Empty
+    let queue = ArrayQueue<DelayedAnimation<'Model>>()
 
     /// The name of the animator slot.
     member x.Name = name

@@ -12,7 +12,7 @@ type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definit
     override x.Perform(action) =
         wrapped.Perform(action)
         input.Perform(action)
-        StateMachine.enqueue action &x.StateMachine
+        StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model) =
         // Commit members
@@ -20,10 +20,10 @@ type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definit
 
         //// Process all actions, from oldest to newest
         let evaluate _ = definition.Mapping.Invoke(result, wrapped.Value, input.Value)
-        StateMachine.run evaluate &x.EventQueue &x.StateMachine
+        StateMachine.run evaluate x.EventQueue x.StateMachine
 
         // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
+        Observable.notify x.Definition.Observable x.Name x.EventQueue &result
 
         result
 

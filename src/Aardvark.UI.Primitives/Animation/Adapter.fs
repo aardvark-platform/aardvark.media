@@ -9,7 +9,7 @@ type private AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter
 
     override x.Perform(action) =
         wrapped.Perform(action)
-        StateMachine.enqueue action &x.StateMachine
+        StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model) =
 
@@ -18,10 +18,10 @@ type private AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter
 
         // Process all actions, from oldest to newest
         let evaluate _ = Unchecked.defaultof<'Value>
-        StateMachine.run evaluate &x.EventQueue &x.StateMachine
+        StateMachine.run evaluate x.EventQueue x.StateMachine
 
         // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name &x.EventQueue &result
+        Observable.notify x.Definition.Observable x.Name x.EventQueue &result
 
         result
 
