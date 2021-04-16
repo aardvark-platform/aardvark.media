@@ -9,8 +9,8 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
     let stateMachine = StateMachine<'Value>()
 
     member x.Name = name
-    member x.State = stateMachine.Holder.State
-    member x.Value = stateMachine.Holder.Value
+    member x.State = stateMachine.State
+    member x.Value = stateMachine.Value
     member x.Definition = definition
     member x.EventQueue = eventQueue
     member x.StateMachine = stateMachine
