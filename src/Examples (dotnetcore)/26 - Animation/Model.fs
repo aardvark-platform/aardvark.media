@@ -7,13 +7,24 @@ open FSharp.Data.Adaptive
 open Adaptify
 
 [<ModelType>]
+type EntityFlag =
+    | Active
+    | Selected
+    | Hovered
+    | Processing
+    | Resolved
+
+[<ModelType>]
 type Entity =
     {
         position : V3d
         rotation : V3d
         scale : V3d
         color : C3d
-        alpha : float
+        flag : EntityFlag
+
+        [<NonAdaptive>]
+        identity : C3d
     }
 
 [<ModelType>]
@@ -22,7 +33,6 @@ type Scene =
         entities : HashMap<V2i, Entity>
         lightDirection : V3d
         selected : V2i option
-        hovered : V2i option
     }
 
 [<ModelType>]
@@ -53,8 +63,9 @@ type Model =
 
 type GameMessage =
     | Initialize
+    | Select of V2i
     | Hover of V2i
-    | Unhover
+    | Unhover of V2i
 
 type Message =
     | Game of GameMessage
