@@ -2,6 +2,7 @@
 
 open Aardvark.Base
 open Aardvark.Rendering
+open Aardvark.Rendering.Text
 open Aardvark.SceneGraph
 open Aardvark.UI
 open FSharp.Data.Adaptive
@@ -127,6 +128,30 @@ module Scene =
                 |> Sg.texture "ShadowTexture" shadowMap
                 |> Sg.cullMode' CullMode.Back
 
+            let caption (size : aval<V2i>) (scene : AdaptiveScene) =
+                adaptive {
+                    let trafo =
+                        adaptive {
+                            let! p = scene.caption.position
+                            let! h = scene.caption.size
+                            let! s = scene.caption.scale
+                            let! ws = size
+
+                            return Trafo3d (
+                                Shift3d (V3d p) *
+                                Scale3d (h * float ws.Y / float ws.X, h, 1.0) *
+                                Scale3d (s.X, s.Y, 1.0)
+                            )
+                        }
+
+                    return Sg.textWithConfig TextConfig.Default scene.caption.text
+                    |> Sg.noEvents
+                    |> Sg.trafo trafo
+                    |> Sg.viewTrafo' Trafo3d.Identity
+                    |> Sg.projTrafo' Trafo3d.Identity
+                }
+                |> Sg.dynamic
+
         let createShadowMap (runtime : IRuntime) (scene : AdaptiveScene) =
             let signature =
                 runtime.CreateFramebufferSignature [
@@ -141,12 +166,13 @@ module Scene =
             sg |> Shadows.computeShadowMap signature scene.lightDirection
 
 
-    let view (runtime : IRuntime) (scene : AdaptiveScene) =
+    let view (runtime : IRuntime) (size : aval<V2i>) (scene : AdaptiveScene) =
         let shadowMap = createShadowMap runtime scene
 
         Sg.ofList [
             scene |> Sg.floor shadowMap
             scene |> Sg.boxes shadowMap
+            scene |> Sg.caption size
         ]
 
     let entityIndices =
@@ -199,4 +225,5 @@ module Scene =
 
         { entities = entities
           lightDirection = V3d(1, 2, 4)
-          selected = None }
+          selected = None
+          caption = { text = ""; position = V2d.Zero; size = 0.0; scale = V2d.One } }

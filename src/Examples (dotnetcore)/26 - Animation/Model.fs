@@ -1,6 +1,7 @@
 ﻿namespace AdvancedAnimations
 
 open Aardvark.Base
+open Aardvark.Application
 open Aardvark.UI.Primitives
 open Aardvark.UI.Anewmation
 open FSharp.Data.Adaptive
@@ -28,33 +29,43 @@ type Entity =
     }
 
 [<ModelType>]
+type Caption =
+    {
+        text : string
+        position : V2d
+        size : float
+        scale : V2d
+    }
+
+[<ModelType>]
 type Scene =
     {
         entities : HashMap<V2i, Entity>
         lightDirection : V3d
         selected : V2i option
-    }
-
-[<ModelType>]
-type Score =
-    {
-        current : int
-        displayed : int
-        color : C3d
-        scale : V2d
+        caption : Caption
     }
 
 [<ModelType>]
 type GameState =
-    {
-        scene : Scene
-        score : Score
-        allowCameraInput : bool
-    }
+    | Introduction
+    | Preparing
+    | Running of resolved: int
+    | Finished
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module GameState =
+
+    let isRunning = function
+        | Running _ -> true | _ -> false
+
+    let isInteractive = function
+        | Running _ -> true | _ -> false
 
 [<ModelType>]
 type Model =
     {
+        scene : Scene
         state : GameState
         camera : OrbitState
         [<NonAdaptive>]
@@ -63,6 +74,7 @@ type Model =
 
 type GameMessage =
     | Initialize
+    | KeyDown of Keys
     | Select of V2i
     | Hover of V2i
     | Unhover of V2i

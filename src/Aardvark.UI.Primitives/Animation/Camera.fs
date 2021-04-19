@@ -26,6 +26,20 @@ module AnimationCameraPrimitives =
                 move dst (model |> Optic.get lens)
                 |> Animation.link lens
 
+            /// Creates an animation that moves the camera view to the given location, while looking at the given center.
+            let moveAndLookAt (center : V3d) (dst : V3d) (camera : CameraView) =
+               Animation.create (fun t ->
+                   let location = t |> lerp camera.Location dst
+                   CameraView.lookAt location center camera.Sky
+               )
+
+            /// Creates an animation that moves the camera view variable specified by
+            /// the lens to the given location, while looking at the given center.
+            /// The animation is linked to that variable via an observer with a progress callback.
+            let moveToAndLookAt (lens : Lens<'Model, CameraView>) (center : V3d) (dst : V3d) (model : 'Model) =
+               moveAndLookAt center dst (model |> Optic.get lens)
+               |> Animation.link lens
+
             /// Creates an animation that rotates the camera view to face the given direction.
             let rotateDir (normalizedDirection : V3d) (camera : CameraView) : IAnimation<'Model, CameraView> =
                 let src = camera.Orientation

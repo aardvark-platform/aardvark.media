@@ -1,7 +1,10 @@
 ﻿namespace AdvancedAnimations
 
 open Aardvark.Base
+open Aardvark.Rendering
+open Aardvark.Application
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open Aardvark.UI.Anewmation
 open FSharp.Data.Adaptive
 open Aether
@@ -9,18 +12,30 @@ open Aether.Operators
 
 module private Lens =
 
-    let scene = Model.state_ >-> GameState.scene_
-    let selected = scene >-> Scene.selected_
+    let camera = Model.camera_ >-> OrbitState.view_
+    let state = Model.state_
+    let selected = Model.scene_ >-> Scene.selected_
 
     let entity id =
-        let lens = Model.state_ >-> GameState.scene_ >-> Scene.entities_
+        let lens = Model.scene_ >-> Scene.entities_
         (fun model -> model |> Optic.get lens |> HashMap.find id),
         (fun value model -> model |> Optic.map lens (HashMap.add id value))
+
+    module V2d =
+        let y : Lens<V2d, float> =
+            (fun v -> v.Y),
+            (fun y v -> V2d(v.X, y))
 
     module V3d =
         let z : Lens<V3d, float> =
             (fun v -> v.Z),
             (fun z v -> V3d(v.XY, z))
+
+    module Caption =
+        let text = Model.scene_ >-> Scene.caption_ >-> Caption.text_
+        let position = Model.scene_ >-> Scene.caption_ >-> Caption.position_
+        let size = Model.scene_ >-> Scene.caption_ >-> Caption.size_
+        let scale = Model.scene_ >-> Scene.caption_ >-> Caption.scale_
 
     module Entity =
         let flag id = entity id >-> Entity.flag_
@@ -30,11 +45,12 @@ module private Lens =
         let color id = entity id >-> Entity.color_
         let scale id = entity id >-> Entity.scale_
 
-
 module private Slot =
     let private getName (slot : string) (entity : V2i) =
         Sym.ofString <| sprintf "%A/%s" entity slot
 
+    let camera = Sym.ofString "camera"
+    let captionSize = Sym.ofString "captionSize"
     let appearance = getName "appearance"
     let bobbing = getName "bobbing"
     let shake = getName "shake"
@@ -44,6 +60,9 @@ module private Slot =
 module private ModelEntityExtensions =
 
     module Model =
+
+        let getCamera =
+            Optic.get Lens.camera
 
         let getSelected =
             Optic.get Lens.selected
@@ -223,20 +242,65 @@ module Transitions =
     let initialize (model : Model) =
         let rnd = RandomSystem()
 
-        (model, Scene.entityIndices) ||> List.fold (fun model id ->
-            let addBob model =
-                let name = Slot.bobbing id
-                let anim = Animations.bob id
-                let pos = rnd.UniformDouble()
-                model |> Animator.createAndStartFrom name anim pos
+        let addStaticAnimations model =
+            (model, Scene.entityIndices) ||> List.fold (fun model id ->
+                let addBob model =
+                    let name = Slot.bobbing id
+                    let anim = Animations.bob id
+                    let pos = rnd.UniformDouble()
+                    model |> Animator.createAndStartFrom name anim pos
 
-            let addShake model =
-                let name = Slot.shake id
-                let anim = Animations.shake (Constant.Pi / 10.0) id
-                model |> Animator.create name anim
+                let addShake model =
+                    let name = Slot.shake id
+                    let anim = Animations.shake (Constant.Pi / 10.0) id
+                    model |> Animator.create name anim
 
-            model |> addBob |> addShake
-        )
+                model |> addBob |> addShake
+            )
+
+        let addBlinkingCaption model =
+            let animation =
+                Animation.Primitives.lerp 0.15 0.155
+                |> Animation.link Lens.Caption.size
+                |> Animation.ease (Easing.InOut EasingFunction.Cubic)
+                |> Animation.loop LoopMode.Mirror
+                |> Animation.seconds 1.0
+
+            model
+            |> Animator.createAndStart Slot.captionSize animation
+            |> Optic.set Lens.Caption.text "Press Enter to Start"
+            |> Optic.set Lens.Caption.position (V2d (0.0, 0.75))
+
+        model |> addStaticAnimations |> addBlinkingCaption
+
+    let prepare (model : Model) =
+        let animation =
+            Animation.Primitives.lerp V2d.One (V2d(1.2, 0.0))
+            |> Animation.link Lens.Caption.scale
+            |> Animation.ease (Easing.In EasingFunction.Quadratic)
+            |> Animation.milliseconds 40
+            |> Animation.onFinalize (fun _ _ ->
+                Optic.set Model.state_ (Running 0)
+            )
+
+        model |> Animator.createAndStart Slot.captionSize animation
+
+        //let startCameraFlyBy model =
+            //let dst = model |> Model.getCamera |> CameraView.location
+            //let src =
+            //    let location = V3d(-15.0, -13.0, 20.0)
+            //    CameraView.lookAt location V3d.Zero V3d.ZAxis
+
+            //let animation =
+            //    Animation.Camera.moveAndLookAt V3d.Zero dst src
+            //    |> Animation.link Lens.camera
+            //    |> Animation.ease (Easing.InOut EasingFunction.Cubic)
+            //    |> Animation.seconds 15
+            //    |> Animation.onFinalize (fun _ _ ->
+            //        Optic.set Lens.inputMode AnyInput
+            //    )
+
+            //model |> Animator.createAndStart Slot.camera animation
 
     let hover (id : V2i) (model : Model) =
         model
@@ -303,14 +367,27 @@ module Transitions =
             )
         )
 
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Game =
 
     let update (model : Model) (message : GameMessage) =
         match message with
         | Initialize ->
-            model |> Transitions.initialize
+            model
+            |> Transitions.initialize
+            |> Optic.set Lens.state Introduction
+
+        | GameMessage.KeyDown key when key = Keys.Enter ->
+            match model.state with
+            | Introduction ->
+                model
+                |> Transitions.prepare
+                |> Optic.set Lens.state Preparing
+
+            | _ ->
+                model
+
+        | _ when not <| GameState.isRunning model.state ->
+            model
 
         | Hover id when (model |> Model.allowHover id) ->
             model
@@ -332,6 +409,7 @@ module Game =
                 |> Optic.set Lens.selected None
                 |> Optic.set (Lens.Entity.flag id) Processing
                 |> Optic.set (Lens.Entity.flag s) Processing
+                |> Optic.map Lens.state (function Running r -> Running (r + 1) | _ -> failwith "huh?")
 
             | Some s ->
                 model
@@ -348,18 +426,3 @@ module Game =
 
         | _ ->
             model
-
-
-[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module GameState =
-
-    let score =
-        { current = 0
-          displayed = 0
-          color = C3d.White
-          scale = V2d.One }
-
-    let initial =
-        { scene = Scene.initial
-          score = score
-          allowCameraInput = true }

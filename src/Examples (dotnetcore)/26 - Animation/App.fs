@@ -11,7 +11,8 @@ open FSharp.Data.Adaptive
 module Model =
 
     let initial lens =
-        { state = GameState.initial
+        { scene = Scene.initial
+          state = Introduction
           camera = OrbitState.create V3d.Zero Constant.PiQuarter Constant.PiQuarter 24.0
           animator = Animator.initial lens }
 
@@ -25,11 +26,12 @@ module App =
 
             let renderControl =
                 let frustum = AVal.constant <| Frustum.perspective 60.0 0.1 100.0 1.0
-                let sg (cv : ClientValues) = model.state.scene |> Scene.view cv.runtime |> Sg.map Game
+                let sg (cv : ClientValues) = model.scene |> Scene.view cv.runtime cv.size |> Sg.map Game
 
                 sg |> OrbitController.controlledControlWithClientValues model.camera Camera frustum (AttributeMap.ofList [
                     style "width: 100%; height:100%"
                     onEvent "onRendered" [] (fun _ -> Animation AnimatorMessage.Tick)
+                    onKeyDown (GameMessage.KeyDown >> Game)
                     attribute "showFPS" "true"
                     attribute "data-samples" "8"
                 ]) RenderControlConfig.standard
@@ -47,7 +49,7 @@ module App =
         | Game m ->
             m |> Game.update model
 
-        | Camera m when model.state.allowCameraInput ->
+        | Camera m when GameState.isInteractive model.state ->
             { model with camera = m |> OrbitController.update model.camera }
 
         | Animation msg ->
