@@ -127,8 +127,8 @@ module Animations =
         |> Animation.link Lens.Caption.scale
         |> Animation.milliseconds 75
 
-    let textFadeOut model =
-        textFadeOut' (model |> Optic.get Lens.Caption.scale)
+    let textFadeOut =
+        textFadeOut' V2d.One
 
     let bob (id : V2i) =
         let lens = Lens.Entity.position id >-> Lens.V3d.z
@@ -256,7 +256,7 @@ module Animations =
         |> Animation.ease (Easing.In EasingFunction.Quadratic)
         |> Animation.seconds 1.0
 
-    let flyover (model : Model) =
+    let flyover =
 
         let durationInSeconds = 5
 
@@ -333,17 +333,20 @@ module Transitions =
         |> addStaticAnimations
         |> addBlinkingCaption
         |> setCamera
+        |> Optic.set Lens.state Introduction
 
     let hover (id : V2i) (model : Model) =
         model
         |> Animator.pause (Slot.bobbing id)
         |> Animator.start (Slot.shake id)
         |> Animator.createAndStart (Slot.appearance id) (model |> Animations.fadeHover id)
+        |> Optic.set (Lens.Entity.flag id) Hovered
 
     let unhover (id : V2i) (model : Model) =
         model
         |> Animator.resume (Slot.bobbing id)
         |> Animator.createAndStartDelayed (Slot.appearance id) (Animations.fadeNeutral id)
+        |> Optic.set (Lens.Entity.flag id) Active
 
     let reveal (id : V2i) (model : Model) =
         model
@@ -376,22 +379,23 @@ module Transitions =
                 Optic.set (Lens.Entity.flag id) Active
             )
         )
+        |> Optic.set (Lens.Entity.flag id) Processing
+        |> Optic.set (Lens.Entity.flag sel) Processing
 
     let revealAndResolve (id : V2i) (sel : V2i) (model : Model) =
+        let isFinished = (model.state = Finished)
+
         let showFinishScreen (model : Model) =
-            if model.state = Finished then
-                model
-                |> Optic.set Lens.Caption.text "Finished!"
-                |> Animator.createAndStart Slot.caption Animations.textFadeIn
-            else
-                model
+            model
+            |> Optic.set Lens.Caption.text "Finished!"
+            |> Animator.createAndStart Slot.caption Animations.textFadeIn
 
         let resolve (self : V2i) (other : V2i) (model : Model) =
             let animation =
                 Animations.resolve self other model
                 |> Animation.onFinalize (fun _ _ ->
                     Optic.set (Lens.Entity.flag self) Resolved
-                    >> showFinishScreen
+                    >> if isFinished then showFinishScreen else Operators.id
                 )
 
             model
@@ -406,29 +410,10 @@ module Transitions =
                 resolve id sel >> resolve sel id
             )
         )
+        |> Optic.set (Lens.Entity.flag id) Processing
+        |> Optic.set (Lens.Entity.flag sel) Processing
 
-    let private showObjective (model : Model) =
-        let animation =
-            Animation.sequential [
-                Animations.delay 0.25
-                Animations.textFadeIn
-            ]
-
-        model
-        |> Optic.set Lens.Caption.text "Remember and Find the Pairs!"
-        |> Animator.createAndStart Slot.caption animation
-
-    let private showStart (model : Model) =
-        let animation =
-            Animations.textFadeOut model
-            |> Animation.onFinalize (fun _ _ ->
-                Optic.set Lens.Caption.text "START!"
-                >> Animator.createAndStart Slot.caption Animations.textFadeIn
-            )
-
-        model |> Animator.createAndStart Slot.caption animation
-
-    let revealAll (model : Model) =
+    let private revealAll (model : Model) =
         let reveal =
             Scene.entityIndices |> List.mapi (fun i id ->
                 let delay = Animations.delay (float (i + 1) * 0.1)
@@ -444,6 +429,13 @@ module Transitions =
                 Animation.sequential [delay; reveal] :> IAnimation<Model>
             )
 
+        let showStart =
+            Animations.textFadeOut
+            |> Animation.onFinalize (fun _ _ ->
+                Optic.set Lens.Caption.text "START!"
+                >> Animator.createAndStart Slot.caption Animations.textFadeIn
+            )
+
         let hide model =
             let delay = Animations.delay 3
 
@@ -452,7 +444,9 @@ module Transitions =
                     Animations.hide id model :> IAnimation<Model>
                 )
                 |> Animation.concurrent
-                |> Animation.onStart (fun _ _ -> showStart)
+                |> Animation.onStart (fun _ _ ->
+                    Animator.createAndStart Slot.caption showStart
+                )
 
             Animation.sequential [delay; hide]
             |> Animation.onFinalize (fun _ _ ->
@@ -469,48 +463,46 @@ module Transitions =
 
         model |> Animator.createAndStart Slot.preparing animation
 
-    let prepare (model : Model) =
+    let private prepare (model : Model) =
         let animation =
-            Animations.textFadeOut model
-            |> Animation.onFinalize (fun _ _ -> revealAll >> showObjective)
+            Animation.sequential [
+                Animations.delay 0.25
+                Animations.textFadeIn
+            ]
 
-        model |> Animator.createAndStart Slot.caption animation
+        model
+        |> revealAll
+        |> Optic.set Lens.Caption.text "Remember and Find the Pairs!"
+        |> Animator.createAndStart Slot.caption animation
 
     let flyover (model : Model) =
         let animation =
-            Animations.flyover model
+            Animations.flyover
             |> Animation.onFinalize (fun _ _ -> Optic.set Model.state_ Preparing >> prepare)
 
         model
         |> Animator.createAndStart Slot.camera animation
-        |> Animator.createAndStart Slot.caption (Animations.textFadeOut model)
+        |> Animator.createAndStart Slot.caption (Animations.textFadeOut' (model |> Optic.get Lens.Caption.scale))
+        |> Optic.set Lens.state Flyover
 
 module Game =
 
     let update (model : Model) (message : GameMessage) =
         match message with
         | Initialize ->
-            model
-            |> Transitions.initialize
-            |> Optic.set Lens.state Introduction
+            model |> Transitions.initialize
 
         | Start when model.state = Introduction ->
-            model
-            |> Transitions.flyover
-            |> Optic.set Lens.state Flyover
+            model |> Transitions.flyover
 
         | _ when not <| GameState.isRunning model.state ->
             model
 
         | Hover id when (model |> Model.allowHover id) ->
-            model
-            |> Transitions.hover id
-            |> Optic.set (Lens.Entity.flag id) Hovered
+            model |> Transitions.hover id
 
         | Unhover id when (model |> Model.isHovered id) ->
-            model
-            |> Transitions.unhover id
-            |> Optic.set (Lens.Entity.flag id) Active
+            model |> Transitions.unhover id
 
         | Select id when (model |> Model.allowSelect id) ->
             let c = model |> Model.getIdentity id
@@ -518,21 +510,17 @@ module Game =
             match model |> Model.getSelected with
             | Some s when c = (model |> Model.getIdentity s) ->
                 model
-                |> Transitions.revealAndResolve id s
                 |> Optic.set Lens.selected None
-                |> Optic.set (Lens.Entity.flag id) Processing
-                |> Optic.set (Lens.Entity.flag s) Processing
                 |> Optic.map Lens.state (function
                     | Running r when r < Scene.entityIndices.Length / 2 - 1 -> Running (r + 1)
                     | _ -> Finished
                 )
+                |> Transitions.revealAndResolve id s
 
             | Some s ->
                 model
                 |> Transitions.revealAndHide id s
                 |> Optic.set Lens.selected None
-                |> Optic.set (Lens.Entity.flag id) Processing
-                |> Optic.set (Lens.Entity.flag s) Processing
 
             | _ ->
                 model
