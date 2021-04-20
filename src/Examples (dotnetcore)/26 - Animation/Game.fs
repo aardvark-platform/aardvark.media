@@ -20,6 +20,13 @@ module private Lens =
         (fun model -> model |> Optic.get lens |> HashMap.find id),
         (fun value model -> model |> Optic.map lens (HashMap.add id value))
 
+    module Camera =
+        let private location_ : Lens<CameraView, V3d> =
+            (fun v -> v.Location),
+            (fun l v -> v.WithLocation l)
+
+        let location = camera >-> location_
+
     module V2d =
         let y : Lens<V2d, float> =
             (fun v -> v.Y),
@@ -50,19 +57,31 @@ module private Slot =
 
     let camera = Sym.ofString "camera"
     let preparing = Sym.ofString "preparing"
-    let captionSize = Sym.ofString "captionSize"
+    let caption = Sym.ofString "caption"
     let appearance = getName "appearance"
     let bobbing = getName "bobbing"
     let shake = getName "shake"
     let rotation = getName "rotation"
 
+module private CameraPath =
+
+    let points =
+        let getPhi t = t |> lerp -Constant.PiHalf Constant.PiQuarter
+        let getTheta t = t |> lerp (Constant.Pi * 0.4) Constant.PiQuarter
+        let getRadius t = t |> lerp 64.0 24.0
+
+        [| 0.0 .. 0.1 .. 1.0 |] |> Array.map (fun t ->
+            let phi = getPhi t
+            let theta = getTheta t
+            let radius = getRadius t
+
+            V2d(phi, theta).CartesianFromSpherical() * radius
+        )
+
 [<AutoOpen>]
 module private ModelEntityExtensions =
 
     module Model =
-
-        let getCamera =
-            Optic.get Lens.camera
 
         let getSelected =
             Optic.get Lens.selected
@@ -79,23 +98,8 @@ module private ModelEntityExtensions =
         let getScale id =
             Optic.get (Lens.Entity.scale id)
 
-        let isActive id =
-            Optic.get (Lens.Entity.flag id) >> ((=) Active)
-
         let isHovered id =
             Optic.get (Lens.Entity.flag id) >> ((=) Hovered)
-
-        let isSelected id =
-            Optic.get (Lens.Entity.flag id) >> ((=) Selected)
-
-        let isProcessing id =
-            Optic.get (Lens.Entity.flag id) >> ((=) Processing)
-
-        let isResolved id =
-            Optic.get (Lens.Entity.flag id) >> ((=) Resolved)
-
-        let getSelectedIdentity (model : Model) =
-            model |> Optic.get Lens.selected |> Option.map getIdentity
 
         let allowHover id model =
             match model |> getFlag id with
@@ -113,13 +117,18 @@ module Animations =
     let inline delay (delayInSeconds : ^Seconds) =
         Animation.empty |> Animation.seconds delayInSeconds
 
-    let textFadeIn =
-        Animation.Primitives.lerpTo Lens.Caption.scale V2d.One
-        >> Animation.milliseconds 75
+    let textFadeOut' (scale : V2d) =
+        Animation.Primitives.lerp scale (V2d(1.2, 0.0))
+        |> Animation.link Lens.Caption.scale
+        |> Animation.milliseconds 75
 
-    let textFadeOut =
-        Animation.Primitives.lerpTo Lens.Caption.scale (V2d(1.2, 0.0))
-        >> Animation.milliseconds 75
+    let textFadeIn =
+        Animation.Primitives.lerp (V2d(1.2, 0.0)) V2d.One
+        |> Animation.link Lens.Caption.scale
+        |> Animation.milliseconds 75
+
+    let textFadeOut model =
+        textFadeOut' (model |> Optic.get Lens.Caption.scale)
 
     let bob (id : V2i) =
         let lens = Lens.Entity.position id >-> Lens.V3d.z
@@ -247,6 +256,39 @@ module Animations =
         |> Animation.ease (Easing.In EasingFunction.Quadratic)
         |> Animation.seconds 1.0
 
+    let flyover (model : Model) =
+
+        let durationInSeconds = 5
+
+        let location =
+            CameraPath.points |> Animation.Primitives.smoothPath Vec.distance 0.1
+            |> Animation.link Lens.Camera.location  // Note that we write the camera location here, so that the forward animation can read the value
+            |> Animation.seconds durationInSeconds
+
+        let forward =
+            let turnDurationInSeconds = 1
+
+            let turn =
+                Animation.Camera.rotateDynamic V3d.Zero Lens.camera
+                |> Animation.seconds turnDurationInSeconds
+
+            let fixOnCenter =
+                Animation.create' (fun model _ ->
+                    let view = model |> Optic.get Lens.camera
+                    CameraView.lookAt view.Location V3d.Zero view.Sky
+                )
+                |> Animation.seconds (durationInSeconds - turnDurationInSeconds)
+
+            Animation.path [turn; fixOnCenter]
+            |> Animation.map CameraView.forward
+
+        (location, forward) ||> Animation.map2 (fun l f ->
+            CameraView.look l f V3d.ZAxis
+        )
+        |> Animation.link Lens.camera
+        |> Animation.seconds durationInSeconds
+        |> Animation.ease (Easing.InOut EasingFunction.Quadratic)
+
 
 module Transitions =
 
@@ -278,29 +320,19 @@ module Transitions =
                 |> Animation.seconds 1.0
 
             model
-            |> Animator.createAndStart Slot.captionSize animation
+            |> Animator.createAndStart Slot.caption animation
             |> Optic.set Lens.Caption.text "Click to Start"
             |> Optic.set Lens.Caption.scale V2d.One
             |> Optic.set Lens.Caption.position (V2d (0.0, 0.75))
 
-        model |> addStaticAnimations |> addBlinkingCaption
+        let setCamera model =
+            let view = CameraView.look CameraPath.points.[0] V3d.XAxis V3d.ZAxis
+            model |> Optic.set Lens.camera view
 
-        //let startCameraFlyBy model =
-            //let dst = model |> Model.getCamera |> CameraView.location
-            //let src =
-            //    let location = V3d(-15.0, -13.0, 20.0)
-            //    CameraView.lookAt location V3d.Zero V3d.ZAxis
-
-            //let animation =
-            //    Animation.Camera.moveAndLookAt V3d.Zero dst src
-            //    |> Animation.link Lens.camera
-            //    |> Animation.ease (Easing.InOut EasingFunction.Cubic)
-            //    |> Animation.seconds 15
-            //    |> Animation.onFinalize (fun _ _ ->
-            //        Optic.set Lens.inputMode AnyInput
-            //    )
-
-            //model |> Animator.createAndStart Slot.camera animation
+        model
+        |> addStaticAnimations
+        |> addBlinkingCaption
+        |> setCamera
 
     let hover (id : V2i) (model : Model) =
         model
@@ -346,11 +378,20 @@ module Transitions =
         )
 
     let revealAndResolve (id : V2i) (sel : V2i) (model : Model) =
+        let showFinishScreen (model : Model) =
+            if model.state = Finished then
+                model
+                |> Optic.set Lens.Caption.text "Finished!"
+                |> Animator.createAndStart Slot.caption Animations.textFadeIn
+            else
+                model
+
         let resolve (self : V2i) (other : V2i) (model : Model) =
             let animation =
                 Animations.resolve self other model
                 |> Animation.onFinalize (fun _ _ ->
                     Optic.set (Lens.Entity.flag self) Resolved
+                    >> showFinishScreen
                 )
 
             model
@@ -366,16 +407,26 @@ module Transitions =
             )
         )
 
-    let showObjective (model : Model) =
+    let private showObjective (model : Model) =
         let animation =
-            Animation.concurrent [Animations.textFadeIn model; Animations.delay 7.0]
-            |> Animation.onFinalize (fun name _ ->
-                Animator.createAndStartDelayed name Animations.textFadeOut
-            )
+            Animation.sequential [
+                Animations.delay 0.25
+                Animations.textFadeIn
+            ]
 
         model
         |> Optic.set Lens.Caption.text "Remember and Find the Pairs!"
-        |> Animator.createAndStart Slot.captionSize animation
+        |> Animator.createAndStart Slot.caption animation
+
+    let private showStart (model : Model) =
+        let animation =
+            Animations.textFadeOut model
+            |> Animation.onFinalize (fun _ _ ->
+                Optic.set Lens.Caption.text "START!"
+                >> Animator.createAndStart Slot.caption Animations.textFadeIn
+            )
+
+        model |> Animator.createAndStart Slot.caption animation
 
     let revealAll (model : Model) =
         let reveal =
@@ -401,16 +452,19 @@ module Transitions =
                     Animations.hide id model :> IAnimation<Model>
                 )
                 |> Animation.concurrent
+                |> Animation.onStart (fun _ _ -> showStart)
 
             Animation.sequential [delay; hide]
             |> Animation.onFinalize (fun _ _ ->
                 Optic.set Lens.state (Running 0)
+                >> Animator.createAndStart Slot.caption (Animations.textFadeOut' V2d.One)
             )
 
         let animation =
             Animation.concurrent reveal
             |> Animation.onFinalize (fun name _ model ->
-                model |> Animator.createAndStart name (hide model)
+                model
+                |> Animator.createAndStart name (hide model)
             )
 
         model |> Animator.createAndStart Slot.preparing animation
@@ -420,7 +474,16 @@ module Transitions =
             Animations.textFadeOut model
             |> Animation.onFinalize (fun _ _ -> revealAll >> showObjective)
 
-        model |> Animator.createAndStart Slot.captionSize animation
+        model |> Animator.createAndStart Slot.caption animation
+
+    let flyover (model : Model) =
+        let animation =
+            Animations.flyover model
+            |> Animation.onFinalize (fun _ _ -> Optic.set Model.state_ Preparing >> prepare)
+
+        model
+        |> Animator.createAndStart Slot.camera animation
+        |> Animator.createAndStart Slot.caption (Animations.textFadeOut model)
 
 module Game =
 
@@ -433,8 +496,8 @@ module Game =
 
         | Start when model.state = Introduction ->
             model
-            |> Transitions.prepare
-            |> Optic.set Lens.state Preparing
+            |> Transitions.flyover
+            |> Optic.set Lens.state Flyover
 
         | _ when not <| GameState.isRunning model.state ->
             model
@@ -459,7 +522,10 @@ module Game =
                 |> Optic.set Lens.selected None
                 |> Optic.set (Lens.Entity.flag id) Processing
                 |> Optic.set (Lens.Entity.flag s) Processing
-                |> Optic.map Lens.state (function Running r -> Running (r + 1) | _ -> failwith "huh?")
+                |> Optic.map Lens.state (function
+                    | Running r when r < Scene.entityIndices.Length / 2 - 1 -> Running (r + 1)
+                    | _ -> Finished
+                )
 
             | Some s ->
                 model

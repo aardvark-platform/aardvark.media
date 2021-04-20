@@ -48,6 +48,7 @@ type Scene =
 [<ModelType>]
 type GameState =
     | Introduction
+    | Flyover
     | Preparing
     | Running of resolved: int
     | Finished
@@ -59,7 +60,7 @@ module GameState =
         | Running _ -> true | _ -> false
 
     let isInteractive = function
-        | Running _ -> true | _ -> false
+        | Preparing | Running _ -> true | _ -> false
 
 [<ModelType>]
 type Model =

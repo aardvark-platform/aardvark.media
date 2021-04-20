@@ -63,6 +63,22 @@ module AnimationCameraPrimitives =
                 |> Animation.link lens
 
             /// Creates an animation that rotates the camera view to face towards the given location.
+            let rotateDynamic (center : V3d) (camera : Lens<'Model, CameraView>) : IAnimation<'Model, CameraView> =
+                Animation.create' (fun m t ->
+                    let camera = m |> Optic.get camera
+
+                    let dst =
+                        let forward = (center - camera.Location |> Vec.normalize)
+                        let right = Vec.cross forward camera.Sky |> Vec.normalize
+                        let up = Vec.cross right forward |> Vec.normalize
+                        let frame = M33d.FromCols(right, forward, up)
+                        Rot3d.FromM33d frame
+
+                    let orientation = Rot.SlerpShortest(camera.Orientation, dst, t)
+                    CameraView.orient camera.Location orientation camera.Sky
+                )
+
+            /// Creates an animation that rotates the camera view to face towards the given location.
             let rotate (center : V3d) (camera : CameraView) : IAnimation<'Model, CameraView> =
                 camera |> rotateDir (center - camera.Location |> Vec.normalize)
 
