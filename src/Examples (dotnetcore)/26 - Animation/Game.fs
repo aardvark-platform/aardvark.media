@@ -2,7 +2,6 @@
 
 open Aardvark.Base
 open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Anewmation
@@ -50,6 +49,7 @@ module private Slot =
         Sym.ofString <| sprintf "%A/%s" entity slot
 
     let camera = Sym.ofString "camera"
+    let preparing = Sym.ofString "preparing"
     let captionSize = Sym.ofString "captionSize"
     let appearance = getName "appearance"
     let bobbing = getName "bobbing"
@@ -109,6 +109,17 @@ module private ModelEntityExtensions =
 
 
 module Animations =
+
+    let inline delay (delayInSeconds : ^Seconds) =
+        Animation.empty |> Animation.seconds delayInSeconds
+
+    let textFadeIn =
+        Animation.Primitives.lerpTo Lens.Caption.scale V2d.One
+        >> Animation.milliseconds 75
+
+    let textFadeOut =
+        Animation.Primitives.lerpTo Lens.Caption.scale (V2d(1.2, 0.0))
+        >> Animation.milliseconds 75
 
     let bob (id : V2i) =
         let lens = Lens.Entity.position id >-> Lens.V3d.z
@@ -262,28 +273,17 @@ module Transitions =
             let animation =
                 Animation.Primitives.lerp 0.15 0.155
                 |> Animation.link Lens.Caption.size
-                |> Animation.ease (Easing.InOut EasingFunction.Cubic)
+                |> Animation.ease (Easing.In EasingFunction.Cubic)
                 |> Animation.loop LoopMode.Mirror
                 |> Animation.seconds 1.0
 
             model
             |> Animator.createAndStart Slot.captionSize animation
-            |> Optic.set Lens.Caption.text "Press Enter to Start"
+            |> Optic.set Lens.Caption.text "Click to Start"
+            |> Optic.set Lens.Caption.scale V2d.One
             |> Optic.set Lens.Caption.position (V2d (0.0, 0.75))
 
         model |> addStaticAnimations |> addBlinkingCaption
-
-    let prepare (model : Model) =
-        let animation =
-            Animation.Primitives.lerp V2d.One (V2d(1.2, 0.0))
-            |> Animation.link Lens.Caption.scale
-            |> Animation.ease (Easing.In EasingFunction.Quadratic)
-            |> Animation.milliseconds 40
-            |> Animation.onFinalize (fun _ _ ->
-                Optic.set Model.state_ (Running 0)
-            )
-
-        model |> Animator.createAndStart Slot.captionSize animation
 
         //let startCameraFlyBy model =
             //let dst = model |> Model.getCamera |> CameraView.location
@@ -334,7 +334,7 @@ module Transitions =
         model
         |> reveal id
         |> Animator.createAndStartDelayed (Slot.appearance id) (fun model ->
-            let delay = Animation.empty |> Animation.seconds 0.75
+            let delay = Animations.delay 0.75
             let hide =
                 Animations.hide id model
                 |> Animation.onStart (fun _ _ -> hideSelected)
@@ -360,12 +360,67 @@ module Transitions =
         model
         |> reveal id
         |> Animator.createAndStartDelayed (Slot.appearance id) (fun _ ->
-            Animation.empty
-            |> Animation.seconds 0.3
+            Animations.delay 0.3
             |> Animation.onFinalize (fun _ _ ->
                 resolve id sel >> resolve sel id
             )
         )
+
+    let showObjective (model : Model) =
+        let animation =
+            Animation.concurrent [Animations.textFadeIn model; Animations.delay 7.0]
+            |> Animation.onFinalize (fun name _ ->
+                Animator.createAndStartDelayed name Animations.textFadeOut
+            )
+
+        model
+        |> Optic.set Lens.Caption.text "Remember and Find the Pairs!"
+        |> Animator.createAndStart Slot.captionSize animation
+
+    let revealAll (model : Model) =
+        let reveal =
+            Scene.entityIndices |> List.mapi (fun i id ->
+                let delay = Animations.delay (float (i + 1) * 0.1)
+                let reveal =
+                    Animations.reveal id model
+                    |> Animation.onStart (fun _ _ model ->
+                        model
+                        |> Animator.stop (Slot.shake id)
+                        |> Animator.resume (Slot.bobbing id)
+                        |> Animator.createAndStart (Slot.rotation id) (model |> Animations.rotateToNeutral id)
+                    )
+
+                Animation.sequential [delay; reveal] :> IAnimation<Model>
+            )
+
+        let hide model =
+            let delay = Animations.delay 3
+
+            let hide =
+                Scene.entityIndices |> List.map (fun id ->
+                    Animations.hide id model :> IAnimation<Model>
+                )
+                |> Animation.concurrent
+
+            Animation.sequential [delay; hide]
+            |> Animation.onFinalize (fun _ _ ->
+                Optic.set Lens.state (Running 0)
+            )
+
+        let animation =
+            Animation.concurrent reveal
+            |> Animation.onFinalize (fun name _ model ->
+                model |> Animator.createAndStart name (hide model)
+            )
+
+        model |> Animator.createAndStart Slot.preparing animation
+
+    let prepare (model : Model) =
+        let animation =
+            Animations.textFadeOut model
+            |> Animation.onFinalize (fun _ _ -> revealAll >> showObjective)
+
+        model |> Animator.createAndStart Slot.captionSize animation
 
 module Game =
 
@@ -376,15 +431,10 @@ module Game =
             |> Transitions.initialize
             |> Optic.set Lens.state Introduction
 
-        | GameMessage.KeyDown key when key = Keys.Enter ->
-            match model.state with
-            | Introduction ->
-                model
-                |> Transitions.prepare
-                |> Optic.set Lens.state Preparing
-
-            | _ ->
-                model
+        | Start when model.state = Introduction ->
+            model
+            |> Transitions.prepare
+            |> Optic.set Lens.state Preparing
 
         | _ when not <| GameState.isRunning model.state ->
             model

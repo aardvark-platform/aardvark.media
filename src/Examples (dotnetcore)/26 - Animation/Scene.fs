@@ -128,7 +128,9 @@ module Scene =
                 |> Sg.texture "ShadowTexture" shadowMap
                 |> Sg.cullMode' CullMode.Back
 
-            let caption (size : aval<V2i>) (scene : AdaptiveScene) =
+            let caption (runtime : IRuntime) (size : aval<V2i>) (scene : AdaptiveScene) =
+                runtime.PrepareGlyphs(TextConfig.Default.font, List.map char [0 .. 255])
+
                 adaptive {
                     let trafo =
                         adaptive {
@@ -144,11 +146,12 @@ module Scene =
                             )
                         }
 
-                    return Sg.textWithConfig TextConfig.Default scene.caption.text
-                    |> Sg.noEvents
-                    |> Sg.trafo trafo
-                    |> Sg.viewTrafo' Trafo3d.Identity
-                    |> Sg.projTrafo' Trafo3d.Identity
+                    return
+                        Sg.textWithConfig TextConfig.Default scene.caption.text
+                        |> Sg.noEvents
+                        |> Sg.trafo trafo
+                        |> Sg.viewTrafo' Trafo3d.Identity
+                        |> Sg.projTrafo' Trafo3d.Identity
                 }
                 |> Sg.dynamic
 
@@ -172,7 +175,7 @@ module Scene =
         Sg.ofList [
             scene |> Sg.floor shadowMap
             scene |> Sg.boxes shadowMap
-            scene |> Sg.caption size
+            scene |> Sg.caption runtime size
         ]
 
     let entityIndices =

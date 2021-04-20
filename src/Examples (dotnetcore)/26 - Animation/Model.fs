@@ -1,7 +1,6 @@
 ﻿namespace AdvancedAnimations
 
 open Aardvark.Base
-open Aardvark.Application
 open Aardvark.UI.Primitives
 open Aardvark.UI.Anewmation
 open FSharp.Data.Adaptive
@@ -74,7 +73,7 @@ type Model =
 
 type GameMessage =
     | Initialize
-    | KeyDown of Keys
+    | Start
     | Select of V2i
     | Hover of V2i
     | Unhover of V2i
