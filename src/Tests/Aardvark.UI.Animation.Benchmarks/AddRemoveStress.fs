@@ -34,6 +34,6 @@ type AddRemoveStress() =
 
                 | _ -> ()
 
-            model <- model |> Animator.update AnimatorMessage.Tick
+            model <- model |> Animator.update AnimatorMessage.RealTimeTick
 
         model.SomeInt

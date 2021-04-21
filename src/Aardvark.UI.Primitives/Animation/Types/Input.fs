@@ -14,13 +14,13 @@ type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definit
         input.Perform(action)
         StateMachine.enqueue action x.StateMachine
 
-    override x.Commit(model) =
+    override x.Commit(model, tick) =
         // Commit members
-        let mutable result = model |> wrapped.Commit |> input.Commit
+        let mutable result = input.Commit(wrapped.Commit(model, tick), tick)
 
         //// Process all actions, from oldest to newest
         let evaluate _ = definition.Mapping.Invoke(result, wrapped.Value, input.Value)
-        StateMachine.run evaluate x.EventQueue x.StateMachine
+        StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         // Notify observers about changes
         Observable.notify x.Definition.Observable x.Name x.EventQueue &result

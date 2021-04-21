@@ -21,6 +21,6 @@ type SimpleLoop() =
     [<Benchmark>]
     member x.Run() =
         for _ = 0 to iterations - 1 do
-            model <- model |> Animator.update AnimatorMessage.Tick
+            model <- model |> Animator.update AnimatorMessage.RealTimeTick
 
         model.SomeInt

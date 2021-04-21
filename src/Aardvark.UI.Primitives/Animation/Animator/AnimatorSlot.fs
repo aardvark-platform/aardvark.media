@@ -2,21 +2,12 @@
 
 open Aardvark.Base
 
-// Global time for animations
-module private Time =
-    open System.Diagnostics
-
-    let private sw = Stopwatch.StartNew()
-
-    let get() =
-        sw.Elapsed.MicroTime |> GlobalTime.Timestamp
-
 type private DelayedAnimation<'Model> =
     struct
         val Animation : 'Model -> IAnimation<'Model>
-        val Action : GlobalTime -> IAnimationInstance<'Model> -> unit
+        val Action : IAnimationInstance<'Model> -> unit
 
-        new (animation : 'Model -> IAnimation<'Model>, perform : GlobalTime -> IAnimationInstance<'Model> -> unit) =
+        new (animation : 'Model -> IAnimation<'Model>, perform : IAnimationInstance<'Model> -> unit) =
             { Animation = animation; Action = perform }
     end
 
@@ -34,30 +25,29 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
     member x.Pending = queue.Count
 
     /// Updates the current animation instance in the queue (if it is running).
-    member internal x.Update() =
-        let globalTime = Time.get()
-
+    member internal x.Update(tick : GlobalTime) =
         match current.State with
         | State.Running startTime ->
             let action =
-                let endTime = startTime + current.TotalDuration
+                let localTime = tick |> LocalTime.relative startTime
+                let endTime = LocalTime.max current.TotalDuration
 
-                if globalTime > endTime then
+                if localTime > endTime then
                     Action.Update(endTime, true)
                 else
-                    Action.Update(globalTime, false)
+                    Action.Update(localTime, false)
 
             current.Perform action
 
         | _ -> ()
 
     /// Performs the given action on the current animation instance.
-    member internal x.Perform(action : GlobalTime -> IAnimationInstance<'Model> -> unit) =
-        current |> action (Time.get())
+    member internal x.Perform(action : IAnimationInstance<'Model> -> unit) =
+        current |> action
 
     /// Commits the current animation instance and prepares the next in the queue if required.
-    member internal x.Commit(model : 'Model) =
-        let model = current.Commit(model)
+    member internal x.Commit(model : 'Model, tick : GlobalTime) =
+        let model = current.Commit(model, tick)
 
         if current.IsFinished then
             match queue.Dequeue() with
@@ -65,11 +55,17 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
                 let animation = delayed.Animation model
                 current <- animation.Create(name)
                 x.Perform(delayed.Action)
-                x.Commit(model)
+                x.Commit(model, tick)
 
             | _ -> model
         else
             model
+
+    /// Commits the current animation instance and prepares the next in the queue if required.
+    member internal x.Commit(model : 'Model, tick : ValueOption<GlobalTime> inref) =
+        match tick with
+        | ValueSome t -> x.Commit(model, t)
+        | _ -> model
 
     /// Creates an instance of the given animation and sets it as current.
     /// Pending instances are removed.
@@ -78,5 +74,5 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
         queue.Clear()
 
     /// Enqueues the given animation.
-    member internal x.Enqueue(animation : 'Model -> IAnimation<'Model>, action : GlobalTime -> IAnimationInstance<'Model> -> unit) =
+    member internal x.Enqueue(animation : 'Model -> IAnimation<'Model>, action : IAnimationInstance<'Model> -> unit) =
         queue.Enqueue (DelayedAnimation (animation, action))

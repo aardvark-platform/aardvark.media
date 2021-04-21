@@ -16,7 +16,7 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
     member x.StateMachine = stateMachine
 
     abstract member Perform : Action -> unit
-    abstract member Commit: 'Model -> 'Model
+    abstract member Commit: 'Model * GlobalTime -> 'Model
 
     interface IAnimation with
         member x.Duration = definition.Duration
@@ -27,7 +27,7 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
         member x.Name = x.Name
         member x.State = x.State
         member x.Perform(action) = x.Perform(action)
-        member x.Commit(model) = x.Commit(model)
+        member x.Commit(model, tick) = x.Commit(model, tick)
         member x.Definition = x.Definition :> IAnimation<'Model>
 
     interface IAnimationInstance<'Model, 'Value> with
@@ -41,10 +41,10 @@ type private AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anima
     override x.Perform(action) =
         StateMachine.enqueue action x.StateMachine
 
-    override x.Commit(model) =
+    override x.Commit(model, tick) =
         let definition = x.Definition
         let evaluate t = definition.Evaluate(model, t)
-        StateMachine.run evaluate x.EventQueue x.StateMachine
+        StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         let mutable result = model
         Observable.notify x.Definition.Observable x.Name x.EventQueue &result

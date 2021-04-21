@@ -27,7 +27,7 @@ type private StateMachine<'Value> =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private StateMachine =
 
-    let private processAction (evaluate : LocalTime -> 'Value) (action : Action) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>)  =
+    let private processAction (evaluate : LocalTime -> 'Value) (action : Action) (tick : GlobalTime) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>)  =
         match action with
         | Action.Stop ->
             match machine.State with
@@ -37,30 +37,30 @@ module private StateMachine =
                 machine.Value <- evaluate LocalTime.zero
                 queue.Enqueue { Type = EventType.Stop; Value = machine.Value }
 
-        | Action.Start (globalTime, startFrom) ->
+        | Action.Start startFrom ->
             machine.Value <- evaluate startFrom
-            machine.State <- State.Running (globalTime - startFrom)
+            machine.State <- State.Running (tick - startFrom)
             queue.Enqueue { Type = EventType.Start; Value = machine.Value }
             queue.Enqueue { Type = EventType.Progress; Value = machine.Value }
 
-        | Action.Pause globalTime ->
+        | Action.Pause ->
             match machine.State with
             | State.Running startTime ->
-                machine.State <- State.Paused (startTime, globalTime)
+                machine.State <- State.Paused (startTime, tick)
                 queue.Enqueue { Type = EventType.Pause; Value = machine.Value }
             | _ -> ()
 
-        | Action.Resume globalTime ->
+        | Action.Resume ->
             match machine.State with
             | State.Paused (startTime, pauseTime) ->
-                machine.State <- State.Running (globalTime - (pauseTime - startTime))
+                machine.State <- State.Running (tick - (pauseTime - startTime))
                 queue.Enqueue { Type = EventType.Resume; Value = machine.Value }
             | _ -> ()
 
-        | Action.Update (globalTime, finalize) ->
+        | Action.Update (time, finalize) ->
             match machine.State with
-            | State.Running startTime ->
-                machine.Value <- globalTime |> LocalTime.relative startTime |> evaluate
+            | State.Running _ ->
+                machine.Value <- evaluate time
                 queue.Enqueue { Type = EventType.Progress; Value = machine.Value }
 
                 if finalize then
@@ -72,8 +72,8 @@ module private StateMachine =
     let enqueue (action : Action) (machine : StateMachine<'Value>) =
         machine.Actions.Add(action)
 
-    let run (evaluate : LocalTime -> 'Value) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>) =
+    let run (evaluate : LocalTime -> 'Value) (tick : GlobalTime) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>) =
         for action in machine.Actions do
-            processAction evaluate action queue machine
+            processAction evaluate action tick queue machine
 
         machine.Actions.Clear()

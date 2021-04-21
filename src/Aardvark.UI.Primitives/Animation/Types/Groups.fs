@@ -27,14 +27,13 @@ module private Groups =
                 localTime
 
         match action with
-        | Action.Start (globalTime, startFrom) ->
-            Action.Start (globalTime, apply startFrom)
+        | Action.Start startFrom ->
+            Action.Start (apply startFrom)
 
-        | Action.Update (globalTime, finalize) ->
+        | Action.Update (time, finalize) ->
             match animation.State with
-            | State.Running startTime ->
-                let localTime = globalTime |> LocalTime.relative startTime
-                Action.Update (startTime + apply localTime, finalize)
+            | State.Running _ ->
+                Action.Update (apply time, finalize)
 
             | _ ->
                 action
@@ -48,39 +47,37 @@ module private Groups =
             (t < segment.Start && segment.Start <> LocalTime.zero) ||
             (t > segment.End && segment.End <> LocalTime.max group.Duration)
 
-        let endTime groupLocalTime globalTime =
-            let endLocalTime =
-                if groupLocalTime < segment.Start && bidirectional then
-                    segment.Start
-                else
-                    segment.End
-
-            globalTime + (endLocalTime - groupLocalTime)
+        let endTime groupLocalTime =
+            if groupLocalTime < segment.Start && bidirectional then
+                LocalTime.zero
+            else
+                segment.End - segment.Start
 
         // Relay actions to members, starting them if necessary
-        let start (globalTime : GlobalTime) (groupLocalTime : LocalTime) =
+        let start (groupLocalTime : LocalTime) =
             if outOfBounds groupLocalTime then
                 Action.Stop
             else
-                Action.Start (globalTime, groupLocalTime - segment.Start)
+                Action.Start (groupLocalTime - segment.Start)
 
-        let update (finalize : bool) (globalTime : GlobalTime) (groupLocalTime : LocalTime) (animation : IAnimationInstance<'Model>) =
+        let update (finalize : bool) (groupLocalTime : LocalTime) (animation : IAnimationInstance<'Model>) =
             if outOfBounds groupLocalTime then
-                Action.Update (globalTime |> endTime groupLocalTime, true)
+                Action.Update (endTime groupLocalTime, true)
             else
+                let localTime = groupLocalTime - segment.Start
+
                 if animation.IsRunning then
-                    Action.Update (globalTime, finalize)
+                    Action.Update (localTime, finalize)
                 else
-                    Action.Start (globalTime, groupLocalTime - segment.Start)
+                    Action.Start localTime
 
         let action =
             match action, group.State with
-            | Action.Start (globalTime, groupLocalTime), _ ->
-                start globalTime groupLocalTime
+            | Action.Start groupLocalTime, _ ->
+                start groupLocalTime
 
-            | Action.Update (globalTime, finalize), State.Running groupStartTime ->
-                let groupLocalTime = globalTime |> LocalTime.relative groupStartTime
-                update finalize globalTime groupLocalTime animation
+            | Action.Update (groupLocalTime, finalize), State.Running groupStartTime ->
+                update finalize groupLocalTime animation
 
             | _ ->
                 action

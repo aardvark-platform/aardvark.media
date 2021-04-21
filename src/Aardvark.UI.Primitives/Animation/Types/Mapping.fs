@@ -15,8 +15,8 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
     member x.Perform(action) =
         input.Perform(action)
 
-    member x.Commit(model) =
-        let model = input.Commit(model)
+    member x.Commit(model, tick) =
+        let model = input.Commit(model, tick)
         value <- System.Func<_> (fun _ -> definition.Mapping.Invoke(model, input.Value))
         model
 
@@ -29,7 +29,7 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
          member x.Name = x.Name
          member x.State = x.State
          member x.Perform(action) = x.Perform(action)
-         member x.Commit(model) = x.Commit(model)
+         member x.Commit(model, tick) = x.Commit(model, tick)
          member x.Definition = x.Definition :> IAnimation<'Model>
 
     interface IAnimationInstance<'Model, 'U> with

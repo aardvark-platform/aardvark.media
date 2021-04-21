@@ -18,17 +18,17 @@ type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition :
 
         StateMachine.enqueue action x.StateMachine
 
-    override x.Commit(model) =
+    override x.Commit(model, tick) =
 
         // Commit members
         let mutable result =
             (model, members) ||> Array.fold (fun model animation ->
-                animation.Commit(model)
+                animation.Commit(model, tick)
             )
 
         // Process all actions, from oldest to newest
         let evaluate _ = definition.Mapping.Invoke(result, members)
-        StateMachine.run evaluate x.EventQueue x.StateMachine
+        StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         // Notify observers about changes
         Observable.notify x.Definition.Observable x.Name x.EventQueue &result
