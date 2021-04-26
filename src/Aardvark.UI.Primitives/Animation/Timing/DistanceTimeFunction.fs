@@ -30,12 +30,6 @@ type private DistanceTimeFunction =
         Mode : LoopMode
     }
 
-    /// Returns whether the returned distance can decrease with increasing parameter.
-    member x.Bidirectional =
-        match x.Mode with
-        | LoopMode.Repeat -> false
-        | LoopMode.Mirror -> true
-
     /// Returns the normalized distance along the space curve based on the given local time stamp.
     member x.Invoke(t : float) =
         if not <| isFinite t then

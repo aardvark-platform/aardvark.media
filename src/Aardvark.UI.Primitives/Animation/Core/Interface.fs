@@ -113,6 +113,9 @@ type IAnimationInstance<'Model> =
     /// Returns the current state of the animation instance.
     abstract member State : State
 
+    /// Returns the current position of the animation instance.
+    abstract member Position : LocalTime
+
     /// Performs the given action.
     abstract member Perform : Action -> unit
 

@@ -15,11 +15,13 @@ type private StateMachine<'Value> =
     class
         val mutable State : State
         val mutable Value : 'Value
+        val mutable Position : LocalTime
         val Actions : List<Action>
 
         new () = {
             State = State.Stopped;
             Value = Unchecked.defaultof<_>;
+            Position = LocalTime.zero
             Actions = List()
         }
     end
@@ -35,11 +37,13 @@ module private StateMachine =
             | _ ->
                 machine.State <- State.Stopped
                 machine.Value <- evaluate LocalTime.zero
+                machine.Position <- LocalTime.zero
                 queue.Enqueue { Type = EventType.Stop; Value = machine.Value }
 
         | Action.Start startFrom ->
             machine.Value <- evaluate startFrom
             machine.State <- State.Running (tick - startFrom)
+            machine.Position <- startFrom
             queue.Enqueue { Type = EventType.Start; Value = machine.Value }
             queue.Enqueue { Type = EventType.Progress; Value = machine.Value }
 
@@ -61,6 +65,7 @@ module private StateMachine =
             match machine.State with
             | State.Running _ ->
                 machine.Value <- evaluate time
+                machine.Position <- time
                 queue.Enqueue { Type = EventType.Progress; Value = machine.Value }
 
                 if finalize then

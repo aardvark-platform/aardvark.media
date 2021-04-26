@@ -8,13 +8,12 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
 
     let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
     let segments = definition.Members.Segments
-    let bidirectional = definition.DistanceTimeFunction.Bidirectional
 
     override x.Perform(action) =
         let action = Groups.applyDistanceTime action x
 
         for i = 0 to members.Length - 1 do
-            members.[i] |> Groups.perform segments.[i] bidirectional action x
+            members.[i] |> Groups.perform segments.[i] action x
 
         StateMachine.enqueue action x.StateMachine
 

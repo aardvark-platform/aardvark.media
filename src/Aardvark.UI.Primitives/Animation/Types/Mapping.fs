@@ -10,6 +10,7 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
     member x.Name = name
     member x.State = input.State
     member x.Value = value.Invoke()
+    member x.Position = input.Position
     member x.Definition = definition
 
     member x.Perform(action) =
@@ -28,6 +29,7 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
     interface IAnimationInstance<'Model> with
          member x.Name = x.Name
          member x.State = x.State
+         member x.Position = x.Position
          member x.Perform(action) = x.Perform(action)
          member x.Commit(model, tick) = x.Commit(model, tick)
          member x.Definition = x.Definition :> IAnimation<'Model>

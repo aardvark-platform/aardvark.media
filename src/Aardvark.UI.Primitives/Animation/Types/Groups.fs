@@ -17,6 +17,7 @@ module private Groups =
             { Start = LocalTime.zero; End = LocalTime.max d}
 
 
+    /// Applies the distance-time function of the animation to time stamps contained in the given action.
     let applyDistanceTime (action : Action) (animation : IAnimationInstance<'Model>) =
 
         let apply (localTime : LocalTime) =
@@ -31,55 +32,52 @@ module private Groups =
             Action.Start (apply startFrom)
 
         | Action.Update (time, finalize) ->
-            match animation.State with
-            | State.Running _ ->
-                Action.Update (apply time, finalize)
-
-            | _ ->
-                action
+            Action.Update (apply time, finalize)
 
         | _ ->
             action
 
-    let perform (segment : Segment) (bidirectional : bool) (action : Action) (group : IAnimationInstance<'Model>) (animation : IAnimationInstance<'Model>) =
+    /// Performs a group action for the given member.
+    let perform (segment : Segment) (action : Action) (group : IAnimationInstance<'Model>) (animation : IAnimationInstance<'Model>) =
+        let isFirstSegment = (segment.Start = LocalTime.zero)
+        let isLastSegment = (segment.End = LocalTime.max group.Duration)
 
-        let outOfBounds t =
-            (t < segment.Start && segment.Start <> LocalTime.zero) ||
-            (t > segment.End && segment.End <> LocalTime.max group.Duration)
+        let inBounds t =
+            (t >= segment.Start || isFirstSegment) && (t < segment.End || isLastSegment)
 
-        let endTime groupLocalTime =
-            if groupLocalTime < segment.Start && bidirectional then
-                LocalTime.zero
+        let localBoundary start =
+            if start then LocalTime.zero else segment.End - segment.Start
+
+        // Start the member if inbounds, stop if out of bounds
+        let start groupLocalTime =
+            if inBounds groupLocalTime then
+                animation.Perform <| Action.Start (groupLocalTime - segment.Start)
             else
-                segment.End - segment.Start
+                animation.Perform Action.Stop
 
-        // Relay actions to members, starting them if necessary
-        let start (groupLocalTime : LocalTime) =
-            if outOfBounds groupLocalTime then
-                Action.Stop
-            else
-                Action.Start (groupLocalTime - segment.Start)
-
-        let update (finalize : bool) (groupLocalTime : LocalTime) (animation : IAnimationInstance<'Model>) =
-            if outOfBounds groupLocalTime then
-                Action.Update (endTime groupLocalTime, true)
-            else
+        // Update the member if inbounds (start if necessary), finalize otherwise
+        let update groupLocalTime finalize =
+            if inBounds groupLocalTime then
                 let localTime = groupLocalTime - segment.Start
 
                 if animation.IsRunning then
-                    Action.Update (localTime, finalize)
+                    animation.Perform <| Action.Update (localTime, finalize)
                 else
-                    Action.Start localTime
+                    let startTime = localBoundary (group.Position < groupLocalTime)
+                    animation.Perform <| Action.Start startTime
 
-        let action =
-            match action, group.State with
-            | Action.Start groupLocalTime, _ ->
-                start groupLocalTime
+                    if startTime <> localTime then
+                        animation.Perform <| Action.Update (localTime, false)
+            else
+                let endTime = localBoundary (group.Position > groupLocalTime)
+                animation.Perform <| Action.Update (endTime, true)
 
-            | Action.Update (groupLocalTime, finalize), State.Running groupStartTime ->
-                update finalize groupLocalTime animation
+        match action with
+        | Action.Start groupLocalTime ->
+            start groupLocalTime
 
-            | _ ->
-                action
+        | Action.Update (groupLocalTime, finalize) when group.IsRunning ->
+            update groupLocalTime finalize
 
-        animation.Perform(action)
+        | _ ->
+            ()
