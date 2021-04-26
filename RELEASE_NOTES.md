@@ -1,3 +1,6 @@
+### 5.1.3
+- updated dependencies
+
 ### 5.1.2
 - updated Aardvark.Base
 - updated Aardvark.Rendering (breaking changes)
