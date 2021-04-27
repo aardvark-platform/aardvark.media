@@ -1,5 +1,7 @@
 ﻿namespace Aardvark.UI.Anewmation
 
+open Aardvark.Base
+
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module private Groups =
 
@@ -16,6 +18,15 @@ module private Groups =
         let ofDuration (d : Duration) =
             { Start = LocalTime.zero; End = LocalTime.max d}
 
+
+    /// Computes the duration scale for the group animation
+    let scale (duration : Duration) (animation : IAnimation<'Model>) =
+        let s = duration / animation.Duration
+
+        if isFinite s then s
+        else
+            Log.warn "[Animation] Cannot scale composite animation with duration %A" animation.Duration
+            1.0
 
     /// Applies the distance-time function of the animation to time stamps contained in the given action.
     let applyDistanceTime (action : Action) (animation : IAnimationInstance<'Model>) =

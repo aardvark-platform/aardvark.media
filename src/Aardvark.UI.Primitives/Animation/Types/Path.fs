@@ -91,10 +91,10 @@ and private Path<'Model, 'Value> =
         x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
 
     member x.Scale(duration) =
-        let s = duration / x.Duration
+        let s = x |> Groups.scale duration
 
         let scale (a : IAnimation<'Model, 'Value>) =
-            a.Scale(if isFinite s && not a.Duration.IsZero then a.Duration * s else duration)
+            a.Scale(a.Duration * s)
 
         { x with Members = PathMembers (x.Members.Data |> Array.map scale) }
 
