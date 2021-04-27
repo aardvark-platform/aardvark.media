@@ -75,7 +75,7 @@ module AnimationTimeExtensions =
         let duration (t : Duration) (animation : IAnimation<'Model, 'Value>) =
             animation.Scale t
 
-        /// Sets the duration (in ninutes) of the given animation.
+        /// Sets the duration (in minutes) of the given animation.
         let inline minutes (m : ^Minutes) (animation : IAnimation<'Model, 'Value>) =
             animation |> duration (Duration.ofMinutes m)
 
