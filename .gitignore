@@ -6,6 +6,7 @@ bin/Debug
 *.swp
 *.userprefs
 **/obj
+**/bin
 /packages
 !/packages/*.config
 /src/*.suo

@@ -100,6 +100,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01 - Inc", "Examples (dotne
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "24 - FileWatcher", "Scratch\24 - FileWatcher\24 - FileWatcher.fsproj", "{3938EED6-83AA-4E83-BFD5-81AA93CA0CE9}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - Animation", "Examples (dotnetcore)\26 - Animation\26 - Animation.fsproj", "{B3262CD0-006F-48BE-8D52-42B9188D5D68}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -282,6 +284,10 @@ Global
 		{3938EED6-83AA-4E83-BFD5-81AA93CA0CE9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3938EED6-83AA-4E83-BFD5-81AA93CA0CE9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3938EED6-83AA-4E83-BFD5-81AA93CA0CE9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B3262CD0-006F-48BE-8D52-42B9188D5D68}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B3262CD0-006F-48BE-8D52-42B9188D5D68}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B3262CD0-006F-48BE-8D52-42B9188D5D68}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B3262CD0-006F-48BE-8D52-42B9188D5D68}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -331,6 +337,7 @@ Global
 		{026ED91D-8F89-4E8D-AB60-30FCBBF83C50} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 		{DAF3EF9E-0BCD-4D47-95DB-0CBE123F8436} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 		{3938EED6-83AA-4E83-BFD5-81AA93CA0CE9} = {15625EF2-D2BB-40F3-9F94-3E101FFD3366}
+		{B3262CD0-006F-48BE-8D52-42B9188D5D68} = {731AC2C4-6C70-497F-BB7E-7417CF93A00B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {C5B5FEF4-03B1-4B3E-A31B-6ADDEC0A4259}
