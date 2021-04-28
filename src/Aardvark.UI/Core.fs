@@ -10,7 +10,6 @@ open FSharp.Data.Traceable
 open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Semantics
-open System.Reactive.Subjects
 
 
 type RenderControlConfig =

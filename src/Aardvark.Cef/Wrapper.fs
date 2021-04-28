@@ -836,7 +836,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     let messagePump = MessagePump()
     let transactor = MessagePump()
 
-    let eventSink = new System.Reactive.Subjects.Subject<Event>()
+    let eventSink = new Event<Event>()
     let lockObj = obj()
 
     let pending = ConcurrentDict<IPC.MessageToken, System.Threading.Tasks.TaskCompletionSource<IPC.Reply>>(Dict())
@@ -897,7 +897,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
     override x.OnProcessMessageReceived(browser : CefBrowser, frame : CefFrame, sourceProcess : CefProcessId, message : CefProcessMessage) =
         match IPC.tryGet<Event> message with
             | Some e ->
-                messagePump.Enqueue(fun () -> eventSink.OnNext e)
+                messagePump.Enqueue(fun () -> eventSink.Trigger e)
                 true
             | _ ->
                 match IPC.tryGet<IPC.Reply> message with
@@ -1025,7 +1025,7 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
         )
         //texture.ReadPixel(pos)
 
-    member x.Events = eventSink :> IObservable<_>
+    member x.Events = eventSink.Publish :> IObservable<_>
 
     member x.Texture = texture :> aval<ITexture>
     member x.Version = version :> aval<_>
