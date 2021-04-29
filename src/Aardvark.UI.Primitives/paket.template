@@ -8,3 +8,5 @@ description
     Aardvark is an open-source platform for visual computing, real-time graphics and visualization.
 excludeddependencies
     Adaptify.MSBuild
+dependencies
+    Adaptify.Core ~> LOCKEDVERSION
