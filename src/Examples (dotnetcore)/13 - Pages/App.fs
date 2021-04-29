@@ -104,7 +104,8 @@ let view (model : AdaptiveModel) =
                         br []
                         button [
                             onChooseFiles SetFiles
-                            clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoosefile', top.aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
+                            clientEvent "onclick" ("top.aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}).then(result => aardvark.processEvent('__ID__', 'onchoosefile', result.filePaths));"
+                            ) 
                         ] [text "open directory"]
                         button [style "position: absolute; bottom: 5px; left: 5px;"; clazz "ui small button"; onClick (fun _ -> CenterScene)] [text "Center Scene"]
                     ]

@@ -29,7 +29,7 @@ let view (model : AdaptiveModel) =
         ]
     let dependencies = 
         [ 
-            { kind = Script; name = "dragDrop"; url = "dragDrop.js" }
+            { kind = Script; name = "dragDrop"; url = "resources/dragDrop.js" }
         ]    
 
     require dependencies (

@@ -3,7 +3,6 @@
 open System
 open System.Net
 open System.Threading
-open System.Reactive.Disposables
 open Suave.CORS
 open Suave.Operators
 
@@ -35,7 +34,7 @@ module WebPart =
         let (_,s) = startWebServerAsync config index
         Async.Start s
 
-        Disposable.Create(fun () -> cts.Cancel())
+        { new IDisposable with member x.Dispose() = cts.Cancel() }
 
     /// starts the server on localhost (does not allow access from the network) asynchronously 
     /// and returns Disposable to stop the server again
@@ -52,4 +51,4 @@ module WebPart =
         let (_,s) = startWebServerAsync config index
         Async.Start s
 
-        Disposable.Create(fun () -> cts.Cancel())
+        { new IDisposable with member x.Dispose() = cts.Cancel() }

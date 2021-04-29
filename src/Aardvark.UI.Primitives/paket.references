@@ -8,6 +8,8 @@ Aardvark.Application
 Aardvark.SceneGraph
 Adaptify.MSBuild
 
+Aether
+
 FSharp.Core
 
 FsPickler

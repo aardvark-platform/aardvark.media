@@ -6,6 +6,7 @@ bin/Debug
 *.swp
 *.userprefs
 **/obj
+**/bin
 /packages
 !/packages/*.config
 /src/*.suo
@@ -22,8 +23,7 @@ bin/Debug
 /src/Scratch/03 - LinePicking/Model.g.fs
 *.domaincache
 *.g.fs
-/.vs/aardvark.media/v15/*.suo
-/.vs
+**/.vs
 /src/Scratch/11 - GeoJsonViewer/*.user
 /src/Scratch/17 - Serviced/17 - Serviced.fsproj.user
 /src/Scratch/17 - Serviced/Properties/PublishProfiles/FolderProfile.pubxml

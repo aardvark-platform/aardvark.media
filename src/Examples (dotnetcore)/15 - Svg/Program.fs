@@ -12,7 +12,7 @@ open Suave.Filters
 open Suave.Operators
 open Aardium
 
-type Self = Self
+type Resources = Resources
 
 [<EntryPoint; STAThread>]
 let main argv = 
@@ -39,9 +39,8 @@ let main argv =
         app |> App.start
 
     WebPart.startServer 4321 [ 
+        Reflection.assemblyWebPart typeof<Resources>.Assembly
         MutableApp.toWebPart' runtime false instance
-        prefix "/resources" >=> Reflection.assemblyWebPart (System.Reflection.Assembly.GetEntryAssembly())
-        //prefix "/resources" >=> Suave.Embedded.browse typeof<Self>.Assembly
     ] |> ignore
     
 

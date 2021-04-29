@@ -64,7 +64,6 @@ module ThreadPoolAdjustment =
 
 
 module MutableApp =
-    open System.Reactive.Subjects
     open Aardvark.UI.Internal.Updaters
     
     let private template = 

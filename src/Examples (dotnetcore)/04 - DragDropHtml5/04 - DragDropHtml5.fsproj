@@ -18,8 +18,8 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
-    <EmbeddedResource Include="dragDrop.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <EmbeddedResource Include="resources/dragDrop.js">
+      <LogicalName>resources/dragDrop.js</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
