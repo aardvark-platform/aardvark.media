@@ -1,3 +1,6 @@
+### 5.1.4
+- added Adaptify.Core to paket.template of aardvark.ui to fix missing references in applications
+
 ### 5.1.3
 - updated dependencies
 
