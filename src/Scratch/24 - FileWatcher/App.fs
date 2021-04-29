@@ -5,7 +5,6 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
 open Inc.Model
 open System.IO
 
@@ -54,7 +53,7 @@ let view (model : AdaptiveModel) =
     ]
 
 
-let app (send : Message -> unit) =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app (send : Message -> unit) =
     {
         unpersist = Unpersist.instance     
         threads = fun _ -> ThreadPool.empty 

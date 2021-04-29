@@ -5,7 +5,7 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Model
 
 type WrappedMessage =
@@ -78,7 +78,7 @@ let view (model : AdaptiveModel) =
             ]
 
             div [ style "display: flex; height: 40%" ] [
-                div [style "position: absolute" ] [
+                div [style "position: absolute; height: 40%" ] [
                     subApp' 
                         (fun _model _innermsg -> Seq.singleton Increment) 
                         (fun _model msg ->

@@ -12,18 +12,18 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Histogram.css">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Histogram.js">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
+    <EmbeddedResource Include="resources/Histogram.js">
+      <LogicalName>resources/Histogram.js</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources/Histogram.css">
+      <LogicalName>resources/Histogram.css</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />

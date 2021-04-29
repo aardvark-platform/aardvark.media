@@ -1,10 +1,11 @@
 ﻿namespace Aardvark.UI
 
+open System
 open System.Runtime.CompilerServices
 open Aardvark.Base
+open Aardvark.Base.Ag
 open Aardvark.Base.Geometry
-open Aardvark.Base.Rendering
-open Aardvark.Base.Geometry
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open FSharp.Data.Traceable
 open Aardvark.SceneGraph
@@ -65,10 +66,10 @@ type SceneEvent =
     member x.globalRay = x.evtRay
     member x.buttons = x.evtButtons
 
-type SceneHit = 
-    { 
+type SceneHit =
+    {
         event : SceneEvent
-        rayT  : float 
+        rayT  : float
     }
     member inline x.kind = x.event.kind
     member inline x.localRay = x.event.localRay
@@ -79,18 +80,18 @@ type SceneHit =
     member x.localPosition = x.localRay.Ray.Ray.GetPointOnRay x.rayT
 
 
-    
+
 
 
 module SgTools =
-   
+
     type ISceneHitProcessor =
         abstract member NeededEvents : aset<SceneEventKind>
 
     type ISceneHitProcessor<'a> =
         inherit ISceneHitProcessor
         abstract member Process : SceneHit -> bool * seq<'a>
-                            
+
 
     type IMessageProcessor<'a> =
         abstract member NeededEvents : aset<SceneEventKind>
@@ -119,7 +120,7 @@ module SgTools =
             type Processor<'a, 'b>(needed : aset<SceneEventKind>, mapping : 'a -> seq<'b>) =
                 member x.Map(newNeeded : aset<SceneEventKind>, f : 'x -> seq<'a>) =
                     Processor<'x, 'b>(ASet.union needed newNeeded, f >> Seq.collect mapping) :> IMessageProcessor<'x, 'b>
-        
+
                 member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * seq<'a>) =
                     let f x =
                         let cont, msgs = f x
@@ -134,12 +135,12 @@ module SgTools =
                     member x.NeededEvents = needed
                     member x.Map (newNeeded : aset<SceneEventKind>, f : 'x -> seq<'a>) = x.Map(newNeeded, f) :> IMessageProcessor<'x>
                     member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * seq<'a>) = x.MapHit(newNeeded, f) :> ISceneHitProcessor
-                    
+
                 interface IMessageProcessor<'a, 'b> with
                     member x.Process msg = x.Process msg
 
             type IdentityProcessor<'a> private() =
-                        
+
                 static let instance = IdentityProcessor<'a>() :> IMessageProcessor<'a>
 
                 static member Instance = instance
@@ -149,7 +150,7 @@ module SgTools =
 
                     member x.Map(needed : aset<SceneEventKind>, f : 'x -> seq<'a>) =
                         Processor<'x, 'a>(needed, f) :> IMessageProcessor<_>
-                        
+
                     member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * seq<'a>) =
                         HitProcessor<'a>(newNeeded, f) :> ISceneHitProcessor
 
@@ -157,8 +158,8 @@ module SgTools =
                         Seq.singleton msg
 
             type IgnoreProcessor<'a, 'b> private() =
-                
-                static let instance = IgnoreProcessor<'a, 'b>() 
+
+                static let instance = IgnoreProcessor<'a, 'b>()
 
                 static member Instance = instance
 
@@ -171,13 +172,13 @@ module SgTools =
 
                     member x.Map(newNeeded : aset<_>, f : 'x -> seq<'a>) =
                         IgnoreProcessor<'x, 'b>.Instance :> IMessageProcessor<'x>
-                        
+
                     member x.MapHit(newNeeded : aset<SceneEventKind>, f : SceneHit -> bool * seq<'a>) =
                         IgnoreProcessor<obj, 'b>.Instance :> ISceneHitProcessor
 
                     member x.Process(msg : 'a) =
                         Seq.empty
-                
+
 
         let id<'msg> = IdentityProcessor<'msg>.Instance
 
@@ -245,16 +246,76 @@ module Sg =
 [<AutoOpen>]
 module ``F# Sg`` =
 
-    module Sg =
-        let private box<'msg> (sg : ISg) =
+    module SgFSharpHelpers =
+
+        let box<'msg> (sg : ISg) =
             sg |> Sg.Adapter :> ISg<'msg>
 
-        let private unboxed (f : Aardvark.SceneGraph.ISg -> Aardvark.SceneGraph.ISg) (inner : ISg<'msg>) =
+        let unboxed (f : Aardvark.SceneGraph.ISg -> Aardvark.SceneGraph.ISg) (inner : ISg<'msg>) =
             match inner with
-                | :? Sg.Adapter<'msg> as a ->
-                    a.Child |> AVal.force |> f |> Sg.Adapter :> ISg<'msg>
-                | _ ->
-                    inner |> unbox |> f |> Sg.Adapter :> ISg<'msg>
+            | :? Sg.Adapter<'msg> as a ->
+                a.Child |> AVal.force |> f |> Sg.Adapter :> ISg<'msg>
+            | _ ->
+                inner |> unbox |> f |> Sg.Adapter :> ISg<'msg>
+
+    module Sg =
+        open SgFSharpHelpers
+
+        // ================================================================================================================
+        // Utilities
+        // ================================================================================================================
+
+        let noEvents (sg : ISg) : ISg<'msg> =
+            match sg with
+            | :? ISg<'msg> as isgMsg ->
+                Log.warn "[Media] superfluous use of Sg.noEvents, returning input as is"
+                isgMsg
+            | _ -> box sg
+
+        let toUntypedSg (sg : ISg<'msg>) = unbox sg
+
+        /// Combines the scene graphs in the given adaptive set.
+        let set (set : aset<ISg<'msg>>) =
+            Sg.Set<'msg>(set) :> ISg<'msg>
+
+        /// Combines the scene graphs in the given sequence.
+        let ofSeq (s : seq<#ISg<'msg>>) =
+            s |> Seq.cast<ISg<'msg>> |> ASet.ofSeq |> Sg.Set :> ISg<'msg>
+
+        /// Combines the scene graphs in the given list.
+        let ofList (l : list<#ISg<'msg>>) =
+            l |> ofSeq
+
+        /// Combines the scene graphs in the given array.
+        let ofArray (arr : array<#ISg<'msg>>) =
+            arr |> ofSeq
+
+        /// Combines two scene graphs.
+        let andAlso (sg : ISg<'msg>) (andSg : ISg<'msg>) =
+            ofList [sg; andSg]
+
+        /// Maps the messages of the scene according to the given function.
+        let map (f : 'a -> 'b) (a : ISg<'a>) : ISg<'b> =
+            Sg.MapApplicator<'a,'b>(f >> Seq.singleton,a) :> ISg<_>
+
+        /// Empty scene graph.
+        let empty<'msg> : ISg<'msg> = Sg.empty |> noEvents
+
+        /// Unwraps an adaptive scene graph.
+        let dynamic (s : aval<ISg<'msg>>) =
+            Sg.DynamicNode(AVal.map unbox s) |> box<'msg>
+
+        /// Toggles visibility of the scene.
+        let onOff (active : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.onOff active)
+
+        /// Inserts an arbitrary object as node in the scene graph.
+        let adapter (o : obj) =
+            Sg.adapter o |> box
+
+        // ================================================================================================================
+        // Picking
+        // ================================================================================================================
 
         let pickable (p : PickShape) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickable p)
@@ -265,247 +326,662 @@ module ``F# Sg`` =
         let pickBoundingBox (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pickBoundingBox)
 
-        let toUntypedSg (sg : ISg<'msg>) = unbox sg
+        let requirePicking (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.requirePicking)
 
-        let noEvents (sg : ISg) : ISg<'msg> =             
-           match sg with
-           | :? ISg<'msg> as isgMsg -> 
-             Log.warn "[Media:] superfluous use of Sg.noEvents, returning input as is"
-             isgMsg
-           | _ -> box sg
+        // ================================================================================================================
+        // Events
+        // ================================================================================================================
 
         let withEvents (events : list<SceneEventKind * (SceneHit -> bool * seq<'msg>)>) (sg : ISg<'msg>) =
             Sg.EventApplicator(AMap.ofList events, sg) :> ISg<'msg>
- 
+
         let withGlobalEvents (events : list<SceneEventKind * (SceneEvent -> seq<'msg>)>) (sg : ISg<'msg>) =
             Sg.GlobalEvent(AMap.ofList events, sg) :> ISg<'msg>
-
-        let uniform (name : string) (value : aval<'a>) (sg : ISg<'msg>) =
-           sg |> unboxed (Sg.uniform name value)
-        
-        let trafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
-           sg |> unboxed (Sg.trafo m)      
-       
-        let viewTrafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.viewTrafo m)
-
-        let projTrafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.projTrafo m)  
-
-        let scale (s : float) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.scale s)  
-
-        let translate (x : float) (y : float) (z : float) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.translate x y z)  
-
-        let transform (t : Trafo3d) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.transform t)
-
-        let camera (cam : aval<Camera>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.camera cam)
-
-        let surface (m : ISurface) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.surface m)
-
-        let set (set : aset<ISg<'msg>>) =
-            Sg.Set<'msg>(set) :> ISg<'msg>
-
-        let ofSeq (s : seq<#ISg<'msg>>) =
-            s |> Seq.cast<ISg<'msg>> |> ASet.ofSeq |> Sg.Set :> ISg<'msg>
-
-        let ofList (l : list<#ISg<'msg>>) =
-            l |> ofSeq
-
-        let ofArray (arr : array<#ISg<'msg>>) =
-            arr |> ofSeq
-       
-        let andAlso (sg : ISg<'msg>) (andSg : ISg<'msg>) = 
-            ofList [sg;andSg]
-
-        let map (f : 'a -> 'b) (a : ISg<'a>) : ISg<'b> =
-            Sg.MapApplicator<'a,'b>(f >> Seq.singleton,a) :> ISg<_>
-
-
-        let geometrySet mode attributeTypes (geometries : aset<_>) : ISg<'msg> =
-            Sg.GeometrySet(geometries,mode,attributeTypes) |> box
-
-        let dynamic (s : aval<ISg<'msg>>) = 
-            Sg.DynamicNode(AVal.map unbox s) |> box<'msg>
-
-        let onOff (active : aval<bool>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.onOff active)
-
-        let texture (sem : Symbol) (tex : aval<ITexture>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.texture sem tex)
-
-        let diffuseTexture (tex : aval<ITexture>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.diffuseTexture tex)
-
-        let diffuseTexture' (tex : ITexture) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.diffuseTexture' tex)
-
-        let diffuseFileTexture' (path : string) (wantMipMaps : bool) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.diffuseFileTexture' path wantMipMaps)
-
-        let fileTexture (sym : Symbol) (path : string) (wantMipMaps : bool) (sg : ISg<'msg>) = 
-            sg |> unboxed (Sg.fileTexture sym path wantMipMaps)
-
-        let scopeDependentTexture (sem : Symbol) (tex : Ag.Scope -> aval<ITexture>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.scopeDependentTexture sem tex)
-
-        let scopeDependentDiffuseTexture (tex : Ag.Scope -> aval<ITexture>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.scopeDependentDiffuseTexture tex)
-
-        let runtimeDependentTexture (sem : Symbol) (tex : IRuntime -> aval<ITexture>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.runtimeDependentTexture sem tex)
-
-        let runtimeDependentDiffuseTexture (tex : IRuntime -> aval<ITexture>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.runtimeDependentDiffuseTexture tex)
-
-        let samplerState (sem : Symbol) (state : aval<Option<SamplerStateDescription>>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.samplerState sem state)
-
-        let modifySamplerState (sem : Symbol) (modifier : aval<SamplerStateDescription -> SamplerStateDescription>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.modifySamplerState sem modifier)
-
-        let depthBias (m : aval<DepthBiasState>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.depthBias m)
-
-        let frontFace (m : aval<WindingOrder>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.frontFace m)
-
-        let fillMode (m : aval<FillMode>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.fillMode m)
-
-        let blendMode (m : aval<BlendMode>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.blendMode m)
-
-        let cullMode (m : aval<CullMode>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.cullMode m)
-
-        let stencilMode (m : aval<StencilMode>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.stencilMode m)
-
-        let depthTest (m : aval<DepthTestMode>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.depthTest m)
-
-        let writeBuffers' (buffers : Microsoft.FSharp.Collections.Set<Symbol>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.writeBuffers' buffers)
-
-        let writeBuffers (buffers : Option<Microsoft.FSharp.Collections.Set<Symbol>>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.writeBuffers buffers)
-
-        let colorMask (maskRgba : aval<bool * bool * bool * bool>) (sg : ISg<'msg>) =
-            let f sg = sg |> Sg.colorMask maskRgba :> ISg
-            sg |> unboxed f
-
-        let depthMask (depthWriteEnabled : aval<bool>) (sg : ISg<'msg>) =
-            let f sg = sg |> Sg.depthMask depthWriteEnabled :> ISg
-            sg |> unboxed f
-
-        let vertexAttribute<'a, 'msg when 'a : struct> (s : Symbol) (value : aval<'a[]>) (sg : ISg<'msg>) = 
-            sg |> unboxed (Sg.vertexAttribute s value)
-
-        let index<'a, 'msg when 'a : struct> (value : aval<'a[]>)  (sg : ISg<'msg>) = 
-            sg |> unboxed (Sg.index value)
-
-        let vertexAttribute'<'a, 'msg when 'a : struct> (s : Symbol) (value : 'a[]) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.vertexAttribute' s value)
-        
-        let index'<'a, 'msg when 'a : struct> (value : 'a[])  (sg : ISg<'msg>) = 
-            sg |> unboxed (Sg.index' value)
-
-        let vertexBuffer (s : Symbol) (view : BufferView) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.vertexBuffer s view)
-
-        let vertexBufferValue (s : Symbol) (value : aval<V4f>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.vertexBufferValue s value)
-
-        let draw (mode : IndexedGeometryMode) : ISg<'msg> =
-            Sg.draw mode |> box
-
-        let render (mode : IndexedGeometryMode) (call : DrawCallInfo) : ISg<'msg> =
-            Sg.render mode call |> box
-
-        let ofIndexedGeometry (g : IndexedGeometry) : ISg<'msg> =
-            Sg.ofIndexedGeometry g |> box
-
-        let ofIndexedGeometryInterleaved (attributes : list<Symbol>) (g : IndexedGeometry) : ISg<'msg> =
-            Sg.ofIndexedGeometryInterleaved attributes g |> box
-
-        let instancedGeometry (trafos : aval<Trafo3d[]>) (g : IndexedGeometry) : ISg<'msg> =
-            Sg.instancedGeometry trafos g |> box
-
-        let pass (pass : RenderPass) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.pass pass)
-
-        let normalizeToAdaptive (box : Box3d) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.normalizeToAdaptive box)
-
-        let normalizeTo (box : Box3d) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.normalizeTo box)
-
-        let normalize (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.normalize)
-
-        let normalizeAdaptive (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.normalizeAdaptive)
-
-        let effect e (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.effect e)
-
-        let adapter (o : obj) : ISg<'msg> =
-            Sg.adapter o |> box
-
 
         module Incremental =
             let withEvents (events : amap<SceneEventKind, SceneHit -> bool * seq<'msg>>) (sg : ISg<'msg>) =
                 Sg.EventApplicator(events, sg) :> ISg<'msg>
- 
+
             let withGlobalEvents (events : amap<SceneEventKind, (SceneEvent -> seq<'msg>)>) (sg : ISg<'msg>) =
                 Sg.GlobalEvent(events, sg) :> ISg<'msg>
 
-                
+        // ================================================================================================================
+        // Uniforms & Textures
+        // ================================================================================================================
+
+        /// Sets the uniform with the given name to the given value.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        let inline uniform (name : ^Name) (value : aval<'Value>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.uniform name value)
+
+        /// Sets the uniform with the given name to the given value.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        let inline uniform' (name : ^Name) (value : 'Value) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.uniform' name value)
+
+
+        /// Sets the given texture to the slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline texture (name : ^Name) (tex : aval<'Texture>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.texture name tex)
+
+        /// Sets the given texture to the slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline texture' (name : ^Name) (tex : ITexture) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.texture' name tex)
+
+
+        /// Sets the given diffuse texture.
+        let diffuseTexture (tex : aval<#ITexture>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.diffuseTexture tex)
+
+        /// Sets the given diffuse texture.
+        let diffuseTexture' (tex : ITexture) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.diffuseTexture' tex)
+
+
+        /// Loads and sets the given texture file to the slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline fileTexture (name : ^Name) (path : string) (wantMipMaps : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.fileTexture name path wantMipMaps)
+
+        /// Loads and sets the given diffuse texture file.
+        let diffuseFileTexture (path : string) (wantMipMaps : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.diffuseFileTexture path wantMipMaps)
+
+
+        /// Sets the given scope-dependent texture to the slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline scopeDependentTexture (name : ^Name) (tex : Scope -> aval<ITexture>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scopeDependentTexture name tex)
+
+        /// Sets the given scope-dependent diffuse texture.
+        let scopeDependentDiffuseTexture (tex : Scope -> aval<ITexture>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scopeDependentDiffuseTexture tex)
+
+
+        /// Sets the given runtime-dependent texture to the slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline runtimeDependentTexture (name : ^Name) (tex : IRuntime -> aval<ITexture>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.runtimeDependentTexture name tex)
+
+        /// Sets the given runtime-dependent diffuse texture.
+        let runtimeDependentDiffuseTexture(tex : IRuntime -> aval<ITexture>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.runtimeDependentDiffuseTexture tex)
+
+
+        /// Sets the sampler state for the texture slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline samplerState (name : ^Name) (state : aval<SamplerState option>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.samplerState name state)
+
+        /// Sets the sampler state for the texture slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline samplerState' (name : ^Name) (state : Option<SamplerState>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.samplerState' name state)
+
+
+        /// Modifies the sampler state for the texture slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline modifySamplerState (name : ^Name) (modifier : aval<SamplerState -> SamplerState>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.modifySamplerState name modifier)
+
+        /// Modifies the sampler state for the texture slot with the given name.
+        /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
+        let inline modifySamplerState' (name : ^Name) (modifier : SamplerState -> SamplerState) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.modifySamplerState' name modifier)
+
+        // ================================================================================================================
+        // Trafos
+        // ================================================================================================================
+
+        /// Sets the model transformation.
+        let trafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.trafo m)
+
+        /// Sets the model transformation.
+        let trafo' (m : Trafo3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.trafo' m)
+
+        /// Sets the model transformation.
+        let transform (m : Trafo3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.transform m)
+
+
+        /// Sets the view transformation.
+        let viewTrafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.viewTrafo m)
+
+        /// Sets the view transformation.
+        let viewTrafo' (m : Trafo3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.viewTrafo' m)
+
+
+        /// Sets the projection transformation.
+        let projTrafo (m : aval<Trafo3d>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.projTrafo m)
+
+        /// Sets the projection transformation.
+        let projTrafo' (m : Trafo3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.projTrafo' m)
+
+
+        /// Sets the view and projection transformations according to the given camera.
+        let camera (cam : aval<Camera>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.camera cam)
+
+        /// Sets the view and projection transformations according to the given camera.
+        let camera' (cam : Camera) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.camera' cam)
+
+
+        /// Scales the scene by the given scaling factors.
+        let scaling (s : aval<V3d>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scaling s)
+
+        /// Scales the scene by the given scaling factors.
+        let scaling' (s : V3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scaling' s)
+
+        /// Scales the scene by a uniform factor.
+        let scale (s : float) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scale s)
+
+
+        /// Translates the scene by the given vector.
+        let translation (v : aval<V3d>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.translation v)
+
+        /// Translates the scene by the given vector.
+        let translation' (v : V3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.translation' v)
+
+        /// Translates the scene by the given vector.
+        let translate (x : float) (y : float) (z : float) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.translate x y z)
+
+
+        /// Rotates the scene by the given Euler angles.
+        let rotate (rollInRadians : float) (pitchInRadians : float) (yawInRadians : float) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.rotate rollInRadians pitchInRadians yawInRadians)
+
+        // ================================================================================================================
+        // Blending
+        // ================================================================================================================
+
+        /// Sets the global blend mode for all color attachments.
+        let blendMode (mode : aval<BlendMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.blendMode mode)
+
+        /// Sets the global blend mode for all color attachments.
+        let blendMode' (mode : BlendMode) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.blendMode' mode)
+
+
+        /// Sets the blend modes for the given color attachments (overriding the global blend mode).
+        let blendModes (modes : aval<Map<Symbol, BlendMode>>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.blendModes modes)
+
+        /// Sets the blend modes for the given color attachments (overriding the global blend mode).
+        let blendModes' (modes : Map<Symbol, BlendMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.blendModes' modes)
+
+
+        /// Sets the blend constant color.
+        /// The color must be compatible with C4f.
+        let inline blendConstant (color : aval< ^Value>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.blendConstant color)
+
+        /// Sets the blend constant color.
+        /// The color must be compatible with C4f.
+        let inline blendConstant' (color : ^Value) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.blendConstant' color)
+
+
+        /// Sets the global color write mask for all color attachments.
+        let colorMask (mask : aval<ColorMask>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorMask mask)
+
+        /// Sets the global color write mask for all color attachments.
+        let colorMask' (mask : ColorMask) (sg : ISg<'msg>)  =
+            sg |> unboxed (Sg.colorMask' mask)
+
+
+        /// Sets the color write masks for the given color attachments (overriding the global mask).
+        let colorMasks (masks : aval<Map<Symbol, ColorMask>>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorMasks masks)
+
+        /// Sets the color write masks for the given color attachments (overriding the global mask).
+        let colorMasks' (masks : Map<Symbol, ColorMask>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorMasks' masks)
+
+
+        /// Sets the color write mask for all color attachments to either ColorMask.None or ColorMask.All.
+        let colorWrite (enabled : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorWrite enabled)
+
+        /// Sets the color write mask for all color attachments to either ColorMask.None or ColorMask.All.
+        let colorWrite' (enabled : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorWrite' enabled)
+
+
+        /// Sets the color write masks for the given color attachments to either
+        /// ColorMask.None or ColorMask.All (overriding the global mask).
+        let colorWrites (enabled : aval<Map<Symbol, bool>>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorWrites enabled)
+
+        /// Sets the color write masks for the given color attachments to either
+        /// ColorMask.None or ColorMask.All (overriding the global mask).
+        let colorWrites' (enabled : Map<Symbol, bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorWrites' enabled)
+
+
+        /// Restricts color output to the given attachments.
+        let colorOutput (enabled : aval<Set<Symbol>>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorOutput enabled)
+
+        /// Restricts color output to the given attachments.
+        let colorOutput' (enabled : Set<Symbol>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorOutput' enabled)
+
+        // ================================================================================================================
+        // Depth
+        // ================================================================================================================
+
+        /// Sets the depth test.
+        let depthTest (test : aval<DepthTest>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.depthTest test)
+
+        /// Sets the depth test.
+        let depthTest' (test : DepthTest) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.depthTest' test)
+
+
+        /// Enables or disables depth writing.
+        let depthWrite (depthWriteEnabled : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.depthWrite depthWriteEnabled)
+
+        /// Enables or disables depth writing.
+        let depthWrite' (depthWriteEnabled : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.depthWrite' depthWriteEnabled)
+
+
+        /// Sets the depth bias.
+        let depthBias (bias : aval<DepthBias>) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.depthBias bias)
+
+        /// Sets the depth bias.
+        let depthBias' (bias : DepthBias) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.depthBias' bias)
+
+
+        /// Enables or disables depth clamping.
+        let depthClamp (clamp : aval<bool>) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.depthClamp clamp)
+
+        /// Enables or disables depth clamping.
+        let depthClamp' (clamp : bool) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.depthClamp' clamp)
+
+        // ================================================================================================================
+        // Stencil
+        // ================================================================================================================
+
+        /// Sets the stencil mode for front-facing polygons.
+        let stencilModeFront (mode : aval<StencilMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilModeFront mode)
+
+        /// Sets the stencil mode for front-facing polygons.
+        let stencilModeFront' (mode : StencilMode) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilModeFront' mode)
+
+
+        /// Sets the stencil write mask for front-facing polygons.
+        let stencilWriteMaskFront (mask : aval<StencilMask>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMaskFront mask)
+
+        /// Sets the stencil write mask for front-facing polygons.
+        let stencilWriteMaskFront' (mask : StencilMask) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMaskFront' mask)
+
+
+        /// Enables or disables stencil write for front-facing polygons.
+        let stencilWriteFront (enabled : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteFront enabled)
+
+        /// Enables or disables stencil write for front-facing polygons.
+        let stencilWriteFront' (enabled : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteFront' enabled)
+
+
+        /// Sets the stencil mode for back-facing polygons.
+        let stencilModeBack (mode : aval<StencilMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilModeBack mode)
+
+        /// Sets the stencil mode for back-facing polygons.
+        let stencilModeBack' (mode : StencilMode) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilModeBack' mode)
+
+
+        /// Sets the stencil write mask for back-facing polygons.
+        let stencilWriteMaskBack (mask : aval<StencilMask>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMaskBack mask)
+
+        /// Sets the stencil write mask for back-facing polygons.
+        let stencilWriteMaskBack' (mask : StencilMask) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMaskBack' mask)
+
+
+        /// Enables or disables stencil write for back-facing polygons.
+        let stencilWriteBack (enabled : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteBack enabled)
+
+        /// Enables or disables stencil write for back-facing polygons.
+        let stencilWriteBack' (enabled : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteBack' enabled)
+
+
+        /// Sets separate stencil modes for front- and back-facing polygons.
+        let stencilModes (front : aval<StencilMode>) (back : aval<StencilMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilModes front back)
+
+        /// Sets separate stencil modes for front- and back-facing polygons.
+        let stencilModes' (front : StencilMode) (back : StencilMode) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilModes' front back)
+
+
+        /// Sets separate stencil write masks for front- and back-facing polygons.
+        let stencilWriteMasks (front : aval<StencilMask>) (back : aval<StencilMask>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMasks front back)
+
+        /// Sets separate stencil write masks for front- and back-facing polygons.
+        let stencilWriteMasks' (front : StencilMask) (back : StencilMask) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMasks' front back)
+
+
+        /// Enables or disables stencil write for front- and back-facing polygons.
+        let stencilWrites (front : aval<bool>) (back : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWrites front back)
+
+        /// Enables or disables stencil write for front- and back-facing polygons.
+        let stencilWrites' (front : bool) (back : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWrites' front back)
+
+
+        /// Sets the stencil mode.
+        let stencilMode (mode : aval<StencilMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilMode mode)
+
+        /// Sets the stencil mode.
+        let stencilMode' (mode : StencilMode) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilMode' mode)
+
+
+        /// Sets the stencil write mask.
+        let stencilWriteMask (mask : aval<StencilMask>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMask mask)
+
+        /// Sets the stencil write mask.
+        let stencilWriteMask' (mask : StencilMask) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWriteMask' mask)
+
+
+        /// Enables or disables stencil write.
+        let stencilWrite (enabled : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWrite enabled)
+
+        /// Enables or disables stencil write.
+        let stencilWrite' (enabled : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.stencilWrite' enabled)
+
+        // ================================================================================================================
+        // Write buffers
+        // ================================================================================================================
+
+        /// Toggles color, depth and stencil writes according to the given set of symbols.
+        let writeBuffers (buffers : aval<Set<Symbol>>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.writeBuffers buffers)
+
+        /// Toggles color, depth and stencil writes according to the given set of symbols.
+        let writeBuffers' (buffers : Set<Symbol>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.writeBuffers' buffers)
+
+        // ================================================================================================================
+        // Rasterizer
+        // ================================================================================================================
+
+        /// Sets the cull mode.
+        let cullMode (mode : aval<CullMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.cullMode mode)
+
+        /// Sets the cull mode.
+        let cullMode' (mode : CullMode) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.cullMode' mode)
+
+
+        /// Sets the winding order of front faces.
+        let frontFace (order : aval<WindingOrder>) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.frontFace order)
+
+        /// Sets the winding order of front faces.
+        let frontFace' (order : WindingOrder) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.frontFace' order)
+
+
+        /// Sets the fill mode.
+        let fillMode (mode : aval<FillMode>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.fillMode mode)
+
+        /// Sets the fill mode.
+        let fillMode' (mode : FillMode) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.fillMode' mode)
+
+
+        /// Toggles multisampling for the scene.
+        let multisample (mode : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.multisample mode)
+
+        /// Toggles multisampling for the scene.
+        let multisample' (mode : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.multisample' mode)
+
+
+        /// Toggles conservative rasterization for the scene.
+        let conservativeRaster (mode : aval<bool>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.conservativeRaster mode)
+
+        /// Toggles conservative rasterization for the scene.
+        let conservativeRaster' (mode : bool) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.conservativeRaster' mode)
+
+        // ================================================================================================================
+        // Attributes & Indices
+        // ================================================================================================================
+
+        /// Provides a vertex attribute with the given name by supplying an array of values.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        let inline vertexAttribute (name : ^Name) (value : aval<'Value[]>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.vertexAttribute name value)
+
+        /// Provides a vertex attribute with the given name by supplying an array of values.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        let inline vertexAttribute' (name : ^Name) (value : 'Value[]) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.vertexAttribute' name value)
+
+        /// Provides a vertex attribute with the given name by supplying a BufferView.
+        /// The name can be a string or Symbol.
+        let inline vertexBuffer (name : ^Name) (view : BufferView) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.vertexBuffer name view)
+
+        /// Provides a vertex attribute with the given name by supplying an untyped array.
+        /// The name can be a string or Symbol.
+        let inline vertexArray (name : ^Name) (value : System.Array) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.vertexArray name value)
+
+        /// Provides a vertex attribute with the given name by supplying a single value.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        /// The value has to be compatible with V4f.
+        let inline vertexBufferValue (name : ^Name) (value : aval< ^Value>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.vertexBufferValue name value)
+
+        /// Provides a vertex attribute with the given name by supplying a single value.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        /// The value has to be compatible with V4f.
+        let inline vertexBufferValue' (name : ^Name) (value : ^Value) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.vertexBufferValue' name value)
+
+
+        /// Provides an instance attribute with the given name by supplying an array of values.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        let inline instanceAttribute (name : ^Name) (value : aval<'Value[]>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.instanceAttribute name value)
+
+        /// Provides an instance attribute with the given name by supplying an array of values.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        let inline instanceAttribute' (name : ^Name) (value : 'Value[]) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.instanceAttribute' name value)
+
+        /// Provides an index attribute with the given name by supplying a BufferView.
+        /// The name can be a string or Symbol.
+        let inline instanceBuffer (name : ^Name) (view : BufferView) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.instanceBuffer name view)
+
+        /// Provides an index attribute with the given name by supplying an untyped array.
+        /// The name can be a string or Symbol.
+        let inline instanceArray (name : ^Name) (value : System.Array) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.instanceArray name value)
+
+        /// Provides a instance attribute with the given name by supplying a single value.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        /// The value has to be compatible with V4f.
+        let inline instanceBufferValue (name : ^Name) (value : aval< ^Value>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.instanceBufferValue name value)
+
+        /// Provides a instance attribute with the given name by supplying a single value.
+        /// The name can be a string, Symbol, or TypedSymbol.
+        /// The value has to be compatible with V4f.
+        let inline instanceBufferValue' (name : ^Name) (value : ^Value) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.instanceBufferValue' name value)
+
+
+        /// Provides the given vertex indices.
+        let index<'msg, 'Value when 'Value : struct> (value : aval<'Value[]>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.index value)
+
+        /// Provides the given vertex indices.
+        let index'<'msg, 'Value when 'Value : struct> (value : 'Value[]) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.index' value)
+
+        /// Provides vertex indices by supplying a BufferView.
+        let indexBuffer (view : BufferView) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.indexBuffer view)
+
+         /// Provides vertex indices by supplying an untyped array.
+        let indexArray (value : System.Array) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.indexArray value)
+
+        // ================================================================================================================
+        // Drawing
+        // ================================================================================================================
+
+        /// Applies the given effects to the scene.
+        let effect (e : seq<FShadeEffect>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.effect e)
+
+        /// Applies the given surface to the scene.
+        let surface (m : ISurface) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.surface m)
+
+        /// Applies the given render pass.
+        let pass (pass : RenderPass) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.pass pass)
+
+        /// Draws an adaptive set of indexed geometries.
+        let geometrySet (mode : IndexedGeometryMode) (attributeTypes : Map<Symbol, Type>) (geometries : aset<IndexedGeometry>) =
+            Sg.GeometrySet(geometries, mode, attributeTypes) |> box
+
+        /// Creates a single draw call for the given geometry mode.
+        let draw (mode : IndexedGeometryMode) =
+            Sg.draw mode |> box
+
+        /// Supplies the given draw call with the given geometry mode.
+        let render (mode : IndexedGeometryMode) (call : DrawCallInfo) =
+            Sg.render mode call |> box
+
+        /// Supplies the draw calls in the given indirect buffer with the given geometry mode.
+        let indirectDraw (mode : IndexedGeometryMode) (buffer : aval<IndirectBuffer>) =
+            Sg.indirectDraw mode buffer |> box
+
+        /// Creates a draw call from the given indexed geometry.
+        let ofIndexedGeometry (g : IndexedGeometry) =
+            Sg.ofIndexedGeometry g |> box
+
+        /// Creates a draw call from the given indexed geometry, using an interleaved buffer
+        /// for the vertex attributes.
+        let ofIndexedGeometryInterleaved (attributes : list<Symbol>) (g : IndexedGeometry) =
+            Sg.ofIndexedGeometryInterleaved attributes g |> box
+
+        /// Creates a draw call, supplying the given transformations as per-instance attributes with
+        /// name DefaultSemantic.InstanceTrafo.
+        let instancedGeometry (trafos : aval<Trafo3d[]>) (g : IndexedGeometry) =
+            Sg.instancedGeometry trafos g |> box
+
+        // ================================================================================================================
+        // Bounding boxes
+        // ================================================================================================================
+
+        /// Adaptively transforms the scene so its bounding box aligns with the given box.
+        let normalizeToAdaptive (box : Box3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.normalizeToAdaptive box)
+
+        /// Transforms the scene so its bounding box aligns with the given box.
+        let normalizeTo (box : Box3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.normalizeTo box)
+
+        /// Adaptively transforms the scene so its bounding box spans from -1 to 1 in all dimensions.
+        let normalizeAdaptive (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.normalizeAdaptive)
+
+        /// Transforms the scene so its bounding box spans from -1 to 1 in all dimensions.
+        let normalize (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.normalize)
+
 [<AutoOpen>]
 module FShadeSceneGraph =
-
-    open Aardvark.SceneGraph
-    open Aardvark.Base
-    open FSharp.Data.Adaptive
-    open Aardvark.Base.Rendering
-
 
     type SgEffectBuilder<'a>() =
         inherit EffectBuilder()
 
         member x.Run(f : unit -> list<FShadeEffect>) =
-            let surface = 
-                f() 
+            let surface =
+                f()
 
-            fun (sg : ISg<'a>) -> ``F# Sg``.Sg.effect surface sg
+            fun (sg : ISg<'a>) -> Sg.effect surface sg
 
     module Sg =
+        /// Applies the given effects to the scene.
         let shader<'a> = SgEffectBuilder<'a>()
 
 [<AutoOpen>]
 module ``Sg Events`` =
-    
+
     module Sg =
         let private simple (kind : SceneEventKind) (f : SceneHit -> 'msg) =
             kind, fun evt -> false, Seq.delay (fun () -> Seq.singleton (f evt))
 
         let onClick (f : V3d -> 'msg) =
             simple SceneEventKind.Click (fun (evt : SceneHit) -> f evt.globalPosition)
-            
+
         let onDoubleClick (f : V3d -> 'msg) =
             simple SceneEventKind.DoubleClick (fun (evt : SceneHit) -> f evt.globalPosition)
-            
+
         let onMouseDown (f : MouseButtons -> V3d -> 'msg) =
             simple SceneEventKind.Down (fun (evt : SceneHit) -> f evt.buttons evt.globalPosition)
-        
+
         let onMouseDownEvt (f : SceneHit -> 'msg) =
             simple SceneEventKind.Down (fun (evt : SceneHit) -> f evt)
-            
+
         let onMouseMove (f : V3d -> 'msg) =
             simple SceneEventKind.Move (fun (evt : SceneHit) -> f evt.globalPosition)
 
@@ -517,7 +993,7 @@ module ``Sg Events`` =
 
         let onEnter (f : V3d -> 'msg) =
             simple SceneEventKind.Enter (fun (evt : SceneHit) -> f evt.globalPosition)
-            
+
         let onLeave (f : unit -> 'msg) =
             simple SceneEventKind.Leave (fun (evt : SceneHit) -> f ())
 
@@ -529,14 +1005,12 @@ module ``Sg Events`` =
         let onMouseUp (f : SceneEvent -> 'msg) =
             SceneEventKind.Up, f >> Seq.singleton
 
-open Aardvark.Base.Ag
-
 type PickTree<'msg>(sg : ISg<'msg>) =
     let objects : aset<PickObject> = sg?PickObjects(Ag.Scope.Root)
     let bvh = BvhTree.ofASet PickObject.bounds objects
 
     let needed = //ASet.ofList [ SceneEventKind.Click; SceneEventKind.DoubleClick; SceneEventKind.Down; SceneEventKind.Up; SceneEventKind.Move]
-        objects |> ASet.collect (fun o -> 
+        objects |> ASet.collect (fun o ->
             match o.Scope.TryGetInherited "PickProcessor" with
                 | Some (:? SgTools.ISceneHitProcessor<'msg> as proc) ->
                     proc.NeededEvents
@@ -544,21 +1018,21 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                     ASet.empty
         )
 
-   
+
     let mutable last = None
     let entered = System.Collections.Generic.HashSet<_>()
 
     static let intersectLeaf (kind : SceneEventKind) (part : RayPart) (p : PickObject) =
         let pickable = p.Pickable |> AVal.force
         match Pickable.intersect part pickable with
-            | Some t -> 
+            | Some t ->
                 let pt = part.Ray.Ray.GetPointOnRay t
                 match p.Scope.TryGetInherited "PickProcessor" with
                     | Some (:? SgTools.ISceneHitProcessor<'msg> as proc) ->
                         Some <| RayHit(t, proc)
                     | _ ->
                         None
-            | None -> 
+            | None ->
                 None
 
     member private x.Perform (evt : SceneEvent, bvh : BvhTree<PickObject>, seen : HashSet<SgTools.ISceneHitProcessor<'msg>>) =
@@ -578,21 +1052,21 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                     let cont, msgs =
                         proc.Process { event = evt; rayT = hit.T }
 
-                    // rethink this stuff 
+                    // rethink this stuff
 
                     let cc, msgs =
                         if Some proc <> last && contEnter then
                             let l = last
-                            let cc,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T } 
+                            let cc,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T }
                             entered.Add proc |> ignore
                             if not cc then
                                 //last <- Some proc
                                 false, seq {
                                     match l with
-                                        | Some l -> 
-                                            let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = hit.T } 
+                                        | Some l ->
+                                            let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = hit.T }
                                             yield! leaves
-                                        | None -> 
+                                        | None ->
                                             ()
 
                                     yield! enters
@@ -601,11 +1075,11 @@ type PickTree<'msg>(sg : ISg<'msg>) =
                             else
                                 //last <- Some proc
                                 true, msgs
-                        else 
+                        else
                             entered.Add proc |> ignore
                             true, msgs
 
-                    
+
                     if cont then
                         let consumed, rest = run evt (HashSet.add proc seen) cc
                         consumed, Seq.append msgs rest
@@ -614,26 +1088,26 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 
             else
                  match last with
-                    | Some l when contEnter -> 
+                    | Some l when contEnter ->
                         if entered.Contains l then false, Seq.empty
                         else
                             last <- None
-                            let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
+                            let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 }
                             false, leaves
-                    | _ -> 
+                    | _ ->
                         false, Seq.empty
-                
+
         let oldEntered = entered |> Aardvark.Base.HashSet.toList
         entered.Clear()
 
         let c, msgs = run evt HashSet.empty true
-        
-        let leaves = 
+
+        let leaves =
             seq {
                 for o in oldEntered do
                     if entered.Contains o then ()
-                    else 
-                        let _,msgs =  o.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
+                    else
+                        let _,msgs =  o.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 }
                         yield! msgs
             }
         c, seq { yield! leaves; yield! msgs }
@@ -654,16 +1128,16 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 //
 //                let msgs =
 //                    if Some proc <> last && topLevel then
-//                        let _,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T } 
+//                        let _,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T }
 //                        match last with
-//                            | Some l -> 
-//                                let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = hit.T } 
+//                            | Some l ->
+//                                let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = hit.T }
 //                                last <- Some proc
 //                                leaves @ enters @ msgs
-//                            | None -> 
+//                            | None ->
 //                                last <- Some proc
 //                                enters @ msgs
-//                    else 
+//                    else
 //                        msgs
 //
 //                if cont then
@@ -673,13 +1147,13 @@ type PickTree<'msg>(sg : ISg<'msg>) =
 //                else
 //                    true, msgs
 //
-//            | None -> 
+//            | None ->
 //                 match last with
-//                    | Some l when topLevel -> 
+//                    | Some l when topLevel ->
 //                        last <- None
-//                        let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 } 
+//                        let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 }
 //                        false, leaves
-//                    | _ -> 
+//                    | _ ->
 //                        false, []
 
     member x.Needed = needed
@@ -687,7 +1161,7 @@ type PickTree<'msg>(sg : ISg<'msg>) =
     member x.Perform(evt : SceneEvent) =
         let bvh = bvh |> AVal.force
         x.Perform(evt,bvh,HashSet.empty)
-        
+
     member x.Dispose() =
         //bvh.Dispose()
         ()
@@ -703,6 +1177,7 @@ namespace Aardvark.UI.Semantics
 open Aardvark.UI
 open Aardvark.UI.SgTools
 open Aardvark.Base
+open Aardvark.Rendering
 open Aardvark.Base.Geometry
 open FSharp.Data.Adaptive
 open Aardvark.Base.Ag
@@ -725,7 +1200,7 @@ module ``Message Semantics`` =
         member x.CompileRender(fbo : IFramebufferSignature, sg : ISg<'msg>) =
             x.CompileRender(fbo, unbox<Aardvark.SceneGraph.ISg> sg)
 
-    type GlobalPicks<'msg> = amap<SceneEventKind, SceneEvent -> seq<'msg>> 
+    type GlobalPicks<'msg> = amap<SceneEventKind, SceneEvent -> seq<'msg>>
 
     type ISg<'msg> with
         member x.RenderObjects(scope : Ag.Scope) : aset<IRenderObject> = x?RenderObjects(scope)
@@ -742,8 +1217,8 @@ module ``Message Semantics`` =
     //let rec allMsgSgs (s : ISg) : aset<ISg<'msg>> =
     //    match s with
     //        | :? ISg<'msg> as s -> ASet.ofList [s]
-    //        | :? IApplicator as a -> 
-    //            a.Child |> ASet.bind (fun c -> 
+    //        | :? IApplicator as a ->
+    //            a.Child |> ASet.bind (fun c ->
     //                let ctx = Ag.getContext()
     //                Ag.useScope (ctx.GetChildScope a) (fun () ->
     //                    allMsgSgs c
@@ -751,21 +1226,21 @@ module ``Message Semantics`` =
     //            )
     //        | :? IGroup as g -> g.Children |> ASet.collect allMsgSgs
     //        | _ -> ASet.empty
-                
+
     let rec collectMsgSgs (mapping : ISg<'msg> -> aset<'a>) (s : ISg) : aset<'a> =
         match s with
-            | :? ISg<'msg> as s -> 
+            | :? ISg<'msg> as s ->
                 mapping s
 
-            | :? IApplicator as a -> 
+            | :? IApplicator as a ->
                 a.Child |> ASet.bind (collectMsgSgs mapping)
 
-            | :? IGroup as g -> 
+            | :? IGroup as g ->
                 g.Children |> ASet.collect (collectMsgSgs mapping)
 
-            | _ -> 
+            | _ ->
                 ASet.empty
-                     
+
 
     [<Rule>]
     type StandardSems() =
@@ -808,8 +1283,8 @@ module ``Message Semantics`` =
                 else
                     None
 
-            g.Children 
-            |> ASet.mapA (fun c -> c.GlobalBoundingBox(scope)) 
+            g.Children
+            |> ASet.mapA (fun c -> c.GlobalBoundingBox(scope))
             |> ASet.foldHalfGroup add trySub Box3d.Invalid
 
 //        member x.LocalBoundingBox(app : IApplicator<'msg>) =
@@ -826,16 +1301,16 @@ module ``Message Semantics`` =
                 else
                     None
 
-            g.Children 
-            |> ASet.mapA (fun c -> c.LocalBoundingBox(scope)) 
+            g.Children
+            |> ASet.mapA (fun c -> c.LocalBoundingBox(scope))
             |> ASet.foldHalfGroup add trySub Box3d.Invalid
 
-        
+
 
         member x.GlobalPicks(g : IGroup<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
              // usuperfast
-             
-             g.Children 
+
+             g.Children
                 |> ASet.collect (fun g -> g.GlobalPicks(scope) |> AMap.toASet)
                 |> AMap.ofASet
                 |> AMap.map (fun k vs e ->
@@ -847,10 +1322,10 @@ module ``Message Semantics`` =
 
         member x.GlobalPicks(a : IApplicator<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
             a.Child.GlobalPicks(scope)
-            
-            
+
+
         member x.GlobalPicks(a : Sg.Adapter<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
-            a.Child 
+            a.Child
             |> ASet.bind (collectMsgSgs (fun g -> g.GlobalPicks(scope) |> AMap.toASet))
             |> AMap.ofASet
             |> AMap.map (fun k vs e ->
@@ -859,7 +1334,7 @@ module ``Message Semantics`` =
                         yield! v e
                 }
             )
-          
+
 
         member x.GlobalPicks(g : Sg.GlobalEvent<'msg>, scope : Ag.Scope) : GlobalPicks<'msg> =
             let b = g.Child.GlobalPicks(scope)
@@ -868,7 +1343,7 @@ module ``Message Semantics`` =
             let own = g.Events |> AMap.map (fun k l e -> l { e with evtTrafo = trafo })
             AMap.unionWith (fun k l r -> fun e -> Seq.append (l e) (r e)) own b
 
-            
+
         member x.GlobalPicks(other : ISg<'msg>, scope : Ag.Scope) : GlobalPicks<'msg>  =
             AMap.empty
 
@@ -882,7 +1357,7 @@ module ``Message Semantics`` =
 
         member x.MessageProcessor(root : Root<ISg<'msg>>, scope : Ag.Scope) =
             root.Child?MessageProcessor <- MessageProcessor.id<'msg>
-            
+
         member x.MessageProcessor(app : Sg.MapApplicator<'inner, 'outer>, scope : Ag.Scope) =
             let parent = scope.MessageProcessor()
             app.Child?MessageProcessor <- parent.Map(ASet.empty, app.Mapping)
@@ -893,19 +1368,19 @@ module ``Message Semantics`` =
         member x.PickProcessor(app : Sg.EventApplicator<'msg>, scope : Ag.Scope) =
             let msg = scope.MessageProcessor()
 
-    
-            let needed = 
+
+            let needed =
                 AMap.keys app.Events |> ASet.map (fun n ->
                     match n with
                         | SceneEventKind.Enter | SceneEventKind.Leave -> SceneEventKind.Move
                         | _ -> n
                 )
- 
+
             let trafo = scope.ModelTrafo
 
             let processor (hit : SceneHit) =
                 let evts = app.Events.Content |> AVal.force
-                let createArtificialMove = 
+                let createArtificialMove =
                     (HashMap.containsKey SceneEventKind.Enter evts || HashMap.containsKey SceneEventKind.Leave evts) &&
                     (not <| HashMap.containsKey SceneEventKind.Move evts)
                 let evts =

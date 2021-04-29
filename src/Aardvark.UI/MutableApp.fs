@@ -7,7 +7,8 @@ open System.Collections.Concurrent
 
 open Aardvark.Base
 open Aardvark.Base.Geometry
-open Aardvark.Base.Rendering
+open Aardvark.GPGPU
+open Aardvark.Rendering
 open Aardvark.SceneGraph
 open FSharp.Data.Adaptive
 open Aardvark.Application
@@ -63,7 +64,6 @@ module ThreadPoolAdjustment =
 
 
 module MutableApp =
-    open System.Reactive.Subjects
     open Aardvark.UI.Internal.Updaters
     
     let private template = 

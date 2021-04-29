@@ -29,7 +29,7 @@ type AardvarkRenderProcessHandler() =
         )
 
 
-    override x.OnProcessMessageReceived(browser, source, msg) =
+    override x.OnProcessMessageReceived(browser, frame, source, msg) =
         match IPC.tryReadProcessMessage<Response> msg with
             | Some response ->
                 match aardvarks.TryGetValue browser.Identifier with
@@ -38,4 +38,4 @@ type AardvarkRenderProcessHandler() =
                     | _ ->
                         true
             | _ ->
-                base.OnProcessMessageReceived(browser, source, msg)
+                base.OnProcessMessageReceived(browser, frame, source, msg)

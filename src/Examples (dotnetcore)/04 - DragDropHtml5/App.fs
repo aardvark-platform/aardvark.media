@@ -5,7 +5,7 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Model
 
 // media port of: https://www.w3schools.com/html/html5_draganddrop.asp
@@ -29,7 +29,7 @@ let view (model : AdaptiveModel) =
         ]
     let dependencies = 
         [ 
-            { kind = Script; name = "dragDrop"; url = "dragDrop.js" }
+            { kind = Script; name = "dragDrop"; url = "resources/dragDrop.js" }
         ]    
 
     require dependencies (

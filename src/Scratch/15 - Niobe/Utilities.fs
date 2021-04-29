@@ -3,6 +3,7 @@
 #nowarn "8989"
 
 open Aardvark.Base
+open Aardvark.Rendering
 
 module Serialization =    
     open System.IO

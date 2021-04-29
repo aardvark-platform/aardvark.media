@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI.Primitives
 
 open Aardvark.Base
+open Aardvark.Rendering
 open FSharp.Data.Adaptive
 open Aardvark.Application
 open Adaptify

@@ -1,7 +1,8 @@
 ﻿namespace Aardvark.UI.Animation
 
-open Aardvark.Base                 
-open FSharp.Data.Adaptive 
+open Aardvark.Base
+open Aardvark.Rendering
+open FSharp.Data.Adaptive
 open Adaptify
 
 type Time = float

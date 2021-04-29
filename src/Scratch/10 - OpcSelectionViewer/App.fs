@@ -6,7 +6,7 @@ open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Ag
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
 open Aardvark.SceneGraph.Opc

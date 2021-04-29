@@ -5,7 +5,7 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Model
 
 // port from: http://bl.ocks.org/nnattawat/8916402
@@ -27,8 +27,8 @@ let view (model : AdaptiveModel) =
     let dependencies = 
         [ 
             { kind = Script; name = "d3"; url = "http://d3js.org/d3.v3.min.js" }
-            { kind = Stylesheet; name = "histogramStyle"; url = "Histogram.css" }
-            { kind = Script; name = "histogramScript"; url = "Histogram.js" }
+            { kind = Stylesheet; name = "histogramStyle"; url = "resources/Histogram.css" }
+            { kind = Script; name = "histogramScript"; url = "resources/Histogram.js" }
         ]    
 
     let dataChannel = model.data.Channel

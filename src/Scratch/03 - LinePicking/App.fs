@@ -3,7 +3,7 @@
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 
 open Aardvark.SceneGraph
 
@@ -54,7 +54,7 @@ module App =
     let result =
       m.cylinders 
         |> Array.tryFind(fun x -> 
-            r.HitsCylinder(x, 0.0, 100.0, &hit))
+            r.Hits(x, 0.0, 100.0, &hit))
 
     result |> Option.map(fun x -> (x,hit))
     

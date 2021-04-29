@@ -1,6 +1,6 @@
 ﻿module RenderingParameters
 
-open Aardvark.Base.Rendering
+open Aardvark.Rendering
 open Aardvark.UI
 
 open RenderingParametersModel

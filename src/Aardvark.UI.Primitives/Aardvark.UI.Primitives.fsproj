@@ -4,6 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <GenerateLenses>True</GenerateLenses>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
@@ -21,8 +22,31 @@
     <Compile Include="TrafoControls\TranslationController.fs" />
     <Compile Include="TrafoControls\RotationController.fs" />
     <Compile Include="TrafoControls\ScaleController.fs" />
-    <Compile Include="Animation\Model.fs" />
-    <Compile Include="Animation\AnimationBase.fs" />
+    <Compile Include="Animation\Deprecated\Model.fs" />
+    <Compile Include="Animation\Deprecated\AnimationBase.fs" />
+    <Compile Include="Animation\Utilities\ValueCache.fs" />
+    <Compile Include="Animation\Utilities\ArrayQueue.fs" />
+    <Compile Include="Animation\Core\Time.fs" />
+    <Compile Include="Animation\Core\Interface.fs" />
+    <Compile Include="Animation\Timing\DistanceTimeFunction.fs" />
+    <Compile Include="Animation\Timing\Easing.fs" />
+    <Compile Include="Animation\State\StateMachine.fs" />
+    <Compile Include="Animation\State\Observable.fs" />
+    <Compile Include="Animation\State\Callbacks.fs" />
+    <Compile Include="Animation\Types\Animation.fs" />
+    <Compile Include="Animation\Types\Adapter.fs" />
+    <Compile Include="Animation\Types\Groups.fs" />
+    <Compile Include="Animation\Types\Concurrent.fs" />
+    <Compile Include="Animation\Types\Path.fs" />
+    <Compile Include="Animation\Types\Mapping.fs" />
+    <Compile Include="Animation\Types\Input.fs" />
+    <Compile Include="Animation\Primitives\Primitives.fs" />
+    <Compile Include="Animation\Primitives\Splines.fs" />
+    <Compile Include="Animation\Primitives\Camera.fs" />
+    <Compile Include="Animation\Animator\AnimatorSlot.fs" />
+    <Compile Include="Animation\Animator\AnimatorModel.fs" />
+    <Compile Include="Animation\Animator\AnimatorApp.fs" />
+    <Compile Include="Animation\Animator\Querying.fs" />
     <Compile Include="IntegrationHelpers.fs" />
     <Compile Include="TouchStick.fs" />
     <Compile Include="CameraModel.fs" />

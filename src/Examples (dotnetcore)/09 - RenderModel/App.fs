@@ -2,7 +2,7 @@ module App
 
 open Aardvark.Base             // math stuff such as V3d, Trafo3d
 open FSharp.Data.Adaptive // the incremental system (Mod et al) including domain type functionality
-open Aardvark.Base.Rendering   // basic rendering datastructures (such as CullMode)
+open Aardvark.Rendering   // basic rendering datastructures (such as CullMode)
 
 open Aardvark.UI            // the base infrastructure for elm style aardvark applications
 open Aardvark.UI.Primitives // for gui elements such as div, text, button but also camera controlers
@@ -45,7 +45,7 @@ let renderModel (model : aval<AdaptiveObjectCase>) =
             | AdaptiveSphereModel(center,radius) ->
                 let sphere = Sg.sphere 6 (AVal.constant C4b.White) radius 
                 // create unit sphere of given mod radius and translate adaptively
-                return Sg.translate' center sphere
+                return Sg.translation center sphere
             | AdaptiveBoxModel b -> 
                 return Sg.box (AVal.constant C4b.White) b //adaptively create box
     }
