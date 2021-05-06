@@ -22,8 +22,9 @@ let main argv =
         App.app |> App.start
 
     WebPart.startServer 4321 [ 
-        MutableApp.toWebPart' app.Runtime false instance
         Reflection.assemblyWebPart typeof<Resources>.Assembly
+        Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
+        MutableApp.toWebPart' app.Runtime false instance
     ] |> ignore
 
     Aardium.run {

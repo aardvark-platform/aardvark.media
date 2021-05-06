@@ -9,6 +9,7 @@ open Adaptify
 type Message = 
     | Generate
     | ChangeCount of Numeric.Action
+    | ChangeColor of ColorPicker.Action
 
 
 [<ModelType>]
@@ -16,4 +17,6 @@ type Model =
     {
         count : NumericInput
         data : list<float>
+
+        color : ColorInput
     }
