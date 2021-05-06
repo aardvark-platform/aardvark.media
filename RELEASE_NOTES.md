@@ -1,3 +1,6 @@
+### 5.1.5
+- color picker can optionally save previous picks
+
 ### 5.1.4
 - added Adaptify.Core to paket.template of aardvark.ui to fix missing references in applications
 
