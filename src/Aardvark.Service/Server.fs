@@ -1969,6 +1969,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                 )
                             )
 
+
+                            //if disposed = 1 then does not help of course
+                            //    Log.warn "skipping rendering due to disposed"
+
                             createInfo.server.rendered info
                 
                             continuousCount <- continuousCount + 1
@@ -1976,9 +1980,12 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                             continuousCount <- 0
 
                 )
-            with e -> 
-                // still a bug, shudown results in tranaction.commit with 0 object in the queue.
-                Log.warn "[Media, renderLoop] %A" e
+            with e ->
+                if disposed = 1 then // not spam frightening warning if shutdown bug
+                    // still a bug, shudown results in tranaction.commit with 0 object in the queue.
+                    Log.line "rendering faulted after shutdown."
+                else
+                    Log.warn "[Media, renderLoop] %A" e
 
 
     let mutable renderThread = new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string createInfo.session)
