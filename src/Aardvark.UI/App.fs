@@ -10,7 +10,6 @@ open FSharp.Data.Adaptive
 type private Message<'msg> = { msgs : seq<'msg>; processed : Option<System.Threading.ManualResetEventSlim> }
 
 
-
 type App<'model, 'mmodel, 'msg> =
     {
         unpersist   : Unpersist<'model, 'mmodel>
@@ -30,7 +29,7 @@ type App<'model, 'mmodel, 'msg> =
 
         let mutable running = true
         let messageQueue = List<Message<'msg>>(128)
-        let subject = new FSharp.Control.Event<'msg>()
+        let subject = new FakeRx.Subject<'msg>()
 
         let mutable currentThreads = ThreadPool.empty
         
@@ -96,7 +95,7 @@ type App<'model, 'mmodel, 'msg> =
                 if Config.shouldTimeUnpersistCalls then Log.stop ()
             )
             for m in messagesForward do 
-                subject.Trigger(m)
+                subject.OnNext(m)
 
         and emit (msg : 'msg) =
             lock messageQueue (fun () ->
@@ -148,7 +147,7 @@ type App<'model, 'mmodel, 'msg> =
             update = update
             updateSync = updateSync
             shutdown = shutdown
-            messages = subject.Publish
+            messages = subject :> IObservable<_>
         }
         
     member app.start() = 

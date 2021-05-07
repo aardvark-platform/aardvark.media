@@ -538,7 +538,7 @@ module Updaters =
     and MapUpdater<'inner, 'outer>(m : MapNode<'inner, 'outer>, inner : IUpdater<'inner>) =
         inherit WrappedUpdater<'outer>(m, inner.Id)
             
-        let mutable cache : Option<UpdateState<'inner> * FSharp.Control.Event<'inner>> = None
+        let mutable cache : Option<UpdateState<'inner> * FakeRx.Subject<'inner>> = None
             
         let mapMsg handler (client : Guid) (name : string) (args : list<string>) =
             match cache with
@@ -547,7 +547,7 @@ module Updaters =
                     seq {
                         for msg in messages do
                             yield m.Mapping msg
-                            subject.Trigger msg // if already destroyed, subapp does not receive msg any more...
+                            subject.OnNext msg // if already destroyed, subapp does not receive msg any more...
                     }
                 | _ ->
                     Seq.empty
@@ -556,7 +556,7 @@ module Updaters =
             match cache with    
             | Some c -> c
             | None ->
-                let subject = new FSharp.Control.Event<'inner>()
+                let subject = new FakeRx.Subject<'inner>()
                 let innerState =
                     let test = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (SceneMessages.map m.Mapping)), getState))
                     {
@@ -564,7 +564,7 @@ module Updaters =
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
                         references          = state.references
                         activeChannels      = state.activeChannels
-                        messages            = subject.Publish
+                        messages            = subject
                     }
                 cache <- Some (innerState, subject)
                 (innerState, subject)
@@ -576,7 +576,7 @@ module Updaters =
         override x.PerformDestroy(state : UpdateState<'outer>, self : JSExpr) =
             match cache with
                 | Some (innerState, subject) ->
-                    //subject.Dispose()
+                    subject.Dispose()
                     cache <- None
                     inner.Destroy(innerState, self)
                 | None ->
@@ -585,14 +585,14 @@ module Updaters =
     and SubAppUpdater<'model, 'inner, 'outer>(n : SubAppNode<'model, 'inner, 'outer>, m : MutableApp<'model, 'inner>, inner : IUpdater<'inner>) =
         inherit WrappedUpdater<'outer>(n, inner.Id)
             
-        let mutable cache : Option<UpdateState<'inner> * FSharp.Control.Event<'inner> * IDisposable> = None
+        let mutable cache : Option<UpdateState<'inner> * FakeRx.Subject<'inner> * IDisposable> = None
 
         let processMsgs (client : Guid) (messages : seq<'inner>) =
             match cache with
                 | Some (_, subject, _) ->
                     let messages = transact (fun () -> Seq.toList messages)
                     m.update client (messages :> seq<_>)
-                    for msg in messages do subject.Trigger msg
+                    for msg in messages do subject.OnNext msg
                     let model = m.model.GetValue()
                     messages |> Seq.collect (fun msg -> n.App.ToOuter(model, msg)) 
                 | _ ->
@@ -610,7 +610,7 @@ module Updaters =
             match cache with    
             | Some c -> c
             | None ->
-                let subject = new FSharp.Control.Event<'inner>()
+                let subject = new FakeRx.Subject<'inner>()
 
                 let sceneMessages (_scene : Scene) (msgs : option<SceneMessages<'inner>>) (_getState : ClientInfo -> ClientState) : option<SceneMessages<'outer>> =
                     match msgs with
@@ -632,7 +632,7 @@ module Updaters =
                         handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
                         references          = state.references
                         activeChannels      = state.activeChannels
-                        messages            = subject.Publish
+                        messages            = subject
                     }
 
                     
@@ -640,7 +640,7 @@ module Updaters =
                     state.messages.Subscribe(fun msg -> 
                         let msgs = n.App.ToInner(m.model.GetValue(), msg)
                         m.update Guid.Empty msgs
-                        for m in msgs do subject.Trigger m
+                        for m in msgs do subject.OnNext m
                     )
 
                 cache <- Some (innerState, subject, subscription)
@@ -655,7 +655,7 @@ module Updaters =
                 | Some (innerState, subject, subscription) ->
                     subscription.Dispose()
                     m.shutdown()
-                    //subject.Dipose()
+                    subject.Dispose()
                     cache <- None
                     inner.Destroy(innerState, self)
                 | None ->

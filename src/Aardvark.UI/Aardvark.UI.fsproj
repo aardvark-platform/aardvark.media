@@ -14,6 +14,7 @@
   <ItemGroup>
     <EmbeddedResource Include="template.html" />
     <Compile Include="Config.fs" />
+    <Compile Include="Utilities.fs" />
     <Compile Include="Sg.fs" />
     <Compile Include="SgPrimitives.fs" />
     <Compile Include="Javascript.fs" />
