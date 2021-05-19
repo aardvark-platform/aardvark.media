@@ -79,6 +79,8 @@ type CameraControllerState =
         backward    : bool
         left        : bool
         right       : bool
+        upward      : bool
+        downward    : bool
 
         moveVec     : V3d
         rotateVec   : V3d

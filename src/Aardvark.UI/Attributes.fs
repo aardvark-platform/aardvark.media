@@ -160,6 +160,38 @@ module Events =
                             Seq.empty
                 )
         )
+        
+    type KeyModifiers =
+        {
+            shift : bool
+            alt : bool
+            ctrl : bool
+        }
+
+    let onKeyDownModifiers (cb : KeyModifiers -> Keys -> 'msg) =
+        "onkeydown" ,
+        AttributeValue.Event(
+            Event.ofDynamicArgs
+                ["event.repeat"; "event.keyCode"; "event.shiftKey"; "event.altKey"; "event.ctrlKey"]
+                (fun args ->
+                    match args with
+                        | rep :: keyCode :: shift :: alt :: ctrl :: _ ->
+                            if rep <> "true" then
+                                let keyCode = int (float keyCode)
+                                let key = KeyConverter.keyFromVirtualKey keyCode
+                                let m = 
+                                    { 
+                                        shift = shift = "true"; 
+                                        alt = alt = "true"
+                                        ctrl = ctrl = "true"
+                                    }
+                                Seq.delay (fun () -> Seq.singleton (cb m key))
+                            else
+                                Seq.empty
+                        | _ ->
+                            Seq.empty
+                )
+        )
 
     let onKeyUp (cb : Keys -> 'msg) =
         "onkeyup" ,
@@ -172,6 +204,28 @@ module Events =
                             let keyCode = int (float keyCode)
                             let key = KeyConverter.keyFromVirtualKey keyCode
                             Seq.delay (fun () -> Seq.singleton (cb key))
+                        | _ ->
+                            Seq.empty
+                )
+        )
+        
+    let onKeyUpModifiers (cb : KeyModifiers -> Keys -> 'msg) =
+        "onkeyup" ,
+        AttributeValue.Event(
+            Event.ofDynamicArgs
+                ["event.keyCode"; "event.shiftKey"; "event.altKey"; "event.ctrlKey"]
+                (fun args ->
+                    match args with
+                        | keyCode :: shift :: alt :: ctrl :: _ ->
+                            let keyCode = int (float keyCode)
+                            let key = KeyConverter.keyFromVirtualKey keyCode
+                            let m = 
+                                { 
+                                    shift = shift = "true"; 
+                                    alt = alt = "true"
+                                    ctrl = ctrl = "true"
+                                }
+                            Seq.delay (fun () -> Seq.singleton (cb m key))
                         | _ ->
                             Seq.empty
                 )

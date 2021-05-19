@@ -47,7 +47,7 @@ module CameraController =
             dragStart = V2i.Zero
             movePos = V2i.Zero
             look = false; zoom = false; pan = false                    
-            forward = false; backward = false; left = false; right = false
+            forward = false; backward = false; left = false; right = false; upward = false; downward = false
             isWheel = false;
             moveSpeed = 0.0
             scrollSensitivity = 0.8

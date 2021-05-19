@@ -40,7 +40,7 @@ module ArcBallController =
             zoom        = false
             pan         = false
             dolly       = false
-            forward     = false; backward = false; left = false; right = false; isWheel = false
+            forward     = false; backward = false; left = false; right = false; isWheel = false; upward = false; downward = false
             upSpeed = 0.0
             downSpeed = 0.0
             moveVec         = V3d.Zero

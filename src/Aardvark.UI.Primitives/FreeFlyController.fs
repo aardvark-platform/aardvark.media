@@ -39,7 +39,7 @@ module FreeFlyController =
             dragStart = V2i.Zero
             movePos = V2i.Zero
             look = false; zoom = false; pan = false                    
-            forward = false; backward = false; left = false; right = false
+            forward = false; backward = false; left = false; right = false; upward = false; downward = false
             isWheel = false;
             moveSpeed = 0.0
             scrollSensitivity = 0.8
@@ -90,7 +90,7 @@ module FreeFlyController =
                 cam.WithLocation(
                     cam.Location +
                     motion.dPos.X * cam.Right +
-                    motion.dPos.Y * cam.Up +
+                    motion.dPos.Y * cam.Sky +
                     motion.dPos.Z * cam.Forward
                 )
 
@@ -274,8 +274,8 @@ module FreeFlyController =
         | Up of button : MouseButtons
         | Wheel of V2d
         | Move of V2i
-        | KeyDown of key : Keys
-        | KeyUp of key : Keys
+        | KeyDown of KeyModifiers * key : Keys
+        | KeyUp of KeyModifiers * key : Keys
         | Blur
         | Rendered
         | JumpTo of CameraView
@@ -439,27 +439,52 @@ module FreeFlyController =
                     { integrate model with lastTime = Some now }
                     |> if model.animating then dummyChange else id
 
-            | KeyDown Keys.W ->
-                if not model.forward then
-                    startAnimation { model with forward = true; moveVec = model.moveVec + V3d.OOI }
+
+            | KeyDown(m, Keys.W) ->
+                if m.shift then
+                    if not model.upward then
+                        startAnimation { model with upward = true; moveVec = model.moveVec + V3d.OIO }
+                    else
+                        model
+
+                else
+                    if not model.forward then
+                        startAnimation { model with forward = true; moveVec = model.moveVec + V3d.OOI }
+                    else
+                        model
+
+            //| KeyUp(_,(Keys.LeftShift | Keys.RightShift)) ->
+            //    { model with upward = false; downward = false; moveVec = model.moveVec.XOZ }
+
+            | KeyUp(m, Keys.W) ->
+                if model.forward || model.upward then
+                    let delta = 
+                        if model.forward && model.upward then V3d.OII
+                        elif model.upward then V3d.OIO
+                        else V3d.OOI
+                    startAnimation { model with forward = false; upward = false; moveVec = model.moveVec - delta }
                 else
                     model
 
-            | KeyUp Keys.W ->
-                if model.forward then
-                    startAnimation { model with forward = false; moveVec = model.moveVec - V3d.OOI }
+            | KeyDown(m, Keys.S) ->
+                if m.shift then
+                    if not model.downward then
+                        startAnimation { model with downward = true; moveVec = model.moveVec - V3d.OIO }
+                    else
+                        model
                 else
-                    model
+                    if not model.backward then
+                        startAnimation { model with backward = true; moveVec = model.moveVec - V3d.OOI }
+                    else
+                        model
 
-            | KeyDown Keys.S ->
-                if not model.backward then
-                    startAnimation { model with backward = true; moveVec = model.moveVec - V3d.OOI }
-                else
-                    model
-
-            | KeyUp Keys.S ->
-                if model.backward then
-                    startAnimation { model with backward = false; moveVec = model.moveVec + V3d.OOI }
+            | KeyUp(_, Keys.S) ->
+                if model.backward || model.downward then
+                    let delta = 
+                        if model.backward && model.downward then V3d.OII
+                        elif model.downward then V3d.OIO
+                        else V3d.OOI
+                    startAnimation { model with backward = false; downward = false; moveVec = model.moveVec + delta }
                 else
                     model
 
@@ -469,26 +494,26 @@ module FreeFlyController =
                         targetZoom = model.targetZoom + (float delta.Y) * model.freeFlyConfig.zoomMouseWheelSensitivity
                     }
 
-            | KeyDown Keys.A ->
+            | KeyDown(_, Keys.A) ->
                 if not model.left then
                     startAnimation { model with left = true; moveVec = model.moveVec - V3d.IOO }
                 else
                     model
 
-            | KeyUp Keys.A ->
+            | KeyUp(_, Keys.A) ->
                 if model.left then
                     startAnimation { model with left = false; moveVec = model.moveVec + V3d.IOO }
                 else
                     model
 
 
-            | KeyDown Keys.D ->
+            | KeyDown(_, Keys.D) ->
                 if not model.right then
                     startAnimation { model with right = true; moveVec = model.moveVec + V3d.IOO }
                 else
                     model
 
-            | KeyUp Keys.D ->
+            | KeyUp(_, Keys.D) ->
                 if model.right then
                     startAnimation { model with right = false; moveVec = model.moveVec - V3d.IOO }
                 else
@@ -587,8 +612,8 @@ module FreeFlyController =
             onlyWhen 
                 (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
                 (onCapturedPointerMove (Some 2) (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
-            always (onKeyDown (KeyDown >> f))
-            always (onKeyUp (KeyUp >> f))
+            always (onKeyDownModifiers (fun m k -> KeyDown(m,k) |> f))
+            always (onKeyUpModifiers (fun m k -> KeyUp(m,k) |> f))
             always (onWheelPrevent true (fun x -> f (Wheel x)))
             always <| onEvent "onRendered" [] (fun _ -> f Rendered)
             always <| onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick |> f)
