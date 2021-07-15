@@ -1,3 +1,6 @@
+### 5.1.6
+- fixed cursor change problem on netcoreapp
+
 ### 5.1.5
 - color picker can optionally save previous picks
 
