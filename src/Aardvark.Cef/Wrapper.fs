@@ -1246,7 +1246,10 @@ and DisplayHandler() =
     /// Return true if the cursor change was handled or false for default handling.
     /// </summary>
     override x.OnCursorChange(browser : CefBrowser, cursorHandle : nativeint, cursorType : CefCursorType, customCursorInfo : CefCursorInfo) =
-        changeCursor(cursorHandle)
+        try changeCursor(cursorHandle) 
+        with :? System.IO.FileNotFoundException -> 
+            // not in netcore
+            ()
         true
 
 type BrowserProcessHandler() =
