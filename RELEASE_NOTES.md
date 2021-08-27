@@ -1,3 +1,6 @@
+### 5.1.7
+- added animateForwardAndLocation to deprecated animation code (used in Dibit and PRo3D) with corrected final interation. All other deprecated animations do not reach their target.
+
 ### 5.1.6
 - fixed cursor change problem on netcoreapp
 
@@ -19,4 +22,3 @@
 
 ### 5.1.0
 - updated to FSharp.Data.Adaptive 1.1 and base 5.1 track
-
