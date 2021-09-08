@@ -158,7 +158,7 @@ type FileSystem private(rootPath : Option<string>) =
             | None -> 
                 None
         
-    let rootEntries =
+    let rootEntries() =
         DriveInfo.GetDrives()
             |> Array.toList
             |> List.choose (fun di ->
@@ -217,7 +217,7 @@ type FileSystem private(rootPath : Option<string>) =
                 {
                     success = true
                     fullPath = "/"
-                    entries = rootEntries
+                    entries = rootEntries()
                 }
 
             | _,Some localPath ->

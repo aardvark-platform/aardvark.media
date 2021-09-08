@@ -1,3 +1,6 @@
+### 5.1.8
+- workaround for blocking startup caused by slow network drives (#39)
+
 ### 5.1.7
 - added animateForwardAndLocation to deprecated animation code (used in Dibit and PRo3D) with corrected final interation. All other deprecated animations do not reach their target.
 
@@ -18,7 +21,7 @@
 - updated Aardvark.Rendering (breaking changes)
 
 ### 5.1.1
- - updated packages
+- updated packages
 
 ### 5.1.0
 - updated to FSharp.Data.Adaptive 1.1 and base 5.1 track
