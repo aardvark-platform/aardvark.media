@@ -197,22 +197,18 @@ module private Tools =
         open Aardvark.Rendering.GL
 
         let private downloadFBO (jpeg : TJCompressor) (size : V2i) (quality : int) (ctx : Context) =
-            let pbo = GL.GenBuffer()
-
             let rowSize = 3 * size.X
             let align = ctx.PackAlignment
             let alignedRowSize = (rowSize + (align - 1)) &&& ~~~(align - 1)
             let sizeInBytes = alignedRowSize * size.Y
+
+            let ptr = NativePtr.alloc<byte> sizeInBytes
             try
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
-
-                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgb, PixelType.UnsignedByte, 0n)
-
-                let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
+                let src = NativePtr.toNativeInt ptr
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgb, PixelType.UnsignedByte, src)
 
                 jpeg.Compress(
-                    ptr, alignedRowSize, size.X, size.Y, 
+                    src, alignedRowSize, size.X, size.Y, 
                     TJPixelFormat.RGB, 
                     TJSubsampling.S444, 
                     quality, 
@@ -220,9 +216,7 @@ module private Tools =
                 )
 
             finally
-                GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
-                GL.DeleteBuffer(pbo)
+                NativePtr.free ptr
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
 
         type Framebuffer with
@@ -1144,29 +1138,16 @@ module internal RawDownload =
             member x.Download(fbo : IFramebuffer, dst : nativeint) =
                 let fbo = unbox<Framebuffer> fbo
                 let ctx = runtime.Context
-            
+
                 use __ = ctx.ResourceLock
                 let size = fbo.Size
-                let rowSize = 4L * int64 size.X
-                let sizeInBytes = rowSize * int64 size.Y
-
-                let pbo = GL.GenBuffer()
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
 
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
                 GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
 
-                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, dst)
 
-                let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
-                
-                Marshal.Copy(ptr, dst, sizeInBytes)
-
-                GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
-                GL.DeleteBuffer(pbo)
 
             member x.Dispose() =
                 ()
@@ -1231,13 +1212,6 @@ module internal RawDownload =
             
                 use __ = ctx.ResourceLock
                 let size = fbo.Size
-                let rowSize = 4L * int64 size.X
-                let sizeInBytes = rowSize * int64 size.Y
-
-                let pbo = GL.GenBuffer()
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-                GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
-
                 let temp = getFramebuffer size
 
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
@@ -1249,29 +1223,18 @@ module internal RawDownload =
                     ClearBufferMask.ColorBufferBit,
                     BlitFramebufferFilter.Nearest
                 )
-                
+
                 GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, 0)
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, temp)
 
                 GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
+                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, dst)
 
-                GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
-
-                let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
-                
-                Marshal.Copy(ptr, dst, sizeInBytes)
-
-                GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
-                GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
-                GL.DeleteBuffer(pbo)
 
             member x.Dispose() =
                 use __ = runtime.Context.ResourceLock
-                //pbo |> Option.iter (fst >> GL.DeleteBuffer)
-                //pbo <- None
-                
+
                 match resolved with
                     | Some (f,r,_) ->
                         GL.DeleteFramebuffer(f)
@@ -1332,22 +1295,10 @@ module internal RawDownload =
 
             else
                 GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, fbo.Handle)
-              
 
-
-            let pbo = GL.GenBuffer()
-
-            let rowSize = 4 * size.X
-            let sizeInBytes = rowSize * size.Y
             GL.ReadBuffer(ReadBufferMode.ColorAttachment0)
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, pbo)
-            GL.BufferStorage(BufferTarget.PixelPackBuffer, nativeint sizeInBytes, 0n, BufferStorageFlags.MapReadBit)
+            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, dst)
 
-            GL.ReadPixels(0, 0, size.X, size.Y, PixelFormat.Rgba, PixelType.UnsignedByte, 0n)
-
-            let ptr = GL.MapBufferRange(BufferTarget.PixelPackBuffer, 0n, nativeint sizeInBytes, BufferAccessMask.MapReadBit)
-                
-            Marshal.Copy(ptr, dst, sizeInBytes)
             //let lineSize = nativeint rowSize
             //let mutable src = ptr
             //let mutable dst = dst + nativeint sizeInBytes - lineSize
@@ -1357,18 +1308,9 @@ module internal RawDownload =
             //    src <- src + lineSize
             //    dst <- dst - lineSize
 
-            GL.UnmapBuffer(BufferTarget.PixelPackBuffer) |> ignore
-            GL.BindBuffer(BufferTarget.PixelPackBuffer, 0)
-            GL.DeleteBuffer(pbo)
-
-
-
             if tmpFbo >= 0 then GL.DeleteFramebuffer(tmpFbo)
             if tmpRbo >= 0 then GL.DeleteRenderbuffer(tmpRbo)
             GL.BindFramebuffer(FramebufferTarget.ReadFramebuffer, 0)
-            
-   
-
 
 type ISharedMemory =
     inherit IDisposable
