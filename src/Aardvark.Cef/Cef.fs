@@ -16,9 +16,17 @@ module Cef =
         let args = Environment.GetCommandLineArgs()
         Array.sub args 1 (args.Length - 1)
 
+    [<System.Runtime.InteropServices.DllImport("user32.dll")>]
+    extern bool SetProcessDPIAware()
+
     let init'(windowless : bool) =
         if not initialized then
             initialized <- true
+
+            // fix DPI scaling issues when using the CEF WinForms control
+            let os = Environment.OSVersion
+            if os.Platform = PlatformID.Win32NT && os.Version.Major >= 6 then
+                SetProcessDPIAware() |> ignore
 
             let args = getArgs()
             CefRuntime.Load()
