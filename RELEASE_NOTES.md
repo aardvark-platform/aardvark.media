@@ -1,3 +1,6 @@
+### 5.1.10
+- fixed arcball problem on mac
+
 ### 5.1.9
 - fixed DPI scaling for CEF control
 - Remove PBOs and read to host memory directly instead for compatibility
