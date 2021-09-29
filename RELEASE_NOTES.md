@@ -1,3 +1,6 @@
+### 5.1.11
+- fixed arcball problem on mac
+
 ### 5.1.10
 - fixed arcball problem on mac
 
