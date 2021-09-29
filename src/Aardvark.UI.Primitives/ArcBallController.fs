@@ -30,6 +30,7 @@ module ArcBallController =
         | Wheel     of V2d
         | Blur
         | Pick      of V3d
+        | Nop
 
     let initial =
         {
@@ -81,6 +82,7 @@ module ArcBallController =
    
     let update (model : CameraControllerState) (message : Message) =
         match message with
+            | Nop -> model
             | Blur ->
                 { initial with view = model.view; lastTime = None; orbitCenter = model.orbitCenter }
             | Pick p -> 
@@ -191,8 +193,8 @@ module ArcBallController =
 
             | Up button ->
                 match button with
-                    | MouseButtons.Left -> { model with look = false }
-                    | MouseButtons.Middle -> { model with pan = false }
+                    | MouseButtons.Left -> { model with look = false; zoom = false }
+                    | MouseButtons.Middle -> { model with pan = false; zoom = false }
                     | MouseButtons.Right -> { model with zoom = false }
                     | _ -> model
 
@@ -249,6 +251,39 @@ module ArcBallController =
                         cam, model.orbitCenter            
 
                 { model with view = cam; dragStart = pos; orbitCenter = center }
+
+
+    let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
+        onEvent 
+            "onmousedown" 
+            ["event.clientX"; "event.clientY"; "event.which"; "event.getModifierState('Control')" ]
+            (fun args ->
+                match args with
+                    | x :: y :: b :: isControl :: _ ->
+                        let x = int (float x)
+                        let y = int (float y)
+                        let b = Aardvark.UI.Helpers.button b
+                        let modKey = if b = MouseButtons.Left && isControl = "true" then MouseButtons.Right else b
+                        cb modKey (V2i(x,y))
+                    | _ ->
+                        failwith "asdasd"
+            )
+
+    (*let onMouseUp (cb : MouseButtons -> V2i -> 'msg) = 
+        onEvent 
+            "onmouseup" 
+            ["event.clientX"; "event.clientY"; "event.which"; "event.getModifierState('Control')" ]
+            (fun args ->
+                match args with
+                    | x :: y :: b :: isControl :: _ ->
+                        let x = int (float x)
+                        let y = int (float y)
+                        let b = Aardvark.UI.Helpers.button b
+                        let modKey = if b = MouseButtons.Left && isControl = "true" then MouseButtons.Right else b
+                        cb modKey (V2i(x,y))
+                    | _ ->
+                        failwith "asdasd"
+            )*)
 
     let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         AttributeMap.ofListCond [
