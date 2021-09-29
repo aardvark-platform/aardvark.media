@@ -254,10 +254,12 @@ module ArcBallController =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
             always (onMouseDown (fun b p -> f (Down(b,p))))
+            //always (onCapturedPointerDown (Some 2) (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f (Down(b,p))))
+            //always (onCapturedPointerUp (Some 2) (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f (Down(b,p))))
             always (onMouseUp (fun b p -> f (Up b)))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))
-            always (onWheel(fun x -> f (Wheel x)))
+            always (onWheelPrevent true (fun x -> f (Wheel x)))
             onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
         ]
 
