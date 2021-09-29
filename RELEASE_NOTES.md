@@ -1,3 +1,7 @@
+### 5.1.9
+- fixed DPI scaling for CEF control
+- Remove PBOs and read to host memory directly instead for compatibility
+
 ### 5.1.8
 - workaround for blocking startup caused by slow network drives (#39)
 
