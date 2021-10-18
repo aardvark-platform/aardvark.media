@@ -14,6 +14,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="NaturalOrder.fs" />
+    <Compile Include="SortedHashMap.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
