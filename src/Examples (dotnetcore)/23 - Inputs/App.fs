@@ -23,18 +23,12 @@ let initial =
         alt = Some A
         options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
         enumValue = EnumValue.Value1
-        itemMap = HashMap.empty
-        itemList = IndexList.empty
-        inputText = ""
-        inputValue = 1.0
         itemSortedHelper = SortedHashMap<string, string * Alternative>.Empty(fun (v1,_) (v2,_) -> NaturalOrder.compare v1 v2)
-            //match v1, v2 with
-            //| v1, v2 when v1 < v2 -> 1
-            //| v1, v2 when v1 > v2 -> -1
-            //| _ -> 0)
         itemSortedList = IndexList.Empty
         itemSortedMap = HashMap.empty
         inputName = ""
+        testHashMap = HashMap.ofList ["a", {value = 1.0}; "b", {value = 1.0}; "c", {value = 1.0};]
+        brokenHashMap = HashMap.ofList ["a", 1.0; "b", 1.0; "c", 1.0 ]
     }
 
 
@@ -72,31 +66,23 @@ let update (model : Model) (msg : Message) =
             else 
                 model
         | SetEnumValue v -> { model with enumValue = v }
-        | SetItem (key, value, value2) -> 
-            { model with itemMap = model.itemMap |> HashMap.add key (value, value2); itemList = model.itemList |> IndexList.add key }
-        | UpdateItemV1 (key, value1) -> 
-           { model with itemMap = model.itemMap |> HashMap.alter key (Option.map (fun (v1,v2) -> (value1, v2))) }
-        | UpdateItemV2 (key, value2) -> 
-            { model with itemMap = model.itemMap |> HashMap.alter key (Option.map (fun (v1,v2) -> (v1, value2))) }
-        | RemoveItem key ->
-            let updatedList = 
-                let oldIndex = model.itemList |> IndexList.findIndex key
-                model.itemList |> IndexList.remove oldIndex
-            { model with itemMap = model.itemMap |> HashMap.remove key; itemList = updatedList }
-        | SortInputName inputT ->
-            { model with inputName = inputT }
-        | SetInputValue inputV ->
-            { model with inputValue = inputV }
-        | SortSetItem (key, value, value2) -> 
+
+        | SortInputName inputT -> { model with inputName = inputT }
+        | SortAddSetItem (key, value, value2) -> 
             model |> updatedSortedStuff (model.itemSortedHelper.Add(key, (value,value2)))
-        | SortUpdateItemV1 (key, v1) ->
+        | SortUpdateSorting (key, v1) ->
             let _, otherValue = model.itemSortedHelper.Map |> HashMap.find key
             model |> updatedSortedStuff (model.itemSortedHelper.Add(key, (v1,otherValue)))
-        | SortUpdateItemV2 (key, v2) ->
+        | SortUpdateValue (key, v2) ->
             let otherValue,_  = model.itemSortedHelper.Map |> HashMap.find key
             model |> updatedSortedStuff (model.itemSortedHelper.Add(key, (otherValue, v2)))
         | SortRemoveItem key ->
             model |> updatedSortedStuff (model.itemSortedHelper.Remove key)
+
+        | TestHashMapChange (key, v) -> 
+            { model with testHashMap = model.testHashMap |> HashMap.alter key (Option.map (fun x -> { x with value = v }))}
+        | BrokenHashMapChange (key, v) -> 
+            { model with brokenHashMap = model.brokenHashMap |> HashMap.alter key (Option.map (fun x -> v))}
 
 //let values =
 //    AMap.ofList [
@@ -166,9 +152,6 @@ let buttonDisable (decission: aval<Option<'a>>) (iconName: string) (color: strin
         } |> AttributeMap.ofAMap
 
     Incremental.button selectionDeleteButton <| (AList.single (i [clazz (sprintf "%s icon" iconName)][]))
-
-let buttonAdd'' (decission: aval<Option<'a>>) (add: 'a -> 'msg) =
-    buttonDisable decission "add" "green" add
 
 let myDropDown (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
     SimplePrimitives.dropdown { allowEmpty = false; placeholder = "" } [clazz "ui inverted selection dropdown collapsing"; style "line-height: 0.4em"] values (AVal.map Some selected) (Option.get >> update)
@@ -291,21 +274,25 @@ let view (model : AdaptiveModel) =
             div [ clazz "item" ] [ 
                 dropdown1 [ clazz "ui inverted selection dropdown" ] enumValues model.enumValue SetEnumValue
             ]
-            //div [ clazz "item"][
-            //    Html.SemUi.textBox model.inputText SetName
-            //    floatInputPostFix "" "value" 0.0 10.0 1.0 SetInputValue model.inputValue AttributeMap.empty
-            //    Incremental.div AttributeMap.empty (model.itemList |> AList.map (fun key ->
-            //        let item = model.itemMap |> AMap.find key
-            //        div [][
-            //            br []
-            //            text (sprintf "item: %s" key)
-            //            floatInputPostFix "" "value" 0.0 10.0 1.0 (fun v -> UpdateItemV1 (key, v)) (item |> AVal.map fst) AttributeMap.empty
-            //            myDropDown values (item |> AVal.map snd) (fun v -> UpdateItemV2 (key, v))
-            //            button [onClick (fun _ -> RemoveItem key)][text "RemoveItem"]
-            //        ]
-            //    ))
-            //]
+            div [ clazz "item "][
+                text "fixed order and working focus"
+                Incremental.div ([clazz "item"] |> AttributeMap.ofList) (model.testHashMap |> AMap.toASet |> ASet.toAList |> AList.map (fun (key, myNumber) ->
+                    divFlex Start Center [
+                        Incremental.text (myNumber.value |> AVal.map (sprintf "item: %.2f" ))
+                        floatInputPostFix "" "value" 0.0 10.0 1.0 (fun v -> TestHashMapChange (key, v)) myNumber.value AttributeMap.empty
+                    ]
+                ))
+
+                text "changing order and focus lost"
+                Incremental.div ([clazz "item"] |> AttributeMap.ofList) (model.brokenHashMap |> AMap.toASet |> ASet.toAList |> AList.map (fun (key, myNumber) ->
+                    divFlex Start Center [
+                        text (sprintf "broken focus item: %.2f" myNumber)
+                        floatInputPostFix "" "value" 0.0 10.0 1.0 (fun v -> BrokenHashMapChange (key, v)) (AVal.constant myNumber) AttributeMap.empty
+                    ]
+                ))
+            ]
             div [ clazz "item" ][
+                text "ADD / UPDATE items to sortable list"
                 divFlex Start Center [
                     textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.inputName SortInputName
                     dropdown { placeholder = "value2"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
@@ -318,7 +305,7 @@ let view (model : AdaptiveModel) =
                             | false -> Some key
                         }
                     let validInput = (validKey, model.inputName, model.alt) |||> AVal.map3 (fun a b c -> match a,b,c with | ((Some key), v1, (Some v2)) when v1 <> "" -> Some (key,v1,v2) | _ -> None)
-                    buttonAdd'' validInput SortSetItem
+                    buttonDisable validInput "add" "green" SortAddSetItem
                     let overwriteEntry = adaptive {
                         let! keys = model.itemSortedMap |> AMap.keys |> ASet.toAVal
                         let! key = model.inputName
@@ -328,14 +315,16 @@ let view (model : AdaptiveModel) =
                             | true -> Some key
                         }
                     let validInput2 = (overwriteEntry, model.inputName, model.alt) |||> AVal.map3 (fun a b c -> match a,b,c with | ((Some key), v1, (Some v2)) when v1 <> "" -> Some (key,v1,v2) | _ -> None)
-                    buttonDisable validInput2 "circle" "orange" SortSetItem
+                    buttonDisable validInput2 "circle" "orange" SortAddSetItem
                 ]
+                text "DYNAMIC SORTABLE list where order is given by item-name"
                 Incremental.div ([clazz "item"] |> AttributeMap.ofList) (model.itemSortedList |> AList.map (fun key ->
                     let item = model.itemSortedMap |> AMap.find key
                     divFlex Start Center [
-                        text (sprintf "item: %s" key)
-                        textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] (item |> AVal.map fst) (fun v -> SortUpdateItemV1(key, v))
-                        myDropDown values (item |> AVal.map snd) (fun v -> SortUpdateItemV2 (key, v))
+                        text (sprintf "key: %s | sorting: " key)
+                        textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] (item |> AVal.map fst) (fun v -> SortUpdateSorting(key, v))
+                        text "value: "
+                        myDropDown values (item |> AVal.map snd) (fun v -> SortUpdateValue (key, v))
                         button [onClick (fun _ -> SortRemoveItem key)][text "RemoveItem"]
                     ]
                 ))

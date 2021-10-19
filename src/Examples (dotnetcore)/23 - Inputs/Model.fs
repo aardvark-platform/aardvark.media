@@ -18,6 +18,12 @@ type EnumValue =
     | Value3 = 3
 
 [<ModelType>]
+type MegaNumber = 
+    {   
+        value : float // now we have adaptive changes and do not lose the focus in numeric input!
+    }
+
+[<ModelType>]
 type Model =
     {
         active    : bool
@@ -30,13 +36,10 @@ type Model =
         options   : HashMap<Alternative, string>
         enumValue : EnumValue
 
-        // changeable list
-        itemMap : HashMap<string, float * Alternative>
-        itemList : IndexList<string>
-        inputText : string
-        inputValue : float
+        testHashMap : HashMap<string, MegaNumber>
+        brokenHashMap : HashMap<string, float>
 
-        // sort and changeable list
+        // sort and changeable list based on helper-structure
         [<NonAdaptive>]
         itemSortedHelper: SortedHashMap<string, string * Alternative>
         itemSortedMap : HashMap<string, string * Alternative>
@@ -54,14 +57,11 @@ type Message =
     | SetAlternative of Option<Alternative>
     | SetEnumValue of EnumValue
 
-    | SetInputValue of float
-    | SetItem of string * float * Alternative
-    | UpdateItemV1 of string * float
-    | UpdateItemV2 of string * Alternative
-    | RemoveItem of string
-
     | SortInputName of string
-    | SortSetItem of string * string * Alternative
-    | SortUpdateItemV1 of string * string
-    | SortUpdateItemV2 of string * Alternative
+    | SortAddSetItem of string * string * Alternative
+    | SortUpdateSorting of string * string
+    | SortUpdateValue of string * Alternative
     | SortRemoveItem of string
+
+    | TestHashMapChange of string * float
+    | BrokenHashMapChange of string * float
