@@ -17,6 +17,7 @@ type BoxSelectionDemoAction =
     | AddBox
     | RemoveBox
     | ClearSelection
+    | SetTestValue of string * float
 
 [<ModelType>]
 type VisibleBox = {
@@ -30,6 +31,7 @@ type VisibleBox = {
     id : string
     [<NonAdaptive>]
     sorting : int
+    testValue : float
 }
 
 [<ModelType>]
@@ -37,9 +39,10 @@ type BoxSelectionDemoModel = {
     camera : CameraControllerState    
     rendering : RenderingParameters
 
-    [<NonAdaptive>]
-    boxesHelper: SortedHashMap<string, VisibleBox>
-    boxes : IndexList<VisibleBox>
+    //[<NonAdaptive>]
+    //boxesHelper: SortedHashMap<string, VisibleBox>
+    //boxesSortedValues : IndexList<VisibleBox>
+    //boxesSortedKeys : IndexList<string>
     boxesMap : HashMap<string,VisibleBox>
 
     //boxHovered : option<string>
