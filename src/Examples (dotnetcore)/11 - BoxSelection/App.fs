@@ -23,15 +23,18 @@ let mkVisibleBox (sort: int) (color : C4b) (box : Box3d) : VisibleBox =
         isSelected = false
         isHovered = false
         sorting = sort
-        testValue = 0.0
+        testValue = float sort
     }
 
 let update (model : BoxSelectionDemoModel) (act : Action) =
 
     let helperHelper (key: string) (updateFunc: VisibleBox -> VisibleBox) model =
+        //// version 1 and 2 where helper structure is used to pre-sort
         //let oldValue = model.boxesMap |> HashMap.find key
         //let helper = model.boxesHelper.Add(key, updateFunc oldValue)
         //{ model with boxesHelper = helper; boxesMap = helper.Map; boxesSortedValues = helper.SortedValues; boxesSortedKeys = helper.SortedKeys }
+        
+        // version 3 where adaptive sorting is performed in view
         { model with boxesMap = model.boxesMap |> HashMap.alter key (Option.map updateFunc) }
 
     match act with
@@ -66,6 +69,8 @@ let update (model : BoxSelectionDemoModel) (act : Action) =
             { model with boxesMap = model.boxesMap |> HashMap.map (fun k v -> { v with isHovered = false; isSelected = false })}
         | SetTestValue (id, newValue) -> 
             model |> helperHelper id (fun oldValue -> { oldValue with testValue = newValue })
+        | SetSorting (id, newValue) -> 
+            model |> helperHelper id (fun oldValue -> { oldValue with sorting = int newValue })
 
 let floatInputPostFix (placeholderName : string) (postFix:string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : aval<float>) (containerAttribs : AttributeMap<'msg>) =
     let defaultValue = max 0.0 minValue
@@ -115,14 +120,7 @@ let floatInputPostFix (placeholderName : string) (postFix:string) (minValue : fl
 let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
 
 let mkColor (box : AdaptiveVisibleBox) : aval<C4b> =
-
-    //(box.isSelected, box.isHovered) ||> AVal.map2 (fun selected hovered ->
-    //    match selected, hovered with
-    //    | false, false -> box.color
-    //    | true, true -> C4b.Orange
-    //    | true, false -> C4b.Red
-    //    | false, true -> C4b.Blue
-    //)
+    // adaptive changes only rely on visible box itself (which are finegrained managed within UPDATE)
     adaptive {
         let! selected = box.isSelected
         let! hovered = box.isHovered
@@ -148,6 +146,7 @@ let mkISg (box : AdaptiveVisibleBox) =
         ]
 
 let viewItem (b : AdaptiveVisibleBox) : DomNode<_> = 
+    // 2d list entry for each cube
     let color = mkColor b
     let attr = amap {
         yield clazz "item" 
@@ -159,9 +158,10 @@ let viewItem (b : AdaptiveVisibleBox) : DomNode<_> =
         yield style bgc
     } 
     Incremental.div (attr |> AttributeMap.ofAMap) <| alist { 
-        yield text (sprintf "sort:%i" b.sorting); 
+        yield Incremental.text (b.sorting |> AVal.map (sprintf "sort:%i"))
         yield Incremental.text (color |> AVal.map (sprintf "%A"))
         yield floatInputPostFix "" "°C" 0.0 100.0 1.0 (fun v -> SetTestValue(b.id, v)) b.testValue AttributeMap.empty
+        yield floatInputPostFix "" "sorting" -10.0 10000.0 1.0 (fun v -> SetSorting(b.id, v)) (b.sorting |> AVal.map float) AttributeMap.empty
         yield i [clazz "file outline middle aligned icon"][]}
 
 let view (model : AdaptiveBoxSelectionDemoModel) =
@@ -186,7 +186,7 @@ let view (model : AdaptiveBoxSelectionDemoModel) =
                         toEffect DefaultSurfaces.trafo
                         toEffect DefaultSurfaces.vertexColor
                         toEffect DefaultSurfaces.simpleLighting                              
-                        ]
+                        ] // apply shader for whole sg once!
                     |> Sg.fillMode model.rendering.fillMode
                     |> Sg.cullMode model.rendering.cullMode
                     |> Sg.requirePicking
@@ -201,20 +201,23 @@ let view (model : AdaptiveBoxSelectionDemoModel) =
                     button [clazz "ui button"; onMouseClick (fun _ -> RemoveBox)] [text "Remove Box"]
                     button [clazz "ui button"; onMouseClick (fun _ -> ClearSelection)] [text "Clear Selection"]
                 ]
-
+                //// version 1 where helper structure is used to organize order
                 //Incremental.div (AttributeMap.ofList [clazz "ui divided list"]) 
                 //    (model.boxesSortedKeys |> AList.mapA (fun (key: string) ->
                 //        let box = model.boxesMap |> AMap.find key
                 //        let item = box |> AVal.map viewItem
                 //        item)
                 //    )
+                //// version 2 where helper structure is directly used (test if focus gets lost) - update same like version 1
                 //Incremental.div (AttributeMap.ofList [clazz "ui divided list"]) 
                 //    (model.boxesSortedValues |> AList.map viewItem)
+                //// version 3 adaptive sorting
                 Incremental.div (AttributeMap.ofList [clazz "ui divided list"])
                     (model.boxesMap 
                     |> AMap.toASet 
-                    |> ASet.sortWith (fun (k1, v1) (k2, v2) -> if v1.sorting < v2.sorting then -1 else 1) 
-                    |> AList.map (fun (key, b) -> viewItem b))
+                    |> ASet.mapA (fun (k,v) -> v.sorting |> AVal.map (fun sort -> k, sort, v))
+                    |> ASet.sortBy (fun (k, sort, v) -> sort)
+                    |> AList.map (fun (key, _, b) -> viewItem b))
             ]
         ]
     )
@@ -222,11 +225,11 @@ let view (model : AdaptiveBoxSelectionDemoModel) =
 let initial =
     //let mutable compareHelper = SortedHashMap.SortedHashMap<string, VisibleBox>.Empty(fun (v1) (v2) -> if v1.sorting < v2.sorting then -1 else 1)
         
-    //Primitives.mkBoxes 5000 |> List.iteri (fun i k -> 
+    //Primitives.mkBoxes 1000 |> List.iteri (fun i k -> 
     //    let box = mkVisibleBox i Primitives.colors.[i % 5] k
     //    compareHelper <- compareHelper.Add(box.id, box))
 
-    let map = Primitives.mkBoxes 5000 |> List.mapi (fun i k -> 
+    let map = Primitives.mkBoxes 1000 |> List.mapi (fun i k -> 
         let box = mkVisibleBox i Primitives.colors.[i % 5] k
         box.id, box) |> HashMap.ofList
 

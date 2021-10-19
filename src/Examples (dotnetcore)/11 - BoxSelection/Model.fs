@@ -18,6 +18,7 @@ type BoxSelectionDemoAction =
     | RemoveBox
     | ClearSelection
     | SetTestValue of string * float
+    | SetSorting of string * float
 
 [<ModelType>]
 type VisibleBox = {
@@ -29,7 +30,7 @@ type VisibleBox = {
 
     [<NonAdaptive>]
     id : string
-    [<NonAdaptive>]
+    //[<NonAdaptive>]
     sorting : int
     testValue : float
 }
