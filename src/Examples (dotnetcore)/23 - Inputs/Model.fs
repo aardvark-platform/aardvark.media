@@ -36,6 +36,8 @@ type Model =
         options   : HashMap<Alternative, string>
         enumValue : EnumValue
 
+        toggleTest : Alternative
+
         testHashMap : HashMap<string, MegaNumber>
         brokenHashMap : HashMap<string, float>
 
@@ -55,6 +57,7 @@ type Message =
     | SetUInt of uint32
     | SetName of string
     | SetAlternative of Option<Alternative>
+    | SetAlternative2 of Alternative
     | SetEnumValue of EnumValue
 
     | SortInputName of string

@@ -29,6 +29,7 @@ let initial =
         inputName = ""
         testHashMap = HashMap.ofList ["a", {value = 1.0}; "b", {value = 1.0}; "c", {value = 1.0};]
         brokenHashMap = HashMap.ofList ["a", 1.0; "b", 1.0; "c", 1.0 ]
+        toggleTest = A
     }
 
 
@@ -83,6 +84,8 @@ let update (model : Model) (msg : Message) =
             { model with testHashMap = model.testHashMap |> HashMap.alter key (Option.map (fun x -> { x with value = v }))}
         | BrokenHashMapChange (key, v) -> 
             { model with brokenHashMap = model.brokenHashMap |> HashMap.alter key (Option.map (fun x -> v))}
+        | SetAlternative2 a -> 
+            { model with toggleTest = a }
 
 //let values =
 //    AMap.ofList [
@@ -208,6 +211,22 @@ let view (model : AdaptiveModel) =
             ]
             div [ clazz "item" ] [ 
                 checkbox [clazz "ui inverted toggle checkbox"] model.active ToggleActive "Is the thing active?"
+            ]
+            div [ clazz "item" ] [
+                Incremental.div AttributeMap.empty <| alist {
+                    match! model.active with
+                    | true -> 
+                        let values = amap {
+                            yield B, text "B"
+                            yield C, text "C"
+                        }
+                        yield myDropDown values model.toggleTest (fun x -> 
+                            Log.line "fire event!"
+                            if x = model.toggleTest.GetValue() then Log.warn "dummy trigger (equal value!!)!"
+                            SetAlternative2 x)
+                    | false -> 
+                        yield div[][]
+                }
             ]
             div [ clazz "item" ] [ 
                 simplenumeric {
