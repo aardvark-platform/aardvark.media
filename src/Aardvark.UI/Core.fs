@@ -724,6 +724,14 @@ and TextNode<'msg>(tag : string, ns : Option<string>, attributes : AttributeMap<
     member x.Text = text
     override x.Visit v = v.Text x
     override x.NodeTag = Some tag
+    override x.GetHashCode() = 
+        HashCode.Combine(Unchecked.hash tag, Unchecked.hash ns, Unchecked.hash attributes, Unchecked.hash text)
+    override x.Equals(o) =
+        match o with 
+        | :? TextNode<'msg> as t -> 
+            t.Namespace = x.Namespace && t.Tag = x.Tag && t.Attributes = x.Attributes && t.Text = x.Text
+        | _ -> 
+            false
 
 and PageNode<'msg>(content : Request -> DomNode<'msg>) =
     inherit DomNode<'msg>()
