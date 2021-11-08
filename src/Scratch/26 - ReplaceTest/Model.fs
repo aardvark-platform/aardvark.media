@@ -6,10 +6,14 @@ open Aardvark.UI.Primitives
 open Adaptify
 
 type Message = 
-    | Inc
+    | Inc of Index
+    | Longer
+
+
 
 [<ModelType>]
 type Model = 
     {
-        value : int
+        value : IndexList<int>
+        elems : int
     }
