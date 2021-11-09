@@ -28,10 +28,11 @@ open Inc.Model
 
 let update (model : Model) (msg : Message) =
     match msg with
-       | Longer -> { model with elems = model.elems + 1 }
+       | SetMin v -> { model with elems = { model.elems with min = v } }
+       | SetCount v -> { model with elems = { model.elems with count = v } }
        | Inc l ->  
-            //Config.shouldPrintDOMUpdates <- true; 
-            { model with value = IndexList.update l (fun l -> l + 1000) model.value }
+            Config.shouldPrintDOMUpdates <- true; 
+            { model with value = IndexList.update l (fun l -> l + 1) model.value }
 
 
 open FSharp.Data.Traceable
@@ -106,13 +107,35 @@ let view (model : AdaptiveModel) =
             model.value 
             |> AList.indexed
             |> AList.sortBy snd
-            |> AList.truncate model.elems |> AList.map (fun (k, e) -> 
+            |> AList.subA  model.elems.min model.elems.count 
+
+        let table = 
+            elsems
+            |> AList.map (fun (k, e) -> 
                 button [onClick (fun _ -> Inc k)] [text (string e)]
+                //AList.ofList [
+                //    button [onClick (fun _ -> Inc k)] [text (string e)]
+                //    br []
+                //]
+            )
+
+        let _ = 
+            elsems.Content.AddCallback(fun elems -> 
+                printfn "%A" (Seq.toArray elems)
             )
 
         div [] [
-            button [onClick (fun _ -> Longer)] [text "mklonger"]
-            Incremental.div AttributeMap.empty elsems
+            Aardvark.UI.Primitives.SimplePrimitives.numeric 
+                { min = 0; max = 100000; smallStep = 1; largeStep   = 10 }
+                AttributeMap.empty
+                model.elems.min
+                SetMin
+            Aardvark.UI.Primitives.SimplePrimitives.numeric 
+                  { min = 0; max = 100000; smallStep = 1; largeStep   = 10 }
+                  AttributeMap.empty
+                  model.elems.count
+                  SetCount
+            Incremental.div AttributeMap.empty table
         ]
 
     ]
@@ -128,8 +151,8 @@ let app =
         threads = threads 
         initial = 
             {   
-                value = IndexList.ofList [1..10000]
-                elems = 10
+                value = IndexList.ofList [1..10]
+                elems = { min = 0; count = 3 }
             }
         update = update 
         view = view

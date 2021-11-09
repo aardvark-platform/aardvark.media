@@ -7,13 +7,19 @@ open Adaptify
 
 type Message = 
     | Inc of Index
-    | Longer
+    | SetMin of int
+    | SetCount of int
 
-
+[<ModelType>]
+type ListSlice = 
+    {
+        min : int
+        count : int
+    }
 
 [<ModelType>]
 type Model = 
     {
         value : IndexList<int>
-        elems : int
+        elems : ListSlice
     }

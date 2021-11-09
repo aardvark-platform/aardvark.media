@@ -9,7 +9,7 @@ nuget FSharp.Core                       >= 4.7.0 lowest_matching: true
 nuget Microsoft.NETFramework.ReferenceAssemblies ~> 1.0.0
 nuget FSharp.Data                       ~> 3.0.0
 
-nuget FSharp.Data.Adaptive              ~> 1.2.4
+nuget FSharp.Data.Adaptive              ~> 1.2.7
 
 // base
 nuget Aardvark.Base.TypeProviders       ~> 4.5.15
@@ -38,8 +38,8 @@ nuget Uncodium.Eigensystems
 // fix for missing upper version dependency in Silk.GLFW
 nuget Silk.NET.Core                     ~> 1.7.0
 
-nuget Adaptify.Core                     ~> 1.0.6
-nuget Adaptify.MSBuild                  ~> 1.0.6
+nuget Adaptify.Core                     ~> 1.0.8
+nuget Adaptify.MSBuild                  ~> 1.0.8
 
 nuget Aether                            ~> 8.3.1
 nuget FsPickler                         ~> 5.3.2
