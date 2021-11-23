@@ -112,6 +112,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - DrawRects", "Scratch\0
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01 - PerfTest", "Scratch\01 - PerfTest\01 - PerfTest.fsproj", "{75631375-2F68-4B45-B366-26AAD84FE57B}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - ReplaceTest", "Scratch\26 - ReplaceTest\26 - ReplaceTest.fsproj", "{A5B17088-75AA-41EA-BBDB-A750E24265E3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -310,6 +312,10 @@ Global
 		{75631375-2F68-4B45-B366-26AAD84FE57B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75631375-2F68-4B45-B366-26AAD84FE57B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75631375-2F68-4B45-B366-26AAD84FE57B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A5B17088-75AA-41EA-BBDB-A750E24265E3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A5B17088-75AA-41EA-BBDB-A750E24265E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A5B17088-75AA-41EA-BBDB-A750E24265E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A5B17088-75AA-41EA-BBDB-A750E24265E3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -363,6 +369,7 @@ Global
 		{C452ACA1-540D-4CD1-A212-D66C18659586} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{FF87534D-5B8C-44D5-B2D4-456515623D6A} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{75631375-2F68-4B45-B366-26AAD84FE57B} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
+		{A5B17088-75AA-41EA-BBDB-A750E24265E3} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}
