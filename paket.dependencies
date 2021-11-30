@@ -5,7 +5,7 @@ source https://vrvis.myget.org/F/aardvark_public/api/v2
 
 storage: none
 
-nuget FSharp.Core                       >= 4.7.0 lowest_matching: true
+nuget FSharp.Core                       >= 5.0.0 lowest_matching: true
 nuget Microsoft.NETFramework.ReferenceAssemblies ~> 1.0.0
 nuget FSharp.Data                       ~> 3.0.0
 
@@ -13,10 +13,11 @@ nuget FSharp.Data.Adaptive              ~> 1.2.7
 
 // base
 nuget Aardvark.Base.TypeProviders       ~> 4.5.15
-nuget Aardvark.Base                     ~> 5.1.20
-nuget Aardvark.Base.Incremental         ~> 5.1.20
-nuget Aardvark.Base.FSharp              ~> 5.1.20
-nuget Aardvark.Base.Essentials          ~> 5.1.20
+
+nuget Aardvark.Base                     ~> 5.1.11
+nuget Aardvark.Base.Incremental         ~> 5.1.11
+nuget Aardvark.Base.FSharp              ~> 5.1.11
+nuget Aardvark.Base.Essentials          ~> 5.1.11
 
 // rendering
 nuget Aardvark.Rendering                ~> 5.1.18
@@ -49,7 +50,7 @@ nuget BenchmarkDotNet                   ~> 0.12.1
 nuget Iced                              ~> 1.4.0     // BenchmarkDotNet 0.12.1 requires Iced 1.4 but will pull in anything >= 1.4. Leads to missing method exception when executing benchmarks
 
 nuget TurboJpegWrapper                  ~> 1.5.2
-nuget Suave                             ~> 2.5.5
+nuget Suave                             ~> 2.5.6
 
 nuget Aardium                           ~> 2.0.9
 nuget Chiron
