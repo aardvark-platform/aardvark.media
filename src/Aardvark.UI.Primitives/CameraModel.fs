@@ -60,6 +60,45 @@ module FreeFlyConfig =
     }
 
 
+module FreeFlyHeuristics =
+
+    type SpeedHeuristic =
+        abstract member Config : FreeFlyConfig
+        abstract member SpeedCoefficient : float
+        abstract member AdjustToUnitsPerSecond : float -> SpeedHeuristic
+        abstract member AdjustSpeedCoefficient : float -> SpeedHeuristic
+
+    type DefaultSpeedHeuristic(speedCoefficient : float, config : FreeFlyConfig) = 
+
+        // must be inverse.
+        let cameraSpeedToMoveSensitivity (speed : float) =  0.35 + speed
+        let cameraSpeedFromMoveSensitivity (sensitivity : float) = sensitivity - 0.35
+
+        member x.AdjustSpeedCoefficient(speedCoefficient : float) =
+            let config =
+                { config with
+                    moveSensitivity = cameraSpeedToMoveSensitivity speedCoefficient
+                    zoomMouseWheelSensitivity = 0.8 * (2.0 ** speedCoefficient)
+                    panMouseSensitivity = 0.01 * (2.0 ** speedCoefficient)
+                    dollyMouseSensitivity = 0.01 * (2.0 ** speedCoefficient)
+                }
+            DefaultSpeedHeuristic(speedCoefficient, config) :> SpeedHeuristic
+
+        member x.AdjustToUnitsPerSecond(velocity : float) =
+            let exponent = log velocity
+            let coefficient = cameraSpeedFromMoveSensitivity exponent
+            x.AdjustSpeedCoefficient(coefficient)
+
+        member x.SpeedCoefficient = speedCoefficient
+        member x.Config = config
+
+        interface SpeedHeuristic with
+            member x.Config = x.Config
+            member x.SpeedCoefficient = x.SpeedCoefficient
+            member x.AdjustToUnitsPerSecond(v) = x.AdjustToUnitsPerSecond(v)
+            member x.AdjustSpeedCoefficient(v) = x.AdjustSpeedCoefficient(v)
+
+
 
 [<ModelType>]
 type CameraControllerState =
@@ -125,6 +164,8 @@ type OrbitState =
         phi     : float
         theta   : float
         radius  : float
+
+        //shift   : V2d
 
         targetPhi : float
         targetTheta : float

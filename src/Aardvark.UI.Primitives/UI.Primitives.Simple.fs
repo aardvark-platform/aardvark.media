@@ -107,7 +107,7 @@ module Simple =
                 ]
         ]
 
-    let labeledFloatInput' (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : aval<float>) (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) =
+    let labeledFloatInput'' (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : aval<float>) (format : float -> string) (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) =
         let defaultValue = max 0.0 minValue
         let parse (str : string) =
             match System.Double.TryParse str with
@@ -147,10 +147,13 @@ module Simple =
                         yield always <| ("oninput", changed)
                         yield always <| ("onchange", changed)
 
-                        yield "value", value |> AVal.map (string >> AttributeValue.String >> Some)
+                        yield "value", value |> AVal.map (format >> AttributeValue.String >> Some)
 
                     ]
             ]
+
+    let labeledFloatInput' (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : aval<float>) (containerAttribs : AttributeMap<'msg>) (labelAttribs : AttributeMap<'msg>) =
+        labeledFloatInput'' name minValue maxValue step changed value string containerAttribs labelAttribs
 
     let labeledFloatInput (name : string) (minValue : float) (maxValue : float) (step : float) (changed : float -> 'msg) (value : aval<float>) =
         labeledFloatInput' name minValue maxValue step changed value (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) 

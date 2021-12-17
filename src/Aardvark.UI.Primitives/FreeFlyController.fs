@@ -319,6 +319,9 @@ module FreeFlyController =
             model
     
     let exp x = Math.Pow(Math.E, x)
+
+    let computeMoveVelocity (config : FreeFlyConfig) =
+        exp config.moveSensitivity 
     
     let update (model : CameraControllerState) (message : Message) =
         match message with
@@ -339,7 +342,7 @@ module FreeFlyController =
                 let move (state : CameraControllerState) =
                     if state.moveVec.AllTiny |> not then
                         { CameraMotion.Zero with
-                            dPos = state.moveVec * exp state.freeFlyConfig.moveSensitivity
+                            dPos = state.moveVec * computeMoveVelocity state.freeFlyConfig
                         }
                     else
                         CameraMotion.Zero

@@ -186,6 +186,9 @@ module OrbitController =
             always <| onWheel (fun delta -> Wheel delta |> f)
             onlyWhen down <| onCapturedPointerMove None (fun k p -> MouseMove p |> f)
         ]
+
+    let extractAttributes (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) =
+        attributes model f |> AttributeMap.toAMap
         
     let controlledControlWithClientValues (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)

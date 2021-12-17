@@ -2,6 +2,8 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - NavigationDemoNew", "Scratch\27 - NavigationDemoNew\27 - NavigationDemoNew.fsproj", "{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}"
+EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}"
@@ -141,6 +143,10 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}.Release|Any CPU.Build.0 = Release|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -370,6 +376,7 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
+		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
 		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
 		{F20C78DD-06CB-44E8-90DB-6DE144863078} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
