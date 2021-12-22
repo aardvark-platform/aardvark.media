@@ -39,8 +39,8 @@ nuget Uncodium.Eigensystems
 // fix for missing upper version dependency in Silk.GLFW
 nuget Silk.NET.Core                     ~> 1.7.0
 
-nuget Adaptify.Core                     ~> 1.0.8
-nuget Adaptify.MSBuild                  ~> 1.0.8
+nuget Adaptify.Core                     ~> 1.0.9
+nuget Adaptify.MSBuild                  ~> 1.0.9
 
 nuget Aether                            ~> 8.3.1
 nuget FsPickler                         ~> 5.3.2
