@@ -1,3 +1,6 @@
+### 5.1.13
+- added orbit camera controller helpers
+
 ### 5.1.12
 - switched to f# 5.0 (version bump for base/fshade/suave)
 
