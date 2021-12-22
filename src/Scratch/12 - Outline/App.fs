@@ -190,7 +190,7 @@ let view (model : AdaptiveModel) =
             button [onClick (fun _ -> CenterScene)] [text "Center Scene.."]
           ]
           renderControl
-          div[style "width:400px"][
+          div[style "width:400px"] [
             Html.table [
               Html.row "Animate:"   [Html.SemUi.iconCheckBox model.animationEnabled ToggleAnimation]
               Html.row "Thickness:" [Numeric.view' [NumericInputType.Slider] model.thickness |> UI.map ChangeThickness ]                  

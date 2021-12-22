@@ -9,6 +9,7 @@ open Aardvark.Rendering
 open Aardvark.UI.Primitives.FreeFlyHeuristics
 open Inc.Model
 
+
 let setSpeedCoefficient (model : Model) (speed : float) =
     { model with cameraSpeed =  model.cameraSpeed.AdjustSpeedCoefficient(speed) }
 

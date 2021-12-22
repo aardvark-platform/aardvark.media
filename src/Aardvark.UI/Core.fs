@@ -334,7 +334,7 @@ module AttributeMap =
         if list.IsConstant then
             list.Content.GetValue() |> ofSeq
         else
-            AttributeMap(AMap.ofReader (fun () -> new AListReader<_>(list)) :> amap<_,_>)
+            AttributeMap(AMap.ofReader (fun () -> new AListReader<_>(list)))
 
     let ofAMap (map : amap<string, AttributeValue<'msg>>) =
         AttributeMap(map)

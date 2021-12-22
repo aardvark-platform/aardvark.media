@@ -48,14 +48,14 @@ module App =
             div [onEvent "clientConnected" [] (List.head >> Pickler.json.UnPickleOfString >> Connect) ] [
                 text "Hello World"
                 Incremental.div (AttributeMap.empty) (alist {
-                    yield div[][text ("connected:")]
+                    yield div [] [text ("connected:")]
                     for (_,c) in model.clients |> AMap.toASet |> ASet.sortBy fst do
-                        yield div[][text ("id="+c.id+" name="+c.name)]
+                        yield div [] [text ("id="+c.id+" name="+c.name)]
                 })
                 Incremental.div (AttributeMap.empty) (alist {
-                    yield div[][text ("Messages:")]
+                    yield div [] [text ("Messages:")]
                     for (date,line) in model.lines |> AMap.toASet |> ASet.sortBy fst do
-                        yield div[][text (""+date.ToString()+" "+line)]
+                        yield div [] [text (""+date.ToString()+" "+line)]
                 })
                 input [attribute "type" "text"; onEvent "onchange" ["{ id : window.top.clientid, name : event.target.value}"] (List.head >> Pickler.json.UnPickleOfString >> (fun (c : Client) -> SetText(c.id,c.name)))] 
                 button [

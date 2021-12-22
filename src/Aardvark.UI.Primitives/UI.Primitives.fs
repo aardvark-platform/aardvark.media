@@ -156,7 +156,7 @@ module Html =
                 div [clazz "ui inverted segment"] [
                     div [clazz "ui inverted accordion fluid"] [
                         div [clazz title] [
-                                i [clazz (icon + " icon circular")][] 
+                                i [clazz (icon + " icon circular")] [] 
                                 text text'
                                 //Static.a [clazz "ui label"] [
                                 //    i [clazz (icon + " icon circular inverted")] []
@@ -763,7 +763,7 @@ module D3Axis =
                             let! tickCount = model.tickCount
                             yield
                                 onBoot (sprintf "HiliteAxis(%s,%s,%s,%s);" "'#__ID__'" (string min) (string max) (string tickCount))(
-                                    div [style "width:100%; height: 100%;"][] //display:inline-block; position relative; overflow:hidden;
+                                    div [style "width:100%; height: 100%;"] [] //display:inline-block; position relative; overflow:hidden;
                                 )
                             }
                         )

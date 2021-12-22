@@ -122,9 +122,9 @@ let view (model : AdaptiveModel) =
         | Some "controls" -> 
           require Html.semui (
             body [style "width: 100%; height:100%; background: transparent";] [
-               div[style "color:white"][
+               div[style "color:white"] [
                     button [onClick (fun _ -> CenterScene)] [text "Center Scene.."]
-                    div[style "width:400px"][
+                    div[style "width:400px"] [
                         Html.table [
                           Html.row "Pan:" [Numeric.view' [NumericInputType.Slider] model.pan |> UI.map ChangePan ]  
                           Html.row "Tilt:" [Numeric.view' [NumericInputType.Slider] model.tilt |> UI.map ChangeTilt ] 

@@ -86,7 +86,7 @@ module App =
             
       //  let (FeatureId id) = f.properties.id
         let item =             
-          div [onMouseEnter (fun _ -> f.id |> Select); onMouseLeave (fun _ -> Deselect); clazz "ui inverted item"][
+          div [onMouseEnter (fun _ -> f.id |> Select); onMouseLeave (fun _ -> Deselect); clazz "ui inverted item"] [
             i attr2 []
             div [clazz "ui content"] [
               Incremental.div (attr) (AList.single (text "Feature"))

@@ -85,7 +85,7 @@ module App =
         Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (
             alist {
                 for p in model.selectedPaths do
-                    yield div [clazz "ui inverted item"][              
+                    yield div [clazz "ui inverted item"] [              
                         div [clazz "ui content"] [
                             div [clazz "ui header tiny"] [p |> text]
                         ]
@@ -98,9 +98,9 @@ module App =
             alist {
                 for (folder,opclist) in model.opcPaths |> AMap.toASet |> ASet.toAList do
                     //yield Html.SemUi.accordion "blub" "boxes" true [
-                    yield h3 [][text (Path.GetFileName folder)]
+                    yield h3 [] [text (Path.GetFileName folder)]
                     for opc in opclist do
-                        yield div [clazz "ui inverted item"][
+                        yield div [clazz "ui inverted item"] [
                             i [clazz "ui middle aligned box icon"] []
                             div [clazz "ui content"] [
                               div [clazz "ui header tiny"] [text opc]                
@@ -115,7 +115,7 @@ module App =
             alist {
                 let! test = model.surfaceFolder
                 for surf in test do
-                    yield h3 [][text (surf)]
+                    yield h3 [] [text (surf)]
             }
         )
     
@@ -126,12 +126,12 @@ module App =
         require Html.semui (
             body [style "width: 100%; height:100%; background: #252525; overflow-x: hidden; overflow-y: scroll"] [
                 div [clazz "ui inverted segment"] [
-                    h1 [clazz "ui"][text "Discover Opcs"]
+                    h1 [clazz "ui"] [text "Discover Opcs"]
                     br []
                     button [ 
                         clazz "ui button tiny"
                         Dialogs.onChooseFiles SetPaths;
-                        clientEvent "onclick" (jsImportOPCDialog) ][
+                        clientEvent "onclick" (jsImportOPCDialog)] [
                         text "Select Path"
                     ]
                    // Html.SemUi.accordion "Paths" "files" true [viewPaths model]
@@ -142,7 +142,7 @@ module App =
                     viewOpcPaths model
                 ]
                 div [clazz "ui inverted segment"] [
-                    h1 [clazz "ui"][text "Discovered Surface Folder"]
+                    h1 [clazz "ui"] [text "Discovered Surface Folder"]
                     br []
                     viewSurfacePaths model
                 ]
