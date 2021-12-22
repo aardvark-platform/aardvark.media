@@ -649,7 +649,7 @@ NUGET
     FSharp.Control.Reactive (5.0.2)
       FSharp.Core (>= 4.7.2)
       System.Reactive (>= 5.0)
-    FSharp.Core (6.0.1)
+    FSharp.Core (5.0)
     Microsoft.Build (17.0)
     Microsoft.Build.Framework (17.0)
       System.Security.Permissions (>= 4.7)
