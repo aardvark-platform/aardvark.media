@@ -14,7 +14,7 @@ module RenderQuads =
 
     let renderQuad (colors : C4f[]) (runtime : IRuntime) =
         let signature = 
-            runtime.CreateFramebufferSignature [ DefaultSemantic.Colors, RenderbufferFormat.Rgba8 ]
+            runtime.CreateFramebufferSignature [ DefaultSemantic.Colors, TextureFormat.Rgba8 ]
         let rt = 
              Aardvark.SceneGraph.SgPrimitives.Sg.fullScreenQuad
              |> Sg.vertexAttribute DefaultSemantic.Colors (AVal.constant colors)

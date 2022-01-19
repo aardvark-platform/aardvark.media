@@ -514,7 +514,7 @@ and internal ConcreteScene(name : string, signature : IFramebufferSignature, sce
                 member x.FramebufferSignature = task.FramebufferSignature
                 member x.Runtime = task.Runtime
                 member x.PerformUpdate(t,rt) = task.Update(t, rt)
-                member x.Perform(t,rt,o,q) =  task.Run(t, rt, o, q)
+                member x.Perform(t,rt,o) =  task.Run(t, rt, o)
                 
                 member x.Release() = 
                     lock x (fun () ->
@@ -620,7 +620,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
 
 
     let deleteFramebuffer() =
-        target     |> Option.iter runtime.DeleteFramebuffer
+        target     |> Option.iter Disposable.dispose
         depth      |> Option.iter runtime.DeleteRenderbuffer
         color      |> Option.iter runtime.DeleteRenderbuffer
         target <- None
@@ -635,24 +635,23 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
         currentSize <- size
         currentSignature <- signature
 
-        let depthSignature =
-            match signature.DepthAttachment with
-                | Some att -> att
-                | _ -> { format = RenderbufferFormat.Depth24Stencil8; samples = 1 }
+        let depthStencilFormat =
+            signature.DepthStencilAttachment
+            |> Option.defaultValue TextureFormat.Depth24Stencil8
                 
-        let colorSignature =
+        let colorFormat =
             match Map.tryFind 0 signature.ColorAttachments with
-                | Some (sem, att) when sem = DefaultSemantic.Colors -> att
-                | _ -> { format = RenderbufferFormat.Rgba8; samples = 1 }
+            | Some att when att.Name = DefaultSemantic.Colors -> att.Format
+            | _ -> TextureFormat.Rgba8
 
-        let d = runtime.CreateRenderbuffer(currentSize, depthSignature.format, depthSignature.samples)
-        let c = runtime.CreateRenderbuffer(currentSize, colorSignature.format, colorSignature.samples)
+        let d = runtime.CreateRenderbuffer(currentSize, depthStencilFormat, signature.Samples)
+        let c = runtime.CreateRenderbuffer(currentSize, colorFormat, signature.Samples)
         let newTarget =
             runtime.CreateFramebuffer(
                 signature,
                 [
                     DefaultSemantic.Colors, c :> IFramebufferOutput
-                    DefaultSemantic.Depth, d :> IFramebufferOutput
+                    DefaultSemantic.DepthStencil, d :> IFramebufferOutput
                 ]
             )
 
@@ -725,7 +724,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     member x.DownloadDepth(pixel : V2i) =
         match target with
             | Some fbo ->
-                match Map.tryFind DefaultSemantic.Depth fbo.Attachments with
+                match Map.tryFind DefaultSemantic.DepthStencil fbo.Attachments with
                     | Some (:? ITextureLevel as t) ->
                         if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller t.Size.XY then
                             ReadPixel.downloadDepth pixel t.Texture
@@ -739,7 +738,7 @@ type internal ClientRenderTask internal(server : Server, getScene : IFramebuffer
     member x.GetWorldPosition(pixel : V2i) =
         match target with
             | Some fbo ->
-                match Map.tryFind DefaultSemantic.Depth fbo.Attachments with
+                match Map.tryFind DefaultSemantic.DepthStencil fbo.Attachments with
                     | Some (:? ITextureLevel as t) ->
                         if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller t.Size.XY then
                             match ReadPixel.downloadDepth pixel t.Texture with
@@ -853,7 +852,7 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
     let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
     let mutable resolved : Option<IBackendTexture> = None
 
-    let recreate  (fmt : RenderbufferFormat) (size : V2i) =
+    let recreate  (fmt : TextureFormat) (size : V2i) =
         match server.compressor with
             | Some compressor -> 
                 match gpuCompressorInstance with
@@ -866,7 +865,7 @@ type internal JpegClientRenderTask internal(server : Server, getScene : IFramebu
                 gpuCompressorInstance <- Some instance
 
                 resolved |> Option.iter runtime.DeleteTexture
-                let r = runtime.CreateTexture2D(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+                let r = runtime.CreateTexture2D(size, fmt, 1, 1)
                 resolved <- Some r
                 Some r
 
@@ -921,9 +920,9 @@ type internal PngClientRenderTask internal(server : Server, getScene : IFramebuf
     let runtime = server.runtime
     let mutable resolved : Option<IBackendTexture> = None
 
-    let recreate  (fmt : RenderbufferFormat) (size : V2i) =
+    let recreate  (fmt : TextureFormat) (size : V2i) =
         resolved |> Option.iter runtime.DeleteTexture
-        let r = runtime.CreateTexture2D(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+        let r = runtime.CreateTexture2D(size, fmt, 1, 1)
         resolved <- Some r
         r
 
@@ -2028,11 +2027,11 @@ module Server =
         let getSignature (samples : int) =
             signatures.GetOrAdd(samples, fun samples ->
                 info.runtime.CreateFramebufferSignature(
-                    samples,
                     [
-                        DefaultSemantic.Colors, RenderbufferFormat.Rgba8
-                        DefaultSemantic.Depth, RenderbufferFormat.Depth24Stencil8
-                    ]
+                        DefaultSemantic.Colors, TextureFormat.Rgba8
+                        DefaultSemantic.DepthStencil, TextureFormat.Depth24Stencil8
+                    ],
+                    samples
                 )
             )
 

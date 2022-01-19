@@ -740,11 +740,11 @@ module ``F# Sg`` =
         // ================================================================================================================
 
         /// Toggles color, depth and stencil writes according to the given set of symbols.
-        let writeBuffers (buffers : aval<Set<Symbol>>) (sg : ISg<'msg>) =
+        let writeBuffers (buffers : aval<Set<WriteBuffer>>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.writeBuffers buffers)
 
         /// Toggles color, depth and stencil writes according to the given set of symbols.
-        let writeBuffers' (buffers : Set<Symbol>) (sg : ISg<'msg>) =
+        let writeBuffers' (buffers : Set<WriteBuffer>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.writeBuffers' buffers)
 
         // ================================================================================================================
@@ -1192,13 +1192,6 @@ module ``Message Semantics`` =
     open Aardvark.SceneGraph.Semantics
     open Aardvark.UI.Sg
     open Aardvark.UI.SgTools.MessageProcessor.Implementation
-
-    type IRuntime with
-        member x.CompileRender(fbo : IFramebufferSignature, config : BackendConfiguration, sg : ISg<'msg>) =
-            x.CompileRender(fbo, config, unbox<Aardvark.SceneGraph.ISg> sg)
-
-        member x.CompileRender(fbo : IFramebufferSignature, sg : ISg<'msg>) =
-            x.CompileRender(fbo, unbox<Aardvark.SceneGraph.ISg> sg)
 
     type GlobalPicks<'msg> = amap<SceneEventKind, SceneEvent -> seq<'msg>>
 

@@ -108,7 +108,7 @@ let viewScene (model : AdaptiveModel) =
          |> Sg.pass pass0
          |> Sg.trafo model.trafo
          |> Sg.stencilMode' (write v)
-         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Stencil])
+         |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Stencil])
          |> Sg.shader {
                 do! DefaultSurfaces.trafo
                 do! DefaultSurfaces.vertexColor
@@ -120,7 +120,7 @@ let viewScene (model : AdaptiveModel) =
          |> Sg.trafo model.trafo
          |> Sg.stencilMode' (read v)
          |> Sg.depthTest' DepthTest.None
-         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+         |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Color DefaultSemantic.Colors])
          |> Sg.pass pass
          |> Sg.uniform "LineWidth" model.thickness.value
          |> Sg.shader {
@@ -136,7 +136,7 @@ let viewScene (model : AdaptiveModel) =
          |> Sg.trafo model.trafo
          |> Sg.stencilMode' (read v)
          |> Sg.depthTest' DepthTest.None
-         |> Sg.writeBuffers' (Set.ofList [DefaultSemantic.Colors])
+         |> Sg.writeBuffers' (Set.ofList [WriteBuffer.Color DefaultSemantic.Colors])
          |> Sg.pass pass
          |> Sg.uniform "LineWidth" (AVal.constant 5.0)
          |> Sg.shader {
