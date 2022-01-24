@@ -1,5 +1,9 @@
+### 5.2.0-prerelease0008
+- update rendering
+
 ### 5.2.0-prerelease0007
 - Initial prerelease for 5.2
+
 ### 5.1.13
 - added orbit camera controller helpers
 
