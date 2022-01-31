@@ -1,4 +1,4 @@
-### 5.2.0-prerelease0007
+### 9.0.0
  - initial hack version
 
 ### 5.2.0-prerelease0006
