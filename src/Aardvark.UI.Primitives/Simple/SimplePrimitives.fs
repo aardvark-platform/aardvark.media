@@ -144,6 +144,7 @@ module SimplePrimitives =
 
             let ev =
                 {
+                    prefixes = [[]]
                     clientSide = fun _ _ -> ""
                     serverSide = fun _ _ _ -> Seq.singleton toggle
                 }

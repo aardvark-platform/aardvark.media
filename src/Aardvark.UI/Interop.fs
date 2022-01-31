@@ -173,6 +173,7 @@ module Dialog =
             clientEvent eventName cb
             "dialogchoose", 
                 AttributeValue.Event {
+                    prefixes = [[]]
                     clientSide = fun _ _ -> ""
                     serverSide = fun _ _ args ->
                         match args with

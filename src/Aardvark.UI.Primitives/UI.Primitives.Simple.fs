@@ -24,6 +24,7 @@ module Simple =
 
         let changed =
             AttributeValue.Event  {
+                prefixes = [[]]
                 clientSide = fun send src -> 
                     String.concat "" [
                         "if(!event.inputType && event.target.value != event.target.oldValue) {"
@@ -70,6 +71,7 @@ module Simple =
 
         let changed =
             AttributeValue.Event  {
+                prefixes = [[]]
                 clientSide = fun send src -> 
                     String.concat "" [
                         "if(!event.inputType && event.target.value != event.target.oldValue) {"
@@ -116,6 +118,7 @@ module Simple =
 
         let changed =
             AttributeValue.Event  {
+                prefixes = [[]]
                 clientSide = fun send src -> 
                     String.concat "" [
                         "if(!event.inputType && event.target.value != event.target.oldValue) {"
@@ -183,7 +186,8 @@ module Simple =
     let largeTextArea' (changed : string -> 'msg) (value : aval<string>) (attributes : AttributeMap<'msg>) =
 
         let changed =
-            AttributeValue.Event  {
+            AttributeValue.Event  { 
+                prefixes = [[]]
                 clientSide = fun send src -> send src ["event.target.value"] + ";"
                 serverSide = fun client src args ->
                     match args with

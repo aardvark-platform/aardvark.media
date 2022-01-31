@@ -493,7 +493,10 @@ module Updaters =
 
                     match keys |> List.tryPick (fun k -> HashMap.tryFind k attributes) with
                         | Some (AttributeValue.Event evt) ->
-                            evt.serverSide info.session this.Id.Value [Pickler.json.PickleToString info.size]
+                            evt.prefixes |> Seq.collect (fun prefix ->
+                                let args = prefix @ [Pickler.json.PickleToString info.size]
+                                evt.serverSide info.session this.Id.Value args
+                            )
                         | _ ->
                             Seq.empty
             }

@@ -1851,7 +1851,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             | Choice1Of2 () -> ()
             | Choice2Of2 err ->
                 Log.warn "[Client] %d: send of %A faulted (stopping): %A" id cmd err
-                this.Dispose()
+                System.Threading.Tasks.Task.Factory.StartNew (fun () -> this.Dispose()) |> ignore
                 //failwithf "[Client] %d: %A" id err
 
     let subscribe() =

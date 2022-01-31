@@ -60,6 +60,7 @@ module Pickler =
 
 type Event<'msg> =
     {
+        prefixes : list<list<string>>
         clientSide  : (string -> list<string> -> string) -> string -> string
         serverSide : Guid -> string -> list<string> -> seq<'msg>
     }
@@ -77,24 +78,28 @@ module Event =
 
     let empty<'msg> : Event<'msg> =
         {
+            prefixes = [[]]
             clientSide = fun _ _ -> ""
             serverSide = fun _ _ _ -> Seq.empty
         }
 
     let ofTrigger (reaction : unit -> 'msg) =
         {
+            prefixes = [[]]
             clientSide = fun send id -> send id []
             serverSide = fun _ _ _ -> Seq.delay (reaction >> Seq.singleton)
         }
 
     let ofDynamicArgs (args : list<string>) (reaction : list<string> -> seq<'msg>) =
         {
+            prefixes = [[]]
             clientSide = fun send id -> send id args
             serverSide = fun session id args -> reaction args
         }
 
     let create1 (a : string) (reaction : 'a -> 'msg) =
         {
+            prefixes = [[]]
             clientSide = fun send id -> send id [a]
             serverSide = fun session id args -> 
                 match args with
@@ -112,6 +117,7 @@ module Event =
 
     let create2 (a : string) (b : string) (reaction : 'a -> 'b -> 'msg) =
         {
+            prefixes = [[]]
             clientSide = fun send id -> send id [a; b]
             serverSide = fun session id args -> 
                 match args with
@@ -129,6 +135,7 @@ module Event =
 
     let create3 (a : string) (b : string) (c : string) (reaction : 'a -> 'b -> 'c -> 'msg) =
         {
+            prefixes = [[]]
             clientSide = fun send id -> send id [a; b; c]
             serverSide = fun session id args -> 
                 match args with
@@ -145,7 +152,10 @@ module Event =
         }
 
     let combine (l : Event<'msg>) (r : Event<'msg>) =
+        let lPrefixes = l.prefixes |> List.map (fun p -> "0" :: p)
+        let rPrefixes = r.prefixes |> List.map (fun p -> "1" :: p)
         {
+            prefixes = lPrefixes @ rPrefixes
             clientSide = fun send id ->
                 l.clientSide (fun id args -> send id ("0" :: args)) id + "; " +
                 r.clientSide (fun id args -> send id ("1" :: args)) id
@@ -167,7 +177,14 @@ module Event =
             | 0 -> empty
             | 1 -> events.[0]
             | _ -> 
+                let prefixes =
+                    events |> Array.mapi (fun i e ->
+                        e.prefixes |> List.map (fun p ->
+                            string i :: p
+                        )
+                    )
                 {
+                    prefixes = List.concat prefixes
                     clientSide = fun send id ->
                         let clientScripts = 
                             events |> Seq.mapi (fun i e ->
@@ -195,6 +212,7 @@ module Event =
 
     let map (f : 'a -> 'b) (e : Event<'a>) = 
         {
+            prefixes = e.prefixes
             clientSide = e.clientSide; 
             serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
         }
@@ -867,6 +885,7 @@ and DomNode private() =
                 else ["event.offsetX"; "event.offsetY"; "event.altKey"; "event.shiftKey"; "event.ctrlKey" ]
 
             {
+                prefixes = [[]]
                 clientSide = fun send id -> send id args + ";"
                 serverSide = fun session id args ->
                     match args with

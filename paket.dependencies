@@ -5,7 +5,7 @@ source https://vrvis.myget.org/F/aardvark_public/api/v2
 
 storage: none
 
-nuget FSharp.Core                       >= 4.7.0 lowest_matching: true
+nuget FSharp.Core                       >= 5.0.0 lowest_matching: true
 nuget Microsoft.NETFramework.ReferenceAssemblies ~> 1.0.0
 nuget FSharp.Data                       ~> 3.0.0
 
@@ -38,8 +38,8 @@ nuget Uncodium.Eigensystems
 // fix for missing upper version dependency in Silk.GLFW
 nuget Silk.NET.Core                     ~> 1.7.0
 
-nuget Adaptify.Core                     ~> 1.0.6
-nuget Adaptify.MSBuild                  ~> 1.0.6
+nuget Adaptify.Core                     ~> 1.1.0
+nuget Adaptify.MSBuild                  ~> 1.1.0
 
 nuget Aether                            ~> 8.3.1
 nuget FsPickler                         ~> 5.3.2

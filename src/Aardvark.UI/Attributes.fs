@@ -18,6 +18,7 @@ module Attributes =
     let inline js (name : string) (code : string) : Attribute<'msg> =
         name, 
         AttributeValue.Event { 
+            prefixes = [[]]
             clientSide = fun send id -> code.Replace("__ID__", id)
             serverSide = fun _ _ _ -> Seq.empty
         }
@@ -101,6 +102,7 @@ module Events =
 
         let args =
             {
+                prefixes = [[]]
                 clientSide = fun send id -> (if prevent then "event.preventDefault();" else "")+send id ["{ X: event.deltaX.toFixed(), Y: event.deltaY.toFixed() }"]
                 serverSide = fun session id args -> (serverClick >> f >> Seq.singleton) args
             }
@@ -188,6 +190,7 @@ module Events =
 
     let internal onMouseRel (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> 'msg) =
         kind, AttributeValue.Event {
+            prefixes = [[]]
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
@@ -208,6 +211,7 @@ module Events =
 
     let internal onMouseAbs (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> V2d -> 'msg) =
         kind, AttributeValue.Event {
+            prefixes = [[]]
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
@@ -259,6 +263,7 @@ module Events =
     let onWheel' (f : V2d -> V2d -> 'msg) =
 
         "onwheel", AttributeValue.Event {
+            prefixes = [[]]
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
@@ -284,6 +289,7 @@ module Events =
 
     let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : PointerType -> MouseButtons -> V2i -> 'msg) =
         name, AttributeValue.Event {
+                prefixes = [[]]
                 clientSide = fun send src -> 
                     String.concat ";" [
                         yield "var rect = getBoundingClientRect(this)"

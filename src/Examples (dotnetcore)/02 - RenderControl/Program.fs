@@ -16,11 +16,11 @@ open RenderControl
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
-    Aardium.init()
+    //Aardium.init()
 
     // media apps require a runtime, which serves as renderer for your render controls.
     // you can use OpenGL or VulkanApplication.
-    let useVulkan = false
+    let useVulkan = true
 
     let runtime, disposable =
         if useVulkan then
@@ -42,10 +42,14 @@ let main argv =
     ] |> ignore
     
 
-    Aardium.run {
-        url "http://localhost:4321/"
-        width 1024
-        height 768
-        debug true
-    }
+    let mutable line = ""
+    while line <> "quit" do
+        line <- Console.ReadLine().Trim()
+
+    //Aardium.run {
+    //    url "http://localhost:4321/"
+    //    width 1024
+    //    height 768
+    //    debug true
+    //}
     0 

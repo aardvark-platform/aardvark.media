@@ -22,9 +22,12 @@ let update (model : Model) (msg : Message) =
         { model with cameraState = FreeFlyController.update model.cameraState m }
     | CenterScene ->
         { model with cameraState = initialCamera }
+    | Rendered ->
+        { model with time = model.time + 0.1 }
 
 let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
+    |> Sg.trafo (model.time |> AVal.map (fun t -> Trafo3d.RotationZ t))
     |> Sg.shader {
         do! DefaultSurfaces.trafo
         do! DefaultSurfaces.vertexColor
@@ -43,6 +46,7 @@ let view (model : AdaptiveModel) =
                         //attribute "showLoader" "false"    // optional, default is true
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
                         always <| attribute "data-samples" "8"        // optional, default is 1
+                        always <| onEvent "onRendered" [] (fun _ -> Rendered)
                     ])
             (viewScene model)
 
@@ -71,6 +75,7 @@ let app =
             {
                cameraState = initialCamera
                background = C4b.Black
+               time = 0.0
             }
         update = update
         view = view
