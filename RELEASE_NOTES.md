@@ -1,3 +1,6 @@
+### 5.2.0-prerelease0007
+ - initial hack version
+
 ### 5.2.0-prerelease0006
  - fixed dispose/render races
  
