@@ -247,7 +247,7 @@ module Html =
                     yield div [clazz "ui inverted segment top attached tabular menu"] [
                             for (name,ch) in content do
                                 let active = if name = active then "inverted item active" else "inverted item"
-                                yield Static.a [clazz active; attribute "data-tab" name][text name]
+                                yield Static.a [clazz active; attribute "data-tab" name] [text name]
                           ]
                                         
                     for (name,ch) in content do
@@ -773,7 +773,7 @@ module D3Axis =
         require (Html.semui) (
             body [clazz "ui"; style "background: #FFFFFF"] [
                 
-                div [style "width:90%; height: 10%; float:left"][   
+                div [style "width:90%; height: 10%; float:left"] [   
                     view model
                     ]
 
@@ -1016,9 +1016,11 @@ module TreeViewApp =
             | Nop -> model
     
     let viewLabel v = 
-        v |> AVal.bind (fun u -> match u with 
-                                    | AdaptiveNumber n -> n |> AVal.map (fun x -> sprintf "Number %A" (string x))
-                                    | AdaptiveText t   -> t |> AVal.map (fun x -> sprintf "Text %A" x))
+        v 
+        |> AVal.bind (fun u -> 
+            match u with 
+            | AdaptiveNumber n -> n |> AVal.map (fun x -> sprintf "Number %A" (string x))
+            | AdaptiveText t   -> t |> AVal.map (fun x -> sprintf "Text %A" x))
         |> Incremental.text
                         
 

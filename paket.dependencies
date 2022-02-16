@@ -1,4 +1,4 @@
-framework: netstandard2.0, net471, netcoreapp3.1
+framework: netstandard2.0, net471, netcoreapp3.1, net5.0
 source https://api.nuget.org/v3/index.json
 // for unofficial dev releases
 source https://vrvis.myget.org/F/aardvark_public/api/v2
@@ -58,6 +58,9 @@ nuget Chiron
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.3.0
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.3.0
 nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.3.0
+
+
+nuget Giraffe ~> 5.0.0
 
 group Build
     framework: netstandard2.0
