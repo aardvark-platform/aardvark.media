@@ -6,6 +6,7 @@
     <WarnOn>3390;$(WarnOn)</WarnOn>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="GiraffeExtensions.fs" />
     <None Include="paket.references" />
     <Compile Include="Server.fs" />
   </ItemGroup>

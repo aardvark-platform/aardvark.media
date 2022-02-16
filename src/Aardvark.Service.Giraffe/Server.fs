@@ -1,5 +1,15 @@
 ﻿namespace Aardvark.Service.Giraffe
 
+open Giraffe
+open FSharp.Control.Tasks
+
+open Microsoft.AspNetCore.Builder
+open Microsoft.AspNetCore.Hosting
+open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.AspNetCore.Http
+
 open System
 open System.Text
 open System.Net
@@ -21,8 +31,6 @@ open Aardvark.Service.Internals
 
 open System.Net.WebSockets
 
-open Giraffe
-open FSharp.Control.Tasks.Affine
 
 type internal ClientCreateInfo =
     {
@@ -235,17 +243,10 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         member x.Dispose() = x.Dispose()
 
 
-open Microsoft.AspNetCore.Builder
-open Microsoft.AspNetCore.Hosting
-open Microsoft.Extensions.Hosting
-open Microsoft.Extensions.Logging
-open Microsoft.Extensions.DependencyInjection
-open Giraffe
-open Microsoft.AspNetCore.Http
 
 
 [<AutoOpen>]
-module private AspNetExtensions = 
+module AspNetExtensions = 
 
     open Microsoft.Extensions.Primitives
     
@@ -524,9 +525,9 @@ module Server =
 
         choose [
             
-            //yield Reflection.assemblyWebPart typeof<Client>.Assembly
-            yield route "/render/" >=> render
-            yield route "/stats.json" >=> statistics 
+            yield Reflection.assemblyWebPart typeof<Aardvark.Service.Server>.Assembly
+            yield route  "/render/" >=> render
+            yield route  "/stats.json" >=> statistics 
             //yield pathScan "/screenshot/%s" screenshot
 
             //match info.fileSystemRoot with

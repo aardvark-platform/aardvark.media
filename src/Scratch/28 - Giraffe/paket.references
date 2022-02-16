@@ -17,3 +17,6 @@ Aardium
 
 Suave
 FSharp.Core
+
+Giraffe      
+Microsoft.AspNetCore.App 

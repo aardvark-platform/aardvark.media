@@ -60,7 +60,8 @@ nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.3.0
 nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.3.0
 
 
-nuget Giraffe ~> 5.0.0
+nuget Giraffe                  ~> 5.0.0
+nuget Microsoft.AspNetCore.App ~> 2.2.8
 
 group Build
     framework: netstandard2.0
