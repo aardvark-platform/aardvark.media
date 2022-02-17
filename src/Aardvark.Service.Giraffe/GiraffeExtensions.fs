@@ -2,31 +2,34 @@
 
 open Microsoft.AspNetCore.Http
 open FSharp.Control.Tasks
+open System.Net.WebSockets
+open System.Threading.Tasks
 
-//module Redirection =
-//    let foundRelative (path : string) : WebPart =
-//        if not (path.StartsWith "/") then failwith "redirect-paths need to start with /"
-//        fun (ctx : HttpContext) ->
-//            match ctx.request.header "GLOBAL_PATH" with
-//                | Choice1Of2 p -> 
-//                    let newPath =
-//                        if p.EndsWith "/" then p + path.Substring(1)
-//                        else p + path
-//                    Redirection.redirect newPath ctx
-//                | _ ->
-//                    Redirection.redirect path ctx
+open Microsoft.AspNetCore.Http
+open Giraffe
 
-//    let redirectRelative (path : string) : WebPart =
-//        if not (path.StartsWith "/") then failwith "redirect-paths need to start with /"
-//        fun (ctx : HttpContext) ->
-//            match ctx.request.header "GLOBAL_PATH" with
-//                | Choice1Of2 p -> 
-//                    let newPath =
-//                        if p.EndsWith "/" then p + path.Substring(1)
-//                        else p + path
-//                    Redirection.redirect newPath ctx
-//                | _ ->
-//                    Redirection.redirect path ctx
+
+[<AutoOpen>]
+module AspNetExtensions = 
+
+    open Microsoft.Extensions.Primitives
+    
+    let (|SingleString|_|) (v : StringValues) =
+        if v.Count = 1 then Some (v.Item 0) else None
+
+module Redirection =
+
+    let redirectRelative (path : string) (next : HttpFunc) =
+        if not (path.StartsWith "/") then failwith "redirect-paths need to start with /"
+        fun (ctx : HttpContext) ->
+            match ctx.Request.Headers.TryGetValue "GLOBAL_PATH" with
+                | (true, SingleString p) -> 
+                    let newPath =
+                        if p.EndsWith "/" then p + path.Substring(1)
+                        else p + path
+                    Giraffe.Core.redirectTo true newPath next ctx
+                | _ ->
+                    Giraffe.Core.redirectTo true path next ctx
 
 
 module Reflection =
@@ -112,13 +115,28 @@ module Reflection =
                     if Path.GetFileNameWithoutExtension name = "index" then
                         [
                             route ("/" + name) >=> part
-                            //route "/" >=> redirectTo true Redirection.redirectRelative ("/" + name)
+                            route "/" >=> Redirection.redirectRelative ("/" + name)
                         ]
                     else
-                        printfn "%s" ("/" + name)
                         [ route ("/" + name) >=> part ]
                 
                 // return the part
                 parts
             )
             |> choose
+
+
+module Websockets =
+
+    
+    let handShake (f : WebSocket -> HttpContext -> Task<unit>)  (next : HttpFunc) (context : HttpContext) =
+        task {
+            match context.WebSockets.IsWebSocketRequest with
+            | true -> 
+                let! webSocket = context.WebSockets.AcceptWebSocketAsync()
+                let! _ = f webSocket context
+                return! next context
+            | _ -> 
+                return failwith "no ws request"
+        }
+

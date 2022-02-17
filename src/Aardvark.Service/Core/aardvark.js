@@ -382,7 +382,7 @@ class Renderer {
                 var doPing = function () {
                     if (socket.readyState <= 1) {
                         socket.send("#ping");
-                        setTimeout(doPing, 50);
+                        setTimeout(doPing, 1000);
                     }
                 };
 

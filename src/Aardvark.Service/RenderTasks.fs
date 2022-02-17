@@ -335,7 +335,7 @@ module Internals =
 
         new(server,getScene) = new JpegClientRenderTask(server,getScene, RenderQuality.full)
 
-    type PngClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
+    type PngClientRenderTask(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
         inherit ClientRenderTask(server, getScene)     
 
         let runtime = server.runtime

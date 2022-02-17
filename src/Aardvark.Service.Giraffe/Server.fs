@@ -179,9 +179,9 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
             Log.line "[Client] %d: running %s" id info.sceneName
             try
                 while running do    
-                    let data = Array.zeroCreate 1024 
-                    let! r = createInfo.socket.ReceiveAsync(ArraySegment(data), CancellationToken.None)
-
+                    let buffer = Array.zeroCreate 1024 
+                    let! r = createInfo.socket.ReceiveAsync(ArraySegment(buffer), CancellationToken.None)
+                    let data = Array.sub buffer 0 r.Count
                     if r.CloseStatus.HasValue  then
                         Log.warn "[Client] %d:closed  %A" id r.CloseStatus
                         running <- false
@@ -190,16 +190,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                         match r.MessageType with
                             | WebSocketMessageType.Text ->
                                 try
-                                
                                     if data.Length > 0 && data.[0] = uint8 '#' then
                                         let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
                                         match str with
                                             | "ping" ->
-                                                () 
-                                                Log.warn "nevermore"
-                                                //do! createInfo.socket.send Opcode.Pong (ByteSegment([||])) true
+                                                () // not in giraffe backend (implicit ping pong)
                                             | _ ->
-                                                Log.warn "bad opcode: %A" str
+                                                Log.warn "[Service] unknown opcode"
                                     else
                                         let msg : Message = Pickler.json.UnPickle data
 
@@ -243,15 +240,6 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
         member x.Dispose() = x.Dispose()
 
 
-
-
-[<AutoOpen>]
-module AspNetExtensions = 
-
-    open Microsoft.Extensions.Primitives
-    
-    let (|SingleString|_|) (v : StringValues) =
-        if v.Count = 1 then Some (v.Item 0) else None
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Server =
@@ -365,11 +353,8 @@ module Server =
                 | Some scene -> scene.GetConcreteScene(id, signature)
                 | None -> Scene.empty.GetConcreteScene(id, signature)
 
-        let render (next : HttpFunc)  (context: HttpContext) =
-            //(targetId : string) (ws : WebSocket)
+        let render (targetId : string) (ws : WebSocket) (context: HttpContext) =
             task {
-                let targetId = "dj2"
-                let ws : WebSocket = null
                 let request = context.Request
                 let args = request.Query |> Seq.choose (fun v -> match v.Value with | SingleString s -> Some (v.Key, s) | _ -> None) |> Map.ofSeq
             
@@ -427,8 +412,7 @@ module Server =
                     )
 
                 client.Revive(createInfo)
-                client.Run |> ignore
-                return! next context
+                return! client.Run 
             }
 
         let setContentType contentType : HttpHandler =
@@ -463,81 +447,73 @@ module Server =
             }
 
 
-        //let screenshot (sceneName : string) (context: HttpContext) =
-        //    let request = context.request
-        //    let args = request.query |> List.choose (function (n,Some v) -> Some(n,v) | _ -> None) |> Map.ofList
+        let screenshot (sceneName : string) (next : HttpFunc) (ctx : HttpContext)=
+            let request = ctx.Request
+            let args = request.Query |> Seq.choose (fun v -> match v.Value with | SingleString s -> Some (v.Key, s) | _ -> None) |> Map.ofSeq
 
-        //    let samples = 
-        //        match Map.tryFind "samples" args with
-        //            | Some (Int s) -> s
-        //            | _ -> 1
+            let samples = 
+                match Map.tryFind "samples" args with
+                    | Some (Int s) -> s
+                    | _ -> 1
 
-        //    let signature = getSignature samples
+            let signature = getSignature samples
 
-        //    match Map.tryFind "w" args, Map.tryFind "h" args with
-        //        | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
-        //            let scene = content signature sceneName
+            match Map.tryFind "w" args, Map.tryFind "h" args with
+                | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
+                    let scene = content signature sceneName
 
-        //            let clearColor = 
-        //                match Map.tryFind "background" args with // fmt: C4f.Parse("[1.0,2.0,0.2,0.2]") 
-        //                    | Some (C4f c) -> c
-        //                    | Some bg -> 
-        //                        Log.warn "[render service] could not parse background color: %s (format should be e.g. [1.0,2.0,0.2,0.2])" bg
-        //                        C4f.Black
-        //                    | None -> C4f.Black
+                    let clearColor = 
+                        match Map.tryFind "background" args with // fmt: C4f.Parse("[1.0,2.0,0.2,0.2]") 
+                            | Some (C4f c) -> c
+                            | Some bg -> 
+                                Log.warn "[render service] could not parse background color: %s (format should be e.g. [1.0,2.0,0.2,0.2])" bg
+                                C4f.Black
+                            | None -> C4f.Black
 
-        //            let clientInfo = 
-        //                {
-        //                    token = AdaptiveToken.Top
-        //                    signature = signature
-        //                    targetId = ""
-        //                    sceneName = sceneName
-        //                    session = Guid.Empty
-        //                    size = V2i(w,h)
-        //                    samples = samples
-        //                    time = MicroTime.Now
-        //                    clearColor = clearColor
-        //                    quality = RenderQuality.full
-        //                }
+                    let clientInfo = 
+                        {
+                            token = AdaptiveToken.Top
+                            signature = signature
+                            targetId = ""
+                            sceneName = sceneName
+                            session = Guid.Empty
+                            size = V2i(w,h)
+                            samples = samples
+                            time = MicroTime.Now
+                            clearColor = clearColor
+                            quality = RenderQuality.full
+                        }
 
-        //            let state = getState clientInfo
+                    let state = getState clientInfo
 
-        //            let respondOK (mime : string) (task : ClientRenderTask)  =
-        //                let data = 
-        //                    match task.Run(AdaptiveToken.Top, clientInfo, state) with
-        //                        | RenderResult.Jpeg d -> d
-        //                        | RenderResult.Png d -> d
-        //                        | _ -> failwith "that was unexpected"
+                    let respondOK (mime : string) (task : ClientRenderTask)  =
+                        let data = 
+                            match task.Run(AdaptiveToken.Top, clientInfo, state) with
+                                | RenderResult.Jpeg d -> d
+                                | RenderResult.Png d -> d
+                                | _ -> failwith "that was unexpected"
 
-        //                context |> (ok data >=> Writers.setMimeType mime)
+                        ctx.SetContentType(mime)
+                        setBody data next ctx
 
-        //            match Map.tryFind "fmt" args with
-        //                | Some "jpg" | None -> 
-        //                    use t = new JpegClientRenderTask(info, content, RenderQuality.full) :> ClientRenderTask
-        //                    t |> respondOK "image/jpeg"
-        //                | Some "png" -> 
-        //                    use t = new PngClientRenderTask(info, content) :> ClientRenderTask
-        //                    t |> respondOK "image/png"
-        //                | Some fmt -> context |> BAD_REQUEST (sprintf  "format not supported: %s" fmt)
+                    match Map.tryFind "fmt" args with
+                        | Some "jpg" | None -> 
+                            use t = new JpegClientRenderTask(info, content, RenderQuality.full) :> ClientRenderTask
+                            t |> respondOK "image/jpeg"
+                        | Some "png" -> 
+                            use t = new PngClientRenderTask(info, content) :> ClientRenderTask
+                            t |> respondOK "image/png"
+                        | Some fmt -> 
+                            RequestErrors.NOT_FOUND (sprintf  "format not supported: %s" fmt) next ctx
 
-        //        | _ ->
-        //            context |> BAD_REQUEST "no width/height specified"
+                | _ ->
+                    RequestErrors.NOT_FOUND "no width/height specified" next ctx
 
         choose [
-            
             yield Reflection.assemblyWebPart typeof<Aardvark.Service.Server>.Assembly
-            yield route  "/render/" >=> render
+            yield routef  "/render/%s" (render >> Websockets.handShake)
             yield route  "/stats.json" >=> statistics 
-            //yield pathScan "/screenshot/%s" screenshot
-
-            //match info.fileSystemRoot with
-            //    | Some root ->
-            //        let fileSystem = 
-            //            if root = "/" then new FileSystem()
-            //            else new FileSystem(root)
-            //        yield path "/fs" >=> FileSystem.toWebPart fileSystem
-            //    | None ->
-            //        ()
+            yield routef "/screenshot/%s" screenshot
         ]
 
     //let run (port : int) (server : Server) =

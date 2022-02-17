@@ -236,45 +236,37 @@ module MutableApp =
 
                     task {
                         while running do
-                            try
-                                let buffer = Array.zeroCreate 1024
-                                let! result = ws.ReceiveAsync(ArraySegment(buffer), CancellationToken.None)
-                                let data = Array.sub buffer 0 result.Count
-                                if result.CloseStatus.HasValue then
-                                    running <- true
-                                else
-                                    match result.MessageType with
-                                        | WebSocketMessageType.Text ->
-                                            try
-                                                if data.Length > 0 && data.[0] = uint8 '#' then
-                                                    let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
-                                                    match str with
-                                                        | "ping" -> 
-                                                            () // ignore in giraffe backend
-                                                        | _ ->
-                                                            Log.warn "bad opcode: %A" str
-                                                else
-                                                    let evt : EventMessage = Pickler.json.UnPickle data
-                                                    match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
-                                                        | (true, handler) ->
-                                                            let msgs = handler sessionId evt.sender (Array.toList evt.args)
-                                                            app.update sessionId msgs
+                            let buffer = Array.zeroCreate 1024
+                            let! result = ws.ReceiveAsync(ArraySegment(buffer), CancellationToken.None)
+                            let data = Array.sub buffer 0 result.Count
+                            if result.CloseStatus.HasValue then
+                                running <- true
+                            else
+                                match result.MessageType with
+                                    | WebSocketMessageType.Text ->
+                                        try
+                                            if data.Length > 0 && data.[0] = uint8 '#' then
+                                                let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
+                                                match str with
+                                                    | "ping" -> 
+                                                        () // ignore in giraffe backend
+                                                    | _ ->
+                                                        Log.warn "bad opcode: %A" str
+                                            else
+                                                let evt : EventMessage = Pickler.json.UnPickle data
+                                                match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
+                                                    | (true, handler) ->
+                                                        let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                                        app.update sessionId msgs
                                                     
-                                                        | _ ->
-                                                            ()
+                                                    | _ ->
+                                                        ()
 
-                                            with e ->
-                                                Log.warn "unpickle faulted: %A" e
+                                        with e ->
+                                            Log.warn "unpickle faulted: %A" e
 
-                                        | _ ->
-                                            Log.warn "[MutableApp] unknown message: %A" (code,data)
-
-                            with e -> 
-                                if ws.CloseStatus.HasValue then
-                                    Log.line "[MutableApp] client gone."
-                                    running <- false
-                                else 
-                                    raise e
+                                    | _ ->
+                                        Log.warn "[MutableApp] unknown message: %A" (code,data)
                         
                         MVar.put update false
                         updater.Destroy(state, JSExpr.Body) |> ignore

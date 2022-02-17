@@ -9,9 +9,12 @@
     <Compile Include="GiraffeExtensions.fs" />
     <None Include="paket.references" />
     <Compile Include="Server.fs" />
+    <Compile Include="MutableApp.fs" />
+    <Compile Include="Giraffe.fs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />
+    <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
