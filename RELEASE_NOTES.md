@@ -3,6 +3,8 @@
 
 ### 5.1.12
 - switched to f# 5.0 (version bump for base/fshade/suave)
+### 5.3.0-prerelease0001
+- experimental giraffe backend
 
 ### 5.1.11
 - fixed arcball problem on mac
