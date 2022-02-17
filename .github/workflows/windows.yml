@@ -14,8 +14,7 @@ jobs:
   build:
 
     runs-on: windows-latest
-
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
+    - uses: actions/checkout@v1
+    - name: build
       run: .\build.cmd

@@ -5,6 +5,8 @@ source https://vrvis.myget.org/F/aardvark_public/api/v2
 
 storage: none
 
+nuget Aardvark.Build ~> 1.0.1
+
 nuget FSharp.Core                       >= 5.0.0 lowest_matching: true
 nuget Microsoft.NETFramework.ReferenceAssemblies ~> 1.0.0
 nuget FSharp.Data                       ~> 3.0.0
