@@ -1,8 +1,12 @@
+### 5.3.0-prerelease0002
+- experimental giraffe backend
+
 ### 5.1.13
 - added orbit camera controller helpers
 
 ### 5.1.12
 - switched to f# 5.0 (version bump for base/fshade/suave)
+
 ### 5.3.0-prerelease0001
 - experimental giraffe backend
 
