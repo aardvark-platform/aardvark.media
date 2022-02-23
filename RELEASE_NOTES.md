@@ -1,3 +1,6 @@
+### 5.3.0-prerelease0003
+- added giraffe backend nupkg
+
 ### 5.3.0-prerelease0002
 - experimental giraffe backend### 5.1.14
 - [SimplePrimitives.fs] added textarea; js typo fix### 5.1.13
