@@ -23,6 +23,14 @@ let main argv =
     use cts = new CancellationTokenSource()
     let server = Server.startServer "http://localhost:4321" cts.Token webApp 
 
+    let bind o f =
+        match o with
+            | None -> None
+            | Some v -> f v
+
+
+
+
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
