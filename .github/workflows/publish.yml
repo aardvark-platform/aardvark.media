@@ -27,7 +27,7 @@ jobs:
       #   run: generate.cmd
       - name: Build
         shell: cmd
-        run: dotnet build -c Release src\Aardvark.sln
+        run: dotnet build -c Release src\Aardvark.Media.sln
       - name: Pack
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
