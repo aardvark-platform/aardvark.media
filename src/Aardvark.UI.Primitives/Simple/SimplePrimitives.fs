@@ -53,6 +53,11 @@ module SimplePrimitives =
             maxLength   : Option<int>
         }
 
+    type TextAreaConfig =
+        {
+            placeholder : Option<string>
+        }
+
 
     type DropdownConfig =
         {
@@ -249,7 +254,6 @@ module SimplePrimitives =
                 )
             )
 
-
         let textbox (cfg : TextConfig) (atts : AttributeMap<'msg>) (value : aval<string>) (update : string -> 'msg) =
 
             let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
@@ -269,7 +273,7 @@ module SimplePrimitives =
                     | Some rx ->
                         yield "var validate = function(a) { if(/" + rx + "/.test(a)) { return a; } else { return null; }};"
                     | None ->
-                        yield "var validate = function(a) { return a });"
+                        yield "var validate = function(a) { return a };"
 
                     yield "var $self = $('#__ID__');"
                     yield "var $input = $('#__ID__ > input');"
@@ -295,7 +299,42 @@ module SimplePrimitives =
                     )
                 )
             )
+            
+        let textarea (cfg : TextAreaConfig) (atts : AttributeMap<'msg>) (value : aval<string>) (update : string -> 'msg) =
+            let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
+            let update v =
+                value.MarkOutdated()
+                update v
 
+            let myAtts =
+                AttributeMap.ofList [
+                    clazz "ui input"
+                    onEvent' "data-event" [] (function (str :: _) -> Seq.delay (fun () -> Seq.singleton (update (Pickler.unpickleOfJson str))) | _ -> Seq.empty)
+                ]
+
+            let boot =
+                String.concat ";" [
+                    yield "var $self = $('#__ID__');"
+                    yield "var $input = $('#__ID__ > textarea');"
+                    yield "$input.change(function(e) {aardvark.processEvent('__ID__', 'data-event', e.target.value);});"
+                    yield "valueCh.onmessage = function(v) { $input.val(v.value); };"
+                ]
+
+            require semui (
+                onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
+                    Incremental.form (AttributeMap.union atts myAtts) (
+                        alist {
+                            yield
+                                textarea (att [
+                                    match cfg.placeholder with 
+                                    | Some ph when ph<>"" -> yield attribute "placeholder" ph
+                                    | _ -> ()
+                                    yield attribute "type" "text"
+                                ]) value
+                        }
+                    )
+                )
+            )
 
         let private pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
 
@@ -512,6 +551,9 @@ module SimplePrimitives =
 
     let inline textbox (cfg : TextConfig) atts (state : aval<string>) (update : string -> 'msg) =
         Incremental.textbox cfg (att atts) state update
+
+    let inline textarea (cfg : TextAreaConfig) atts (state : aval<string>) (update : string -> 'msg) =
+        Incremental.textarea cfg (att atts) state update
 
     let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
         Incremental.dropdown cfg (att atts) values selected update
