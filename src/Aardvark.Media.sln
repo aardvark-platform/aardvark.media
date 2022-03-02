@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29613.14
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Giraffe", "Scratch\28 - Giraffe\28 - Giraffe.fsproj", "{1A788AF4-257B-4C4C-8C5A-E379373B5838}"
 EndProject
@@ -140,6 +140,11 @@ EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - ReplaceTest", "Scratch\26 - ReplaceTest\26 - ReplaceTest.fsproj", "{0B82634B-7605-4798-AD95-C96036661C61}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Service.Giraffe", "Aardvark.Service.Giraffe\Aardvark.Service.Giraffe.fsproj", "{E6E319E2-7A57-41B0-99B4-FF454EA81CF6}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B9F6DDEC-5566-408F-BCEC-D9B4F336D4F1}"
+	ProjectSection(SolutionItems) = preProject
+		..\paket.dependencies = ..\paket.dependencies
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

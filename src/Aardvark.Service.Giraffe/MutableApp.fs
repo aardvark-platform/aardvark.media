@@ -128,8 +128,11 @@ module MutableApp =
                                     return! ws.SendAsync(ArraySegment(arr), WebSocketMessageType.Text, true, CancellationToken.None) 
                                 with e -> 
                                     Log.warn "[Media] send failed: %s (retries=%d)" e.Message retries
-                                    do! Async.Sleep 100
-                                    return! res (retries - 1)
+                                    if retries >= 0 then 
+                                        do! Async.Sleep 100
+                                        return! res (retries - 1)
+                                    else   
+                                        raise e
                             }
                         task {
                             try 
@@ -233,40 +236,54 @@ module MutableApp =
                     updateThread.Name <- "[media] UpdateThread"
                     updateThread.Start()
                     
+                    let read buffer =
+                        async {
+                            try
+                                let! r = ws.ReceiveAsync(ArraySegment(buffer), CancellationToken.None)
+                                return Choice1Of2 r
+                            with e ->
+                                return Choice2Of2 e
+                        }
 
                     task {
                         while running do
                             let buffer = Array.zeroCreate 1024
-                            let! result = ws.ReceiveAsync(ArraySegment(buffer), CancellationToken.None)
-                            let data = Array.sub buffer 0 result.Count
-                            if result.CloseStatus.HasValue then
-                                running <- true
-                            else
-                                match result.MessageType with
-                                    | WebSocketMessageType.Text ->
-                                        try
-                                            if data.Length > 0 && data.[0] = uint8 '#' then
-                                                let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
-                                                match str with
-                                                    | "ping" -> 
-                                                        () // ignore in giraffe backend
-                                                    | _ ->
-                                                        Log.warn "bad opcode: %A" str
-                                            else
-                                                let evt : EventMessage = Pickler.json.UnPickle data
-                                                match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
-                                                    | (true, handler) ->
-                                                        let msgs = handler sessionId evt.sender (Array.toList evt.args)
-                                                        app.update sessionId msgs
+                            let! result = read buffer
+                            match result with
+                            | Choice1Of2 result -> 
+                                let data = Array.sub buffer 0 result.Count
+                                if result.CloseStatus.HasValue then
+                                    running <- true
+                                else
+                                    match result.MessageType with
+                                        | WebSocketMessageType.Text ->
+                                            try
+                                                if data.Length > 0 && data.[0] = uint8 '#' then
+                                                    let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
+                                                    match str with
+                                                        | "ping" -> 
+                                                            () // ignore in giraffe backend
+                                                        | _ ->
+                                                            Log.warn "bad opcode: %A" str
+                                                else
+                                                    let evt : EventMessage = Pickler.json.UnPickle data
+                                                    match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
+                                                        | (true, handler) ->
+                                                            let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                                            app.update sessionId msgs
                                                     
-                                                    | _ ->
-                                                        ()
+                                                        | _ ->
+                                                            ()
 
-                                        with e ->
-                                            Log.warn "unpickle faulted: %A" e
+                                            with e ->
+                                                Log.warn "unpickle faulted: %A" e
 
-                                    | _ ->
-                                        Log.warn "[MutableApp] unknown message: %A" (code,data)
+                                        | _ ->
+                                            Log.warn "[MutableApp] unknown message: %A" (code,data)
+                            | Choice2Of2 e -> 
+                                if ws.State <> WebSocketState.Open then 
+                                    Log.warn "[MutableApp] websocket seams dead (%A), updated going down." e
+                                    running <- false
                         
                         MVar.put update false
                         updater.Destroy(state, JSExpr.Body) |> ignore
@@ -282,6 +299,7 @@ module MutableApp =
 
 
             route "/" >=> htmlString template
+            htmlString template
         ]
 
     let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =

@@ -511,10 +511,10 @@ module Server =
                     RequestErrors.NOT_FOUND "no width/height specified" next ctx
 
         choose [
-            yield Reflection.assemblyWebPart typeof<Aardvark.Service.Server>.Assembly
             yield routef  "/render/%s" (render >> Websockets.handShake)
             yield route  "/stats.json" >=> statistics 
             yield routef "/screenshot/%s" screenshot
+            yield Reflection.assemblyWebPart typeof<Aardvark.Service.Server>.Assembly
         ]
 
     //let run (port : int) (server : Server) =

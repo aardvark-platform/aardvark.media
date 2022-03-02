@@ -12,8 +12,6 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="GiraffeExtensions.fs" />
-    <Compile Include="MutableApp.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />

@@ -115,7 +115,7 @@ module Reflection =
                     if Path.GetFileNameWithoutExtension name = "index" then
                         [
                             route ("/" + name) >=> part
-                            route "/" >=> Redirection.redirectRelative ("/" + name)
+                            //route "/" >=> Redirection.redirectRelative ("/" + name)
                         ]
                     else
                         [ route ("/" + name) >=> part ]

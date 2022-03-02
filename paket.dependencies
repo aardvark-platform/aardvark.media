@@ -7,7 +7,7 @@ storage: none
 
 nuget Aardvark.Build ~> 1.0.1
 
-nuget FSharp.Core                       >= 5.0.0 lowest_matching: true
+nuget FSharp.Core                       >= 5.0.1 lowest_matching: true
 nuget Microsoft.NETFramework.ReferenceAssemblies ~> 1.0.0
 nuget FSharp.Data                       ~> 3.0.0
 
@@ -63,7 +63,8 @@ nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.3.0
 
 
 nuget Giraffe                  ~> 5.0.0
-nuget Microsoft.AspNetCore.App ~> 2.2.8
+nuget Saturn                   ~> 0.15.0
+nuget Microsoft.AspNetCore.Authentication.JwtBearer ~> 5.0.7
 
 group Build
     framework: netstandard2.0

@@ -1,4 +1,7 @@
 ### 5.3.0-prerelease0003
+- proper shutdown for giraffe app binding
+
+### 5.3.0-prerelease0003
 - added giraffe backend nupkg 
 
 ### 5.3.0-prerelease0002
