@@ -16,24 +16,24 @@ nuget FSharp.Data.Adaptive              ~> 1.2.8
 // base
 nuget Aardvark.Base.TypeProviders       ~> 4.5.15
 
-nuget Aardvark.Base                     ~> 5.1.11
-nuget Aardvark.Base.Incremental         ~> 5.1.11
-nuget Aardvark.Base.FSharp              ~> 5.1.11
-nuget Aardvark.Base.Essentials          ~> 5.1.11
+nuget Aardvark.Base                     ~> 5.2.2
+nuget Aardvark.Base.Incremental         ~> 5.2.2
+nuget Aardvark.Base.FSharp              ~> 5.2.2
+nuget Aardvark.Base.Essentials          ~> 5.2.2
 
 // rendering
-nuget Aardvark.Rendering                ~> 5.2.0-prerelease
-nuget Aardvark.Application.WinForms.GL  ~> 5.2.0-prerelease
-nuget Aardvark.Application.Slim.GL      ~> 5.2.0-prerelease
-nuget Aardvark.SceneGraph               ~> 5.2.0-prerelease
-nuget Aardvark.SceneGraph.IO            ~> 5.2.0-prerelease
-nuget Aardvark.SceneGraph.Opc           ~> 5.2.0-prerelease
-nuget Aardvark.Rendering.Text           ~> 5.2.0-prerelease
-nuget Aardvark.Rendering.Vulkan         ~> 5.2.0-prerelease
-nuget Aardvark.GPGPU                    ~> 5.2.0-prerelease
+nuget Aardvark.Rendering                ~> 5.2.1
+nuget Aardvark.Application.WinForms.GL  ~> 5.2.1
+nuget Aardvark.Application.Slim.GL      ~> 5.2.1
+nuget Aardvark.SceneGraph               ~> 5.2.1
+nuget Aardvark.SceneGraph.IO            ~> 5.2.1
+nuget Aardvark.SceneGraph.Opc           ~> 5.2.1
+nuget Aardvark.Rendering.Text           ~> 5.2.1
+nuget Aardvark.Rendering.Vulkan         ~> 5.2.1
+nuget Aardvark.GPGPU                    ~> 5.2.1
 
 // algodat (just used for an example atm)
-nuget Aardvark.Geometry.Intersection    ~> 5.1.5
+nuget Aardvark.Geometry.Intersection    ~> 5.2.0
 
 // used for niobe example
 nuget Uncodium.Eigensystems

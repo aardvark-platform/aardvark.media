@@ -88,7 +88,7 @@ module private Tools =
 
         let downloadFBO (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
             let device = fbo.Device
-            let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
+            let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[TextureAspect.Color, 0, 0]
 
             let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
 
@@ -105,9 +105,9 @@ module private Tools =
                 match small with
                 | Some small ->
                     do! Command.TransformLayout(small, VkImageLayout.TransferDstOptimal)
-                    do! Command.Blit(color, VkImageLayout.TransferSrcOptimal, small.[ImageAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
+                    do! Command.Blit(color, VkImageLayout.TransferSrcOptimal, small.[TextureAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
                     do! Command.TransformLayout(small, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Copy(small.[ImageAspect.Color, 0, 0], tmp)
+                    do! Command.Copy(small.[TextureAspect.Color, 0, 0], tmp)
                 | None ->
                     do! Command.Copy(color, tmp)
                 do! Command.TransformLayout(color.Image, oldLayout)
@@ -133,7 +133,7 @@ module private Tools =
 
         let downloadFBOMS (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
             let device = fbo.Device
-            let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[ImageAspect.Color, 0, 0]
+            let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[TextureAspect.Color, 0, 0]
 
             let tempImage = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
 
@@ -152,13 +152,13 @@ module private Tools =
                 match full with
                 | Some full ->
                     do! Command.TransformLayout(full, VkImageLayout.TransferDstOptimal)
-                    do! Command.ResolveMultisamples(color.Image.[ImageAspect.Color, 0, 0], V3i.Zero, full.[ImageAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+                    do! Command.ResolveMultisamples(color.Image.[TextureAspect.Color, 0, 0], V3i.Zero, full.[TextureAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
                     do! Command.TransformLayout(full, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Blit(full.[ImageAspect.Color, 0, 0], VkImageLayout.TransferSrcOptimal, tempImage.[ImageAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
+                    do! Command.Blit(full.[TextureAspect.Color, 0, 0], VkImageLayout.TransferSrcOptimal, tempImage.[TextureAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
                 | None -> 
-                    do! Command.ResolveMultisamples(color.Image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+                    do! Command.ResolveMultisamples(color.Image.[TextureAspect.Color, 0, 0], V3i.Zero, tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
                 do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
-                do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], tmp)
+                do! Command.Copy(tempImage.[TextureAspect.Color, 0, 0], tmp)
                 do! Command.TransformLayout(color.Image, oldLayout)
             }
             
@@ -575,8 +575,8 @@ module private ReadPixel =
             img.Device.perform {
                 do! Command.TransformLayout(img, VkImageLayout.TransferSrcOptimal)
                 //do! Command.TransformLayout(temp, VkImageLayout.TransferDstOptimal)
-                //do! Command.Copy(img.[ImageAspect.Depth, 0, 0], V3i(pixel, 0), img.[ImageAspect.Depth, 0, 0], V3i.Zero, V3i.III)
-                do! Command.Copy(img.[ImageAspect.Depth, 0, 0], V3i(pixel.X, img.Size.Y - 1 - pixel.Y, 0), temp, 0L, V2i.Zero, V3i.III)
+                //do! Command.Copy(img.[TextureAspect.Depth, 0, 0], V3i(pixel, 0), img.[TextureAspect.Depth, 0, 0], V3i.Zero, V3i.III)
+                do! Command.Copy(img.[TextureAspect.Depth, 0, 0], V3i(pixel.X, img.Size.Y - 1 - pixel.Y, 0), temp, 0L, V2i.Zero, V3i.III)
                 do! Command.TransformLayout(img, VkImageLayout.DepthStencilAttachmentOptimal)
             }
 
@@ -1005,13 +1005,13 @@ module internal RawDownload =
                     do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal) // inefficient but needed. why? tempImage has peers
                     do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
-                    do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, image.Size)
+                    do! Command.ResolveMultisamples(image.[TextureAspect.Color, 0, 0], V3i.Zero, tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, image.Size)
                     if device.IsDeviceGroup then 
                         do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
                         do! Command.SyncPeersDefault(tempImage,VkImageLayout.TransferSrcOptimal)
                     else
                         do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
+                    do! Command.Copy(tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                     do! Command.TransformLayout(image, l)
                 }
 
@@ -1063,7 +1063,7 @@ module internal RawDownload =
                         do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal)
                     else
                         do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
+                    do! Command.Copy(image.[TextureAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                     do! Command.TransformLayout(image, l)
                 }
 
@@ -1101,9 +1101,9 @@ module internal RawDownload =
                 device.perform {
                     do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                     do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
-                    do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], tempImage.[ImageAspect.Color, 0, 0])
+                    do! Command.ResolveMultisamples(image.[TextureAspect.Color, 0, 0], tempImage.[TextureAspect.Color, 0, 0])
                     do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, tempImage.Size)
+                    do! Command.Copy(tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, tempImage.Size)
                     do! Command.TransformLayout(image, l)
                 }
 
@@ -1120,7 +1120,7 @@ module internal RawDownload =
                 let l = image.Layout
                 device.perform {
                     do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, image.Size)
+                    do! Command.Copy(image.[TextureAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, image.Size)
                     do! Command.TransformLayout(image, l)
                 }
 
