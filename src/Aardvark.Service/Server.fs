@@ -1377,25 +1377,25 @@ module SharedMemory =
         [<StructLayout(LayoutKind.Sequential); StructuredFormatDisplay("{AsString}")>]
         type Permission =
             struct
-                val mutable public Mask : uint32
+                val mutable public Mask : uint16
 
                 member x.Owner
                     with get() = 
-                        (x.Mask >>> 6) &&& 7u |> int |> unbox<Protection>
+                        (x.Mask >>> 6) &&& 7us |> int |> unbox<Protection>
                     and set (v : Protection) =  
-                        x.Mask <- (x.Mask &&& 0xFFFFFE3Fu) ||| ((uint32 v &&& 7u) <<< 6)
+                        x.Mask <- (x.Mask &&& 0xFE3Fus) ||| ((uint16 v &&& 7us) <<< 6)
 
                 member x.Group
                     with get() = 
-                        (x.Mask >>> 3) &&& 7u |> int |> unbox<Protection>
+                        (x.Mask >>> 3) &&& 7us |> int |> unbox<Protection>
                     and set (v : Protection) =  
-                        x.Mask <- (x.Mask &&& 0xFFFFFFC7u) ||| ((uint32 v &&& 7u) <<< 3)
+                        x.Mask <- (x.Mask &&& 0xFFC7us) ||| ((uint16 v &&& 7us) <<< 3)
 
                 member x.Other
                     with get() = 
-                        (x.Mask) &&& 7u |> int |> unbox<Protection>
+                        (x.Mask) &&& 7us |> int |> unbox<Protection>
                     and set (v : Protection) =  
-                        x.Mask <- (x.Mask &&& 0xFFFFFFF8u) ||| (uint32 v &&& 7u)
+                        x.Mask <- (x.Mask &&& 0xFFF8us) ||| (uint16 v &&& 7us)
 
 
                 member private x.AsString = x.ToString()
@@ -1413,7 +1413,7 @@ module SharedMemory =
 
                 new(u : Protection, g : Protection, o : Protection) =
                     {
-                        Mask = ((uint32 u &&& 7u) <<< 6) ||| ((uint32 g &&& 7u) <<< 3) ||| (uint32 o &&& 7u)
+                        Mask = ((uint16 u &&& 7us) <<< 6) ||| ((uint16 g &&& 7us) <<< 3) ||| (uint16 o &&& 7us)
                     }
 
             end
@@ -1452,25 +1452,29 @@ module SharedMemory =
                 | WriteOnly = 0x0001
                 | ReadWrite = 0x0002
 
-            [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true, EntryPoint="shm_open")>]
-            extern FileHandle shmopen(string name, SharedMemoryFlags oflag, Permission mode)
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true, EntryPoint="shm_open")>]
+            extern int shmopen(string name, SharedMemoryFlags oflag, Permission mode)
             
-            [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
-            extern nativeint mmap(nativeint addr, unativeint size, Protection prot, MapFlags flags, FileHandle fd, unativeint offset)
+            // see https://github.com/dotnet/runtime/issues/48752
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true, EntryPoint="shm_open")>]
+            extern int shmopenArm64(string name, SharedMemoryFlags oflag, int c, int d, int e, int f, int g, int h, Permission mode)
+            
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true)>]
+            extern nativeint mmap(nativeint addr, unativeint size, Protection prot, MapFlags flags, int fd, unativeint offset)
 
-            [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true)>]
             extern int munmap(nativeint ptr, unativeint size)
 
-            [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true, EntryPoint="shm_unlink")>]
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true, EntryPoint="shm_unlink")>]
             extern int shmunlink(string name)
 
-            [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
-            extern int ftruncate(FileHandle fd, unativeint size)
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true)>]
+            extern int ftruncate(int fd, unativeint size)
 
-            [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
-            extern int close(FileHandle fd)
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true)>]
+            extern int close(int fd)
             
-            [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true, EntryPoint="strerror")>]
+            [<DllImport("libc", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl, SetLastError=true, EntryPoint="strerror")>]
             extern nativeint strerrorInternal(int code)
 
             let inline strerror (code : int) =
@@ -1484,10 +1488,16 @@ module SharedMemory =
                 shmunlink(mapName) |> ignore
                 
                 let flags = SharedMemoryFlags.Truncate ||| SharedMemoryFlags.Create ||| SharedMemoryFlags.ReadWrite
-                let perm = Permission(Protection.ReadWrite, Protection.ReadWrite, Protection.ReadWrite)
+                let perm = Permission(Protection.ReadWriteExecute, Protection.ReadWriteExecute, Protection.ReadWriteExecute)
 
-                let fd = shmopen(mapName, flags, perm)
-                if not fd.IsValid then 
+                let fd = 
+                    if RuntimeInformation.ProcessArchitecture = Architecture.Arm64 then
+                        // see https://github.com/dotnet/runtime/issues/48752
+                        shmopenArm64(mapName, flags, 0, 0, 0, 0, 0, 0, perm)
+                    else 
+                        shmopen(mapName, flags, perm)
+                        
+                if fd <= 0 then 
                     let err = Marshal.GetLastWin32Error() |> strerror
                     failwithf "[SharedMemory] could not open \"%s\" (ERROR: %s)" name err
 
@@ -1597,7 +1607,7 @@ module SharedMemory =
                     failwithf "[SharedMemory] could not map \"%s\" (ERROR: %s)" name err
 
                 { new ISharedMemory with
-                    member x.Name = mapName
+                    member x.Name = name
                     member x.Pointer = ptr
                     member x.Size = size
                     member x.Dispose() =
@@ -1630,7 +1640,6 @@ module SharedMemory =
             failwith "[SharedMemory] unknown platform"
 
 
-
 type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(server, getScene)
     let runtime = server.runtime
@@ -1639,10 +1648,9 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
     let mutable downloader : Option<RawDownload.IDownloader> = None
     static let mutable currentId = 0
 
-    let randomString() =
-        let str = Guid.NewGuid().ToByteArray() |> System.Convert.ToBase64String
-        let str = str.Replace("/", "-").Substring(0, 13)
-        str
+    static let randomString() =
+        let str = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+        str.TrimEnd('=').Replace("/", "-")
 
 
     let recreateMapping (desiredSize : int64) =
@@ -1666,7 +1674,10 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
         d
 
     override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
-        let desiredMapSize = Fun.NextPowerOfTwo (int64 color.Size.X * int64 color.Size.Y * 4L)
+        let desiredMapSize =
+            let s = int64 color.Size.X * int64 color.Size.Y * 4L
+            if s < 32768L then 32768L
+            else Fun.NextPowerOfTwo s
 
         let mapping =
             match mapping with
