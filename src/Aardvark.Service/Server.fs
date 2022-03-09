@@ -1317,6 +1317,7 @@ type ISharedMemory =
     abstract member Pointer : nativeint
     abstract member Size : int64
 
+
 module SharedMemory =
     open System.Runtime.InteropServices
 
@@ -1418,6 +1419,8 @@ module SharedMemory =
             end
 
 
+
+
         [<System.Diagnostics.CodeAnalysis.SuppressMessage("NameConventions", "")>]
         module Mac =
             [<Flags>]        
@@ -1474,26 +1477,14 @@ module SharedMemory =
                 strerrorInternal code |> Marshal.PtrToStringAnsi
 
 
-            let exists (name : string) =
-                let mapName = "/" + name
-                let flags = SharedMemoryFlags.ReadOnly
-                let perm = Permission(Protection.Read, Protection.Read, Protection.Read)
-                let fd = shmopen(mapName, flags, perm)
-                
-                if fd.IsValid then
-                    close(fd) |> ignore
-                    true
-                else
-                    false
-
-
             let create (name : string) (size : int64) =
                 // open the shared memory (or create if not existing)
-                let mapName = "/" + name;
+                let mapName = name
+                //let mapName = "" + name
                 shmunlink(mapName) |> ignore
                 
                 let flags = SharedMemoryFlags.Truncate ||| SharedMemoryFlags.Create ||| SharedMemoryFlags.ReadWrite
-                let perm = Permission(Protection.ReadWriteExecute, Protection.ReadWriteExecute, Protection.ReadWriteExecute)
+                let perm = Permission(Protection.ReadWrite, Protection.ReadWrite, Protection.ReadWrite)
 
                 let fd = shmopen(mapName, flags, perm)
                 if not fd.IsValid then 
@@ -1514,7 +1505,7 @@ module SharedMemory =
                     failwithf "[SharedMemory] could not map \"%s\" (ERROR: %s)" name err
 
                 { new ISharedMemory with
-                    member x.Name = name
+                    member x.Name = mapName
                     member x.Pointer = ptr
                     member x.Size = size
                     member x.Dispose() =
@@ -1535,6 +1526,7 @@ module SharedMemory =
                             let err = Marshal.GetLastWin32Error() |> strerror
                             failwithf "[SharedMemory] could not unlink %s (ERROR: %s)" name err
                 }
+
 
         [<System.Diagnostics.CodeAnalysis.SuppressMessage("NameConventions", "")>]
         module Linux =
@@ -1605,7 +1597,7 @@ module SharedMemory =
                     failwithf "[SharedMemory] could not map \"%s\" (ERROR: %s)" name err
 
                 { new ISharedMemory with
-                    member x.Name = name
+                    member x.Name = mapName
                     member x.Pointer = ptr
                     member x.Size = size
                     member x.Dispose() =
@@ -1627,29 +1619,6 @@ module SharedMemory =
                             failwithf "[SharedMemory] could not unlink %s (ERROR: %s)" name err
                 }
 
-    let randomString() =
-        let str = Guid.NewGuid().ToByteArray() |> System.Convert.ToBase64String
-        let str = str.Replace("/", "-").Substring(0, 13)
-        str
-
-
-    let createNew (size : int64) = 
-        if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then 
-            let name = Guid.NewGuid() |> string
-            Windows.create name size
-        elif RuntimeInformation.IsOSPlatform(OSPlatform.OSX) then
-            let mutable name = randomString()
-            while Posix.Mac.exists name do
-                name <- randomString()
-            Posix.Mac.create name size        
-        elif RuntimeInformation.IsOSPlatform(OSPlatform.Linux) then
-            let name = Guid.NewGuid() |> string
-            Posix.Linux.create name size
-        else
-            failwith "[SharedMemory] unknown platform"
-        
-        
-
     let create (name : string) (size : int64) =
         if RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then 
             Windows.create name size
@@ -1662,7 +1631,6 @@ module SharedMemory =
 
 
 
-
 type internal MappedClientRenderTask internal(server : Server, getScene : IFramebufferSignature -> string -> ConcreteScene) =
     inherit ClientRenderTask(server, getScene)
     let runtime = server.runtime
@@ -1671,13 +1639,19 @@ type internal MappedClientRenderTask internal(server : Server, getScene : IFrame
     let mutable downloader : Option<RawDownload.IDownloader> = None
     static let mutable currentId = 0
 
+    let randomString() =
+        let str = Guid.NewGuid().ToByteArray() |> System.Convert.ToBase64String
+        let str = str.Replace("/", "-").Substring(0, 13)
+        str
+
 
     let recreateMapping (desiredSize : int64) =
         match mapping with
             | Some m -> m.Dispose()
             | None -> ()
 
-        let m = SharedMemory.createNew desiredSize
+        let name = randomString()
+        let m = SharedMemory.create name desiredSize
         mapping <- Some m
         m
 

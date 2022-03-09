@@ -1,3 +1,6 @@
+### 5.2.1
+- added Mac/ARM64 turbojpeg
+
 ### 5.2.0
 https://github.com/aardvark-platform/aardvark.docs/wiki/Aardvark-5.2-changelog
 

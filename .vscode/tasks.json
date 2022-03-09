@@ -1,16 +1,25 @@
 {
     // See https://go.microsoft.com/fwlink/?LinkId=733558
     // for the documentation about the tasks.json format
-    "version": "0.1.0",
-    "command": "build.cmd",
-    "isShellCommand": true,
-    "args": [],
-    "showOutput": "always",
+    "version": "2.0.0",
     "tasks": [
         {
-            "taskName": "compile",
-            "args": [],
-            "isBuildCommand": true
+            "label": "build",
+            "command": "dotnet",
+            "type": "shell",
+            "args": [
+                "build",
+                "src/Aardvark.Media.NonWindows.sln",
+                // Ask dotnet build to generate full paths for file names.
+                "/property:GenerateFullPaths=true",
+                // Do not generate summary otherwise it leads to duplicate errors in Problems panel
+                "/consoleloggerparameters:NoSummary"
+            ],
+            "group": "build",
+            "presentation": {
+                "reveal": "silent"
+            },
+            "problemMatcher": "$msCompile"
         }
     ]
 }
