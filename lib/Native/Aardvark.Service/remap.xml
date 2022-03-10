@@ -1,3 +1,0 @@
-<configuration>
-  <dllmap os="linux" dll="libturbojpeg.so" target="libturbojpeg.so.0"/>
-</configuration>
