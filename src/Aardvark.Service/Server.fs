@@ -1555,7 +1555,7 @@ module SharedMemory =
                 | WriteOnly = 0x1
                 | ReadWrite = 0x2
 
-            [<DllImport("librt", CharSet = CharSet.Ansi, SetLastError=true, EntryPoint="shm_open")>]
+            [<DllImport("librt.so.1", CharSet = CharSet.Ansi, SetLastError=true, EntryPoint="shm_open")>]
             extern FileHandle shmopen(string name, SharedMemoryFlags oflag, Permission mode)
             
             [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
@@ -1564,7 +1564,7 @@ module SharedMemory =
             [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
             extern int munmap(nativeint ptr, unativeint size)
 
-            [<DllImport("librt", CharSet = CharSet.Ansi, SetLastError=true, EntryPoint="shm_unlink")>]
+            [<DllImport("librt.so.1", CharSet = CharSet.Ansi, SetLastError=true, EntryPoint="shm_unlink")>]
             extern int shmunlink(string name)
 
             [<DllImport("libc", CharSet = CharSet.Ansi, SetLastError=true)>]
