@@ -1,10 +1,8 @@
 ﻿namespace Aardvark.Service
 
+
 open System
-open System.Text
-open System.Net
 open System.Threading
-open System.Collections.Concurrent
 
 open Aardvark.Base
 open Aardvark.Rendering
@@ -12,9 +10,6 @@ open Aardvark.GPGPU
 open FSharp.Data.Adaptive
 open Aardvark.Application
 open System.Diagnostics
-
-open Microsoft.FSharp.NativeInterop
-open System.Threading.Tasks
 
 
 open Aardvark.Service
@@ -40,7 +35,7 @@ module Internals =
 
 
         let deleteFramebuffer() =
-            target     |> Option.iter runtime.DeleteFramebuffer
+            target     |> Option.iter Disposable.dispose
             depth      |> Option.iter runtime.DeleteRenderbuffer
             color      |> Option.iter runtime.DeleteRenderbuffer
             target <- None
@@ -55,24 +50,23 @@ module Internals =
             currentSize <- size
             currentSignature <- signature
 
-            let depthSignature =
-                match signature.DepthAttachment with
-                    | Some att -> att
-                    | _ -> { format = RenderbufferFormat.Depth24Stencil8; samples = 1 }
+            let depthStencilFormat =
+                signature.DepthStencilAttachment
+                |> Option.defaultValue TextureFormat.Depth24Stencil8
                 
-            let colorSignature =
+            let colorFormat =
                 match Map.tryFind 0 signature.ColorAttachments with
-                    | Some (sem, att) when sem = DefaultSemantic.Colors -> att
-                    | _ -> { format = RenderbufferFormat.Rgba8; samples = 1 }
+                | Some att when att.Name = DefaultSemantic.Colors -> att.Format
+                | _ -> TextureFormat.Rgba8
 
-            let d = runtime.CreateRenderbuffer(currentSize, depthSignature.format, depthSignature.samples)
-            let c = runtime.CreateRenderbuffer(currentSize, colorSignature.format, colorSignature.samples)
+            let d = runtime.CreateRenderbuffer(currentSize, depthStencilFormat, signature.Samples)
+            let c = runtime.CreateRenderbuffer(currentSize, colorFormat, signature.Samples)
             let newTarget =
                 runtime.CreateFramebuffer(
                     signature,
                     [
                         DefaultSemantic.Colors, c :> IFramebufferOutput
-                        DefaultSemantic.Depth, d :> IFramebufferOutput
+                        DefaultSemantic.DepthStencil, d :> IFramebufferOutput
                     ]
                 )
 
@@ -145,7 +139,7 @@ module Internals =
         member x.DownloadDepth(pixel : V2i) =
             match target with
                 | Some fbo ->
-                    match Map.tryFind DefaultSemantic.Depth fbo.Attachments with
+                    match Map.tryFind DefaultSemantic.DepthStencil fbo.Attachments with
                         | Some (:? ITextureLevel as t) ->
                             if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller t.Size.XY then
                                 ReadPixel.downloadDepth pixel t.Texture
@@ -159,7 +153,7 @@ module Internals =
         member x.GetWorldPosition(pixel : V2i) =
             match target with
                 | Some fbo ->
-                    match Map.tryFind DefaultSemantic.Depth fbo.Attachments with
+                    match Map.tryFind DefaultSemantic.DepthStencil fbo.Attachments with
                         | Some (:? ITextureLevel as t) ->
                             if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller t.Size.XY then
                                 match ReadPixel.downloadDepth pixel t.Texture with
@@ -273,7 +267,7 @@ module Internals =
         let mutable gpuCompressorInstance : Option<JpegCompressorInstance> = None
         let mutable resolved : Option<IBackendTexture> = None
 
-        let recreate  (fmt : RenderbufferFormat) (size : V2i) =
+        let recreate  (fmt : TextureFormat) (size : V2i) =
             match server.compressor with
                 | Some compressor -> 
                     match gpuCompressorInstance with
@@ -286,7 +280,7 @@ module Internals =
                     gpuCompressorInstance <- Some instance
 
                     resolved |> Option.iter runtime.DeleteTexture
-                    let r = runtime.CreateTexture2D(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+                    let r = runtime.CreateTexture2D(size, fmt, 1, 1)
                     resolved <- Some r
                     Some r
 
@@ -341,9 +335,9 @@ module Internals =
         let runtime = server.runtime
         let mutable resolved : Option<IBackendTexture> = None
 
-        let recreate  (fmt : RenderbufferFormat) (size : V2i) =
+        let recreate  (fmt : TextureFormat) (size : V2i) =
             resolved |> Option.iter runtime.DeleteTexture
-            let r = runtime.CreateTexture2D(size, TextureFormat.ofRenderbufferFormat fmt, 1, 1)
+            let r = runtime.CreateTexture2D(size, fmt, 1, 1)
             resolved <- Some r
             r
 
@@ -426,13 +420,13 @@ module Internals =
                         do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal) // inefficient but needed. why? tempImage has peers
                         do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                         do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
-                        do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, image.Size)
+                        do! Command.ResolveMultisamples(image.[TextureAspect.Color, 0, 0], V3i.Zero, tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, image.Size)
                         if device.IsDeviceGroup then 
                             do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
                             do! Command.SyncPeersDefault(tempImage,VkImageLayout.TransferSrcOptimal)
                         else
                             do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
-                        do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
+                        do! Command.Copy(tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                         do! Command.TransformLayout(image, l)
                     }
 
@@ -484,7 +478,7 @@ module Internals =
                             do! Command.SyncPeersDefault(image,VkImageLayout.TransferSrcOptimal)
                         else
                             do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
-                        do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
+                        do! Command.Copy(image.[TextureAspect.Color, 0, 0], V3i.Zero, tempBuffer, 0L, V2i.Zero, image.Size)
                         do! Command.TransformLayout(image, l)
                     }
 
@@ -522,9 +516,9 @@ module Internals =
                     device.perform {
                         do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
                         do! Command.TransformLayout(tempImage, VkImageLayout.TransferDstOptimal)
-                        do! Command.ResolveMultisamples(image.[ImageAspect.Color, 0, 0], tempImage.[ImageAspect.Color, 0, 0])
+                        do! Command.ResolveMultisamples(image.[TextureAspect.Color, 0, 0], tempImage.[TextureAspect.Color, 0, 0])
                         do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
-                        do! Command.Copy(tempImage.[ImageAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, tempImage.Size)
+                        do! Command.Copy(tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, tempImage.Size)
                         do! Command.TransformLayout(image, l)
                     }
 
@@ -541,7 +535,7 @@ module Internals =
                     let l = image.Layout
                     device.perform {
                         do! Command.TransformLayout(image, VkImageLayout.TransferSrcOptimal)
-                        do! Command.Copy(image.[ImageAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, image.Size)
+                        do! Command.Copy(image.[TextureAspect.Color, 0, 0], V3i.Zero, temp, 0L, V2i.Zero, image.Size)
                         do! Command.TransformLayout(image, l)
                     }
 
@@ -742,13 +736,18 @@ module Internals =
         let mutable downloader : Option<RawDownload.IDownloader> = None
         static let mutable currentId = 0
 
+        static let randomString() =
+            let str = System.Convert.ToBase64String(Guid.NewGuid().ToByteArray())
+            str.TrimEnd('=').Replace("/", "-")
+
 
         let recreateMapping (desiredSize : int64) =
             match mapping with
                 | Some m -> m.Dispose()
                 | None -> ()
 
-            let m = SharedMemory.createNew desiredSize
+            let name = randomString()
+            let m = SharedMemory.create name desiredSize
             mapping <- Some m
             m
 
@@ -763,7 +762,10 @@ module Internals =
             d
 
         override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
-            let desiredMapSize = Fun.NextPowerOfTwo (int64 color.Size.X * int64 color.Size.Y * 4L)
+            let desiredMapSize =
+                let s = int64 color.Size.X * int64 color.Size.Y * 4L
+                if s < 32768L then 32768L
+                else Fun.NextPowerOfTwo s
 
             let mapping =
                 match mapping with

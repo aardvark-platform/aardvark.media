@@ -46,7 +46,6 @@ type internal ClientCreateInfo =
         targetQuality   : RenderQuality
     }
 
-
 type private DummyObject() =
     inherit AdaptiveObject()
 
@@ -339,11 +338,11 @@ module Server =
         let getSignature (samples : int) =
             signatures.GetOrAdd(samples, fun samples ->
                 info.runtime.CreateFramebufferSignature(
-                    samples,
                     [
-                        DefaultSemantic.Colors, RenderbufferFormat.Rgba8
-                        DefaultSemantic.Depth, RenderbufferFormat.Depth24Stencil8
-                    ]
+                        DefaultSemantic.Colors, TextureFormat.Rgba8
+                        DefaultSemantic.DepthStencil, TextureFormat.Depth24Stencil8
+                    ],
+                    samples
                 )
             )
 
