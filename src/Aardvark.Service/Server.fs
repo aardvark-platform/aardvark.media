@@ -2,24 +2,8 @@
 namespace Aardvark.Service
 
 open System
-open System.Text
-open System.Net
 open System.Threading
 open System.Collections.Concurrent
-
-open Suave
-open Suave.Http
-open Suave.Operators
-open Suave.Filters
-open Suave.Successful
-open Suave.Files
-open Suave.RequestErrors
-open Suave.Logging
-open Suave.Utils
-open Suave.Sockets
-open Suave.Sockets.Control
-open Suave.WebSocket
-
 
 open Aardvark.Base
 open Aardvark.Rendering
@@ -27,10 +11,6 @@ open Aardvark.GPGPU
 open FSharp.Data.Adaptive
 open Aardvark.Application
 open System.Diagnostics
-
-open System.IO.MemoryMappedFiles
-open Microsoft.FSharp.NativeInterop
-
 
 #nowarn "9"
 
