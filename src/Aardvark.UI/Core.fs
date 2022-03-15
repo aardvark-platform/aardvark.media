@@ -5,11 +5,13 @@ open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Geometry
 open Aardvark.Rendering
-open FSharp.Data.Adaptive
-open FSharp.Data.Traceable
+open Aardvark.SceneGraph
 open Aardvark.Application
 open Aardvark.Service
+open Aardvark.UI
 open Aardvark.UI.Semantics
+open FSharp.Data.Adaptive
+open FSharp.Data.Traceable
 
 
 type RenderControlConfig =
@@ -540,31 +542,6 @@ module ChannelThings =
 
 open Aardvark.Service
 
-type RenderCommand<'msg> =
-    | Clear of color : Option<aval<C4f>> * depth : Option<aval<float>> * stencil : Option<aval<int>>
-    | SceneGraph of sg : ISg<'msg>
-
-    member x.Compile(values : ClientValues) =
-        match x with
-        | RenderCommand.Clear(color, depth, stencil) ->
-            match color, depth, stencil with
-            | Some c, Some d, Some s -> values.runtime.CompileClear(values.signature, c, d, s)
-            | None, Some d, Some s -> values.runtime.CompileClear(values.signature, d, s)
-            | Some c, None, Some s -> values.runtime.CompileClear(values.signature, c, s)
-            | None, None, Some s -> values.runtime.CompileClear(values.signature, s)
-            | Some c, Some d, None -> values.runtime.CompileClear(values.signature, c, d)
-            | None, Some d, None -> values.runtime.CompileClear(values.signature, d)
-            | Some c, None, None -> values.runtime.CompileClear(values.signature, c)
-            | None, None, None -> RenderTask.empty
-        | RenderCommand.SceneGraph sg -> 
-            let sg =
-                sg
-                |> Sg.viewTrafo values.viewTrafo
-                |> Sg.projTrafo values.projTrafo
-                |> Sg.uniform "ViewportSize" values.size
-            values.runtime.CompileRender(values.signature, sg)
-
-
 type IApp<'model, 'msg, 'outer> =
     abstract member ToOuter : 'model * 'msg -> seq<'outer>
     abstract member ToInner : 'model * 'outer -> seq<'msg>
@@ -1009,217 +986,6 @@ and DomNode private() =
 
     static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sg : ISg<'msg>, config: RenderControlConfig, htmlChildren : Option<DomNode<_>>) =
         DomNode.RenderControl(attributes, camera, constF sg, config, htmlChildren)
-
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sgs : ClientValues -> alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
-        
-        let getState(c : Aardvark.Service.ClientInfo) =
-            let cam = camera.GetValue(c.token)
-            let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
-
-            {
-                viewTrafo = CameraView.viewTrafo cam.cameraView
-                projTrafo = Frustum.projTrafo cam.frustum
-            }
-
-        let trees = AVal.init AList.empty
-        let globalPicks = AVal.init ASet.empty
-
-        let scene =
-            Scene.custom (fun values ->
-
-                let sgs = sgs values
-
-                let t = 
-                  sgs |> AList.choose (function RenderCommand.Clear _ -> None | SceneGraph sg -> PickTree.ofSg sg |> Some)
-                let g = 
-                  sgs |> AList.toASet |> ASet.choose (function RenderCommand.Clear _ -> None | SceneGraph sg -> sg.GlobalPicks(Ag.Scope.Root) |> Some)
-
-                transact (fun _ -> trees.Value <- t; globalPicks.Value <- g)
-
-                let mutable reader : IOpReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>> = 
-                    let mutable state = IndexList.empty
-                    let input = sgs.GetReader()
-                    { new AbstractReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>>(IndexList.trace) with
-                        member x.Compute(token) =
-                            input.GetChanges token |> IndexListDelta.choose (fun index op ->
-                                match op with
-                                | Set v ->
-                                    match x.State.TryGet index with
-                                    | Some o -> o.Dispose()
-                                    | None -> ()
-                                    let task = v.Compile(values)
-                                    Some (Set task)
-
-                                | Remove ->
-                                    match x.State.TryGet index with
-                                    | Some o -> 
-                                        o.Dispose()
-                                        Some Remove
-                                    | None -> None
-
-                            )
-                    } :> _
-                    //new AList.Readers.MapUseReader<_,_>(Ag.getContext(), sgs,invoke, (fun d -> d.Dispose()))
-                //let mutable state = IndexList.empty
-
-                let update (t : AdaptiveToken) =
-                    let ops = reader.GetChanges t
-                    ()
-
-                { new AbstractRenderTask() with
-                    override x.PerformUpdate(t,rt) = 
-                        update t
-                    override x.Perform(t,rt,o,q) = 
-                        update t
-                        for task in reader.State do
-                            task.Run(t,rt,o,q)
-                    override x.Release() = 
-                        for task in reader.State do 
-                            task.Dispose()
-                        reader <- Unchecked.defaultof<_>
-
-                    override x.Use f = f ()
-                    override x.FramebufferSignature = Some values.signature
-                    override x.Runtime = Some values.runtime
-                } :> IRenderTask)
-
-        let globalNeeded = ASet.bind id globalPicks |> ASet.collect AMap.keys
-        let treeNeeded = AList.bind id trees |> AList.toASet |> ASet.collect (fun t -> t.Needed)
-        let needed = ASet.union globalNeeded treeNeeded
-
-
-        let rec pickTrees (trees : list<PickTree<'msg>>) (evt) =
-            match trees with
-                | [] -> false, Seq.empty
-                | x::xs -> 
-                    let consumed,msgs = pickTrees xs evt
-                    if consumed then true,msgs
-                    else
-                        let consumed, other = x.Perform evt
-                        consumed, Seq.append msgs other
-
-        let proc =
-            { new SceneEventProcessor<'msg>() with
-                member x.NeededEvents = needed
-                member x.Process (source : Guid, evt : SceneEvent) = 
-                    let trees = trees |> AVal.force
-                    let trees = trees.Content |> AVal.force |> IndexList.toList
-                    let globalPicks = globalPicks |> AVal.force
-
-                    seq {
-                        for perScene in globalPicks.Content |> AVal.force do
-                            let picks = perScene.Content |> AVal.force
-                            match picks |> HashMap.tryFind evt.kind with
-                                | Some cb -> 
-                                    yield! cb evt
-                                | None -> 
-                                    ()
-                    }
-            }
-
-        DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
-
-    static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sgs : alist<RenderCommand<'msg>>, htmlChildren : Option<DomNode<_>>) =
-        let getState(c : Aardvark.Service.ClientInfo) =
-            let cam = camera.GetValue(c.token)
-            let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
-
-            {
-                viewTrafo = CameraView.viewTrafo cam.cameraView
-                projTrafo = Frustum.projTrafo cam.frustum
-            }
-
-
-        let scene =
-            Scene.custom (fun values ->
-                let mutable reader : IOpReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>> = 
-                    let mutable state = IndexList.empty
-                    let input = sgs.GetReader()
-                    { new AbstractReader<IndexList<IRenderTask>, IndexListDelta<IRenderTask>>(IndexList.trace) with
-                        member x.Compute(token) =
-                            input.GetChanges token |> IndexListDelta.choose (fun index op ->
-                                match op with
-                                | Set v ->
-                                    match x.State.TryGet index with
-                                    | Some o -> o.Dispose()
-                                    | None -> ()
-                                    let task = v.Compile(values)
-                                    Some (Set task)
-
-                                | Remove ->
-                                    match x.State.TryGet index with
-                                    | Some o -> 
-                                        o.Dispose()
-                                        Some Remove
-                                    | None -> None
-
-                            )
-                    } :> _
-
-                let update (t : AdaptiveToken) =
-                    let ops = reader.GetChanges t
-                    ()
-
-                { new AbstractRenderTask() with
-                    override x.PerformUpdate(t,rt) = 
-                        update t
-                    override x.Perform(t,rt,o,q) = 
-                        update t
-                        q.Begin()
-                        for task in reader.State do
-                            task.Run(t,rt,o,q)
-                        q.End()
-                    override x.Release() = 
-                        for t in reader.State do 
-                            t.Dispose()
-                        reader <- Unchecked.defaultof<_>
-
-
-                    override x.Use f = f ()
-                    override x.FramebufferSignature = Some values.signature
-                    override x.Runtime = Some values.runtime
-                } :> IRenderTask
-                
-            )
-
-        let trees = sgs |> AList.choose (function Clear _ -> None | SceneGraph sg -> PickTree.ofSg sg |> Some)
-        let globalPicks = sgs |> AList.toASet |> ASet.choose (function Clear _ -> None | SceneGraph sg -> sg.GlobalPicks(Ag.Scope.Root) |> Some)
-
-        let globalNeeded = globalPicks |> ASet.collect AMap.keys
-        let treeNeeded = trees |> AList.toASet |> ASet.collect (fun t -> t.Needed)
-        let needed = ASet.union globalNeeded treeNeeded
-
-
-        let rec pickTrees (trees : list<PickTree<'msg>>) (evt) =
-            match trees with
-                | [] -> false, Seq.empty
-                | x::xs -> 
-                    let consumed,msgs = pickTrees xs evt
-                    if consumed then true,msgs
-                    else
-                        let consumed, other = x.Perform evt
-                        consumed, Seq.append msgs other
-
-        let proc =
-            { new SceneEventProcessor<'msg>() with
-                member x.NeededEvents = needed
-                member x.Process (source : Guid, evt : SceneEvent) = 
-                    let trees = trees.Content |> AVal.force |> IndexList.toList
-                    seq {
-                        let consumed, msgs = pickTrees trees evt
-                        yield! msgs
-
-                        for perScene in globalPicks.Content |> AVal.force do
-                            let picks = perScene.Content |> AVal.force
-                            match picks |> HashMap.tryFind evt.kind with
-                            | Some cb -> 
-                                yield! cb evt
-                            | None -> 
-                                ()
-                    }
-            }
-
-        DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
     static member RenderControl(camera : aval<Camera>, scene : ISg<'msg>, config : RenderControlConfig, ?htmlChildren : DomNode<_>) : DomNode<'msg> =
         DomNode.RenderControl(AttributeMap.empty, camera, constF scene, config, htmlChildren)

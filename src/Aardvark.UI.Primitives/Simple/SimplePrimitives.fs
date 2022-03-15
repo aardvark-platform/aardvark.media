@@ -529,7 +529,7 @@ module SimplePrimitives =
 
 
             [<CustomOperation("placeholder")>]
-            member inline x.PlaceHolder((a,v,s,cfg,m), e) = (a,v, s,{ cfg with placeholder = e }, m)
+            member inline x.PlaceHolder((a,v,s,cfg : TextAreaConfig,m), e) = (a,v, s,{ cfg with placeholder = e }, m)
 
             member inline x.Run((a,v : amap<_,_>,s,cfg,msg)) =
                 Incremental.dropdown cfg a v s msg

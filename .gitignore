@@ -1,3 +1,4 @@
+**/.idea/
 **/.ionide/
 Aardvark.log
 /.paket
@@ -30,3 +31,4 @@ bin/Debug
 /src/Scratch/17 - Serviced/Properties/PublishProfiles/FolderProfile.pubxml.user
 /.paket/.store/*
 *.adaptifycache
+**/.DS_Store

@@ -158,7 +158,7 @@ module Scene =
         let createShadowMap (runtime : IRuntime) (scene : AdaptiveScene) =
             let signature =
                 runtime.CreateFramebufferSignature [
-                    DefaultSemantic.Depth, { format = RenderbufferFormat.DepthComponent32; samples = 1 }
+                    DefaultSemantic.DepthStencil, TextureFormat.DepthComponent32
                 ]
 
             let sg =

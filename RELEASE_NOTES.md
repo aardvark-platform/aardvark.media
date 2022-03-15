@@ -6,16 +6,26 @@
 
 ### 5.3.0-prerelease0002
 - experimental giraffe backend
+### 5.2.1
+- added Mac/ARM64 turbojpeg
+
+### 5.2.0
+https://github.com/aardvark-platform/aardvark.docs/wiki/Aardvark-5.2-changelog
+
+### 5.2.0-prerelease0008
+- update rendering
+
+### 5.2.0-prerelease0007
+- Initial prerelease for 5.2
 
 ### 5.1.14
-- [SimplePrimitives.fs] added textarea; js typo fix### 5.1.13
+- [SimplePrimitives.fs] added textarea; js typo fix
+
+### 5.1.13
 - added orbit camera controller helpers
 
 ### 5.1.12
 - switched to f# 5.0 (version bump for base/fshade/suave)
-
-### 5.3.0-prerelease0001
-- experimental giraffe backend
 
 ### 5.1.11
 - fixed arcball problem on mac

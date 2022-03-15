@@ -42,7 +42,7 @@ let view (model : AdaptiveModel) =
                         "style", model.background |> AVal.map(fun c -> sprintf "background: #%02X%02X%02X" c.R c.G c.B |> AttributeValue.String |> Some)
                         //attribute "showLoader" "false"    // optional, default is true
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
-                        always <| attribute "data-samples" "8"        // optional, default is 1
+                        always <| attribute "data-samples" "4"        // optional, default is 1
                     ])
             (viewScene model)
 
