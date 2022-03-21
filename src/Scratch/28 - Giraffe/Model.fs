@@ -9,6 +9,7 @@ type Message =
     | Camera of FreeFlyController.Message
     | CenterScene
     | ToggleBackground
+    | Nop
 
 [<ModelType>]
 type Model = 

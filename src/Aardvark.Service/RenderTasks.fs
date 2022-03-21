@@ -1,4 +1,5 @@
-﻿namespace Aardvark.Service
+﻿#nowarn "1337"
+namespace Aardvark.Service
 
 
 open System
@@ -181,7 +182,7 @@ module Internals =
                 | None ->
                     None
         
-        abstract member ProcessImage : IFramebuffer * IRenderbuffer -> RenderResult
+        abstract member ProcessImage : IFramebuffer * IRenderbuffer * RenderQuality -> RenderResult
         abstract member Release : unit -> unit
 
         member x.Run(token : AdaptiveToken, info : ClientInfo, state : ClientState) =
@@ -213,7 +214,7 @@ module Internals =
                     Interlocked.Decrement(&threadCount) |> ignore
             )
             compressTime.Start()
-            let data = x.ProcessImage(target, color.Value)
+            let data = x.ProcessImage(target, color.Value, info.quality)
             //let data =
             //    match gpuCompressorInstance with
             //        | Some gpuCompressorInstance ->
@@ -293,7 +294,8 @@ module Internals =
                 quality <- q
 
 
-        override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer, renderQuality : RenderQuality) =
+            quality <- renderQuality
             let resolved = 
                 let resSize = V2i(max 1 (int (round (quality.scale * float color.Size.X))), max 1 (int (round (quality.scale * float color.Size.Y))))
                 match resolved with
@@ -342,7 +344,7 @@ module Internals =
             r
 
 
-        override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer, _) =
             let resolved = 
                 match resolved with
                     | Some r when r.Size.XY = color.Size -> r
@@ -761,7 +763,7 @@ module Internals =
             downloader <- Some d
             d
 
-        override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer) =
+        override x.ProcessImage(target : IFramebuffer, color : IRenderbuffer, _) =
             let desiredMapSize =
                 let s = int64 color.Size.X * int64 color.Size.Y * 4L
                 if s < 32768L then 32768L

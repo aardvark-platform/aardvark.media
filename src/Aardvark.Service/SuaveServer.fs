@@ -1,4 +1,5 @@
 ﻿#nowarn "9"
+#nowarn "1337"
 namespace Aardvark.Service
 
 open System
@@ -31,6 +32,13 @@ open Aardvark.Application
 open System.Diagnostics
 
 open Internals
+
+type Message =
+    | RequestImage of background : C4b * size : V2i
+    | RequestWorldPosition of pixel : V2i
+    | Rendered
+    | Shutdown
+    | Change of scene : string * samples : int
 
 
 type internal ClientCreateInfo =
@@ -195,7 +203,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         | _ ->
                                             Log.warn "bad opcode: %A" str
                                 else
-                                    let msg : Aardvark.Service.Message = Pickler.json.UnPickle data
+                                    let msg : Message = Pickler.json.UnPickle data
 
                                     match msg with
                                         | RequestImage(background, size) ->
@@ -298,6 +306,7 @@ module Server =
             else None
         {
             runtime = r
+            rendered = fun _ -> ()
             content = fun _ -> None
             getState = fun _ -> None
             compressor = compressor

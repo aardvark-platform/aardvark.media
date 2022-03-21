@@ -1,4 +1,5 @@
-﻿namespace Aardvark.Service.Giraffe
+﻿#nowarn "1337"
+namespace Aardvark.Service.Giraffe
 
 
 open Giraffe
@@ -32,6 +33,17 @@ open Aardvark.Service.Internals
 
 open System.Net.WebSockets
 
+[<CompilerMessage("internal use", 1337, IsHidden = true)>]
+module InternalServerConfig = 
+    let mutable maxFramesInCloud = 4
+    let mutable minFrameTimeInSeconds = 1.0 / 120.0
+
+type Message =
+    | RequestImage of background : C4b * size : V2i * quality : int
+    | RequestWorldPosition of pixel : V2i
+    | Rendered
+    | Shutdown
+    | Change of scene : string * samples : int
 
 type internal ClientCreateInfo =
     {
@@ -60,11 +72,17 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
     let id = Interlocked.Increment(&currentId)
     let sender = DummyObject()
-    let requestedSize : MVar<C4b * V2i> = MVar.empty()
+    let mutable requestedSize = V2i.II
+    let mutable requestedQuality = 80
+    let mutable requestedBackground = C4b.Black
+
+    let framesInCloud = new SemaphoreSlim(InternalServerConfig.maxFramesInCloud)
     let mutable createInfo = createInfo
     let mutable renderTask = newTask createInfo getContent
     let mutable running = false
     let mutable disposed = 0
+
+    let runLock = obj()
 
     let mutable frameCount = 0
     let roundTripTime = Stopwatch()
@@ -103,42 +121,93 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
     let mutable subscription = subscribe()
 
 
-    let renderLoop() =
-        while running do
-            let (background, size) = MVar.take requestedSize
-            if size.AllGreater 0 then
-                lock updateLock (fun () ->
-                    sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                        let info = Interlocked.Change(&info, fun info -> { info with token = token; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
-                        try
-                            let state = getState info
-                            let data = renderTask.Run(token, info, state)
-                            match data with
-                                | Jpeg data -> 
-                                    try
-                                        createInfo.socket.SendAsync(ArraySegment(data), WebSocketMessageType.Binary, true, CancellationToken.None).Wait()
-                                    with err -> 
-                                        running <- false
-                                        Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
 
-                                | Png data -> 
-                                    Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
+    let renderLoop() =
+        use mm = new MultimediaTimer.Trigger(1)
+        let sw = System.Diagnostics.Stopwatch()
+
+        let tooFast() =
+            if sw.IsRunning then
+                sw.Elapsed.TotalSeconds < InternalServerConfig.minFrameTimeInSeconds
+                //let fps = 1.0 / (sw.Elapsed.TotalSeconds + 0.0005)
+                //fps > info.quality.framerate
+            else
+                false
+
+        let mutable lastSize = V2i.Zero
+        let mutable lastBackground = C4b.Black
+        let mutable frameCount = 0
+        let mutable lastQualityChange = 0
+
+        let mutable continuousCount = 0
+        while running do 
+            try
+                lock runLock (fun _ -> 
+                    let background = requestedBackground
+                    let size = requestedSize
+
+           
+
+                    if size.AllGreater 0 && running then
+                
+                        while tooFast() do mm.Wait()
+                        sw.Restart()
+
+
+                        if sender.OutOfDate || lastSize <> size || lastBackground <> background then
+    
+                            frameCount <- frameCount + 1
+
+                            framesInCloud.Wait()
+                            lastBackground <- background
+                            lastSize <- size
+
+                            lock updateLock (fun () ->
+                                sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                                    let info = Interlocked.Change(&info, fun info -> { info with token = token; quality = { info.quality with quality = float (clamp 0 100 requestedQuality) }; size = size; time = MicroTime.Now; clearColor = background.ToC4f() })
+                                    try
+                                        let state = getState info
+                                        let data = renderTask.Run(token, info, state)
+
+                                        match data with
+                                            | Jpeg data -> 
+                                                try
+                                                    createInfo.socket.SendAsync(ArraySegment(data), WebSocketMessageType.Binary, true, CancellationToken.None).Wait()
+                                                with err -> 
+                                                    running <- false
+                                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+
+                                            | Png data -> 
+                                                Log.error "[Client] %d: requested png render control which is not supported at the moment (png conversion to slow)" id
                                 
-                                | Mapping img ->
-                                    let data = Pickler.json.Pickle img
-                                    try 
-                                        createInfo.socket.SendAsync(ArraySegment(data), WebSocketMessageType.Text, true, CancellationToken.None).Wait()
-                                    with err -> 
-                                        running <- false
-                                        Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
+                                            | Mapping img ->
+                                                let data = Pickler.json.Pickle img
+                                                try 
+                                                    createInfo.socket.SendAsync(ArraySegment(data), WebSocketMessageType.Text, true, CancellationToken.None).Wait()
+                                                with err -> 
+                                                    running <- false
+                                                    Log.warn "[Client] %d: could not send render-result due to %A (stopping)" id err
 
                                     
-                        with e ->
-                            running <- false
-                            Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
-                    
-                    )
+                                    with e ->
+                                        running <- false
+                                        Log.error "[Client] %d: rendering faulted with %A (stopping)" id e
+                                )
+                            )
+
+                            createInfo.server.rendered info
+                
+                            continuousCount <- continuousCount + 1
+                        else
+                            continuousCount <- 0
+
                 )
+            with e ->
+                if disposed = 1 then // not spam frightening warning if shutdown bug
+                    // still a bug, shudown results in tranaction.commit with 0 object in the queue.
+                    Log.line "rendering faulted after shutdown."
+                else
+                    Log.warn "[Media, renderLoop] %A" e
 
                 
 
@@ -155,22 +224,25 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
 
 
     member x.Revive(newInfo : ClientCreateInfo) =
+        lock runLock (fun _ -> 
         if Interlocked.Exchange(&disposed, 0) = 1 then
             Log.line "[Client] %d: revived" id
             createInfo <- newInfo
             renderTask <- newTask newInfo getContent
             subscription <- subscribe()
             renderThread <- new Thread(ThreadStart(renderLoop), IsBackground = true, Name = "ClientRenderer_" + string info.session)
+        )
 
     member x.Dispose() =
-        if Interlocked.Exchange(&disposed, 1) = 0 then
-            renderTask.Dispose()
-            subscription.Dispose()
-            running <- false
-            MVar.put requestedSize (C4b.Black, V2i.Zero)
-            frameCount <- 0
-            roundTripTime.Reset()
-            invalidateTime.Reset()
+        lock runLock (fun _ -> 
+            if Interlocked.Exchange(&disposed, 1) = 0 then
+                renderTask.Dispose()
+                subscription.Dispose()
+                running <- false
+                frameCount <- 0
+                roundTripTime.Reset()
+                invalidateTime.Reset()
+        )
 
     member x.Run =
         running <- true
@@ -202,11 +274,13 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                         let msg : Message = Pickler.json.UnPickle data
 
                                         match msg with
-                                            | RequestImage(background, size) ->
+                                            | RequestImage(background, size, quality) ->
                                                 invalidateTime.Stop()
                                                 roundTripTime.Start()
-                                                MVar.put requestedSize (background, size)
-
+                                                requestedSize <- size
+                                                requestedQuality <- quality
+                                                requestedBackground <- background
+   
                                             | RequestWorldPosition pixel ->
                                                 let wp = 
                                                     match renderTask.GetWorldPosition pixel with
@@ -218,6 +292,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                                             | Rendered ->
                                                 roundTripTime.Stop()
                                                 frameCount <- frameCount + 1
+                                                framesInCloud.Release() |> ignore
 
                                             | Shutdown ->
                                                 running <- false
@@ -294,6 +369,7 @@ module Server =
             else None
         {
             runtime = r
+            rendered = fun _ -> ()
             content = fun _ -> None
             getState = fun _ -> None
             compressor = compressor
@@ -514,6 +590,7 @@ module Server =
             yield routef  "/render/%s" (render >> Websockets.handShake)
             yield route  "/stats.json" >=> statistics 
             yield routef "/screenshot/%s" screenshot
+            yield Reflection.assemblyWebPart typeof<DummyObject>.Assembly
             yield Reflection.assemblyWebPart typeof<Aardvark.Service.Server>.Assembly
         ]
 

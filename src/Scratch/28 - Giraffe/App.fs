@@ -16,6 +16,7 @@ let initialCamera = {
 
 let update (model : Model) (msg : Message) =
     match msg with
+    | Nop -> model
     | ToggleBackground ->
         { model with background = (if model.background = C4b.Black then C4b.White else C4b.Black) }
     | Camera m ->
@@ -43,6 +44,9 @@ let view (model : AdaptiveModel) =
                         //attribute "showLoader" "false"    // optional, default is true
                         //attribute "data-renderalways" "1" // optional, default is incremental rendering
                         always <| attribute "data-samples" "8"        // optional, default is 1
+                        always <| attribute "data-quality" "50"
+                        always <| attribute "useMapping" "false"
+                        //always <| onEvent "onRendered" [] (fun _ -> Nop) 
                     ])
             (viewScene model)
 

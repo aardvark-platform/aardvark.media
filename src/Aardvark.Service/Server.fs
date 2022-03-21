@@ -1,4 +1,5 @@
 ﻿#nowarn "9"
+#nowarn "1337"
 namespace Aardvark.Service
 
 open System
@@ -11,15 +12,6 @@ open Aardvark.GPGPU
 open FSharp.Data.Adaptive
 open Aardvark.Application
 open System.Diagnostics
-
-#nowarn "9"
-
-type Message =
-    | RequestImage of background : C4b * size : V2i
-    | RequestWorldPosition of pixel : V2i
-    | Rendered
-    | Shutdown
-    | Change of scene : string * samples : int
 
 type Command =
     | Invalidate
@@ -264,6 +256,7 @@ type Server =
     {
         runtime         : IRuntime
         content         : string -> Option<Scene>
+        rendered        : ClientInfo -> unit
         getState        : ClientInfo -> Option<ClientState>
         compressor      : Option<JpegCompressor>
         fileSystemRoot  : Option<string>
@@ -295,7 +288,7 @@ module private ReadPixel =
             | _ -> None
 
 
-// TODO - encapsulation?
+[<CompilerMessage("internal use", 1337, IsHidden = true)>]
 type MapImage = 
     {
         name : string
@@ -303,6 +296,7 @@ type MapImage =
         size : V2i
     }
 
+[<CompilerMessage("internal use", 1337, IsHidden = true)>]
 type RenderResult =
     | Jpeg of byte[]
     | Mapping of MapImage
