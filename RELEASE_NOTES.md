@@ -1,3 +1,6 @@
+### 5.3.0-prerelease0006
+- proper shutdown for giraffe app binding 
+
 ### 5.3.0-prerelease0005
 - proper shutdown for giraffe app binding 
 
