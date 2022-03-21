@@ -12,6 +12,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>..\..\bin\Release\</OutputPath>
   </PropertyGroup>
+  <ItemGroup>
     <Compile Include="GiraffeExtensions.fs" />
     <None Include="paket.references" />
     <Compile Include="Server.fs" />
