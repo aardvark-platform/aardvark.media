@@ -1,3 +1,17 @@
+### 5.3.0-prerelease0006 
+- proper shutdown for giraffe app binding 
+
+### 5.3.0-prerelease0005
+- proper shutdown for giraffe app binding 
+
+### 5.3.0-prerelease0004
+- proper shutdown for giraffe app binding 
+
+### 5.3.0-prerelease0003
+- added giraffe backend nupkg 
+
+### 5.3.0-prerelease0002
+- experimental giraffe backend
 ### 5.2.1
 - added Mac/ARM64 turbojpeg
 

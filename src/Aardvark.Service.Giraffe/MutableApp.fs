@@ -1,66 +1,25 @@
-﻿namespace Aardvark.UI
+﻿namespace Aardvark.UI.Giraffe
 
 open System
 open System.Threading
-open System.Collections.Generic
+open System.Threading.Tasks
 open System.Collections.Concurrent
+open System.Collections.Generic
+open Microsoft.AspNetCore.Http
+open System.Net.WebSockets
 
-open Aardvark.Base
-open Aardvark.Base.Geometry
+open Giraffe
+open FSharp.Data.Adaptive
+open FSharp.Control.Tasks
+
+open Aardvark.UI
+open Aardvark.Service
 open Aardvark.GPGPU
 open Aardvark.Rendering
-open Aardvark.SceneGraph
-open FSharp.Data.Adaptive
-open Aardvark.Application
-open Aardvark.Service
+open Aardvark.Base
+
+open Aardvark.Service.Giraffe
 open Aardvark.UI.Internal
-
-open Suave
-open Suave.Control
-open Suave.Filters
-open Suave.Operators
-open Suave.WebSocket
-open Suave.Successful
-open Suave.Sockets.Control
-open Suave.Sockets
-open Suave.State.CookieStateStore
-
-type EmbeddedResources = EmbeddedResources
-module Resources =
-    let WebPart = Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
-
-[<AutoOpen>]
-module private Tools =
-    type WebSocket with
-        member x.readMessage() =
-            socket {
-                let! (t,d,fin) = x.read()
-                if fin then 
-                    return (t,d)
-                else
-                    let! (_, rest) = x.readMessage()
-                    return (t, Array.append d rest)
-            }
-
-// https://github.com/aardvark-platform/aardvark.media/issues/19
-module ThreadPoolAdjustment =
-
-    let mutable shouldAdjust = true
-    
-    let adjust () =
-        if shouldAdjust then
-            let mutable maxThreads,maxIOThreads = 0,0
-            System.Threading.ThreadPool.GetMaxThreads(&maxThreads,&maxIOThreads)
-            let mutable minThreads, minIOThreads = 0,0
-            System.Threading.ThreadPool.GetMinThreads(&minThreads,&minIOThreads)
-            if minThreads < 12 || minIOThreads < 12 then
-                Log.warn "[aardvark.media] currently ThreadPool.MinThreads is (%d,%d)" minThreads minIOThreads
-                let minThreads   = max 12 minThreads
-                let minIOThreads = max 12 minIOThreads
-                Log.warn "[aardvark.media] unfortunately, currently we need to adjust this to at least (12,12) due to an open issue https://github.com/aardvark-platform/aardvark.media/issues/19"
-                if not <| System.Threading.ThreadPool.SetMinThreads(minThreads, minIOThreads) then Log.warn "could not set min threads"
-                if maxThreads < 12 || maxIOThreads < 12 then
-                    Log.warn "[aardvark.media] detected less than 12 threadpool threads: (%d,%d). Be aware that this will result in severe stutters... Consider switching back to the default (65537,1000)." maxThreads maxIOThreads
 
 
 module MutableApp =
@@ -90,12 +49,9 @@ module MutableApp =
         inherit AdaptiveObject()
 
     let toWebPart' (runtime : IRuntime) (useGpuCompression : bool) (app : MutableApp<'model, 'msg>) =
-        
-        ThreadPoolAdjustment.adjust ()
 
         let sceneStore =
             ConcurrentDictionary<string, Scene * Option<SceneMessages<'msg>> * (ClientInfo -> ClientState)>()
-
 
         let compressor =
             if useGpuCompression then new JpegCompressor(runtime) |> Some
@@ -113,7 +69,7 @@ module MutableApp =
                     match sceneStore.TryGetValue clientInfo.sceneName with
                         | (true, (scene, update, cam)) -> 
                             match update with
-                                | Some sceneMessages ->
+                                | Some sceneMessages -> 
                                     let msgs = sceneMessages.preRender clientInfo
                                     if not (Seq.isEmpty msgs) then
                                         app.updateSync clientInfo.session msgs
@@ -123,8 +79,6 @@ module MutableApp =
                             Some (cam clientInfo)
                         | _ -> 
                             None
-
-                compressor = compressor
 
                 rendered = fun clientInfo ->
                     match sceneStore.TryGetValue clientInfo.sceneName with
@@ -138,19 +92,22 @@ module MutableApp =
                                     ()
                         | _ ->
                             ()
-                    
+
+                compressor = compressor
 
                 fileSystemRoot = None //Some "/"
             }
 
+                
+
         let events (ws : WebSocket) (context: HttpContext) =
-            match context.request.queryParam "session" with
-                | Choice1Of2 (Guid sessionId) ->
+            match context.Request.Query.TryGetValue "session" with
+                | (true, SingleString (Guid sessionId)) ->
 
                     let request = 
                         {
-                            requestPath = context.request.path
-                            queryParams = context.request.query |> List.choose (function (k, Some v) -> Some (k,v) | _ -> None) |> Map.ofList
+                            requestPath = context.Request.Path.Value
+                            queryParams = context.Request.Query |> Seq.choose (fun v -> match v.Value with | SingleString s -> Some (v.Key, s) | _ -> None) |> Map.ofSeq
                         }
 
                     let updater = app.ui.NewUpdater(request)
@@ -177,20 +134,23 @@ module MutableApp =
 
                     let send (arr : byte[]) =
                         let rec res retries = 
-                            async {
+                            task {
                                 try 
-                                    return! ws.send Opcode.Text (ByteSegment(arr)) true 
+                                    return! ws.SendAsync(ArraySegment(arr), WebSocketMessageType.Text, true, CancellationToken.None) 
                                 with e -> 
                                     Log.warn "[Media] send failed: %s (retries=%d)" e.Message retries
-                                    do! Async.Sleep 100
-                                    return! res (retries - 1)
+                                    if retries >= 0 then 
+                                        do! Async.Sleep 100
+                                        return! res (retries - 1)
+                                    else   
+                                        raise e
                             }
-                        let res = res 10 |> Async.RunSynchronously
-                        match res with
-                            | Choice1Of2 () ->
-                                ()
-                            | Choice2Of2 err ->
+                        task {
+                            try 
+                                return! res 10 
+                            with err ->
                                 failwithf "[WS] error: %A" err
+                        }
                                                 
                     let updateFunction () =
                         try
@@ -251,7 +211,10 @@ module MutableApp =
                                                                 printfn "%A" e
                                                 )
 
-                                                send (Text.Encoding.UTF8.GetBytes("x" + code))
+                                                
+                                                let r = send (Text.Encoding.UTF8.GetBytes("x" + code))
+                                                r.Result |> ignore
+
     
                                                 
                                             let mutable o = oldChannels
@@ -261,14 +224,14 @@ module MutableApp =
                                                     | [] -> ()
                                                     | messages ->
                                                         let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
-                                                        send message
+                                                        send message |> Task.getResult |> ignore
 
                                                 c <- Set.add (id, name) c
                                                 o <- Set.remove (id, name) o
 
                                             for (id, name) in o do
                                                 let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
-                                                send message
+                                                send message |> Task.getResult |> ignore
                                             
                                             oldChannels <- c
                                         )
@@ -284,60 +247,73 @@ module MutableApp =
                     updateThread.Name <- "[media] UpdateThread"
                     updateThread.Start()
                     
+                    let read buffer =
+                        async {
+                            try
+                                let! r = ws.ReceiveAsync(ArraySegment(buffer), CancellationToken.None)
+                                return Choice1Of2 r
+                            with e ->
+                                return Choice2Of2 e
+                        }
 
-                    socket {
+                    task {
                         while running do
-                            let! code, data = ws.readMessage()
-                            match code with
-                                | Opcode.Text ->
-                                    try
-                                        if data.Length > 0 && data.[0] = uint8 '#' then
-                                            let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
-                                            match str with
-                                                | "ping" -> 
-                                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
-                                                | _ ->
-                                                    Log.warn "bad opcode: %A" str
-                                        else
-                                            let evt : EventMessage = Pickler.json.UnPickle data
-                                            match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
-                                                | (true, handler) ->
-                                                    let msgs = handler sessionId evt.sender (Array.toList evt.args)
-                                                    app.update sessionId msgs
+                            let buffer = Array.zeroCreate 1024
+                            let! result = read buffer
+                            match result with
+                            | Choice1Of2 result -> 
+                                let data = Array.sub buffer 0 result.Count
+                                if result.CloseStatus.HasValue then
+                                    running <- true
+                                else
+                                    match result.MessageType with
+                                        | WebSocketMessageType.Text ->
+                                            try
+                                                if data.Length > 0 && data.[0] = uint8 '#' then
+                                                    let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
+                                                    match str with
+                                                        | "ping" -> 
+                                                            () // ignore in giraffe backend
+                                                        | _ ->
+                                                            Log.warn "bad opcode: %A" str
+                                                else
+                                                    let evt : EventMessage = Pickler.json.UnPickle data
+                                                    match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
+                                                        | (true, handler) ->
+                                                            let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                                            app.update sessionId msgs
                                                     
-                                                | _ ->
-                                                    ()
+                                                        | _ ->
+                                                            ()
 
-                                    with e ->
-                                        Log.warn "unpickle faulted: %A" e
+                                            with e ->
+                                                Log.warn "unpickle faulted: %A" e
 
-                                | Opcode.Close ->
+                                        | _ ->
+                                            Log.warn "[MutableApp] unknown message: %A" (code,data)
+                            | Choice2Of2 e -> 
+                                if ws.State <> WebSocketState.Open then 
+                                    Log.warn "[MutableApp] websocket seams dead (%A), updated going down." e
                                     running <- false
-
-                                | Opcode.Ping -> 
-                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
-
-                                | _ ->
-                                    Log.warn "[MutableApp] unknown message: %A" (code,data)
                         
                         MVar.put update false
                         updater.Destroy(state, JSExpr.Body) |> ignore
                         subscription.Dispose()
                     }
                 | _ ->
-                    SocketOp.abort(Error.InputDataError(None, "no session id")) 
+                    failwith "no session id"
 
-        choose [            
-            prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
+        choose [    
+            subRoute "/rendering" (Aardvark.Service.Giraffe.Server.toWebPart app.lock renderer)
             Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
-            path "/events" >=> handShake events
-            path "/" >=> OK template 
+            route "/events" >=> Websockets.handShake events
+
+
+            route "/" >=> htmlString template
+            htmlString template
         ]
 
     let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =
         toWebPart' runtime false app
-
-
-
 
 

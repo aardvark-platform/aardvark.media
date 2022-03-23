@@ -201,10 +201,12 @@ module Event =
             serverSide = fun session id args -> Seq.map f (e.serverSide session id args) 
         }
 
+
 [<RequireQualifiedAccess>]
 type AttributeValue<'msg> =
     | String of string
     | Event of Event<'msg>
+    | RenderEvent of (ClientInfo -> seq<'msg>)
     //| RenderControlEvent of (SceneEvent -> list<'msg>)
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -224,6 +226,14 @@ module AttributeValue =
             | "style", AttributeValue.String l, AttributeValue.String r -> 
                 AttributeValue.String (l + "; " + r)
 
+            | _, AttributeValue.RenderEvent l, AttributeValue.RenderEvent r -> 
+                AttributeValue.RenderEvent (fun clientInfo -> 
+                    seq {
+                        yield! l clientInfo
+                        yield! r clientInfo
+                    }
+                )
+
             | _ -> 
                 r
 
@@ -231,6 +241,7 @@ module AttributeValue =
         match v with
             | AttributeValue.Event e -> AttributeValue.Event (Event.map f e)
             | AttributeValue.String s -> AttributeValue.String s
+            | AttributeValue.RenderEvent r -> AttributeValue.RenderEvent (r >> Seq.map f)
             //| AttributeValue.RenderControlEvent rc -> AttributeValue.RenderControlEvent (fun s -> List.map f (rc s))
 
 

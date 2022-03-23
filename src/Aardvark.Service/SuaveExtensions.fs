@@ -174,3 +174,21 @@ module Reflection =
                 parts
             )
             |> choose
+
+
+
+module Extensions =
+
+    open Suave.WebSocket
+    open Suave.Sockets.Control
+
+    type WebSocket with
+        member x.readMessage() =
+            socket {
+                let! (t,d,fin) = x.read()
+                if fin then 
+                    return (t,d)
+                else
+                    let! (_, rest) = x.readMessage()
+                    return (t, Array.append d rest)
+            }

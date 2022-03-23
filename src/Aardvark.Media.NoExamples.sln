@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29613.14
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31912.275
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
 EndProject
@@ -41,6 +41,8 @@ EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Animation.Benchmarks", "Tests\Aardvark.UI.Animation.Benchmarks\Aardvark.UI.Animation.Benchmarks.fsproj", "{75B6419D-2A3F-4FFF-8A92-EDA1DE90D09B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{C47A910F-5F84-4084-BFE4-47E7EB45B1B0}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Service.Giraffe", "Aardvark.Service.Giraffe\Aardvark.Service.Giraffe.fsproj", "{01118CA3-9FAE-45B1-B45F-994CBD88C624}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -96,6 +98,10 @@ Global
 		{75B6419D-2A3F-4FFF-8A92-EDA1DE90D09B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75B6419D-2A3F-4FFF-8A92-EDA1DE90D09B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75B6419D-2A3F-4FFF-8A92-EDA1DE90D09B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{01118CA3-9FAE-45B1-B45F-994CBD88C624}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{01118CA3-9FAE-45B1-B45F-994CBD88C624}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{01118CA3-9FAE-45B1-B45F-994CBD88C624}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{01118CA3-9FAE-45B1-B45F-994CBD88C624}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -113,6 +119,7 @@ Global
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{8D161B57-D086-4848-85E1-A77A3F1D9215} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{75B6419D-2A3F-4FFF-8A92-EDA1DE90D09B} = {C47A910F-5F84-4084-BFE4-47E7EB45B1B0}
+		{01118CA3-9FAE-45B1-B45F-994CBD88C624} = {5DAFA99B-848D-4185-B4C1-287119815657}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}

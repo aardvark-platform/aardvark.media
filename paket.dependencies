@@ -1,5 +1,5 @@
-framework: netstandard2.0, net471, netcoreapp3.1, net6.0
 source https://api.nuget.org/v3/index.json
+framework: netstandard2.0, net471, netcoreapp3.1, net6.0, net5.0
 // for unofficial dev releases
 source https://vrvis.myget.org/F/aardvark_public/api/v2
 
@@ -7,7 +7,7 @@ storage: none
 
 nuget Aardvark.Build                    ~> 1.0.11
 
-nuget FSharp.Core                       >= 5.0.0 lowest_matching: true
+nuget FSharp.Core                       >= 5.0.1 lowest_matching: true
 nuget Microsoft.NETFramework.ReferenceAssemblies ~> 1.0.0
 nuget FSharp.Data                       ~> 3.0.0
 
@@ -60,3 +60,14 @@ nuget Chiron
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.3.0
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies ~> 0.3.0
 nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.3.0
+
+nuget Giraffe                  ~> 5.0.0
+nuget Saturn                   ~> 0.15.0
+nuget Microsoft.AspNetCore.Authentication.JwtBearer ~> 5.0.7
+
+group Build
+    framework: netstandard2.0
+    source https://api.nuget.org/v3/index.json
+    github aardvark-platform/aardvark.fake:v511
+
+    nuget FSharp.Core                       >= 5.0.0 lowest_matching: true

@@ -1016,9 +1016,11 @@ module TreeViewApp =
             | Nop -> model
     
     let viewLabel v = 
-        v |> AVal.bind (fun u -> match u with 
-                                    | AdaptiveNumber n -> n |> AVal.map (fun x -> sprintf "Number %A" (string x))
-                                    | AdaptiveText t   -> t |> AVal.map (fun x -> sprintf "Text %A" x))
+        v 
+        |> AVal.bind (fun u -> 
+            match u with 
+            | AdaptiveNumber n -> n |> AVal.map (fun x -> sprintf "Number %A" (string x))
+            | AdaptiveText t   -> t |> AVal.map (fun x -> sprintf "Text %A" x))
         |> Incremental.text
                         
 
