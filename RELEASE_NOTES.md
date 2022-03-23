@@ -1,3 +1,6 @@
+### 5.3.0-prerelease0007
+- temporarily reactivate simple media-specific render commands
+
 ### 5.3.0-prerelease0006 
 - proper shutdown for giraffe app binding 
 
