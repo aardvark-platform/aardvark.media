@@ -7,6 +7,7 @@ open Adaptify
 
 type Message = 
     | Camera of FreeFlyController.Message
+    | OrbitMessage of OrbitMessage
     | CenterScene
     | ToggleBackground
     | Nop
@@ -15,5 +16,6 @@ type Message =
 type Model = 
     {
         cameraState : CameraControllerState
+        orbitState : OrbitState
         background : C4b
     }

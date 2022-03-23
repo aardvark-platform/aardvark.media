@@ -95,7 +95,7 @@ module MutableApp =
 
                 compressor = compressor
 
-                fileSystemRoot = Some "/"
+                fileSystemRoot = None //Some "/"
             }
 
                 

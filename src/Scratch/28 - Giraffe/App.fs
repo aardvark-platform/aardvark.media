@@ -23,6 +23,7 @@ let update (model : Model) (msg : Message) =
         { model with cameraState = FreeFlyController.update model.cameraState m }
     | CenterScene ->
         { model with cameraState = initialCamera }
+    | OrbitMessage msg -> { model with orbitState = OrbitController.update model.orbitState msg }
 
 let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
@@ -36,7 +37,7 @@ let viewScene (model : AdaptiveModel) =
 let view (model : AdaptiveModel) =
 
     let renderControl =
-       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant)
+       OrbitController.controlledControl model.orbitState OrbitMessage (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant)
                     (AttributeMap.ofListCond [
                         always <| style "width: 100%; grid-row: 2; height:100%";
                         always <| attribute "showFPS" "true";         // optional, default is false
@@ -75,6 +76,7 @@ let app =
             {
                cameraState = initialCamera
                background = C4b.Black
+               orbitState = OrbitController.initial
             }
         update = update
         view = view

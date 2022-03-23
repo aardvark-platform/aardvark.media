@@ -140,7 +140,7 @@ module MutableApp =
                             ()
                     
 
-                fileSystemRoot = Some "/"
+                fileSystemRoot = None //Some "/"
             }
 
         let events (ws : WebSocket) (context: HttpContext) =
