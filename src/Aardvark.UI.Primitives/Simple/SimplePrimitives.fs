@@ -392,7 +392,7 @@ module SimplePrimitives =
                 let clear = if cfg.allowEmpty then "true" else "false"
                 String.concat ";" [
                     "var $self = $('#__ID__');"
-                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  debugger; aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
+                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
                     "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
                 ]
 
