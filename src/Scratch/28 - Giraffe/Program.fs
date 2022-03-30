@@ -67,9 +67,11 @@ let runWithSaturn () =
 
     use cts = new CancellationTokenSource()
 
+    let renderApp, disposeRenderApp = MutableApp.toWebPart' app.Runtime false instance
+
     let app = 
         choose [
-            subRoute "/render"  (MutableApp.toWebPart app.Runtime instance)
+            subRoute "/render"  renderApp
             route "/helloWorld" >=> (Giraffe.Core.text "Hello World from Saturn")
         ]
 
@@ -93,6 +95,7 @@ let runWithSaturn () =
         debug true
     }
 
+    disposeRenderApp.Dispose()
     cts.Cancel()
     instance.shutdown()
     server.Wait()

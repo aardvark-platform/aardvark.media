@@ -1,3 +1,6 @@
+### 5.3.0
+- OrbitState now private, better functions for converting between freefly/orbit modes.
+
 ### 5.3.0-prerelease0007
 - temporarily reactivate simple media-specific render commands
 
@@ -15,6 +18,7 @@
 
 ### 5.3.0-prerelease0002
 - experimental giraffe backend
+
 ### 5.2.1
 - added Mac/ARM64 turbojpeg
 
