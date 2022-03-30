@@ -156,23 +156,34 @@ type CameraControllerState =
     
 
 
+
+type OrbitControllerConfig = 
+    {
+        isPan : MouseButtons -> bool
+    }
+
 [<ModelType>]
 type OrbitState =
-    {
+    internal {
         sky     : V3d
+        right   : V3d
+
         center  : V3d
         phi     : float
         theta   : float
-        radius  : float
-
-        //shift   : V2d
+        _radius  : float
 
         targetPhi : float
         targetTheta : float
         targetRadius : float
         targetCenter : V3d
+
         
         dragStart : Option<V2i>
+        panning   : bool
+        pan       : V2d
+        targetPan : V2d
+
         [<NonAdaptive>]
         lastRender : Option<MicroTime>
 
@@ -184,5 +195,6 @@ type OrbitState =
         zoomSensitivity : float
         speed : float
 
-    }
+        config : OrbitControllerConfig
+    } 
 

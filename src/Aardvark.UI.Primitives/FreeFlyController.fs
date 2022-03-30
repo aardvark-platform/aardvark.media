@@ -557,7 +557,7 @@ module FreeFlyController =
                             }
                     else model
 
-                let pan model =
+                let pan (model : CameraControllerState) =
                     if model.pan then
                         startAnimation 
                             { model with
