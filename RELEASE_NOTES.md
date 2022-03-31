@@ -1,3 +1,6 @@
+### 5.3.1
+- OrbitState: exposed view : CameraView as extension
+
 ### 5.3.0
 - OrbitState now private, better functions for converting between freefly/orbit modes.
 

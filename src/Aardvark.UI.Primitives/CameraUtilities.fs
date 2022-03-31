@@ -25,7 +25,7 @@ module Camera =
             }
         { 
             FreeFlyController.initial with 
-                view = o.view 
+                view = o._view 
                 freeFlyConfig = cfg
         }
     
@@ -53,8 +53,11 @@ module Extensions =
         let ofFreeFly (radius : float) (v : CameraControllerState) = 
             Camera.toOrbitState radius v
 
+        let view_ = OrbitState._view_
+
     type OrbitState with
         member x.radius = x._radius
+        member x.view = x._view
 
 
 
