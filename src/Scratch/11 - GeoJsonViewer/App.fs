@@ -24,9 +24,9 @@ module App =
 
   let semui = 
     [ 
-      { kind = Stylesheet; name = "semui"; url = "./rendering/semantic.css" }
-      { kind = Stylesheet; name = "semui-overrides"; url = "./rendering/semantic-overrides.css" }
-      { kind = Script;     name = "semui"; url = "./rendering/semantic.js" }
+      { kind = Stylesheet; name = "semui"; url = "./resources/semantic.css" }
+      { kind = Stylesheet; name = "semui-overrides"; url = "./resources/semantic-overrides.css" }
+      { kind = Script;     name = "semui"; url = "./resources/semantic.js" }
     ]
   
   let isSelected (model : AdaptiveModel) (feature : Feature) = 

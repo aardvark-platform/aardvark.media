@@ -19,10 +19,10 @@ module SimplePrimitives =
 
     let private semui =
         [
-            { kind = Stylesheet; name = "semui"; url = "./rendering/semantic.css" }
-            { kind = Stylesheet; name = "semui-overrides"; url = "./rendering/semantic-overrides.css" }
-            { kind = Script; name = "semui"; url = "./rendering/semantic.js" }
-            { kind = Script; name = "essential"; url = "./rendering/essentialstuff.js" }
+            { kind = Stylesheet; name = "semui"; url = "./resources/semantic.css" }
+            { kind = Stylesheet; name = "semui-overrides"; url = "./resources/semantic-overrides.css" }
+            { kind = Script; name = "semui"; url = "./resources/semantic.js" }
+            { kind = Script; name = "essential"; url = "./resources/essentialstuff.js" }
         ]
 
 

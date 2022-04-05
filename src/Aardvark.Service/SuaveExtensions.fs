@@ -103,18 +103,36 @@ module Reflection =
         
     let private (|LocalResourceName|_|) (ass : Assembly) (n : string) =
         let myNamespace = ass.GetName().Name + "."
-        if n.StartsWith myNamespace then 
-            let name = n.Substring(myNamespace.Length)
-            let arr = name.Split('.')
-            if arr.Length > 1 then
-                Some (String.concat "." arr.[arr.Length - 2 .. ])
-            else
-                Some name
+        let myNamespaceResources = myNamespace + "resources."
+        
+        //if n.Contains("resources.") then
+        //    let cut = n.IndexOf("resources.")
+        //    let name = n.Substring(cut)
+        //    let cleanName = name.Replace("resources.", "resources/")
+        //    Log.line "%A" cleanName
 
-        else
-            // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
-            if n.StartsWith "resources" then Some n 
-            else None
+        match n with 
+        | n when n.StartsWith myNamespaceResources -> 
+            let name = n.Substring (myNamespaceResources.Length)
+            Some ("resources/"+name) // resources/name.min.js
+        | n when n.StartsWith myNamespace -> 
+            let name = n.Substring (myNamespace.Length)
+            Some name   // resources/name.min.js
+        | n when n.StartsWith "resources" -> 
+            Some n // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
+        | _ -> 
+            None
+        //if n.StartsWith myNamespace then 
+        //    let name = n.Substring(myNamespace.Length)
+        //    let arr = name.Split('.')
+        //    if arr.Length > 1 then
+        //        Some (String.concat "." arr.[arr.Length - 2 .. ])
+        //    else
+        //        Some name
+        //else
+        //    // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
+        //    if n.StartsWith "resources" then Some n 
+        //    else None
 
     let private isNetFramework (assembly : Assembly) =
         let attributeValue = assembly.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>()

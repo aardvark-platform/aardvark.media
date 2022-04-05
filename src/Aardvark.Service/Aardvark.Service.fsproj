@@ -14,25 +14,6 @@
   <ItemGroup>
     <Compile Include="Utilities.fs" />
     <Compile Include="SuaveExtensions.fs" />
-    <EmbeddedResource Include="Core\aardvark.js" />
-    <EmbeddedResource Include="Core\aardvark.css" />
-    <EmbeddedResource Include="Core\index.html" />
-    <EmbeddedResource Include="Core\stats.html" />
-    <EmbeddedResource Include="Data\aardvark-light.svg" />
-    <EmbeddedResource Include="Data\aardvark.svg" />
-    <EmbeddedResource Include="resources\brand-icons.woff2" />
-    <EmbeddedResource Include="resources\outline-icons.woff2" />
-    <EmbeddedResource Include="resources\icons.woff2" />
-    <EmbeddedResource Include="resources\rgbcolor.js" />
-    <EmbeddedResource Include="resources\docking.css" />
-    <EmbeddedResource Include="resources\semantic.css" />
-    <EmbeddedResource Include="resources\docking.js" />
-    <EmbeddedResource Include="resources\semantic.js" />
-	<EmbeddedResource Include="resources\jquery-3-3-1.js" />
-    <EmbeddedResource Include="resources\touchstick.js" />
-    <Compile Include="aardfs\FileSystem.fs" />
-    <EmbeddedResource Include="aardfs\aardfs.css" />
-    <EmbeddedResource Include="aardfs\aardfs.js" />
     <Compile Include="TurboJpeg.fs" />
     <Compile Include="Suave.fs" />
     <Compile Include="Tools\DownloadTools.fs" />
@@ -40,19 +21,8 @@
     <Compile Include="Server.fs" />
     <Compile Include="RenderTasks.fs" />
     <Compile Include="SuaveServer.fs" />
-    <EmbeddedResource Include="resources\semantic-overrides.css" />
-    <EmbeddedResource Include="resources\fonts.css" />
     <None Include="paket.references" />
     <None Include="paket.template" />
-    <EmbeddedResource Include="resources\essentialstuff.js" />
-    <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAUi-qJCY.woff2" />
-    <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAXC-q.woff2" />
-    <EmbeddedResource Include="resources\S6u9w4BMUTPHh6UVSwaPGR_p.woff2" />
-    <EmbeddedResource Include="resources\S6u9w4BMUTPHh6UVSwiPGQ.woff2" />
-    <EmbeddedResource Include="resources\S6uyw4BMUTPHjx4wXg.woff2" />
-    <EmbeddedResource Include="resources\S6uyw4BMUTPHjxAwXjeu.woff2" />
-    <EmbeddedResource Include="resources\S6u_w4BMUTPHjxsI5wq_FQft1dw.woff2" />
-    <EmbeddedResource Include="resources\S6u_w4BMUTPHjxsI5wq_Gwft.woff2" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

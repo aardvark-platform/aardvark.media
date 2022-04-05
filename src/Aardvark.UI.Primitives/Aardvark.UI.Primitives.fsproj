@@ -56,14 +56,14 @@
     <Compile Include="CameraUtilities.fs" />
     <Compile Include="LegacyCameraController.fs" />
     <Compile Include="Docking.fs" />
-	<EmbeddedResource Include="resources\spectrum.css" />
-	<EmbeddedResource Include="resources\spectrum.js" />
-    <None Include="paket.references" />
     <Content Include="d3Test.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
     <Compile Include="OpenDialog.fs" />
     <Compile Include="SaveDialog.fs" />
+    <EmbeddedResource Include="resources\spectrum.css" />
+    <EmbeddedResource Include="resources\spectrum.js" />
+    <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />

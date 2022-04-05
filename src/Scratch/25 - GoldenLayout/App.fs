@@ -22,10 +22,9 @@ let update (model : Model) (msg : Message) =
         { model with cameraState = initialCamera }
 
 let dependencies = Html.semui @ [
-    { name = "js"; url = "http://code.jquery.com/jquery-1.11.1.min.js"; kind = Script }
-    { name = "Golden"; url = "https://golden-layout.com/files/latest/js/goldenlayout.min.js"; kind = Script }
-    { name = "GoldenCSS"; url = "https://golden-layout.com/files/latest/css/goldenlayout-base.css"; kind = Stylesheet }
-    { name = "Theme"; url = "https://golden-layout.com/files/latest/css/goldenlayout-dark-theme.css"; kind = Stylesheet }
+    { name = "GoldenCSS"; url = "resources/goldenlayout-base.css"; kind = Stylesheet }
+    { name = "Theme"; url = "resources/goldenlayout-dark-theme.css"; kind = Stylesheet }
+    { name = "Golden"; url = "resources/golden-layout.min.js"; kind = Script }
     { name = "GoldenAard"; url = "resources/goldenAard.js"; kind = Script }
 ] 
 
@@ -36,7 +35,6 @@ let viewScene (model : AdaptiveModel) =
         do! DefaultSurfaces.vertexColor
         do! DefaultSurfaces.simpleLighting
     }
-
 
 let view3d (model : AdaptiveModel) =
 
@@ -68,7 +66,6 @@ let view3d (model : AdaptiveModel) =
 
 let view (model : AdaptiveModel) =
 
-
     page (fun request -> 
         match Map.tryFind "page" request.queryParams with
             | Some "render" -> 
@@ -76,7 +73,7 @@ let view (model : AdaptiveModel) =
             | _ -> 
                 require dependencies (
                     onBoot "aardvark.initLayout()" (
-                        body [] []
+                        body [clazz "layoutContainer"] []
                     )
                 )
     )

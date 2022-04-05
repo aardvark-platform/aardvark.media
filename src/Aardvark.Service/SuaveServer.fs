@@ -509,19 +509,9 @@ module Server =
                     context |> BAD_REQUEST "no width/height specified"
 
         choose [
-            yield Reflection.assemblyWebPart typeof<Client>.Assembly
             yield pathScan "/render/%s" (render >> handShake)
             yield path "/stats.json" >=> statistics 
             yield pathScan "/screenshot/%s" screenshot
-
-            match info.fileSystemRoot with
-                | Some root ->
-                    let fileSystem = 
-                        if root = "/" then new FileSystem()
-                        else new FileSystem(root)
-                    yield path "/fs" >=> FileSystem.toWebPart fileSystem
-                | None ->
-                    ()
         ]
 
     let run (port : int) (server : Server) =

@@ -252,8 +252,8 @@ module DockingUIExtensions =
 
     let private dependencies =
         [
-            { name = "docking-js-style"; url = "./rendering/docking.css"; kind = Stylesheet }
-            { name = "docking-js"; url = "./rendering/docking.js"; kind = Script }
+            { name = "docking-js-style"; url = "./resources/docking.css"; kind = Stylesheet }
+            { name = "docking-js"; url = "./resources/docking.js"; kind = Script }
         ]
 
     let onLayoutChanged (f : DockConfig -> 'msg) =
@@ -282,8 +282,3 @@ module DockingUIExtensions =
                     div atts []
                 )
             )
-
-
-
-
-

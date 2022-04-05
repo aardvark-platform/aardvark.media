@@ -1001,16 +1001,14 @@ if (!aardvark.openFileDialog) {
 
         var refs =
             [
-                { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
-                { kind: "stylesheet", name: "semui-overrides-css", url: "./rendering/semantic-overrides.css" },
-                { kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
+                { kind: "stylesheet", name: "semui-css", url: "./resources/semantic.css" },
+                { kind: "stylesheet", name: "semui-overrides-css", url: "./resources/semantic-overrides.css" },
+                { kind: "script", name: "semui-js", url: "./resources/semantic.js" },
                 { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
                 { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
                 { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
                 { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
                 { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
-                { kind: "stylesheet", name: "aardfs-css", url: aardvark.getScriptRelativeUrl("http", "aardfs.css") },
-                { kind: "script", name: "aardfs-js", url: aardvark.getScriptRelativeUrl("http", "aardfs.js") }
             ]
 
         $(document).ready(function () {

@@ -26,8 +26,6 @@ open Suave.Sockets
 open Suave.State.CookieStateStore
 
 type EmbeddedResources = EmbeddedResources
-module Resources =
-    let WebPart = Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
 
 [<AutoOpen>]
 module private Tools =
