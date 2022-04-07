@@ -29,7 +29,7 @@ let main argv =
     //let t = typeof<Aardvark.UI.Primitives.EmbeddedResources>
 
     //let supa = Reflection.assemblyWebPart (t.Assembly)
-    WebPart.startServer 4321 [ 
+    WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
         //Suave.Files.browseHome
         //supa

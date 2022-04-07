@@ -168,8 +168,8 @@ module App =
                         
     let dependencies = 
       Html.semui @ [        
-        { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
-        { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
+        { name = "spectrum.js";  url = "resources/spectrum.js";  kind = Script     }
+        { name = "spectrum.css";  url = "resources/spectrum.css";  kind = Stylesheet     }
       ] 
 
     page (fun request ->
@@ -181,15 +181,15 @@ module App =
       | Some "controls" -> 
         require dependencies (
           body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
-             div[style "color:white; margin: 5px 15px 5px 5px"] [
+             div [style "color:white; margin: 5px 15px 5px 5px"] [
                h3 [] [text "NIOBE"]
                p [] [text "unified sketching"]
                p [] [text "Hold Ctrl-Left to add Point"]
                p [] [text "Press Enter to close Polygon"]
                p [] [text "ShadowVolumeVisualization "; Html.SemUi.iconCheckBox model.shadowVolumeVis ToggleShadowVolumeVis]
                p [] [text "Show Lines "; Html.SemUi.iconCheckBox model.showLines ToggleLineVis]
-               button[onClick (fun _ -> SketchingAction.Undo); style "background:white; color:black"][text "Undo"] |> UI.map SketchingMessage
-               button[onClick (fun _ -> SketchingAction.Redo); style "background:white; color:black"][text "Redo"] |> UI.map SketchingMessage
+               button [onClick (fun _ -> SketchingAction.Undo); style "background:white; color:black"] [text "Undo"] |> UI.map SketchingMessage
+               button [onClick (fun _ -> SketchingAction.Redo); style "background:white; color:black"] [text "Redo"] |> UI.map SketchingMessage
                //button[onClick (fun _ -> SketchingAction.CreateShadowPolygon); style "background:white; color:black"][text "Shadow Volume"] |> UI.map SketchingMessage
                SketchingApp.viewGui model.sketching |> UI.map SketchingMessage
              ]

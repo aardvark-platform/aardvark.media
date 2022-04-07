@@ -28,7 +28,7 @@ module Main =
         // if you are unhappy with them, you can always use your own server config.
         // the localhost variant does not require to allow the port through your firewall.
         // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-        WebPart.startServer 4321 [ 
+        WebPart.startServerLocalhost 4321 [ 
             MutableApp.toWebPart' app.Runtime false instance
             Suave.Files.browseHome
         ] |> ignore

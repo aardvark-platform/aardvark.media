@@ -36,7 +36,7 @@ let main argv =
     let instance = 
         app |> App.start
 
-    WebPart.startServer 4321 [ 
+    WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' runtime false instance
         Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
         Suave.Files.browseHome

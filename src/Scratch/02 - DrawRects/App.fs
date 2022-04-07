@@ -98,10 +98,10 @@ module ClientApp =
 
     let dependencies = 
       Html.semui @ [
-        { name = "drawRects.css"; url = "drawRects.css"; kind = Stylesheet }
-        { name = "drawRects.js";  url = "drawRects.js";  kind = Script     }
-        { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
-        { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
+        { name = "drawRects.css"; url = "resources/drawRects.css"; kind = Stylesheet }
+        { name = "drawRects.js"; url = "resources/drawRects.js";  kind = Script }
+        { name = "spectrum.js"; url = "resources/spectrum.js";  kind = Script }
+        { name = "spectrum.css"; url = "resources/spectrum.css";  kind = Stylesheet }
       ] 
 
     let myMouseCbRel (evtName : string) (containerClass : string) (cb : V2d -> 'msg) =

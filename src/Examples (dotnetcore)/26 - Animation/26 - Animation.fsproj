@@ -5,6 +5,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <GenerateLenses>True</GenerateLenses>
+    <AssemblyName>$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>

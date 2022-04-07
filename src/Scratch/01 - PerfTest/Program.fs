@@ -35,7 +35,7 @@ let main argv =
         app |> App.start
 
 
-    WebPart.startServer 4321 [ 
+    WebPart.startServerLocalhost 4321 [ 
         Aardvark.UI.Primitives.Resources.WebPart 
         MutableApp.toWebPart' runtime false instance
         Suave.Files.browseHome

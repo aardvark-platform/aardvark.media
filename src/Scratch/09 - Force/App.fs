@@ -17,8 +17,8 @@ let dependencies =
         //{ name = "labels"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.renderers.edgeLabels.min.js"; kind = Script }
         //{ name = "force"; url = "https://cdnjs.cloudflare.com/ajax/libs/sigma.js/1.2.1/plugins/sigma.layout.forceAtlas2.min.js"; kind = Script }
         { name = "viva"; url = "https://cdnjs.cloudflare.com/ajax/libs/vivagraphjs/0.10.1/vivagraph.min.js"; kind = Script }
-        { url = "style.css"; name = "style.css"; kind = Stylesheet }
-        { url = "force.js"; name = "force.js"; kind = Script }
+        { url = "resources/style.css"; name = "style.css"; kind = Stylesheet }
+        { url = "resources/force.js"; name = "force.js"; kind = Script }
     ]
 
 open Chiron

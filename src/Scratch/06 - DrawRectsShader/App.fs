@@ -180,9 +180,9 @@ let update (model : Model) (msg : Message) =
 
 let dependencies = 
   Html.semui @ [
-    { name = "drawRects.css"; url = "drawRects.css"; kind = Stylesheet }
-    { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
-    { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
+    { name = "drawRects.css"; url = "resources/drawRects.css"; kind = Stylesheet }
+    { name = "spectrum.js";  url = "resources/spectrum.js";  kind = Script     }
+    { name = "spectrum.css";  url = "resources/spectrum.css";  kind = Stylesheet     }
   ] 
 
 

@@ -47,7 +47,7 @@ let main argv =
     use app = new HeadlessVulkanApplication(true)
     let instance = Inc.Master.app |> App.start
 
-    WebPart.startServer port [ 
+    WebPart.startServerLocalhost port [ 
         MutableApp.toWebPart' app.Runtime false instance
         Suave.Files.browseHome
     ] |> ignore
