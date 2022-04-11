@@ -53,7 +53,7 @@ let view3d (model : AdaptiveModel) =
 
 
     require Html.semui (
-        div [style "display: grid; grid-template-rows: 40px 1fr; width: 100%; height: 100%;background-color:rgb(34,34,34);" ] [
+        div [style "display: grid; grid-template-rows: 40px 1fr; width: 200px; height: 200px;background-color:rgb(34,34,34);" ] [
             div [style "grid-row: 1"] [
                 button [clazz "ui inverted tiny button"; style "position:absolute;top:30px;z-index:10000"; onClick (fun _ -> CenterScene)] [text "Center Scene"]
                 button [clazz "ui inverted tiny button"; style "position:absolute;top:65px;z-index:10000"; onClick (fun _ -> ToggleBackground)] [text "Change Background"]
@@ -66,18 +66,36 @@ let view3d (model : AdaptiveModel) =
 
 let view (model : AdaptiveModel) =
 
-    page (fun request -> 
-        match Map.tryFind "page" request.queryParams with
-            | Some "render" -> 
-                view3d model
-            | _ -> 
-                require dependencies (
-                    onBoot "aardvark.initLayout()" (
-                        body [clazz "layoutContainer"] []
-                    )
-                )
-    )
+    let d = System.Collections.Concurrent.ConcurrentDictionary<string,DomNode<_>>()
 
+    let renderControl =
+       FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant)
+                    (AttributeMap.ofListCond [
+                        always <| style "width: 100%; grid-row: 2; height:100%";
+                        always <| attribute "showFPS" "true";         // optional, default is false
+                        "style", model.background |> AVal.map(fun c -> sprintf "background: #%02X%02X%02X" c.R c.G c.B |> AttributeValue.String |> Some)
+                        //attribute "showLoader" "false"    // optional, default is true
+                        //attribute "data-renderalways" "1" // optional, default is incremental rendering
+                        always <| attribute "data-samples" "8"        // optional, default is 1
+                        always <| attribute "showLoader" "false"
+                    ])
+            (viewScene model)
+
+    require dependencies ( 
+        onBoot "aardvark.initLayout()" (
+            body [clazz "layoutContainer"; ] [
+            
+                div [clazz "test"; style "overflow:hidden; position: absolute;"] [
+                    renderControl
+                ]
+
+                div [clazz "test2"; style "overflow:hidden; position: absolute;"] [
+                    renderControl
+                ]
+    
+            ]
+        )
+    )
 
 let threads (model : Model) = 
     ThreadPool.empty
