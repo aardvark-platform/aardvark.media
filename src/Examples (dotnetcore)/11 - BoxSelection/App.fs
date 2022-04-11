@@ -51,8 +51,6 @@ let update (model : BoxSelectionDemoModel) (act : Action) =
             {model with boxes = boxes}
         | ClearSelection -> { model with selectedBoxes = HashSet.empty}
                         
-let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
-
 let mkColor (model : AdaptiveBoxSelectionDemoModel) (box : AdaptiveVisibleBox) =
     let id = box.id 
 

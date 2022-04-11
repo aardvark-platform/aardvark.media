@@ -97,12 +97,10 @@ module ClientApp =
             | None -> None
 
     let dependencies = 
-      Html.semui @ [
-        { name = "drawRects.css"; url = "resources/drawRects.css"; kind = Stylesheet }
-        { name = "drawRects.js"; url = "resources/drawRects.js";  kind = Script }
-        { name = "spectrum.js"; url = "resources/spectrum.js";  kind = Script }
-        { name = "spectrum.css"; url = "resources/spectrum.css";  kind = Stylesheet }
-      ] 
+        Html.semui @ [
+            { name = "drawRects.css"; url = "resources/drawRects.css"; kind = Stylesheet }
+            { name = "drawRects.js"; url = "resources/drawRects.js";  kind = Script }
+        ] 
 
     let myMouseCbRel (evtName : string) (containerClass : string) (cb : V2d -> 'msg) =
         let cb = function None -> Seq.empty | Some v -> Seq.singleton (cb v)

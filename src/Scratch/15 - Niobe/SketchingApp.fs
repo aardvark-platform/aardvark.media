@@ -203,14 +203,8 @@ module SketchingApp =
         //RenderCommand.SceneGraph asd
         //Sg.execute(RenderCommand.Ordered asd)
 
-  let dependencies = 
-    Html.semui @ [        
-      { name = "spectrum.js";  url = "spectrum.js";  kind = Script     }
-      { name = "spectrum.css";  url = "spectrum.css";  kind = Stylesheet     }
-    ] 
-
   let viewGui (model : AdaptiveSketchingModel) =
-    require dependencies (
+    require Html.semui (
       Html.SemUi.accordion "Brush" "paint brush" true [          
           Html.table [  
               Html.row "Color:"  [ColorPicker.view model.selectedColor |> UI.map ChangeColor ]

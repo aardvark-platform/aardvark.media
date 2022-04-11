@@ -179,12 +179,9 @@ let update (model : Model) (msg : Message) =
         | _ -> model
 
 let dependencies = 
-  Html.semui @ [
-    { name = "drawRects.css"; url = "resources/drawRects.css"; kind = Stylesheet }
-    { name = "spectrum.js";  url = "resources/spectrum.js";  kind = Script     }
-    { name = "spectrum.css";  url = "resources/spectrum.css";  kind = Stylesheet     }
-  ] 
-
+    Html.semui @ [
+        { name = "drawRects.css"; url = "resources/drawRects.css"; kind = Stylesheet }
+    ]
 
 let viewBox (box : aval<Box2d>) (colors : aval<array<C4f>>) =
     let boxColors = colors |> AVal.map (fun colors -> Array.concat [colors |> Array.map C4b;colors|> Array.map C4b])

@@ -395,8 +395,8 @@ module ColorPicker =
 
     let spectrum =
         [   
-            { kind = Stylesheet; name = "spectrumStyle"; url = "spectrum.css" }          
-            { kind = Script; name = "spectrum"; url = "spectrum.js" }
+            { kind = Stylesheet; name = "spectrumStyle"; url = "resources/spectrum.css" }          
+            { kind = Script; name = "spectrum"; url = "resources/spectrum.js" }
         ]    
 
     let update (model : ColorInput) (action : Action) =

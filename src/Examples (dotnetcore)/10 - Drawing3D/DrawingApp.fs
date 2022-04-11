@@ -35,8 +35,6 @@ let update (model : SimpleDrawingModel) (act : Action) =
         | _ -> model
             
             
-let myCss = { kind = Stylesheet; name = "semui-overrides"; url = "semui-overrides.css" }
-
 let computeScale (view : aval<CameraView>)(p:V3d)(size:float) =        
     view 
     |> AVal.map (fun v -> 

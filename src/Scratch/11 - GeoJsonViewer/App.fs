@@ -21,13 +21,6 @@ module App =
       | Message.KeyUp k -> model
       | UpdateConfig cfg ->
           { model with docking = cfg; }
-
-  let semui = 
-    [ 
-      { kind = Stylesheet; name = "semui"; url = "./resources/semantic.css" }
-      { kind = Stylesheet; name = "semui-overrides"; url = "./resources/semantic-overrides.css" }
-      { kind = Script;     name = "semui"; url = "./resources/semantic.js" }
-    ]
   
   let isSelected (model : AdaptiveModel) (feature : Feature) = 
     model.selected 
@@ -195,7 +188,7 @@ module App =
     page (fun request ->
       match Map.tryFind "page" request.queryParams with
         | Some "list" ->
-            require (semui)(
+            require Html.semui (
               body [ style "width: 100%; height:100%; background: transparent; overflow-x: hidden; overflow-y: scroll"] [
                 Incremental.div ([clazz "ui very compact stackable inverted relaxed divided list"] |> AttributeMap.ofList) (viewFeaturesGui model)
               ]

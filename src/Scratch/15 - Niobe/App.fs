@@ -165,12 +165,6 @@ module App =
          //onBlur (fun _ -> Camera FreeFlyController.Message.Blur)
        ]) 
        (viewSg)
-                        
-    let dependencies = 
-      Html.semui @ [        
-        { name = "spectrum.js";  url = "resources/spectrum.js";  kind = Script     }
-        { name = "spectrum.css";  url = "resources/spectrum.css";  kind = Stylesheet     }
-      ] 
 
     page (fun request ->
       match Map.tryFind "page" request.queryParams with
@@ -179,7 +173,7 @@ module App =
             div [clazz "ui"; style "background: #1B1C1E"] [renderControl]
         )
       | Some "controls" -> 
-        require dependencies (
+        require Html.semui (
           body [style "width: 100%; height:100%; background: transparent; overflow-y:visible"] [
              div [style "color:white; margin: 5px 15px 5px 5px"] [
                h3 [] [text "NIOBE"]
