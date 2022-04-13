@@ -39,6 +39,8 @@ module Reflection =
 
     open Giraffe
 
+    open Aardvark.Service.Resources
+
     let private mimeTypes =
         Dictionary.ofList [
             ".js", "text/javascript"
@@ -50,28 +52,6 @@ module Reflection =
             ".eot","application/vnd.ms-fontobject"
         ]
         
-    let private (|LocalResourceName|_|) (ass : Assembly) (n : string) =
-        let myNamespace = ass.GetName().Name + "."
-        if n.StartsWith myNamespace then 
-            let name = n.Substring(myNamespace.Length)
-            let arr = name.Split('.')
-            if arr.Length > 1 then
-                Some (String.concat "." arr.[arr.Length - 2 .. ])
-            else
-                Some name
-
-        else
-            // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
-            if n.StartsWith "resources" then Some n 
-            else None
-
-    let private isNetFramework (assembly : Assembly) =
-        let attributeValue = assembly.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>()
-        attributeValue.FrameworkName.ToLower().Contains("framework")
-
-    let (|PlainFrameworkEmbedding|_|) (assembly : Assembly) (resName : string) =
-        if assembly |> isNetFramework then Some resName
-        else None
 
     let assemblyWebPart (assembly : Assembly) = 
         assembly.GetManifestResourceNames()
