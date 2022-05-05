@@ -63,10 +63,3 @@ nuget Another.Unofficial.Xilium.CefGlue.WindowsForms             ~> 0.3.0
 
 nuget Giraffe                  ~> 5.0.0
 nuget Saturn                   ~> 0.15.0
-
-group Build
-    framework: netstandard2.0
-    source https://api.nuget.org/v3/index.json
-    github aardvark-platform/aardvark.fake:v511
-
-    nuget FSharp.Core                       >= 5.0.0 lowest_matching: true
