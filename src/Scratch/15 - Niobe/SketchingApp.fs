@@ -207,7 +207,7 @@ module SketchingApp =
     require Html.semui (
       Html.SemUi.accordion "Brush" "paint brush" true [          
           Html.table [  
-              Html.row "Color:"  [ColorPicker.view model.selectedColor |> UI.map ChangeColor ]
+              Html.row "Color:"  [ColorPicker.viewColorBrewer 10 PaletteType.SequentialSingle model.selectedColor |> UI.map ChangeColor ]
               Html.row "Width:"  [Numeric.view model.selectedThickness |> UI.map SetThickness]                             
               Html.row "Offset:"  [Numeric.view model.volumeOffset |> UI.map SetOffset]                             
               Html.row "DOffset:"  [Numeric.view model.depthOffset |> UI.map SetDepthOffset]                 
