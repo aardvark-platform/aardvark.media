@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <Compile Include="Model.fs" />
+    <Compile Include="Screenshot.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
