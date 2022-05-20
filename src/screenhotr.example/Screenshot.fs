@@ -21,10 +21,14 @@ module Screenshot =
             frameTime       : float
         }
 
+    // download screenshot from your application
     let take (aardvarkUrl : string) (imageSize : Aardvark.Base.V2i) = 
         
         try 
         
+            printfn "taking screenshot"
+            printfn "image size: %A" imageSize
+
             let client = new WebClient()
             let baseUri = Uri(aardvarkUrl)
 
@@ -42,25 +46,32 @@ module Screenshot =
         | _ as e -> 
             Report.Error(sprintf "Taking screenshot failed with: %s" e.Message)
             Array.empty
-            
-        //aardvark.electron.remote.getCurrentWindow().webContents.capturePage().then((e) => console.log(e.toPNG()) );
-        //base64ArrayBuffer(temp3.buffer);
-
+           
+    // upload screenshot to screenshotr server
     let upload screenshotrUrl tags data = 
 
-        let client = 
-            ScreenshotrHttpClient.Connect(screenshotrUrl) 
+        try 
+            
+            printfn "uploading screenshot"
+            printfn "tags: %A" tags
+
+            let client = 
+                ScreenshotrHttpClient.Connect(screenshotrUrl) 
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+            
+            let timestamp = System.DateTime.Now
+
+            client.ImportScreenshot(data, tags, timestamp = timestamp)
             |> Async.AwaitTask
             |> Async.RunSynchronously
+            |> ignore
             
-        let timestamp = System.DateTime.Now
-
-        client.ImportScreenshot(data, tags, timestamp = timestamp)
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
+        with
+        | _ as e -> Report.Error(sprintf "Uploading screenshot failed with: %s" e.Message)
 
     let takeAndUpload imageSize tags =
-        
+
         let aardvarkUrl = @"http://localhost:4321" // the url you specify in Program.fs
         let screenshotrUrl = @"http://localhost:5020" // if screenshotr runs at your pc
 
@@ -68,9 +79,10 @@ module Screenshot =
         
         match bytes.IsEmptyOrNull() with
         | true -> ()
-        | false -> 
-            bytes
-            |> upload screenshotrUrl tags
-            |> ignore
+        | false ->  bytes |> upload screenshotrUrl tags
+            
+// for taking screenshots with UI
+//aardvark.electron.remote.getCurrentWindow().webContents.capturePage().then((e) => console.log(e.toPNG()) );
+//base64ArrayBuffer(temp3.buffer);
         
 

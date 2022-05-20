@@ -29,7 +29,7 @@ module App =
             | SetImageHeight h -> { m with imageSize = V2i(m.imageSize.X, h) }
             
             | SetTags ts -> 
-                let reg = Regex("[*'\",_&#^@?!{}%§$/=]");
+                let reg = Regex("[*'\",_&#^@?!{}%§$/=]") // filters some special characters 
                 let tags = 
                     ts.Split(";", StringSplitOptions.RemoveEmptyEntries)
                     |> Array.map (fun s -> reg.Replace(s, ""))
