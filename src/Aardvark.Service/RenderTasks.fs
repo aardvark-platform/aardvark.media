@@ -357,7 +357,7 @@ module Internals =
 
             let pi = runtime.Download(resolved).ToPixImage<byte>().ToFormat(Col.Format.RGB)
             use stream = new System.IO.MemoryStream()
-            pi.SaveAsImage(stream, PixFileFormat.Png)
+            pi.Save(stream, PixFileFormat.Png)
             RenderResult.Png (stream.ToArray())
 
         override x.Release() =
