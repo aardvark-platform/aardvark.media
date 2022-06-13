@@ -28,34 +28,56 @@ let initial =
 let rand = System.Random()
 
 let update (model : Model) (msg : Message) =
+    
+    Log.warn "%A" msg
+    
     match msg with
         | ToggleActive ->
+            //Log.warn "ToggleActive"
             { model with active = not model.active }
             //if rand.NextDouble() > 0.5 then
             //    { model with active = not model.active }
             //else
             //    model
         | SetValue v ->
+            //Log.warn "%A" v
             if model.active then
-                Log.warn "%A" v
                 { model with value = v }
             else
                 model
-        | SetInt v -> Log.warn "SetInt :%d" v; { model with intValue = v }
-        | SetDecimal v -> Log.warn "SetDecimal :%A" v; { model with decValue = v }
-        | SetUInt v -> Log.warn "SetUInt :%A" v; { model with uintValue = v }
+        | SetInt v -> //Log.warn "SetInt :%d" v;
+            { model with intValue = v }
+        | SetDecimal v -> //Log.warn "SetDecimal :%A" v; 
+            { model with decValue = v }
+        | SetUInt v -> //Log.warn "SetUInt :%A" v; 
+            { model with uintValue = v }
         | SetName n ->
+            //Log.warn "SetName: %A" n
             if model.active then
                 { model with name = n; options = HashMap.add (Custom n) n model.options }
             else
                 model
         | SetAlternative a ->
+            //Log.warn "SetAlternative: %A" a
             if model.active then
-                Log.warn "%A" a
                 { model with alt = a }
             else 
                 model
-        | SetEnumValue v -> { model with enumValue = v }
+        | SetEnumValue v -> 
+            //Log.warn "SetEnumValue :%A" v
+            { model with enumValue = v }
+        | Reset -> 
+            { 
+                active = true
+                value = Constant.PiHalf
+                intValue = 14
+                decValue = 2.0m
+                uintValue = 2u
+                name = "Nope"
+                alt = Some B
+                options = HashMap.ofList [B, "B"; D, "D"]
+                enumValue = EnumValue.Value3
+            }
 //let values =
 //    AMap.ofList [
 //        A, div [] [ text "A"; i [ clazz "icon rocket" ] []; i [ clazz "icon thermometer three quarters" ] [] ]
@@ -70,6 +92,13 @@ let view (model : AdaptiveModel) =
     let values = model.options |> AMap.map (fun k v -> text v)
     div [clazz "ui inverted segment"; style "width: 100%; height: 100%"] [
         div [ clazz "ui vertical inverted menu" ] [
+            div [ clazz "item" ] [
+
+                button [clazz "ui icon inverted tiny button"; onClick (fun _ -> Reset)] [
+                    i [clazz (sprintf "red delete icon")] []
+                ]
+            ]    
+            
             div [ clazz "item" ] [ 
                 simplecheckbox { 
                     attributes [clazz "ui inverted checkbox"]
