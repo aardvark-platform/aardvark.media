@@ -1,3 +1,6 @@
+### 5.4.0-prerelease0002
+- prevent dorpdowns onChange messages (not set be GUI)
+
 ### 5.4.0-prerelease0001
 - Updated Fomantic-UI to 2.8.8
 - Fixed and improved resource management
