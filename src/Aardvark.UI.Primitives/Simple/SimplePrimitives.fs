@@ -384,7 +384,7 @@ module SimplePrimitives =
 
             let initial =
                 match selection.GetValue() with
-                | Some v -> sprintf ".dropdown('set selected', '%s');" v
+                | Some v -> sprintf ".dropdown('set selected', '%s', '', true);" v
                 | None -> ".dropdown('clear');"
 
 

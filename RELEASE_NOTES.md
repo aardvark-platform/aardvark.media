@@ -1,5 +1,8 @@
+### 5.4.0-prerelease0003
+- prevent dropdown to fire init message
+
 ### 5.4.0-prerelease0002
-- prevent dorpdowns onChange messages (not set be GUI)
+- prevent dropdowns onChange messages (not set be GUI)
 
 ### 5.4.0-prerelease0001
 - Updated Fomantic-UI to 2.8.8
