@@ -1,3 +1,6 @@
+### 5.4.0-prerelease0004
+- extend dropdownConfig on event (allow open menu by hover or click)
+
 ### 5.4.0-prerelease0003
 - prevent dropdown to fire init message
 

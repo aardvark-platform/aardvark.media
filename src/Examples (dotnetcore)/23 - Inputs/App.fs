@@ -171,7 +171,7 @@ let view (model : AdaptiveModel) =
                 textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
             ]
             div [ clazz "item" ] [ 
-                dropdown { placeholder = "Thingy"; allowEmpty = false } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
+                dropdown { placeholder = "Thingy"; allowEmpty = false; onTrigger = Hover } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
             ]
             div [ clazz "item" ] [ 
                 dropdown1 [ clazz "ui inverted selection dropdown" ] enumValues model.enumValue SetEnumValue
