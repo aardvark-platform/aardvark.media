@@ -58,11 +58,15 @@ module SimplePrimitives =
             placeholder : Option<string>
         }
 
+    type TriggerDropdown = 
+        | Hover
+        | Click
 
     type DropdownConfig =
         {
             allowEmpty  : bool
             placeholder : string
+            onTrigger   : TriggerDropdown
         }
 
     type NumberType =
@@ -384,16 +388,20 @@ module SimplePrimitives =
 
             let initial =
                 match selection.GetValue() with
-                | Some v -> sprintf ".dropdown('set selected', '%s');" v
+                | Some v -> sprintf ".dropdown('set selected', '%s', '', true);" v
                 | None -> ".dropdown('clear');"
-
 
             let boot =
                 let clear = if cfg.allowEmpty then "true" else "false"
+                let trigger = 
+                    match cfg.onTrigger with 
+                    | Click -> "'click'" // default
+                    | Hover -> "'hover'"
+                    
                 String.concat ";" [
                     "var $self = $('#__ID__');"
-                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
-                    "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
+                    "$self.dropdown({ on: " + trigger + ", clearable: " + clear + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
+                    "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some, '', true); } else { $self.dropdown('clear'); } }; "
                 ]
 
             require semui (
@@ -421,7 +429,7 @@ module SimplePrimitives =
             )
 
         let dropdown1 (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
-            dropdown { allowEmpty = false; placeholder = "" } atts values (AVal.map Some selected) (Option.get >> update)
+            dropdown { allowEmpty = false; placeholder = ""; onTrigger = Click } atts values (AVal.map Some selected) (Option.get >> update)
 
 
     [<AutoOpen>]
@@ -508,7 +516,7 @@ module SimplePrimitives =
         type DropdownBuilder() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, AMap.empty, AVal.constant None, { allowEmpty = true; placeholder = "" }, (fun _ -> ()))
+                (AttributeMap.empty, AMap.empty, AVal.constant None, { allowEmpty = true; placeholder = ""; onTrigger = Click }, (fun _ -> ()))
 
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,u,s,c,m), na) = (AttributeMap.union a (att na), u, s, c, m)

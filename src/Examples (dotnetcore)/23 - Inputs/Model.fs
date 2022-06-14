@@ -39,3 +39,4 @@ type Message =
     | SetName of string
     | SetAlternative of Option<Alternative>
     | SetEnumValue of EnumValue
+    | Reset
