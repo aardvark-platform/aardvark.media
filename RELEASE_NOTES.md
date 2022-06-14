@@ -1,3 +1,6 @@
+### 5.4.0-prerelease0005
+- extend dropdown modes (icon / clearable / nonclearable)
+
 ### 5.4.0-prerelease0004
 - extend dropdownConfig on event (allow open menu by hover or click)
 

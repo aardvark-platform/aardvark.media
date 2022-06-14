@@ -170,11 +170,17 @@ let view (model : AdaptiveModel) =
             div [ clazz "item" ] [ 
                 textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
             ]
+            text "non-clearable"
             div [ clazz "item" ] [ 
-                dropdown { placeholder = "Thingy"; allowEmpty = false; onTrigger = Hover } [ clazz "ui inverted selection dropdown" ] values model.alt SetAlternative
+                dropdownUnClearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
             ]
+            text "clearable"
             div [ clazz "item" ] [ 
-                dropdown1 [ clazz "ui inverted selection dropdown" ] enumValues model.enumValue SetEnumValue
+                dropdown { mode = DropdownMode.Clearable "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] values model.alt SetAlternative
+            ]
+            text "icon"
+            div [ clazz "item" ] [ 
+                dropdown { mode = DropdownMode.Icon "sidebar"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted icon top left pointing dropdown circular button" ] values model.alt SetAlternative
             ]
         ]
     ]
