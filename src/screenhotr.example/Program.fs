@@ -13,6 +13,8 @@ open Aardium
 open Suave
 open Suave.WebPart
 
+type Resources = Resources
+
 [<EntryPoint>]
 let main args =
     Aardvark.Init()
@@ -21,6 +23,8 @@ let main args =
     let app = new OpenGlApplication()
 
     WebPart.startServerLocalhost 4321 [
+        Reflection.assemblyWebPart typeof<Resources>.Assembly
+        Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
         MutableApp.toWebPart' app.Runtime false (App.start App.app)
     ] |> ignore
     

@@ -4,6 +4,7 @@ open System
 open System.Text.RegularExpressions
 open FSharp.Data.Adaptive
 
+open Aardvark.Application
 open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI
@@ -38,6 +39,11 @@ module App =
             | TakeScreenshot -> 
                 Screenshot.takeAndUpload m.imageSize m.tags 
                 m
+                
+            | Message.KeyDown k -> 
+                match k with
+                | Keys.F8 -> m
+                | _ -> m
             
 
     let view (m : AdaptiveModel) =
@@ -62,7 +68,13 @@ module App =
         let att =
             [
                 style "position: fixed; left: 0; top: 0; width: 100%; height: 100%"
+                onKeyDown (KeyDown)
             ]
+
+        let dependencies = 
+            [
+                { kind = Script; name = "screenshot"; url = "screenshot.js" }
+            ] @ Html.semui
 
         body [] [
             FreeFlyController.controlledControl m.cameraState CameraMessage frustum (AttributeMap.ofList att) scene
@@ -113,11 +125,15 @@ module App =
                     div [ clazz "row" ] [
                         button [clazz "ui button"; onClick (fun _ -> TakeScreenshot)] [text "Take Screenshot"]
                     ]
+
+                    //div [ clazz "row" ] [
+                    //    button [clazz "ui button"; clientEvent "onclick" "takeScreenshot()"] [text "Electron Test"]
+                    //]
                 ]
             ]
         
         ]
-        |>  require Html.semui
+        |>  require dependencies
 
     let app =
         {

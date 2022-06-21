@@ -10,6 +10,7 @@ type Message =
     | SetImageHeight of int
     | SetTags        of string
     | TakeScreenshot
+    | KeyDown        of key : Aardvark.Application.Keys
 
 [<ModelType>]
 type Model =

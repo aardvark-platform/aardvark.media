@@ -73,7 +73,8 @@ module Screenshot =
     let takeAndUpload imageSize tags =
 
         let aardvarkUrl = @"http://localhost:4321" // the url you specify in Program.fs
-        let screenshotrUrl = @"http://localhost:5020" // if screenshotr runs at your pc
+        //let screenshotrUrl = @"http://localhost:5020" // if screenshotr runs at your pc
+        let screenshotrUrl = @"https://screenshotr-api.aardworx.net"
 
         let bytes = take aardvarkUrl imageSize 
         
