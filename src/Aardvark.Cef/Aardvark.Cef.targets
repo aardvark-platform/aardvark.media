@@ -1,0 +1,23 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETFramework'">
+      <ItemGroup>
+        <None Include="$(MSBuildThisFileDirectory)..\lib\net471\Aardvark.Cef.Process.exe.config" Visible="false">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+      </ItemGroup>
+	</When>
+  </Choose>
+  <Choose>
+    <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp'">
+      <ItemGroup>
+        <None Include="$(MSBuildThisFileDirectory)..\runtimes\win-x64\native\Aardvark.Cef.Process.exe" Visible="false">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+		<None Include="$(MSBuildThisFileDirectory)..\runtimes\win-x64\native\Aardvark.Cef.Process.runtimeconfig.json" Visible="false">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+      </ItemGroup>
+	</When>
+  </Choose>
+</Project>
