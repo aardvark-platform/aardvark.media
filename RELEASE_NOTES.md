@@ -1,3 +1,7 @@
+### 5.3.2
+- Fixed CEF processes nuget packages
+- [Screenshot] Save image with alpha when using PNG
+
 ### 5.3.1
 - OrbitState: exposed view : CameraView as extension
 
