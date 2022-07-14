@@ -355,7 +355,7 @@ module Internals =
                 else
                     runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
 
-            let pi = runtime.Download(resolved).ToPixImage<byte>().ToFormat(Col.Format.RGB)
+            let pi = runtime.Download(resolved).ToPixImage<byte>().ToFormat(Col.Format.RGBA)
             use stream = new System.IO.MemoryStream()
             pi.Save(stream, PixFileFormat.Png)
             RenderResult.Png (stream.ToArray())
