@@ -129,6 +129,26 @@ module App =
                     //div [ clazz "row" ] [
                     //    button [clazz "ui button"; clientEvent "onclick" "takeScreenshot()"] [text "Electron Test"]
                     //]
+
+                    div [ clazz "row" ] [
+                        //button [clazz "ui button"; clientEvent "onclick" "test()"] [text "Test"]
+
+                        form [ clazz "ui form"; attribute "id" "screenshotrForm" ] [
+                            
+                            div [ clazz "field" ] [
+                                label [] [ text "Url" ]
+                                input [ attribute "type" "text"; attribute "name" "url"; attribute "placeholder" "Url" ] 
+                            ]
+
+                            div [ clazz "field" ] [
+                                label [] [ text "Key" ]
+                                input [ attribute "type" "text"; attribute "name" "key"; attribute "placeholder" "Key" ] 
+                            ]
+
+                            button [ clazz "ui button"; attribute "type" "submit" ] [text "Submit"]
+                            button [ clazz "ui button" ; clientEvent "onclick" "removeForm()" ] [text "Cancel"]
+                        ]
+                    ]
                 ]
             ]
         

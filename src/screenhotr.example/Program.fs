@@ -17,6 +17,7 @@ type Resources = Resources
 
 [<EntryPoint>]
 let main args =
+
     Aardvark.Init()
     Aardium.init()
 
