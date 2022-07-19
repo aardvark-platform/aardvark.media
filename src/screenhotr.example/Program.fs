@@ -23,17 +23,20 @@ let main args =
 
     let app = new OpenGlApplication()
 
-    WebPart.startServerLocalhost 4321 [
+    let port = 4321 // search free port...
+    let myUrl = sprintf "http://localhost:%i/" port
+    
+    WebPart.startServerLocalhost port [
         Reflection.assemblyWebPart typeof<Resources>.Assembly
         Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
-        MutableApp.toWebPart' app.Runtime false (App.start App.app)
+        MutableApp.toWebPart' app.Runtime false (App.start (App.app myUrl))
     ] |> ignore
     
     Aardium.run {
         title "Aardvark rocks \\o/"
         width 1024
         height 768
-        url "http://localhost:4321/"
+        url myUrl
     }
 
     0

@@ -2,12 +2,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="paket.references" />
+    <Compile Include="ScreenshotrService.fs" />
+    <Compile Include="ScreenshotrApp.fs" />
     <Compile Include="Model.fs" />
-    <Compile Include="Screenshot.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
     <EmbeddedResource Include="resources\screenshot.js">

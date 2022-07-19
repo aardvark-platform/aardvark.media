@@ -17,4 +17,6 @@ Aardvark.UI.Primitives
 Adaptify.MSBuild
 Aardium
 
+Microsoft.Bcl.AsyncInterfaces
+
 Screenshotr.Client
