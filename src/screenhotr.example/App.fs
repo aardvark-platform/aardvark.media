@@ -7,9 +7,9 @@ open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Aardvark.UI.Screenshotr
 
 open screenhotr.example.Model
-open Aardvark.UI.ScreenshotrService
 
 module App =
     
@@ -18,7 +18,7 @@ module App =
             cameraState = FreeFlyController.initial
             imageSize   = V2i(1024, 768)
             tags        = Array.empty
-            screenshotrService = ScreenshotrService.initScreenshotr myUrl
+            screenshotr = ScreenshotrModel.Default myUrl
         }
 
     let update (m : Model) (msg : Message) =
@@ -26,11 +26,13 @@ module App =
             | CameraMessage msg -> { m with cameraState = FreeFlyController.update m.cameraState msg }
             
             | ScreenshoterMessage msg -> 
-                { m with screenshotrService = ScreenshotrApp.update msg m.screenshotrService }
+                { m with screenshotr = Update.update msg m.screenshotr }
             
             | Message.KeyDown k -> 
                 match k with
-                | Keys.F8 -> m
+                | Keys.F8 -> 
+                    { m with screenshotr = { m.screenshotr with uiIsVisible = not m.screenshotr.uiIsVisible } } 
+                    // todo: gscheid machen! (message an sub-app schicken)
                 | _ -> m
 
 
@@ -65,13 +67,12 @@ module App =
             ] @ Html.semui
 
         body [] [
+        
             FreeFlyController.controlledControl m.cameraState CameraMessage frustum (AttributeMap.ofList att) scene
-            
-            ScreenshotrApp.viewUpload m.screenshotrService |> UI.map ScreenshoterMessage
 
-            ScreenshotrApp.viewConnection m.screenshotrService |> UI.map ScreenshoterMessage
-
-            ]
+            ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshoterMessage
+              
+        ]
         |>  require dependencies
 
     let app (myUrl : string) =
