@@ -31,7 +31,8 @@ module App =
             | Message.KeyDown k -> 
                 match k with
                 | Keys.F8 -> 
-                    { m with screenshotr = { m.screenshotr with uiIsVisible = not m.screenshotr.uiIsVisible } } 
+                    //{ m with screenshotr = { m.screenshotr with uiIsVisible = not m.screenshotr.uiIsVisible } } 
+                    { m with screenshotr = m.screenshotr |> Update.update OpenScreenshotUi }
                     // todo: gscheid machen! (message an sub-app schicken)
                 | _ -> m
 
