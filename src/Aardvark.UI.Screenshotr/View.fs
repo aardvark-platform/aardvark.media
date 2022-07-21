@@ -15,8 +15,8 @@ module ScreenshotrView =
 
                 yield 
                     match c with
-                    | Missing -> text "missing"
-                    | NotAuthorized _ -> text "cannot connect to screenshotr server" // todo: rot und fett
+                    | Missing -> h3 [ style "color: red" ] [ text "missing" ]
+                    | NotAuthorized _ -> h3 [ style "color: red" ] [ text "cannot connect to screenshotr server" ] 
                     | _ -> div [] []
 
                 let c =
@@ -28,7 +28,7 @@ module ScreenshotrView =
                 yield
                     match c with
                     | Some c ->
-                        div [ clazz "ui form";  ] [             
+                        div [ clazz "ui form" ] [             
                             div [ clazz "field" ] [
                                 label [] [ text "Url" ]
                                 input [
@@ -38,11 +38,11 @@ module ScreenshotrView =
                                 ]
                             ]
 
-                            div [ clazz "field" ] [
+                            div [ clazz "field"; style "width: 600px" ] [
                                 label [] [ text "Key" ]
                                 input [
                                     attribute "type" "text" 
-                                    attribute "placeholder" c.key // todo: text wirklich hineinschreiben so dass man ihn ändern kann
+                                    attribute "placeholder" c.key
                                     onChange (fun s -> SetCredentialsInputKey s)
                                 ]
                             ]
@@ -59,9 +59,12 @@ module ScreenshotrView =
 
         div [ clazz "ui grid" ] [
 
-            div [ ] [                  
-                h3 [ clazz "ui inverted header"; style "margin: 3px" ] [ text "Image size: " ]
-                   
+            div [ clazz "row" ] [         
+            
+                h3 [ clazz "ui inverted header"
+                     style "margin: 3px; color: white; align-items: center" 
+                ] [ text "Image Size:" ]
+                
                 simplenumeric {
                     attributes [clazz "ui input"; style "width: 70px"]
                     value (m.imageSize |> AVal.map (fun s -> s.X))
@@ -72,7 +75,7 @@ module ScreenshotrView =
                     max 100000
                 }
                   
-                h3 [ clazz "ui inverted header"; style "margin: 3px" ] [ text "x" ]
+                h3 [ clazz "ui inverted header"; style "margin: 3px; display: inline" ] [ text "x" ]
                         
                 simplenumeric {
                     attributes [clazz "ui input"; style "width: 70px"]

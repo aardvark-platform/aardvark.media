@@ -7,7 +7,7 @@ type ScreenshotrMessage =
     | SetCredentialsInputUrl of string
     | SetCredentialsInputKey of string
     | SetCredentials
-    | OpenScreenshotUi
+    | ToggleScreenshotUi
     | CloseScreenshotUi
     | TakeScreenshot
     | SetImageWidth  of int

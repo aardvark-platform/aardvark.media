@@ -25,15 +25,11 @@ module App =
         match msg with
             | CameraMessage msg -> { m with cameraState = FreeFlyController.update m.cameraState msg }
             
-            | ScreenshoterMessage msg -> 
-                { m with screenshotr = Update.update msg m.screenshotr }
+            | ScreenshoterMessage msg -> { m with screenshotr = ScreenshotrUpdate.update msg m.screenshotr }
             
             | Message.KeyDown k -> 
                 match k with
-                | Keys.F8 -> 
-                    //{ m with screenshotr = { m.screenshotr with uiIsVisible = not m.screenshotr.uiIsVisible } } 
-                    { m with screenshotr = m.screenshotr |> Update.update OpenScreenshotUi }
-                    // todo: gscheid machen! (message an sub-app schicken)
+                | Keys.F8 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update ToggleScreenshotUi }
                 | _ -> m
 
 

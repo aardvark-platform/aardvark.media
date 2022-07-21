@@ -6,7 +6,7 @@ open System.IO
 open System.Text.Json
 open System.Text.RegularExpressions
 
-module Update = 
+module ScreenshotrUpdate = 
 
     let update (msg : ScreenshotrMessage) (m: ScreenshotrModel) : ScreenshotrModel = 
         
@@ -34,7 +34,7 @@ module Update =
                     Log.error "Taking Screenshot failed with %A" e.Message
                     { m with credentials = Credentials.NotAuthorized credentials }
 
-        | OpenScreenshotUi -> { m with uiIsVisible = true }
+        | ToggleScreenshotUi -> { m with uiIsVisible = not m.uiIsVisible }
         | CloseScreenshotUi ->  { m with uiIsVisible = false }
         
         | SetImageWidth w -> { m with imageSize = V2i(w, m.imageSize.Y) }
