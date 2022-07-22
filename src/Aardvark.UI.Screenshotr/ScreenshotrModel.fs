@@ -38,10 +38,12 @@ type ScreenshotrModel = {
 
 module ScreenshotrModel =
 
+    let c = Credentials.load ()
+   
     let Default aardvarkUrl = {
-        credentialsInputUrl = ""
-        credentialsInputKey = ""
-        credentials         = Credentials.load ()
+        credentialsInputUrl = match c with | Valid c -> c.url | _ -> ""
+        credentialsInputKey = match c with | Valid c -> c.key | _ -> ""
+        credentials         = c 
         
         aardvarkUrl = aardvarkUrl
         imageSize   = V2i(1024, 768)

@@ -33,7 +33,7 @@ module ScreenshotrView =
                                 label [] [ text "Url" ]
                                 input [
                                     attribute "type" "text" 
-                                    attribute "placeholder" c.url
+                                    attribute "value" c.url
                                     onChange (fun s -> SetCredentialsInputUrl s)
                                 ]
                             ]
@@ -42,7 +42,7 @@ module ScreenshotrView =
                                 label [] [ text "Key" ]
                                 input [
                                     attribute "type" "text" 
-                                    attribute "placeholder" c.key
+                                    attribute "value" c.key
                                     onChange (fun s -> SetCredentialsInputKey s)
                                 ]
                             ]
