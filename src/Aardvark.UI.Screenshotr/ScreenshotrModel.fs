@@ -32,6 +32,7 @@ type ScreenshotrModel = {
     credentials         : Credentials
     aardvarkUrl         : string
     imageSize           : V2i
+    defaultTags         : list<string>
     tags                : list<string>
     uiIsVisible         : bool
 }
@@ -44,10 +45,21 @@ module ScreenshotrModel =
         credentialsInputUrl = match c with | Valid c -> c.url | _ -> ""
         credentialsInputKey = match c with | Valid c -> c.key | _ -> ""
         credentials         = c 
-        
-        aardvarkUrl = aardvarkUrl
-        imageSize   = V2i(1024, 768)
-        tags        = []
-        uiIsVisible = false
+        aardvarkUrl         = aardvarkUrl
+        imageSize           = V2i(1024, 768)
+        defaultTags         = []
+        tags                = []
+        uiIsVisible         = false
+    }
+
+    let Custom aardvarkUrl imageSize tags = {
+        credentialsInputUrl = match c with | Valid c -> c.url | _ -> ""
+        credentialsInputKey = match c with | Valid c -> c.key | _ -> ""
+        credentials         = c 
+        aardvarkUrl         = aardvarkUrl
+        imageSize           = imageSize
+        defaultTags         = tags
+        tags                = []
+        uiIsVisible         = false
     }
 

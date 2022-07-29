@@ -16,19 +16,19 @@ module App =
     let initial (url : string) = 
         { 
             cameraState = FreeFlyController.initial
-            screenshotr = ScreenshotrModel.Default url // step 3: initialize the ScreenshotrModel with your application url
+            screenshotr = ScreenshotrModel.Default url // Step 3: initialize the ScreenshotrModel with your application url
         }
 
     let update (m : Model) (msg : Message) =
         match msg with
             | CameraMessage msg -> { m with cameraState = FreeFlyController.update m.cameraState msg }
             
-            // step 4: add the ScreenshotrMessage to your update function
+            // Step 4: add the ScreenshotrMessage to your update function
             | ScreenshoterMessage msg -> { m with screenshotr = ScreenshotrUpdate.update msg m.screenshotr }
             
             | Message.KeyDown k -> 
                 match k with
-                // step 5: add some key (or button) bindings in your update function
+                // Step 5: add some key (or button) bindings in your update function
                 | Keys.F8 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update ToggleScreenshotUi }
                 | _ -> m
 
@@ -61,7 +61,7 @@ module App =
         body [] [
             FreeFlyController.controlledControl m.cameraState CameraMessage frustum (AttributeMap.ofList att) scene
 
-            // step 6: add the screenshotr UI 
+            // Step 6: add the screenshotr UI 
             ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshoterMessage
         ]
         |>  require dependencies

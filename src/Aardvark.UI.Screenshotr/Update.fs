@@ -23,13 +23,13 @@ module ScreenshotrUpdate =
             | Missing -> failwith "not implemented" // should not be reachable
             | NotAuthorized _ -> failwith "not implemented" // should not be reachable
             | Valid credentials ->
-                let result = Screenshot.takeAndUpload m.aardvarkUrl credentials m.imageSize m.tags 
+                let result = Screenshot.takeAndUpload m.aardvarkUrl credentials m.imageSize (m.defaultTags @ m.tags) 
                 match result with
                 | Result.Ok _ -> 
-                    { m with uiIsVisible = false }
+                    { m with uiIsVisible = false; tags = [] }
                 | Result.Error e ->
                     Log.error "Taking Screenshot failed with %A" e.Message
-                    { m with credentials = Credentials.NotAuthorized credentials }
+                    { m with credentials = Credentials.NotAuthorized credentials; tags = [] }
 
         | ToggleScreenshotUi -> { m with uiIsVisible = not m.uiIsVisible }
         | CloseScreenshotUi ->  { m with uiIsVisible = false }
