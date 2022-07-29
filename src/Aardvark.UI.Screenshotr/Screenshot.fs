@@ -8,7 +8,7 @@ open System.Text.Json
 
 module Screenshot = 
 
-    /// creates a screenshot from your application and returns it as byte[]
+    /// creates a screenshot from your aardvark.media application and returns it as byte[]
     let take (aardvarkUrl : string) (imageSize : Aardvark.Base.V2i) : Result<byte[],exn> = 
         
         try 
@@ -57,7 +57,7 @@ module Screenshot =
             Log.error "Uploading screenshot failed with: %s" e.Message
             Result.Error e
 
-    /// takes a screenshot from your application and uploads it to the screenshotr server
+    /// takes a screenshot from your aardvark.media application and uploads it to the screenshotr server
     let takeAndUpload aardvarkUrl credentials imageSize tags =
 
         let bytes = take aardvarkUrl imageSize 

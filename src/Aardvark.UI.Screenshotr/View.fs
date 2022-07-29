@@ -6,9 +6,10 @@ open Aardvark.UI.Primitives
 
 module ScreenshotrView = 
   
+    /// UI for credentials input
     let credentials (m: AdaptiveScreenshotrModel) : DomNode<ScreenshotrMessage> = 
         
-        Incremental.div (AttributeMap.ofList [])  (
+        Incremental.div (AttributeMap.ofList []) (
             alist {
                 
                 let! c = m.credentials
@@ -53,12 +54,10 @@ module ScreenshotrView =
             }
         )
         
-        
-
+    /// input UI for image size and tags. separate multiple tags with a semicolon.
     let screenshotSettings (m: AdaptiveScreenshotrModel) : DomNode<ScreenshotrMessage> = 
 
         div [ clazz "ui grid" ] [
-
             div [ clazz "row" ] [         
             
                 h3 [ clazz "ui inverted header"
@@ -105,7 +104,8 @@ module ScreenshotrView =
             ]
         ]
 
-
+    /// only show UI when it should be visible and determine if 
+    /// the credentials or the screenshot settings UI is shown
     let screenshotrUI (m: AdaptiveScreenshotrModel) = 
         Incremental.div (AttributeMap.ofList [ style "position: absolute; top: 10%; left: 10%" ])  (
             alist {

@@ -13,31 +13,29 @@ open screenhotr.example.Model
 
 module App =
     
-    let initial (myUrl : string) = 
+    let initial (url : string) = 
         { 
             cameraState = FreeFlyController.initial
-            imageSize   = V2i(1024, 768)
-            tags        = Array.empty
-            screenshotr = ScreenshotrModel.Default myUrl
+            screenshotr = ScreenshotrModel.Default url // step 3: initialize the ScreenshotrModel with your application url
         }
 
     let update (m : Model) (msg : Message) =
         match msg with
             | CameraMessage msg -> { m with cameraState = FreeFlyController.update m.cameraState msg }
             
+            // step 4: add the ScreenshotrMessage to your update function
             | ScreenshoterMessage msg -> { m with screenshotr = ScreenshotrUpdate.update msg m.screenshotr }
             
             | Message.KeyDown k -> 
                 match k with
+                // step 5: add some key (or button) bindings in your update function
                 | Keys.F8 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update ToggleScreenshotUi }
                 | _ -> m
 
 
     let view (m : AdaptiveModel) =
 
-        let frustum = 
-            Frustum.perspective 60.0 0.1 100.0 1.0 
-                |> AVal.constant
+        let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant
 
         let scene =
             [| 
@@ -58,17 +56,13 @@ module App =
                 onKeyDown (KeyDown)
             ]
 
-        let dependencies = 
-            [
-                { kind = Script; name = "screenshot"; url = "screenshot.js" }
-            ] @ Html.semui
+        let dependencies =  [] @ Html.semui
 
         body [] [
-        
             FreeFlyController.controlledControl m.cameraState CameraMessage frustum (AttributeMap.ofList att) scene
 
+            // step 6: add the screenshotr UI 
             ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshoterMessage
-              
         ]
         |>  require dependencies
 

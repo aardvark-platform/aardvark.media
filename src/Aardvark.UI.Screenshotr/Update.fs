@@ -19,12 +19,9 @@ module ScreenshotrUpdate =
             { m with credentials = c |> Credentials.save |> Credentials.Valid }
         
         | TakeScreenshot -> 
-            
             match m.credentials with
-            | Missing ->
-                failwith "not implemented"
-            | NotAuthorized _ ->
-                failwith "not implemented"
+            | Missing -> failwith "not implemented" // should not be reachable
+            | NotAuthorized _ -> failwith "not implemented" // should not be reachable
             | Valid credentials ->
                 let result = Screenshot.takeAndUpload m.aardvarkUrl credentials m.imageSize m.tags 
                 match result with

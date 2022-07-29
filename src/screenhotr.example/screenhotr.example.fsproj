@@ -10,9 +10,6 @@
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
-    <EmbeddedResource Include="resources\screenshot.js">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.UI.Screenshotr\Aardvark.UI.Screenshotr.fsproj" />
