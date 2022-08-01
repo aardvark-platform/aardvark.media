@@ -7,7 +7,7 @@ open Aardvark.UI.Screenshotr
 type Message =
     | CameraMessage       of FreeFlyController.Message
     | KeyDown             of key : Aardvark.Application.Keys
-    | ScreenshoterMessage of ScreenshotrMessage // Step 1: add a ScreenshotrMessage to your Message
+    | ScreenshotrMessage  of ScreenshotrMessage // Step 1: add a ScreenshotrMessage to your Message
 
 [<ModelType>]
 type Model =

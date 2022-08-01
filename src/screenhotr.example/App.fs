@@ -24,7 +24,7 @@ module App =
             | CameraMessage msg -> { m with cameraState = FreeFlyController.update m.cameraState msg }
             
             // Step 4: add the ScreenshotrMessage to your update function
-            | ScreenshoterMessage msg -> { m with screenshotr = ScreenshotrUpdate.update msg m.screenshotr }
+            | ScreenshotrMessage msg -> { m with screenshotr = ScreenshotrUpdate.update msg m.screenshotr }
             
             | Message.KeyDown k -> 
                 match k with
@@ -61,8 +61,8 @@ module App =
         body [] [
             FreeFlyController.controlledControl m.cameraState CameraMessage frustum (AttributeMap.ofList att) scene
 
-            // Step 6: add the screenshotr UI 
-            ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshoterMessage
+            // Step 6: add the screenshotr UI to your UI
+            ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshotrMessage
         ]
         |>  require dependencies
 
