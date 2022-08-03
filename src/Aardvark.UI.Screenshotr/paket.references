@@ -10,6 +10,7 @@ Aardvark.UI
 Aardvark.UI.Primitives
 Adaptify.MSBuild
 Aardium
+Aardvark.Build
 
 Microsoft.Bcl.AsyncInterfaces
 Screenshotr.Client
