@@ -15,6 +15,7 @@ Aardvark.Service
 Aardvark.UI
 Aardvark.UI.Primitives
 Adaptify.MSBuild
+Aardvark.Build
 Aardium
 
 Microsoft.Bcl.AsyncInterfaces
