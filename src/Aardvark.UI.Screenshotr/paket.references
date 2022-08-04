@@ -5,11 +5,9 @@ Aardvark.Base
 Aardvark.Base.Incremental
 Aardvark.Base.FSharp
 
-Aardvark.Service
 Aardvark.UI
 Aardvark.UI.Primitives
 Adaptify.MSBuild
-Aardium
 Aardvark.Build
 
 Microsoft.Bcl.AsyncInterfaces

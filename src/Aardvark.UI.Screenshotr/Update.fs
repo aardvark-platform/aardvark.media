@@ -40,7 +40,7 @@ module ScreenshotrUpdate =
         | SetTags ts -> 
             let reg = Regex("[*'\",_&^@?!{}%§$/=]") // filters some special characters 
             let tags = 
-                ts.Split(";", StringSplitOptions.RemoveEmptyEntries)
+                ts.Split([|";"|], StringSplitOptions.RemoveEmptyEntries)
                 |> Array.map (fun s -> reg.Replace(s, ""))
                 |> Array.toList
             { m with tags = tags }

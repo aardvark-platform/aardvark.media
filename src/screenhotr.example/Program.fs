@@ -1,17 +1,10 @@
 ﻿open screenhotr.example
 
-open System
-open FSharp.Data.Adaptive
-
 open Aardvark.Base
-open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.Application.Slim
-open Aardvark.Service
 open Aardvark.UI
 open Aardium
 open Suave
-open Suave.WebPart
 
 type Resources = Resources
 
