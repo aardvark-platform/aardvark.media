@@ -16,7 +16,7 @@ let main args =
 
     let app = new OpenGlApplication()
 
-    let port = 1337 
+    let port = 1338
     let mediaUrl = sprintf "http://localhost:%i/" port
     
     WebPart.startServerLocalhost port [

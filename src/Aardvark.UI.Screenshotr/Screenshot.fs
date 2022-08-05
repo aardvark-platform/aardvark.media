@@ -9,7 +9,7 @@ open System.Text.Json
 module Screenshot = 
 
     /// creates a screenshot from your aardvark.media application and returns it as byte[]
-    let take (aardvarkUrl : string) (imageSize : Aardvark.Base.V2i) : Result<byte[],exn> = 
+    let take (aardvarkUrl : string) (imageSize : Screenshotr.ImgSize) : Result<byte[],exn> = 
         
         try 
             let client = new HttpClient()
@@ -32,7 +32,7 @@ module Screenshot =
 
         with
         | _ as e -> 
-            Log.error "Taking screenshot failed with: %s" e.Message
+            Log.error "Error c83ef237-e4bd-4716-8624-574b481a45b1. Taking screenshot failed with: %A" e
             Result.Error e
 
     /// uploads a taken screenshot (byte[]) to the screenshotr server
@@ -54,7 +54,7 @@ module Screenshot =
             
         with
         | _ as e -> 
-            Log.error "Uploading screenshot failed with: %s" e.Message
+            Log.error "Error 1f9596a9-c261-4910-929a-a95014e606bb. Uploading screenshot failed with: %A" e
             Result.Error e
 
     /// takes a screenshot from your aardvark.media application and uploads it to the screenshotr server

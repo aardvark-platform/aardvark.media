@@ -31,7 +31,7 @@ type ScreenshotrModel = {
     credentialsInputKey : string
     credentials         : Credentials
     aardvarkUrl         : string
-    imageSize           : V2i
+    imageSize           : Screenshotr.ImgSize
     defaultTags         : list<string>
     tags                : list<string>
     uiIsVisible         : bool
@@ -46,7 +46,7 @@ module ScreenshotrModel =
         credentialsInputKey = match c with | Valid c -> c.key | _ -> ""
         credentials         = c 
         aardvarkUrl         = aardvarkUrl
-        imageSize           = V2i(1024, 768)
+        imageSize           = Screenshotr.ImgSize(1024, 768)
         defaultTags         = []
         tags                = []
         uiIsVisible         = false

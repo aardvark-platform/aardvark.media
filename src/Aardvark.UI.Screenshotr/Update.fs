@@ -28,14 +28,14 @@ module ScreenshotrUpdate =
                 | Result.Ok _ -> 
                     { m with uiIsVisible = false; tags = [] }
                 | Result.Error e ->
-                    Log.error "Taking Screenshot failed with %A" e.Message
+                    Log.error "Error c92631ad-d3b4-4715-a8d2-96843eb46be5. Taking or uploading screenshot failed with %A" e
                     { m with credentials = Credentials.NotAuthorized credentials; tags = [] }
 
         | ToggleScreenshotUi -> { m with uiIsVisible = not m.uiIsVisible }
         | CloseScreenshotUi ->  { m with uiIsVisible = false }
         
-        | SetImageWidth w -> { m with imageSize = V2i(w, m.imageSize.Y) }
-        | SetImageHeight h -> { m with imageSize = V2i(m.imageSize.X, h) }
+        | SetImageWidth w -> { m with imageSize = Screenshotr.ImgSize(w, m.imageSize.Y) }
+        | SetImageHeight h -> { m with imageSize = Screenshotr.ImgSize(m.imageSize.X, h) }
         
         | SetTags ts -> 
             let reg = Regex("[*'\",_&^@?!{}%§$/=]") // filters some special characters 
