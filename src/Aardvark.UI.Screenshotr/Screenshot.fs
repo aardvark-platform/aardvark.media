@@ -39,18 +39,29 @@ module Screenshot =
     let upload (credentials : CredentialsDto) tags data : Result<ApiImportScreenshotResponse, exn> = 
 
         try 
+            Log.line "connecting to server ..."
+
             let client = 
                 
                 ScreenshotrHttpClient.Connect(credentials.url, credentials.key) 
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
-            
-            let timestamp = System.DateTime.Now
 
-            client.ImportScreenshot(data, tags, timestamp = timestamp)
-            |> Async.AwaitTask
-            |> Async.RunSynchronously
-            |> Ok
+            Log.line "connected to server successfully"
+            
+            let timestamp = System.DateTimeOffset.Now
+
+            Log.line "uploading screenshot"
+
+            let result =
+                client.ImportScreenshot(data, tags, timestamp = timestamp)
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+                |> Ok
+
+            Log.line "uploaded screenshot successfully"
+
+            result
             
         with
         | _ as e -> 
