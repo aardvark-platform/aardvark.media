@@ -98,6 +98,10 @@ module ScreenshotrView =
                     div [ clazz "ui tag label" ] [ text "Add Tags" ]
                 ]
             ]
+
+            div [ clazz "row" ] [
+                checkbox [clazz "ui inverted toggle checkbox"] m.internalUseOnly ToggleInternalUseOnly "For internal use only!"
+            ]
                  
             div [ clazz "row" ] [
                 button [clazz "ui button"; onClick (fun _ -> TakeScreenshot)] [text "Take Screenshot"]

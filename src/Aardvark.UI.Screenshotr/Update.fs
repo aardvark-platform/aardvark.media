@@ -23,7 +23,12 @@ module ScreenshotrUpdate =
             | Missing -> failwith "not implemented" // should not be reachable
             | NotAuthorized _ -> failwith "not implemented" // should not be reachable
             | Valid credentials ->
-                let result = Screenshot.takeAndUpload m.aardvarkUrl credentials m.imageSize (m.defaultTags @ m.tags) 
+                let uploadTags = 
+                    let ts = m.defaultTags @ m.tags
+                    match m.internalUseOnly with
+                    | true -> ts
+                    | false -> ts @ [ "PR" ] 
+                let result = Screenshot.takeAndUpload m.aardvarkUrl credentials m.imageSize uploadTags
                 match result with
                 | Result.Ok _ -> 
                     { m with uiIsVisible = false; tags = [] }
@@ -44,4 +49,7 @@ module ScreenshotrUpdate =
                 |> Array.map (fun s -> reg.Replace(s, ""))
                 |> Array.toList
             { m with tags = tags }
+
+        | ToggleInternalUseOnly -> { m with internalUseOnly = m.internalUseOnly |> not }
+            
 

@@ -10,9 +10,10 @@ type ScreenshotrMessage =
     | ToggleScreenshotUi
     | CloseScreenshotUi
     | TakeScreenshot
-    | SetImageWidth  of int
-    | SetImageHeight of int
-    | SetTags        of string
+    | SetImageWidth         of int
+    | SetImageHeight        of int
+    | SetTags               of string
+    | ToggleInternalUseOnly
 
 type ClientStatistics =
     {
@@ -35,6 +36,7 @@ type ScreenshotrModel = {
     defaultTags         : list<string>
     tags                : list<string>
     uiIsVisible         : bool
+    internalUseOnly     : bool
 }
 
 module ScreenshotrModel =
@@ -50,6 +52,7 @@ module ScreenshotrModel =
         defaultTags         = []
         tags                = []
         uiIsVisible         = false
+        internalUseOnly     = true
     }
 
     let Custom aardvarkUrl imageSize tags = {
@@ -61,5 +64,6 @@ module ScreenshotrModel =
         defaultTags         = tags
         tags                = []
         uiIsVisible         = false
+        internalUseOnly     = true
     }
 
