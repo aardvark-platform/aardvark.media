@@ -57,73 +57,81 @@ module ScreenshotrView =
     /// input UI for image size and tags. separate multiple tags with a semicolon.
     let screenshotSettings (m: AdaptiveScreenshotrModel) : DomNode<ScreenshotrMessage> = 
 
-        div [ clazz "ui grid" ] [
-            div [ clazz "row" ] [         
+        div [ clazz "ui form"; style "width: 50%" ] [
             
-                h3 [ clazz "ui inverted header"
-                     style "margin: 3px; color: white; align-items: center" 
-                ] [ text "Image Size:" ]
+            h2 [ clazz "ui inverted dividing header" ] [ text "Screenshot Settings"]
+
+            div [ clazz "field" ] [ 
                 
-                simplenumeric {
-                    attributes [clazz "ui input"; style "width: 70px"]
-                    value (m.imageSize |> AVal.map (fun s -> s.X))
-                    update SetImageWidth
-                    step 1
-                    largeStep 100
-                    min 0
-                    max 100000
-                }
-                  
-                h3 [ clazz "ui inverted header"; style "margin: 3px; display: inline" ] [ text "x" ]
-                        
-                simplenumeric {
-                    attributes [clazz "ui input"; style "width: 70px"]
-                    value (m.imageSize |> AVal.map (fun s -> s.Y))
-                    update SetImageHeight
-                    step 1
-                    largeStep 100
-                    min 0
-                    max 100000
-                } 
+                h3 [ clazz "ui inverted dividing header" ] [ text "Image Size"]
+                
+                div [ clazz "two fields"] [
+                    
+                    div [ clazz "field"] [
+                        label [ style "color:white" ] [ text "Width" ]
+                        simplenumeric {
+                            attributes [clazz "ui input"]
+                            value (m.imageSize |> AVal.map (fun s -> s.X))
+                            update SetImageWidth
+                            step 1
+                            largeStep 100
+                            min 0
+                            max 100000
+                        }
+                    ]
+
+                    div [ clazz "field"] [
+                        label [ style "color:white" ] [ text "Height" ]
+                        simplenumeric {
+                            attributes [clazz "ui input"]
+                            value (m.imageSize |> AVal.map (fun s -> s.Y))
+                            update SetImageHeight
+                            step 1
+                            largeStep 100
+                            min 0
+                            max 100000
+                        } 
+                    ]
+                ]
             ]
-                
-            div [ clazz "row" ] [
-                div [ clazz "ui right labeled left icon input"; style "width: 80%" ] [
+        
+            div [ clazz "field" ] [
+            
+                h3 [ clazz "ui inverted dividing header" ] [ text "Tags"]
+
+                div [ clazz "ui right labeled left icon input" ] [
                     i [ clazz "tags icon" ] []
                     input [
                         attribute "type" "text" 
                         attribute "placeholder" "tag1;tag2;tag3" 
                         onChange (fun tags -> SetTags tags)
                     ]
-                    div [ clazz "ui tag label" ] [ text "Add Tags" ]
                 ]
             ]
 
-            div [ clazz "row" ] [
-                div [ clazz "ui form"; style "width: 90%" ] [
-                    textarea ({ placeholder = Some "You can put your caption here ..." }) [ attribute "style" "width: 90%" ] m.caption SetCaption 
+            div [ clazz "field" ] [
+                h3 [ clazz "ui inverted dividing header" ] [ text "Caption"]
+                textarea ({ placeholder = Some "You can put your caption here ..." }) AttributeMap.empty m.caption SetCaption
+            ]
+
+            div [ clazz "field" ] [
+                h3 [ clazz "ui inverted dividing header" ] [ text "Credits"]
+                textarea ({ placeholder = Some "You can put your credits here ..." }) AttributeMap.empty m.credits SetCredits 
+            ]
+
+            div [ clazz "ui segment" ] [
+                div [ clazz "field" ] [
+                    checkbox [clazz "ui toggle checkbox"] m.internalUseOnly ToggleInternalUseOnly "For internal use only!"
                 ]
             ]
 
-            div [ clazz "row" ] [
-                div [ clazz "ui form"; style "width: 90%" ] [
-                    textarea ({ placeholder = Some "You can put your credits here ..." }) [ attribute "style" "width: 90%" ] m.credits SetCredits 
-                ]
-            ]
-
-            div [ clazz "row" ] [
-                checkbox [clazz "ui inverted toggle checkbox"] m.internalUseOnly ToggleInternalUseOnly "For internal use only!"
-            ]
-                 
-            div [ clazz "row" ] [
-                button [clazz "ui button"; onClick (fun _ -> TakeScreenshot)] [text "Take Screenshot"]
-            ]
+            button [clazz "ui button"; onClick (fun _ -> TakeScreenshot)] [text "Take Screenshot"]
         ]
 
     /// only show UI when it should be visible and determine if 
     /// the credentials or the screenshot settings UI is shown
     let screenshotrUI (m: AdaptiveScreenshotrModel) = 
-        Incremental.div (AttributeMap.ofList [ style "position: absolute; top: 10%; left: 10%" ])  (
+        Incremental.div (AttributeMap.ofList [ style "position: absolute; top: 5%; left: 5%; width: 90%" ])  (
             alist {
                 let! isVisible = m.uiIsVisible
                 match isVisible with
