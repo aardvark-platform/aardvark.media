@@ -28,13 +28,13 @@ module ScreenshotrUpdate =
                     match m.internalUseOnly with
                     | true -> ts
                     | false -> ts @ [ "PR" ] 
-                let result = Screenshot.takeAndUpload m.aardvarkUrl credentials m.imageSize uploadTags
+                let result = Screenshot.takeAndUpload m.aardvarkUrl credentials m.imageSize uploadTags m.caption m.credits
                 match result with
                 | Result.Ok _ -> 
-                    { m with uiIsVisible = false; tags = [] }
+                    { m with uiIsVisible = false; tags = []; caption = ""; credits = "" }
                 | Result.Error e ->
                     Log.error "Error c92631ad-d3b4-4715-a8d2-96843eb46be5. Taking or uploading screenshot failed with %A" e
-                    { m with credentials = Credentials.NotAuthorized credentials; tags = [] }
+                    { m with credentials = Credentials.NotAuthorized credentials; tags = []; caption = ""; credits = "" }
 
         | ToggleScreenshotUi -> { m with uiIsVisible = not m.uiIsVisible }
         | CloseScreenshotUi ->  { m with uiIsVisible = false }
@@ -49,6 +49,10 @@ module ScreenshotrUpdate =
                 |> Array.map (fun s -> reg.Replace(s, ""))
                 |> Array.toList
             { m with tags = tags }
+
+        | SetCaption c -> { m with caption = c }
+
+        | SetCredits c -> { m with credits = c }
 
         | ToggleInternalUseOnly -> { m with internalUseOnly = m.internalUseOnly |> not }
             

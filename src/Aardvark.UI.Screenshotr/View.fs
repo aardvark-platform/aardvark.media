@@ -100,6 +100,18 @@ module ScreenshotrView =
             ]
 
             div [ clazz "row" ] [
+                div [ clazz "ui form"; style "width: 90%" ] [
+                    textarea ({ placeholder = Some "You can put your caption here ..." }) [ attribute "style" "width: 90%" ] m.caption SetCaption 
+                ]
+            ]
+
+            div [ clazz "row" ] [
+                div [ clazz "ui form"; style "width: 90%" ] [
+                    textarea ({ placeholder = Some "You can put your credits here ..." }) [ attribute "style" "width: 90%" ] m.credits SetCredits 
+                ]
+            ]
+
+            div [ clazz "row" ] [
                 checkbox [clazz "ui inverted toggle checkbox"] m.internalUseOnly ToggleInternalUseOnly "For internal use only!"
             ]
                  

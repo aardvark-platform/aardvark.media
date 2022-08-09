@@ -13,6 +13,8 @@ type ScreenshotrMessage =
     | SetImageWidth         of int
     | SetImageHeight        of int
     | SetTags               of string
+    | SetCaption            of string
+    | SetCredits            of string
     | ToggleInternalUseOnly
 
 type ClientStatistics =
@@ -36,6 +38,8 @@ type ScreenshotrModel = {
     defaultTags         : list<string>
     tags                : list<string>
     uiIsVisible         : bool
+    caption             : string
+    credits             : string
     internalUseOnly     : bool
 }
 
@@ -52,6 +56,8 @@ module ScreenshotrModel =
         defaultTags         = []
         tags                = []
         uiIsVisible         = false
+        caption             = ""
+        credits             = ""
         internalUseOnly     = true
     }
 
@@ -64,6 +70,8 @@ module ScreenshotrModel =
         defaultTags         = tags
         tags                = []
         uiIsVisible         = false
+        caption             = ""
+        credits             = ""
         internalUseOnly     = true
     }
 

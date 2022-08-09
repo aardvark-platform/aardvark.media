@@ -36,16 +36,27 @@ module Screenshot =
             Result.Error e
 
     /// uploads a taken screenshot (byte[]) to the screenshotr server
-    let upload (credentials : CredentialsDto) tags data : Result<ApiImportScreenshotResponse, exn> = 
+    let upload (credentials : CredentialsDto) tags (caption : string) (credits : string) data : Result<ApiImportScreenshotResponse, exn> = 
 
         try 
             let client = 
-                
                 ScreenshotrHttpClient.Connect(credentials.url, credentials.key) 
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
 
-            client.ImportScreenshot(data, tags)
+            let captionEntry =
+                match caption.IsEmptyOrNull() with
+                | true -> []
+                | false -> [ Custom.Entry.Create("caption", caption) ]
+
+            let creditsEntry = 
+                match credits.IsEmptyOrNull() with
+                | true -> []
+                | false -> [ Custom.Entry.Create("credits", credits) ]
+
+            let custom = captionEntry @ creditsEntry |> Custom.Create
+
+            client.ImportScreenshot(data, tags, custom)
                 |> Async.AwaitTask
                 |> Async.RunSynchronously
                 |> Ok
@@ -56,10 +67,10 @@ module Screenshot =
             Result.Error e
 
     /// takes a screenshot from your aardvark.media application and uploads it to the screenshotr server
-    let takeAndUpload aardvarkUrl credentials imageSize tags =
+    let takeAndUpload aardvarkUrl credentials imageSize tags caption credits =
 
         let bytes = take aardvarkUrl imageSize 
         
         match bytes with
         | Result.Error e -> Result.Error e  
-        | Result.Ok b -> b |> upload credentials tags
+        | Result.Ok b -> b |> upload credentials tags caption credits
