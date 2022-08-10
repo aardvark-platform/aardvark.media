@@ -2,17 +2,20 @@
 
 open Aardvark.Base
 open Adaptify
+open FSharp.Data.Adaptive
 
 type ScreenshotrMessage = 
     | SetCredentialsInputUrl of string
     | SetCredentialsInputKey of string
     | SetCredentials
     | ToggleScreenshotUi
-    | CloseScreenshotUi
+    | CloseScreenshotUi // makes UI invisible
+    | CancelScreenshotUi // makes UI invisible and clears tags, caption and credentials
     | TakeScreenshot
     | SetImageWidth         of int
     | SetImageHeight        of int
-    | SetTags               of string
+    | AddTag                of string
+    | RemoveTag             of string
     | SetCaption            of string
     | SetCredits            of string
     | ToggleInternalUseOnly
@@ -35,8 +38,8 @@ type ScreenshotrModel = {
     credentials         : Credentials
     aardvarkUrl         : string
     imageSize           : Screenshotr.ImgSize
-    defaultTags         : list<string>
-    tags                : list<string>
+    defaultTags         : HashSet<string>
+    tags                : HashSet<string>
     uiIsVisible         : bool
     caption             : string
     credits             : string
@@ -53,22 +56,22 @@ module ScreenshotrModel =
         credentials         = c 
         aardvarkUrl         = aardvarkUrl
         imageSize           = Screenshotr.ImgSize(1024, 768)
-        defaultTags         = []
-        tags                = []
+        defaultTags         = HashSet.empty
+        tags                = HashSet.empty
         uiIsVisible         = false
         caption             = ""
         credits             = ""
         internalUseOnly     = true
     }
 
-    let Custom aardvarkUrl imageSize tags = {
+    let Custom aardvarkUrl imageSize (tags : string list) = {
         credentialsInputUrl = match c with | Valid c -> c.url | _ -> ""
         credentialsInputKey = match c with | Valid c -> c.key | _ -> ""
         credentials         = c 
         aardvarkUrl         = aardvarkUrl
         imageSize           = imageSize
-        defaultTags         = tags
-        tags                = []
+        defaultTags         = tags |> HashSet.ofList
+        tags                = HashSet.empty
         uiIsVisible         = false
         caption             = ""
         credits             = ""

@@ -57,10 +57,12 @@ module ScreenshotrView =
     /// input UI for image size and tags. separate multiple tags with a semicolon.
     let screenshotSettings (m: AdaptiveScreenshotrModel) : DomNode<ScreenshotrMessage> = 
 
-        div [ clazz "ui form"; style "width: 50%" ] [
+        div [ clazz "ui form"; style "width: 100%" ] [
             
+            // SCREENSHOT SETTINGS
             h2 [ clazz "ui inverted dividing header" ] [ text "Screenshot Settings"]
 
+            // IMAGE SIZE
             div [ clazz "field" ] [ 
                 
                 h3 [ clazz "ui inverted dividing header" ] [ text "Image Size"]
@@ -95,43 +97,63 @@ module ScreenshotrView =
                 ]
             ]
         
+            // TAGS
             div [ clazz "field" ] [
             
                 h3 [ clazz "ui inverted dividing header" ] [ text "Tags"]
 
-                div [ clazz "ui right labeled left icon input" ] [
-                    i [ clazz "tags icon" ] []
+                div [ clazz "ui input" ] [
                     input [
                         attribute "type" "text" 
-                        attribute "placeholder" "tag1;tag2;tag3" 
-                        onChange (fun tags -> SetTags tags)
+                        attribute "id" "myTagInputId" 
+                        onChange (fun tag -> AddTag tag)
+                        clientEvent "onchange" "$('input[id=\"myTagInputId\"]').val('')"
                     ]
                 ]
+
+                Incremental.div (AttributeMap.ofList []) (
+                    m.tags
+                    |> ASet.map (fun tag -> 
+                        div [ clazz "ui label"; style "margin: 3px; margin-top: 5px" ] [ 
+                            text tag
+                            i [ 
+                                clazz "delete icon"
+                                onClick (fun _ -> RemoveTag tag) 
+                            ] [] 
+                        ]
+                    )
+                    |> ASet.toAList
+                )
             ]
 
+            // CAPTION
             div [ clazz "field" ] [
                 h3 [ clazz "ui inverted dividing header" ] [ text "Caption"]
                 textarea ({ placeholder = Some "You can put your caption here ..." }) AttributeMap.empty m.caption SetCaption
             ]
 
+            // CREDITS
             div [ clazz "field" ] [
                 h3 [ clazz "ui inverted dividing header" ] [ text "Credits"]
                 textarea ({ placeholder = Some "You can put your credits here ..." }) AttributeMap.empty m.credits SetCredits 
             ]
 
+            // INTERNAL USAGE
             div [ clazz "ui segment" ] [
                 div [ clazz "field" ] [
                     checkbox [clazz "ui toggle checkbox"] m.internalUseOnly ToggleInternalUseOnly "For internal use only!"
                 ]
             ]
 
+            // BUTTONS
             button [clazz "ui button"; onClick (fun _ -> TakeScreenshot)] [text "Take Screenshot"]
+            button [clazz "ui button"; onClick (fun _ -> CancelScreenshotUi)] [text "Cancel"]
         ]
 
     /// only show UI when it should be visible and determine if 
     /// the credentials or the screenshot settings UI is shown
     let screenshotrUI (m: AdaptiveScreenshotrModel) = 
-        Incremental.div (AttributeMap.ofList [ style "position: absolute; top: 5%; left: 5%; width: 90%" ])  (
+        Incremental.div (AttributeMap.ofList [ style "position: absolute; top: 5%; left: 10%; width: 50%" ])  (
             alist {
                 let! isVisible = m.uiIsVisible
                 match isVisible with
