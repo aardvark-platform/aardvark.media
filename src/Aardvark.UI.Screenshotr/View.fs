@@ -14,10 +14,11 @@ module ScreenshotrView =
                 
                 let! c = m.credentials
 
+                // ERROR TEXT
                 yield 
                     match c with
-                    | Missing -> h3 [ style "color: red" ] [ text "missing" ]
-                    | NotAuthorized _ -> h3 [ style "color: red" ] [ text "cannot connect to screenshotr server" ] 
+                    | Missing -> h2 [ style "color: red" ] [ text "Credentials are missing." ]
+                    | NotAuthorized _ -> h2 [ style "color: red" ] [ text "Cannot connect to screenshotr server." ] 
                     | _ -> div [] []
 
                 let c =
@@ -29,9 +30,12 @@ module ScreenshotrView =
                 yield
                     match c with
                     | Some c ->
-                        div [ clazz "ui form" ] [             
+                        div [ clazz "ui form"; style "width: 100%" ] [          
+                            
+                            // URL
+                            h2 [ clazz "ui inverted dividing header" ] [ text "Url"]
+                            
                             div [ clazz "field" ] [
-                                label [] [ text "Url" ]
                                 input [
                                     attribute "type" "text" 
                                     attribute "value" c.url
@@ -39,8 +43,10 @@ module ScreenshotrView =
                                 ]
                             ]
 
-                            div [ clazz "field"; style "width: 600px" ] [
-                                label [] [ text "Key" ]
+                            // KEY
+                            h2 [ clazz "ui inverted dividing header" ] [ text "Key"]
+
+                            div [ clazz "field" ] [
                                 input [
                                     attribute "type" "text" 
                                     attribute "value" c.key
@@ -48,7 +54,9 @@ module ScreenshotrView =
                                 ]
                             ]
 
+                            // BUTTONS
                             button [ clazz "ui button"; onClick (fun _ -> SetCredentials)] [text "Submit"]
+                            button [ clazz "ui button"; onClick (fun _ -> CloseScreenshotUi)] [text "Cancel"]
                         ]           
                     | None -> div [] []
             }
