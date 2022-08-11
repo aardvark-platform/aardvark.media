@@ -44,9 +44,8 @@ module ScreenshotrUpdate =
         | SetImageWidth w -> { m with imageSize = Screenshotr.ImgSize(w, m.imageSize.Y) }
         | SetImageHeight h -> { m with imageSize = Screenshotr.ImgSize(m.imageSize.X, h) }
         
-        | AddTag tag -> { m with tags = m.tags |> HashSet.add tag }
-        | RemoveTag tag -> { m with tags = m.tags |> HashSet.remove tag }
-
+        | SetTags tags -> { m with tags = tags.Split(',') |> HashSet.ofArray }
+        
         | SetCaption c -> { m with caption = c }
         | SetCredits c -> { m with credits = c }
 

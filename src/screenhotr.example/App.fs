@@ -32,7 +32,6 @@ module App =
                 | Keys.F8 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update ToggleScreenshotUi }
                 | _ -> m
 
-
     let view (m : AdaptiveModel) =
 
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant
@@ -63,6 +62,7 @@ module App =
 
             // Step 6: add the screenshotr UI to your UI
             ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshotrMessage
+              
         ]
         |>  require dependencies
 

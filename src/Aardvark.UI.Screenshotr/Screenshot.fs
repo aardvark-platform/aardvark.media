@@ -74,3 +74,24 @@ module Screenshot =
         match bytes with
         | Result.Error e -> Result.Error e  
         | Result.Ok b -> b |> upload credentials tags caption credits
+
+    /// returns all tags from the homepage
+    let getTags credentials =
+
+        try 
+            let client = 
+                ScreenshotrHttpClient.Connect(credentials.url, credentials.key) 
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+
+            let response =
+                client.GetTags()
+                |> Async.AwaitTask
+                |> Async.RunSynchronously
+
+            response.Items |> Ok
+            
+        with
+        | _ as e -> 
+            Log.error "Error 50e64cb3-86cd-49bb-afcb-ab09400f84cb. Requesting tags failed with: %A" e
+            Result.Error e

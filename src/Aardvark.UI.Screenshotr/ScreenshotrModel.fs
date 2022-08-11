@@ -14,8 +14,7 @@ type ScreenshotrMessage =
     | TakeScreenshot
     | SetImageWidth         of int
     | SetImageHeight        of int
-    | AddTag                of string
-    | RemoveTag             of string
+    | SetTags               of string
     | SetCaption            of string
     | SetCredits            of string
     | ToggleInternalUseOnly

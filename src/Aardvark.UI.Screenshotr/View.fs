@@ -15,6 +15,7 @@ module ScreenshotrView =
                 let! c = m.credentials
 
                 // ERROR TEXT
+
                 yield 
                     match c with
                     | Missing -> h2 [ style "color: red" ] [ text "Credentials are missing." ]
@@ -110,27 +111,36 @@ module ScreenshotrView =
             
                 h3 [ clazz "ui inverted dividing header" ] [ text "Tags"]
 
-                div [ clazz "ui input" ] [
-                    input [
-                        attribute "type" "text" 
-                        attribute "id" "myTagInputId" 
-                        onChange (fun tag -> AddTag tag)
-                        clientEvent "onchange" "$('input[id=\"myTagInputId\"]').val('')"
-                    ]
-                ]
+                Incremental.div (AttributeMap.ofList[]) (
+                    alist {
+                        let! credentials = m.credentials
+                        match credentials with
+                        | Credentials.Valid cs -> 
+                            let result = Screenshot.getTags cs
+                            match result with
+                            | Result.Error _ -> ()
+                            | Result.Ok tagInfos -> 
+                                
+                                let sortedTags = 
+                                    tagInfos 
+                                    |> Seq.filter (fun t -> t.Tag <> "PR" && t.Tag <> "!hide")
+                                    |> Seq.sortByDescending (fun t -> t.Count)
+                                
+                                onBoot "$('.ui.dropdown').dropdown({ allowAdditions: true });" (
+                                    div [ clazz "ui fluid multiple search selection dropdown"; onChange (fun tags -> SetTags tags) ] [
+                                        input [ attribute "type" "hidden"; attribute "name" "tags" ]
+                                        i [ clazz "dropdown icon" ] []
+                                        div [ clazz "default text" ] [ text "Enter Tag" ]
+                                        div [ clazz "menu" ] [
+                                            for st in sortedTags do
+                                                yield div [ clazz "item"; attribute "data-value" st.Tag ] [ text st.Tag ]
+                                        ]
+                                    ]
+                                )
 
-                Incremental.div (AttributeMap.ofList []) (
-                    m.tags
-                    |> ASet.map (fun tag -> 
-                        div [ clazz "ui label"; style "margin: 3px; margin-top: 5px" ] [ 
-                            text tag
-                            i [ 
-                                clazz "delete icon"
-                                onClick (fun _ -> RemoveTag tag) 
-                            ] [] 
-                        ]
-                    )
-                    |> ASet.toAList
+                        | _ -> ()
+                       
+                    }
                 )
             ]
 
