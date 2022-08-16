@@ -1,3 +1,6 @@
+### 5.4.0-prerelease0006
+- updated to rendering 5.3 prerelease
+
 ### 5.4.0-prerelease0005
 - extend dropdown modes (icon / clearable / nonclearable)
 
