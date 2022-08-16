@@ -10,7 +10,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Primitives", "A
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (dotnetcore)", "Examples (dotnetcore)", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
 	ProjectSection(SolutionItems) = preProject
-		Examples (dotnetcore)\new-media.fsx = Examples (dotnetcore)\new-media.fsx
+		Examples (dotnetcore)\new-examples.fsx = Examples (dotnetcore)\new-examples.fsx
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "netstandard", "netstandard", "{5DAFA99B-848D-4185-B4C1-287119815657}"

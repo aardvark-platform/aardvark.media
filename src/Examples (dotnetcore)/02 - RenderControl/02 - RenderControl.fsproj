@@ -22,7 +22,7 @@
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />
+    <ProjectReference Include="..\..\Aardvark.Service.Giraffe\Aardvark.Service.Giraffe.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj" />
   </ItemGroup>

@@ -153,13 +153,13 @@ module IntersectionController =
     
     let exactUV = p0+p1+p2
     
-    let image = PixImage.Create(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
+    let image = PixImage.Load(kdTree.texturePath).ToPixImage<byte>(Col.Format.RGB)
     
     let changePos = V2i (((float32 image.Size.X) * exactUV.X),((float32 image.Size.Y) * exactUV.Y))
 
     image.GetMatrix<C3b>().SetCross(changePos, 5, C3b.Red) |> ignore
 
-    image.SaveAsImage (@".\testcoordSelect.png")
+    image.Save (@".\testcoordSelect.png")
 
     exactUV
 
