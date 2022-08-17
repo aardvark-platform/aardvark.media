@@ -79,6 +79,7 @@ module Screenshot =
     let getTags credentials =
 
         try 
+            
             let client = 
                 ScreenshotrHttpClient.Connect(credentials.url, credentials.key) 
                 |> Async.AwaitTask
