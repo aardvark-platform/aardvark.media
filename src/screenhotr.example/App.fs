@@ -29,7 +29,8 @@ module App =
             | Message.KeyDown k -> 
                 match k with
                 // Step 5: add some key (or button) bindings in your update function
-                | Keys.F8 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update ToggleScreenshotUi }
+                | Keys.F8 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update (ToggleScreenshotUI Screenshotr.ScreenshotType.WithoutUI) }
+                | Keys.F7 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update (ToggleScreenshotUI Screenshotr.ScreenshotType.WithUI) }
                 | _ -> m
 
     let view (m : AdaptiveModel) =
@@ -51,7 +52,7 @@ module App =
 
         let att =
             [
-                style "position: fixed; left: 0; top: 0; width: 100%; height: 100%"
+                style "position: fixed; left: 0; top: 0; width: 100%; height: 100%; background-color: #CCCCFF"
                 onKeyDown (KeyDown)
             ]
 
@@ -60,9 +61,19 @@ module App =
         body [] [
             FreeFlyController.controlledControl m.cameraState CameraMessage frustum (AttributeMap.ofList att) scene
 
+            // demo UI 
+            div [] [
+                checkbox [clazz "ui toggle checkbox"] (AVal.constant true) (Message.KeyDown Keys.OemPipe) "Demo Toggler"
+                div [ clazz "item"; style "width: 25%" ] [ 
+                    slider { min = 0; max = 20; step = 1 } [clazz "ui inverted blue slider"] (AVal.constant 1) (fun _ -> Message.KeyDown Keys.OemPipe)
+                ]
+                div [ clazz "item" ] [ 
+                     textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] (AVal.constant "demo") (fun _ -> Message.KeyDown Keys.OemPipe)
+                ]
+            ]
+
             // Step 6: add the screenshotr UI to your UI
-            ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshotrMessage
-              
+            ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshotrMessage // taks a screenshot without UI
         ]
         |>  require dependencies
 

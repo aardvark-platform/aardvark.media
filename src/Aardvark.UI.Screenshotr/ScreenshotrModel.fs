@@ -4,14 +4,19 @@ open Aardvark.Base
 open Adaptify
 open FSharp.Data.Adaptive
 
+type ScreenshotType =
+    | WithoutUI
+    | WithUI
+
 type ScreenshotrMessage = 
     | SetCredentialsInputUrl of string
     | SetCredentialsInputKey of string
     | SetCredentials
-    | ToggleScreenshotUi
-    | CloseScreenshotUi // makes UI invisible
-    | CancelScreenshotUi // makes UI invisible and clears tags, caption and credentials
-    | TakeScreenshot
+    | ToggleScreenshotUI    of ScreenshotType
+    | CloseScreenshotUI // makes UI invisible
+    | CancelScreenshotUI // makes UI invisible and clears tags, caption and credentials
+    | TakeScreenshotWithoutUI
+    | TakeScreenshotWithUI  of byte[]  
     | SetImageWidth         of int
     | SetImageHeight        of int
     | SetTags               of string
@@ -39,7 +44,8 @@ type ScreenshotrModel = {
     imageSize           : Screenshotr.ImgSize
     defaultTags         : HashSet<string>
     tags                : HashSet<string>
-    uiIsVisible         : bool
+    withoutUiIsVisible  : bool
+    withUiIsVisible     : bool
     caption             : string
     credits             : string
     internalUseOnly     : bool
@@ -57,7 +63,8 @@ module ScreenshotrModel =
         imageSize           = Screenshotr.ImgSize(1024, 768)
         defaultTags         = HashSet.empty
         tags                = HashSet.empty
-        uiIsVisible         = false
+        withoutUiIsVisible  = false
+        withUiIsVisible     = false
         caption             = ""
         credits             = ""
         internalUseOnly     = true
@@ -71,7 +78,8 @@ module ScreenshotrModel =
         imageSize           = imageSize
         defaultTags         = tags |> HashSet.ofList
         tags                = HashSet.empty
-        uiIsVisible         = false
+        withoutUiIsVisible  = false
+        withUiIsVisible     = false
         caption             = ""
         credits             = ""
         internalUseOnly     = true
