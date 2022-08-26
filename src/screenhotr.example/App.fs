@@ -33,6 +33,9 @@ module App =
                 | Keys.F7 -> { m with screenshotr = m.screenshotr |> ScreenshotrUpdate.update (ToggleScreenshotUI Screenshotr.ScreenshotType.WithUI) }
                 | _ -> m
 
+            // for demo UI elements
+            | DummyMessage -> m
+
     let view (m : AdaptiveModel) =
 
         let frustum = Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant
@@ -52,28 +55,38 @@ module App =
 
         let att =
             [
-                style "position: fixed; left: 0; top: 0; width: 100%; height: 100%; background-color: #CCCCFF"
+                style "position: fixed; left: 0; top: 0; width: 100%; height: 100%"
                 onKeyDown (KeyDown)
             ]
 
         let dependencies =  [] @ Html.semui
 
         body [] [
+
             FreeFlyController.controlledControl m.cameraState CameraMessage frustum (AttributeMap.ofList att) scene
 
             // demo UI 
-            div [] [
-                checkbox [clazz "ui toggle checkbox"] (AVal.constant true) (Message.KeyDown Keys.OemPipe) "Demo Toggler"
-                div [ clazz "item"; style "width: 25%" ] [ 
-                    slider { min = 0; max = 20; step = 1 } [clazz "ui inverted blue slider"] (AVal.constant 1) (fun _ -> Message.KeyDown Keys.OemPipe)
+            div [ clazz "ui form"; style "padding: 10px; width: 50%" ] [
+                
+                h1 [ clazz "ui inverted dividing header"; style "padding: 10px" ] [ text "Dummy UI"]
+                
+                checkbox [clazz "ui toggle checkbox"; style "padding: 10px"] (AVal.constant true) Message.DummyMessage "Dummy Toggler"
+
+                div [ clazz "item"; style "padding: 10px; width: 50%" ] [ 
+                    slider { min = 0; max = 20; step = 1 } [clazz "ui inverted blue slider"] (AVal.constant 1) (fun _ -> Message.DummyMessage)
                 ]
-                div [ clazz "item" ] [ 
-                     textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] (AVal.constant "demo") (fun _ -> Message.KeyDown Keys.OemPipe)
+
+                div [ clazz "item"; style "padding: 10px" ] [ 
+                     textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] (AVal.constant "demo") (fun _ -> Message.DummyMessage)
                 ]
+
+                button [ clazz "ui button"; style "margin: 10px" ] [text "Submit"]
+                button [ clazz "ui button"; style "margin: 10px" ] [text "Cancel"]
             ]
 
             // Step 6: add the screenshotr UI to your UI
             ScreenshotrView.screenshotrUI m.screenshotr |> UI.map ScreenshotrMessage // taks a screenshot without UI
+
         ]
         |>  require dependencies
 
