@@ -355,9 +355,9 @@ module Internals =
                 else
                     runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
 
-            let pi = runtime.Download(resolved).ToPixImage<byte>().ToFormat(Col.Format.RGB)
+            let pi = runtime.Download(resolved).ToPixImage<byte>().ToFormat(Col.Format.RGBA)
             use stream = new System.IO.MemoryStream()
-            pi.SaveAsImage(stream, PixFileFormat.Png)
+            pi.Save(stream, PixFileFormat.Png)
             RenderResult.Png (stream.ToArray())
 
         override x.Release() =
@@ -390,7 +390,8 @@ module Internals =
                         | Some t when t.Size.XY = size -> t
                         | _ ->
                             tempImage |> Option.iter (fun i -> i.Dispose())
-                            let t = Image.create (V3i(size,1)) 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit ||| VkImageUsageFlags.ColorAttachmentBit) device
+                            let usage = VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit ||| VkImageUsageFlags.ColorAttachmentBit
+                            let t = device.CreateImage(size.XYI, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage)
                             tempImage <- Some t
                             t
 
@@ -511,7 +512,8 @@ module Internals =
                 if samples > 1 then
                     let lineSize = 4L * int64 image.Size.X
                     let size = lineSize * int64 image.Size.Y
-                    let tempImage = Image.create image.Size 1 1 1 TextureDimension.Texture2D VkFormat.R8g8b8a8Unorm (VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit) device
+                    let usage = VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit
+                    let tempImage = device.CreateImage(image.Size, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage)
                     use temp = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
 
                     let l = image.Layout

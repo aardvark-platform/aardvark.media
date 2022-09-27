@@ -46,10 +46,9 @@ new line then \²³²]³\nsuper2929
 k' " , . / \ ; : & % $ # @ *
 """
 let create () =
-    use wc = new WebClient ()
+    let http = new System.Net.Http.HttpClient()
     let url = sprintf "http://%s:4321/rendering/screenshot/%s?w=%d&h=%d&samples=8" "localhost" "n51" 512 512
-    wc.DownloadData url
-        
+    http.GetByteArrayAsync(url).Result
 
 type RO(xs : aset<IRenderObject>) = 
     interface Aardvark.SceneGraph.ISg

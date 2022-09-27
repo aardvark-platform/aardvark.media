@@ -7,13 +7,13 @@ const myLayout = {
                 title: 'My Component 1',
                 type: 'component',
                 componentType: 'MyComponent',
-                width: 50,
+                componentState: { id: "aaa" },
             },
             {
                 title: 'My Component 2',
                 type: 'component',
-                componentType: 'MyComponent',
-                // componentState: { text: 'Component 2' }
+                componentType: 'MyComponent2',
+                componentState: { id: "bbb" }
             }
         ]
     }
@@ -25,10 +25,12 @@ function initLayout() {
     var layout = new goldenLayout.GoldenLayout();   // default element body
 
     layout.registerComponentConstructor( 'MyComponent', function( container, componentState ){
-        //container.element.html("<iframe src='./?page=render' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        // TODO: page-content rendering
-        container.element.innerHTML = "<iframe src='./?page=render' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>";
-    });
+        this.rootHtmlElement = document.getElementsByClassName("test")[0];
+    }, true);
+
+    layout.registerComponentConstructor('MyComponent2', function (container, componentState) {
+        this.rootHtmlElement = document.getElementsByClassName("test2")[0];
+    }, true);
 
     layout.loadLayout(myLayout);
 }

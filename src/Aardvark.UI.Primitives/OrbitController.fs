@@ -22,7 +22,7 @@ module OrbitState =
         let view = CameraView.lookAt position s.center s.sky
         let withPan = view.WithLocation(view.Location + s.pan.X * view.Right + s.pan.Y * view.Up )
 
-        { s with view = withPan }
+        { s with _view = withPan }
 
     let create' (right : V3d) (sky : V3d) (center : V3d) (phi : float) (theta : float) (r : float) =
         let thetaRange = Range1d(-Constant.PiHalf + 0.0001, Constant.PiHalf - 0.0001)
@@ -50,7 +50,7 @@ module OrbitState =
             dragStart = None
             panning   = false
             lastRender = None
-            view = Unchecked.defaultof<_>
+            _view = Unchecked.defaultof<_>
 
             radiusRange = radiusRange
             thetaRange = thetaRange
@@ -223,16 +223,16 @@ module OrbitController =
         
     let controlledControlWithClientValues (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
-        let cam = AVal.map2 Camera.create state.view frustum
+        let cam = AVal.map2 Camera.create state._view frustum
         Incremental.renderControlWithClientValues' cam attributes config sg
 
     let controlledControl (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
-        let cam = AVal.map2 Camera.create model.view  frustum
+        let cam = AVal.map2 Camera.create model._view  frustum
         let controllerAtts = attributes model f
         DomNode.RenderControl(AttributeMap.union att controllerAtts, cam, sg, RenderControlConfig.standard, None)
 
     let withControls (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (node : DomNode<'msg>) =
-        let cam = AVal.map2 Camera.create state.view frustum 
+        let cam = AVal.map2 Camera.create state._view frustum 
         match node with
             | :? SceneNode<'msg> as node ->
                 let getState(c : Aardvark.Service.ClientInfo) =

@@ -897,35 +897,43 @@ module ``F# Sg`` =
         let pass (pass : RenderPass) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pass pass)
 
+        /// Draws an adaptive set of managed draw calls of the given pool.
+        let pool (pool : ManagedPool) (mode : IndexedGeometryMode) (calls : aset<ManagedDrawCall>) =
+            mode |> Sg.pool pool calls |> box<'msg>
+
+        /// Draws an adaptive set of indexed geometries with instance attributes.
+        let geometrySetInstanced (signature : GeometrySignature) (mode : IndexedGeometryMode) (geometries : aset<GeometryInstance>) =
+            geometries |> Sg.geometrySetInstanced signature mode |> box<'msg>
+
         /// Draws an adaptive set of indexed geometries.
         let geometrySet (mode : IndexedGeometryMode) (attributeTypes : Map<Symbol, Type>) (geometries : aset<IndexedGeometry>) =
-            Sg.GeometrySet(geometries, mode, attributeTypes) |> box
+            geometries |> Sg.geometrySet mode attributeTypes |> box<'msg>
 
         /// Creates a single draw call for the given geometry mode.
         let draw (mode : IndexedGeometryMode) =
-            Sg.draw mode |> box
+            Sg.draw mode |> box<'msg>
 
         /// Supplies the given draw call with the given geometry mode.
         let render (mode : IndexedGeometryMode) (call : DrawCallInfo) =
-            Sg.render mode call |> box
+            Sg.render mode call |> box<'msg>
 
         /// Supplies the draw calls in the given indirect buffer with the given geometry mode.
         let indirectDraw (mode : IndexedGeometryMode) (buffer : aval<IndirectBuffer>) =
-            Sg.indirectDraw mode buffer |> box
+            Sg.indirectDraw mode buffer |> box<'msg>
 
         /// Creates a draw call from the given indexed geometry.
         let ofIndexedGeometry (g : IndexedGeometry) =
-            Sg.ofIndexedGeometry g |> box
+            Sg.ofIndexedGeometry g |> box<'msg>
 
         /// Creates a draw call from the given indexed geometry, using an interleaved buffer
         /// for the vertex attributes.
         let ofIndexedGeometryInterleaved (attributes : list<Symbol>) (g : IndexedGeometry) =
-            Sg.ofIndexedGeometryInterleaved attributes g |> box
+            Sg.ofIndexedGeometryInterleaved attributes g |> box<'msg>
 
         /// Creates a draw call, supplying the given transformations as per-instance attributes with
         /// name DefaultSemantic.InstanceTrafo.
         let instancedGeometry (trafos : aval<Trafo3d[]>) (g : IndexedGeometry) =
-            Sg.instancedGeometry trafos g |> box
+            Sg.instancedGeometry trafos g |> box<'msg>
 
         // ================================================================================================================
         // Bounding boxes

@@ -322,6 +322,9 @@ module MutableApp =
         let route  =
             choose [    
                 subRoute "/rendering" (Aardvark.Service.Giraffe.Server.toWebPart app.lock renderer)
+
+                Reflection.assemblyWebPart typeof<DummyObject>.Assembly
+                // serving the Aardvark.UI Assembly after the rendering webpart allows the rendering webpart to hide aardvark.js (needed here for giraffe)
                 Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
                 route "/events" >=> Websockets.handShake events
             

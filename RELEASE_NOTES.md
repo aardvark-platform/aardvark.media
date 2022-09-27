@@ -1,3 +1,29 @@
+### 5.4.0-prerelease0006
+- updated to rendering 5.3 prerelease
+
+### 5.4.0-prerelease0005
+- extend dropdown modes (icon / clearable / nonclearable)
+
+### 5.4.0-prerelease0004
+- extend dropdownConfig on event (allow open menu by hover or click)
+
+### 5.4.0-prerelease0003
+- prevent dropdown to fire init message
+
+### 5.4.0-prerelease0002
+- prevent dropdowns onChange messages (not set be GUI)
+
+### 5.4.0-prerelease0001
+- Updated Fomantic-UI to 2.8.8
+- Fixed and improved resource management
+
+### 5.3.2
+- Fixed CEF processes nuget packages
+- [Screenshot] Save image with alpha when using PNG
+
+### 5.3.1
+- OrbitState: exposed view : CameraView as extension
+
 ### 5.3.0
 - OrbitState now private, better functions for converting between freefly/orbit modes.
 

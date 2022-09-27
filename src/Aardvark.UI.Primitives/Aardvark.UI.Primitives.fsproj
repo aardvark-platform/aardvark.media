@@ -5,6 +5,7 @@
     <GenerateLenses>True</GenerateLenses>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <WarnOn>3389;3390</WarnOn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
@@ -15,6 +16,7 @@
   <ItemGroup>
 	<Compile Include="Simple\SimplePrimitives.fs" />
     <Compile Include="UI.Primitives.Models.fs" />
+    <Compile Include="ColorBrewer.fs" />
     <Compile Include="UI.Primitives.fs" />
     <Compile Include="UI.Primitives.Simple.fs" />
     <Compile Include="TrafoControls\TrafoModel.fs" />

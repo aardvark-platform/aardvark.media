@@ -590,8 +590,6 @@ module Server =
             yield routef  "/render/%s" (render >> Websockets.handShake)
             yield route  "/stats.json" >=> statistics 
             yield routef "/screenshot/%s" screenshot
-            yield Reflection.assemblyWebPart typeof<DummyObject>.Assembly
-            yield Reflection.assemblyWebPart typeof<Aardvark.Service.Server>.Assembly
         ]
 
     //let run (port : int) (server : Server) =

@@ -58,12 +58,29 @@ module SimplePrimitives =
             placeholder : Option<string>
         }
 
+    [<RequireQualifiedAccess>]
+    type TriggerDropdown = 
+        | Hover
+        | Click
+        
+    type DropdownMode =
+        | Clearable of placeholder : string
+        | Unclearable
+        | Icon of iconName : string
 
     type DropdownConfig =
         {
-            allowEmpty  : bool
-            placeholder : string
+            mode        : DropdownMode
+            onTrigger   : TriggerDropdown
         }
+
+    module DropdownConfig = 
+        
+        let unClearable =
+            {
+                mode        = Unclearable
+                onTrigger   = TriggerDropdown.Click
+            }
 
     type NumberType =
         | Int
@@ -384,16 +401,25 @@ module SimplePrimitives =
 
             let initial =
                 match selection.GetValue() with
-                | Some v -> sprintf ".dropdown('set selected', '%s');" v
+                | Some v -> sprintf ".dropdown('set selected', '%s', '', true);" v
                 | None -> ".dropdown('clear');"
 
-
             let boot =
-                let clear = if cfg.allowEmpty then "true" else "false"
+                let trigger = 
+                    match cfg.onTrigger with 
+                    | TriggerDropdown.Click -> "'click'" // default
+                    | TriggerDropdown.Hover -> "'hover'"
+
+                let clearable = 
+                    match cfg.mode with 
+                    | Unclearable
+                    | Icon _ -> "false"
+                    | Clearable _ -> "true"
+                    
                 String.concat ";" [
                     "var $self = $('#__ID__');"
-                    "$self.dropdown({ clearable: " + clear + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
-                    "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some); } else { $self.dropdown('clear'); } }; "
+                    "$self.dropdown({ on: " + trigger + ", clearable: " + clearable + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
+                    "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some, '', true); } else { $self.dropdown('clear'); } }; "
                 ]
 
             require semui (
@@ -401,18 +427,25 @@ module SimplePrimitives =
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
                             yield input [ attribute "type" "hidden" ]
-                            yield i [ clazz "dropdown icon" ] []
-                            yield div [ clazz "default text"] cfg.placeholder
+                            match cfg.mode with 
+                            | Unclearable -> 
+                                yield i [ clazz "dropdown icon" ] []
+                                yield div [ clazz "default text"] ""
+                            | Clearable ph -> 
+                                yield i [ clazz "dropdown icon" ] []
+                                yield div [ clazz "default text"] ph
+                            | Icon iconName -> 
+                                yield i [ clazz (sprintf "%s icon" iconName)] []
                             yield
-                                Incremental.div (AttributeMap.ofList [clazz "menu"]) (
+                                Incremental.div (AttributeMap.ofList [clazz "ui menu"]) (
                                     alist {
                                         match compare with
                                         | Some cmp ->
                                             for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortWith (fun (a,_) (b,_) -> cmp a b) do
-                                                yield div [ clazz "item"; attribute "data-value" value] [node]
+                                                yield div [ clazz "ui item"; attribute "data-value" value] [node]
                                         | None ->
                                             for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortBy (snd >> fst) do
-                                                yield div [ clazz "item"; attribute "data-value" value] [node]
+                                                yield div [ clazz "ui item"; attribute "data-value" value] [node]
                                     }
                                 )
                         }
@@ -420,9 +453,8 @@ module SimplePrimitives =
                 )
             )
 
-        let dropdown1 (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
-            dropdown { allowEmpty = false; placeholder = "" } atts values (AVal.map Some selected) (Option.get >> update)
-
+        let dropdownUnClearable (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
+            dropdown DropdownConfig.unClearable atts values (AVal.map Some selected) (Option.get >> update)
 
     [<AutoOpen>]
     module ``Primtive Builders`` =
@@ -446,7 +478,6 @@ module SimplePrimitives =
 
             member inline x.Run((a,c,(v,msg))) =
                 Incremental.checkbox a v msg c
-
 
         type NumericBuilder<'a>() =
 
@@ -478,7 +509,6 @@ module SimplePrimitives =
             member inline x.Run((a,v,cfg,msg)) =
                 Incremental.numeric cfg a v msg
 
-
         type TextBuilder() =
 
             member inline x.Yield(()) =
@@ -508,7 +538,7 @@ module SimplePrimitives =
         type DropdownBuilder() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, AMap.empty, AVal.constant None, { allowEmpty = true; placeholder = "" }, (fun _ -> ()))
+                (AttributeMap.empty, AMap.empty, AVal.constant None, DropdownConfig.unClearable, (fun _ -> ()))
 
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,u,s,c,m), na) = (AttributeMap.union a (att na), u, s, c, m)
@@ -522,14 +552,11 @@ module SimplePrimitives =
             [<CustomOperation("update")>]
             member inline x.Update((a,v,s,cfg,_), msg) = (a,v, s,cfg, msg)
 
+            [<CustomOperation("mode")>]
+            member inline x.Mode((a,v,s,cfg,m), e) = (a,v, s,{ cfg with mode = e }, m)
 
-
-            [<CustomOperation("allowEmpty")>]
-            member inline x.AllowEmpty((a,v,s,cfg,m), e) = (a,v, s,{ cfg with allowEmpty = e }, m)
-
-
-            [<CustomOperation("placeholder")>]
-            member inline x.PlaceHolder((a,v,s,cfg : TextAreaConfig,m), e) = (a,v, s,{ cfg with placeholder = e }, m)
+            [<CustomOperation("onTrigger")>]
+            member inline x.OnTrigger((a,v,s,cfg,m), e) = (a,v, s,{ cfg with onTrigger = e }, m)
 
             member inline x.Run((a,v : amap<_,_>,s,cfg,msg)) =
                 Incremental.dropdown cfg a v s msg
@@ -558,9 +585,5 @@ module SimplePrimitives =
     let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
         Incremental.dropdown cfg (att atts) values selected update
 
-    let inline dropdown1 atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
-        Incremental.dropdown1 (att atts) values selected update
-
-
-
-
+    let inline dropdownUnClearable atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
+        Incremental.dropdownUnClearable (att atts) values selected update

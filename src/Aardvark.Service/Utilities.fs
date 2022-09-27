@@ -49,3 +49,34 @@ module Pickler =
     open MBrace.FsPickler
     open MBrace.FsPickler.Json
     let json = FsPickler.CreateJsonSerializer(false, true)
+
+
+module Resources =
+
+    open System.Reflection
+
+
+    let (|LocalResourceName|_|) (ass : Assembly) (n : string) =
+        let myNamespace = ass.GetName().Name + "."
+        let myNamespaceResources = myNamespace + "resources."
+    
+        match n with 
+        | n when n.StartsWith myNamespaceResources -> 
+            let name = n.Substring (myNamespaceResources.Length)
+            Some ("resources/" + name) // resources/name.min.js
+        | n when n.StartsWith myNamespace -> 
+            let name = n.Substring (myNamespace.Length)
+            Some name   // resources/name.min.js
+        | n when n.StartsWith "resources" -> 
+            Some n // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
+        | _ -> 
+            None
+
+
+    let private isNetFramework (assembly : Assembly) =
+        let attributeValue = assembly.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>()
+        attributeValue.FrameworkName.ToLower().Contains("framework")
+
+    let (|PlainFrameworkEmbedding|_|) (assembly : Assembly) (resName : string) =
+        if assembly |> isNetFramework then Some resName
+        else None

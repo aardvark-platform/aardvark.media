@@ -187,7 +187,7 @@ type OrbitState =
         [<NonAdaptive>]
         lastRender : Option<MicroTime>
 
-        view : CameraView
+        _view : CameraView
         
         radiusRange : Range1d
         thetaRange : Range1d

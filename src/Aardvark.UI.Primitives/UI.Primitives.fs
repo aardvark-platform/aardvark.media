@@ -417,7 +417,7 @@ module ColorPicker =
 
         C4b(arr.[0], arr.[1], arr.[2], 255uy)
 
-    let colorToHex (color : C4b) = 
+    let colorToHex (color : C4b) : string = 
         let bytes = [| color.R; color.G; color.B |]
         bytes 
             |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x))
@@ -492,6 +492,69 @@ module ColorPicker =
             Log.warn "[colorPicker] %A" e.Message
             None
 
+    let viewColorBrewer (rowElementCount: int) (paletteType: PaletteType) (model : AdaptiveColorInput) =
+    
+        let rows =
+            paletteType
+            |> ColorBrewer.palettesOfType
+            |> Set.map (BrewerPalette.spectrumRow rowElementCount)
+            |> String.concat ","
+    
+        let bootCode = 
+            sprintf """$('#__ID__').spectrum(
+                {
+                    showPalette: true,
+                    showPaletteOnly: true,
+                    palette: [ %s ],
+                    preferredFormat: 'hex',
+                    showInput: true
+                    }); 
+            """ rows
+
+        require spectrum (
+            onBoot bootCode (
+                let attributes = 
+                    amap {                    
+                        yield "type" => "text"
+                        yield onChange (fun d ->  { c = colorFromHex d } |> SetColor)
+
+                        let! color = model.c
+                        yield "value" => colorToHex color
+                    }         
+
+                Incremental.input (AttributeMap.ofAMap attributes)
+        ))
+
+    let viewColorBrewerPalette (rowElementCount: int) (palette: BrewerPalette) (model : AdaptiveColorInput) =
+
+        let bootCode = 
+            sprintf """$('#__ID__').spectrum(
+                {
+                    showPalette: true,
+                    showPaletteOnly: true,
+                    palette: [ %s ],
+                    preferredFormat: 'hex',
+                    showInput: true
+                    }); 
+            """ (palette.SpectrumRow 20)
+
+        require spectrum (
+            onBoot bootCode (
+                let attributes = 
+                    amap {                    
+                        yield "type" => "text"
+                        yield onChange (fun d ->  { c = colorFromHex d } |> SetColor)
+
+                        let! color = model.c
+                        yield "value" => colorToHex color
+                    }         
+
+                Incremental.input (AttributeMap.ofAMap attributes)
+        ))
+
+
+        
+        
     let viewAdvanced (defaultPalette : string) (paletteFile : string) (localStorageKey : string) (model : AdaptiveColorInput) =
 
         let favorites = readPalette paletteFile
