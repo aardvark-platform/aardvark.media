@@ -227,7 +227,6 @@
 .lm_drop_tab_placeholder {
   float: left;
   width: 100px;
-  height: 10px;
   visibility: hidden;
 }
 .lm_header .lm_controls .lm_tabdropdown:before {
