@@ -1,0 +1,50 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <DisableImplicitFSharpCoreReference>true</DisableImplicitFSharpCoreReference>
+    <AssemblyName>$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>..\..\..\bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>..\..\..\bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="DataChannel.fs" />
+    <Compile Include="Utils.fs" />
+    <Compile Include="Inc\Model.fs" />
+    <Compile Include="Inc\App.fs" />
+    <EmbeddedResource Include="rtemplate.html" />
+    <Compile Include="MutableApp.fs" />
+    <Compile Include="Giraffe.fs" />
+    <Compile Include="DashboardModel.fs" />
+    <Compile Include="DashboardApp.fs" />
+    <Compile Include="ServerAppModel.fs" />
+    <Compile Include="ServerApp.fs" />
+    <Compile Include="Program.fs" />
+    <EmbeddedResource Include="resources\goldenlayout-base.css" />
+    <EmbeddedResource Include="resources\goldenlayout-dark-theme.css" />
+    <EmbeddedResource Include="resources\goldenlayout.min.js" />
+    <EmbeddedResource Include="resources\dragDrop.js">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\aardfs.css" />
+    <EmbeddedResource Include="resources\aardfs.js" />
+    <EmbeddedResource Include="resources\aardvark.js" />
+    <EmbeddedResource Include="resources\semuioverrides.css">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <Resource Include="resources\Fahrzeugparameter.json" />
+    <Resource Include="resources\GleislageDaten.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\Aardvark.Service.Giraffe\Aardvark.Service.Giraffe.fsproj" />
+    <ProjectReference Include="..\..\Aardvark.Service\Aardvark.Service.fsproj" />
+    <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
+    <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj" />
+  </ItemGroup>  
+  <Import Project="..\..\..\.paket\Paket.Restore.targets" />
+</Project>

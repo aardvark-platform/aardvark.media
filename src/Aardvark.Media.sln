@@ -146,6 +146,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\paket.dependencies = ..\paket.dependencies
 	EndProjectSection
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "29 - SubappGiraffeGoldenLayout", "Scratch\29 - SubappGiraffeGoldenLayout\29 - SubappGiraffeGoldenLayout.fsproj", "{304BEA32-CCB9-433F-8671-C1553923EFA1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -388,6 +390,10 @@ Global
 		{E6E319E2-7A57-41B0-99B4-FF454EA81CF6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E6E319E2-7A57-41B0-99B4-FF454EA81CF6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E6E319E2-7A57-41B0-99B4-FF454EA81CF6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{304BEA32-CCB9-433F-8671-C1553923EFA1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{304BEA32-CCB9-433F-8671-C1553923EFA1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{304BEA32-CCB9-433F-8671-C1553923EFA1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{304BEA32-CCB9-433F-8671-C1553923EFA1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -452,6 +458,7 @@ Global
 		{75631375-2F68-4B45-B366-26AAD84FE57B} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{0B82634B-7605-4798-AD95-C96036661C61} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{E6E319E2-7A57-41B0-99B4-FF454EA81CF6} = {5DAFA99B-848D-4185-B4C1-287119815657}
+		{304BEA32-CCB9-433F-8671-C1553923EFA1} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}

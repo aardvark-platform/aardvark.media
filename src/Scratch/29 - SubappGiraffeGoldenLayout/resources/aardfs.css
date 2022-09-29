@@ -1,0 +1,133 @@
+﻿
+.jstree-default-dark {
+    background-color: #333;
+}
+
+.jstree-default-dark .jstree-anchor {
+    text-shadow: none;
+    transition: none;
+    color: rgba(255,255,255,.9);
+}
+
+.jstree-default-dark .jstree-hovered {
+    background-color: white;
+    color: rgba(0,0,0,.8);
+}
+
+.jstree-default-dark .jstree-hovered .icon.inverted {
+    color: rgba(0,0,0,.8);
+}
+
+div.filebrowser {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    margin: 0px;
+    background-color: #333;
+    border-radius: .28571429rem;
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
+}
+
+div.filebrowser.header {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 3.2em;
+    padding: 4px;
+}
+
+div.filebrowser.path {
+    display: block;
+    height: 100%;
+    padding-left: 10px;
+}
+
+div.filebrowser.path .ui.input {
+    width: 100%;
+    height: 100%;
+}
+
+div.filebrowser.path .ui.input input {
+    background-color: #333;
+    color: rgba(255,255,255,.9);
+    border: solid 2px rgba(255,255,255,.9);
+    text-indent: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+div.filebrowser.path .ui.input input::selection {
+    background-color: #FFFFFF;
+    color: #1b1c1d;
+}
+
+div.filebrowser.path .browsebuttons {
+    position: relative;
+    top: -100%;
+    height: 100%;
+    margin: 0;
+}
+
+div .filebrowser.body {
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    align-content: flex-start;
+}
+
+.filebrowser.tree {
+    flex: 0 0 25%;
+    border-bottom-right-radius: 0;
+    border-top-right-radius: 0;
+    border-top-left-radius: 0;
+    color: rgba(255,255,255,.9);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+.filebrowser.list table {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: 0;
+    color: rgba(255,255,255,.9);
+    margin: 0;
+    padding: 4px;
+}
+
+.filebrowser.list table td {
+    padding: .78571429em!important;
+}
+
+.ui.table thead tr:first-child > th {
+    color: rgba(255,255,255,.9);
+}
+.filebrowser.splitter {
+    flex: 0 0 6px;
+    cursor: ew-resize;
+    background-color: #333;
+    border-left: solid 1px #555;
+    border-right: solid 1px #555;
+    width: 6px;
+    border-radius: 0;
+}
+
+.filebrowser.splitter:hover {
+    background-color: #FFF;
+}
+
+.filebrowser.list {
+    background-color: #333;
+    width: 75%;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 0;
+    border-top-left-radius: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.ui.inverted.table tbody tr.active td.selectable:hover, .ui.selectable.inverted.table tbody tr.active:hover {
+    background: #e0e0e0 !important;
+    color: rgba(0,0,0,.87) !important
+}
