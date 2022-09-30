@@ -46,7 +46,7 @@
 .lm_header .lm_tab .lm_close_tab {
   width: 11px;
   height: 11px;
-  background-image: url('../../img/lm_close_white.png');
+  background-image: url('lm_close_white.png');
   background-position: center center;
   background-repeat: no-repeat;
   top: 4px;
@@ -101,19 +101,19 @@
   opacity: 1;
 }
 .lm_controls .lm_popout {
-  background-image: url('../../img/lm_popout_white.png');
+  background-image: url('lm_popout_white.png');
 }
 .lm_controls .lm_maximise {
-  background-image: url('../../img/lm_maximise_white.png');
+  background-image: url('lm_maximise_white.png');
 }
 .lm_controls .lm_close {
-  background-image: url('../../img/lm_close_white.png');
+  background-image: url('lm_close_white.png');
 }
 .lm_maximised .lm_header {
   background-color: #000000;
 }
 .lm_maximised .lm_controls .lm_maximise {
-  background-image: url('../../img/lm_minimize_white.png');
+  background-image: url('lm_minimize_white.png');
 }
 .lm_transition_indicator {
   background-color: #000000;
@@ -127,7 +127,7 @@
   opacity: 0.3;
 }
 .lm_popin .lm_icon {
-  background-image: url('../../img/lm_popin_white.png');
+  background-image: url('lm_popin_white.png');
   background-position: center center;
   background-repeat: no-repeat;
   border-left: 1px solid #eeeeee;
