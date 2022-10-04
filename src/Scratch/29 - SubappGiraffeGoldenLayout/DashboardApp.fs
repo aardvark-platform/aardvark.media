@@ -75,19 +75,15 @@ module Dashboard =
 
         let onBindComponent =
             let f =  (fun (lst : list<string>) -> lst |> List.head |> Pickler.unpickleOfJson |> BindComponent)
-            onEvent "itemCreated" [] f
+            onEvent "bindComponentEvent" [] f
 
         let onUnbindComponent =
             let f =  (fun (lst : list<string>) -> lst |> List.head |> Pickler.unpickleOfJson |> UnbindComponent)
-            onEvent "itemDestroyed" [] f
+            onEvent "unbindComponentEvent" [] f
 
         require dependencies (
             onBoot "aardvark.golden.layout = getTopAardvark().golden.initLayout($('#__ID__'))" (
-                div [clazz "layoutContainer";onBindComponent;onUnbindComponent] [
-                    //div [clazz WORKSPACE] [text (string WORKSPACE)]
-                    //div [clazz SIMULATION] [text (string SIMULATION)]
-                    //div [clazz MAP] [text (string MAP)]
-                    //div [clazz TRACK] [text (string TRACK)]
+                div [clazz "layoutContainer";onBindComponent;onUnbindComponent; style "width: 100%; height: 100%"] [
                     viewPage WORKSPACE
                     viewPage SIMULATION
                     viewPage MAP

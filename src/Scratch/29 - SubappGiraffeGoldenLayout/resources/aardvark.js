@@ -1563,49 +1563,39 @@ if (!aardvark.golden) {
             },
         };
 
-        //bindComponentEvent = (container, itemConfig) => {
-        //    console.log("bind component");
-        //    console.log(container);
-        //    console.log(itemConfig);
-        //}
-        //unbindComponentEvent = container => {
-        //    console.log(container.element);
-        //}
-
         var layoutElement = document.querySelector('.layoutContainer');
         var layout = new goldenLayout.GoldenLayout(layoutElement); // assign element by query
 
-        //let layout = new goldenLayout.GoldenLayout(id); //, bindComponentEvent, unbindComponentEvent);
-        //layout.init();
         layout.getComponentEvent = (container, itemConfig) => {
             console.log("bind component");
             console.log(container);
             console.log(itemConfig);
-            container.element.appendChild(component.element);
+            const componentTypeName = goldenLayout.ResolvedComponentItemConfig.resolveComponentTypeName(itemConfig);
+            let el = document.getElementsByClassName(componentTypeName)[0];
+            container.element.appendChild(el);
         }
         layout.releaseComponentEvent  = container => {
             console.log(container.element);
         }
 
-
-        layout.registerComponentConstructor('Track', function (container, componentState) {
-            let el = document.getElementsByClassName("Track")[0];
-            console.log(el);
-            this.rootHtmlElement = el;
-            //container.getElement().html("<iframe src='./?page=Track' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        });
-        layout.registerComponentConstructor('Workspace', function (container, componentState) {
-            this.rootHtmlElement = document.getElementsByClassName("Workspace")[0];
-            //container.getElement().html("<iframe src='./?page=Workspace' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        });
-        layout.registerComponentConstructor('Simulation', function (container, componentState) {
-            this.rootHtmlElement = document.getElementsByClassName("Simulation")[0];
-            //container.getElement().html("<iframe src='./?page=Simulation' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        });
-        layout.registerComponentConstructor('Map', function (container, componentState) {
-            this.rootHtmlElement = document.getElementsByClassName("Map")[0];
-            //container.getElement().html("<iframe src='./?page=Map' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        });
+        //layout.registerComponentConstructor('Track', function (container, componentState) {
+        //    let el = document.getElementsByClassName("Track")[0];
+        //    console.log(el);
+        //    this.rootHtmlElement = el;
+        //    //container.getElement().html("<iframe src='./?page=Track' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        //});
+        //layout.registerComponentConstructor('Workspace', function (container, componentState) {
+        //    this.rootHtmlElement = document.getElementsByClassName("Workspace")[0];
+        //    //container.getElement().html("<iframe src='./?page=Workspace' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        //});
+        //layout.registerComponentConstructor('Simulation', function (container, componentState) {
+        //    this.rootHtmlElement = document.getElementsByClassName("Simulation")[0];
+        //    //container.getElement().html("<iframe src='./?page=Simulation' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        //});
+        //layout.registerComponentConstructor('Map', function (container, componentState) {
+        //    this.rootHtmlElement = document.getElementsByClassName("Map")[0];
+        //    //container.getElement().html("<iframe src='./?page=Map' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        //});
 
         layout.loadLayout(layoutConfig);
         return layout;
