@@ -14,10 +14,11 @@ type UserMode =
 type ViewId = string
 
 type DashboardAction = 
-    //| Camera            of FreeFlyController.Message
-    | SetUserMode       of UserMode
-    | SetClientSession  of string
+    | SetUserMode      of UserMode
+    | SetClientSession of string
     | IncMessage       of (ViewId * Tmp.Inc.Message)
+    | BindComponent    of string
+    | UnbindComponent  of string
 
 [<ModelType>]
 type Dashboard = 

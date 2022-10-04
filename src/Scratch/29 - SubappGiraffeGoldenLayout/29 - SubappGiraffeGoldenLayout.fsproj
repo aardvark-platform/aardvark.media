@@ -25,9 +25,51 @@
     <Compile Include="ServerAppModel.fs" />
     <Compile Include="ServerApp.fs" />
     <Compile Include="Program.fs" />
+    <EmbeddedResource Include="resources\essentialstuff.js" />
+    <EmbeddedResource Include="resources\favicon.ico" />
+    <EmbeddedResource Include="resources\semantic-overrides.css" />
+    <EmbeddedResource Include="resources\semantic.css" />
+    <EmbeddedResource Include="resources\semantic.js" />
+    <EmbeddedResource Include="resources\lm_close_black.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_close_tab_white.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_close_white.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_maximise_black.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_maximise_white.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_minimize_black.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_minimize_white.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_popin_black.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_popin_white.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_popout_black.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\lm_popout_white.png">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\golden-layout.js" />
+    <EmbeddedResource Include="resources\goldenlayout-borderless-dark-theme.css" />
+    <EmbeddedResource Include="resources\goldenlayout-light-theme.css" />
+    <EmbeddedResource Include="resources\goldenlayout-soda-theme.css" />
+    <EmbeddedResource Include="resources\goldenlayout-translucent-theme.css" />
     <EmbeddedResource Include="resources\goldenlayout-base.css" />
     <EmbeddedResource Include="resources\goldenlayout-dark-theme.css" />
-    <EmbeddedResource Include="resources\goldenlayout.min.js" />
     <EmbeddedResource Include="resources\dragDrop.js">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>

@@ -37,18 +37,25 @@ module Dashboard =
             let inc = Tmp.Inc.App.update (m.incApps.Item id) msg
             let incApps = HashMap.add inc.id inc m.incApps
             {m with incApps = incApps}
+        | BindComponent str ->
+            Log.line "Bind component"
+            m
+        | UnbindComponent str ->
+            Log.line "Unbind component"
+            m
             
-
     let dependencies = 
-        //R4F.UI.JsCssRequirements.overrides 
-        Html.semui 
-        @ [
+        [
            // { name = "js"; url = "http://code.jquery.com/jquery-1.11.1.min.js"; kind = Script } // ADDING THIS BREAKS FOMANTIC UI JAVASCRIPT
-            { name = "Golden"; url = @"https://golden-layout.com/files/latest/js/goldenlayout.min.js"; kind = Script }
+            { kind = Stylesheet; name = "semui"; url = "resources/semantic.css" }
+            { kind = Stylesheet; name = "semui-overrides"; url = "resources/semantic-overrides.css" }
+            { kind = Script; name = "semui"; url = "resources/semantic.js" }
+            { kind = Script; name = "essential"; url = "resources/essentialstuff.js" }
+            { name = "Golden"; url = @"resources/golden-layout.js"; kind = Script }
             { name = "GoldenCSS"; url = @"resources/goldenlayout-base.css"; kind = Stylesheet }
             { name = "Theme"; url = @"resources/goldenlayout-dark-theme.css"; kind = Stylesheet }
             { name = "aardvark.js"; url = "resources/aardvark.js"; kind = Script }
-            //{ name = "OnBoot"; url = "onBootDashboard.js"; kind = Script }
+            
         ]     
 
     let viewUserSelection (m : AdaptiveDashboard) =
@@ -57,36 +64,38 @@ module Dashboard =
 
     let debugView (m : AdaptiveDashboard) = 
         
+        let viewPage id =
+            let content =
+                (AMap.find id m.incApps) |> AVal.map Tmp.Inc.App.view
+                                |> To.divAval
+                                |> UI.map (fun msg -> IncMessage (id, msg))
+            div [clazz id] [ //style "overflow:hidden; position: absolute;"] [
+                    content
+                ]
 
-//        div [] [
-        page (fun request -> 
-            match Map.tryFind "page" request.queryParams with
-            | Some WORKSPACE -> 
-                (AMap.find WORKSPACE m.incApps) |> AVal.map Tmp.Inc.App.view
-                                                |> To.divAval
-                |> UI.map (fun msg -> IncMessage (WORKSPACE, msg))
+        let onBindComponent =
+            let f =  (fun (lst : list<string>) -> lst |> List.head |> Pickler.unpickleOfJson |> BindComponent)
+            onEvent "itemCreated" [] f
 
-            | Some SIMULATION -> //TODO refactor Simulation
-                (AMap.find SIMULATION m.incApps) |> AVal.map Tmp.Inc.App.view
-                                                |> To.divAval
-                |> UI.map (fun msg -> IncMessage (SIMULATION, msg))
-            | Some TRACK -> 
-                (AMap.find TRACK m.incApps) |> AVal.map Tmp.Inc.App.view
-                                                |> To.divAval
-                |> UI.map (fun msg -> IncMessage (TRACK, msg))
-            | Some MAP -> 
-                (AMap.find MAP m.incApps) |> AVal.map Tmp.Inc.App.view
-                                                |> To.divAval
-                |> UI.map (fun msg -> IncMessage (MAP, msg))
-            | _ -> 
-                require dependencies (
-                    onBoot "aardvark.golden.layout = aardvark.golden.initLayout()" (
-                        body [] []
-                    )
-                )
+        let onUnbindComponent =
+            let f =  (fun (lst : list<string>) -> lst |> List.head |> Pickler.unpickleOfJson |> UnbindComponent)
+            onEvent "itemDestroyed" [] f
+
+        require dependencies (
+            onBoot "aardvark.golden.layout = getTopAardvark().golden.initLayout($('#__ID__'))" (
+                div [clazz "layoutContainer";onBindComponent;onUnbindComponent] [
+                    //div [clazz WORKSPACE] [text (string WORKSPACE)]
+                    //div [clazz SIMULATION] [text (string SIMULATION)]
+                    //div [clazz MAP] [text (string MAP)]
+                    //div [clazz TRACK] [text (string TRACK)]
+                    viewPage WORKSPACE
+                    viewPage SIMULATION
+                    viewPage MAP
+                    viewPage TRACK
+                ]
+            )
         )
-                
-        //] 
+       
         
 
     let view (m : AdaptiveDashboard) =
@@ -119,9 +128,12 @@ module Dashboard =
                 | _ -> 
                     yield viewUserSelection m
             }
+
         body [sessionChangeAttribute] [
-            allPages
-            content |> To.divA
+            div [clazz "wrapper"] [
+                allPages
+                content |> To.divA
+            ]
         ] |> Test.DataChannel.addDataChannel "aardvark.processEvent('__ID__', 'data-event', aardvark.guid);" "" None m.clientId
 
     let threads (m : Dashboard) = 
@@ -149,9 +161,6 @@ module Dashboard =
             threads       = ThreadPool.empty
             debugCount    = 0
             incApps       = incApps
-            
-            
-            
         }
 
     open Aardvark.Application.Slim

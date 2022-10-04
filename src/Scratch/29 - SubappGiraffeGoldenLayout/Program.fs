@@ -55,7 +55,7 @@ let main args =
     let webparts = 
         [
             Reflection.assemblyWebPart (System.Reflection.Assembly.GetExecutingAssembly())
-            appWebpart
+            appWebpart   
         ] |> Giraffe.Core.choose
 
     Test.Giraffe.Server.startServer "http://*:4321" Threading.CancellationToken.None  (

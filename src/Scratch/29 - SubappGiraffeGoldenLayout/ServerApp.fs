@@ -17,7 +17,7 @@ module ServerApp =
             m
     let view  win inServerMode dataFolder glApp  (model : AdaptiveServerApp)  =
 
-        div [] [
+        require Test.Dashboard.Dashboard.dependencies ( 
             subApp' 
                 (fun _model _innermsg -> 
                     Seq.singleton (DashboardMessage (_model.clientId, _innermsg))
@@ -43,7 +43,7 @@ module ServerApp =
                 ) 
                 [] 
                 (Dashboard.app win inServerMode dataFolder glApp (System.Guid.NewGuid () |> string))
-        ]
+        )
 
     let app (win : Aardvark.Glfw.Window) inServerMode
             dataFolder (glApp : OpenGlApplication) : App<ServerApp, AdaptiveServerApp, ServerAction> =   

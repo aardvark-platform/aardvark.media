@@ -1001,9 +1001,9 @@ if (!aardvark.openFileDialog) {
 
         var refs =
             [
-                { kind: "stylesheet", name: "semui-css", url: "./rendering/semantic.css" },
-                { kind: "stylesheet", name: "semui-overrides-css", url: "./rendering/semantic-overrides.css" },
-                { kind: "script", name: "semui-js", url: "./rendering/semantic.js" },
+                { kind: "stylesheet", name: "semui-css", url: "./resources/semantic.css" },
+                { kind: "stylesheet", name: "semui-overrides-css", url: "./resources/semantic-overrides.css" },
+                { kind: "script", name: "semui-js", url: "./resources/semantic.js" },
                 { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
                 { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
                 { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
@@ -1465,276 +1465,6 @@ if (!aardvark.gamepad) {
     gamepad.on('release', 'shoulder_bottom_right', function (e) { if (oldr != 0.0) { oldr = 0.0; send("gp_rightshoulder_changed", e.player, 0); } });
 }
 
-if (!aardvark.rfmap) {
-    aardvark.rfmap              = {};
-    aardvark.rfmap.map          = {};
-    aardvark.rfmap.tileLayer    = {};
-    aardvark.rfmap.marker       = {};
-    aardvark.rfmap.geoJsonLayer = {};
-    aardvark.rfmap.style1 = { //TODO connect Aardvark colour mapping app with js style
-        "color": "#ff2222",
-        "weight": 10,
-        "opacity": 0.4
-    };
-    aardvark.rfmap.style3 = {
-        "color": "#22ff22",
-        "weight": 10,
-        "opacity": 0.4
-    };
-    aardvark.rfmap.style2 = {
-        "color": "#ff9922",
-        "weight": 10,
-        "opacity": 0.4
-    };
-
-    aardvark.rfmap.removeGeoJson =
-        function () {
-            console.log('[Debug] Removing GeoJSON');
-            aardvark.rfmap.map.removeLayer(aardvark.rfmap.geoJsonLayer);
-        }
-
-    aardvark.rfmap.drawGeoJson =
-        function (data) {
-            console.log('[Debug] Drawing GeoJSON');
-            if (data && data.features && data.features.length > 0) {
-                console.log(aardvark.rfmap.style);
-                aardvark.rfmap.geoJsonLayer = L.geoJSON(data, aardvark.rfmap.style);
-                //console.log(aardvark.rfmap.geoJsonLayer);
-                aardvark.rfmap.geoJsonLayer.addTo(aardvark.rfmap.map);
-
-            } else {
-                aardvark.rfmap.removeGeoJson();
-            }
-        }
-
-    aardvark.rfmap.moveMarker =
-        function (data) {
-            var newLatLng = new L.LatLng(data[0], data[1]);
-            aardvark.rfmap.marker.setLatLng(newLatLng); 
-            aardvark.rfmap.map.setView(newLatLng);
-        }
-   
-    aardvark.rfmap.style =
-        {
-            onEachFeature: function (feature, layer) {
-                if (feature.properties && feature.properties.popupContent) {
-                    layer.bindPopup(feature.properties.popupContent);
-                }
-            },
-            style: function (feature) {
-                if (feature.properties && feature.properties.COLOR) {
-                    return {
-                        "color": feature.properties.COLOR,
-                        "weight": 10,
-                        "opacity": 0.8
-                    }; 
-                } else {
-                    return {
-                        "color": "#000000",
-                        "weight": 10,
-                        "opacity": 0.8
-                    }; 
-                }
-                //let val = feature.properties.random;
-
-                //if (val < 0.5) {
-                //    return aardvark.rfmap.style1
-                //} else if (val < 0.75) {
-                //    return aardvark.rfmap.style2
-                //} else {
-                //    return aardvark.rfmap.style3
-                //}
-            }
-        }
-}
-
-if (!aardvark.rfcharts) {
-    aardvark.rfcharts = {};
-    // set global chart size
-    aardvark.rfcharts.margin = { top: 10, right: 30, bottom: 40, left: 80 };
-    aardvark.rfcharts.width = 460 - aardvark.rfcharts.margin.left - aardvark.rfcharts.margin.right;
-    aardvark.rfcharts.height = 400 - aardvark.rfcharts.margin.top - aardvark.rfcharts.margin.bottom;
-
-    console.log(aardvark.rfcharts);
-
-    aardvark.rfcharts.addTitle =
-        function (svg, title) {
-            // title text label
-            svg.append("text")
-                .attr("transform",
-                    "translate(" + (aardvark.rfcharts.width / 2) + " ," +
-                    0 + ")")
-                .style("text-anchor", "middle")
-                .style("fill", "white")
-                .text(title);
-        };
-
-    aardvark.rfcharts.addXAxis =
-        function (svg, label, xScale) {
-
-            svg.append("g")
-                .attr("transform", `translate(0, ${aardvark.rfcharts.height})`)
-                .call(d3.axisBottom(xScale));
-
-            // text label for the x axis
-            svg.append("text")
-                .attr("transform",
-                    "translate(" + (aardvark.rfcharts.width / 2) + " ," +
-                    (aardvark.rfcharts.height + aardvark.rfcharts.margin.top + 20) + ")")
-                .style("text-anchor", "middle")
-                .style("fill", "white")
-                .text(label);
-
-        };
-
-    aardvark.rfcharts.addYAxis =
-        function (svg, label, yScale) {
-            svg.append("g")
-                .call(d3.axisLeft(yScale));
-
-            // text label for the y axis
-            svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - aardvark.rfcharts.margin.left)
-                .attr("x", 0 - (aardvark.rfcharts.height / 2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .style("fill", "white")
-                .text(label);
-        };
-
-    aardvark.rfcharts.addThreshold =
-        function (svg, x, y, threshold) {
-            // Add line for threshold
-            svg.append('line')
-                .attr('id', 'limit')
-                .attr('x1', 0)
-                .attr('y1', y(threshold))
-                .attr('x2', x(aardvark.rfcharts.width))
-                .attr('y2', y(threshold))
-        };
-
-    aardvark.rfcharts.addDataDots =
-        function (svg, x, y, dataArray) {
-            // Add dots
-            svg.append('g')
-                .selectAll("dot")
-                .attr("class", "datadots")
-                .data(dataArray) // the .filter part is just to keep a few dots on the chart, not all of them
-                .enter()
-                .append("circle")
-                .attr("cx", function (d) { return x(d[0]); })
-                .attr("cy", function (d) { return y(d[1]); })
-                .attr("r", 7)
-                .style("fill", "#69b3a2")
-                .style("opacity", 0.3)
-                .style("stroke", "white")
-        };
-
-    aardvark.rfcharts.addTooltip =
-        function (svg) {
-            const tooltip = //d3.select(id)
-                svg.append("div")
-                    .style("opacity", 0)
-                    .attr("class", "tooltip")
-                    .style("background-color", "black")
-                    .style("border", "solid")
-                    .style("border-width", "1px")
-                    .style("border-radius", "5px")
-                    .style("padding", "10px")
-
-            // A function that change this tooltip when the user hover a point.
-            // Its opacity is set to 1: we can now see it. Plus it set the text and position of tooltip depending on the datapoint (d)
-            const mouseover = function (event, d) {
-                tooltip
-                    .style("opacity", 1)
-                d3.select(this)
-                    .attr("r", 10)
-            }
-
-            const mousemove = function (event, d) {
-                tooltip
-                    .html(`${d[1]}`)
-                    .style("left", (event.x) / 2 + "px") // It is important to put the +90: other wise the tooltip is exactly where the point is an it creates a weird effect
-                    .style("top", (event.y) / 2 + "px")
-            }
-
-            // A function that change this tooltip when the leaves a point: just need to set opacity to 0 again
-            const mouseleave = function (event, d) {
-                tooltip
-                    .transition()
-                    .duration(200)
-                    .style("opacity", 0)
-                d3.select(this)
-                    .attr("r", 7)
-            }
-
-            svg.on("mouseover", mouseover)
-                .on("mousemove", mousemove)
-                .on("mouseleave", mouseleave)
-        };
-
-
-    aardvark.rfcharts.drawChart =
-        function (id, data) {
-            const margin = aardvark.rfcharts.margin;
-            const width = aardvark.rfcharts.width;
-            const height = aardvark.rfcharts.height;
-
-            //data { x: [1, 2, 3, 4, 5], y: [1, 2, 3, 4, 5] };
-
-            // rearrange arrays x and y into pairs of [x,y]
-            const dataPairs = data.x.map((x, i) => [x, data.y[i]]);
-
-            console.log('Drawing chart at ' + id);
-
-            // append the svg object to the body of the page
-            const svg = d3.select(id)
-                .append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            // title text label
-            aardvark.rfcharts.addTitle(svg, data.caption);
-
-            // Add X axis
-            const x = d3.scaleLinear()
-                .domain([d3.min(data.x), d3.max(data.x)])
-                .range([0, width]);
-
-            aardvark.rfcharts.addXAxis(svg, "Day", x);
-
-            // Add Y axis
-            const y = d3.scaleLinear()
-                //.domain([d3.min(lineData.y), d3.max(lineData.y)])
-                .domain([data.dataMin, data.dataMax])
-                .range([height, 0]);
-
-            aardvark.rfcharts.addYAxis(svg, "Track Geometry", y);
-
-            aardvark.rfcharts.addThreshold(svg, x, y, data.threshold);
-
-            aardvark.rfcharts.addDataDots(svg, x, y, dataPairs);
-
-            aardvark.rfcharts.addTooltip(svg);
-
-            //// Add the line
-            //svg.append("path")
-            //    //.datum(lineDataArray)
-            //    .attr("fill", "none")
-            //    .attr("stroke", "steelblue")
-            //    .attr("stroke-width", 1.5)
-            //    .attr("d", pathData);
-        };
-
-    aardvark.rfcharts.updateChart =
-        function (id, data) {
-            console.log('Updating chart at ' + id);
-        };
-}
-
 if (!aardvark.golden) {
     aardvark.golden = {};
 
@@ -1749,29 +1479,22 @@ if (!aardvark.golden) {
 
     let components = [];
 
-    components['Menu'] = {
-        type: 'component',
-        componentName: 'Menu',
-        height: 8,
-        isClosable: false,
-        componentState: { label: 'A' }
-    };
     components['3DView'] = {
-            type: 'component',
+            typetype: 'component',
             isClosable: true,
-            componentName: '3DView',
+            componentType: '3DView',
             componentState: { label: 'C' }
     };
     components['Simulation'] = {
         type: 'component',
         isClosable: true,
-        componentName: 'Simulation',
+        componentType: 'Simulation',
         componentState: { label: 'E' }
     };
     components['Track'] = {
         type: 'component',
         isClosable: true,
-        componentName: 'Track',
+        componentType: 'Track',
         componentState: { label: 'F' }
     };
     components['Workspace'] =
@@ -1779,7 +1502,7 @@ if (!aardvark.golden) {
             type: 'component',
             isClosable: false,
             width: 10,
-            componentName: 'Workspace',
+            componentType: 'Workspace',
             componentState: { label: 'B' }
     }
 
@@ -1791,14 +1514,15 @@ if (!aardvark.golden) {
     }
     aardvark.golden.components = components
 
-    function initLayout() {
-        let rf_layout =
-            new GoldenLayout({
+    function initLayout(id) {
+
+        const layoutConfig = {
+            root: {
+                type: 'row',
                 settings: {
                     hasHeaders: true,
                     constrainDragToContainer: true,
                     reorderEnabled: true,
-                    selectionEnabled: false,
                     popoutWholeStack: false,
                     blockedPopoutsThrowError: true,
                     closePopoutsOnUnload: true,
@@ -1836,33 +1560,57 @@ if (!aardvark.golden) {
                         }
                     ]
                 }]
-            });
+            },
+        };
 
-        rf_layout.registerComponent('Menu', function (container, componentState) {
-            container.getElement().html("<iframe src='./?page=Menu' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        //bindComponentEvent = (container, itemConfig) => {
+        //    console.log("bind component");
+        //    console.log(container);
+        //    console.log(itemConfig);
+        //}
+        //unbindComponentEvent = container => {
+        //    console.log(container.element);
+        //}
+
+        var layoutElement = document.querySelector('.layoutContainer');
+        var layout = new goldenLayout.GoldenLayout(layoutElement); // assign element by query
+
+        //let layout = new goldenLayout.GoldenLayout(id); //, bindComponentEvent, unbindComponentEvent);
+        //layout.init();
+        layout.getComponentEvent = (container, itemConfig) => {
+            console.log("bind component");
+            console.log(container);
+            console.log(itemConfig);
+            container.element.appendChild(component.element);
+        }
+        layout.releaseComponentEvent  = container => {
+            console.log(container.element);
+        }
+
+
+        layout.registerComponentConstructor('Track', function (container, componentState) {
+            let el = document.getElementsByClassName("Track")[0];
+            console.log(el);
+            this.rootHtmlElement = el;
+            //container.getElement().html("<iframe src='./?page=Track' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
         });
-        rf_layout.registerComponent('Track', function (container, componentState) {
-            container.getElement().html("<iframe src='./?page=Track' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        layout.registerComponentConstructor('Workspace', function (container, componentState) {
+            this.rootHtmlElement = document.getElementsByClassName("Workspace")[0];
+            //container.getElement().html("<iframe src='./?page=Workspace' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
         });
-        rf_layout.registerComponent('Workspace', function (container, componentState) {
-            container.getElement().html("<iframe src='./?page=Workspace' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        layout.registerComponentConstructor('Simulation', function (container, componentState) {
+            this.rootHtmlElement = document.getElementsByClassName("Simulation")[0];
+            //container.getElement().html("<iframe src='./?page=Simulation' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
         });
-        rf_layout.registerComponent('3DView', function (container, componentState) {
-            container.getElement().html("<iframe src='./?page=3DView' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        });
-        rf_layout.registerComponent('Simulation', function (container, componentState) {
-            container.getElement().html("<iframe src='./?page=Simulation' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        });
-        rf_layout.registerComponent('Map', function (container, componentState) {
-            container.getElement().html("<iframe src='./?page=Map' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
+        layout.registerComponentConstructor('Map', function (container, componentState) {
+            this.rootHtmlElement = document.getElementsByClassName("Map")[0];
+            //container.getElement().html("<iframe src='./?page=Map' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
         });
 
-        rf_layout.init();
-        return rf_layout;
+        layout.loadLayout(layoutConfig);
+        return layout;
     }
     aardvark.golden.layout = {};
     aardvark.golden.initLayout = initLayout;
-    aardvark.golden.removeChild = removeChild;
-    aardvark.golden.addChild = addChild;
     aardvark.golden.createDragSource = createDragSource
 }
