@@ -1467,14 +1467,11 @@ if (!aardvark.gamepad) {
 
 if (!aardvark.golden) {
     aardvark.golden = {};
+    aardvark.golden.dragSources = [];
 
     function createDragSource(domnode, componentName) {
-        console.log("Adding drag source for component:" + componentName);
-        let layout = getTopAardvark().golden.layout;
-        let component = getTopAardvark().golden.components[componentName];
-        console.log("Adding drag source for component:");
-        console.log(component);
-        layout.createDragSource(domnode, component);
+        console.log("Adding drag source entry for component:" + componentName);
+        aardvark.golden.dragSources.push({ domnode: domnode, componentName: componentName });
     }
 
     let components = [];
@@ -1581,6 +1578,15 @@ if (!aardvark.golden) {
             let el = document.getElementsByClassName(container._componentType)[0];
             aardvark.processEvent(el.id, 'onUnbindComponent', container._componentType);
             
+        }
+
+        // add drag sources
+        for (var i = 0; i < aardvark.golden.dragSources.length; i++) {
+            let componentName = aardvark.golden.dragSources[i].componentName;
+            let domnode = aardvark.golden.dragSources[i].domnode[0];
+            let component = aardvark.golden.components[componentName];
+            console.log("Adding drag source for component");
+            layout.newDragSource(domnode, component.componentType);
         }
 
         layout.loadLayout(layoutConfig);

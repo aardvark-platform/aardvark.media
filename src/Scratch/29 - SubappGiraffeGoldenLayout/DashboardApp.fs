@@ -62,6 +62,8 @@ module Dashboard =
         let content = [Insert.dropdownEnum m.userMode SetUserMode]
         To.placeholderSegment "user icon" "Please select dashboard mode" content
 
+
+
     let debugView (m : AdaptiveDashboard) = 
         
         let viewPage id =
@@ -95,6 +97,13 @@ module Dashboard =
             )
         )
        
+    let makeDraggableToNewView id content =
+        let jscode = 
+            sprintf "console.log(aardvark);aardvark.golden.createDragSource($('#__ID__'), '%s');" id
+        onBoot jscode (
+            content
+        )
+
     let view (m : AdaptiveDashboard) =
         Log.line "[Dashboard] Starting View. Dashboard with client id %s" (string m.clientId)    
         let sessionChangeAttribute =
@@ -126,8 +135,18 @@ module Dashboard =
                     yield viewUserSelection m
             }
 
+        let draggableLabel id =
+            div [clazz "ui label"; attribute "draggable" "true"] [text id]
+                |> makeDraggableToNewView id
+
         body [sessionChangeAttribute] [
             div [clazz "wrapper"] [
+                div [] [ //menu for creating new views
+                    draggableLabel WORKSPACE
+                    draggableLabel MAP
+                    draggableLabel TRACK
+                    draggableLabel SIMULATION
+                ]
                 allPages
                 content |> To.divA
             ]
