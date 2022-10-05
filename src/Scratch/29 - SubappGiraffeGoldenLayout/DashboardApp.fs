@@ -69,7 +69,10 @@ module Dashboard =
                 (AMap.find id m.incApps) |> AVal.map Tmp.Inc.App.view
                                 |> To.divAval
                                 |> UI.map (fun msg -> IncMessage (id, msg))
-            div [clazz id] [ //style "overflow:hidden; position: absolute;"] [
+
+            let callbackBind = onEvent "onGetComponent" [] BindComponent
+            let callbackUnbind = onEvent "onUnbindComponent" [] UnbindComponent
+            div [clazz id;callbackBind;callbackUnbind] [ //style "overflow:hidden; position: absolute;"] [
                     content
                 ]
 
@@ -92,8 +95,6 @@ module Dashboard =
             )
         )
        
-        
-
     let view (m : AdaptiveDashboard) =
         Log.line "[Dashboard] Starting View. Dashboard with client id %s" (string m.clientId)    
         let sessionChangeAttribute =

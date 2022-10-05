@@ -1573,29 +1573,15 @@ if (!aardvark.golden) {
             const componentTypeName = goldenLayout.ResolvedComponentItemConfig.resolveComponentTypeName(itemConfig);
             let el = document.getElementsByClassName(componentTypeName)[0];
             container.element.appendChild(el);
-        }
-        layout.releaseComponentEvent  = container => {
-            console.log(container.element);
+            aardvark.processEvent(el.id, 'onGetComponent', componentTypeName);
         }
 
-        //layout.registerComponentConstructor('Track', function (container, componentState) {
-        //    let el = document.getElementsByClassName("Track")[0];
-        //    console.log(el);
-        //    this.rootHtmlElement = el;
-        //    //container.getElement().html("<iframe src='./?page=Track' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        //});
-        //layout.registerComponentConstructor('Workspace', function (container, componentState) {
-        //    this.rootHtmlElement = document.getElementsByClassName("Workspace")[0];
-        //    //container.getElement().html("<iframe src='./?page=Workspace' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        //});
-        //layout.registerComponentConstructor('Simulation', function (container, componentState) {
-        //    this.rootHtmlElement = document.getElementsByClassName("Simulation")[0];
-        //    //container.getElement().html("<iframe src='./?page=Simulation' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        //});
-        //layout.registerComponentConstructor('Map', function (container, componentState) {
-        //    this.rootHtmlElement = document.getElementsByClassName("Map")[0];
-        //    //container.getElement().html("<iframe src='./?page=Map' name='SELFHTML_in_a_box' style='border:0;width:100%;height:100%'>");
-        //});
+        layout.unbindComponentEvent = container => {
+            console.log("unbinding component");
+            let el = document.getElementsByClassName(container._componentType)[0];
+            aardvark.processEvent(el.id, 'onUnbindComponent', container._componentType);
+            
+        }
 
         layout.loadLayout(layoutConfig);
         return layout;

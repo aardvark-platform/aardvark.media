@@ -17,8 +17,8 @@ type DashboardAction =
     | SetUserMode      of UserMode
     | SetClientSession of string
     | IncMessage       of (ViewId * Tmp.Inc.Message)
-    | BindComponent    of string
-    | UnbindComponent  of string
+    | BindComponent    of list<string>
+    | UnbindComponent  of list<string>
 
 [<ModelType>]
 type Dashboard = 
