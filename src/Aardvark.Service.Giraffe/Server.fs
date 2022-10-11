@@ -524,7 +524,7 @@ module Server =
             }
 
 
-        let screenshot (sceneName : string) (next : HttpFunc) (ctx : HttpContext)=
+        let private screenshot (sceneName : string) (next : HttpFunc) (ctx : HttpContext) =
             let request = ctx.Request
             let args = request.Query |> Seq.choose (fun v -> match v.Value with | SingleString s -> Some (v.Key, s) | _ -> None) |> Map.ofSeq
 
@@ -581,11 +581,17 @@ module Server =
                             use t = new PngClientRenderTask(info, content) :> ClientRenderTask
                             t |> respondOK "image/png"
                         | Some fmt -> 
-                            RequestErrors.NOT_FOUND (sprintf  "format not supported: %s" fmt) next ctx
+                            RequestErrors.BAD_REQUEST (sprintf  "format not supported: %s" fmt) next ctx
 
                 | _ ->
-                    RequestErrors.NOT_FOUND "no width/height specified" next ctx
+                    RequestErrors.BAD_REQUEST "no width/height specified" next ctx
 
+        let screenshot (sceneName : string) (next : HttpFunc) (ctx : HttpContext) =
+            try
+                screenshot sceneName next ctx
+            with e -> 
+                RequestErrors.BAD_REQUEST (sprintf "could not render screenshot (cause: %s)" e.Message) next ctx
+        
         choose [
             yield routef  "/render/%s" (render >> Websockets.handShake)
             yield route  "/stats.json" >=> statistics 

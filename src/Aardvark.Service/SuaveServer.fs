@@ -448,7 +448,7 @@ module Server =
             let json = Pickler.json.PickleToString stats
             ctx |> (OK json >=> Writers.setMimeType "text/json")
 
-        let screenshot (sceneName : string) (context: HttpContext) =
+        let private screenshot' (sceneName : string) (context: HttpContext) =
             let request = context.request
             let args = request.query |> List.choose (function (n,Some v) -> Some(n,v) | _ -> None) |> Map.ofList
 
@@ -508,6 +508,14 @@ module Server =
                 | _ ->
                     context |> BAD_REQUEST "no width/height specified"
 
+        
+        let screenshot (sceneName : string) (context: HttpContext) =
+            try 
+                screenshot' sceneName context
+            with e -> 
+                Log.warn "[Media/Screenshot] failed with: %A" e
+                context |> BAD_REQUEST (sprintf "screenshot failed with %s" e.Message)
+        
         choose [
             yield Reflection.assemblyWebPart typeof<Client>.Assembly
             yield pathScan "/render/%s" (render >> handShake)
