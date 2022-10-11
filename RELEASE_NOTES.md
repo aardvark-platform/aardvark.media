@@ -1,3 +1,6 @@
+### 5.3.3
+- exception handling for screenshots
+
 ### 5.3.2
 - Fixed CEF processes nuget packages
 - [Screenshot] Save image with alpha when using PNG

@@ -524,7 +524,7 @@ module Server =
             }
 
 
-        let private screenshot (sceneName : string) (next : HttpFunc) (ctx : HttpContext) =
+        let screenshot' (sceneName : string) (next : HttpFunc) (ctx : HttpContext) =
             let request = ctx.Request
             let args = request.Query |> Seq.choose (fun v -> match v.Value with | SingleString s -> Some (v.Key, s) | _ -> None) |> Map.ofSeq
 
@@ -588,7 +588,7 @@ module Server =
 
         let screenshot (sceneName : string) (next : HttpFunc) (ctx : HttpContext) =
             try
-                screenshot sceneName next ctx
+                screenshot' sceneName next ctx
             with e -> 
                 RequestErrors.BAD_REQUEST (sprintf "could not render screenshot (cause: %s)" e.Message) next ctx
         

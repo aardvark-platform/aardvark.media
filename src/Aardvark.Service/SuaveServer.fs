@@ -448,7 +448,7 @@ module Server =
             let json = Pickler.json.PickleToString stats
             ctx |> (OK json >=> Writers.setMimeType "text/json")
 
-        let private screenshot' (sceneName : string) (context: HttpContext) =
+        let  screenshot' (sceneName : string) (context: HttpContext) =
             let request = context.request
             let args = request.query |> List.choose (function (n,Some v) -> Some(n,v) | _ -> None) |> Map.ofList
 
