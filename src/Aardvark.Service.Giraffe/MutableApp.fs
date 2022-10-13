@@ -297,7 +297,7 @@ module MutableApp =
                                                 Log.warn "[MutableApp] unknown message: %A" (code,data)
                                 | Choice2Of2 e -> 
                                     if ws.State <> WebSocketState.Open then 
-                                        Log.warn "[MutableApp] websocket seams dead (%A), updated going down." e
+                                        Log.warn "[MutableApp] websocket seems to be dead (%A), update going down." e
                                         running <- false
                         
                             MVar.put update false
