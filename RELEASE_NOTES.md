@@ -1,3 +1,6 @@
+### 5.3.4
+- Updated to Aardvark.Rendering 5.3
+
 ### 5.3.3
 - exception handling for screenshots
 
