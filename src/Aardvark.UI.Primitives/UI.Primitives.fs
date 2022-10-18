@@ -33,7 +33,7 @@ module Html =
 
         let horizontal ch = table [clazz "ui table"; style "backgroundColor: transparent"] [ tbody [] [ tr [] ch ] ]
 
-        let finish<'msg> = td[] []
+        let finish<'msg> = td [] []
 
     let ofC4b (c : C4b) = sprintf "rgb(%i,%i,%i)" c.R c.G c.B
 

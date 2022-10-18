@@ -313,6 +313,16 @@ module ``F# Sg`` =
         let adapter (o : obj) =
             Sg.adapter o |> box
 
+        /// Applies the given activation function to the the given scene graph.
+        /// An activation function is invoked when the render objects of the scene graph are prepared.
+        /// The resulting IDisposable is disposed when the render objects are disposed.
+        let onActivation (f : unit -> IDisposable) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.onActivation f)
+
+        /// Generates a scene graph depending on the scope.
+        let delay (generator : Ag.Scope -> ISg<'msg>) : ISg<'msg> =
+            Sg.DelayNode(fun scope -> generator scope :> ISg) |> noEvents
+
         // ================================================================================================================
         // Picking
         // ================================================================================================================
@@ -899,7 +909,7 @@ module ``F# Sg`` =
 
         /// Draws an adaptive set of managed draw calls of the given pool.
         let pool (pool : ManagedPool) (mode : IndexedGeometryMode) (calls : aset<ManagedDrawCall>) =
-            mode |> Sg.pool pool calls |> box<'msg>
+            calls |> Sg.pool pool mode |> box<'msg>
 
         /// Draws an adaptive set of indexed geometries with instance attributes.
         let geometrySetInstanced (signature : GeometrySignature) (mode : IndexedGeometryMode) (geometries : aset<GeometryInstance>) =
