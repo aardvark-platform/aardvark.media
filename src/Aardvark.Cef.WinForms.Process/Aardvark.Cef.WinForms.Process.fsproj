@@ -5,6 +5,7 @@
     <TargetFrameworks>net471;netcoreapp3.1</TargetFrameworks>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <UseWindowsForms>true</UseWindowsForms>
     <WarnOn>3389;3390;3395</WarnOn>
   </PropertyGroup>
@@ -15,6 +16,8 @@
     <OutputPath>..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <None Include="paket.references" />
+    <None Include="App.config" />
     <Compile Include="Utilities.fs" />
     <Compile Include="IPC.fs" />
     <Compile Include="AardvarkIO.fs" />
