@@ -15,8 +15,6 @@ files
     ..\..\bin\Release\net471\Aardvark.Cef.WinForms.Process.pdb ==> lib\net471
     ..\..\bin\Release\netcoreapp3.1\Aardvark.Cef.WinForms.Process.dll ==> lib\netcoreapp3.1
     ..\..\bin\Release\netcoreapp3.1\Aardvark.Cef.WinForms.Process.pdb ==> lib\netcoreapp3.1
-	..\..\bin\Release\netcoreapp3.1\Aardvark.Cef.WinForms.Process.exe ==> runtimes\win-x64\native
-    ..\..\bin\Release\netcoreapp3.1\Aardvark.Cef.WinForms.Process.runtimeconfig.json ==> runtimes\win-x64\native
+	..\..\bin\Release\netcoreapp3.1\Aardvark.Cef.WinForms.Process.exe ==> process\netcoreapp3.1
+    ..\..\bin\Release\netcoreapp3.1\Aardvark.Cef.WinForms.Process.runtimeconfig.json ==> process\netcoreapp3.1
     Aardvark.Cef.WinForms.targets ==> build
-excludeddependencies
-    Adaptify.MSBuild

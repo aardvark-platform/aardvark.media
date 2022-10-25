@@ -19,7 +19,8 @@
     <Compile Include="Cef.fs" />
     <Compile Include="Browser.fs" />
     <None Include="paket.references" />
-	<None Include="paket.template" />
+	  <None Include="paket.template" />
+	  <None Include="Aardvark.Cef.targets" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>
