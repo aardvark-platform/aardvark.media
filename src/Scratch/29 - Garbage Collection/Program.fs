@@ -9,7 +9,6 @@ open Aardvark.UI
 open Suave
 open Suave.WebPart
 open Aardium
-open Input
 
 [<EntryPoint; STAThread>]
 let main argv = 
@@ -30,7 +29,7 @@ let main argv =
             app.Runtime :> IRuntime, app :> IDisposable
     use __ = disposable
     
-    let app = App.app
+    let app = GarbageApp.App.app
 
     let instance = 
         app |> App.start

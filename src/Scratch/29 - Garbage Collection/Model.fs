@@ -1,13 +1,10 @@
-﻿namespace RenderControl.Model
+﻿namespace GarbageApp
 
-open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.UI.Primitives
 open Adaptify
 
 type Message = 
-    | Update
-    | Nop
+    | Update of byte[]
 
 [<ModelType>]
 type Model = 
