@@ -1,3 +1,6 @@
+### 5.2.2
+- fixed memory leak with event handlers
+
 ### 5.2.1
 - added Mac/ARM64 turbojpeg
 
