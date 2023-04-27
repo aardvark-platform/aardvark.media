@@ -260,13 +260,13 @@ module Updaters =
 
     type AttributeUpdater<'msg>(attributes : AttributeMap<'msg>) =
         let mutable reader = attributes.GetReader()
+        let registeredHandlers = Dictionary<string * string, IDisposable>()
 
         member x.TryGetAttrbute(name : string) =
             HashMap.tryFind name reader.State
 
         member x.Update(token : AdaptiveToken, state : UpdateState<'msg>, id : string, self : JSExpr) =
             JSExpr.Sequential [
-                let old = reader.State
                 let atts = reader.GetChanges token
                 for (name, op) in atts do
                     match op with
@@ -277,21 +277,31 @@ module Updaters =
                                         str
                                     | AttributeValue.Event evt ->
                                         let key = (id, name)
+                                        match registeredHandlers.TryGetValue key with
+                                        | (true, d) -> d.Dispose()
+                                        | _ -> ()
                                         state.handlers.[key] <- evt.serverSide
+                                        let handlerDispose = { new IDisposable with member x.Dispose() = state.handlers.Remove(key) |> ignore }
+                                        registeredHandlers.[key] <- handlerDispose // add or overwrite
                                         Event.toString id name evt
 
                             yield JSExpr.SetAttribute(self, name, value)
 
-                            //yield JSExpr.SetAttribute(self, name, value)
-
                         | Remove ->
+                            let key = (id, name) 
+                            match registeredHandlers.TryGetValue key with
+                            | (true, d) ->
+                                d.Dispose()
+                                registeredHandlers.Remove(key) |> ignore
+                            | _ -> ()
                             yield JSExpr.RemoveAttribute(self, name)
             ]
 
         member x.Dispose() =
-            ()
+            for kv in registeredHandlers do
+                kv.Value.Dispose()
+            registeredHandlers.Clear()
             reader <- Unchecked.defaultof<_>
-            //reader.Dispose()
 
         interface IDisposable with
             member x.Dispose() = x.Dispose()
