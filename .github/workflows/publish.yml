@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+      - v52
       - giraffeBackend
     paths:
       - RELEASE_NOTES.md
