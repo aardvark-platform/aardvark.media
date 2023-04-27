@@ -275,7 +275,7 @@ module Updaters =
 
     type AttributeUpdater<'msg>(attributes : AttributeMap<'msg>) =
         let mutable reader = attributes.GetReader()
-        let registeredHandlers = Dictionary<string * string, IDisposable>()
+        let registeredHandlers = System.Collections.Generic.HashSet<string * string>()
 
         member x.TryGetAttrbute(name : string) =
             HashMap.tryFind name reader.State
@@ -294,12 +294,8 @@ module Updaters =
                                         Some str
                                     | AttributeValue.Event evt ->
                                         let key = (id, name)
-                                        match registeredHandlers.TryGetValue key with
-                                        | (true, d) -> d.Dispose()
-                                        | _ -> ()
                                         state.handlers.[key] <- evt.serverSide
-                                        let handlerDispose = { new IDisposable with member x.Dispose() = state.handlers.Remove(key) |> ignore }
-                                        registeredHandlers.[key] <- handlerDispose // add or overwrite
+                                        registeredHandlers.Add(key) |> ignore
                                         Event.toString id name evt |> Some
 
                             match value with
@@ -309,22 +305,17 @@ module Updaters =
 
                         | Remove ->
                             let key = (id, name) 
-                            match registeredHandlers.TryGetValue key with
-                            | (true, d) ->
-                                d.Dispose()
-                                registeredHandlers.Remove(key) |> ignore
-                            | _ -> ()
+                            registeredHandlers.Remove(key) |> ignore
+                            state.handlers.Remove(key) |> ignore
                             yield JSExpr.RemoveAttribute(self, name)
             ]
 
-        member x.Dispose() =
-            for kv in registeredHandlers do
-                kv.Value.Dispose()
+        member x.Destroy(state : UpdateState<'msg>) =
+            for k in registeredHandlers do
+                state.handlers.Remove(k) |> ignore
             registeredHandlers.Clear()
             reader <- Unchecked.defaultof<_>
 
-        interface IDisposable with
-            member x.Dispose() = x.Dispose()
 
     type EmptyUpdater<'msg>(e : EmptyNode<'msg>) =
         inherit AbstractUpdater<'msg>(e)
@@ -348,7 +339,7 @@ module Updaters =
             att.Update(token, state, id, self)
 
         override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
-            att.Dispose()
+            att.Destroy(state)
             JSExpr.Nop
 
     and InnerUpdater<'msg>(e : InnerNode<'msg>, request : Request) =
@@ -481,7 +472,7 @@ module Updaters =
                 |> JSExpr.Sequential
 
             elemReader <- Unchecked.defaultof<_>
-            att.Dispose()
+            att.Destroy(state)
             inner
             
     and SceneUpdater<'msg>(e : SceneNode<'msg>) as this =
@@ -531,7 +522,7 @@ module Updaters =
 
         override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
             state.scenes.Remove(x.Id.Value) |> ignore
-            att.Dispose()
+            att.Destroy(state)
             initial <- true
             JSExpr.Nop
         
@@ -551,7 +542,7 @@ module Updaters =
             ]
 
         override x.PerformDestroy(state : UpdateState<'msg>, self : JSExpr) =
-            att.Dispose()
+            att.Destroy(state)
             JSExpr.Nop
 
     and MapUpdater<'inner, 'outer>(m : MapNode<'inner, 'outer>, inner : IUpdater<'inner>) =
