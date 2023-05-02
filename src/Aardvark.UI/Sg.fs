@@ -771,12 +771,12 @@ module ``F# Sg`` =
 
 
         /// Sets the winding order of front faces.
-        let frontFace (order : aval<WindingOrder>) (sg: ISg<'msg>) =
-            sg |> unboxed (Sg.frontFace order)
+        let frontFacing (order : aval<WindingOrder>) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.frontFacing order)
 
         /// Sets the winding order of front faces.
-        let frontFace' (order : WindingOrder) (sg: ISg<'msg>) =
-            sg |> unboxed (Sg.frontFace' order)
+        let frontFacing' (order : WindingOrder) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.frontFacing' order)
 
 
         /// Sets the fill mode.
@@ -934,11 +934,6 @@ module ``F# Sg`` =
         /// Creates a draw call from the given indexed geometry.
         let ofIndexedGeometry (g : IndexedGeometry) =
             Sg.ofIndexedGeometry g |> box<'msg>
-
-        /// Creates a draw call from the given indexed geometry, using an interleaved buffer
-        /// for the vertex attributes.
-        let ofIndexedGeometryInterleaved (attributes : list<Symbol>) (g : IndexedGeometry) =
-            Sg.ofIndexedGeometryInterleaved attributes g |> box<'msg>
 
         /// Creates a draw call, supplying the given transformations as per-instance attributes with
         /// name DefaultSemantic.InstanceTrafo.

@@ -112,11 +112,8 @@ let view (runtime : IRuntime) (model : AdaptiveModel) =
 
                     let trafo = mkTrafo () 
 
-                    let newRo = 
-                        { template with
-                            Id = newId()
-                            Uniforms = uniforms trafo
-                        } :> IRenderObject
+                    let newRo = RenderObject.Clone template
+                    newRo.Uniforms <- uniforms trafo
 
                     //use r = runtime.
                     let p = runtime.PrepareRenderObject(signature,newRo)
