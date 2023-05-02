@@ -1,17 +1,19 @@
-Aardvark.Build
-
 Aardvark.Base
 FSharp.Data.Adaptive
 Aardvark.Base.FSharp
+
 Aardvark.Rendering
-Aardvark.Rendering.GL
-Aardvark.Application
 Aardvark.Rendering.Vulkan
-Aardvark.GPGPU
+Aardvark.Application.Slim.GL
+Aardvark.SceneGraph
+Aardvark.SceneGraph.IO
+Aardvark.Rendering.Text
+Adaptify.MSBuild
 
 FsPickler
 FsPickler.Json
-Suave
 
+Aardium
+
+Suave
 FSharp.Core
-Giraffe

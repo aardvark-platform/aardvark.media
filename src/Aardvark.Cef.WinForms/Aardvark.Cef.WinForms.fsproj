@@ -17,7 +17,8 @@
   <ItemGroup>
     <Compile Include="ChromiumStuff.fs" />
     <None Include="paket.references" />
-	<None Include="paket.template" />
+	  <None Include="paket.template" />
+	  <None Include="Aardvark.Cef.WinForms.targets" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj" />

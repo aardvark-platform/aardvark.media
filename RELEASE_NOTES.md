@@ -17,6 +17,10 @@
 - Updated Fomantic-UI to 2.8.8
 - Fixed and improved resource management
 
+### 5.3.5
+- Fixed assembly version of packages due to missing Aardvark.Build reference (was 1.0.0.0)
+- Fixed CEF packages
+
 ### 5.3.4
 - Updated to Aardvark.Rendering 5.3
 
