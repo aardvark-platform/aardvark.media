@@ -903,6 +903,11 @@ module ``F# Sg`` =
         let surface (m : ISurface) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.surface m)
 
+        /// Applies the given pool of effects to the scene.
+        /// The index active determines which effect is used at a time.
+        let effectPool (effects : FShade.Effect[]) (active : aval<int>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.effectPool effects active)
+
         /// Applies the given render pass.
         let pass (pass : RenderPass) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pass pass)
