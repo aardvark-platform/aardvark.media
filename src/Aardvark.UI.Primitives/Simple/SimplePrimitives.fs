@@ -59,14 +59,26 @@ module SimplePrimitives =
         }
 
     [<RequireQualifiedAccess>]
-    type TriggerDropdown = 
+    type TriggerDropdown =
         | Hover
         | Click
-        
+
+    [<RequireQualifiedAccess>]
     type DropdownMode =
-        | Clearable of placeholder : string
-        | Unclearable
-        | Icon of iconName : string
+        /// Dropdown is represented by the icon of the given name.
+        | Icon of iconName: string
+
+        /// Dropdown is represented by the currently selected text entry.
+        /// If a placeholder string is specified, it may be cleared by the user.
+        | Text of placeholder: string option
+
+        [<Obsolete("Use DropdownMode.Text with a placeholder.")>]
+        static member Clearable(placeholder : string) =
+            Text <| Some placeholder
+
+        [<Obsolete("Use DropdownMode.Text without a placeholder.")>]
+        static member Unclearable =
+            Text None
 
     type DropdownConfig =
         {
@@ -74,13 +86,25 @@ module SimplePrimitives =
             onTrigger   : TriggerDropdown
         }
 
-    module DropdownConfig = 
-        
-        let unClearable =
-            {
-                mode        = Unclearable
-                onTrigger   = TriggerDropdown.Click
-            }
+    module DropdownConfig =
+
+        /// Dropdown is represented by the icon of the given name.
+        let icon (iconName : string) =
+            { mode      = DropdownMode.Icon iconName
+              onTrigger = TriggerDropdown.Click }
+
+        /// Dropdown may be cleared by the user, displaying the given placeholder text.
+        let clearable (placeholder : string) =
+            { mode      = DropdownMode.Text (Some placeholder)
+              onTrigger = TriggerDropdown.Click }
+
+        /// Dropdown may not be cleared by the user.
+        let unclearable =
+            { mode      = DropdownMode.Text None
+              onTrigger = TriggerDropdown.Click }
+
+        [<Obsolete("Renamed to unclearable")>]
+        let unClearable = unclearable
 
     type NumberType =
         | Int
@@ -363,9 +387,6 @@ module SimplePrimitives =
                 if typeof<System.IComparable>.IsAssignableFrom typeof<'a> then Some Unchecked.compare<'a>
                 else None
 
-
-            let mutable id = 0
-
             let valuesWithKeys =
                 values
                 |> AMap.map (fun k v ->
@@ -405,17 +426,16 @@ module SimplePrimitives =
                 | None -> ".dropdown('clear');"
 
             let boot =
-                let trigger = 
-                    match cfg.onTrigger with 
+                let trigger =
+                    match cfg.onTrigger with
                     | TriggerDropdown.Click -> "'click'" // default
                     | TriggerDropdown.Hover -> "'hover'"
 
-                let clearable = 
-                    match cfg.mode with 
-                    | Unclearable
-                    | Icon _ -> "false"
-                    | Clearable _ -> "true"
-                    
+                let clearable =
+                    match cfg.mode with
+                    | DropdownMode.Text (Some _) -> "true"
+                    |  _ -> "false"
+
                 String.concat ";" [
                     "var $self = $('#__ID__');"
                     "$self.dropdown({ on: " + trigger + ", clearable: " + clearable + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
@@ -427,14 +447,12 @@ module SimplePrimitives =
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
                             yield input [ attribute "type" "hidden" ]
-                            match cfg.mode with 
-                            | Unclearable -> 
-                                yield i [ clazz "dropdown icon" ] []
-                                yield div [ clazz "default text"] ""
-                            | Clearable ph -> 
+                            match cfg.mode with
+                            | DropdownMode.Text ph ->
+                                let ph = ph |> Option.defaultValue ""
                                 yield i [ clazz "dropdown icon" ] []
                                 yield div [ clazz "default text"] ph
-                            | Icon iconName -> 
+                            | DropdownMode.Icon iconName ->
                                 yield i [ clazz (sprintf "%s icon" iconName)] []
                             yield
                                 Incremental.div (AttributeMap.ofList [clazz "ui menu"]) (
@@ -453,8 +471,12 @@ module SimplePrimitives =
                 )
             )
 
+        let dropdownUnclearable (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
+            dropdown DropdownConfig.unclearable atts values (AVal.map Some selected) (Option.get >> update)
+
+        [<Obsolete("Renamed to dropdownUnclearable")>]
         let dropdownUnClearable (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
-            dropdown DropdownConfig.unClearable atts values (AVal.map Some selected) (Option.get >> update)
+            dropdown DropdownConfig.unclearable atts values (AVal.map Some selected) (Option.get >> update)
 
     [<AutoOpen>]
     module ``Primtive Builders`` =
@@ -538,7 +560,7 @@ module SimplePrimitives =
         type DropdownBuilder() =
 
             member inline x.Yield(()) =
-                (AttributeMap.empty, AMap.empty, AVal.constant None, DropdownConfig.unClearable, (fun _ -> ()))
+                (AttributeMap.empty, AMap.empty, AVal.constant None, DropdownConfig.unclearable, (fun _ -> ()))
 
             [<CustomOperation("attributes")>]
             member inline x.Attributes((a,u,s,c,m), na) = (AttributeMap.union a (att na), u, s, c, m)
@@ -585,5 +607,9 @@ module SimplePrimitives =
     let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
         Incremental.dropdown cfg (att atts) values selected update
 
+    let inline dropdownUnclearable atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
+        Incremental.dropdownUnclearable (att atts) values selected update
+
+    [<Obsolete("Renamed to dropdownUnclearable")>]
     let inline dropdownUnClearable atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
-        Incremental.dropdownUnClearable (att atts) values selected update
+        Incremental.dropdownUnclearable (att atts) values selected update

@@ -172,11 +172,11 @@ let view (model : AdaptiveModel) =
             ]
             text "non-clearable"
             div [ clazz "item" ] [ 
-                dropdownUnClearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
+                dropdownUnclearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
             ]
             text "clearable"
             div [ clazz "item" ] [ 
-                dropdown { mode = DropdownMode.Clearable "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] values model.alt SetAlternative
+                dropdown { mode = DropdownMode.Text <| Some "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] values model.alt SetAlternative
             ]
             text "icon"
             div [ clazz "item" ] [ 
