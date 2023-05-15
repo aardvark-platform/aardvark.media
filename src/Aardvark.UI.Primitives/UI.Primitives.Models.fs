@@ -29,12 +29,6 @@ type ColorInput = {
 }
 
 [<ModelType>]
-type DropDownModel = {
-    values   : HashMap<int,string>
-    selected : int    
-}
-
-[<ModelType>]
 type LeafValue = 
     | Number of number : int 
     | Text of text : string
