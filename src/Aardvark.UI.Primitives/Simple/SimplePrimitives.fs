@@ -107,9 +107,9 @@ module SimplePrimitives =
         let unClearable = unclearable
 
     type NumberType =
-        | Int
-        | Real
-        | Decimal
+        | Int = 0
+        | Real = 1
+        | Decimal = 2
 
     type NumericConfigDefaults<'a>() =
         class
@@ -132,6 +132,12 @@ module SimplePrimitives =
                     NumericConfigDefaults<'a>.max <- unbox<'a> Int32.MaxValue
                     NumericConfigDefaults<'a>.small <- unbox<'a> 1
                     NumericConfigDefaults<'a>.large <- unbox<'a> 10
+                    NumericConfigDefaults<'a>.numType <- NumberType.Int
+                elif at = typeof<uint32> then
+                    NumericConfigDefaults<'a>.min <- unbox<'a> UInt32.MinValue
+                    NumericConfigDefaults<'a>.max <- unbox<'a> UInt32.MaxValue
+                    NumericConfigDefaults<'a>.small <- unbox<'a> 1u
+                    NumericConfigDefaults<'a>.large <- unbox<'a> 10u
                     NumericConfigDefaults<'a>.numType <- NumberType.Int
                 elif at = typeof<float> then
                     NumericConfigDefaults<'a>.min <- unbox<'a> Double.MinValue
@@ -171,7 +177,7 @@ module SimplePrimitives =
             let unpickle (v : string) =
                 try
                     match NumericConfigDefaults<'a>.NumType with
-                    | Int ->
+                    | NumberType.Int ->
                         match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
                         | (true, v) -> let txt = Text(Math.Round(v).ToString())
                                        let rv = Text<'a>.Parse.Invoke(txt)
@@ -243,7 +249,7 @@ module SimplePrimitives =
 
             let pattern =
                 match NumericConfigDefaults<'a>.NumType with
-                | Int -> "[0-9]+"
+                | NumberType.Int -> "[0-9]+"
                 | _ -> "[0-9]*(\.[0-9]*)?"
 
             require semui (
