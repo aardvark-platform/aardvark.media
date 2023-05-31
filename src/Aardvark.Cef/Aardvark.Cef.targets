@@ -11,10 +11,10 @@
   <Choose>
     <When Condition="$(TargetFrameworkIdentifier) == '.NETCoreApp'">
       <ItemGroup>
-        <None Include="$(MSBuildThisFileDirectory)..\process\netcoreapp3.1\Aardvark.Cef.Process.exe" Visible="false">
+        <None Include="$(MSBuildThisFileDirectory)..\process\net6.0-windows7.0\Aardvark.Cef.Process.exe" Visible="false">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
-        <None Include="$(MSBuildThisFileDirectory)..\process\netcoreapp3.1\Aardvark.Cef.Process.runtimeconfig.json" Visible="false">
+        <None Include="$(MSBuildThisFileDirectory)..\process\net6.0-windows7.0\Aardvark.Cef.Process.runtimeconfig.json" Visible="false">
           <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
       </ItemGroup>
