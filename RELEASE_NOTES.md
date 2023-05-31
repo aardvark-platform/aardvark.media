@@ -1,3 +1,8 @@
+### 5.4.0
+- Updated Fomantic-UI to 2.8.8
+- Fixed and improved resource management
+- Updated to Aardvark.Rendering 5.4
+
 ### 5.4.0-prerelease0007
 - updated to rendering 5.4 prerelease
 
