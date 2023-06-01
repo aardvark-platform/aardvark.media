@@ -25,6 +25,10 @@
 - Updated Fomantic-UI to 2.8.8
 - Fixed and improved resource management
 
+### 5.3.6
+- Fixed memory leak in event handler management
+- Updated to Xilium.CefGlue 0.4.0
+
 ### 5.3.5
 - Fixed assembly version of packages due to missing Aardvark.Build reference (was 1.0.0.0)
 - Fixed CEF packages

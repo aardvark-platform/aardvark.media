@@ -5,4 +5,4 @@ dotnet paket restore
 
 IF "%1"=="restore" exit /B
 
-dotnet build src/Aardvark.Media.sln
+dotnet build src/Aardvark.Media.NoExamples.slnf

@@ -3,8 +3,7 @@ on:
   push:
     branches:
       - main
-      - v54
-      - giraffeBackend
+      - v53
     paths:
       - RELEASE_NOTES.md
       - .github/workflows/publish.yml
