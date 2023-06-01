@@ -185,7 +185,7 @@ module ScreenshotrView =
                     "if(aardvark.electron) {"
 
                     "function makeVisible() {"
-                    "   document.getElementById(\"mainScreenshotrDiv\").style.display = \"inline\";"
+                    "   document.getElementsByClassName(\"mainScreenshotrDiv\")[0].style.display = \"inline\";"
                     "}"
 
                     "function takeScreenshot() {"
@@ -197,7 +197,7 @@ module ScreenshotrView =
                     "}"
 
                     "document.getElementById('__ID__').addEventListener('click', (e) => {"
-                    "   document.getElementById(\"mainScreenshotrDiv\").style.display = \"none\";"
+                    "   document.getElementsByClassName(\"mainScreenshotrDiv\")[0].style.display = \"none\";"
                     "   setTimeout(takeScreenshot, 500);" 
                     "   setTimeout(makeVisible, 1000);" 
                     "})"
@@ -237,7 +237,7 @@ module ScreenshotrView =
     /// only show UI when it should be visible and determine if 
     /// the credentials or the screenshot settings UI is shown
     let screenshotrUI (m: AdaptiveScreenshotrModel) = 
-        Incremental.div (AttributeMap.ofList [ attribute "id" "mainScreenshotrDiv"; style "position: absolute; top: 5%; left: 10%; width: 50%" ])  (
+        Incremental.div (AttributeMap.ofList [ clazz "mainScreenshotrDiv"; style "position: absolute; top: 5%; left: 10%; width: 50%" ])  (
             alist {
                 let! withoutIsVisible = m.withoutUiIsVisible
                 let! withIsVisible = m.withUiIsVisible
