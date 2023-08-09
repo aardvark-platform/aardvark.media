@@ -114,7 +114,7 @@ module TreeView =
             }
 
         let dependencies =
-            [ { kind = Stylesheet; name = "treeview"; url = "./resources/TreeView.css" } ]
+            [ { kind = Stylesheet; name = "treeview"; url = "resources/TreeView/TreeView.css" } ]
 
         let attributes =
             AttributeMap.ofList [

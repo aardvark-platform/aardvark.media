@@ -13,10 +13,10 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="resources\TreeView.css" />
     <Compile Include="VirtualTree\FlatTree.fs" />
     <Compile Include="VirtualTree\VirtualTreeModel.fs" />
     <Compile Include="VirtualTree\VirtualTreeApp.fs" />
+    <EmbeddedResource Include="TreeView\TreeView.css" LogicalName="resources/TreeView/TreeView.css" />
     <Compile Include="TreeView\TreeViewModel.fs" />
     <Compile Include="TreeView\TreeViewApp.fs" />
     <Compile Include="Model.fs" />
