@@ -101,7 +101,7 @@ module TreeView =
                             | false, true -> clazz "item selected"
                             | _           -> clazz "item"
 
-                    yield style $"display: flex; justify-content: flex-start; align-items: center; padding-left: {indent}px"
+                    yield style $"display: flex; justify-content: flex-start; align-items: center; padding: 5px; padding-left: {indent + 5}px"
                     yield onMouseEnter (fun _ -> message <| TreeView.Message.Hover item.Value)
                     yield onMouseLeave (fun _ -> message TreeView.Message.Unhover)
                     yield onMouseDoubleClick (fun _ -> message <| TreeView.Message.Select item.Value)
@@ -119,7 +119,7 @@ module TreeView =
         let attributes =
             AttributeMap.ofList [
                 clazz "ui inverted divided list treeview"
-                style "margin: 10px; padding: 5px; height: 100%; max-height: 400px; overflow-x: hidden; overflow-y: auto; border-style: solid; border-width: 1px; border-color: gray"
+                style "margin: 10px; height: 100%; max-height: 400px; overflow-x: hidden; overflow-y: auto; border-style: solid; border-width: 1px; border-color: gray"
                 onMouseLeave (fun _ -> message TreeView.Message.Unhover)
             ]
 

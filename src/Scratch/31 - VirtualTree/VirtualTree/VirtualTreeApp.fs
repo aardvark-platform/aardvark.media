@@ -94,7 +94,7 @@ module VirtualTree =
 
                 "const getItemHeight = () => {"
                 "    const $item = $(self).children('.item:not(.virtual):first');"
-                "    return $item.length > 0 ? $item[0].clientHeight : 0;"
+                "    return $item.length > 0 ? $item.outerHeight(true) : 0;"
                 "};"
 
                 "const updateHeight = () => {"
