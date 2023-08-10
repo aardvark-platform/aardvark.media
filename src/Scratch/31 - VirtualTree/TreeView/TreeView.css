@@ -1,20 +1,15 @@
 .treeview .hovered.item:not(.selected) {
-    background-color: rgba(255.0,255.0,255.0,0.10);
+    background-color: rgba(255,255,255,0.15);
     font-weight: normal;
 }
 
-.treeview .selected.item:not(.hovered) {
-    background-color: rgba(255.0,255.0,255.0,0.20);
-    font-weight: bold;
+.treeview .highlighted.item:not(.selected) {
+    background-color: rgba(255,255,255,0.05);
+    font-weight: normal;
 }
 
-.treeview .hovered.selected.item {
-    background-color: rgba(255.0,255.0,255.0,0.15);
-    font-weight: bold;
-}
-
-.treeview .parent.item {
-    background-color: rgb(33, 96, 15);
+.treeview .selected.item {
+    background-color: rgba(255,255,255,0.20);
     font-weight: bold;
 }
 

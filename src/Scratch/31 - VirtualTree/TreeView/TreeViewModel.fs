@@ -1,5 +1,6 @@
 ﻿namespace TreeView.Model
 
+open Aardvark.UI
 open FSharp.Data.Adaptive
 open Adaptify
 
@@ -12,7 +13,12 @@ type TreeView<'Key, 'Value> =
         tree     : VirtualTree<'Key>
         values   : HashMap<'Key, 'Value>
         hovered  : 'Key voption
-        selected : 'Key voption
+
+        [<TreatAsValue>]
+        selected : HashSet<'Key>    // Adaptify does not support generic HashSets
+
+        [<NonAdaptive>]
+        lastClick : 'Key voption    // For range select
     }
 
 module TreeView =
@@ -21,7 +27,7 @@ module TreeView =
     type Message<'Key> =
         | Hover of key: 'Key
         | Unhover
-        | Select of key : 'Key
+        | Click of key : 'Key * modifers: KeyModifiers
         | Virtual of VirtualTree.Message<'Key>
 
         static member inline ScrollTo(target : 'Key) =
@@ -40,10 +46,11 @@ module TreeView =
             Virtual <| VirtualTree.Message.UncollapseAll
 
     let empty<'Key, 'Value> : TreeView<'Key, 'Value> =
-        { tree     = VirtualTree.empty
-          values   = HashMap.empty
-          hovered  = ValueNone
-          selected = ValueNone }
+        { tree      = VirtualTree.empty
+          values    = HashMap.empty
+          hovered   = ValueNone
+          selected  = HashSet.empty
+          lastClick = ValueNone }
 
     let set (getChildren : 'Key -> #seq<'Key>) (values : HashMap<'Key, 'Value>) (root : 'Key) (tree : TreeView<'Key, 'Value>) =
         let flat = root |> FlatTree.ofHierarchy getChildren

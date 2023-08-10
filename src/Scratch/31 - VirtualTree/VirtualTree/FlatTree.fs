@@ -28,9 +28,9 @@ module internal ArraySegment =
 
 [<Struct>]
 type internal FlatNode =
-    val Count  : int
-    val Depth  : int
-    val Offset : int
+    val Count  : int    // Number of nodes in subtree with the current node as root (inluding the node itself)
+    val Depth  : int    // Depth of the node (0 for root)
+    val Offset : int    // Offset from the parent, e.g. 1 for first child, count of first child for second child
 
     member inline x.IsLeaf =
         x.Count = 1
@@ -80,6 +80,24 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
     /// Returns the index of the given node if it exists.
     member x.IndexOf(value : 'T) =
         indices.TryFindV value
+
+    /// Returns all values that are within the index range spanned by the given values.
+    member x.Range(input : #seq<'T>) =
+        let mutable minIndex = Int32.MaxValue
+        let mutable maxIndex = Int32.MinValue
+
+        for value in input do
+            match indices.TryFindV value with
+            | ValueSome index ->
+                minIndex <- min minIndex index
+                maxIndex <- max maxIndex index
+
+            | _ -> ()
+
+        if minIndex = Int32.MinValue then
+            HashSet.Empty
+        else
+            HashSet.OfArrayRange(values.Array, values.Offset + minIndex, maxIndex - minIndex + 1)
 
     /// Returns whether the tree contains the given node.
     member x.Contains(value : 'T) =
@@ -353,6 +371,10 @@ module FlatTree =
     /// Returns the index of the given node if it exists.
     let inline indexOf (value : 'T) (tree : FlatTree<'T>) =
         tree.IndexOf value
+
+    /// Returns all values that are within the index range spanned by the given values.
+    let inline range (input : #seq<'T>) (tree : FlatTree<'T>) =
+        tree.Range input
 
     /// Returns whether the tree contains the given node.
     let inline contains (value : 'T) (tree : FlatTree<'T>) =

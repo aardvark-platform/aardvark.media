@@ -23,6 +23,15 @@ module TreeView =
 
             state
 
+    [<AutoOpen>]
+    module private Events =
+
+        let disablePropagation event =
+            sprintf "$('#__ID__').on('%s', function(e) { e.stopPropagation(); } ); " event
+
+        let onClickModifiers (cb : KeyModifiers -> 'msg) =
+            onEvent "onclick" ["{ shift: event.shiftKey, alt: event.altKey, ctrl: event.ctrlKey  }"] (List.head >> Pickler.json.UnPickleOfString >> cb)
+
     let update (message : TreeView.Message<'Key>) (model : TreeView<'Key, 'Value>) =
         match message with
         | TreeView.Message.Hover key ->
@@ -31,9 +40,25 @@ module TreeView =
         | TreeView.Message.Unhover ->
             { model with hovered = ValueNone }
 
-        | TreeView.Message.Select key ->
-            let s = if model.selected = ValueSome key then ValueNone else ValueSome key
-            { model with selected = s }
+        | TreeView.Message.Click (key, modifiers) ->
+            if modifiers.ctrl then
+                if model.selected |> HashSet.contains key then
+                    { model with
+                        selected  = model.selected |> HashSet.remove key
+                        lastClick = ValueSome key }
+                else
+                    { model with
+                        selected  = model.selected |> HashSet.add key
+                        lastClick = ValueSome key }
+
+            elif modifiers.shift then
+                let anchor = model.lastClick |> ValueOption.defaultValue model.tree.hierarchy.Root
+                { model with selected = model.tree.hierarchy |> FlatTree.range [| anchor; key |] }
+
+            else
+                { model with
+                    selected  = HashSet.single key
+                    lastClick = ValueSome key }
 
         | TreeView.Message.Virtual msg ->
             { model with tree = model.tree |> VirtualTree.update msg }
@@ -42,24 +67,13 @@ module TreeView =
              (itemNode : 'Key -> 'primValue -> DomNode<'msg>)
              (model : AdaptiveTreeView<'Key, 'primKey, 'aKey, 'Value, 'primValue, 'aValue>) : DomNode<'msg> =
 
-        let descendants (node : aval<'Key voption>) =
-            adaptive {
-                let! tree = model.tree.current
-                match! node with
-                | ValueSome h -> return tree |> FlatTree.descendants h
-                | _ -> return ArraySegment.Empty
-            }
-
-        let hoverParent =
+        let hoveredDescendants =
             adaptive {
                 let! tree = model.tree.current
                 match! model.hovered with
-                | ValueSome h -> return tree |> FlatTree.parent h
-                | _ -> return ValueNone
+                | ValueSome h -> return tree |> FlatTree.descendants h
+                | _ -> return ArraySegment.Empty
             }
-
-        let hovered = descendants model.hovered
-        let selected = descendants model.selected
 
         let itemNode (item : VirtualTree.Item<'Key>) =
             let value = model.values |> AMap.find item.Value
@@ -78,33 +92,35 @@ module TreeView =
                             TreeView.Message.Collapse item.Value
                         |> message
 
-                    i [ clazz $"{icon} link icon"; style "color: white"; onClick (fun _ -> collapseMessage) ] []
+                    onBoot (disablePropagation "click") (
+                        i [ clazz $"{icon} link icon"; style "color: white"; onClick (fun _ -> collapseMessage) ] []
+                    )
 
             let attributes =
                 AttributeMap.ofAMap <| amap {
-                    let! hoverParent = hoverParent
-                    let childHovered = hoverParent |> ValueOption.contains item.Value
+                    let! hovered = model.hovered
+                    let hovered = hovered |> ValueOption.contains item.Value
 
-                    let! hovered = hovered
-                    let hovered = hovered |> ArraySegment.contains item.Value
+                    let! hoveredDescendants = hoveredDescendants
+                    let highlighted = hoveredDescendants |> ArraySegment.contains item.Value
 
-                    let! selected = selected
-                    let selected = selected |> ArraySegment.contains item.Value
+                    let! selected = model.selected
+                    let selected = selected |> HashSet.contains item.Value
 
-                    if childHovered then
-                        yield clazz "item parent"
-                    else
-                        yield
-                            match hovered, selected with
-                            | true, true  -> clazz "item hovered selected"
-                            | true, false -> clazz "item hovered"
-                            | false, true -> clazz "item selected"
-                            | _           -> clazz "item"
+                    let selectedClass =
+                        if selected then "selected" else ""
 
+                    let highlightClass =
+                        if highlighted then
+                            if hovered then "hovered" else "highlighted"
+                        else
+                            ""
+
+                    yield clazz $"item {selectedClass} {highlightClass}"
                     yield style $"display: flex; justify-content: flex-start; align-items: center; padding: 5px; padding-left: {indent + 5}px"
                     yield onMouseEnter (fun _ -> message <| TreeView.Message.Hover item.Value)
                     yield onMouseLeave (fun _ -> message TreeView.Message.Unhover)
-                    yield onMouseDoubleClick (fun _ -> message <| TreeView.Message.Select item.Value)
+                    yield onClickModifiers (fun modifiers -> message <| TreeView.Message.Click (item.Value, modifiers))
                 }
 
             Incremental.div attributes <| alist {
