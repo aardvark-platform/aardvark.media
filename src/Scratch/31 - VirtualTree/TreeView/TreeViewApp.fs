@@ -2,7 +2,6 @@
 
 open Aardvark.UI
 open FSharp.Data.Adaptive
-open System
 
 open TreeView.Model
 open VirtualTree.Model
@@ -12,6 +11,7 @@ open VirtualTree.Utilities
 module TreeView =
 
     module private ArraySegment =
+        open System
 
         let inline contains (value : 'T) (segment : ArraySegment<'T>) =
             let mutable state = false
@@ -67,14 +67,6 @@ module TreeView =
              (itemNode : 'Key -> 'primValue -> DomNode<'msg>)
              (model : AdaptiveTreeView<'Key, 'primKey, 'aKey, 'Value, 'primValue, 'aValue>) : DomNode<'msg> =
 
-        let hoveredDescendants =
-            adaptive {
-                let! tree = model.tree.current
-                match! model.hovered with
-                | ValueSome h -> return tree |> FlatTree.descendants h
-                | _ -> return ArraySegment.Empty
-            }
-
         let itemNode (item : VirtualTree.Item<'Key>) =
             let value = model.values |> AMap.find item.Value
             let indent = item.Depth * 16
@@ -101,22 +93,16 @@ module TreeView =
                     let! hovered = model.hovered
                     let hovered = hovered |> ValueOption.contains item.Value
 
-                    let! hoveredDescendants = hoveredDescendants
-                    let highlighted = hoveredDescendants |> ArraySegment.contains item.Value
-
                     let! selected = model.selected
                     let selected = selected |> HashSet.contains item.Value
 
-                    let selectedClass =
-                        if selected then "selected" else ""
+                    let classes =
+                        [ "item"
+                          if hovered then "hovered"
+                          if selected then "selected" ]
+                        |> String.concat " "
 
-                    let highlightClass =
-                        if highlighted then
-                            if hovered then "hovered" else "highlighted"
-                        else
-                            ""
-
-                    yield clazz $"item {selectedClass} {highlightClass}"
+                    yield clazz classes
                     yield style $"display: flex; justify-content: flex-start; align-items: center; padding: 5px; padding-left: {indent + 5}px"
                     yield onMouseEnter (fun _ -> message <| TreeView.Message.Hover item.Value)
                     yield onMouseLeave (fun _ -> message TreeView.Message.Unhover)

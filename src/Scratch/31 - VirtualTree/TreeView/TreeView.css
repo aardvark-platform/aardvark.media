@@ -1,16 +1,9 @@
 .treeview .hovered.item:not(.selected) {
-    background-color: rgba(255,255,255,0.15);
-    font-weight: normal;
-}
-
-.treeview .highlighted.item:not(.selected) {
-    background-color: rgba(255,255,255,0.05);
-    font-weight: normal;
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 .treeview .selected.item {
-    background-color: rgba(255,255,255,0.20);
-    font-weight: bold;
+    background-color: rgba(255, 255, 255, 0.2);
 }
 
 .treeview .item span {
