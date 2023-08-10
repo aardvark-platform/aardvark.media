@@ -43,7 +43,7 @@ module VirtualTree =
                         tree
                 )
 
-            match tree.current |> FlatTree.indexOf target with
+            match tree.current |> FlatTree.tryIndexOf target with
             | ValueSome i -> { tree with scrollTarget = i * tree.height.itemHeight }
             | _ -> tree
 

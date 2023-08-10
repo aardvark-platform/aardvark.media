@@ -6,6 +6,7 @@ open System.Text
 open FSharp.Data.Adaptive
 open Aardvark.Base
 
+// TODO: Replace with Dict.tryFindV when updated to >= Aardvark.Base 5.2.26
 [<AutoOpen>]
 module internal DictionaryExtensions =
 
@@ -17,6 +18,7 @@ module internal DictionaryExtensions =
             else ValueNone
 
 
+// TODO: Remove when updated to >= Aardvark.Base 5.2.26
 module internal ArraySegment =
 
     let inline mapArray (mapping : 'T1 -> 'T2) (segment : ArraySegment<'T1>) =
@@ -78,8 +80,12 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
         FlatItem(values.[index], n.Depth, n.IsLeaf)
 
     /// Returns the index of the given node if it exists.
-    member x.IndexOf(value : 'T) =
+    member x.TryIndexOf(value : 'T) =
         indices.TryFindV value
+
+    /// Returns the index of the given node.
+    member x.IndexOf(value : 'T) =
+        indices.[value]
 
     /// Returns all values that are within the index range spanned by the given values.
     member x.Range(input : #seq<'T>) =
@@ -137,6 +143,12 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
 
         | _ ->
             Array.empty
+
+    /// Returns the node's number of descendants plus 1, or 0 if it does not exist.
+    member x.DescendantCount(value : 'T) =
+        match indices.TryFindV value with
+        | ValueSome i -> nodes.[i].Count
+        | _ -> 0
 
     /// Returns the value and its descendants, if it exists in the tree.
     member x.Descendants(value : 'T) =
@@ -369,6 +381,10 @@ module FlatTree =
         tree.IsRoot value
 
     /// Returns the index of the given node if it exists.
+    let inline tryIndexOf (value : 'T) (tree : FlatTree<'T>) =
+        tree.TryIndexOf value
+
+    /// Returns the index of the given node if it exists.
     let inline indexOf (value : 'T) (tree : FlatTree<'T>) =
         tree.IndexOf value
 
@@ -387,6 +403,10 @@ module FlatTree =
     /// Returns the values from the root to the given node.
     let inline rootPath (value : 'T) (tree : FlatTree<'T>) =
         tree.RootPath value
+
+    /// Returns the node's number of descendants plus 1, or 0 if it does not exist.
+    let inline descendantCount (value : 'T) (tree : FlatTree<'T>) =
+        tree.DescendantCount value
 
     /// Returns the value and its descendants, if it exists in the tree.
     let inline descendants (value : 'T) (tree : FlatTree<'T>) =
