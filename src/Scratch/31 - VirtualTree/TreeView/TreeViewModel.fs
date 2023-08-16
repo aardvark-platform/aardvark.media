@@ -36,7 +36,7 @@ module TreeView =
         | Toggle of key: 'Key
         | Hover of key: 'Key
         | Unhover
-        | Click of key : 'Key * modifers: KeyModifiers
+        | Click of key : 'Key * modifiers: KeyModifiers
         | Virtual of VirtualTree.Message<'Key>
 
         static member inline ScrollTo(target : 'Key) =

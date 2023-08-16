@@ -24,15 +24,6 @@ module TreeView =
 
             state
 
-        let inline reduce (reduction : 'T -> 'T -> 'T) (segment : ArraySegment<'T>)=
-            let f = OptimizedClosures.FSharpFunc<_, _, _>.Adapt (reduction)
-            let mutable res = segment.[0]
-
-            for i = 1 to segment.Count - 1 do
-                res <- f.Invoke(res, segment.[i])
-
-            res
-
     [<AutoOpen>]
     module private Events =
 
@@ -62,15 +53,16 @@ module TreeView =
                     buffer.[i] <- state
 
                 // Check and adjust ancestors based on their descendants
-                let path = model.tree.hierarchy |> FlatTree.rootPath key
+                let path = model.tree.hierarchy |> FlatTree.rootPathIndices index
 
                 for i = path.Length - 2 downto 0 do
                     let curr = path.[i]
-                    let index = model.tree.hierarchy |> FlatTree.indexOf curr
-                    let count = model.tree.hierarchy |> FlatTree.descendantCount curr
+                    let children = model.tree.hierarchy |> FlatTree.childrenIndices curr
 
-                    if count > 1 then
-                        buffer.[index] <- ArraySegment(buffer, index + 1, count - 1) |> ArraySegment.reduce (|||)
+                    if children.Length > 0 then
+                        let mutable v = buffer.[children.[0]]
+                        for c = 1 to children.Length - 1 do v <- v ||| buffer.[children.[c]]
+                        buffer.[curr] <- v
 
                 { model with visibility = buffer}
 

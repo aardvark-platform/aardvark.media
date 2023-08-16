@@ -144,6 +144,18 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
         | _ ->
             Array.empty
 
+    /// Returns the indices from the root to the node with the given index.
+    member x.RootPathIndices(index : int) =
+        let depth = nodes.[index].Depth
+        let arr = Array.zeroCreate<int> (depth + 1)
+
+        let mutable i = index
+        for j = 0 to depth do
+            arr.[depth - j] <- i
+            i <- i - nodes.[i].Offset
+
+        arr
+
     /// Returns the node's number of descendants plus 1, or 0 if it does not exist.
     member x.DescendantCount(value : 'T) =
         match indices.TryFindV value with
@@ -241,7 +253,7 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
         | ValueSome 0 -> x
         | ValueSome i -> x.SubTree i
 
-    member private x.Children(i : int) =
+    member private x.ChildrenCount(i : int) =
         let node = nodes.[i]
 
         let mutable count = 0
@@ -262,7 +274,7 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
 
             if node.Count > 1 then
                 let subtree =
-                    let count = 1 + x.Children i
+                    let count = 1 + x.ChildrenCount i
 
                     if node.Count = count then
                         x.SubTree i
@@ -291,6 +303,18 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
                 result.Add <| struct (values.[i], subtree)
 
         HashMap.ofSeqV result
+
+    /// Returns the indices of the children of the node at the given index.
+    member x.ChildrenIndices(index : int) =
+        let count = x.ChildrenCount index
+        let result = Array.zeroCreate count
+
+        let mutable j = index + 1
+        for i = 0 to count - 1 do
+            result.[i] <- j
+            j <- j + nodes.[j].Count
+
+        result
 
     override x.ToString() =
         if x.IsEmpty then "[]"
@@ -404,6 +428,10 @@ module FlatTree =
     let inline rootPath (value : 'T) (tree : FlatTree<'T>) =
         tree.RootPath value
 
+    /// Returns the indices from the root to the node with the given index.
+    let inline rootPathIndices (index : int) (tree : FlatTree<'T>) =
+        tree.RootPathIndices index
+
     /// Returns the node's number of descendants plus 1, or 0 if it does not exist.
     let inline descendantCount (value : 'T) (tree : FlatTree<'T>) =
         tree.DescendantCount value
@@ -427,3 +455,7 @@ module FlatTree =
     /// Returns all subtrees with the direct children collapsed.
     let inline collapsed (tree : FlatTree<'T>) =
         tree.Collapsed()
+
+    /// Returns the indices of the children of the node at the given index.
+    let inline childrenIndices (index : int) (tree : FlatTree<'T>) =
+        tree.ChildrenIndices(index)
