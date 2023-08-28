@@ -25,6 +25,7 @@ module VirtualList =
     let update (message : VirtualList.Message) (list : VirtualList<'T>) =
         match message with
         | VirtualList.Message.Resize height ->
+            let height = { height with itemHeight = max height.itemHeight list.height.itemHeight }
             Log.line "%A" height
             { list with height = height }
 
@@ -49,22 +50,16 @@ module VirtualList =
 
                 "const getItemHeight = () => {"
                 "    const $item = $(self).children('.item:not(.virtual):first');"
-                "    return $item.length > 0 ? $item[0].clientHeight : 0;"
+                "    return $item.length > 0 ? $item.outerHeight(true) : 0;"
                 "};"
 
-                "let lastHeight = '';"
                 "const updateHeight = () => {"
                 "    const height = {"
                 "        itemHeight: getItemHeight(),"
                 "        clientHeight: self.clientHeight"
                 "    };"
 
-                "    if (height.itemHeight !== lastHeight.itemHeight ||"
-                "        height.clientHeight !== lastHeight.clientHeight)"
-                "    {"
-                "        aardvark.processEvent('__ID__', 'onupdate', height);"
-                "        lastHeight = height;"
-                "    }"
+                "    aardvark.processEvent('__ID__', 'onupdate', height);"
                 "};"
 
                 "const scrollTo = (offset) => {"
@@ -79,7 +74,7 @@ module VirtualList =
             ]
 
         let item (element : 'T) =
-            div [clazz "item"; style "color: white"] [itemNode element]
+            div [clazz "item"; style "padding: 5px; color: white"] [itemNode element]
 
         let virtualItem (height : int) =
             div [clazz "item virtual"; style $"height: {height}px; visibility: hidden"] []
@@ -127,7 +122,7 @@ module VirtualList =
         onBoot' channels bootJs (
             elements |> Incremental.div (AttributeMap.ofList [
                 clazz "ui inverted divided list"
-                style "margin: 10px; padding: 5px; height: 100%; max-height: 400px; overflow-y: auto; border-style: solid; border-width: 1px; border-color: gray"
+                style "margin: 10px; height: 100%; max-height: 400px; overflow-y: auto; border-style: solid; border-width: 1px; border-color: gray"
                 onUpdate; onScroll
             ])
         )
