@@ -23,6 +23,8 @@ type VirtualTree<'T> =
 
         [<NonAdaptive>]
         collapsed : HashMap<'T, FlatTree<'T>>  // Collapsed subtrees
+
+        showRoot : bool     // Whether the root node should be displayed (false for forest view)
     }
 
 
@@ -53,15 +55,6 @@ module VirtualTree =
               Depth = depth
               Kind  = kind }
 
-        new (flat : FlatItem<'T>, collapsed : bool) =
-            let kind =
-                if flat.IsLeaf then
-                    if collapsed then ItemKind.Collapsed else ItemKind.Leaf
-                else
-                    ItemKind.Uncollapsed
-
-            Item(flat.Value, flat.Depth, kind)
-
     [<RequireQualifiedAccess>]
     type Message<'T> =
         | OnResize of height: VirtualHeight
@@ -71,6 +64,7 @@ module VirtualTree =
         | CollapseAll
         | Uncollapse of key: 'T
         | UncollapseAll
+        | ToggleRoot
 
     let inline ofTree (tree : FlatTree<'T>) =
         { height       = Unchecked.defaultof<_>
@@ -80,7 +74,9 @@ module VirtualTree =
           current = tree
           hierarchy = tree
 
-          collapsed = HashMap.empty }
+          collapsed = HashMap.empty
+
+          showRoot = false }
 
     let inline empty<'T> : VirtualTree<'T> =
         ofTree FlatTree.empty

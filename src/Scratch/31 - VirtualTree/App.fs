@@ -149,6 +149,13 @@ let view (model : AdaptiveModel) =
                     text "Scroll"
                 ]
 
+                simplecheckbox {
+                    attributes [clazz "ui inverted checkbox"; style "margin-left: 10px"]
+                    state model.treeView.tree.showRoot
+                    toggle (TreeViewAction TreeView.Message.ToggleRoot)
+                    content [ text "Show root" ]
+                }
+
                 model.treeView |> TreeView.view TreeViewAction item
             ]
         )

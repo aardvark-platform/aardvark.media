@@ -27,7 +27,8 @@ module VirtualTree =
     let rec update (message : VirtualTree.Message<'T>) (tree : VirtualTree<'T>) =
         match message with
         | VirtualTree.Message.OnResize height ->
-            { tree with height = max tree.height height }
+            let height = { height with itemHeight = max height.itemHeight tree.height.itemHeight }
+            { tree with height = height }
 
         | VirtualTree.Message.OnScroll offset ->
             { tree with scrollOffset = offset }
@@ -44,8 +45,15 @@ module VirtualTree =
                 )
 
             match tree.current |> FlatTree.tryIndexOf target with
-            | ValueSome i -> { tree with scrollTarget = i * tree.height.itemHeight }
-            | _ -> tree
+            | ValueSome i ->
+                let i = if tree.showRoot then i else i - 1
+
+                if i > 0 then
+                    { tree with scrollTarget = i * tree.height.itemHeight }
+                else
+                    tree
+            | _ ->
+                tree
 
         | VirtualTree.Message.Collapse node ->
             let leaf = FlatTree.singleton node
@@ -58,21 +66,39 @@ module VirtualTree =
         | VirtualTree.Message.CollapseAll ->
             if tree.hierarchy.IsEmpty then tree
             else
-                { tree with
-                    current   = FlatTree.singleton tree.hierarchy.Root
-                    collapsed = FlatTree.collapsed tree.hierarchy }
+                let collapsed =
+                    { tree with
+                        current   = FlatTree.singleton tree.hierarchy.Root
+                        collapsed = FlatTree.collapsed tree.hierarchy }
+
+                if tree.showRoot then collapsed
+                else
+                    let root = tree.hierarchy.Root
+                    collapsed |> update (VirtualTree.Message.Uncollapse root)
 
         | VirtualTree.Message.Uncollapse node ->
-            let subtree = tree.collapsed.[node]
+            match tree.collapsed |> HashMap.tryFindV node with
+            | ValueSome subtree ->
+                { tree with
+                    current   = tree.current |> FlatTree.replace node subtree
+                    collapsed = tree.collapsed |> HashMap.remove node }
 
-            { tree with
-                current   = tree.current |> FlatTree.replace node subtree
-                collapsed = tree.collapsed |> HashMap.remove node }
+            | _ ->
+                tree
 
         | VirtualTree.Message.UncollapseAll ->
             { tree with
                 current   = tree.hierarchy
                 collapsed = HashMap.empty }
+
+        | VirtualTree.Message.ToggleRoot ->
+            let tree = { tree with showRoot = not tree.showRoot }
+
+            if tree.showRoot || tree.hierarchy.IsEmpty then tree
+            else
+                let root = tree.hierarchy.Root
+                tree |> update (VirtualTree.Message.Uncollapse root)
+
 
     let view (message : VirtualTree.Message<'T> -> 'msg)
              (itemNode : VirtualTree.Item<'T> -> DomNode<'msg>)
@@ -128,36 +154,50 @@ module VirtualTree =
 
         let elements =
             alist {
+                let! showRoot = tree.showRoot
                 let! itemHeight = tree.height.itemHeight
+                let origin = if showRoot then 0 else 1
 
                 if itemHeight = 0 then
                     let! elements = tree.current
 
                     // We do not know the item height yet, render two elements to determine it.
                     // Also we need the client height of the list, expand it to the max with a big virtual item.
-                    if elements.Count > 0 then
+                    if elements.Count > origin then
                         yield virtualItem 9999
 
-                        for i = 0 to (min elements.Count 2) - 1 do
-                            yield item <| VirtualTree.Item(elements.[i], false)
+                        for i = origin to (min elements.Count 2) - 1 do
+                            let fi = elements.[i]
+                            yield item <| VirtualTree.Item(fi.Value, fi.Depth - origin, VirtualTree.ItemKind.Uncollapsed)
                 else
                     let! elements = tree.current
                     let! clientHeight = tree.height.clientHeight
                     let! scrollOffset = tree.scrollOffset
 
-                    let first = ((scrollOffset / itemHeight) - border) |> clamp 0 (elements.Count - 1)
-                    let last = (first + (clientHeight / itemHeight) + 2 * border) |> min (elements.Count - 1)
+                    if elements.Count > origin then
+                        let first = (origin + (scrollOffset / itemHeight) - border) |> clamp origin (elements.Count - 1)
+                        let last = (first + (clientHeight / itemHeight) + 2 * border) |> min (elements.Count - 1)
 
-                    if first > 0 then
-                        yield virtualItem (first * itemHeight)
+                        if first > origin then
+                            yield virtualItem ((first - origin) * itemHeight)
 
-                    for i = first to last do
-                        let fi = elements.[i]
-                        let ti = VirtualTree.Item(fi, tree.collapsed.ContainsKey fi.Value)
-                        yield item ti
+                        for i = first to last do
+                            let fi = elements.[i]
 
-                    if last < elements.Count - 1 then
-                        yield virtualItem ((elements.Count - last - 1) * itemHeight)
+                            let kind =
+                                if fi.IsLeaf then
+                                    if tree.collapsed.ContainsKey fi.Value then
+                                        VirtualTree.ItemKind.Collapsed
+                                    else
+                                        VirtualTree.ItemKind.Leaf
+                                else
+                                    VirtualTree.ItemKind.Uncollapsed
+
+                            let ti = VirtualTree.Item(fi.Value, fi.Depth - origin, kind)
+                            yield item ti
+
+                        if last < elements.Count - 1 then
+                            yield virtualItem ((elements.Count - last - 1) * itemHeight)
             }
 
         let channels : (string * Channel) list = [

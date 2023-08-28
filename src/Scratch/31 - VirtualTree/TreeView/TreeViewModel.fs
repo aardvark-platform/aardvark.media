@@ -54,6 +54,9 @@ module TreeView =
         static member inline UncollapseAll : Message<'Key> =
             Virtual <| VirtualTree.Message.UncollapseAll
 
+        static member inline ToggleRoot : Message<'Key> =
+            Virtual <| VirtualTree.Message.ToggleRoot
+
     let empty<'Key, 'Value> : TreeView<'Key, 'Value> =
         { tree       = VirtualTree.empty
           values     = HashMap.empty
