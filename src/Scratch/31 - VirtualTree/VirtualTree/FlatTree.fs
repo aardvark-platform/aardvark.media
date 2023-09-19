@@ -62,6 +62,15 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
     internal new (nodes : FlatNode[], values : 'T[], indices : Dict<'T, int>) =
         FlatTree(ArraySegment nodes, ArraySegment values, indices)
 
+    internal new (nodes : ArraySegment<FlatNode>, values : ArraySegment<'T>) =
+        let indices = Dict(initialCapacity = values.Count)
+        for i = 0 to values.Count - 1 do
+            indices.Add(values.[i], i)
+        FlatTree(nodes, values, indices)
+
+    internal new (nodes : FlatNode[], values : 'T[]) =
+        FlatTree(ArraySegment nodes, ArraySegment values)
+
     member private _.Nodes = nodes
     member private _.Values = values
 
@@ -219,13 +228,49 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
             replacement.Values.CopyTo(values', countLeft)
             values.Slice(startRight).CopyTo(values', countLeft + replacement.Count)
 
-            // Compute indices
-            let indices' = Dict(initialCapacity = countTotal)
+            FlatTree(nodes', values')
 
-            for i = 0 to countTotal - 1 do
-                indices'.Add(values'.[i], i)
+    /// Inserts the given value as the last child of the given parent node.
+    member x.Insert(parent : 'T, value : 'T) =
+        match indices.TryFindV parent with
+        | ValueNone -> x
+        | ValueSome parentIndex ->
+            let node = nodes.[parentIndex]
+            let index = parentIndex + node.Count
+            let countRight = nodes.Count - index
+            let countTotal = nodes.Count + 1
 
-            FlatTree(nodes', values', indices')
+            // Compute new nodes
+            let nodes' = Array.zeroCreate countTotal
+
+            // Count of nodes on the root path of the inserted node have to be adjusted
+            nodes.Slice(0, index).CopyTo(nodes')
+
+            let mutable i = parentIndex
+            for _ = 0 to node.Depth do
+                let n = nodes.[i]
+                nodes'.[i] <- FlatNode(n.Count + 1, n.Depth, n.Offset)
+                i <- i - n.Offset
+
+            nodes'.[index] <- FlatNode(1, node.Depth + 1, node.Count)
+
+            // Parent offsets of nodes right of the inserted node have to be adjusted
+            // if the parent of that node is on the root path of the inserted node
+            for i = 0 to countRight - 1 do
+                let n = nodes.[index + i]
+
+                if n.Offset <= i then
+                    nodes'.[index + i + 1] <- n
+                else
+                    nodes'.[index + i + 1] <- FlatNode(n.Count, n.Depth, n.Offset + 1)
+
+            // Copy values
+            let values' = Array.zeroCreate countTotal
+            values.Slice(0, index).CopyTo(values')
+            values'[index] <- value
+            values.Slice(index).CopyTo(values', index + 1)
+
+            FlatTree(nodes', values')
 
     /// Deletes the given node and its descendants.
     member inline x.Delete(value : 'T) =
@@ -294,11 +339,7 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
                             k <- k + nodes.[k].Count
                             inc &j
 
-                        let indices = Dict(initialCapacity = count)
-                        for i = 0 to count - 1 do
-                            indices.Add(values'.[i], i)
-
-                        FlatTree(nodes', values', indices)
+                        FlatTree(nodes', values')
 
                 result.Add <| struct (values.[i], subtree)
 
@@ -338,7 +379,8 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
                 d <- di
 
             if x.Count > 1 then
-                sb.Append " ]" |> ignore
+                let cb = String.replicate d "]"
+                sb.Append $" {cb} " |> ignore
 
             sb.ToString()
 
@@ -354,8 +396,7 @@ module FlatTree =
     let singleton (value : 'T) =
         FlatTree<'T>(
             [| FlatNode(count = 1, depth = 0, offset = 0) |],
-            [| value |],
-            Dict [| KeyValuePair(value, 0) |]
+            [| value |]
         )
 
     /// Returns whether the given tree is empty.
@@ -447,6 +488,10 @@ module FlatTree =
     /// Replaces the subtree with given root node with another subtree.
     let inline replace (value : 'T) (replacement : FlatTree<'T>) (tree : FlatTree<'T>) =
         tree.Replace(value, replacement)
+
+    /// Inserts the given value as the last child of the given parent node.
+    let inline insert (parent : 'T) (value : 'T) (tree : FlatTree<'T>) =
+        tree.Insert(parent, value)
 
     /// Returns the subtree with the given value as root.
     let inline subTree (value : 'T) (tree : FlatTree<'T>) =

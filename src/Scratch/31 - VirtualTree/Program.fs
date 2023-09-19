@@ -49,21 +49,35 @@ let main argv =
     //    FlatTree.ofHierarchy getChildren 11
     //    |> FlatTree.delete 15
 
-    //Log.line "\n\nReplace 9 with %A" repl
-    //let tree = tree |> FlatTree.replace 9 repl
+    //Log.line "\n\nReplace 3 with %A" repl
+    //let tree = tree |> FlatTree.replace 3 repl
 
     //Log.line "%A" tree
     //Log.line "Count: %A" (FlatTree.count tree)
     //Log.line "Path from 14: %A" (tree |> FlatTree.rootPath 14)
     //Log.line "Parent of 13: %A" (tree |> FlatTree.parent 13)
 
+    //Log.line "Insert 42 as child of 9"
+    //let tree = tree |> FlatTree.insert 9 42
 
-    ////Log.line "Delete 9"
+    //Log.line "%A" tree
+    //Log.line "Count: %A" (FlatTree.count tree)
+    //Log.line "Path from 42: %A" (tree |> FlatTree.rootPath 42)
+    //Log.line "Path from 10: %A" (tree |> FlatTree.rootPath 10)
+    //Log.line "Path from 5: %A" (tree |> FlatTree.rootPath 5)
 
-    ////let cut = tree |> FlatTree.delete 9
-    ////Log.line "Deleted: %A" cut
-    ////Log.line "%A" (cut |> FlatTree.rootPath 10)
-    ////Log.line "%A" (cut |> FlatTree.rootPath 8)
+    //Log.line "Insert 43 as child of 1"
+    //let tree = tree |> FlatTree.insert 1 43
+
+    //Log.line "%A" tree
+    //Log.line "Path from 43: %A" (tree |> FlatTree.rootPath 43)
+    //Log.line "Descendants of 4: %A" (tree |> FlatTree.descendantCount 4)
+
+    //Log.line "Insert 44 as child of 43"
+    //let tree = tree |> FlatTree.insert 43 44
+
+    //Log.line "%A" tree
+    //Log.line "Path from 44: %A" (tree |> FlatTree.rootPath 44)
 
     //Environment.Exit 0
 
