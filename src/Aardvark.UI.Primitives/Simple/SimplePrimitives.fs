@@ -491,6 +491,109 @@ module SimplePrimitives =
         let dropdownUnClearable (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
             dropdown DropdownConfig.unclearable atts values (AVal.map Some selected) (Option.get >> update)
 
+        let dropdownMultiSelect (attributes : AttributeMap<'msg>) (values : amap<'T, DomNode<'msg>>) (defaultText : string) (selected : alist<'T>) (update : 'T list -> 'msg) =
+            let valuesWithKeys =
+                values
+                |> AMap.map (fun k v ->
+                    let hash = pickler.ComputeHash(k).Hash |> Convert.ToBase64String
+                    hash, v
+                )
+
+            let lookup =
+                valuesWithKeys
+                |> AMap.toAVal
+                |> AVal.map (HashMap.map (fun k (v,_) -> v))
+                |> AVal.map (fun m -> m, HashMap.ofSeq (Seq.map (fun (a,b) -> b,a) m))
+
+            let items =
+                let set = valuesWithKeys |> AMap.toASet
+
+                if typeof<IComparable>.IsAssignableFrom typeof<'T> then
+                    set |> ASet.sortWith (fun (a,_) (b,_) -> Unchecked.compare<'T> a b)
+                else
+                    set |> ASet.sortBy (snd >> fst)
+
+            let update (args : string list) =
+                try
+                    let data : string = Pickler.unpickleOfJson args.Head
+                    let _fw, bw = AVal.force lookup
+
+                    let values =
+                        data
+                        |> String.split ','
+                        |> List.choose (fun k -> HashMap.tryFind k bw)
+
+                    Seq.singleton (update values)
+
+                with exn ->
+                    Log.warn "[dropdownMultiSelect] callback failed: %s" exn.Message
+                    Seq.empty
+
+            let selection =
+                adaptive {
+                    let! selected = selected |> AList.toAVal
+                    let! (fw, _) = lookup
+
+                    return selected
+                        |> IndexList.choose (fun v -> HashMap.tryFind v fw)
+                        |> IndexList.toList
+                }
+
+            let attributes =
+                AttributeMap.ofList [
+                    clazz "ui dropdown multiple selection"
+                    onEvent' "data-event" [] update
+                ]
+                |> AttributeMap.union attributes
+
+            let boot =
+                String.concat "" [
+                    "const $self = $('#__ID__');"
+
+                    "$self.dropdown({"
+                    "    onChange: function(value) { aardvark.processEvent('__ID__', 'data-event', value); },"
+                    "});"
+
+                    // God I hate JS...
+                    // https://stackoverflow.com/questions/7837456/how-to-compare-arrays-in-javascript/7837725#7837725
+                    "function arraysIdentical(a, b) {"
+                    "    var i = a.length;"
+                    "    if (i != b.length) return false;"
+                    "    while (i--) {"
+                    "        if (a[i] !== b[i]) return false;"
+                    "    }"
+                    "    return true;"
+                    "};"
+
+                    "selectedCh.onmessage = function(values) {"
+                    "    const curr = $self.dropdown('get values');"
+
+                         // Prevent resetting the same values (leads to flickering)
+                    "    if (arraysIdentical(curr, values)) {"
+                    "        return;"
+                    "    }"
+
+                    "    $self.dropdown('clear', true);"
+                    "    $self.dropdown('set selected', values, true);"  // set exactly bugged? clear seems to trigger event
+                    "};"
+                ]
+
+            require Html.semui (
+                onBoot' ["selectedCh", AVal.channel selection] boot (
+                    Incremental.div attributes <| AList.ofList [
+                        input [ attribute "type" "hidden" ]
+
+                        i [ clazz "dropdown icon" ] []
+                        div [ clazz "default text"] defaultText
+
+                        Incremental.div (AttributeMap.ofList [clazz "ui menu"]) <| alist {
+                            for (_, (value, node)) in items do
+                                yield div [ clazz "ui item"; attribute "data-value" value] [node]
+                        }
+                    ]
+                )
+            )
+
     [<AutoOpen>]
     module ``Primtive Builders`` =
 
@@ -626,3 +729,6 @@ module SimplePrimitives =
     [<Obsolete("Renamed to dropdownUnclearable")>]
     let inline dropdownUnClearable atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
         Incremental.dropdownUnclearable (att atts) values selected update
+
+    let inline dropdownMultiSelect (attributes : AttributeMap<'msg>) (values : amap<'T, DomNode<'msg>>) (defaultText : string) (selected : alist<'T>) (update : 'T list -> 'msg) =
+        Incremental.dropdownMultiSelect attributes values defaultText selected update

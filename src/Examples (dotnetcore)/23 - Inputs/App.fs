@@ -19,14 +19,14 @@ let initial =
         uintValue = 1u
         name = "Pi"
         alt = Some A
-        options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
+        alts = IndexList.ofList [ A; D ]
+        options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"; Custom "Banana", "Banana"; Custom "Orange", "Orange"]
         enumValue = EnumValue.Value1
     }
 
-
-let rand = System.Random()
-
 let update (model : Model) (msg : Message) =
+    Log.warn "%A" msg
+
     match msg with
     | ToggleActive ->
         { model with active = not model.active }
@@ -48,6 +48,9 @@ let update (model : Model) (msg : Message) =
 
     | SetAlternative a ->
         { model with alt = a }
+
+    | SetAlternatives a ->
+        { model with alts = IndexList.ofList a }
 
     | SetEnumValue v ->
         { model with enumValue = v }
@@ -76,6 +79,11 @@ let view (model : AdaptiveModel) =
                 ]
             ]
 
+            // Checkboxes
+            div [ clazz "header item" ] [
+                h3 [] [ text "Checkboxes" ]
+            ]
+
             div [ clazz "item" ] [
                 simplecheckbox {
                     attributes [clazz "ui inverted checkbox"]
@@ -90,8 +98,28 @@ let view (model : AdaptiveModel) =
                 checkbox [clazz "ui inverted toggle checkbox"] model.active ToggleActive "Is the thing active?"
             ]
 
+            // Sliders
+            div [ clazz "header item" ] [
+                h3 [] [ text "Sliders" ]
+            ]
+
             div [ clazz "item" ] [
-                description "Numeric input (float)"
+                description "Float"
+                slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
+            ]
+
+            div [ clazz "item" ] [
+                description "Integer"
+                slider { min = 0; max = 20; step = 1 } [clazz "ui inverted small bottom aligned labeled ticked blue slider"] model.intValue SetInt
+            ]
+
+            // Input fields
+            div [ clazz "header item" ] [
+                h3 [] [ text "Input fields" ]
+            ]
+
+            div [ clazz "item" ] [
+                description "Numeric (float)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.value
@@ -105,7 +133,7 @@ let view (model : AdaptiveModel) =
             ]
 
             div [ clazz "item" ] [
-                description "Numeric input (integer)"
+                description "Numeric (integer)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.intValue
@@ -119,7 +147,7 @@ let view (model : AdaptiveModel) =
             ]
 
             div [ clazz "item" ] [
-                description "Numeric input (decimal)"
+                description "Numeric (decimal)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.decValue
@@ -132,7 +160,7 @@ let view (model : AdaptiveModel) =
             ]
 
             div [ clazz "item" ] [
-                description "Numeric input (unsigned integer)"
+                description "Numeric (unsigned integer)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.uintValue
@@ -145,33 +173,34 @@ let view (model : AdaptiveModel) =
             ]
 
             div [ clazz "item" ] [
-                description "Slider (float)"
-                slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
-            ]
-
-            div [ clazz "item" ] [
-                description "Slider (integer)"
-                slider { min = 0; max = 20; step = 1 } [clazz "ui inverted blue slider"] model.intValue SetInt
-            ]
-
-            div [ clazz "item" ] [
-                description "Text input"
+                description "Text input with validation"
                 textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
             ]
 
+            // Dropdowns
+            div [ clazz "header item" ] [
+                h3 [] [ text "Dropdown menus" ]
+            ]
+
             div [ clazz "item" ] [
-                description "Dropdown (non-clearable)"
+                description "Non-clearable"
                 dropdownUnclearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
             ]
 
             div [ clazz "item" ] [
-                description "Dropdown (clearable)"
+                description "Clearable"
                 dropdown { mode = DropdownMode.Text <| Some "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] alternatives model.alt SetAlternative
             ]
 
             div [ clazz "item" ] [
-                description "Dropdown (icon mode)"
+                description "Icon mode"
                 dropdown { mode = DropdownMode.Icon "sidebar"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted icon top left pointing dropdown circular button" ] alternatives model.alt SetAlternative
+            ]
+
+            div [ clazz "item" ] [
+                description "Multi select"
+                let atts = AttributeMap.ofList [clazz "inverted clearable search"]
+                dropdownMultiSelect atts alternatives "Search..." model.alts SetAlternatives
             ]
         ]
     ]
