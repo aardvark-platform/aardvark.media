@@ -49,9 +49,9 @@ module Html =
 
     let semui = 
         [ 
-            { kind = Stylesheet; name = "semui"; url = "./resources/semantic.css" }
-            { kind = Stylesheet; name = "semui-overrides"; url = "./resources/semantic-overrides.css" }
-            { kind = Script; name = "semui"; url = "./resources/semantic.js" }
+            { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.min.css" }
+            { kind = Stylesheet; name = "semui-overrides"; url = "./resources/fomantic/semantic-overrides.css" }
+            { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.min.js" }
             { kind = Script; name = "essential"; url = "./resources/essentialstuff.js" }
         ]      
 

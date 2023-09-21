@@ -26,31 +26,41 @@
     <Compile Include="Attributes.fs" />
     <Compile Include="Combinators.fs" />
     <Compile Include="Interop.fs" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\brand-icons.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/brand-icons.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\icons.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/icons.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-Bold.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-Bold.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-BoldItalic.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-BoldItalic.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-Italic.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-Italic.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-Regular.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-Regular.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-Bold.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-Bold.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-BoldItalic.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-BoldItalic.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-Italic.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-Italic.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-Regular.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-Regular.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\outline-icons.woff" LogicalName="resources/fomantic/themes/default/assets/fonts/outline-icons.woff" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\brand-icons.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/brand-icons.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\icons.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/icons.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-Bold.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-Bold.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-BoldItalic.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-BoldItalic.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-Italic.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-Italic.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\Lato-Regular.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/Lato-Regular.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-Bold.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-Bold.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-BoldItalic.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-BoldItalic.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-Italic.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-Italic.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\LatoLatin-Regular.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/LatoLatin-Regular.woff2" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\assets\fonts\outline-icons.woff2" LogicalName="resources/fomantic/themes/default/assets/fonts/outline-icons.woff2" />
+    <EmbeddedResource Include="resources\fomantic\semantic.min.js" LogicalName="resources/fomantic/semantic.min.js" />
+    <EmbeddedResource Include="resources\fomantic\semantic.min.css" LogicalName="resources/fomantic/semantic.min.css" />
+    <EmbeddedResource Include="resources\fomantic\semantic-overrides.css" LogicalName="resources/fomantic/semantic-overrides.css" />
     <EmbeddedResource Include="resources\aardvark.js" />
     <EmbeddedResource Include="resources\aardvark.css" />
     <EmbeddedResource Include="resources\aardvark.svg" />
     <EmbeddedResource Include="resources\aardvark-light.svg" />
     <EmbeddedResource Include="resources\docking.css" />
-    <EmbeddedResource Include="resources\fonts.css" />
-    <EmbeddedResource Include="resources\semantic-overrides.css" />
-    <EmbeddedResource Include="resources\semantic.css" />
     <EmbeddedResource Include="resources\stats.html" />
-    <EmbeddedResource Include="resources\brand-icons.woff2" />
     <EmbeddedResource Include="resources\docking.js" />
     <EmbeddedResource Include="resources\essentialstuff.js" />
-    <EmbeddedResource Include="resources\icons.woff2" />
     <EmbeddedResource Include="resources\jquery-3-3-1.js" />
-    <EmbeddedResource Include="resources\outline-icons.woff2" />
     <EmbeddedResource Include="resources\rgbcolor.js" />
-    <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAUi-qJCY.woff2" />
-    <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAXC-q.woff2" />
-    <EmbeddedResource Include="resources\S6u9w4BMUTPHh6UVSwaPGR_p.woff2" />
-    <EmbeddedResource Include="resources\S6u9w4BMUTPHh6UVSwiPGQ.woff2" />
-    <EmbeddedResource Include="resources\S6uyw4BMUTPHjx4wXg.woff2" />
-    <EmbeddedResource Include="resources\S6uyw4BMUTPHjxAwXjeu.woff2" />
-    <EmbeddedResource Include="resources\S6u_w4BMUTPHjxsI5wq_FQft1dw.woff2" />
-    <EmbeddedResource Include="resources\S6u_w4BMUTPHjxsI5wq_Gwft.woff2" />
-    <EmbeddedResource Include="resources\semantic.js" />
     <EmbeddedResource Include="resources\touchstick.js" />
 	<EmbeddedResource Include="resources\favicon.ico" />
 	<None Include="paket.references" />
