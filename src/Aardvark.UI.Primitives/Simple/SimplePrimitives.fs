@@ -16,14 +16,21 @@ module SimplePrimitives =
             "$('#__ID__').get(0).addEventListener('click', function(e) { aardvark.processEvent('__ID__', 'onclick'); e.stopPropagation(); }, true);"
             "isChecked.onmessage = function(s) { if (s) { $('#__ID__').checkbox('check'); } else { $('#__ID__').checkbox('uncheck'); } };"
         ]
+        
+    module internal Html =
 
-    let private semui =
-        [
-            { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.min.css" }
-            { kind = Stylesheet; name = "semui-overrides"; url = "./resources/fomantic/semantic-overrides.css" }
-            { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.min.js" }
-            { kind = Script; name = "essential"; url = "./resources/essentialstuff.js" }
-        ]
+        let semui =
+            [
+                #if DEBUG
+                { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.css" }
+                { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.js" }
+                #else
+                { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.min.css" }
+                { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.min.js" }
+                #endif
+                { kind = Stylesheet; name = "semui-overrides"; url = "./resources/fomantic/semantic-overrides.css" }
+                { kind = Script; name = "essential"; url = "./resources/essentialstuff.js" }
+            ]
 
 
     [<ReferenceEquality; NoComparison>]
@@ -209,7 +216,7 @@ module SimplePrimitives =
                 ]
 
             let atts = AttributeMap.union atts myAtts
-            require semui (
+            require Html.semui (
                 onBoot' ["isChecked", AVal.channel state] boot (
                     Incremental.div atts (
                         alist {
@@ -252,7 +259,7 @@ module SimplePrimitives =
                 | NumberType.Int -> "[0-9]+"
                 | _ -> "[0-9]*(\.[0-9]*)?"
 
-            require semui (
+            require Html.semui (
                 onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
@@ -295,7 +302,7 @@ module SimplePrimitives =
                     "valueCh.onmessage = function(v) { $__ID__.slider('update position', v.value); };"
                 ]
 
-            require semui (
+            require Html.semui (
                 onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) AList.empty
                 )
@@ -330,7 +337,7 @@ module SimplePrimitives =
                     yield "valueCh.onmessage = function(v) {  old = v.value; $input.val(v.value); };"
                 ]
 
-            require semui (
+            require Html.semui (
                 onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
@@ -367,7 +374,7 @@ module SimplePrimitives =
                     yield "valueCh.onmessage = function(v) { $input.val(v.value); };"
                 ]
 
-            require semui (
+            require Html.semui (
                 onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.form (AttributeMap.union atts myAtts) (
                         alist {
@@ -448,7 +455,7 @@ module SimplePrimitives =
                     "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some, '', true); } else { $self.dropdown('clear'); } }; "
                 ]
 
-            require semui (
+            require Html.semui (
                 onBoot' ["selectedCh", AVal.channel (AVal.map thing selection)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {

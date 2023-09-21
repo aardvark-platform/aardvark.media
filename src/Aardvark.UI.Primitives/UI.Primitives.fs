@@ -47,13 +47,8 @@ module Html =
     let test = 
         a |> AVal.map (fun z -> AVal.map (fun v -> v + 1) z.a)
 
-    let semui = 
-        [ 
-            { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.min.css" }
-            { kind = Stylesheet; name = "semui-overrides"; url = "./resources/fomantic/semantic-overrides.css" }
-            { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.min.js" }
-            { kind = Script; name = "essential"; url = "./resources/essentialstuff.js" }
-        ]      
+    let semui =
+        Primitives.SimplePrimitives.Html.semui
 
     let multiselectList (entries : list<'a>) (getId : 'a -> string) (getDomNode : 'a -> DomNode<'msg>) (getValue : string -> 'a) (onSelected : list<'a> -> 'msg) =
         div [attribute "style" "width:100%"] [

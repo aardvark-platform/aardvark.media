@@ -62,9 +62,13 @@
     <EmbeddedResource Include="resources\jquery-3-3-1.js" />
     <EmbeddedResource Include="resources\rgbcolor.js" />
     <EmbeddedResource Include="resources\touchstick.js" />
-	<EmbeddedResource Include="resources\favicon.ico" />
-	<None Include="paket.references" />
-	<None Include="paket.template" />
+	  <EmbeddedResource Include="resources\favicon.ico" />
+	  <None Include="paket.references" />
+	  <None Include="paket.template" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <EmbeddedResource Include="resources\fomantic\semantic.js" LogicalName="resources/fomantic/semantic.js" />
+    <EmbeddedResource Include="resources\fomantic\semantic.css" LogicalName="resources/fomantic/semantic.css" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />
