@@ -491,7 +491,9 @@ module SimplePrimitives =
         let dropdownUnClearable (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
             dropdown DropdownConfig.unclearable atts values (AVal.map Some selected) (Option.get >> update)
 
-        let dropdownMultiSelect (attributes : AttributeMap<'msg>) (values : amap<'T, DomNode<'msg>>) (defaultText : string) (selected : alist<'T>) (update : 'T list -> 'msg) =
+        let dropdownMultiSelect (attributes : AttributeMap<'msg>)
+                                (compare : Option<'T -> 'T -> int>) (defaultText : string)
+                                (values : amap<'T, DomNode<'msg>>) (selected : alist<'T>) (update : 'T list -> 'msg) =
             let valuesWithKeys =
                 values
                 |> AMap.map (fun k v ->
@@ -508,9 +510,18 @@ module SimplePrimitives =
             let items =
                 let set = valuesWithKeys |> AMap.toASet
 
-                if typeof<IComparable>.IsAssignableFrom typeof<'T> then
-                    set |> ASet.sortWith (fun (a,_) (b,_) -> Unchecked.compare<'T> a b)
-                else
+                let compare =
+                    compare |> Option.orElse (
+                        if typeof<IComparable>.IsAssignableFrom typeof<'T> then
+                            Some Unchecked.compare<'T>
+                        else
+                            None
+                    )
+
+                match compare with
+                | Some cmp ->
+                    set |> ASet.sortWith (fun (a,_) (b,_) -> cmp a b)
+                | _ ->
                     set |> ASet.sortBy (snd >> fst)
 
             let update (args : string list) =
@@ -730,5 +741,7 @@ module SimplePrimitives =
     let inline dropdownUnClearable atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
         Incremental.dropdownUnclearable (att atts) values selected update
 
-    let inline dropdownMultiSelect (attributes : AttributeMap<'msg>) (values : amap<'T, DomNode<'msg>>) (defaultText : string) (selected : alist<'T>) (update : 'T list -> 'msg) =
-        Incremental.dropdownMultiSelect attributes values defaultText selected update
+    let inline dropdownMultiSelect (attributes : AttributeMap<'msg>)
+                                   (compare : Option<'T -> 'T -> int>) (defaultText : string)
+                                   (values : amap<'T, DomNode<'msg>>) (selected : alist<'T>) (update : 'T list -> 'msg) =
+        Incremental.dropdownMultiSelect attributes compare defaultText values selected update

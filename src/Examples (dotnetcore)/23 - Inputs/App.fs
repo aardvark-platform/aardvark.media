@@ -200,7 +200,7 @@ let view (model : AdaptiveModel) =
             div [ clazz "item" ] [
                 description "Multi select"
                 let atts = AttributeMap.ofList [clazz "inverted clearable search"]
-                dropdownMultiSelect atts alternatives "Search..." model.alts SetAlternatives
+                dropdownMultiSelect atts None "Search..." alternatives model.alts SetAlternatives
             ]
         ]
     ]
