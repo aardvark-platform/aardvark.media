@@ -1,3 +1,7 @@
+### 5.4.1
+- Updated Fomantic-UI to 2.9.3
+- Added dropdownMultiSelect
+
 ### 5.4.0
 - Updated Fomantic-UI to 2.8.8
 - Fixed and improved resource management
