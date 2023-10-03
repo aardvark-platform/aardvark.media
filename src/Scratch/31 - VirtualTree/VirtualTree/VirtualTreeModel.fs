@@ -7,16 +7,16 @@ open VirtualTree.Utilities
 [<Struct; ModelType>]
 type VirtualHeight =
     {
-        itemHeight   : int      // Height of an element in pixels
-        clientHeight : int      // Height of the whole container in pixels
+        itemHeight   : float      // Height of an element in pixels
+        clientHeight : float      // Height of the whole container in pixels
     }
 
 [<ModelType>]
 type VirtualTree<'T> =
     {
         height : VirtualHeight
-        scrollOffset : int      // Scroll position in pixels
-        scrollTarget : int      // Target scroll position in pixels
+        scrollOffset : float      // Scroll position in pixels
+        scrollTarget : float      // Target scroll position in pixels
 
         current   : FlatTree<'T>    // Current state of the tree to be rendered
         hierarchy : FlatTree<'T>    // Full tree hiearchy including collapsed subtrees
@@ -58,7 +58,7 @@ module VirtualTree =
     [<RequireQualifiedAccess>]
     type Message<'T> =
         | OnResize of height: VirtualHeight
-        | OnScroll of offset: int
+        | OnScroll of offset: float
         | ScrollTo of target: 'T
         | Collapse of key: 'T
         | CollapseAll
@@ -68,8 +68,8 @@ module VirtualTree =
 
     let inline ofTree (tree : FlatTree<'T>) =
         { height       = Unchecked.defaultof<_>
-          scrollOffset = 0
-          scrollTarget = -1
+          scrollOffset = 0.0
+          scrollTarget = -1.0
 
           current = tree
           hierarchy = tree

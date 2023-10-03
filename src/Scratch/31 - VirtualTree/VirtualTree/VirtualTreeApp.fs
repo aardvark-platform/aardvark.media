@@ -49,7 +49,7 @@ module VirtualTree =
                 let i = if tree.showRoot then i else i - 1
 
                 if i > 0 then
-                    { tree with scrollTarget = i * tree.height.itemHeight }
+                    { tree with scrollTarget = float i * tree.height.itemHeight }
                 else
                     tree
             | _ ->
@@ -110,7 +110,7 @@ module VirtualTree =
             )
 
         let onScroll =
-            onEvent "onscroll" [ "event.target.scrollTop" ] (
+            onEvent "onscroll" [ "event.target.scrollTop.toFixed(10)" ] (
                 List.head >> Pickler.unpickleOfJson >> VirtualTree.Message.OnScroll >> message
             )
 
@@ -125,8 +125,8 @@ module VirtualTree =
 
                 "const updateHeight = () => {"
                 "    const height = {"
-                "        itemHeight: getItemHeight(),"
-                "        clientHeight: self.clientHeight"
+                "        itemHeight: getItemHeight().toFixed(10),"
+                "        clientHeight: self.clientHeight.toFixed(10)"
                 "    };"
 
                 "    aardvark.processEvent('__ID__', 'onupdate', height);"
@@ -146,44 +146,99 @@ module VirtualTree =
         let item (item : VirtualTree.Item<'T>) =
             itemNode item
 
-        let virtualItem (height : int) =
-            div [clazz "item virtual"; style $"height: {height}px; visibility: hidden"] []
+        let virtualItem (height : aval<float>) =
+            alist {
+                let! height = height
+                if height > 0.0 then
+                    yield div [clazz "item virtual"; style $"height: {height}px; visibility: hidden"] []
+            }
 
         // Number of elements the window extends beyond the actual visible space
         let border = 5
 
-        let elements =
+        let range =
+            adaptive {
+                let! itemHeight = tree.height.itemHeight
+                let! elements = tree.current
+                let! clientHeight = tree.height.clientHeight
+                let! scrollOffset = tree.scrollOffset
+                let! showRoot = tree.showRoot
+                let origin = if showRoot then 0 else 1
+
+                let first = (origin + (int (scrollOffset / itemHeight)) - border) |> clamp origin (elements.Count - 1)
+                let last = (first + (int (clientHeight / itemHeight)) + 2 * border) |> min (elements.Count - 1)
+
+                return Range1i(first, last)
+            }
+
+        let itemsInView =
+            let deltas = ResizeArray()
+            let mutable lastTree = Unchecked.defaultof<_>
+            let mutable lastRange = Range1i.Invalid
+
+            AList.custom (fun token curr ->
+                deltas.Clear()
+                let range = range.GetValue token
+                let elements = tree.current.GetValue token
+                let indexed = curr |> IndexList.toArrayIndexed
+
+                if not <| obj.ReferenceEquals(lastTree, elements) then
+                    // Tree elements changed, simply remove and readd everything
+                    for i, _ in indexed do
+                        deltas.Add(i, Remove)
+
+                    let mutable index = Index.zero
+                    for i = range.Min to range.Max do
+                        index <- Index.after index
+                        deltas.Add (index, Set elements.[i])
+                else
+                    // View changed, compute deltas
+                    for i = lastRange.Min to min (range.Min - 1) lastRange.Max do
+                        let index, _ = indexed.[i - lastRange.Min]
+                        deltas.Add(index, Remove)
+
+                    for i = max (range.Max + 1) lastRange.Min to lastRange.Max do
+                        let index, _ = indexed.[i - lastRange.Min]
+                        deltas.Add(index, Remove)
+
+                    let mutable index = IndexList.firstIndex curr
+                    for i = min range.Max (lastRange.Min - 1) downto range.Min do
+                        index <- Index.before index
+                        deltas.Add(index, Set elements.[i])
+
+                    let mutable index = IndexList.lastIndex curr
+                    for i = max range.Min (lastRange.Max + 1) to range.Max do
+                        index <- Index.after index
+                        deltas.Add(index, Set elements.[i])
+                            
+                lastTree <- elements
+                lastRange <- range
+                IndexListDelta.ofSeq deltas
+            )
+
+        let items =
             alist {
                 let! showRoot = tree.showRoot
                 let! itemHeight = tree.height.itemHeight
+                let! elements = tree.current
                 let origin = if showRoot then 0 else 1
 
-                if itemHeight = 0 then
-                    let! elements = tree.current
-
-                    // We do not know the item height yet, render two elements to determine it.
-                    // Also we need the client height of the list, expand it to the max with a big virtual item.
-                    if elements.Count > origin then
-                        yield virtualItem 9999
+                if elements.Count > origin then
+                    if itemHeight = 0 then
+                        // We do not know the item height yet, render two elements to determine it.
+                        // Also we need the client height of the list, expand it to the max with a big virtual item.
+                        yield! virtualItem (AVal.constant 9999)
 
                         for i = origin to (min elements.Count 2) - 1 do
                             let fi = elements.[i]
                             yield item <| VirtualTree.Item(fi.Value, fi.Depth - origin, VirtualTree.ItemKind.Uncollapsed)
-                else
-                    let! elements = tree.current
-                    let! clientHeight = tree.height.clientHeight
-                    let! scrollOffset = tree.scrollOffset
+                    else
+                        let vh1 = range |> AVal.map (fun r -> max 0.0 (float (r.Min - origin) * itemHeight))
+                        let vh2 = range |> AVal.map (fun r -> max 0.0 (float (elements.Count - r.Max - 1) * itemHeight))
 
-                    if elements.Count > origin then
-                        let first = (origin + (scrollOffset / itemHeight) - border) |> clamp origin (elements.Count - 1)
-                        let last = (first + (clientHeight / itemHeight) + 2 * border) |> min (elements.Count - 1)
+                        yield! virtualItem vh1
 
-                        if first > origin then
-                            yield virtualItem ((first - origin) * itemHeight)
-
-                        for i = first to last do
-                            let fi = elements.[i]
-
+                        for fi in itemsInView do
                             let kind =
                                 if fi.IsLeaf then
                                     if tree.collapsed.ContainsKey fi.Value then
@@ -196,8 +251,7 @@ module VirtualTree =
                             let ti = VirtualTree.Item(fi.Value, fi.Depth - origin, kind)
                             yield item ti
 
-                        if last < elements.Count - 1 then
-                            yield virtualItem ((elements.Count - last - 1) * itemHeight)
+                        yield! virtualItem vh2
             }
 
         let channels : (string * Channel) list = [
@@ -210,5 +264,5 @@ module VirtualTree =
             AttributeMap.union attributes events
 
         onBoot' channels bootJs (
-            elements |> Incremental.div attributes
+            items |> Incremental.div attributes
         )
