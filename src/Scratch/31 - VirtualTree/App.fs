@@ -100,9 +100,9 @@ let view (model : AdaptiveModel) =
             Incremental.text item.label
         ]
 
-    body [ style "background: #1B1C1E"] [
-        require Html.semui (
-            div [clazz "ui"; style "background: #1B1C1E; overflow-y: hidden"] [
+    require Html.semui (
+        body [ style "display: flex; flex-flow: column; overflow-y: hidden; background: #1B1C1E"] [
+            div [style "flex: 0 1 auto"] [
                 div [clazz "ui right labeled input"; style "margin: 10px"] [
                     simplenumeric {
                         attributes [clazz "ui inverted input"]
@@ -155,11 +155,12 @@ let view (model : AdaptiveModel) =
                     toggle (TreeViewAction TreeView.Message.ToggleRoot)
                     content [ text "Show root" ]
                 }
-
-                model.treeView |> TreeView.view TreeViewAction item
             ]
-        )
-    ]
+
+            let atts = AttributeMap.ofList [style "flex: 1 1 auto"]
+            model.treeView |> TreeView.view atts TreeViewAction item
+        ]
+    )
 
 
 let threads (model : Model) =

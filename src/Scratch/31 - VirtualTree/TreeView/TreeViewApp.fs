@@ -98,7 +98,8 @@ module TreeView =
         | TreeView.Message.Virtual msg ->
             { model with tree = model.tree |> VirtualTree.update msg }
 
-    let view (message : TreeView.Message<'Key> -> 'msg)
+    let view (attributes : AttributeMap<'msg>)
+             (message : TreeView.Message<'Key> -> 'msg)
              (itemNode : 'Key -> 'primValue -> DomNode<'msg>)
              (model : AdaptiveTreeView<'Key, 'primKey, 'aKey, 'Value, 'primValue, 'aValue>) : DomNode<'msg> =
 
@@ -184,9 +185,10 @@ module TreeView =
         let attributes =
             AttributeMap.ofList [
                 clazz "ui inverted divided list treeview"
-                style "margin: 10px; height: 100%; max-height: 400px; overflow-x: hidden; overflow-y: auto; border-style: solid; border-width: 1px; border-color: gray"
+                style "margin: 10px; height: 100%; overflow-x: hidden; overflow-y: auto; border-style: solid; border-width: 1px; border-color: gray"
                 onMouseLeave (fun _ -> message TreeView.Message.Unhover)
             ]
+            |> AttributeMap.union attributes
 
         require dependencies (
             model.tree |> VirtualTree.view (TreeView.Message.Virtual >> message) itemNode attributes
