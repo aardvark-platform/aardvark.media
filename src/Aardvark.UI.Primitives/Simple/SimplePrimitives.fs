@@ -531,7 +531,8 @@ module SimplePrimitives =
 
                     let values =
                         data
-                        |> String.split ','
+                        |> String.split ","
+                        |> Array.toList
                         |> List.choose (fun k -> HashMap.tryFind k bw)
 
                     Seq.singleton (update values)
