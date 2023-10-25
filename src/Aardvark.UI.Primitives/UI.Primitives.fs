@@ -10,7 +10,7 @@ open Aardvark.UI.Operators
 
 
 
-module UI = 
+module UI =
     let map (f : 'a -> 'b) (source : DomNode<'a>) : DomNode<'b> =
         MapNode<'a, 'b>(f, source) :> DomNode<_>
         //source.Map f
@@ -35,7 +35,10 @@ module Html =
 
         let finish<'msg> = td [] []
 
-    let ofC4b (c : C4b) = sprintf "rgb(%i,%i,%i)" c.R c.G c.B
+    /// Converts the given color to an rgba() string.
+    let ofC4b (c : C4b) =
+        let alpha = Col.ByteToDouble c.A
+        $"rgba({c.R},{c.G},{c.B},{string alpha})"
 
     let table rows = table [clazz "ui celled striped inverted table unstackable"] [ tbody [] rows ]
 
@@ -44,7 +47,7 @@ module Html =
     type A = { a : aval<int> }
     let a = AVal.init { a = AVal.init 10 }
 
-    let test = 
+    let test =
         a |> AVal.map (fun z -> AVal.map (fun v -> v + 1) z.a)
 
     let semui =
@@ -55,13 +58,13 @@ module Html =
             select [
                 attribute "style" "width:100%"
                 attribute "multiple" ""
-                onEvent "onchange" ["Array.prototype.slice.call(event.target.selectedOptions).map(x => x.value)"] 
+                onEvent "onchange" ["Array.prototype.slice.call(event.target.selectedOptions).map(x => x.value)"]
                     (fun xs ->
                         let s = (xs |> Seq.head)
 
                         //shame
-                        let vals = s.Substring(1,s.Length-1).Split([|','|]) 
-                                    |> Array.map ( fun v -> v.Replace("\"","").Replace("[","").Replace("]","").Trim()) 
+                        let vals = s.Substring(1,s.Length-1).Split([|','|])
+                                    |> Array.map ( fun v -> v.Replace("\"","").Replace("[","").Replace("]","").Trim())
                                     |> Array.toList
 
                         vals |> List.map getValue |> onSelected
@@ -75,13 +78,11 @@ module Html =
         multiselectList entries id text id onSelected
 
     module SemUi =
-        open Aardvark.Base.AMD64.Compiler
-        open Aardvark.Base.Geometry.RayHit
-        
+
         let menu (c : string )(entries : list<string * list<DomNode<'msg>>>) =
             div [ clazz c ] (
                 entries |> List.map (fun (name, children) ->
-                    div [ clazz "item"] [ 
+                    div [ clazz "item"] [
                         b [] [text name]
                         div [ clazz "menu" ] (
                             children |> List.map (fun c ->
@@ -93,24 +94,24 @@ module Html =
             )
 
         let adornerMenu (sectionsAndItems : list<string * list<DomNode<'msg>>>) (rest : list<DomNode<'msg>>) =
-            let pushButton() = 
+            let pushButton() =
                 div [
                     clazz "ui black big launch right attached fixed button menubutton"
                     js "onclick"        "$('.sidebar').sidebar('toggle');"
                     style "z-index:1"
                 ] [
-                    i [clazz "content icon"] [] 
+                    i [clazz "content icon"] []
                     span [clazz "text"] [text "Menu"]
                 ]
             [
-                yield 
+                yield
                     div [clazz "pusher"] [
-                        yield pushButton()                    
-                        yield! rest                    
+                        yield pushButton()
+                        yield! rest
                     ]
-                yield 
+                yield
                     menu "ui vertical inverted sidebar menu" sectionsAndItems
-            ]                    
+            ]
 
         let stuffStack (ls) =
             div [clazz "ui inverted segment"] [
@@ -125,9 +126,9 @@ module Html =
                 ]
             ]
 
-        open Microsoft.FSharp.Reflection    
+        open Microsoft.FSharp.Reflection
         let private fields r =
-            try 
+            try
                 let t = r.GetType()
                 let props = t.GetProperties()
                 let vals = FSharpValue.GetRecordFields(r)
@@ -142,16 +143,16 @@ module Html =
                 for (n,v) in fields record do
                     yield text (sprintf "%s: %s" n v)
             ]
-            
+
         let accordion text' icon active content' =
             let title = if active then "title active inverted" else "title inverted"
             let content = if active then "content active" else "content"
-            
+
             onBoot "$('#__ID__').accordion();" (
                 div [clazz "ui inverted segment"] [
                     div [clazz "ui inverted accordion fluid"] [
                         div [clazz title] [
-                                i [clazz (icon + " icon circular")] [] 
+                                i [clazz (icon + " icon circular")] []
                                 text text'
                                 //Static.a [clazz "ui label"] [
                                 //    i [clazz (icon + " icon circular inverted")] []
@@ -173,12 +174,12 @@ module Html =
                     always (attribute "value" name)
                     onlyWhen (AVal.map ((=) value) selected) (attribute "selected" "selected")
                 ]
-       
+
             select [onChange (fun str -> Enum.Parse(typeof<'a>, str) |> unbox<'a> |> change); style "color:black"] [
                 for (name, value) in nv do
                     let att = attributes name value
                     yield Incremental.option att (AList.ofList [text name])
-            ]         
+            ]
 
         //Html.row "CullMode:" [Html.SemUi.dropDown model.cullMode SetCullMode]
         let dropDown' (values : alist<'a>)(selected : aval<'a>) (change : 'a -> 'msg) (f : 'a ->string)  =
@@ -187,41 +188,41 @@ module Html =
                 AttributeMap.ofListCond [
                     always (attribute "value" (name))
                     onlyWhen (selected |> AVal.map (fun x -> f x = name)
-                                            //fun x -> 
+                                            //fun x ->
                                             //    match x with
                                             //        | Some s -> (f s) = name
                                             //        | None -> false)
                              ) (attribute "selected" "selected")
                 ]
 
-            let ortisOnChange  = 
-                let cb (i : int) =                    
+            let ortisOnChange  =
+                let cb (i : int) =
                     let currentState = values.Content |> AVal.force
                     match IndexList.tryAt i currentState with
                         | None -> failwith ""
-                        | Some a -> change a 
+                        | Some a -> change a
                 onEvent "onchange" ["event.target.selectedIndex"] (fun x -> x |> List.head |> Int32.Parse |> cb)
 
-            Incremental.select (AttributeMap.ofList [ortisOnChange; style "color:black"]) 
+            Incremental.select (AttributeMap.ofList [ortisOnChange; style "color:black"])
                 (values
                     |> AList.mapi(fun i x -> Incremental.option (attributes (f x)) (AList.ofList [text (f x)]))
                 )
-                  
-        let textBox (text : aval<string>) (set : string -> 'msg) =          
-            
-            let attributes = 
+
+        let textBox (text : aval<string>) (set : string -> 'msg) =
+
+            let attributes =
                 amap {
                     yield "type" => "text"
                     yield onChange set
                     let! t = text
-                    yield "value" => t 
+                    yield "value" => t
                 }
-          
-            Incremental.input (AttributeMap.ofAMap attributes)            
+
+            Incremental.input (AttributeMap.ofAMap attributes)
 
         let toggleBox (state : aval<bool>) (toggle : 'msg) =
 
-            let attributes = 
+            let attributes =
                 amap {
                      yield "type" => "checkbox"
                      yield onChange (fun _ -> toggle)
@@ -232,11 +233,11 @@ module Html =
                 }
 
       //      div [clazz "ui toggle checkbox"] [
-            Incremental.input (AttributeMap.ofAMap attributes)        
+            Incremental.input (AttributeMap.ofAMap attributes)
 
         let toggleImage (state : aval<bool>) (toggle : unit -> 'msg) = 0
 
-        let tabbed attr content active =            
+        let tabbed attr content active =
             onBoot "$('.menu .item').tab();" (
                 div attr [
                     yield div [clazz "ui inverted segment top attached tabular menu"] [
@@ -244,52 +245,47 @@ module Html =
                                 let active = if name = active then "inverted item active" else "inverted item"
                                 yield Static.a [clazz active; attribute "data-tab" name] [text name]
                           ]
-                                        
+
                     for (name,ch) in content do
                         let classAttr = "ui inverted bottom attached tab segment"
                         let active = if name = active then (sprintf "%s %s" classAttr "active") else classAttr
-                        yield div [clazz active; attribute "data-tab" name] [ch]         
+                        yield div [clazz active; attribute "data-tab" name] [ch]
                 ]
             )
 
         let iconToggle (state : aval<bool>) onIcon offIcon action =
           let toggleIcon = state |> AVal.map(fun isOn -> if isOn then onIcon else offIcon)
-        
-          let attributes = 
+
+          let attributes =
             amap {
                 let! icon = toggleIcon
                 yield clazz icon
                 yield onClick (fun _ -> action)
             } |> AttributeMap.ofAMap
-        
+
           Incremental.i attributes AList.empty
-        
+
         let iconCheckBox (dings : aval<bool>) action =
           iconToggle dings "check square outline icon" "square icon" action
 
     module IO =
 
         let fileDialog action =
-            [ 
+            [
                 onEvent "onchoose" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> List.head >> action)
                 clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
-            ] 
+            ]
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Choice =
-    open Aardvark.Base
-    open Aardvark.UI
-
-    type Model = Red=0 | Yellow=1 | Blue=2 
+    type Model = Red=0 | Yellow=1 | Blue=2
 
     type Action = Select of Model
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module Numeric = 
-    open Aardvark.Base
-    open Aardvark.UI
+module Numeric =
 
-    type Action = 
+    type Action =
         | SetValue of float
         | SetMin of float
         | SetMax of float
@@ -307,7 +303,7 @@ module Numeric =
     let formatNumber (format : string) (value : float) =
         String.Format(Globalization.CultureInfo.InvariantCulture, format, value)
 
-    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : AdaptiveNumericInput ) inputType =         
+    let numericField<'msg> ( f : Action -> seq<'msg> ) ( atts : AttributeMap<'msg> ) ( model : AdaptiveNumericInput ) inputType =
 
         let tryParseAndClamp min max fallback s =
             let parsed = 0.0
@@ -317,24 +313,24 @@ module Numeric =
                         fallback
 
         let onWheel' (f : Aardvark.Base.V2d -> seq<'msg>) =
-            let serverClick (args : list<string>) : Aardvark.Base.V2d = 
+            let serverClick (args : list<string>) : Aardvark.Base.V2d =
                 let delta = List.head args |> Pickler.unpickleOfJson
                 delta  / Aardvark.Base.V2d(-100.0,-100.0) // up is down in mouse wheel events
 
             onEvent' "onwheel" ["{ X: event.deltaX.toFixed(10), Y: event.deltaY.toFixed(10)  }"] (serverClick >> f)
 
-        let attributes = 
-            amap {                
-                yield style "text-align:right; color : black"                
+        let attributes =
+            amap {
+                yield style "text-align:right; color : black"
 
                 let! min = model.min
                 let! max = model.max
                 let! value = model.value
                 match inputType with
-                    | Slider ->   
+                    | Slider ->
                         yield "type" => "range"
                         yield onInput' (tryParseAndClamp min max value >> SetValue >> f)   // continous updates for slider
-                    | InputBox -> 
+                    | InputBox ->
                         yield "type" => "number"
                         yield onChange' (tryParseAndClamp min max value >> SetValue >> f)  // batch updates for input box (to let user type)
 
@@ -347,16 +343,16 @@ module Numeric =
 
                 let! format = model.format
                 yield "value" => formatNumber format value
-            } 
+            }
 
         Incremental.input (AttributeMap.ofAMap attributes |> AttributeMap.union atts)
 
     let numericField' = numericField (Seq.singleton) AttributeMap.empty
 
     let view' (inputTypes : list<NumericInputType>) (model : AdaptiveNumericInput) : DomNode<Action> =
-        inputTypes 
-            |> List.map (numericField' model) 
-            |> List.intersperse (text " ") 
+        inputTypes
+            |> List.map (numericField' model)
+            |> List.intersperse (text " ")
             |> div []
 
     let view (model : AdaptiveNumericInput) =
@@ -382,7 +378,7 @@ module Numeric =
     let app () = app' [NumericInputType.InputBox; NumericInputType.InputBox; NumericInputType.Slider]
 
     let start () =
-        app () |> App.start 
+        app () |> App.start
 
 [<Obsolete("Use ColorPicker from Aardvark.UI.Primitives.ColorPicker2 instead.")>]
 module ColorPicker =
@@ -390,10 +386,10 @@ module ColorPicker =
         | SetColor of ColorInput
 
     let spectrum =
-        [   
-            { kind = Stylesheet; name = "spectrumStyle"; url = "resources/spectrum.css" }          
+        [
+            { kind = Stylesheet; name = "spectrumStyle"; url = "resources/spectrum.css" }
             { kind = Script; name = "spectrum"; url = "resources/spectrum.js" }
-        ]    
+        ]
 
     let update (model : ColorInput) (action : Action) =
         match action with
@@ -413,9 +409,9 @@ module ColorPicker =
 
         C4b(arr.[0], arr.[1], arr.[2], 255uy)
 
-    let colorToHex (color : C4b) : string = 
+    let colorToHex (color : C4b) : string =
         let bytes = [| color.R; color.G; color.B |]
-        bytes 
+        bytes
             |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x))
             |> String.concat System.String.Empty
 
@@ -439,20 +435,20 @@ module ColorPicker =
                             preferredFormat: 'hex',
                             showInput: true
                             });" (
-                let attributes = 
-                    amap {                    
+                let attributes =
+                    amap {
                         yield "type" => "text"
                         yield onChange (fun d -> { c = colorFromHex d }|> SetColor)
 
                         let! color = model.c
                         yield "value" => colorToHex color
-                    }         
+                    }
 
                 Incremental.input (AttributeMap.ofAMap attributes)
         ))
 
 
-    let defaultPalette = 
+    let defaultPalette =
         """[
                 ['#000','#444','#666','#999','#ccc','#eee','#f3f3f3','#fff'],
                 ['#f00','#f90','#ff0','#0f0','#0ff','#00f','#90f','#f0f'],
@@ -470,33 +466,33 @@ module ColorPicker =
 
     open System.IO
 
-    let parsePalette (s : string) : Palette = 
+    let parsePalette (s : string) : Palette =
         Pickler.unpickleOfJson(s)
 
-    let readPalette (paletteFile : string) = 
+    let readPalette (paletteFile : string) =
         try
             if File.Exists paletteFile then
                 try File.ReadAllText(paletteFile) |> parsePalette |> Some
-                with e -> 
+                with e ->
                     Log.warn "[colorPicker] could not parse: %A" e.Message
                     File.WriteAllText(paletteFile, "[]")
                     defaultPalette |> parsePalette  |> Some
-            else 
+            else
                 File.WriteAllText(paletteFile, "[]")
                 "[]" |> parsePalette |> Some
-        with e -> 
+        with e ->
             Log.warn "[colorPicker] %A" e.Message
             None
 
     let viewColorBrewer (rowElementCount: int) (paletteType: PaletteType) (model : AdaptiveColorInput) =
-    
+
         let rows =
             paletteType
             |> ColorBrewer.palettesOfType
             |> Set.map (BrewerPalette.spectrumRow rowElementCount)
             |> String.concat ","
-    
-        let bootCode = 
+
+        let bootCode =
             sprintf """$('#__ID__').spectrum(
                 {
                     showPalette: true,
@@ -504,26 +500,26 @@ module ColorPicker =
                     palette: [ %s ],
                     preferredFormat: 'hex',
                     showInput: true
-                    }); 
+                    });
             """ rows
 
         require spectrum (
             onBoot bootCode (
-                let attributes = 
-                    amap {                    
+                let attributes =
+                    amap {
                         yield "type" => "text"
                         yield onChange (fun d ->  { c = colorFromHex d } |> SetColor)
 
                         let! color = model.c
                         yield "value" => colorToHex color
-                    }         
+                    }
 
                 Incremental.input (AttributeMap.ofAMap attributes)
         ))
 
     let viewColorBrewerPalette (rowElementCount: int) (palette: BrewerPalette) (model : AdaptiveColorInput) =
 
-        let bootCode = 
+        let bootCode =
             sprintf """$('#__ID__').spectrum(
                 {
                     showPalette: true,
@@ -531,26 +527,26 @@ module ColorPicker =
                     palette: [ %s ],
                     preferredFormat: 'hex',
                     showInput: true
-                    }); 
+                    });
             """ (palette.SpectrumRow 20)
 
         require spectrum (
             onBoot bootCode (
-                let attributes = 
-                    amap {                    
+                let attributes =
+                    amap {
                         yield "type" => "text"
                         yield onChange (fun d ->  { c = colorFromHex d } |> SetColor)
 
                         let! color = model.c
                         yield "value" => colorToHex color
-                    }         
+                    }
 
                 Incremental.input (AttributeMap.ofAMap attributes)
         ))
 
 
-        
-        
+
+
     let viewAdvanced (defaultPalette : string) (paletteFile : string) (localStorageKey : string) (model : AdaptiveColorInput) =
 
         let favorites = readPalette paletteFile
@@ -559,22 +555,22 @@ module ColorPicker =
             | Some f -> Pickler.json.PickleToString(f)
             | None -> "[]"
 
-        let addHex (hex : string) = 
+        let addHex (hex : string) =
             try
                 match readPalette paletteFile with
                 | None -> ()
-                | Some h -> 
+                | Some h ->
                     let hs = Array.toList h @ [hex] |> List.distinct
                     let favorites = hs |> Seq.atMost 15 |> Seq.toArray
                     let str = Pickler.json.PickleToString(favorites).Replace("\"","'")
                     File.WriteAllText(paletteFile, str)
                     ()
-            with e -> 
+            with e ->
                 Log.warn "[colorpicker] addtoHex - %s" e.Message
 
 
 
-        let bootCode = 
+        let bootCode =
             sprintf """$('#__ID__').spectrum(
             {
                 showPalette: true,
@@ -583,13 +579,13 @@ module ColorPicker =
                 localStorageKey: '%s',
                 preferredFormat: 'hex',
                 showInput: true
-            }); 
+            });
             """ (defaultPalette.Replace("FAVORITES", favoritesJson).Replace("\"","'")) localStorageKey
 
         require spectrum (
             onBoot bootCode (
-                let attributes = 
-                    amap {                    
+                let attributes =
+                    amap {
                         yield "type" => "text"
                         yield onChange (fun d ->  { c = colorFromHex d } |> SetColor)
 
@@ -597,7 +593,7 @@ module ColorPicker =
                         let hex = colorToHex color
                         addHex hex // store possibly extern changed colors as favorites
                         yield "value" => colorToHex color
-                    }         
+                    }
 
                 Incremental.input (AttributeMap.ofAMap attributes)
         ))
@@ -623,14 +619,14 @@ module ColorPicker =
                             preferredFormat: 'hex',
                             showInput: true
                             });" (
-                let attributes = 
-                    amap {                    
+                let attributes =
+                    amap {
                         yield "type" => "text"
                         yield onChange (change << colorFromHex)
 
                         let! color = color
                         yield "value" => colorToHex color
-                    }         
+                    }
 
                 Incremental.input (AttributeMap.ofAMap attributes)
         ))
@@ -645,36 +641,36 @@ module ColorPicker =
         }
 
     let start () =
-        app |> App.start 
+        app |> App.start
 
 open MBrace.FsPickler.Json
 
-module D3Test = 
-    type Action = 
+module D3Test =
+    type Action =
         | SetData of D3TestInput
         | IncrementMaxValue
         | DecrementMaxValue
 
-    let update (model : D3TestInput) (action : Action) = 
-        match action with 
+    let update (model : D3TestInput) (action : Action) =
+        match action with
         | SetData c -> c
         | IncrementMaxValue -> { model with t1 = model.t1+10 }
         | DecrementMaxValue -> { model with t1 = model.t1-10 }
 
     let init = { t1 = 1; t2 = 50;}
 
-    type testData = 
+    type testData =
         {
             month : string
             apples : int
             bananas : int
-            cherries : int 
+            cherries : int
             dates : int
         }
 
     let pickler = FsPickler.CreateJsonSerializer(omitHeader = true)
 
-    let data loop = 
+    let data loop =
         printfn "bla:%d" loop
         [|
             for a in 1..loop do
@@ -682,7 +678,7 @@ module D3Test =
         |] |> pickler.PickleToString
            |> (fun s -> printfn "%A" s; s)
 
-    let code (min : float) (max : float) = 
+    let code (min : float) (max : float) =
         """
         var svg = d3.select("#ID"),
         width = +svg.attr("width"),
@@ -746,7 +742,7 @@ module D3Test =
         }
         """
 
-    let d3Code (model:AdaptiveD3TestInput) = 
+    let d3Code (model:AdaptiveD3TestInput) =
         require [
                 { kind = Script; name = "d3"; url = "https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" }
                 { kind = Script; name = "d3Test"; url = "d3Test.js" }]
@@ -758,7 +754,7 @@ module D3Test =
                             yield
                                 //onBoot (code (float min) (float max))(
                                     onBoot (sprintf "D3TestFunktion(%s,%s);" (data max) "'#__ID__'")(
-                                    Svg.svg [ attribute "width" "800"; attribute "height" "200"; style "position: absolute; top: 0; left: 0; z-index: 1000;"] []   
+                                    Svg.svg [ attribute "width" "800"; attribute "height" "200"; style "position: absolute; top: 0; left: 0; z-index: 1000;"] []
                                 )
                             }
                         )
@@ -771,7 +767,7 @@ module D3Test =
 
                     div [style "width:10%; height: 100%; float:right;"] [
                         button [clazz "ui icon button"; onMouseClick (fun _ -> IncrementMaxValue)] [ i [clazz "arrow left icon"] [] ]
-                        button [clazz "ui icon button"; onMouseClick (fun _ -> DecrementMaxValue)] [ i [clazz "arrow right icon"] [] ] 
+                        button [clazz "ui icon button"; onMouseClick (fun _ -> DecrementMaxValue)] [ i [clazz "arrow right icon"] [] ]
                 ]
             ]
             )
@@ -786,9 +782,9 @@ module D3Test =
         }
 
     let start () =
-        app |> App.start 
+        app |> App.start
 
-module D3Axis = 
+module D3Axis =
     type Action =
         | SetData of D3AxisInput
         | IncrementMaxValue
@@ -810,7 +806,7 @@ module D3Axis =
 
     let pickler = FsPickler.CreateJsonSerializer(omitHeader = true)
 
-    let view (model:AdaptiveD3AxisInput) = 
+    let view (model:AdaptiveD3AxisInput) =
         require [
                 { kind = Script; name = "d3"; url = "https://cdnjs.cloudflare.com/ajax/libs/d3/4.11.0/d3.min.js" }
                 { kind = Script; name = "d3Test"; url = "d3Test.js" }]
@@ -826,20 +822,20 @@ module D3Axis =
                                 )
                             }
                         )
-                    ) 
+                    )
 
     let viewTest (model:AdaptiveD3AxisInput) =
         require (Html.semui) (
             body [clazz "ui"; style "background: #FFFFFF"] [
-                
-                div [style "width:90%; height: 10%; float:left"] [   
+
+                div [style "width:90%; height: 10%; float:left"] [
                     view model
                     ]
 
                 div [style "width:10%; height: 100%; float:right;"] [
                     button [clazz "ui icon button"; onMouseClick (fun _ -> IncrementMaxValue)] [ i [clazz "arrow left icon"] [] ]
                     button [clazz "ui icon button"; onMouseClick (fun _ -> DecrementMaxValue)] [ i [clazz "arrow right icon"] [] ]
-                ]   
+                ]
             ]
             )
 
@@ -853,81 +849,81 @@ module D3Axis =
         }
 
     let start () =
-        app |> App.start 
+        app |> App.start
 
 
-module Vector3d = 
+module Vector3d =
 
-    type Action = 
+    type Action =
         | SetX of Numeric.Action
         | SetY of Numeric.Action
         | SetZ of Numeric.Action
         | SetXYZ of Numeric.Action * Numeric.Action * Numeric.Action
-   
+
     let update (model : V3dInput) (action : Action) =
         match action with
-            | SetX a -> 
-                let x = Numeric.update model.x a                
-                {                     
-                    model with 
+            | SetX a ->
+                let x = Numeric.update model.x a
+                {
+                    model with
                         x = x
                         value = V3d(x.value, model.value.Y, model.value.Z)
                 }
-            | SetY a -> 
-                let y = Numeric.update model.y a                
-                {                     
-                    model with 
+            | SetY a ->
+                let y = Numeric.update model.y a
+                {
+                    model with
                         y = y
                         value = V3d(model.value.X, y.value, model.value.Z)
                 }
-            | SetZ a -> 
-                let z = Numeric.update model.z a                
-                {                     
-                    model with 
+            | SetZ a ->
+                let z = Numeric.update model.z a
+                {
+                    model with
                         z = z
                         value = V3d(model.value.X, model.value.Y, z.value)
                 }
-            | SetXYZ (a,b,c) -> 
+            | SetXYZ (a,b,c) ->
                 let x = Numeric.update model.x a
                 let y = Numeric.update model.y b
                 let z = Numeric.update model.z c
-                {                     
-                    model with 
+                {
+                    model with
                         x = x
                         y = y
                         z = z
                         value = V3d(x.value, y.value, z.value)
                 }
-                
-    let view (model : AdaptiveV3dInput) =  
-        
-        Html.table [                            
+
+    let view (model : AdaptiveV3dInput) =
+
+        Html.table [
             Html.row "X" [Numeric.view' [InputBox] model.x |> UI.map SetX]
             Html.row "Y" [Numeric.view' [InputBox] model.y |> UI.map SetY]
             Html.row "Z" [Numeric.view' [InputBox] model.z |> UI.map SetZ]
-        ]                    
+        ]
 
-    let init = 
+    let init =
         let x = Numeric.init
         let y = Numeric.init
         let z = Numeric.init
-    
+
         {
             x = x
             y = y
             z = z
             value = V3d(x.value,y.value,z.value)
-        }        
+        }
 
     let initV3d (v : V3d) = {
-        x = { Numeric.init with value = v.X } 
+        x = { Numeric.init with value = v.X }
         y = { Numeric.init with value = v.Y }
         z = { Numeric.init with value = v.Z }
         value = v
     }
 
     let updateV3d (model : V3dInput) (v : V3d) = {
-        x = { model.x with value = v.X } 
+        x = { model.x with value = v.X }
         y = { model.y with value = v.Y }
         z = { model.z with value = v.Z }
         value = v
@@ -943,11 +939,11 @@ module Vector3d =
         }
 
     let start () =
-        app |> App.start 
+        app |> App.start
 
-module TreeView = 
-    
-    type Action<'id> = 
+module TreeView =
+
+    type Action<'id> =
         | Click of 'id
 
     let view attribs children = Incremental.div (AttributeMap.ofList [clazz "ui list"]) children
@@ -983,8 +979,8 @@ module TreeView =
              div [ clazz "content" ] [
                  div [ clazz "header"] [header]
                  div [ clazz "description noselect"] [description]
-                 Incremental.div (AttributeMap.ofAMap childrenAttribs) 
-                    <| alist { 
+                 Incremental.div (AttributeMap.ofAMap childrenAttribs)
+                    <| alist {
                         let! isExpanded = isExpanded
                         if isExpanded then yield! children
                     }
@@ -992,7 +988,7 @@ module TreeView =
         ]
 
 module TreeViewApp =
-    
+
     open TreeView
 
     type Action =
@@ -1011,24 +1007,24 @@ module TreeViewApp =
 
     let init =
         { data =
-            Tree.node (LeafValue.Text "0") defaultP <| IndexList.ofList [ 
+            Tree.node (LeafValue.Text "0") defaultP <| IndexList.ofList [
                 Leaf (LeafValue.Number 1)
                 Leaf (LeafValue.Text "2" )
                 Tree.node (LeafValue.Number 3) defaultP <| IndexList.ofList [
                     yield Leaf (LeafValue.Number 4)
-                    yield Leaf (LeafValue.Number 5) 
+                    yield Leaf (LeafValue.Number 5)
                 ]
-            ] 
+            ]
         }
 
     let updateAt (p : list<Index>) (f : Tree -> Tree) (t : Tree) =
         let rec go (p : list<Index>) (t : Tree)  =
             match p with
                 | [] -> f t
-                | x::rest -> 
+                | x::rest ->
                     match t with
                         | Leaf _ -> t
-                        | Node(l,p,xs) -> 
+                        | Node(l,p,xs) ->
                             match IndexList.tryGet x xs with
                                 | Some c -> Node(l,p, IndexList.set x (go rest c) xs)
                                 | None   -> t
@@ -1037,66 +1033,66 @@ module TreeViewApp =
     let update (model : TreeModel) action =
         printfn "action: %A" action
         match action with
-            | Click p ->                 
+            | Click p ->
                 { model with
-                    data = updateAt p (function | Leaf v ->( match v with 
+                    data = updateAt p (function | Leaf v ->( match v with
                                                                 | LeafValue.Number n -> Leaf ( LeafValue.Number (n + 1))
                                                                 | LeafValue.Text t -> Leaf ( LeafValue.Text (sprintf "%s a" t)))
                                                 | p -> p) model.data
                 }
-            | ToggleExpand p -> 
+            | ToggleExpand p ->
                 { model with
-                    data = 
+                    data =
                         updateAt p (
                             function | Leaf v -> Leaf v
-                                     | Node(l,p,xs) -> 
+                                     | Node(l,p,xs) ->
                                          Node(l, { p with isExpanded = not p.isExpanded}, xs)
                         ) model.data
                 }
-            | AddChild p -> 
+            | AddChild p ->
                 { model with
                     data = updateAt p (
                              function | Leaf v -> Leaf v
-                                      | Node(l,p,xs) -> 
+                                      | Node(l,p,xs) ->
                                             let value = match l with
                                                            | Number n -> Number (IndexList.count xs + 1)
                                                            | Text   t -> LeafValue.Text t
                                             Node(l,p, IndexList.add (Leaf value) xs)
                            ) model.data
                 }
-            | RemChild p -> 
+            | RemChild p ->
                 { model with
                     data = updateAt p (
                              function | Leaf v -> Leaf v
-                                      | Node(l,p,xs) -> 
+                                      | Node(l,p,xs) ->
                                           Node(l,p, if IndexList.count xs > 0 then IndexList.removeAt 0 xs else xs)
                            ) model.data
                 }
             | Nop -> model
-    
-    let viewLabel v = 
-        v 
-        |> AVal.bind (fun u -> 
-            match u with 
+
+    let viewLabel v =
+        v
+        |> AVal.bind (fun u ->
+            match u with
             | AdaptiveNumber n -> n |> AVal.map (fun x -> sprintf "Number %A" (string x))
             | AdaptiveText t   -> t |> AVal.map (fun x -> sprintf "Text %A" x))
         |> Incremental.text
-                        
+
 
     let rec viewTree path (model : AdaptiveTreeCase) =
         alist {
             //let! model = model
             match model with
-            | AdaptiveLeaf v -> 
+            | AdaptiveLeaf v ->
                 yield TreeView.leaf (click path) (AList.ofList [viewLabel v]) Nop Nop
-            | AdaptiveNode(s, p, xs) -> 
+            | AdaptiveNode(s, p, xs) ->
                 let children = AList.collecti (fun i v -> viewTree (i::path) v) xs
                 let desc =
                     div [] [
                          i [ clazz "plus icon";  onClick (addChild path) ] []
                          i [ clazz "minus icon"; onClick (remChild path) ] []
                     ]
-                yield TreeView.node p.isExpanded (toggle path) 
+                yield TreeView.node p.isExpanded (toggle path)
                                     (viewLabel s) desc
                                     children
         }
@@ -1112,8 +1108,8 @@ module TreeViewApp =
             threads = fun _ -> ThreadPool.empty
             initial = init
             update = update
-            view = view 
+            view = view
         }
 
     let start () =
-        app |> App.start 
+        app |> App.start
