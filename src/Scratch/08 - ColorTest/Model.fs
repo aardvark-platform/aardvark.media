@@ -24,4 +24,4 @@ type Scene = { objects : aset<Object> }
 [<ModelType>]
 type IObject = { itrafo : string }
 [<ModelType>]
-type IScene = { iobjects : HashSet<IObject> }
+type IScene = { [<TreatAsValue>] iobjects : HashSet<IObject> }

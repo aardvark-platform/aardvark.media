@@ -2,6 +2,7 @@ namespace Input
 
 open FSharp.Data.Adaptive
 open Adaptify
+open Aardvark.Base
 
 type Alternative =
     | A
@@ -28,6 +29,7 @@ type Model =
         alts      : IndexList<Alternative>
         options : HashMap<Alternative, string>
         enumValue : EnumValue
+        color     : C4b
     }
 
 type Message =
@@ -40,4 +42,5 @@ type Message =
     | SetAlternative of Option<Alternative>
     | SetAlternatives of Alternative list
     | SetEnumValue of EnumValue
+    | SetColor of C4b
     | Reset

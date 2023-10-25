@@ -9,7 +9,7 @@ open Adaptify
 type Message = 
     | Generate
     | ChangeCount of Numeric.Action
-    | ChangeColor of ColorPicker.Action
+    | ChangeColor of C4b
 
 
 [<ModelType>]
@@ -18,5 +18,5 @@ type Model =
         count : NumericInput
         data : list<float>
 
-        color : ColorInput
+        color : C4b
     }

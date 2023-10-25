@@ -3,6 +3,7 @@ module Input.App
 open Aardvark.UI
 open Aardvark.UI.Generic
 open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.ColorPicker2
 
 open System
 open Aardvark.Base
@@ -22,6 +23,7 @@ let initial =
         alts = IndexList.ofList [ A; D ]
         options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"; Custom "Banana", "Banana"; Custom "Orange", "Orange"]
         enumValue = EnumValue.Value1
+        color = C4b(C3b.Blue, 127uy)
     }
 
 let update (model : Model) (msg : Message) =
@@ -55,6 +57,9 @@ let update (model : Model) (msg : Message) =
     | SetEnumValue v ->
         { model with enumValue = v }
 
+    | SetColor c ->
+        { model with color = c }
+
     | Reset ->
         initial
 
@@ -70,7 +75,7 @@ let view (model : AdaptiveModel) =
         div [ style "margin-bottom: 10px" ] [ text str ]
 
     body [style "background-color: lightslategrey"] [
-        div [ clazz "ui vertical inverted menu"; style "min-width: 250px" ] [
+        div [ clazz "ui vertical inverted menu"; style "min-width: 410px" ] [
 
             div [ clazz "item" ] [
                 button [clazz "ui inverted labeled icon button"; onClick (fun _ -> Reset)] [
@@ -201,6 +206,58 @@ let view (model : AdaptiveModel) =
                 description "Multi select"
                 let atts = AttributeMap.ofList [clazz "inverted clearable search"]
                 dropdownMultiSelect atts None "Search..." alternatives model.alts SetAlternatives
+            ]
+
+            // Color picker
+            div [ clazz "header item"; style "display: flex" ] [
+                h3 [] [ text "Color picker" ]
+
+                Incremental.div (AttributeMap.ofAMap <| amap {
+                    let! c = model.color
+                    yield style $"width: 16px; height: 16px; margin-left: 10px; margin-top: 5px; border: thin solid; background-color: #{c.ToHexString()}"
+                }) AList.empty
+            ]
+
+            div [ clazz "item" ] [
+                description "Dropdown variations"
+
+                div [style "display: flex"] [
+                    div [style "margin-right: 5px"] [
+                        let cfg = { ColorPicker.Config.Dark with palette = Some ColorPicker.Palette.Basic }
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+
+                    div [style "margin-left: 5px; margin-right: 5px"] [
+                        let cfg = { ColorPicker.Config.Dark with palette = Some ColorPicker.Palette.Reduced; pickerStyle = None }
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+
+                    div [style "margin-left: 5px; margin-right: 5px"] [
+                        let cfg = { ColorPicker.Config.Dark with
+                                        palette = None
+                                        pickerStyle = Some ColorPicker.PickerStyle.Alpha
+                                        preferredFormat = ColorPicker.Format.HSL }
+
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+
+                    div [style "margin-left: 5px"] [
+                        let cfg = { ColorPicker.Config.Dark with displayMode = ColorPicker.DisplayMode.Disabled }
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+                ]
+            ]
+
+            div [ clazz "item" ] [
+                description "Inline with persistent selection"
+
+                let cfg = { ColorPicker.Config.Dark with
+                                localStorageKey  = Some "aardvark.media.colorpicker.example"
+                                palette          = Some ColorPicker.Palette.Default
+                                pickerStyle      = Some { ColorPicker.PickerStyle.AlphaToggle with showButtons = true; textInput = ColorPicker.TextInput.Enabled }
+                                displayMode      = ColorPicker.DisplayMode.Inline }
+
+                ColorPicker.view cfg SetColor model.color
             ]
         ]
     ]

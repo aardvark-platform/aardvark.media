@@ -9,7 +9,7 @@ open Adaptify
 type SketchingAction = 
   | AddPoint of V3d
   | ClosePolygon
-  | ChangeColor  of ColorPicker.Action
+  | ChangeColor  of C4b
   | SetThickness of Numeric.Action
   | SetOffset of Numeric.Action
   | SetDepthOffset of Numeric.Action
@@ -29,7 +29,7 @@ type SketchingModel =
   {
     working : option<Brush>
     finishedBrushes : IndexList<Brush>
-    selectedColor : ColorInput
+    selectedColor : C4b
     selectedThickness : NumericInput
     volumeOffset : NumericInput
     depthOffset : NumericInput
@@ -83,7 +83,7 @@ module Initial =
       working = None
       future = None
       past = None  
-      selectedColor = { c = C4b.VRVisGreen}
+      selectedColor = C4b.VRVisGreen
       selectedThickness = thickness
       volumeOffset = offset
       depthOffset = depthOffset

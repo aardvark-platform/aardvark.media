@@ -1,0 +1,123 @@
+.sp-replacer {
+    border-radius: 4px;
+}
+
+.sp-container {
+    border-radius: 8px;
+}
+
+.sp-palette-row:not(:empty) + .sp-palette-row-selection {
+    margin-top: 4px;
+}
+
+.sp-container:not(.sp-flat) {
+    background-color: rgba(236, 236, 236, 0.9);
+}
+
+.sp-hue, .sp-thumb-el, .sp-alpha, .sp-alpha-inner, .sp-preview, .sp-slider, .sp-alpha-handle {
+    border-radius: 2px;
+}
+
+.sp-thumb-inner {
+    border-radius: 1px
+}
+
+.sp-container button.sp-choose, .sp-container button.sp-palette-toggle {
+    padding: 6px;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-radius: 6px;
+    border: 1px solid #959595;
+}
+
+.sp-container .sp-cancel {
+    font-size: 13px;
+    margin-right: 10px;
+}
+
+.sp-container .sp-input {
+    margin-top: 5px;
+    border: 1px solid rgb(177 177 177);
+}
+
+.sp-container .sp-button-container, .sp-container .sp-palette-toggle {
+    margin-top: 5px;
+}
+
+.sp-container:not(.dark) .sp-palette .sp-thumb-el:not(:hover) {
+    border: solid 1px #8b8b8b
+}
+
+.dark.sp-replacer {
+    background-color: rgba(48, 49, 51, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.dark.sp-replacer:hover:not(.sp-disabled), .dark.sp-replacer.sp-active {
+    border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.dark.sp-disabled.sp-replacer {
+    opacity: 0.45;
+}
+
+.dark.sp-replacer .sp-preview {
+    border: 1px solid rgb(171 171 171)
+}
+
+.dark.sp-replacer .sp-dd {
+    opacity: 0.8;
+}
+
+.dark.sp-container {
+    background-color: rgb(32, 32, 33);
+    border: 1px solid rgb(120, 120, 120);
+    color: rgba(255, 255, 255, 0.87);
+}
+
+.dark.sp-container:not(.sp-flat) {
+    background-color: rgba(32, 32, 33, 0.95);
+}
+
+.dark.sp-container .sp-palette-container {
+    border-right: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dark.sp-container .sp-picker-container {
+    border-left: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dark.sp-container .sp-dragger {
+    border: 1px solid rgb(209 209 209);
+}
+
+.dark.sp-container .sp-alpha-inner, .dark.sp-container .sp-hue {
+    border: 1px solid #666
+}
+
+.dark.sp-container .sp-input {
+    color: rgba(255, 255, 255, 0.87);
+    border: 1px solid rgb(120 120 120);
+}
+
+.dark.sp-container .sp-cancel {
+    color: #fb9090 !important;
+}
+
+.dark.sp-container button.sp-choose, .dark.sp-container button.sp-palette-toggle {
+    text-shadow: none !important;
+    background-image: none;
+    background-color: transparent;
+    border: 1px solid #ffffff7a;
+    color: rgba(255, 255, 255, 0.9)
+}
+
+.dark.sp-container button.sp-choose:hover, .dark.sp-container button.sp-palette-toggle:hover {
+    background-color: #4f4f4f;
+}
+
+.dark.sp-container button.sp-choose:active, .dark.sp-container button.sp-palette-toggle:active {
+    background-color: #2a2a2a;
+    box-shadow: none;
+}

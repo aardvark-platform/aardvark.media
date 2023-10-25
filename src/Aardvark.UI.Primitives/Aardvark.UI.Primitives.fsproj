@@ -49,6 +49,7 @@
     <Compile Include="Animation\Animator\AnimatorModel.fs" />
     <Compile Include="Animation\Animator\AnimatorApp.fs" />
     <Compile Include="Animation\Animator\Querying.fs" />
+    <Compile Include="ColorPicker.fs" />
     <Compile Include="IntegrationHelpers.fs" />
     <Compile Include="TouchStick.fs" />
     <Compile Include="CameraModel.fs" />
@@ -65,6 +66,7 @@
     <Compile Include="SaveDialog.fs" />
     <EmbeddedResource Include="resources\spectrum.css" />
     <EmbeddedResource Include="resources\spectrum.js" />
+    <EmbeddedResource Include="resources\spectrum-overrides.css" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

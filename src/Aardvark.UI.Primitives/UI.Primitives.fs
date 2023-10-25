@@ -384,6 +384,7 @@ module Numeric =
     let start () =
         app () |> App.start 
 
+[<Obsolete("Use ColorPicker from Aardvark.UI.Primitives.ColorPicker2 instead.")>]
 module ColorPicker =
     type Action =
         | SetColor of ColorInput

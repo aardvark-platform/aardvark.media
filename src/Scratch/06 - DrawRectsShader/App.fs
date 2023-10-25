@@ -374,7 +374,7 @@ let view (model : AdaptiveModel) =
                                                         cc id color |> Seq.singleton
                                                     | _ -> Seq.empty
                                             let ev = onEvent' "changeColor" [] ev
-                                            let color = ColorPicker.colorToHex (c.ToC4b())
+                                            let color = c.RGB.ToHexString()
                                             let boot= Spectrum.bootCode.Replace("__COLOR__", color).Replace("__INDEX__",sprintf "%d" index)
                                             onBoot boot <| div [
                                                 style (sprintf "%s;background-color:%s; border-color: black; border-style:solid" s color); 

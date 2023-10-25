@@ -12,7 +12,7 @@ open Aardium
 open Input
 
 [<EntryPoint; STAThread>]
-let main argv = 
+let main argv =
     
     Aardvark.Init()
     Aardium.init()
@@ -37,6 +37,7 @@ let main argv =
 
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' runtime false instance
+        Aardvark.UI.Primitives.Resources.WebPart
         Suave.Files.browseHome
     ] |> ignore
     
