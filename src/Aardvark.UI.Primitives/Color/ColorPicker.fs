@@ -119,7 +119,7 @@ module ColorPicker =
 
     type TextInput =
         /// Do not show the input field.
-        | Hidden = 0
+        | None = 0
 
         /// Show the input field but disable it.
         | Disabled = 1
@@ -270,7 +270,7 @@ module ColorPicker =
 
             let textInput =
                 match config.pickerStyle with
-                | Some { textInput = TextInput.Hidden } -> "showInput: false"
+                | Some { textInput = TextInput.None } -> "showInput: false"
                 | _ -> "showInput: true"
 
             let showButtons =

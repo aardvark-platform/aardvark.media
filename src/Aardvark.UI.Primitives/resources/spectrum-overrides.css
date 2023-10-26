@@ -1,13 +1,61 @@
 .sp-replacer {
+    display: inline-flex;  /* Dropdown arrow should be on same line as preview */
     border-radius: 4px;
 }
 
 .sp-container {
+    display: inline-flex;  /* Palette and picker should always be aligned horizontally */
     border-radius: 8px;
 }
 
+/* Use flex to align toggle buttons at the bottom */
+.sp-container:not(.sp-palette-disabled) .sp-palette-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.sp-palette-container .sp-palette {
+    flex: 1 1 auto;
+}
+
+.sp-palette-container .sp-palette-button-container {
+    align-self: flex-end;
+}
+
+/* Prevent line breaks within palette rows */
+.sp-palette-container .sp-palette .sp-palette-row {
+    display: flex;
+}
+
+/* Add space between regular and selection palette */
 .sp-palette-row:not(:empty) + .sp-palette-row-selection {
     margin-top: 4px;
+}
+
+/* Prevent weird margin and padding at bottom of containers */
+.sp-container .sp-picker-container, .sp-container .sp-palette-container {
+    margin-bottom: unset;
+    padding: 10px;
+}
+
+/* Adjust input container margins */
+.sp-container .sp-input-container {
+    margin-top: 5px;
+    margin-bottom: 0;
+}
+
+/* Remove margin from top picker */
+.sp-container:not(.sp-alpha-enabled) .sp-picker-container .sp-top {
+    margin-bottom: 0;
+}
+
+/* Make gap between alpha slider and picker wider */
+.sp-container .sp-alpha {
+    bottom: -16px;
+}
+
+.sp-container .sp-button-container, .sp-container .sp-palette-button-container {
+    margin-top: 10px;
 }
 
 .sp-container:not(.sp-flat) {
@@ -36,16 +84,17 @@
 }
 
 .sp-container .sp-input {
-    margin-top: 5px;
     border: 1px solid rgb(177 177 177);
 }
 
-.sp-container .sp-button-container, .sp-container .sp-palette-toggle {
-    margin-top: 5px;
-}
-
+/* Make border around color swatches more visible */
 .sp-container:not(.dark) .sp-palette .sp-thumb-el:not(:hover) {
     border: solid 1px #8b8b8b
+}
+
+/* Remove border from picker container if palette is not visible anyway */
+.sp-container.sp-palette-disabled .sp-picker-container {
+    border: none;
 }
 
 .dark.sp-replacer {
@@ -80,11 +129,11 @@
     background-color: rgba(32, 32, 33, 0.95);
 }
 
-.dark.sp-container .sp-palette-container {
+.dark.sp-container:not(.sp-palette-only) .sp-palette-container {
     border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.dark.sp-container .sp-picker-container {
+.dark.sp-container:not(.sp-palette-disabled) .sp-picker-container {
     border-left: 1px solid rgba(255, 255, 255, 0.15);
 }
 
