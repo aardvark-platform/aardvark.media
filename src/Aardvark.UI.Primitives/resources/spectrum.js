@@ -991,11 +991,11 @@
         offset.top += inputHeight;
 
         offset.left -=
-            Math.min(offset.left, (offset.left + dpWidth > viewWidth && viewWidth > dpWidth) ?
+            Math.min(offset.left, (offset.left + dpWidth > viewWidth) ?
             Math.abs(offset.left + dpWidth - viewWidth) : 0);
 
         offset.top -=
-            Math.min(offset.top, ((offset.top + dpHeight > viewHeight && viewHeight > dpHeight) ?
+            Math.min(offset.top, ((offset.top + dpHeight > viewHeight) ?
             Math.abs(dpHeight + inputHeight - extraY) : extraY));
 
         return offset;
