@@ -857,8 +857,7 @@
 
         function updateOriginalInput(fireCallback) {
             var color = get(),
-                displayColor = '',
-                hasChanged = !tinycolor.equals(color, colorOnShow);
+                displayColor = '';
 
             if (color) {
                 displayColor = color.toString(currentPreferredFormat);
@@ -870,7 +869,7 @@
                 boundElement.val(displayColor);
             }
 
-            if (fireCallback && hasChanged) {
+            if (fireCallback) {
                 callbacks.change(color);
                 boundElement.trigger('change', [ color ]);
             }
