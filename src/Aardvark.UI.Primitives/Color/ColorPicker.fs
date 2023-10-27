@@ -157,6 +157,7 @@ module ColorPicker =
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module PickerStyle =
 
+        /// Default picker that is always visible.
         let Default =
             { showAlpha       = false
               showButtons     = false
@@ -167,16 +168,16 @@ module ColorPicker =
               labelToggleMore = "More"
               labelToggleLess = "Less" }
 
-        /// The picker can be toggled.
+        /// Default picker that can be toggled.
         let Toggle =
             { Default with toggle = true }
 
-        /// The picker contains an alpha slider.
-        let Alpha =
+        /// Default picker with an alpha slider.
+        let DefaultWithAlpha =
             { Default with showAlpha = true }
 
-        /// The picker contains an alpha slider and can be toggled.
-        let AlphaToggle =
+        /// Default picker that can be toggled and has an alpha slider.
+        let ToggleWithAlpha =
             { Toggle with showAlpha = true }
 
     /// Maximum selection size depends on the chosen palette (equal to length of longest row).
@@ -216,6 +217,7 @@ module ColorPicker =
     [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
     module Config =
 
+        /// Picker with a palette of 64 colors.
         let Default =
             { palette                = Some Palette.Default
               maxSelectionSize       = AutoSelectionSize
@@ -226,8 +228,68 @@ module ColorPicker =
               hideAfterPaletteSelect = false
               darkTheme              = false }
 
-        let Dark =
-            { Default with darkTheme = true }
+        /// Disabled picker dropdown menu.
+        let Disabled =
+            { Default with displayMode = DisplayMode.Disabled }
+
+        /// Picker with a palette of 64 colors and an alpha slider.
+        let DefaultWithAlpha =
+            { Default with pickerStyle = Some PickerStyle.DefaultWithAlpha }
+
+        /// Only shows the palette, the picker is hidden.
+        let PaletteOnly =
+            { Default with pickerStyle = None }
+
+        /// Only shows the picker, the palette is hidden.
+        let PickerOnly =
+            { Default with palette = None }
+
+        /// Only shows the picker (with an alpha slider), the palette is hidden.
+        let PickerOnlyWithAlpha =
+            { DefaultWithAlpha with palette = None }
+
+        /// Shows both the palette and a picker, which can be toggled.
+        let Toggle =
+            { Default with pickerStyle = Some PickerStyle.Toggle }
+
+        /// Shows both the palette and a picker, which can be toggled and has an alpha slider.
+        let ToggleWithAlpha =
+            { Default with pickerStyle = Some PickerStyle.ToggleWithAlpha }
+
+        /// Contains predefined configurations with a dark theme.
+        module Dark =
+
+            /// Picker with a palette of 64 colors.
+            let Default =
+                { Default with darkTheme = true }
+
+            /// Disabled picker dropdown menu.
+            let Disabled =
+                { Disabled with darkTheme = true }
+
+            /// Picker with a palette of 64 colors and an alpha slider.
+            let DefaultWithAlpha =
+                { DefaultWithAlpha with darkTheme = true }
+
+            /// Only shows the palette, the picker is hidden.
+            let PaletteOnly =
+                { PaletteOnly with darkTheme = true }
+
+            /// Only shows the picker, the palette is hidden.
+            let PickerOnly =
+                { PickerOnly with darkTheme = true }
+
+            /// Only shows the picker (with an alpha slider), the palette is hidden.
+            let PickerOnlyWithAlpha =
+                { PickerOnlyWithAlpha with darkTheme = true }
+
+            /// Shows both the palette and a picker, which can be toggled.
+            let Toggle =
+                { Toggle with darkTheme = true }
+
+            /// Shows both the palette and a picker, which can be toggled and has an alpha slider.
+            let ToggleWithAlpha =
+                { ToggleWithAlpha with darkTheme = true }
 
 
     let view (config : Config) (message : C4b -> 'msg) (color : aval<C4b>) =

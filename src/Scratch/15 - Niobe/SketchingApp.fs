@@ -204,9 +204,8 @@ module SketchingApp =
 
   let viewGui (model : AdaptiveSketchingModel) =
     let cfg =
-        { ColorPicker.Config.Dark with
-            palette = Some ColorPicker.Palette.Reduced
-            pickerStyle = None }
+        { ColorPicker.Config.Dark.PaletteOnly with
+            palette = Some ColorPicker.Palette.Reduced }
 
     require Html.semui (
       Html.SemUi.accordion "Brush" "paint brush" true [          

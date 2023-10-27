@@ -223,27 +223,22 @@ let view (model : AdaptiveModel) =
 
                 div [style "display: flex"] [
                     div [style "margin-right: 5px"] [
-                        let cfg = { ColorPicker.Config.Dark with palette = Some ColorPicker.Palette.Basic }
+                        let cfg = { ColorPicker.Config.Dark.Default with palette = Some ColorPicker.Palette.Basic }
                         ColorPicker.view cfg SetColor model.color
                     ]
 
                     div [style "margin-left: 5px; margin-right: 5px"] [
-                        let cfg = { ColorPicker.Config.Dark with palette = Some ColorPicker.Palette.Reduced; pickerStyle = None }
+                        let cfg = { ColorPicker.Config.Dark.PaletteOnly with palette = Some ColorPicker.Palette.Reduced }
                         ColorPicker.view cfg SetColor model.color
                     ]
 
                     div [style "margin-left: 5px; margin-right: 5px"] [
-                        let cfg = { ColorPicker.Config.Dark with
-                                        palette = None
-                                        pickerStyle = Some ColorPicker.PickerStyle.Alpha
-                                        preferredFormat = ColorPicker.Format.HSL }
-
+                        let cfg = { ColorPicker.Config.Dark.PickerOnlyWithAlpha with preferredFormat = ColorPicker.Format.HSL }
                         ColorPicker.view cfg SetColor model.color
                     ]
 
                     div [style "margin-left: 5px"] [
-                        let cfg = { ColorPicker.Config.Dark with displayMode = ColorPicker.DisplayMode.Disabled }
-                        ColorPicker.view cfg SetColor model.color
+                        ColorPicker.view ColorPicker.Config.Dark.Disabled SetColor model.color
                     ]
                 ]
             ]
@@ -251,10 +246,9 @@ let view (model : AdaptiveModel) =
             div [ clazz "item" ] [
                 description "Inline with persistent selection"
 
-                let cfg = { ColorPicker.Config.Dark with
+                let cfg = { ColorPicker.Config.Dark.Default with
                                 localStorageKey  = Some "aardvark.media.colorpicker.example"
-                                palette          = Some ColorPicker.Palette.Default
-                                pickerStyle      = Some { ColorPicker.PickerStyle.AlphaToggle with showButtons = true; textInput = ColorPicker.TextInput.Enabled }
+                                pickerStyle      = Some { ColorPicker.PickerStyle.ToggleWithAlpha with showButtons = true; textInput = ColorPicker.TextInput.Enabled }
                                 displayMode      = ColorPicker.DisplayMode.Inline }
 
                 ColorPicker.view cfg SetColor model.color
