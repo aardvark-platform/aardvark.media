@@ -35,10 +35,34 @@ module Html =
 
         let finish<'msg> = td [] []
 
-    /// Converts the given color to an rgba() string.
-    let ofC4b (c : C4b) =
-        let alpha = Col.ByteToDouble c.A
-        $"rgba({c.R},{c.G},{c.B},{string alpha})"
+    type ColorConverter =
+        static member inline ToHtml(c : C3b) = $"rgb({c.R},{c.G},{c.B})"
+        static member inline ToHtml(c : C3b, a : float) = if a < 1.0 then $"rgba({c.R},{c.G},{c.B},{string a})" else ColorConverter.ToHtml c
+        static member inline ToHtml(c : C3b, a : float32) = if a < 1.0f then $"rgba({c.R},{c.G},{c.B},{string a})" else ColorConverter.ToHtml c
+        static member inline ToHtml(c : C4b) = ColorConverter.ToHtml(c.RGB, Col.ByteToFloat c.A)
+
+        static member inline ToHtml(c : C3us) = ColorConverter.ToHtml(c3b c)
+        static member inline ToHtml(c : C4us) = ColorConverter.ToHtml(c3b c, Col.UShortToDouble c.A)
+
+        static member inline ToHtml(c : C3ui) = ColorConverter.ToHtml(c3b c)
+        static member inline ToHtml(c : C4ui) = ColorConverter.ToHtml(c3b c, Col.UIntToDouble c.A)
+
+        static member inline ToHtml(c : C3f) = ColorConverter.ToHtml(c3b c)
+        static member inline ToHtml(c : C4f) = ColorConverter.ToHtml(c3b c, c.A)
+
+        static member inline ToHtml(c : C3d) = ColorConverter.ToHtml(c3b c)
+        static member inline ToHtml(c : C4d) = ColorConverter.ToHtml(c3b c, c.A)
+
+    let inline private colorAux (_ : ^Converter) (color : ^Color) : string =
+        ((^Converter or ^Color) : (static member ToHtml : ^Color -> string) color)
+
+    /// Converts the given color to an rgb() or rgba() string.
+    let inline color (color : ^Color) : string =
+        colorAux Unchecked.defaultof<ColorConverter> color
+
+    /// Converts the given color to an rgb() or rgba() string.
+    [<Obsolete("Use Html.color instead.")>]
+    let ofC4b (c : C4b) = color c
 
     let table rows = table [clazz "ui celled striped inverted table unstackable"] [ tbody [] rows ]
 
