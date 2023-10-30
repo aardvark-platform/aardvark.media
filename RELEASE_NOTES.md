@@ -1,3 +1,7 @@
+### 5.4.2
+- Added improved color picker
+- Added generic Html.color to convert colors to a CSS color string
+
 ### 5.4.1
 - Updated Fomantic-UI to 2.9.3
 - Added dropdownMultiSelect
