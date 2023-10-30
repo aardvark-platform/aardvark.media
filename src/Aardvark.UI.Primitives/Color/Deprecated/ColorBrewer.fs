@@ -3,8 +3,11 @@
 open System
 open Aardvark.Base
 
+#nowarn "44"
+
 module ColorHelper = 
     
+    [<Obsolete("Use Col.ParseHex instead.")>]
     let colorFromHex (hex:string) : C4b =
         
         let hex = hex.ToCharArray()
@@ -13,12 +16,14 @@ module ColorHelper =
         let b = Convert.ToInt32(hex.[6].ToString() + hex.[7].ToString(), 16) |> byte
         C4b(r, g, b, 255uy)
     
+    [<Obsolete("Use Html.color instead.")>]
     let colorToHex (color : C4b) : string = 
         let bytes = [| color.R; color.G; color.B |]
         bytes 
             |> Array.map (fun (x : byte) -> System.String.Format("{0:X2}", x))
             |> String.concat System.String.Empty
-        
+
+[<Obsolete("Use ColorBrewer.SchemeType from Aardvark.Base instead.")>]
 type PaletteType = 
     | Diverging
     | Qualitative
@@ -27,6 +32,7 @@ type PaletteType =
    
 // https://github.com/rcsb/colorbrewer/blob/master/src/main/java/org/jcolorbrewer/ColorBrewer.java
 
+[<Obsolete("Use ColorBrewer.Scheme from Aardvark.Base instead.")>]
 type BrewerPalette = {
     paletteType : PaletteType
     paletteDescription: String
@@ -58,6 +64,7 @@ type BrewerPalette = {
         let row = x.GetSamples count |> Array.map (fun x -> "'#" + ColorHelper.colorToHex x + "'") |> String.concat ","
         "[" + row + "]"
 
+[<Obsolete("Use ColorBrewer from Aardvark.Base instead.")>]
 module BrewerPalette = 
     
     let spectrumRow (count: int) (palette: BrewerPalette) : string = 
@@ -65,7 +72,8 @@ module BrewerPalette =
     
     let getSamples (count: int) (palette: BrewerPalette) : C4b[] = 
         palette.GetSamples count
-    
+
+[<Obsolete("Use ColorBrewer.Scheme from Aardvark.Base instead.")>]
 module ColorBrewerPalettes = 
     
     let BrownBlueGreen = {

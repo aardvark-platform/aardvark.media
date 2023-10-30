@@ -14,7 +14,7 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Color\ColorBrewer.fs" />
+    <Compile Include="Color\Deprecated\ColorBrewer.fs" />
     <Compile Include="Color\ColorPicker.fs" />
 	  <Compile Include="Primitives\SimplePrimitives.fs" />
     <Compile Include="Primitives\UI.Primitives.Models.fs" />
