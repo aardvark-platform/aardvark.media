@@ -17,13 +17,6 @@ module ColorPicker =
                 { kind = Script; name = "spectrum"; url = "resources/spectrum.js" }
             ]
 
-        module C4b =
-
-            let inline toRgba (c : C4b) =
-                let alpha = Col.ByteToDouble c.A
-                $"rgba({c.R},{c.G},{c.B},{string alpha})"
-
-
     [<Struct>]
     type Palette = { colors : C4b[][] }
 
@@ -298,7 +291,7 @@ module ColorPicker =
                 match config.palette with
                 | None -> "showPalette: false"
                 | Some p ->
-                    let values = p |> Palette.map C4b.toRgba |> Pickler.jsonToString
+                    let values = p |> Palette.map Html.color |> Pickler.jsonToString
                     $"showPalette: true, palette: {values}"
 
             let selectionPalette =
@@ -400,7 +393,7 @@ module ColorPicker =
                 "};"
             ]
 
-        let rgba = color |> AVal.map C4b.toRgba
+        let rgba = color |> AVal.map Html.color
 
         let attributes =
             AttributeMap.ofList [

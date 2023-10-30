@@ -1,9 +1,7 @@
 ﻿namespace Aardvark.UI
  
 open Aardvark.Base
-open Aardvark.Rendering
 open FSharp.Data.Adaptive
-open Aardvark.UI
 open Adaptify
 
 [<ModelType>]
@@ -21,11 +19,6 @@ type V3dInput = {
     y : NumericInput
     z : NumericInput
     value : V3d
-}
-
-[<ModelType>]
-type ColorInput = {
-    c : C4b
 }
 
 [<ModelType>]
