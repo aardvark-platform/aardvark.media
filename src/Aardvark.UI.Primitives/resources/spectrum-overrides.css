@@ -8,6 +8,10 @@
     border-radius: 8px;
 }
 
+.sp-container.sp-flat {
+    z-index: unset;
+}
+
 /* Use flex to align toggle buttons at the bottom */
 .sp-container:not(.sp-palette-disabled) .sp-palette-container {
     display: flex;

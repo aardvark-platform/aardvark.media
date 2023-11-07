@@ -293,10 +293,18 @@
                 boundElement.after(container).hide();
             }
             else {
+                var appendTo;
 
-                var appendTo = opts.appendTo === "parent" ? boundElement.parent() : $(opts.appendTo);
-                if (appendTo.length !== 1) {
-                    appendTo = $("body");
+                if (opts.appendTo === "parent") {
+                    appendTo = boundElement.parent();
+                } else if (opts.appendTo === "replacer") {
+                    appendTo = replacer;
+                } else {
+                    appendTo = $(opts.appendTo);
+
+                    if (appendTo.length !== 1) {
+                        appendTo = $("body");
+                    }
                 }
 
                 appendTo.append(container);

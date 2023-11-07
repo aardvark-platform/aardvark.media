@@ -349,6 +349,8 @@ module ColorPicker =
                 "const $self = $('#__ID__');"
 
                 "$self.spectrum({"
+                $"   appendTo: 'replacer',"
+
                 // A bit weird with buttons, without buttons this is the default behavior anyway.
                 // Setting this to false will make clicking outside reset the displayed color even if
                 // a color was selected from the palette (which fires a change immediately).
