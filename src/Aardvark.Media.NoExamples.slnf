@@ -1,0 +1,16 @@
+{
+  "solution": {
+    "path": "Aardvark.Media.sln",
+    "projects": [
+      "Aardvark.Cef.Process\\Aardvark.Cef.Process.fsproj",
+      "Aardvark.Cef.WinForms.Process\\Aardvark.Cef.WinForms.Process.fsproj",
+      "Aardvark.Cef.WinForms\\Aardvark.Cef.WinForms.fsproj",
+      "Aardvark.Cef\\Aardvark.Cef.fsproj",
+      "Aardvark.Service.Giraffe\\Aardvark.Service.Giraffe.fsproj",
+      "Aardvark.Service\\Aardvark.Service.fsproj",
+      "Aardvark.UI.Primitives\\Aardvark.UI.Primitives.fsproj",
+      "Aardvark.UI\\Aardvark.UI.fsproj",
+      "Tests\\Aardvark.UI.Animation.Benchmarks\\Aardvark.UI.Animation.Benchmarks.fsproj"
+    ]
+  }
+}

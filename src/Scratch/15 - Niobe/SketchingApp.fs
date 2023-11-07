@@ -7,7 +7,7 @@ open Aardvark.SceneGraph
 
 open Aardvark.Application
 open Aardvark.UI
-open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.ColorPicker2
 open Adaptify.FSharp.Core
 open Uncodium
 
@@ -181,9 +181,8 @@ module SketchingApp =
       match model.future with
         | None -> model
         | Some f -> f
-    | ChangeColor a ->
-      let c = ColorPicker.update model.selectedColor a
-      let b' = model.working |> Option.map(fun b -> { b with color = c.c})
+    | ChangeColor c ->
+      let b' = model.working |> Option.map(fun b -> { b with color = c })
       { model with working = b'; selectedColor = c }
   
   let currentBrushSg (model : AdaptiveSketchingModel) : ISg<SketchingAction> = 
@@ -204,10 +203,14 @@ module SketchingApp =
         //Sg.execute(RenderCommand.Ordered asd)
 
   let viewGui (model : AdaptiveSketchingModel) =
+    let cfg =
+        { ColorPicker.Config.Dark.PaletteOnly with
+            palette = Some ColorPicker.Palette.Reduced }
+
     require Html.semui (
       Html.SemUi.accordion "Brush" "paint brush" true [          
           Html.table [  
-              Html.row "Color:"  [ColorPicker.viewColorBrewer 10 PaletteType.SequentialSingle model.selectedColor |> UI.map ChangeColor ]
+              Html.row "Color:"  [ColorPicker.view cfg ChangeColor model.selectedColor ]
               Html.row "Width:"  [Numeric.view model.selectedThickness |> UI.map SetThickness]                             
               Html.row "Offset:"  [Numeric.view model.volumeOffset |> UI.map SetOffset]                             
               Html.row "DOffset:"  [Numeric.view model.depthOffset |> UI.map SetDepthOffset]                 

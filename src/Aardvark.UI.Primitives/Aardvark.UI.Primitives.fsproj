@@ -5,7 +5,7 @@
     <GenerateLenses>True</GenerateLenses>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <WarnOn>3389;3390</WarnOn>
+    <WarnOn>3389;3390;3395</WarnOn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
@@ -14,11 +14,14 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-	<Compile Include="Simple\SimplePrimitives.fs" />
-    <Compile Include="UI.Primitives.Models.fs" />
-    <Compile Include="ColorBrewer.fs" />
-    <Compile Include="UI.Primitives.fs" />
-    <Compile Include="UI.Primitives.Simple.fs" />
+	  <Compile Include="Primitives\SimplePrimitives.fs" />
+    <Compile Include="Primitives\UI.Primitives.Models.fs" />
+    <Compile Include="Primitives\UI.Primitives.fs" />
+    <Compile Include="Primitives\UI.Primitives.Simple.fs" />
+    <Compile Include="Color\Deprecated\ColorBrewer.fs" />
+    <Compile Include="Color\Deprecated\ColorInput.fs" />
+    <Compile Include="Color\Deprecated\ColorPicker.fs" />
+    <Compile Include="Color\ColorPicker.fs" />
     <Compile Include="TrafoControls\TrafoModel.fs" />
     <Compile Include="TrafoControls\TrafoController.fs" />
     <Compile Include="TrafoControls\TranslationController.fs" />
@@ -49,14 +52,14 @@
     <Compile Include="Animation\Animator\AnimatorModel.fs" />
     <Compile Include="Animation\Animator\AnimatorApp.fs" />
     <Compile Include="Animation\Animator\Querying.fs" />
-    <Compile Include="IntegrationHelpers.fs" />
-    <Compile Include="TouchStick.fs" />
-    <Compile Include="CameraModel.fs" />
-    <Compile Include="FreeFlyController.fs" />
-    <Compile Include="ArcBallController.fs" />
-    <Compile Include="OrbitController.fs" />
-    <Compile Include="CameraUtilities.fs" />
-    <Compile Include="LegacyCameraController.fs" />
+    <Compile Include="Controllers\IntegrationHelpers.fs" />
+    <Compile Include="Controllers\TouchStick.fs" />
+    <Compile Include="Controllers\CameraModel.fs" />
+    <Compile Include="Controllers\FreeFlyController.fs" />
+    <Compile Include="Controllers\ArcBallController.fs" />
+    <Compile Include="Controllers\OrbitController.fs" />
+    <Compile Include="Controllers\CameraUtilities.fs" />
+    <Compile Include="Controllers\LegacyCameraController.fs" />
     <Compile Include="Docking.fs" />
     <Content Include="d3Test.js">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
@@ -65,6 +68,7 @@
     <Compile Include="SaveDialog.fs" />
     <EmbeddedResource Include="resources\spectrum.css" />
     <EmbeddedResource Include="resources\spectrum.js" />
+    <EmbeddedResource Include="resources\spectrum-overrides.css" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

@@ -1,3 +1,19 @@
+### 5.4.2
+- Added improved color picker
+- Added generic Html.color to convert colors to a CSS color string
+
+### 5.4.1
+- Updated Fomantic-UI to 2.9.3
+- Added dropdownMultiSelect
+
+### 5.4.0
+- Updated Fomantic-UI to 2.8.8
+- Fixed and improved resource management
+- Updated to Aardvark.Rendering 5.4
+
+### 5.4.0-prerelease0007
+- updated to rendering 5.4 prerelease
+
 ### 5.4.0-prerelease0006
 - updated to rendering 5.3 prerelease
 
@@ -16,6 +32,20 @@
 ### 5.4.0-prerelease0001
 - Updated Fomantic-UI to 2.8.8
 - Fixed and improved resource management
+
+### 5.3.6
+- Fixed memory leak in event handler management
+- Updated to Xilium.CefGlue 0.4.0
+
+### 5.3.5
+- Fixed assembly version of packages due to missing Aardvark.Build reference (was 1.0.0.0)
+- Fixed CEF packages
+
+### 5.3.4
+- Updated to Aardvark.Rendering 5.3
+
+### 5.3.3
+- exception handling for screenshots
 
 ### 5.3.2
 - Fixed CEF processes nuget packages

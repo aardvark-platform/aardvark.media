@@ -118,6 +118,7 @@ module Reflection =
             )
             |> List.collect (fun (resName, name) ->
                 use stream = assembly.GetManifestResourceStream resName
+                let name = name |> String.replace "\\" "/"
 
                 let buffer = Array.zeroCreate (int stream.Length)
                 

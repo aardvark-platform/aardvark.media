@@ -2,4 +2,7 @@
 
 dotnet tool restore
 dotnet paket restore
-dotnet build src/Aardvark.Media.sln
+
+IF "%1"=="restore" exit /B
+
+dotnet build src/Aardvark.Media.NoExamples.slnf

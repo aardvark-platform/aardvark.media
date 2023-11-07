@@ -77,6 +77,17 @@ module Resources =
         let attributeValue = assembly.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>()
         attributeValue.FrameworkName.ToLower().Contains("framework")
 
+    let private ignoredResources =
+        Set.ofList [
+            "FSharpSignatureData"
+            "FSharpOptimizationData"
+        ]
+
     let (|PlainFrameworkEmbedding|_|) (assembly : Assembly) (resName : string) =
-        if assembly |> isNetFramework then Some resName
+        if assembly |> isNetFramework then
+            let assemblyName = assembly.GetName().Name
+            if ignoredResources |> Set.map (fun r -> $"{r}.{assemblyName}") |> Set.contains resName then
+                None
+            else
+                Some resName
         else None

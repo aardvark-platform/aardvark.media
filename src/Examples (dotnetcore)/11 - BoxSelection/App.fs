@@ -135,7 +135,7 @@ let view (model : AdaptiveBoxSelectionDemoModel) =
                             for b in model.boxes do
                                 let! c = mkColor model b
 
-                                let bgc = sprintf "background: %s" (Html.ofC4b c)
+                                let bgc = sprintf "background: %s" (Html.color c)
                                     
                                 yield 
                                     div [

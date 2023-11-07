@@ -306,7 +306,7 @@ module Internals =
                     | Some gpuCompressorInstance ->
                         let resolved = resolved.Value
                         if color.Samples > 1 || quality.scale <> 1.0 then
-                            runtime.ResolveMultisamples(color, resolved, ImageTrafo.Identity)
+                            runtime.ResolveMultisamples(color, resolved)
                         else
                             runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
 
@@ -351,7 +351,7 @@ module Internals =
                     | _ -> recreate color.Format color.Size
             let data =
                 if color.Samples > 1 then
-                    runtime.ResolveMultisamples(color, resolved, ImageTrafo.Identity)
+                    runtime.ResolveMultisamples(color, resolved)
                 else
                     runtime.Copy(color,resolved.[TextureAspect.Color,0,0])
 

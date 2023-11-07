@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <WarnOn>3389;3390</WarnOn>
+    <WarnOn>3389;3390;3395</WarnOn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
@@ -26,35 +26,30 @@
     <Compile Include="Attributes.fs" />
     <Compile Include="Combinators.fs" />
     <Compile Include="Interop.fs" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\**">
+      <LogicalName>resources\fomantic\themes\default\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\fomantic\semantic.min.js" LogicalName="resources/fomantic/semantic.min.js" />
+    <EmbeddedResource Include="resources\fomantic\semantic.min.css" LogicalName="resources/fomantic/semantic.min.css" />
+    <EmbeddedResource Include="resources\fomantic\semantic-overrides.css" LogicalName="resources/fomantic/semantic-overrides.css" />
     <EmbeddedResource Include="resources\aardvark.js" />
     <EmbeddedResource Include="resources\aardvark.css" />
     <EmbeddedResource Include="resources\aardvark.svg" />
     <EmbeddedResource Include="resources\aardvark-light.svg" />
     <EmbeddedResource Include="resources\docking.css" />
-    <EmbeddedResource Include="resources\fonts.css" />
-    <EmbeddedResource Include="resources\semantic-overrides.css" />
-    <EmbeddedResource Include="resources\semantic.css" />
     <EmbeddedResource Include="resources\stats.html" />
-    <EmbeddedResource Include="resources\brand-icons.woff2" />
     <EmbeddedResource Include="resources\docking.js" />
     <EmbeddedResource Include="resources\essentialstuff.js" />
-    <EmbeddedResource Include="resources\icons.woff2" />
     <EmbeddedResource Include="resources\jquery-3-3-1.js" />
-    <EmbeddedResource Include="resources\outline-icons.woff2" />
     <EmbeddedResource Include="resources\rgbcolor.js" />
-    <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAUi-qJCY.woff2" />
-    <EmbeddedResource Include="resources\S6u8w4BMUTPHjxsAXC-q.woff2" />
-    <EmbeddedResource Include="resources\S6u9w4BMUTPHh6UVSwaPGR_p.woff2" />
-    <EmbeddedResource Include="resources\S6u9w4BMUTPHh6UVSwiPGQ.woff2" />
-    <EmbeddedResource Include="resources\S6uyw4BMUTPHjx4wXg.woff2" />
-    <EmbeddedResource Include="resources\S6uyw4BMUTPHjxAwXjeu.woff2" />
-    <EmbeddedResource Include="resources\S6u_w4BMUTPHjxsI5wq_FQft1dw.woff2" />
-    <EmbeddedResource Include="resources\S6u_w4BMUTPHjxsI5wq_Gwft.woff2" />
-    <EmbeddedResource Include="resources\semantic.js" />
     <EmbeddedResource Include="resources\touchstick.js" />
-	<EmbeddedResource Include="resources\favicon.ico" />
-	<None Include="paket.references" />
-	<None Include="paket.template" />
+	  <EmbeddedResource Include="resources\favicon.ico" />
+	  <None Include="paket.references" />
+	  <None Include="paket.template" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <EmbeddedResource Include="resources\fomantic\semantic.js" LogicalName="resources/fomantic/semantic.js" />
+    <EmbeddedResource Include="resources\fomantic\semantic.css" LogicalName="resources/fomantic/semantic.css" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />

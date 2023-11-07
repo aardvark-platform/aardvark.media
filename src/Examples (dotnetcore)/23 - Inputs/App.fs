@@ -3,16 +3,16 @@ module Input.App
 open Aardvark.UI
 open Aardvark.UI.Generic
 open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.ColorPicker2
 
+open System
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Rendering
+
 open Input
-open System
 
-
-let initial = 
-    { 
+let initial =
+    {
         active = true
         value = Constant.Pi
         intValue = 13
@@ -20,98 +20,111 @@ let initial =
         uintValue = 1u
         name = "Pi"
         alt = Some A
-        options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"]
+        alts = IndexList.ofList [ A; D ]
+        options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"; Custom "Banana", "Banana"; Custom "Orange", "Orange"]
         enumValue = EnumValue.Value1
+        color = C4b(C3b.Blue, 127uy)
     }
 
-
-let rand = System.Random()
-
 let update (model : Model) (msg : Message) =
-    
     Log.warn "%A" msg
-    
-    match msg with
-        | ToggleActive ->
-            //Log.warn "ToggleActive"
-            { model with active = not model.active }
-            //if rand.NextDouble() > 0.5 then
-            //    { model with active = not model.active }
-            //else
-            //    model
-        | SetValue v ->
-            //Log.warn "%A" v
-            if model.active then
-                { model with value = v }
-            else
-                model
-        | SetInt v -> //Log.warn "SetInt :%d" v;
-            { model with intValue = v }
-        | SetDecimal v -> //Log.warn "SetDecimal :%A" v; 
-            { model with decValue = v }
-        | SetUInt v -> //Log.warn "SetUInt :%A" v; 
-            { model with uintValue = v }
-        | SetName n ->
-            //Log.warn "SetName: %A" n
-            if model.active then
-                { model with name = n; options = HashMap.add (Custom n) n model.options }
-            else
-                model
-        | SetAlternative a ->
-            //Log.warn "SetAlternative: %A" a
-            if model.active then
-                { model with alt = a }
-            else 
-                model
-        | SetEnumValue v -> 
-            //Log.warn "SetEnumValue :%A" v
-            { model with enumValue = v }
-        | Reset -> 
-            { 
-                active = true
-                value = Constant.PiHalf
-                intValue = 14
-                decValue = 2.0m
-                uintValue = 2u
-                name = "Nope"
-                alt = Some B
-                options = HashMap.ofList [B, "B"; D, "D"]
-                enumValue = EnumValue.Value3
-            }
-//let values =
-//    AMap.ofList [
-//        A, div [] [ text "A"; i [ clazz "icon rocket" ] []; i [ clazz "icon thermometer three quarters" ] [] ]
-//        B, text "B"
-//        C, text "C"
-//        D, text "D"
-//    ]
 
-let enumValues = AMap.ofArray((Enum.GetValues typeof<EnumValue> :?> (EnumValue [])) |> Array.map (fun c -> (c, text (Enum.GetName(typeof<EnumValue>, c)) )))
+    match msg with
+    | ToggleActive ->
+        { model with active = not model.active }
+
+    | SetValue v ->
+        { model with value = v }
+
+    | SetInt v ->
+        { model with intValue = v }
+
+    | SetDecimal v ->
+        { model with decValue = v }
+
+    | SetUInt v ->
+        { model with uintValue = v }
+
+    | SetName n ->
+        { model with name = n; options = HashMap.add (Custom n) n model.options }
+
+    | SetAlternative a ->
+        { model with alt = a }
+
+    | SetAlternatives a ->
+        { model with alts = IndexList.ofList a }
+
+    | SetEnumValue v ->
+        { model with enumValue = v }
+
+    | SetColor c ->
+        { model with color = c }
+
+    | Reset ->
+        initial
 
 let view (model : AdaptiveModel) =
-    let values = model.options |> AMap.map (fun k v -> text v)
-    div [clazz "ui inverted segment"; style "width: 100%; height: 100%"] [
-        div [ clazz "ui vertical inverted menu" ] [
-            div [ clazz "item" ] [
+    let alternatives = model.options |> AMap.map (fun _ v -> text v)
 
-                button [clazz "ui icon inverted tiny button"; onClick (fun _ -> Reset)] [
-                    i [clazz (sprintf "red delete icon")] []
+    let enumValues : amap<EnumValue, DomNode<Message>> =
+        Enum.GetValues<EnumValue>()
+        |> Array.map (fun e -> e, text (string e))
+        |> AMap.ofArray
+
+    let description (str : string) =
+        div [ style "margin-bottom: 10px" ] [ text str ]
+
+    body [style "background-color: lightslategrey"] [
+        div [ clazz "ui vertical inverted menu"; style "min-width: 410px" ] [
+
+            div [ clazz "item" ] [
+                button [clazz "ui inverted labeled icon button"; onClick (fun _ -> Reset)] [
+                    i [clazz "red delete icon"] []
+                    text "Reset"
                 ]
-            ]    
-            
-            div [ clazz "item" ] [ 
-                simplecheckbox { 
+            ]
+
+            // Checkboxes
+            div [ clazz "header item" ] [
+                h3 [] [ text "Checkboxes" ]
+            ]
+
+            div [ clazz "item" ] [
+                simplecheckbox {
                     attributes [clazz "ui inverted checkbox"]
                     state model.active
                     toggle ToggleActive
-                    content [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ] 
+                    content [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
                 }
                 //checkbox [clazz "ui inverted checkbox"] model.active ToggleActive [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
             ]
-            div [ clazz "item" ] [ 
+
+            div [ clazz "item" ] [
                 checkbox [clazz "ui inverted toggle checkbox"] model.active ToggleActive "Is the thing active?"
             ]
-            div [ clazz "item" ] [ 
+
+            // Sliders
+            div [ clazz "header item" ] [
+                h3 [] [ text "Sliders" ]
+            ]
+
+            div [ clazz "item" ] [
+                description "Float"
+                slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
+            ]
+
+            div [ clazz "item" ] [
+                description "Integer"
+                slider { min = 0; max = 20; step = 1 } [clazz "ui inverted small bottom aligned labeled ticked blue slider"] model.intValue SetInt
+            ]
+
+            // Input fields
+            div [ clazz "header item" ] [
+                h3 [] [ text "Input fields" ]
+            ]
+
+            div [ clazz "item" ] [
+                description "Numeric (float)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.value
@@ -123,7 +136,9 @@ let view (model : AdaptiveModel) =
                 }
                 //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
             ]
-            div [ clazz "item" ] [ 
+
+            div [ clazz "item" ] [
+                description "Numeric (integer)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.intValue
@@ -133,13 +148,11 @@ let view (model : AdaptiveModel) =
                     min -100000
                     max 100000
                 }
-                //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
+                //numeric { min = 0; max = 10000; smallStep = 1; largeStep = 10 } [clazz "ui inverted input"] model.intValue SetInt
             ]
-            div [ clazz "item" ] [ 
-                // not using the simplenumeric builder
-                numeric { min = 0; max = 10000; smallStep = 1; largeStep = 10 } [clazz "ui inverted input"] model.intValue SetInt
-            ]
-            div [ clazz "item" ] [ 
+
+            div [ clazz "item" ] [
+                description "Numeric (decimal)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.decValue
@@ -150,7 +163,9 @@ let view (model : AdaptiveModel) =
                     max 100000m
                 }
             ]
-            div [ clazz "item" ] [ 
+
+            div [ clazz "item" ] [
+                description "Numeric (unsigned integer)"
                 simplenumeric {
                     attributes [clazz "ui inverted input"]
                     value model.uintValue
@@ -161,35 +176,91 @@ let view (model : AdaptiveModel) =
                     max 100000u
                 }
             ]
-            div [ clazz "item" ] [ 
-                slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
-            ]
-            div [ clazz "item" ] [ 
-                slider { min = 0; max = 20; step = 1 } [clazz "ui inverted blue slider"] model.intValue SetInt
-            ]
-            div [ clazz "item" ] [ 
+
+            div [ clazz "item" ] [
+                description "Text input with validation"
                 textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
             ]
-            text "non-clearable"
-            div [ clazz "item" ] [ 
-                dropdownUnClearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
+
+            // Dropdowns
+            div [ clazz "header item" ] [
+                h3 [] [ text "Dropdown menus" ]
             ]
-            text "clearable"
-            div [ clazz "item" ] [ 
-                dropdown { mode = DropdownMode.Clearable "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] values model.alt SetAlternative
+
+            div [ clazz "item" ] [
+                description "Non-clearable"
+                dropdownUnclearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
             ]
-            text "icon"
-            div [ clazz "item" ] [ 
-                dropdown { mode = DropdownMode.Icon "sidebar"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted icon top left pointing dropdown circular button" ] values model.alt SetAlternative
+
+            div [ clazz "item" ] [
+                description "Clearable"
+                dropdown { mode = DropdownMode.Text <| Some "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] alternatives model.alt SetAlternative
+            ]
+
+            div [ clazz "item" ] [
+                description "Icon mode"
+                dropdown { mode = DropdownMode.Icon "sidebar"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted icon top left pointing dropdown circular button" ] alternatives model.alt SetAlternative
+            ]
+
+            div [ clazz "item" ] [
+                description "Multi select"
+                let atts = AttributeMap.ofList [clazz "inverted clearable search"]
+                dropdownMultiSelect atts None "Search..." alternatives model.alts SetAlternatives
+            ]
+
+            // Color picker
+            div [ clazz "header item"; style "display: flex" ] [
+                h3 [] [ text "Color picker" ]
+
+                Incremental.div (AttributeMap.ofAMap <| amap {
+                    let! c = model.color
+                    yield style $"width: 16px; height: 16px; margin-left: 10px; margin-top: 5px; border: thin solid; background-color: #{c.ToHexString()}"
+                }) AList.empty
+            ]
+
+            div [ clazz "item" ] [
+                description "Dropdown variations"
+
+                div [style "display: flex"] [
+                    div [style "margin-right: 5px"] [
+                        let cfg = { ColorPicker.Config.Dark.Default with palette = Some ColorPicker.Palette.Basic }
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+
+                    div [style "margin-left: 5px; margin-right: 5px"] [
+                        let cfg = { ColorPicker.Config.Dark.PaletteOnly with palette = Some ColorPicker.Palette.Reduced }
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+
+                    div [style "margin-left: 5px; margin-right: 5px"] [
+                        let cfg = { ColorPicker.Config.Dark.PickerOnlyWithAlpha with preferredFormat = ColorPicker.Format.HSL }
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+
+                    div [style "margin-left: 5px"] [
+                        ColorPicker.view ColorPicker.Config.Dark.Disabled SetColor model.color
+                    ]
+                ]
+            ]
+
+            div [ clazz "item" ] [
+                description "Inline with persistent selection"
+
+                let cfg = { ColorPicker.Config.Dark.Default with
+                                localStorageKey  = Some "aardvark.media.colorpicker.example"
+                                pickerStyle      = Some { ColorPicker.PickerStyle.ToggleWithAlpha with showButtons = true; textInput = ColorPicker.TextInput.Enabled }
+                                displayMode      = ColorPicker.DisplayMode.Inline }
+
+                ColorPicker.view cfg SetColor model.color
             ]
         ]
     ]
 
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app =
     {
-        unpersist = Unpersist.instance     
-        threads = fun _ -> ThreadPool.empty 
+        unpersist = Unpersist.instance
+        threads = fun _ -> ThreadPool.empty
         initial = initial
-        update = update 
+        update = update
         view = view
     }

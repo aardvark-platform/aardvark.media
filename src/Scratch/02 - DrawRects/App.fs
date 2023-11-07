@@ -231,7 +231,7 @@ module ClientApp =
 
                                     let withPicker (c : C4f) (index : int) (s : string)  =
                                         let ev = onEvent "changeColor" [] (((curry ChangeColor) index) << Spectrum.colorFromHex << Pickler.unpickleOfJson << List.head)
-                                        let color = ColorPicker.colorToHex (c.ToC4b())
+                                        let color = c.RGB.ToHexString()
                                         let boot= Spectrum.bootCode.Replace("__COLOR__", color)
                                         onBoot boot <| div [style (sprintf "%s;background-color:%s; border-color: black; border-style:solid" s color); ev] []
                                         

@@ -2,6 +2,7 @@ module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.ColorPicker2
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
@@ -21,7 +22,7 @@ let update (model : Model) (msg : Message) =
                     Array.init (model.count.value |> round |> int) (fun _ -> normal.GetDouble(20.0,5.0)) |> Array.toList 
             }
         | ChangeCount n -> { model with count = Numeric.update model.count n }
-        | ChangeColor a -> { model with color = ColorPicker.update model.color a }
+        | ChangeColor a -> { model with color = a }
 
 let view (model : AdaptiveModel) =
 
@@ -30,8 +31,7 @@ let view (model : AdaptiveModel) =
             { kind = Script; name = "d3"; url = "http://d3js.org/d3.v3.min.js" }
             { kind = Stylesheet; name = "histogramStyle"; url = "resources/Histogram.css" }
             { kind = Script; name = "histogramScript"; url = "resources/Histogram.js" }
-
-        ]  @ ColorPicker.spectrum  
+        ]
 
     let dataChannel = model.data.Channel
     let updateChart =
@@ -48,7 +48,7 @@ let view (model : AdaptiveModel) =
                     ]
                 )
 
-                ColorPicker.viewAdvanced ColorPicker.defaultPalette "./favorites.js" "d3integration" model.color |> UI.map ChangeColor
+                ColorPicker.view ColorPicker.Config.Default ChangeColor model.color
             ]
         )
     ]
@@ -65,7 +65,7 @@ let app =
             { 
                data = []
                count =  { min = 100.0; max = 5000.0; value = 1000.0; step = 100.0; format = "{0:0}" }
-               color = { c = C4b.White }
+               color = C4b.White
             }
         update = update 
         view = view

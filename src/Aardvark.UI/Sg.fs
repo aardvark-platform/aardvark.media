@@ -313,6 +313,16 @@ module ``F# Sg`` =
         let adapter (o : obj) =
             Sg.adapter o |> box
 
+        /// Applies the given activation function to the the given scene graph.
+        /// An activation function is invoked when the render objects of the scene graph are prepared.
+        /// The resulting IDisposable is disposed when the render objects are disposed.
+        let onActivation (f : unit -> IDisposable) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.onActivation f)
+
+        /// Generates a scene graph depending on the scope.
+        let delay (generator : Ag.Scope -> ISg<'msg>) : ISg<'msg> =
+            Sg.DelayNode(fun scope -> generator scope :> ISg) |> noEvents
+
         // ================================================================================================================
         // Picking
         // ================================================================================================================
@@ -761,12 +771,12 @@ module ``F# Sg`` =
 
 
         /// Sets the winding order of front faces.
-        let frontFace (order : aval<WindingOrder>) (sg: ISg<'msg>) =
-            sg |> unboxed (Sg.frontFace order)
+        let frontFacing (order : aval<WindingOrder>) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.frontFacing order)
 
         /// Sets the winding order of front faces.
-        let frontFace' (order : WindingOrder) (sg: ISg<'msg>) =
-            sg |> unboxed (Sg.frontFace' order)
+        let frontFacing' (order : WindingOrder) (sg: ISg<'msg>) =
+            sg |> unboxed (Sg.frontFacing' order)
 
 
         /// Sets the fill mode.
@@ -893,13 +903,18 @@ module ``F# Sg`` =
         let surface (m : ISurface) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.surface m)
 
+        /// Applies the given pool of effects to the scene.
+        /// The index active determines which effect is used at a time.
+        let effectPool (effects : FShade.Effect[]) (active : aval<int>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.effectPool effects active)
+
         /// Applies the given render pass.
         let pass (pass : RenderPass) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.pass pass)
 
         /// Draws an adaptive set of managed draw calls of the given pool.
         let pool (pool : ManagedPool) (mode : IndexedGeometryMode) (calls : aset<ManagedDrawCall>) =
-            mode |> Sg.pool pool calls |> box<'msg>
+            calls |> Sg.pool pool mode |> box<'msg>
 
         /// Draws an adaptive set of indexed geometries with instance attributes.
         let geometrySetInstanced (signature : GeometrySignature) (mode : IndexedGeometryMode) (geometries : aset<GeometryInstance>) =
@@ -924,11 +939,6 @@ module ``F# Sg`` =
         /// Creates a draw call from the given indexed geometry.
         let ofIndexedGeometry (g : IndexedGeometry) =
             Sg.ofIndexedGeometry g |> box<'msg>
-
-        /// Creates a draw call from the given indexed geometry, using an interleaved buffer
-        /// for the vertex attributes.
-        let ofIndexedGeometryInterleaved (attributes : list<Symbol>) (g : IndexedGeometry) =
-            Sg.ofIndexedGeometryInterleaved attributes g |> box<'msg>
 
         /// Creates a draw call, supplying the given transformations as per-instance attributes with
         /// name DefaultSemantic.InstanceTrafo.

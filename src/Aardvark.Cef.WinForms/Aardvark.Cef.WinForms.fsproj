@@ -2,11 +2,11 @@
 <Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFrameworks>net471;netcoreapp3.1</TargetFrameworks>
+    <TargetFrameworks>net471;net6.0-windows7.0</TargetFrameworks>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <UseWindowsForms>true</UseWindowsForms>
-    <WarnOn>3389;3390</WarnOn>
+    <WarnOn>3389;3390;3395</WarnOn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>
@@ -17,7 +17,8 @@
   <ItemGroup>
     <Compile Include="ChromiumStuff.fs" />
     <None Include="paket.references" />
-	<None Include="paket.template" />
+	  <None Include="paket.template" />
+	  <None Include="Aardvark.Cef.WinForms.targets" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj" />

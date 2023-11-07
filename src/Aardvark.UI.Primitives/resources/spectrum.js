@@ -293,10 +293,18 @@
                 boundElement.after(container).hide();
             }
             else {
+                var appendTo;
 
-                var appendTo = opts.appendTo === "parent" ? boundElement.parent() : $(opts.appendTo);
-                if (appendTo.length !== 1) {
-                    appendTo = $("body");
+                if (opts.appendTo === "parent") {
+                    appendTo = boundElement.parent();
+                } else if (opts.appendTo === "replacer") {
+                    appendTo = replacer;
+                } else {
+                    appendTo = $(opts.appendTo);
+
+                    if (appendTo.length !== 1) {
+                        appendTo = $("body");
+                    }
                 }
 
                 appendTo.append(container);
@@ -857,8 +865,7 @@
 
         function updateOriginalInput(fireCallback) {
             var color = get(),
-                displayColor = '',
-                hasChanged = !tinycolor.equals(color, colorOnShow);
+                displayColor = '';
 
             if (color) {
                 displayColor = color.toString(currentPreferredFormat);
@@ -870,7 +877,7 @@
                 boundElement.val(displayColor);
             }
 
-            if (fireCallback && hasChanged) {
+            if (fireCallback) {
                 callbacks.change(color);
                 boundElement.trigger('change', [ color ]);
             }
@@ -991,11 +998,11 @@
         offset.top += inputHeight;
 
         offset.left -=
-            Math.min(offset.left, (offset.left + dpWidth > viewWidth && viewWidth > dpWidth) ?
+            Math.min(offset.left, (offset.left + dpWidth > viewWidth) ?
             Math.abs(offset.left + dpWidth - viewWidth) : 0);
 
         offset.top -=
-            Math.min(offset.top, ((offset.top + dpHeight > viewHeight && viewHeight > dpHeight) ?
+            Math.min(offset.top, ((offset.top + dpHeight > viewHeight) ?
             Math.abs(dpHeight + inputHeight - extraY) : extraY));
 
         return offset;

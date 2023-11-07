@@ -20,25 +20,25 @@ let view (model : AdaptiveModel) =
         Incremental.text (model.value |> AVal.map string)
         br []
         img [
-            attribute "src" "https://upload.wikimedia.org/wikipedia/commons/6/67/SanWild17.jpg"; 
+            attribute "src" "https://upload.wikimedia.org/wikipedia/commons/6/67/SanWild17.jpg";
             attribute "alt" "aardvark"
             style "max-width: 80%; max-height: 80%"
         ]
     ]
 
 
-let threads (model : Model) = 
+let threads (model : Model) =
     ThreadPool.empty
 
 
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app =
     {
-        unpersist = Unpersist.instance     
-        threads = threads 
-        initial = 
-            {   
+        unpersist = Unpersist.instance
+        threads = threads
+        initial =
+            {
                 value = 0
             }
-        update = update 
+        update = update
         view = view
     }

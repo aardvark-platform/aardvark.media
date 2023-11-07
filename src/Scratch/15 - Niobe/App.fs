@@ -156,9 +156,7 @@ module App =
      FreeFlyController.controlledControl model.cameraState Camera (Frustum.perspective 60.0 0.01 1000.0 1.0 |> AVal.constant) 
        (AttributeMap.ofList [ 
          style "width: 100%; height:100%"; 
-         attribute "showFPS" "true";       // optional, default is false
          attribute "useMapping" "true"
-         attribute "data-renderalways" "false"
          attribute "data-samples" "4"
          onKeyDown (Message.KeyDown)
          onKeyUp (Message.KeyUp)
