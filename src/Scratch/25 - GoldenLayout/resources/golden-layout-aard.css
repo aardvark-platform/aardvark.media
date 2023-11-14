@@ -1,0 +1,10 @@
+/* For some reason the hacky dropdown icon is misaligned in Aardvark, even in a normal browser... */
+.lm_header .lm_controls .lm_tabdropdown {
+    display: flex;
+    align-items: end;
+    justify-content: center;
+}
+
+.lm_header .lm_controls .lm_tabdropdown:before {
+    border-bottom: 5px solid transparent;
+}

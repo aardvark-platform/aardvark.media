@@ -5,6 +5,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <AssemblyName>$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
+    <WarnOn>3389;3390;3395</WarnOn>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>
@@ -25,6 +26,8 @@
     <EmbeddedResource Include="resources\lm_popout_black.png" />
     <EmbeddedResource Include="resources\lm_popout_white.png" />
     <EmbeddedResource Include="resources\golden-layout.min.js" />
+    <EmbeddedResource Include="resources\golden-layout-aard.js" />
+    <EmbeddedResource Include="resources\golden-layout-aard.css" />
     <EmbeddedResource Include="resources\goldenlayout-base.css" />
     <EmbeddedResource Include="resources\goldenlayout-borderless-dark-theme.css" />
     <EmbeddedResource Include="resources\goldenlayout-dark-theme.css" />
