@@ -14,27 +14,9 @@
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="resources\lm_close_black.png" />
-    <EmbeddedResource Include="resources\lm_close_tab_white.png" />
-    <EmbeddedResource Include="resources\lm_close_white.png" />
-    <EmbeddedResource Include="resources\lm_maximise_black.png" />
-    <EmbeddedResource Include="resources\lm_maximise_white.png" />
-    <EmbeddedResource Include="resources\lm_minimize_black.png" />
-    <EmbeddedResource Include="resources\lm_minimize_white.png" />
-    <EmbeddedResource Include="resources\lm_popin_black.png" />
-    <EmbeddedResource Include="resources\lm_popin_white.png" />
-    <EmbeddedResource Include="resources\lm_popout_black.png" />
-    <EmbeddedResource Include="resources\lm_popout_white.png" />
-    <EmbeddedResource Include="resources\golden-layout.min.js" />
-    <EmbeddedResource Include="resources\golden-layout-aard.js" />
-    <EmbeddedResource Include="resources\golden-layout-aard.css" />
-    <EmbeddedResource Include="resources\goldenlayout-base.css" />
-    <EmbeddedResource Include="resources\goldenlayout-borderless-dark-theme.css" />
-    <EmbeddedResource Include="resources\goldenlayout-dark-theme.css" />
-    <EmbeddedResource Include="resources\goldenlayout-light-theme.css" />
-    <EmbeddedResource Include="resources\goldenlayout-soda-theme.css" />
-    <EmbeddedResource Include="resources\goldenlayout-translucent-theme.css" />
-    <EmbeddedResource Include="resources\goldenAard.js" />
+    <EmbeddedResource Include="resources\golden-layout\**">
+      <LogicalName>resources\golden-layout\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />

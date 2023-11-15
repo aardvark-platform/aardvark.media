@@ -37,7 +37,6 @@ if (!aardvark.golden) {
             layoutElement.boundingClientRect = layoutElement.getBoundingClientRect();
         };
 
-
         layout.bindComponentEvent = function (container, itemConfig) {
             const componentTypeName = goldenLayout.ResolvedComponentItemConfig.resolveComponentTypeName(itemConfig);
 
@@ -46,6 +45,7 @@ if (!aardvark.golden) {
             element.style.border = 'none';
             element.style.position = 'absolute';
             element.style.overflow = 'hidden';
+            element.classList.add('gl-aard-component');
 
             const component = {
                 rootHtmlElement: element

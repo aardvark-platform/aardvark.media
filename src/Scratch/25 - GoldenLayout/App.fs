@@ -312,11 +312,11 @@ module rec GoldenLayout =
             sprintf "aardvark.golden.destroyLayout($('#__ID__')[0])"
 
         let dependencies =
-            [ { name = "golden-layout";      url = "resources/golden-layout.min.js";        kind = Script }
-              { name = "golden-layout-aard"; url = "resources/golden-layout-aard.js";       kind = Script }
-              { name = "golden-layout";      url = "resources/goldenlayout-base.css";       kind = Stylesheet }
-              { name = "golden-layout-dark"; url = "resources/goldenlayout-dark-theme.css"; kind = Stylesheet }
-              { name = "golden-layout-aard"; url = "resources/golden-layout-aard.css";      kind = Stylesheet } ]
+            [ { name = "golden-layout";      url = "resources/golden-layout/bundle/umd/golden-layout.min.js";        kind = Script }
+              { name = "golden-layout";      url = "resources/golden-layout/css/goldenlayout-base.css";              kind = Stylesheet }
+              { name = "golden-layout-dark"; url = "resources/golden-layout/css/themes/goldenlayout-dark-theme.css"; kind = Stylesheet }
+              { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.js";                  kind = Script }
+              { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.css";                 kind = Stylesheet } ]
 
         page (fun request ->
             match request.queryParams |> Map.tryFind "page" with
@@ -367,8 +367,8 @@ let view (model : AdaptiveModel) =
 
             column {
                 element {
-                    id "aux1"
-                    title "Element 2"
+                    id "map"
+                    title "Map"
                     header Header.Top
                     buttons (Buttons.All ^^^ Buttons.Popout)
                 }
@@ -409,10 +409,11 @@ let view (model : AdaptiveModel) =
 
                 FreeFlyController.controlledControl model.cameraState Camera frustum attributes sg
 
-            | "aux1" ->
-                div [style "color: white; padding: 10px"] [
-                    text "Hey there!"
-                ]
+            | "map" ->
+                elem "iframe" [
+                    style "width: 100%; height: 100%"
+                    attribute "src" "https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.00030577182769775396%2C51.478569861898606&layer=mapnik"
+                ] []
 
             | "aux2" ->
                 div [style "color: white; padding: 10px"] [

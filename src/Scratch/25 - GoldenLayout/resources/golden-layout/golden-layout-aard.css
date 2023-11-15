@@ -8,3 +8,8 @@
 .lm_header .lm_controls .lm_tabdropdown:before {
     border-bottom: 5px solid transparent;
 }
+
+/* Prevent iframe elements from consuming pointer events while dragging */
+.lm_dragging iframe.gl-aard-component {
+    pointer-events: none;
+}
