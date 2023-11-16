@@ -308,6 +308,7 @@ module Static =
 
     // page content
     let inline body x = elem "body" x
+    let inline iframe x = elem "iframe" x
 
     // Text content
     let inline dd x = elem "dd" x
@@ -694,6 +695,7 @@ module Generic =
 
     // page content
     let inline body a c = elem "body" a c
+    let inline iframe a c = elem "iframe" a c
 
     // Text content
     let inline dd a c = elem "dd" a c
