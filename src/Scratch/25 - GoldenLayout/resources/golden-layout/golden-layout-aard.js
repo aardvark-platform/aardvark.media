@@ -4,6 +4,10 @@ if (!aardvark.golden) {
     };
 
     const onVirtualRecting = function (layoutElement, container, element, width, height) {
+        if (layoutElement.boundingClientRect === undefined) {
+            layoutElement.boundingClientRect = layoutElement.getBoundingClientRect();
+        }
+
         const containerBoundingClientRect = container.element.getBoundingClientRect();
         const left = containerBoundingClientRect.left - layoutElement.boundingClientRect.left;
         const top = containerBoundingClientRect.top - layoutElement.boundingClientRect.top;
@@ -26,18 +30,9 @@ if (!aardvark.golden) {
     }
 
     const createInstance = function (layoutElement) {
-        const layout = new goldenLayout.VirtualLayout(layoutElement);
-        layout.resizeWithContainerAutomatically = true;
-        layout.resizeDebounceExtendedWhenPossible = false;
-        layout.resizeDebounceInterval = 10;
-
         const components = new Map();
 
-        layout.beforeVirtualRectingEvent = function () {
-            layoutElement.boundingClientRect = layoutElement.getBoundingClientRect();
-        };
-
-        layout.bindComponentEvent = function (container, itemConfig) {
+        const onBindComponent = function (container, itemConfig) {
             const componentTypeName = goldenLayout.ResolvedComponentItemConfig.resolveComponentTypeName(itemConfig);
 
             const element = document.createElement("iframe");
@@ -72,7 +67,7 @@ if (!aardvark.golden) {
             };
         };
 
-        layout.unbindComponentEvent = function (container) {
+        const onUnbindComponent = function (container) {
             const component = components.get(container);
             if (component === undefined) {
                 throw new Error('[GoldenAard] Component not found.');
@@ -85,14 +80,18 @@ if (!aardvark.golden) {
 
             layoutElement.removeChild(element);
             components.delete(container);
-        }
+        };
+
+        const layout = new goldenLayout.VirtualLayout(layoutElement, onBindComponent, onUnbindComponent);
+        layout.resizeWithContainerAutomatically = true;
+        layout.resizeDebounceExtendedWhenPossible = false;
+        layout.resizeDebounceInterval = 10;
 
         const instance = {
             layout: layout,
             components: components
         };
 
-        aardvark.golden.instances.set(layoutElement.id, instance);
         return instance;
     }
 
@@ -101,6 +100,7 @@ if (!aardvark.golden) {
 
         if (instance === undefined) {
             instance = createInstance(layoutElement);
+            aardvark.golden.instances.set(layoutElement.id, instance);
         }
 
         instance.layout.loadLayout(config);
