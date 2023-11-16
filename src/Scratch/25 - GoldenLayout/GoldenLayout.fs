@@ -52,6 +52,14 @@ and [<RequireQualifiedAccess>] Layout =
     | Stack       of Stack
     | RowOrColumn of RowOrColumn
 
+type Theme =
+    | None           = 0
+    | BorderlessDark = 1
+    | Dark           = 2
+    | Light          = 3
+    | Soda           = 4
+    | Translucent    = 5
+
 type Labels =
     { Minimize    : string
       Maximize    : string
@@ -71,16 +79,18 @@ module Labels =
           TabDropdown = "Additional tabs" }
 
 type Config =
-    { PopOutWholeStack : bool
-      PopInOnClose     : bool
-      Labels           : Labels }
+    { Theme            : Theme
+      Labels           : Labels
+      PopOutWholeStack : bool
+      PopInOnClose     : bool }
 
 module Config =
 
     let Default =
-        { PopOutWholeStack = false
-          PopInOnClose     = true
-          Labels           = Labels.Default }
+        { Theme            = Theme.Dark
+          Labels           = Labels.Default
+          PopOutWholeStack = false
+          PopInOnClose     = true }
 
 module Layout =
 
@@ -306,12 +316,27 @@ module GoldenLayout =
         let shutdown =
             sprintf "aardvark.golden.destroyLayout($('#__ID__')[0])"
 
+        let themeName =
+            match config.Theme with
+            | Theme.BorderlessDark -> "borderless-dark"
+            | Theme.Dark           -> "dark"
+            | Theme.Light          -> "light"
+            | Theme.Soda           -> "soda"
+            | Theme.Translucent    -> "translucent"
+            | _ -> null
+
         let dependencies =
-            [ { name = "golden-layout";      url = "resources/golden-layout/bundle/umd/golden-layout.min.js";        kind = Script }
-              { name = "golden-layout";      url = "resources/golden-layout/css/goldenlayout-base.css";              kind = Stylesheet }
-              { name = "golden-layout-dark"; url = "resources/golden-layout/css/themes/goldenlayout-dark-theme.css"; kind = Stylesheet }
-              { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.js";                  kind = Script }
-              { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.css";                 kind = Stylesheet } ]
+            [
+                { name = "golden-layout"; url = "resources/golden-layout/bundle/umd/golden-layout.min.js"; kind = Script }
+                { name = "golden-layout"; url = "resources/golden-layout/css/goldenlayout-base.css";       kind = Stylesheet }
+
+                if themeName <> null then
+                    let url = sprintf "resources/golden-layout/css/themes/goldenlayout-%s-theme.css" themeName
+                    { name = "golden-layout-dark"; url = url; kind = Stylesheet }
+
+                { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.js";  kind = Script }
+                { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.css"; kind = Stylesheet }
+            ]
 
         page (fun request ->
             match request.queryParams |> Map.tryFind "page" with
