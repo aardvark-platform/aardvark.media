@@ -9,7 +9,7 @@
     border-bottom: 5px solid transparent;
 }
 
-/* Prevent iframe elements from consuming pointer events while dragging */
-.lm_dragging iframe.gl-aard-component {
+/* Prevent iframe elements from consuming pointer events while clicking on a drag listener */
+.lm_pointer_tracking iframe.gl-aard-component {
     pointer-events: none;
 }
