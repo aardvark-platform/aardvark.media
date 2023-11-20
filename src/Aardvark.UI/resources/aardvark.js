@@ -168,7 +168,7 @@ class Renderer {
         this.samples = samples;
         
         var quality = this.div.getAttribute("data-quality");
-        if (!quality) samples = 80;
+        if (!quality) quality = 80;
         this.quality = quality;
 
 		var showFPS = this.div.getAttribute("showFPS");
