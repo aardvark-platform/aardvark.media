@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Golden
+﻿namespace Aardvark.UI.Primitives.Golden
 
 open Aardvark.Base
 open Aardvark.UI
@@ -53,49 +53,46 @@ and [<RequireQualifiedAccess>] Layout =
     | RowOrColumn of RowOrColumn
 
 type Theme =
-    | None           = 0
-    | BorderlessDark = 1
-    | Dark           = 2
-    | Light          = 3
-    | Soda           = 4
-    | Translucent    = 5
+    | Theme of resourcePath: string
+    member inline x.Path = let (Theme p) = x in p
 
-type Labels =
-    { Minimize    : string
-      Maximize    : string
-      PopOut      : string
-      PopIn       : string
-      Close       : string
-      TabDropdown : string }
+module Theme =
+    let private getTheme (name : string) =
+        Theme <| sprintf "resources/golden-layout/css/themes/goldenlayout-%s-theme.css" name
 
-module Labels =
+    let BorderlessDark = getTheme "borderless-dark"
+    let Dark           = getTheme "dark"
+    let Light          = getTheme "light"
+    let Soda           = getTheme "soda"
+    let Translucent    = getTheme "translucent"
 
-    let Default =
-        { Minimize    = "Minimize"
-          Maximize    = "Maximize"
-          PopOut      = "Open in new window"
-          PopIn       = "Dock"
-          Close       = "Close"
-          TabDropdown = "Additional tabs" }
-
-type Config =
+type LayoutConfig =
     { Theme            : Theme
-      Labels           : Labels
-      PopOutWholeStack : bool
-      PopInOnClose     : bool }
+      PopInOnClose     : bool
+      LabelMinimize    : string
+      LabelMaximize    : string
+      LabelPopOut      : string
+      LabelPopIn       : string
+      LabelClose       : string
+      LabelTabDropdown : string }
 
-module Config =
+module LayoutConfig =
 
     let Default =
-        { Theme            = Theme.Dark
-          Labels           = Labels.Default
-          PopOutWholeStack = false
-          PopInOnClose     = true }
+        { Theme            = Theme.BorderlessDark
+          PopInOnClose     = false
+          LabelMinimize    = "Minimize"
+          LabelMaximize    = "Maximize"
+          LabelPopOut      = "Open in new window"
+          LabelPopIn       = "Dock"
+          LabelClose       = "Close"
+          LabelTabDropdown = "Additional tabs" }
 
 module Layout =
 
     [<Sealed; AbstractClass>]
     type Converter =
+        static member inline ToLayout(layout : Layout) = layout
         static member inline ToLayout(root : Element) = Layout.Element root
         static member inline ToLayout(root : Stack) = Layout.Stack root
         static member inline ToLayout(root : RowOrColumn) = Layout.RowOrColumn root
@@ -109,13 +106,14 @@ module Layout =
 [<AutoOpen>]
 module Builders =
 
-    type IdMustBeSpecified = IdMustBeSpecified
+    module ElementError =
+        type IdMustBeSpecified = IdMustBeSpecified
 
     type ElementBuilder() =
-        member inline x.Yield(()) = IdMustBeSpecified
+        member inline x.Yield(()) = ElementError.IdMustBeSpecified
 
         [<CustomOperation("id")>]
-        member inline x.Id(_ : IdMustBeSpecified, id : string) =
+        member inline x.Id(_ : ElementError.IdMustBeSpecified, id : string) =
             { Id       = id
               Title    = "Untitled"
               Closable = true
@@ -223,6 +221,11 @@ module Builders =
     let column = RowOrColumnBuilder false
 
 module GoldenLayout =
+    open Suave
+    open Suave.Filters
+    open Suave.Operators
+    open Suave.Successful
+    open System.IO
 
     module Json =
         open Newtonsoft.Json
@@ -278,34 +281,34 @@ module GoldenLayout =
 
                 o
 
-            let ofConfigLabels (config : Config) =
+            let ofConfigLabels (config : LayoutConfig) =
                 let o = JObject()
-                o.["close"] <- JToken.op_Implicit config.Labels.Close
-                o.["maximise"] <- JToken.op_Implicit config.Labels.Maximize
-                o.["minimise"] <- JToken.op_Implicit config.Labels.Minimize
-                o.["popout"] <- JToken.op_Implicit config.Labels.PopOut
-                o.["popin"] <- JToken.op_Implicit config.Labels.PopIn
-                o.["tabDropdown"] <- JToken.op_Implicit config.Labels.TabDropdown
+                o.["close"] <- JToken.op_Implicit config.LabelClose
+                o.["maximise"] <- JToken.op_Implicit config.LabelMaximize
+                o.["minimise"] <- JToken.op_Implicit config.LabelMinimize
+                o.["popout"] <- JToken.op_Implicit config.LabelPopOut
+                o.["popin"] <- JToken.op_Implicit config.LabelPopIn
+                o.["tabDropdown"] <- JToken.op_Implicit config.LabelTabDropdown
                 o
 
-            let ofConfigSettings (config : Config) =
+            let ofConfigSettings (config : LayoutConfig) =
                 let o = JObject()
-                o.["popoutWholeStack"] <- JToken.op_Implicit config.PopOutWholeStack
                 o.["popInOnClose"] <- JToken.op_Implicit config.PopInOnClose
                 o
 
-        let ofLayoutConfig (config : Config) (layout : Layout) =
+        let ofLayoutConfig (config : LayoutConfig) (layout : Layout) =
             let o = JObject()
             o.["root"] <- JObject.ofLayout layout
             o.["settings"] <- JObject.ofConfigSettings config
             o.["header"] <- JObject.ofConfigLabels config
             o.ToString Formatting.None
 
-    let inline layout (attributes : Attribute<'msg> list) (config : Config) (root : ^LayoutRoot)
+    let inline layout (attributes : Attribute<'msg> list) (config : LayoutConfig) (root : ^LayoutRoot)
                       (getElement : string -> DomNode<'msg>) =
         let attributes =
             attributes @ [
                 clazz "gl-aard-container"
+                attribute "data-theme" config.Theme.Path
             ]
 
         let boot =
@@ -316,26 +319,13 @@ module GoldenLayout =
         let shutdown =
             sprintf "aardvark.golden.destroyLayout($('#__ID__')[0])"
 
-        let themeName =
-            match config.Theme with
-            | Theme.BorderlessDark -> "borderless-dark"
-            | Theme.Dark           -> "dark"
-            | Theme.Light          -> "light"
-            | Theme.Soda           -> "soda"
-            | Theme.Translucent    -> "translucent"
-            | _ -> null
-
         let dependencies =
             [
-                { name = "golden-layout"; url = "resources/golden-layout/bundle/umd/golden-layout.min.js"; kind = Script }
-                { name = "golden-layout"; url = "resources/golden-layout/css/goldenlayout-base.css";       kind = Stylesheet }
-
-                if themeName <> null then
-                    let url = sprintf "resources/golden-layout/css/themes/goldenlayout-%s-theme.css" themeName
-                    { name = "golden-layout-dark"; url = url; kind = Stylesheet }
-
-                { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.js";  kind = Script }
-                { name = "golden-layout-aard"; url = "resources/golden-layout/golden-layout-aard.css"; kind = Stylesheet }
+                { name = "golden-layout";       url = "resources/golden-layout/bundle/umd/golden-layout.js"; kind = Script }
+                { name = "golden-layout";       url = "resources/golden-layout/css/goldenlayout-base.css";   kind = Stylesheet }
+                { name = "golden-layout-aard";  url = "resources/golden-layout/golden-layout-aard.js";       kind = Script }
+                { name = "golden-layout-aard";  url = "resources/golden-layout/golden-layout-aard.css";      kind = Stylesheet }
+                { name = "golden-layout-theme"; url = config.Theme.Path;                                     kind = Stylesheet }
             ]
 
         page (fun request ->
@@ -348,3 +338,50 @@ module GoldenLayout =
                     )
                 )
         )
+
+    let webPart : WebPart =
+        let template =
+            try
+                let asm = typeof<LayoutConfig>.Assembly
+                let path = "resources/golden-layout/popout.html"
+
+                let resourceName =
+                    asm.GetManifestResourceNames()
+                    |> Array.tryFind (String.replace "\\" "/" >> (=) path)
+
+                match resourceName with
+                | Some name ->
+                    use stream = asm.GetManifestResourceStream(name)
+                    let reader = new StreamReader(stream)
+                    reader.ReadToEnd()
+
+                | _ ->
+                    raise <| FileNotFoundException($"Failed to read template HTML from '{path}'.", path)
+
+            with e ->
+                Log.error "[GoldenAard] %s" e.Message
+                $"<!doctype html><html><body><h1>Error</h1>{e.GetType().Name}: {e.Message}</body></html>"
+
+        let handler =
+            request (fun r ->
+                let id =
+                    match r.queryParam "gl-window" with
+                    | Choice1Of2 id -> id
+                    | _ ->
+                        Log.warn "[GoldenAard] Query parameter 'gl-window' missing."
+                        Guid.NewGuid().ToString()
+
+                let theme =
+                    match r.queryParam "gl-theme" with
+                    | Choice1Of2 p -> p
+                    | _ ->
+                        Log.warn "[GoldenAard] Query parameter 'gl-theme' missing. Falling back to borderless-dark theme for popout."
+                        Theme.BorderlessDark.Path
+
+                template
+                |> String.replace "__ID__" id
+                |> String.replace "__THEME__" theme
+                |> OK
+            )
+
+        path "/gl-popout" >=> handler

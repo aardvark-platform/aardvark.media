@@ -3,6 +3,7 @@ open Aardvark.Base
 open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.UI.Primitives.Golden
 open Aardium
 open Inc
 
@@ -30,6 +31,7 @@ let main argv =
     WebPart.startServerLocalhost 4321 [ 
         Reflection.assemblyWebPart typeof<Resources>.Assembly
         MutableApp.toWebPart' app.Runtime false instance
+        GoldenLayout.webPart
         Suave.Files.browseHome
     ] |> ignore
 

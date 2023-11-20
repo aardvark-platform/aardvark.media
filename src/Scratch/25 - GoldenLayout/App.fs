@@ -1,7 +1,7 @@
 ﻿module Inc.App
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open Aardvark.UI.Golden
+open Aardvark.UI.Primitives.Golden
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
@@ -63,7 +63,7 @@ let view (model : AdaptiveModel) =
             style "width: 100%; height: 100%; min-width: 400px; min-height: 400px; overflow: hidden"
         ]
 
-        GoldenLayout.layout attributes Config.Default layout (fun element ->
+        GoldenLayout.layout attributes LayoutConfig.Default layout (fun element ->
             match element with
             | "render" ->
                 let attributes =
@@ -87,7 +87,7 @@ let view (model : AdaptiveModel) =
                 FreeFlyController.controlledControl model.cameraState Camera frustum attributes sg
 
             | "map" ->
-                elem "iframe" [
+                iframe [
                     style "width: 100%; height: 100%"
                     attribute "src" "https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.00030577182769775396%2C51.478569861898606&layer=mapnik"
                 ] []

@@ -103,7 +103,16 @@ if (!aardvark.golden) {
             aardvark.golden.instances.set(layoutElement.id, instance);
         }
 
-        instance.layout.loadLayout(config);
+        if (config === undefined) {
+            // Add dock button and change title since we have a popout.
+            // Since we don't support popping out stacks, we just assume the root is a component.
+            // Also there does not seem to be a proper way to get the root...
+            // Related: https://github.com/golden-layout/golden-layout/issues/861
+            instance.layout.checkAddDefaultPopinButton();
+            document.title = instance.layout._constructorOrSubWindowLayoutConfig.root.title;
+        } else {
+            instance.layout.loadLayout(config);
+        }
     }
 
     aardvark.golden.destroyLayout = function (layoutElement) {
