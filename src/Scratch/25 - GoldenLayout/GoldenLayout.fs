@@ -80,7 +80,7 @@ module LayoutConfig =
 
     let Default =
         { Theme            = Theme.BorderlessDark
-          PopInOnClose     = false
+          PopInOnClose     = true
           LabelMinimize    = "Minimize"
           LabelMaximize    = "Maximize"
           LabelPopOut      = "Open in new window"
@@ -317,7 +317,7 @@ module GoldenLayout =
             sprintf "aardvark.golden.createLayout($('#__ID__')[0], %s)" configJson
 
         let shutdown =
-            sprintf "aardvark.golden.destroyLayout($('#__ID__')[0])"
+            "aardvark.golden.destroyLayout($('#__ID__')[0])"
 
         let dependencies =
             [
