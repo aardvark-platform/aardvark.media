@@ -40,6 +40,7 @@ let main argv =
         width 1024
         height 768
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] %s{msg}"))
     }
 
     //use ctrl = new AardvarkCefBrowser()

@@ -44,7 +44,7 @@ let view (model : AdaptiveModel) =
                     id "map"
                     title "Map"
                     header Header.Top
-                    buttons (Buttons.All ^^^ Buttons.Popout)
+                    buttons (Buttons.All ^^^ Buttons.Close)
                 }
 
                 weight 2
