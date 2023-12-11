@@ -36,8 +36,8 @@ nuget Aardvark.Geometry.Intersection    ~> 5.2.0
 // used for niobe example
 nuget Uncodium.Eigensystems
 
-nuget Adaptify.Core                     ~> 1.1.8
-nuget Adaptify.MSBuild                  ~> 1.1.8
+nuget Adaptify.Core                     ~> 1.1.13
+nuget Adaptify.MSBuild                  ~> 1.1.13
 
 nuget Aether                            ~> 8.3.1
 nuget FsPickler                         ~> 5.3.2
@@ -48,7 +48,7 @@ nuget BenchmarkDotNet                   ~> 0.13.1
 nuget TurboJpegWrapper                  ~> 1.5.2
 nuget Suave                             ~> 2.5.6
 
-nuget Aardium                           ~> 2.0.10-prerelease0007
+nuget Aardium                           ~> 2.1.0-prerelease0001
 nuget Chiron
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.4.0
