@@ -17,6 +17,7 @@
     <EmbeddedResource Include="resources\golden-layout\**">
       <LogicalName>resources\golden-layout\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
+    <Compile Include="GoldenLayoutModel.fs" />
     <Compile Include="GoldenLayout.fs" />
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Model.fs" />

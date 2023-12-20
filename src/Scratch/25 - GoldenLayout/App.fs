@@ -13,14 +13,52 @@ let initialCamera = {
         view = CameraView.lookAt (V3d.III * 3.0) V3d.OOO V3d.OOI
 }
 
+let layoutConfig =
+    { LayoutConfig.Default with PopInOnClose = false }
+
+let initialLayout =
+    row {
+        column {
+            element {
+                id "render"
+                title "3D View"
+            }
+
+            element {
+                id "map"
+                title "Map"
+                header Header.Top
+                buttons (Buttons.All ^^^ Buttons.Close)
+            }
+
+            weight 2
+        }
+
+        element {
+            id "aux2"
+            title "Some pretty long title"
+            buttons (Buttons.All ^^^ Buttons.Maximize)
+            weight 1
+        }
+    }
+
 let update (model : Model) (msg : Message) =
     match msg with
     | ToggleBackground ->
         { model with background = (if model.background = C4b.Black then C4b.White else C4b.Black) }
+
     | Camera m ->
         { model with cameraState = FreeFlyController.update model.cameraState m }
+
     | CenterScene ->
         { model with cameraState = initialCamera }
+
+    | LayoutChanged ->
+        Log.line "Layout changed!"
+        model
+
+    | GoldenLayout msg ->
+        { model with golden = model.golden |> GoldenLayout.update msg }
 
 let viewScene (model : AdaptiveModel) =
     Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
@@ -32,39 +70,13 @@ let viewScene (model : AdaptiveModel) =
 
 let view (model : AdaptiveModel) =
 
-    let layout =
-        row {
-            column {
-                element {
-                    id "render"
-                    title "3D View"
-                }
-
-                element {
-                    id "map"
-                    title "Map"
-                    header Header.Top
-                    buttons (Buttons.All ^^^ Buttons.Close)
-                }
-
-                weight 2
-            }
-
-            element {
-                id "aux2"
-                title "Some pretty long title"
-                buttons (Buttons.All ^^^ Buttons.Maximize)
-                weight 1
-            }
-        }
-
     body [style "width: 100%; height: 100%; overflow: hidden; margin: 0"] [
         let attributes = [
             style "width: 100%; height: 100%; min-width: 400px; min-height: 400px; overflow: hidden"
+            onLayoutChanged (fun _ -> LayoutChanged)
         ]
 
-        GoldenLayout.layout attributes LayoutConfig.Default layout (fun element ->
-            match element with
+        (attributes, model.golden) ||> GoldenLayout.view (function
             | "render" ->
                 let attributes =
                     AttributeMap.ofListCond [
@@ -94,7 +106,17 @@ let view (model : AdaptiveModel) =
 
             | "aux2" ->
                 div [style "color: white; padding: 10px"] [
-                    text "What's up?"
+                    button [onClick (fun _ -> Message.GoldenLayout GoldenLayout.Message.ResetLayout)] [
+                        text "Reset layout"
+                    ]
+
+                    button [onClick (fun _ -> Message.GoldenLayout (GoldenLayout.Message.SaveLayout "GoldenLayoutExample.Key"))] [
+                        text "Save layout"
+                    ]
+
+                    button [onClick (fun _ -> Message.GoldenLayout (GoldenLayout.Message.LoadLayout "GoldenLayoutExample.Key"))] [
+                        text "Load layout"
+                    ]
                 ]
 
             | _ ->
@@ -115,6 +137,7 @@ let app =
             {
                 cameraState = initialCamera
                 background = C4b(34,34,34)
+                golden = GoldenLayout.create layoutConfig initialLayout
             }
         update = update
         view = view

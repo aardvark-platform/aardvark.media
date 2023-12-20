@@ -87,12 +87,54 @@ if (!aardvark.golden) {
         layout.resizeDebounceExtendedWhenPossible = false;
         layout.resizeDebounceInterval = 10;
 
+        layout.addEventListener('stateChanged', () => {
+            aardvark.processEvent(layoutElement.id, 'onLayoutChanged');
+        }, { passive: true });
+
         const instance = {
             layout: layout,
             components: components
         };
 
         return instance;
+    }
+
+    aardvark.golden.setLayout = function (layoutElement, config) {
+        const instance = aardvark.golden.instances.get(layoutElement.id);
+        instance.layout.closeAllOpenPopouts();
+        instance.layout.loadLayout(config);
+    }
+
+    aardvark.golden.saveLayout = function (layoutElement, key) {
+        const instance = aardvark.golden.instances.get(layoutElement.id);
+
+        if (window.localStorage && key) {
+            try {
+                const savedLayout = instance.layout.saveLayout();
+                window.localStorage.setItem(key, JSON.stringify(savedLayout));
+            } catch (error) {
+                console.error('Failed to save layout: ' + error);
+            }
+        }
+    }
+
+    aardvark.golden.loadLayout = function (layoutElement, key) {
+        const instance = aardvark.golden.instances.get(layoutElement.id);
+
+        if (window.localStorage && key) {
+            const savedData = window.localStorage.getItem(key);
+
+            if (savedData !== null) {
+                try {
+                    const savedLayout = JSON.parse(savedData);
+                    const config = goldenLayout.LayoutConfig.fromResolved(savedLayout);
+                    instance.layout.closeAllOpenPopouts();
+                    instance.layout.loadLayout(config);
+                } catch (error) {
+                    console.error('Failed to load layout: ' + error);
+                }
+            }
+        }
     }
 
     aardvark.golden.createLayout = function (layoutElement, config) {
