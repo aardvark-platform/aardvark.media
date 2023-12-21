@@ -16,7 +16,7 @@ let initialCamera = {
 let layoutConfig =
     LayoutConfig.Default
 
-let initialLayout =
+let defaultLayout =
     row {
         column {
             element {
@@ -137,7 +137,7 @@ let app =
             {
                 cameraState = initialCamera
                 background = C4b(34,34,34)
-                golden = GoldenLayout.create layoutConfig initialLayout
+                golden = GoldenLayout.create layoutConfig defaultLayout
             }
         update = update
         view = view

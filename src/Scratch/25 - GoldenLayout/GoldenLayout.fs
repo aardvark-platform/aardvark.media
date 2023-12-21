@@ -327,6 +327,22 @@ module GoldenLayoutApp =
                 let version = model.LoadLayout |> Option.map snd |> Option.defaultValue 0
                 { model with LoadLayout = Some (key, version + 1) }
 
+        /// Restores the default layout.
+        let inline reset (model : GoldenLayout) =
+            model |> update GoldenLayout.Message.ResetLayout
+
+        /// Sets the given layout.
+        let inline set (root : ^LayoutRoot) (model : GoldenLayout) =
+            model |> update (root |> Layout.ofRoot |> GoldenLayout.Message.SetLayout)
+
+        /// Saves the current layout in local storage with the given key.
+        let inline save (key : string) (model : GoldenLayout) =
+            model |> update (GoldenLayout.Message.SaveLayout key)
+
+        /// Loads the layout from local storage with the given key.
+        let inline load (key : string) (model : GoldenLayout) =
+            model |> update (GoldenLayout.Message.LoadLayout key)
+
         let view (getElement : string -> DomNode<'msg>) (attributes : Attribute<'msg> list) (model : AdaptiveGoldenLayout) =
             let attributes =
                 attributes @ [
