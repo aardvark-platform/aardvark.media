@@ -101,7 +101,7 @@ if (!aardvark.golden) {
 
     aardvark.golden.setLayout = function (layoutElement, config) {
         const instance = aardvark.golden.instances.get(layoutElement.id);
-        instance.layout.closeAllOpenPopouts();
+        instance.layout.closeAllOpenPopouts(true);
         instance.layout.loadLayout(config);
     }
 
@@ -128,7 +128,7 @@ if (!aardvark.golden) {
                 try {
                     const savedLayout = JSON.parse(savedData);
                     const config = goldenLayout.LayoutConfig.fromResolved(savedLayout);
-                    instance.layout.closeAllOpenPopouts();
+                    instance.layout.closeAllOpenPopouts(true);
                     instance.layout.loadLayout(config);
                 } catch (error) {
                     console.error('Failed to load layout: ' + error);

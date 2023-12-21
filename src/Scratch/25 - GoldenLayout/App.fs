@@ -14,7 +14,7 @@ let initialCamera = {
 }
 
 let layoutConfig =
-    { LayoutConfig.Default with PopInOnClose = false }
+    LayoutConfig.Default
 
 let initialLayout =
     row {
