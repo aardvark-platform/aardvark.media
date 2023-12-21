@@ -28,12 +28,30 @@ type Buttons =
     | All      = 7
 
 type Element =
-    { Id       : string
-      Title    : string
-      Closable : bool
-      Header   : Header option
-      Buttons  : Buttons
-      Size     : Size }
+    {
+        /// Unique name to identify the element in the view function.
+        Id        : string
+
+        /// Title shown in the header.
+        Title     : string
+
+        /// Determines if the element can be closed.
+        /// Note: Unclosable elements cannot be popped out either.
+        Closable  : bool
+
+        /// Determines the position of the header or if one is shown at all.
+        Header    : Header option
+
+        /// Buttons to display in the header.
+        Buttons   : Buttons
+
+        /// Size of the element in case the parent is a row or column container.
+        Size      : Size
+
+        /// If true the DOM element is hidden rather than destroyed if it is removed from the layout.
+        /// This allows for faster restoring of the element but may come with a performance penalty. Default is true.
+        KeepAlive : bool
+    }
 
 type Stack =
     { Header  : Header
@@ -74,6 +92,7 @@ type LayoutConfig =
         LabelPopOut      : string
 
         /// Tooltip label of pop-in / dock button.
+        /// Only visible if PopInOnClose is false.
         LabelPopIn       : string
 
         /// Tooltip label of close button.

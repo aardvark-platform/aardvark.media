@@ -30,17 +30,31 @@ if (!aardvark.golden) {
     }
 
     const createInstance = function (layoutElement) {
-        const components = new Map();
+        const components = new Map();   // Currently bound components
+        const elements = new Map();     // Elements to keep alive and hide if their component is unbound
 
         const onBindComponent = function (container, itemConfig) {
             const componentTypeName = goldenLayout.ResolvedComponentItemConfig.resolveComponentTypeName(itemConfig);
 
-            const element = document.createElement("iframe");
-            element.src = './?page=' + componentTypeName;
-            element.style.border = 'none';
-            element.style.position = 'absolute';
-            element.style.overflow = 'hidden';
-            element.classList.add('gl-aard-component');
+            var element = elements.get(componentTypeName);
+            if (element === undefined) {
+                element = document.createElement("iframe");
+                element.src = './?page=' + componentTypeName;
+                element.style.border = 'none';
+                element.style.position = 'absolute';
+                element.style.overflow = 'hidden';
+                element.classList.add('gl-aard-component');
+                element.dataset.keepAlive = itemConfig.componentState.keepAlive;
+
+                if (itemConfig.componentState.keepAlive) {
+                    elements.set(componentTypeName, element);
+                }
+
+                layoutElement.appendChild(element);
+
+            } else {
+                element.style.display = '';
+            }
 
             const component = {
                 rootHtmlElement: element
@@ -57,8 +71,6 @@ if (!aardvark.golden) {
             container.virtualZIndexChangeRequiredEvent = function (container, logicalZIndex, defaultZIndex) {
                 onVirtualZIndexChange(element, logicalZIndex, defaultZIndex);
             };
-
-            layoutElement.appendChild(element);
             components.set(container, component);
 
             return {
@@ -78,7 +90,12 @@ if (!aardvark.golden) {
                 throw new Error('[GoldenAard] Component does not have a root HTML element.');
             }
 
-            layoutElement.removeChild(element);
+            if (element.dataset.keepAlive) {
+                element.style.display = 'none';
+            } else {
+                layoutElement.removeChild(element);
+            }
+
             components.delete(container);
         };
 
@@ -93,7 +110,8 @@ if (!aardvark.golden) {
 
         const instance = {
             layout: layout,
-            components: components
+            components: components,
+            elements: elements
         };
 
         return instance;
@@ -161,6 +179,7 @@ if (!aardvark.golden) {
         const instance = aardvark.golden.instances.get(layoutElement.id);
 
         if (instance !== undefined) {
+            instance.layout.closeAllOpenPopouts(true);
             instance.layout.destroy();
             aardvark.golden.instances.delete(layoutElement.id);
         }

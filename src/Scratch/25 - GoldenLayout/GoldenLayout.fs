@@ -54,46 +54,63 @@ module Builders =
     type ElementBuilder() =
         member inline x.Yield(()) = ElementError.IdMustBeSpecified
 
+        /// Unique name to identify the element in the view function.
         [<CustomOperation("id")>]
         member inline x.Id(_ : ElementError.IdMustBeSpecified, id : string) =
-            { Id       = id
-              Title    = "Untitled"
-              Closable = true
-              Header   = Some Header.Top
-              Buttons  = Buttons.All
-              Size     = Size.Weight 1 }
+            { Id        = id
+              Title     = "Untitled"
+              Closable  = true
+              Header    = Some Header.Top
+              Buttons   = Buttons.All
+              Size      = Size.Weight 1
+              KeepAlive = true }
 
+        /// Title shown in the header.
         [<CustomOperation("title")>]
         member inline x.Title(e : Element, title : string) =
             { e with Title = title }
 
+        /// Determines if the element can be closed.
+        /// Note: Unclosable elements cannot be popped out either.
         [<CustomOperation("closable")>]
         member inline x.Closable(e : Element, closable : bool) =
             { e with Closable = closable }
 
+        /// Determines the position of the header or if one is shown at all.
         [<CustomOperation("header")>]
         member inline x.Header(e : Element, header : Header option) =
             { e with Header = header }
 
+        /// Determines the position of the header.
         [<CustomOperation("header")>]
         member inline x.Header(e : Element, header : Header) =
             { e with Header = Some header }
 
+        /// Buttons to display in the header.
         [<CustomOperation("buttons")>]
         member inline x.Buttons(e : Element, buttons : Buttons) =
             { e with Buttons = buttons }
 
+        /// Size of the element in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(e : Element, size : Size) =
             { e with Size = size }
 
+        /// Size of the element in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(e : Element, sizeInPercent : int) =
             { e with Size = Size.Percentage sizeInPercent }
 
+        /// Size as weight relative to siblings in case the parent is a row or column container.
         [<CustomOperation("weight")>]
         member inline x.Weight(e : Element, weight : int) =
             { e with Size = Size.Weight weight }
+
+        /// If true the DOM element is hidden rather than destroyed if it is removed from the layout.
+        /// This allows for faster restoring of the element but may come with a performance penalty. Default is true.
+        [<CustomOperation("keepAlive")>]
+        member inline x.KeepAlive(e : Element, keepAlive : bool) =
+            { e with KeepAlive = keepAlive }
 
     type StackBuilder() =
         static let empty =
@@ -109,22 +126,27 @@ module Builders =
         member x.Combine(a : Stack, b : Stack) = { b with Content = a.Content @ b.Content }
         member x.For(s: Stack, f: unit -> Stack) = x.Combine(s, f())
 
+        /// Determines the position of the header.
         [<CustomOperation("header")>]
         member inline x.Header(s : Stack, header : Header) =
             { s with Header = header }
 
+        /// Buttons to display in the header.
         [<CustomOperation("buttons")>]
         member inline x.Buttons(s : Stack, buttons : Buttons) =
             { s with Buttons = buttons }
 
+        /// Size of the stack in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(s : Stack, size : Size) =
             { s with Size = size }
 
+        /// Size of the stack in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(s : Stack, sizeInPercent : int) =
             { s with Size = Size.Percentage sizeInPercent }
 
+        /// Size as weight relative to siblings in case the parent is a row or column container.
         [<CustomOperation("weight")>]
         member inline x.Weight(s : Stack, weight : int) =
             { s with Size = Size.Weight weight }
@@ -145,14 +167,17 @@ module Builders =
         member x.Combine(a : RowOrColumn, b : RowOrColumn) = { b with Content = a.Content @ b.Content }
         member x.For(rc: RowOrColumn, f: unit -> RowOrColumn) = x.Combine(rc, f())
 
+        /// Size of the container in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(rc : RowOrColumn, size : Size) =
             { rc with Size = size }
 
+        /// Size of the container in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(rc : RowOrColumn, sizeInPercent : int) =
             { rc with Size = Size.Percentage sizeInPercent }
 
+        /// Size as weight relative to siblings in case the parent is a row or column container.
         [<CustomOperation("weight")>]
         member inline x.Weight(rc : RowOrColumn, weight : int) =
             { rc with Size = Size.Weight weight }
@@ -234,6 +259,10 @@ module GoldenLayoutApp =
                         o.["isClosable"] <- JToken.op_Implicit e.Closable
                         o.["header"] <- ofHeader e.Buttons e.Header
                         o.["size"] <- JToken.op_Implicit (string e.Size)
+
+                        let s = JObject()
+                        s.["keepAlive"] <- JToken.op_Implicit e.KeepAlive
+                        o.["componentState"] <- s
 
                     | Layout.Stack s ->
                         let content = s.Content |> List.map (Layout.Element >> ofLayout >> box)
