@@ -80,7 +80,6 @@
   height: 14px;
   margin-top: 1px;
   padding: 0px 10px 5px;
-  padding-right: 25px;
   position: relative;
   touch-action: none;
 }
@@ -109,6 +108,9 @@
   top: 0;
   right: 0;
   text-align: center;
+}
+.lm_header .lm_closable.lm_tab {
+  padding-right: 25px;
 }
 .lm_stack {
   position: relative;
