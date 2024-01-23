@@ -121,7 +121,6 @@ if (!aardvark.golden) {
 
         // Install layout changed event handlers
         // Popouts cannot call aardvark.processEvent so we have to handle that from the main window.
-        // Note: needs to be extended if popouts can open popouts.
         if (!isPopout) {
             addLayoutChangedHandler(layout);
 

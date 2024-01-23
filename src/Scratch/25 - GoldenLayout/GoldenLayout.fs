@@ -22,6 +22,7 @@ module LayoutConfig =
     let Default =
         { Theme            = Theme.BorderlessDark
           PopInOnClose     = true
+          PopOutWholeStack = true
           LabelMinimize    = "Minimize"
           LabelMaximize    = "Maximize"
           LabelPopOut      = "Open in new window"
@@ -292,6 +293,8 @@ module GoldenLayoutApp =
                 let ofConfigSettings (config : LayoutConfig) =
                     let o = JObject()
                     o.["popInOnClose"] <- JToken.op_Implicit config.PopInOnClose
+                    o.["popoutWholeStack"] <- JToken.op_Implicit config.PopOutWholeStack
+                    o.["closePopoutsOnUnload"] <- JToken.op_Implicit false
                     o
 
             let ofLayoutConfig (config : LayoutConfig) (layout : Layout) =

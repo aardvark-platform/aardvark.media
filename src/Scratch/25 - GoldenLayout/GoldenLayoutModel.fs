@@ -82,6 +82,9 @@ type LayoutConfig =
         /// Shows a small dock button in popouts if false.
         PopInOnClose     : bool
 
+        /// Determines whether popout affects the whole stack or just the active tab.
+        PopOutWholeStack : bool
+
         /// Tooltip label of minimize button.
         LabelMinimize    : string
 
