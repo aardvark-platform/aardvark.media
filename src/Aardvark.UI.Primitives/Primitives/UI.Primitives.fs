@@ -33,6 +33,7 @@ module Html =
 
         let horizontal ch = table [clazz "ui table"; style "backgroundColor: transparent"] [ tbody [] [ tr [] ch ] ]
 
+        [<Obsolete("Equivalent to 'td [] []'. Why does this exist and why are you using it?")>]
         let finish<'msg> = td [] []
 
     type ColorConverter =
@@ -68,11 +69,19 @@ module Html =
 
     let row k v = tr [] [ td [clazz "collapsing"] [text k]; td [clazz "right aligned"] v ]
 
+    [<Obsolete("Why does this exist and why are you using it?")>]
     type A = { a : aval<int> }
+
+    [<Obsolete("Why does this exist and why are you using it?")>]
     let a = AVal.init { a = AVal.init 10 }
 
-    let test =
-        a |> AVal.map (fun z -> AVal.map (fun v -> v + 1) z.a)
+    [<Obsolete("Why does this exist and why are you using it?")>]
+    let test : aval<aval<int>> = AVal.constant (AVal.constant 0)
+
+    /// Sets the document.title property adaptively.
+    let title (title : aval<string>) (node : DomNode<'msg>) =
+        let code = "chDocumentTitle.onmessage = function (title) { document.title = title };"
+        onBoot' ["chDocumentTitle", AVal.channel title] code node
 
     let semui =
         Primitives.SimplePrimitives.Html.semui
@@ -407,6 +416,7 @@ module Numeric =
 
 open MBrace.FsPickler.Json
 
+[<Obsolete("Why does this exist and why are you using it?")>]
 module D3Test =
     type Action =
         | SetData of D3TestInput
@@ -546,6 +556,7 @@ module D3Test =
     let start () =
         app |> App.start
 
+[<Obsolete("Why does this exist and why are you using it?")>]
 module D3Axis =
     type Action =
         | SetData of D3AxisInput

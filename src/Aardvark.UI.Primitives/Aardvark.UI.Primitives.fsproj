@@ -61,9 +61,6 @@
     <Compile Include="Controllers\CameraUtilities.fs" />
     <Compile Include="Controllers\LegacyCameraController.fs" />
     <Compile Include="Docking.fs" />
-    <Content Include="d3Test.js">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Compile Include="OpenDialog.fs" />
     <Compile Include="SaveDialog.fs" />
     <EmbeddedResource Include="resources\spectrum.css" />
