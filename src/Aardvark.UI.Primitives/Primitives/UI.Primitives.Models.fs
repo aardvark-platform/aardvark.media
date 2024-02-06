@@ -42,6 +42,7 @@ module Tree =
 [<ModelType>]
 type TreeModel = { data: Tree }
 
+// TODO: Delete
 [<ModelType>]
 type D3TestInput = 
     {
@@ -49,6 +50,7 @@ type D3TestInput =
         t2 : int
     }
 
+// TODO: Delete
 [<ModelType>]
 type D3AxisInput = 
     {
