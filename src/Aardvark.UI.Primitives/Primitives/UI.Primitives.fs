@@ -78,6 +78,11 @@ module Html =
     [<Obsolete("Why does this exist and why are you using it?")>]
     let test : aval<aval<int>> = AVal.constant (AVal.constant 0)
 
+    /// Sets the document.title property adaptively.
+    let title (title : aval<string>) (node : DomNode<'msg>) =
+        let code = "chDocumentTitle.onmessage = function (title) { document.title = title };"
+        onBoot' ["chDocumentTitle", AVal.channel title] code node
+
     let semui =
         Primitives.SimplePrimitives.Html.semui
 
