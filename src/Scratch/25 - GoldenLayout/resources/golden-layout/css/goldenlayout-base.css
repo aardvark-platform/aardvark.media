@@ -14,6 +14,10 @@
   -webkit-user-select: none;
           user-select: none;
 }
+.lm_dragging iframe,
+.lm_pointer_tracking iframe {
+  pointer-events: none;
+}
 .lm_maximised {
   position: absolute;
   top: 0;
@@ -267,7 +271,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 30;
+  z-index: 31;
 }
 .lm_dragProxy .lm_header {
   background: transparent;
@@ -277,10 +281,10 @@
   overflow: hidden;
 }
 .lm_dropTargetIndicator {
-  display: none;
+  visibility: hidden;
   position: absolute;
-  z-index: 35;
-  transition: all 200ms ease;
+  z-index: 30;
+  transition: all 200ms ease, visibility 0ms linear;
 }
 .lm_dropTargetIndicator .lm_inner {
   width: 100%;

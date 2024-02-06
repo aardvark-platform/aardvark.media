@@ -1,7 +1,6 @@
 var aardvark = document.aardvark;
 
-// Popouts do not load Aardvark itself, they just contain
-// golden layout and some iframes.
+// Popouts do not load Aardvark itself, they just contain Golden Layout and some iframes.
 if (!aardvark) {
     aardvark = {};
     document.aardvark = aardvark;
@@ -99,7 +98,7 @@ if (!aardvark.golden) {
                 throw new Error('[GoldenAard] Component does not have a root HTML element.');
             }
 
-            if (element.dataset.keepAlive) {
+            if (element.dataset.keepAlive === 'true') {
                 element.style.display = 'none';
             } else {
                 layoutElement.removeChild(element);
@@ -119,13 +118,30 @@ if (!aardvark.golden) {
         layout.resizeDebounceExtendedWhenPossible = false;
         layout.resizeDebounceInterval = 10;
 
+        // If we are running in Aardium, we want to move the window to the front when dragging over it.
+        if (aardvark.moveWindowTop) {
+            layout.moveWindowTop = aardvark.moveWindowTop;
+        }
+
+        let titleObserver = null;
+
+        const updatePopoutsTitle = function () {
+            for (const popout of layout.openPopouts) {
+                popout.getWindow().document.title = document.title;
+            }
+        };
+
         // Install layout changed event handlers
         // Popouts cannot call aardvark.processEvent so we have to handle that from the main window.
         if (!isPopout) {
+            titleObserver = new MutationObserver(updatePopoutsTitle);
+            titleObserver.observe(document.querySelector('title'), { subtree: true, characterData: true, childList: true });
+
             addLayoutChangedHandler(layout);
 
             layout.addEventListener('windowOpened', popout => {
                 const inner = popout.getGlInstance();
+                popout.getWindow().document.title = document.title;
                 addLayoutChangedHandler(inner);
             });
         }
@@ -133,7 +149,8 @@ if (!aardvark.golden) {
         const instance = {
             layout: layout,
             components: components,
-            elements: elements
+            elements: elements,
+            titleObserver: titleObserver
         };
 
         return instance;
@@ -187,12 +204,7 @@ if (!aardvark.golden) {
         }
 
         if (isPopout) {
-            // Add dock button and change title since we have a popout.
-            // Since we don't support popping out stacks, we just assume the root is a component.
-            // Also there does not seem to be a proper way to get the root...
-            // Related: https://github.com/golden-layout/golden-layout/issues/861
             instance.layout.checkAddDefaultPopinButton();
-            document.title = instance.layout._constructorOrSubWindowLayoutConfig.root.title;
         } else {
             instance.layout.loadLayout(config);
         }
@@ -202,6 +214,9 @@ if (!aardvark.golden) {
         const instance = aardvark.golden.instances.get(layoutElement.id);
 
         if (instance !== undefined) {
+            if (instance.titleObserver !== null) {
+                instance.titleObserver.disconnect();
+            }
             instance.layout.closeAllOpenPopouts(true);
             instance.layout.destroy();
             aardvark.golden.instances.delete(layoutElement.id);
