@@ -29,7 +29,7 @@ let defaultLayout =
             element {
                 id "map"
                 title "Map"
-                header Header.Top
+                header Header.Left
                 buttons (Buttons.All ^^^ Buttons.Close)
             }
 

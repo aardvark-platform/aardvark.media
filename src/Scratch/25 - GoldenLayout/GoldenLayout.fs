@@ -20,15 +20,17 @@ module Theme =
 module LayoutConfig =
 
     let Default =
-        { Theme            = Theme.BorderlessDark
-          PopInOnClose     = true
-          PopOutWholeStack = false
-          LabelMinimize    = "Minimize"
-          LabelMaximize    = "Maximize"
-          LabelPopOut      = "Open in new window"
-          LabelPopIn       = "Dock"
-          LabelClose       = "Close"
-          LabelTabDropdown = "Additional tabs" }
+        { Theme              = Theme.BorderlessDark
+          PopInOnClose       = true
+          PopOutWholeStack   = true
+          DragBetweenWindows = true
+          DragToNewWindow    = true
+          LabelMinimize      = "Minimize"
+          LabelMaximize      = "Maximize"
+          LabelPopOut        = "Open in new window"
+          LabelPopIn         = "Dock"
+          LabelClose         = "Close"
+          LabelTabDropdown   = "Additional tabs" }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Layout =
@@ -294,8 +296,8 @@ module GoldenLayoutApp =
                     let o = JObject()
                     o.["popInOnClose"] <- JToken.op_Implicit config.PopInOnClose
                     o.["popoutWholeStack"] <- JToken.op_Implicit config.PopOutWholeStack
-                    o.["closePopoutsOnUnload"] <- JToken.op_Implicit false
-                    o.["constrainDragToContainer"] <- JToken.op_Implicit false
+                    o.["dragBetweenWindows"] <- JToken.op_Implicit config.DragBetweenWindows
+                    o.["dragToNewWindow"] <- JToken.op_Implicit config.DragToNewWindow
                     o
 
             let ofLayoutConfig (config : LayoutConfig) (layout : Layout) =

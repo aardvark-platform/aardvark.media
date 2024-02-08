@@ -76,30 +76,36 @@ type Theme =
 type LayoutConfig =
     {
         /// The color theme to use.
-        Theme            : Theme
+        Theme : Theme
 
         /// Determines whether popouts are automatically docked when the window is closed.
         /// Shows a small dock button in popouts if false.
-        PopInOnClose     : bool
+        PopInOnClose : bool
 
         /// Determines whether popout affects the whole stack or just the active tab.
         PopOutWholeStack : bool
 
+        /// Determines whether elements may be dragged from one window to another.
+        DragBetweenWindows : bool
+
+        /// Determines whether elements may be dragged and dropped outside the containing window creating a new popout.
+        DragToNewWindow : bool
+
         /// Tooltip label of minimize button.
-        LabelMinimize    : string
+        LabelMinimize : string
 
         /// Tooltip label of maximize button.
-        LabelMaximize    : string
+        LabelMaximize : string
 
         /// Tooltip label of pop-out button.
-        LabelPopOut      : string
+        LabelPopOut : string
 
         /// Tooltip label of pop-in / dock button.
         /// Only visible if PopInOnClose is false.
-        LabelPopIn       : string
+        LabelPopIn : string
 
         /// Tooltip label of close button.
-        LabelClose       : string
+        LabelClose : string
 
         /// Tooltip label of stack tab dropdown.
         /// The dropdown is only visible when a stack has too many tabs to display at once.
