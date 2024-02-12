@@ -36,14 +36,14 @@ type Element =
         Title     : string
 
         /// Determines if the element can be closed.
-        /// Note: Unclosable elements cannot be popped out either.
+        /// Note: Unclosable elements cannot be popped out or moved to another window.
         Closable  : bool
 
         /// Determines the position of the header or if one is shown at all.
         Header    : Header option
 
         /// Buttons to display in the header.
-        Buttons   : Buttons
+        Buttons   : Buttons option
 
         /// Size of the element in case the parent is a row or column container.
         Size      : Size
@@ -54,15 +54,31 @@ type Element =
     }
 
 type Stack =
-    { Header  : Header
-      Buttons : Buttons
-      Size    : Size
-      Content : Element list }
+    {
+        /// Determines the position of the header.
+        Header  : Header
+
+        /// Buttons to display in the header.
+        Buttons : Buttons option
+
+        /// Size of the element in case the parent is a row or column container.
+        Size    : Size
+
+        /// Children of the stack.
+        Content : Element list
+    }
 
 type RowOrColumn =
-    { IsRow   : bool
-      Size    : Size
-      Content : Layout list }
+    {
+        /// True if row container, false if column container.
+        IsRow   : bool
+
+        /// Size of the element in case the parent is a row or column container.
+        Size    : Size
+
+        /// Children of the container.
+        Content : Layout list
+    }
 
 and [<RequireQualifiedAccess>] Layout =
     | Element     of Element
@@ -90,6 +106,9 @@ type LayoutConfig =
 
         /// Determines whether elements may be dragged and dropped outside the containing window creating a new popout.
         DragToNewWindow : bool
+
+        /// Default buttons to be displayed in the headers.
+        HeaderButtons : Buttons
 
         /// Tooltip label of minimize button.
         LabelMinimize : string

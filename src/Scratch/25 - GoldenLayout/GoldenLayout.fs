@@ -25,6 +25,7 @@ module LayoutConfig =
           PopOutWholeStack   = true
           DragBetweenWindows = true
           DragToNewWindow    = true
+          HeaderButtons      = Buttons.All
           LabelMinimize      = "Minimize"
           LabelMaximize      = "Maximize"
           LabelPopOut        = "Open in new window"
@@ -64,7 +65,7 @@ module Builders =
               Title     = "Untitled"
               Closable  = true
               Header    = Some Header.Top
-              Buttons   = Buttons.All
+              Buttons   = None
               Size      = Size.Weight 1
               KeepAlive = true }
 
@@ -74,7 +75,7 @@ module Builders =
             { e with Title = title }
 
         /// Determines if the element can be closed.
-        /// Note: Unclosable elements cannot be popped out either.
+        /// Note: Unclosable elements cannot be popped out or moved to another window.
         [<CustomOperation("closable")>]
         member inline x.Closable(e : Element, closable : bool) =
             { e with Closable = closable }
@@ -92,7 +93,7 @@ module Builders =
         /// Buttons to display in the header.
         [<CustomOperation("buttons")>]
         member inline x.Buttons(e : Element, buttons : Buttons) =
-            { e with Buttons = buttons }
+            { e with Buttons = Some buttons }
 
         /// Size of the element in case the parent is a row or column container.
         [<CustomOperation("size")>]
@@ -118,7 +119,7 @@ module Builders =
     type StackBuilder() =
         static let empty =
             { Header  = Header.Top
-              Buttons = Buttons.All
+              Buttons = None
               Content = []
               Size    = Size.Weight 1 }
 
@@ -137,7 +138,7 @@ module Builders =
         /// Buttons to display in the header.
         [<CustomOperation("buttons")>]
         member inline x.Buttons(s : Stack, buttons : Buttons) =
-            { s with Buttons = buttons }
+            { s with Buttons = Some buttons }
 
         /// Size of the stack in case the parent is a row or column container.
         [<CustomOperation("size")>]
@@ -230,7 +231,7 @@ module GoldenLayoutApp =
 
             module private JObject =
 
-                let private ofHeader (buttons : Buttons) (header : Header option) =
+                let private ofHeader (config : LayoutConfig) (buttons : Buttons option) (header : Header option) =
                     let o = JObject()
 
                     let show =
@@ -240,6 +241,8 @@ module GoldenLayoutApp =
                         | Some Header.Right  -> JToken.op_Implicit "right"
                         | Some Header.Bottom -> JToken.op_Implicit "bottom"
                         | _                  -> JToken.op_Implicit false
+
+                    let buttons = buttons |> Option.defaultValue config.HeaderButtons
 
                     let button (property : string) (flag : Buttons) =
                         if not <| buttons.HasFlag flag then
@@ -251,7 +254,7 @@ module GoldenLayoutApp =
                     button "maximise" Buttons.Maximize
                     o
 
-                let rec ofLayout (layout : Layout) : JObject =
+                let rec ofLayout (config : LayoutConfig) (layout : Layout) : JObject =
                     let o = JObject()
 
                     match layout with
@@ -260,7 +263,7 @@ module GoldenLayoutApp =
                         o.["title"] <- JToken.op_Implicit e.Title
                         o.["componentType"] <- JToken.op_Implicit e.Id
                         o.["isClosable"] <- JToken.op_Implicit e.Closable
-                        o.["header"] <- ofHeader e.Buttons e.Header
+                        o.["header"] <- ofHeader config e.Buttons e.Header
                         o.["size"] <- JToken.op_Implicit (string e.Size)
 
                         let s = JObject()
@@ -268,14 +271,14 @@ module GoldenLayoutApp =
                         o.["componentState"] <- s
 
                     | Layout.Stack s ->
-                        let content = s.Content |> List.map (Layout.Element >> ofLayout >> box)
+                        let content = s.Content |> List.map (Layout.Element >> ofLayout config >> box)
                         o.["type"] <- JToken.op_Implicit "stack"
-                        o.["header"] <- ofHeader s.Buttons (Some s.Header)
+                        o.["header"] <- ofHeader config s.Buttons (Some s.Header)
                         o.["size"] <- JToken.op_Implicit (string s.Size)
                         o.["content"] <- JArray(List.toArray content)
 
                     | Layout.RowOrColumn rc ->
-                        let content = rc.Content |> List.map (ofLayout >> box)
+                        let content = rc.Content |> List.map (ofLayout config >> box)
                         o.["type"] <- JToken.op_Implicit (if rc.IsRow then "row" else "column")
                         o.["size"] <- JToken.op_Implicit (string rc.Size)
                         o.["content"] <- JArray(List.toArray content)
@@ -302,7 +305,7 @@ module GoldenLayoutApp =
 
             let ofLayoutConfig (config : LayoutConfig) (layout : Layout) =
                 let o = JObject()
-                o.["root"] <- JObject.ofLayout layout
+                o.["root"] <- JObject.ofLayout config layout
                 o.["settings"] <- JObject.ofConfigSettings config
                 o.["header"] <- JObject.ofConfigLabels config
                 o.ToString Formatting.None
