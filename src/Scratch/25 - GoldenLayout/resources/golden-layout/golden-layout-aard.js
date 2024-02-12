@@ -118,9 +118,14 @@ if (!aardvark.golden) {
         layout.resizeDebounceExtendedWhenPossible = false;
         layout.resizeDebounceInterval = 10;
 
-        // If we are running in Aardium, we want to move the window to the front when dragging over it.
-        if (aardvark.moveWindowTop) {
+        // If we are running in Aardium, we want to move the window to the front
+        // when dragging over it and focus it on drop.
+        if (aardvark.moveWindowTop instanceof Function) {
             layout.moveWindowTop = aardvark.moveWindowTop;
+        }
+
+        if (aardvark.focusWindow instanceof Function) {
+            layout.focusWindow = aardvark.focusWindow;
         }
 
         let titleObserver = null;
