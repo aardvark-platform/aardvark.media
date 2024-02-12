@@ -26,6 +26,7 @@ module LayoutConfig =
           DragBetweenWindows = true
           DragToNewWindow    = true
           HeaderButtons      = Buttons.All
+          SetPopoutTitle     = true
           LabelMinimize      = "Minimize"
           LabelMaximize      = "Maximize"
           LabelPopOut        = "Open in new window"
@@ -301,6 +302,7 @@ module GoldenLayoutApp =
                     o.["popoutWholeStack"] <- JToken.op_Implicit config.PopOutWholeStack
                     o.["dragBetweenWindows"] <- JToken.op_Implicit config.DragBetweenWindows
                     o.["dragToNewWindow"] <- JToken.op_Implicit config.DragToNewWindow
+                    o.["setPopoutTitle"] <- JToken.op_Implicit config.SetPopoutTitle
                     o
 
             let ofLayoutConfig (config : LayoutConfig) (layout : Layout) =

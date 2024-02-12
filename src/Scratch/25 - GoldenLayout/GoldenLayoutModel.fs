@@ -110,6 +110,9 @@ type LayoutConfig =
         /// Default buttons to be displayed in the headers.
         HeaderButtons : Buttons
 
+        /// Determines whether the document.title of popouts is set and updated automatically to the document.title of the main window.
+        SetPopoutTitle : bool
+
         /// Tooltip label of minimize button.
         LabelMinimize : string
 

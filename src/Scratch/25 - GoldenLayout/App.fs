@@ -70,7 +70,7 @@ let viewScene (model : AdaptiveModel) =
     }
 
 let view (model : AdaptiveModel) =
-    Html.title model.title (
+    Html.title false model.title (
         body [style "width: 100%; height: 100%; overflow: hidden; margin: 0"] [
             let attributes = [
                 style "width: 100%; height: 100%; min-width: 400px; min-height: 400px; overflow: hidden"

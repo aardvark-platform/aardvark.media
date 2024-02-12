@@ -37,7 +37,7 @@ if (!aardvark.golden) {
         element.style.zIndex = defaultZIndex;
     }
 
-    const createInstance = function (layoutElement, isPopout) {
+    const createInstance = function (layoutElement, isPopout, setPopoutTitle) {
         const components = new Map();   // Currently bound components
         const elements = new Map();     // Elements to keep alive and hide if their component is unbound
 
@@ -139,14 +139,20 @@ if (!aardvark.golden) {
         // Install layout changed event handlers
         // Popouts cannot call aardvark.processEvent so we have to handle that from the main window.
         if (!isPopout) {
-            titleObserver = new MutationObserver(updatePopoutsTitle);
-            titleObserver.observe(document.querySelector('title'), { subtree: true, characterData: true, childList: true });
+            if (setPopoutTitle) {
+                titleObserver = new MutationObserver(updatePopoutsTitle);
+                titleObserver.observe(document.querySelector('title'), { subtree: true, characterData: true, childList: true });
+            }
 
             addLayoutChangedHandler(layout);
 
             layout.addEventListener('windowOpened', popout => {
                 const inner = popout.getGlInstance();
-                popout.getWindow().document.title = document.title;
+
+                if (setPopoutTitle) {
+                    popout.getWindow().document.title = document.title;
+                }
+
                 addLayoutChangedHandler(inner);
             });
         }
@@ -202,9 +208,10 @@ if (!aardvark.golden) {
     aardvark.golden.createLayout = function (layoutElement, config) {
         var instance = aardvark.golden.instances.get(layoutElement.id);
         const isPopout = (config === undefined);
+        const setPopoutTitle = (config?.settings?.setPopoutTitle === true);
 
         if (instance === undefined) {
-            instance = createInstance(layoutElement, isPopout);
+            instance = createInstance(layoutElement, isPopout, setPopoutTitle);
             aardvark.golden.instances.set(layoutElement.id, instance);
         }
 
