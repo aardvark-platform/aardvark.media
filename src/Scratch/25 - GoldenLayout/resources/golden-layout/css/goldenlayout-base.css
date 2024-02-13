@@ -77,11 +77,11 @@
 .lm_header .lm_tabs {
   position: absolute;
   display: flex;
+  height: 20px;
 }
 .lm_header .lm_tab {
   cursor: pointer;
   float: left;
-  height: 14px;
   margin-top: 1px;
   padding: 0px 10px 5px;
   position: relative;

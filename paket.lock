@@ -2,7 +2,7 @@ STORAGE: NONE
 RESTRICTION: || (== net471) (== net6.0) (== net6.0-windows7.0) (== netstandard2.0)
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    Aardium (2.1.0-prerelease0002)
+    Aardium (2.1.0-prerelease0003)
       Aardvark.Base (>= 5.2.13 < 5.3)
       FSharp.Core (>= 5.0.1)
       FSys (>= 0.0.1 < 0.1)
