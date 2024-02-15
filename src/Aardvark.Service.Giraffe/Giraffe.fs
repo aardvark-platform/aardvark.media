@@ -7,12 +7,28 @@ open Microsoft.Extensions.Logging
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.AspNetCore.Http
 open System.Threading
+open System.Reflection
 open System.Net
 open Giraffe
 
+type WebPart = HttpFunc -> HttpContext -> HttpFuncResult
+
+module WebPart =
+    open Aardvark.Service.Giraffe
+
+    let ofAssembly (assembly: Assembly) : WebPart =
+        Reflection.assemblyWebPart assembly
+
+    let ofRouteHtml (route: string) (handler: (string -> string option) -> string) : WebPart =
+        let handle (next: HttpFunc) (ctx: HttpContext) =
+            let response = handler ctx.TryGetQueryStringValue
+            htmlString response next ctx
+
+        Giraffe.Routing.route route >=> handle
+
 module Server =
 
-    type WebApp = HttpFunc -> HttpContext -> HttpFuncResult
+    type WebApp = WebPart
 
     let startServer' (url : string) (cancellationToken : CancellationToken) (content : WebApp list)  =
         let configureApp (app : IApplicationBuilder) =
