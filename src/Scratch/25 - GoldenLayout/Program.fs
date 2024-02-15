@@ -7,11 +7,6 @@ open Aardvark.UI.Primitives.Golden
 open Aardium
 open Inc
 
-open Suave
-open Suave.WebPart
-
-type Resources = Resources
-
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
@@ -28,10 +23,10 @@ let main argv =
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-    WebPart.startServerLocalhost 4321 [ 
-        Reflection.assemblyWebPart typeof<Resources>.Assembly
+    Suave.WebPart.startServerLocalhost 4321 [ 
+        Aardvark.UI.Primitives.Resources.WebPart
         MutableApp.toWebPart' app.Runtime false instance
-        GoldenLayout.webPart
+        GoldenLayout.WebPart.suave
         Suave.Files.browseHome
     ] |> ignore
 

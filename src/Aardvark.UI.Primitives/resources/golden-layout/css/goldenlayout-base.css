@@ -78,6 +78,8 @@
   position: absolute;
   display: flex;
   height: 20px;
+  overflow: hidden;
+  max-width: 100%;
 }
 .lm_header .lm_tab {
   cursor: pointer;
@@ -86,6 +88,8 @@
   padding: 0px 10px 5px;
   position: relative;
   touch-action: none;
+  max-width: 100%;
+  box-sizing: border-box !important;
 }
 .lm_header .lm_tab i {
   width: 2px;
@@ -104,6 +108,8 @@
   display: inline-block;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .lm_header .lm_tab .lm_close_tab {
   width: 14px;

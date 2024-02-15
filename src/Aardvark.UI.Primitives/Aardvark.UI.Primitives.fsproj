@@ -60,9 +60,22 @@
     <Compile Include="Controllers\OrbitController.fs" />
     <Compile Include="Controllers\CameraUtilities.fs" />
     <Compile Include="Controllers\LegacyCameraController.fs" />
+    <Compile Include="Golden\GoldenLayoutModel.fs" />
+    <Compile Include="Golden\GoldenLayout.fs" />
     <Compile Include="Docking.fs" />
     <Compile Include="OpenDialog.fs" />
     <Compile Include="SaveDialog.fs" />
+    <EmbeddedResource Include="resources\golden-layout\bundle\umd\golden-layout.min.js" LogicalName="resources\golden-layout\bundle\umd\golden-layout.js" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\golden-layout\bundle\umd\golden-layout.js" LogicalName="resources\golden-layout\bundle\umd\golden-layout.js" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\golden-layout\css\**">
+      <LogicalName>resources\golden-layout\css\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\golden-layout\img\**">
+      <LogicalName>resources\golden-layout\img\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\golden-layout\golden-layout-aard.css" LogicalName="resources\golden-layout\golden-layout-aard.css" />
+    <EmbeddedResource Include="resources\golden-layout\golden-layout-aard.js" LogicalName="resources\golden-layout\golden-layout-aard.js" />
+    <EmbeddedResource Include="resources\golden-layout\popout.html" LogicalName="resources\golden-layout\popout.html" />
     <EmbeddedResource Include="resources\spectrum.css" />
     <EmbeddedResource Include="resources\spectrum.js" />
     <EmbeddedResource Include="resources\spectrum-overrides.css" />

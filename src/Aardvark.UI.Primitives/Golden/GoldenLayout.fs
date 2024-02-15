@@ -400,8 +400,9 @@ module GoldenLayoutApp =
                     )
             )
 
-        let webPart : WebPart =
-            let template =
+        module WebPart =
+
+            let private template =
                 try
                     let asm = typeof<LayoutConfig>.Assembly
                     let path = "resources/golden-layout/popout.html"
@@ -423,26 +424,30 @@ module GoldenLayoutApp =
                     Log.error "[GoldenAard] %s" e.Message
                     $"<!doctype html><html><body><h1>Error</h1>{e.GetType().Name}: {e.Message}</body></html>"
 
-            let handler =
-                request (fun r ->
-                    let id =
-                        match r.queryParam "gl-window" with
-                        | Choice1Of2 id -> id
-                        | _ ->
-                            Log.warn "[GoldenAard] Query parameter 'gl-window' missing."
-                            Guid.NewGuid().ToString()
+            [<Literal>]
+            let route = "/gl-popout"
 
-                    let theme =
-                        match r.queryParam "gl-theme" with
-                        | Choice1Of2 p -> p
-                        | _ ->
-                            Log.warn "[GoldenAard] Query parameter 'gl-theme' missing. Falling back to borderless-dark theme for popout."
-                            Theme.BorderlessDark.Path
+            let handler (getQueryParam : string -> string option) =
+                let id =
+                    match getQueryParam "gl-window" with
+                    | Some id -> id
+                    | _ ->
+                        Log.warn "[GoldenAard] Query parameter 'gl-window' missing."
+                        Guid.NewGuid().ToString()
 
-                    template
-                    |> String.replace "__ID__" id
-                    |> String.replace "__THEME__" theme
-                    |> OK
+                let theme =
+                    match getQueryParam "gl-theme" with
+                    | Some p -> p
+                    | _ ->
+                        Log.warn "[GoldenAard] Query parameter 'gl-theme' missing. Falling back to borderless-dark theme for popout."
+                        Theme.BorderlessDark.Path
+
+                template
+                |> String.replace "__ID__" id
+                |> String.replace "__THEME__" theme
+
+            let suave : WebPart =
+                path route >=> request (fun r ->
+                    let response = handler (r.queryParamOpt >> Option.bind snd)
+                    OK response
                 )
-
-            path "/gl-popout" >=> handler
