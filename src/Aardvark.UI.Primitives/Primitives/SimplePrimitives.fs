@@ -21,13 +21,8 @@ module SimplePrimitives =
 
         let semui =
             [
-                #if DEBUG
                 { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.css" }
                 { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.js" }
-                #else
-                { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.min.css" }
-                { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.min.js" }
-                #endif
                 { kind = Stylesheet; name = "semui-overrides"; url = "./resources/fomantic/semantic-overrides.css" }
                 { kind = Script; name = "essential"; url = "./resources/essentialstuff.js" }
             ]

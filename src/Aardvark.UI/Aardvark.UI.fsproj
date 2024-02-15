@@ -29,8 +29,10 @@
     <EmbeddedResource Include="resources\fomantic\themes\default\**">
       <LogicalName>resources\fomantic\themes\default\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="resources\fomantic\semantic.min.js" LogicalName="resources/fomantic/semantic.min.js" />
-    <EmbeddedResource Include="resources\fomantic\semantic.min.css" LogicalName="resources/fomantic/semantic.min.css" />
+    <EmbeddedResource Include="resources\fomantic\semantic.js" LogicalName="resources/fomantic/semantic.js" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\fomantic\semantic.css" LogicalName="resources/fomantic/semantic.css" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\fomantic\semantic.min.js" LogicalName="resources/fomantic/semantic.js" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\fomantic\semantic.min.css" LogicalName="resources/fomantic/semantic.css" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
     <EmbeddedResource Include="resources\fomantic\semantic-overrides.css" LogicalName="resources/fomantic/semantic-overrides.css" />
     <EmbeddedResource Include="resources\aardvark.js" />
     <EmbeddedResource Include="resources\aardvark.css" />
@@ -46,10 +48,6 @@
 	  <EmbeddedResource Include="resources\favicon.ico" />
 	  <None Include="paket.references" />
 	  <None Include="paket.template" />
-  </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <EmbeddedResource Include="resources\fomantic\semantic.js" LogicalName="resources/fomantic/semantic.js" />
-    <EmbeddedResource Include="resources\fomantic\semantic.css" LogicalName="resources/fomantic/semantic.css" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />
