@@ -34,10 +34,10 @@ let main argv =
     let instance = 
         app |> App.start
 
-    Server.startServer "http://*:4321" Threading.CancellationToken.None  (
+    Server.startServerLocalhost 4321 Threading.CancellationToken.None [
         MutableApp.toWebPart runtime instance
-    ) |> ignore
-    
+    ] |> ignore
+
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
@@ -45,5 +45,4 @@ let main argv =
         debug true
     }
 
-
-    0 
+    0
