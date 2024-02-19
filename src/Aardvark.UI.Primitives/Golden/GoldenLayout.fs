@@ -126,9 +126,10 @@ module Builders =
 
         member x.Yield(()) = empty
         member x.Yield(e : Element) = { empty with Content = [e] }
+        member x.Yield(e : Element seq) = { empty with Content = List.ofSeq e }
 
         member x.Delay(f : unit -> Stack) = f()
-        member x.Combine(a : Stack, b : Stack) = { b with Content = a.Content @ b.Content }
+        member x.Combine(a : Stack, b : Stack) = { a with Content = a.Content @ b.Content }
         member x.For(s: Stack, f: unit -> Stack) = x.Combine(s, f())
 
         /// Determines the position of the header.
@@ -156,6 +157,11 @@ module Builders =
         member inline x.Weight(s : Stack, weight : int) =
             { s with Size = Size.Weight weight }
 
+        /// Content of the stack.
+        [<CustomOperation("content")>]
+        member inline x.Content(s : Stack, c : Element seq) =
+            { s with Content = List.ofSeq c }
+
     type RowOrColumnBuilder(isRow : bool) =
         let empty =
             { IsRow   = isRow
@@ -163,13 +169,17 @@ module Builders =
               Size    = Size.Weight 1 }
 
         member x.Yield(()) = empty
-        member x.Yield(l : Layout)          = { empty with Content = [l] }
-        member x.Yield(e : Element)         = x.Yield(Layout.Element e)
-        member x.Yield(s : Stack)           = x.Yield(Layout.Stack s)
-        member x.Yield(rc : RowOrColumn)    = x.Yield(Layout.RowOrColumn rc)
+        member x.Yield(l : Layout)           = { empty with Content = [l] }
+        member x.Yield(e : Element)          = x.Yield(Layout.Element e)
+        member x.Yield(s : Stack)            = x.Yield(Layout.Stack s)
+        member x.Yield(rc : RowOrColumn)     = x.Yield(Layout.RowOrColumn rc)
+        member x.Yield(l : Layout seq)       = { empty with Content = List.ofSeq l }
+        member x.Yield(e : Element seq)      = x.Yield(e |> Seq.map Layout.Element)
+        member x.Yield(s : Stack seq)        = x.Yield(s |> Seq.map Layout.Stack)
+        member x.Yield(rc : RowOrColumn seq) = x.Yield(rc |> Seq.map Layout.RowOrColumn)
 
         member x.Delay(f : unit -> RowOrColumn) = f()
-        member x.Combine(a : RowOrColumn, b : RowOrColumn) = { b with Content = a.Content @ b.Content }
+        member x.Combine(a : RowOrColumn, b : RowOrColumn) = { a with Content = a.Content @ b.Content }
         member x.For(rc: RowOrColumn, f: unit -> RowOrColumn) = x.Combine(rc, f())
 
         /// Size of the container in case the parent is a row or column container.
@@ -186,6 +196,26 @@ module Builders =
         [<CustomOperation("weight")>]
         member inline x.Weight(rc : RowOrColumn, weight : int) =
             { rc with Size = Size.Weight weight }
+
+        /// Content of the container.
+        [<CustomOperation("content")>]
+        member inline x.Content(rc : RowOrColumn, c : Layout seq) =
+            { rc with Content = List.ofSeq c }
+
+        /// Content of the container.
+        [<CustomOperation("content")>]
+        member inline x.Content(rc : RowOrColumn, c : Element seq) =
+            x.Content(rc, c |> Seq.map Layout.Element)
+
+        /// Content of the container.
+        [<CustomOperation("content")>]
+        member inline x.Content(rc : RowOrColumn, c : Stack seq) =
+            x.Content(rc, c |> Seq.map Layout.Stack)
+
+        /// Content of the container.
+        [<CustomOperation("content")>]
+        member inline x.Content(rc : RowOrColumn, c : RowOrColumn seq) =
+            x.Content(rc, c |> Seq.map Layout.RowOrColumn)
 
     let element = ElementBuilder()
     let stack = StackBuilder()
