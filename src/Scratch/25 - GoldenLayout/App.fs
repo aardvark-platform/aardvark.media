@@ -70,61 +70,66 @@ let viewScene (model : AdaptiveModel) =
     }
 
 let view (model : AdaptiveModel) =
-    Html.title false model.title (
-        body [style "width: 100%; height: 100%; overflow: hidden; margin: 0"] [
-            let attributes = [
-                style "width: 100%; height: 100%; min-width: 400px; min-height: 400px; overflow: hidden"
-                onLayoutChanged (fun _ -> LayoutChanged)
+    GoldenLayout.pages (function
+        | Page.Element "render" ->
+            let attributes =
+                AttributeMap.ofListCond [
+                    always <| style "width: 100%; height:100%; background: #2a2a2a"
+                    always <| attribute "data-samples" "8"
+                ]
+
+            let frustum =
+                Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant
+
+            let sg =
+                Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
+                |> Sg.shader {
+                    do! DefaultSurfaces.trafo
+                    do! DefaultSurfaces.vertexColor
+                    do! DefaultSurfaces.simpleLighting
+                }
+
+            FreeFlyController.controlledControl model.cameraState Camera frustum attributes sg
+
+        | Page.Element "map" ->
+            body [ style "width: 100%; height: 100%; border: 0; padding: 0; margin: 0; overflow: hidden" ] [
+                iframe [
+                    style "width: 100%; height: 100%"
+                    attribute "src" "https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.00030577182769775396%2C51.478569861898606&layer=mapnik"
+                ] []
             ]
 
-            (attributes, model.golden) ||> GoldenLayout.view (function
-                | "render" ->
-                    let attributes =
-                        AttributeMap.ofListCond [
-                            always <| style "width: 100%; height:100%; background: #2a2a2a"
-                            always <| attribute "data-samples" "8"
-                        ]
+        | Page.Element "aux2" ->
+            div [style "color: white; padding: 10px"] [
+                button [onClick (fun _ -> Message.GoldenLayout GoldenLayout.Message.ResetLayout)] [
+                    text "Reset layout"
+                ]
 
-                    let frustum =
-                        Frustum.perspective 60.0 0.1 100.0 1.0 |> AVal.constant
+                button [onClick (fun _ -> Message.GoldenLayout (GoldenLayout.Message.SaveLayout "GoldenLayoutExample.Key"))] [
+                    text "Save layout"
+                ]
 
-                    let sg =
-                        Sg.box (AVal.constant C4b.Green) (AVal.constant Box3d.Unit)
-                        |> Sg.shader {
-                            do! DefaultSurfaces.trafo
-                            do! DefaultSurfaces.vertexColor
-                            do! DefaultSurfaces.simpleLighting
-                        }
+                button [onClick (fun _ -> Message.GoldenLayout (GoldenLayout.Message.LoadLayout "GoldenLayoutExample.Key"))] [
+                    text "Load layout"
+                ]
+            ]
 
-                    FreeFlyController.controlledControl model.cameraState Camera frustum attributes sg
+        | Page.Element unknown ->
+            div [style "color: red; padding: 10px"] [
+                text $"Unknown element: {unknown}"
+            ]
 
-                | "map" ->
-                    iframe [
-                        style "width: 100%; height: 100%"
-                        attribute "src" "https://www.openstreetmap.org/export/embed.html?bbox=-0.004017949104309083%2C51.47612752641776%2C0.00030577182769775396%2C51.478569861898606&layer=mapnik"
-                    ] []
-
-                | "aux2" ->
-                    div [style "color: white; padding: 10px"] [
-                        button [onClick (fun _ -> Message.GoldenLayout GoldenLayout.Message.ResetLayout)] [
-                            text "Reset layout"
-                        ]
-
-                        button [onClick (fun _ -> Message.GoldenLayout (GoldenLayout.Message.SaveLayout "GoldenLayoutExample.Key"))] [
-                            text "Save layout"
-                        ]
-
-                        button [onClick (fun _ -> Message.GoldenLayout (GoldenLayout.Message.LoadLayout "GoldenLayoutExample.Key"))] [
-                            text "Load layout"
-                        ]
+        | Page.Body ->
+            Html.title false model.title (
+                body [style "width: 100%; height: 100%; overflow: hidden; margin: 0"] [
+                    let attributes = [
+                        style "width: 100%; height: 100%; min-width: 400px; min-height: 400px; overflow: hidden"
+                        onLayoutChanged (fun _ -> LayoutChanged)
                     ]
 
-                | _ ->
-                    div [style "color: red; padding: 10px"] [
-                        text $"Unknown element: {element}"
-                    ]
+                    GoldenLayout.body attributes model.golden
+                ]
             )
-        ]
     )
 
 let threads (model : Model) =
