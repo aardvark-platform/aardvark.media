@@ -8,3 +8,8 @@
 .lm_header .lm_controls .lm_tabdropdown:before {
     border-bottom: 5px solid transparent;
 }
+
+/* Fomantic UI sets the line-height of body, messing up headers */
+.lm_header {
+    line-height: initial;
+}
