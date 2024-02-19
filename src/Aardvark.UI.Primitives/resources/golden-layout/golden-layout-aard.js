@@ -11,14 +11,10 @@ if (!aardvark.golden) {
         instances: new Map()
     };
 
-    const onVirtualRecting = function (layoutElement, container, element, width, height) {
-        if (layoutElement.boundingClientRect === undefined) {
-            layoutElement.boundingClientRect = layoutElement.getBoundingClientRect();
-        }
-
+    const onVirtualRecting = function (container, element, width, height) {
         const containerBoundingClientRect = container.element.getBoundingClientRect();
-        const left = containerBoundingClientRect.left - layoutElement.boundingClientRect.left;
-        const top = containerBoundingClientRect.top - layoutElement.boundingClientRect.top;
+        const left = containerBoundingClientRect.left;
+        const top = containerBoundingClientRect.top;
         element.style.left = `${left}px`;
         element.style.top = `${top}px`;
         element.style.width = `${width}px`;
@@ -69,7 +65,7 @@ if (!aardvark.golden) {
             };
 
             container.virtualRectingRequiredEvent = function (container, width, height) {
-                onVirtualRecting(layoutElement, container, element, width, height)
+                onVirtualRecting(container, element, width, height)
             };
 
             container.virtualVisibilityChangeRequiredEvent = function (container, visible) {
