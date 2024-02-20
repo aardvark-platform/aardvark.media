@@ -45,6 +45,9 @@ type Element =
         /// Buttons to display in the header.
         Buttons   : Buttons option
 
+        /// Minimum size (in pixels) of the element in any dimension.
+        MinSize   : int option
+
         /// Size of the element in case the parent is a row or column container.
         Size      : Size
 
@@ -112,6 +115,18 @@ type LayoutConfig =
 
         /// Determines whether the document.title of popouts is set and updated automatically to the document.title of the main window.
         SetPopoutTitle : bool
+
+        /// Default minimum width (in pixels) of any item. Default is 20.
+        MinItemWidth : int
+
+        /// Default minimum height (in pixels) of any item. Default is 20.
+        MinItemHeight : int
+
+        /// Width (in pixels) of drag proxy elements. Default is 300.
+        DragProxyWidth : int
+
+        /// Height (in pixels) of drag proxy elements. Default is 200.
+        DragProxyHeight : int
 
         /// Tooltip label of minimize button.
         LabelMinimize : string

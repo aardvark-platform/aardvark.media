@@ -27,6 +27,10 @@ module LayoutConfig =
           DragToNewWindow    = true
           HeaderButtons      = Buttons.All
           SetPopoutTitle     = true
+          MinItemWidth       = 20
+          MinItemHeight      = 20
+          DragProxyWidth     = 300
+          DragProxyHeight    = 200
           LabelMinimize      = "Minimize"
           LabelMaximize      = "Maximize"
           LabelPopOut        = "Open in new window"
@@ -67,6 +71,7 @@ module Builders =
               Closable  = true
               Header    = Some Header.Top
               Buttons   = None
+              MinSize   = None
               Size      = Size.Weight 1
               KeepAlive = true }
 
@@ -95,6 +100,11 @@ module Builders =
         [<CustomOperation("buttons")>]
         member inline x.Buttons(e : Element, buttons : Buttons) =
             { e with Buttons = Some buttons }
+
+        /// Minimum size (in pixels) of the element in any dimension.
+        [<CustomOperation("minSize")>]
+        member inline x.MinSize(e : Element, sizeInPixels : int) =
+            { e with MinSize = Some sizeInPixels }
 
         /// Size of the element in case the parent is a row or column container.
         [<CustomOperation("size")>]
@@ -297,6 +307,10 @@ module GoldenLayoutApp =
                         o.["header"] <- ofHeader config e.Buttons e.Header
                         o.["size"] <- JToken.op_Implicit (string e.Size)
 
+                        match e.MinSize with
+                        | Some s -> o.["minSize"] <- JToken.op_Implicit $"%d{s}px"
+                        | _ -> ()
+
                         let s = JObject()
                         s.["keepAlive"] <- JToken.op_Implicit e.KeepAlive
                         o.["componentState"] <- s
@@ -335,10 +349,19 @@ module GoldenLayoutApp =
                     o.["setPopoutTitle"] <- JToken.op_Implicit config.SetPopoutTitle
                     o
 
+                let ofConfigDimensions (config : LayoutConfig) =
+                    let o = JObject()
+                    o.["defaultMinItemWidth"] <- JToken.op_Implicit $"{config.MinItemWidth}px"
+                    o.["defaultMinItemHeight"] <- JToken.op_Implicit $"{config.MinItemHeight}px"
+                    o.["dragProxyWidth"] <- JToken.op_Implicit config.DragProxyWidth
+                    o.["dragProxyHeight"] <- JToken.op_Implicit config.DragProxyHeight
+                    o
+
             let ofLayoutConfig (config : LayoutConfig) (layout : Layout) =
                 let o = JObject()
                 o.["root"] <- JObject.ofLayout config layout
                 o.["settings"] <- JObject.ofConfigSettings config
+                o.["dimensions"] <- JObject.ofConfigDimensions config
                 o.["header"] <- JObject.ofConfigLabels config
                 o.ToString Formatting.None
 

@@ -24,6 +24,7 @@ let defaultLayout =
             element {
                 id "render"
                 title "3D View"
+                minSize 100
             }
 
             element {
