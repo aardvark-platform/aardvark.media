@@ -64,11 +64,14 @@ module ThreadPoolAdjustment =
 module MutableApp =
     open Aardvark.UI.Internal.Updaters
     
-    let private template = 
-        let ass = typeof<DomNode<_>>.Assembly
-        use stream = ass.GetManifestResourceStream("Aardvark.UI.template.html")
-        let reader = new IO.StreamReader(stream)
-        reader.ReadToEnd()
+    let private template =
+        let html =
+            let ass = typeof<DomNode<_>>.Assembly
+            use stream = ass.GetManifestResourceStream("Aardvark.UI.template.html")
+            let reader = new IO.StreamReader(stream)
+            reader.ReadToEnd()
+
+        fun (title: string) -> html |> String.replace "__TITLE__" title
 
     type private EventMessage =
         {
@@ -329,7 +332,7 @@ module MutableApp =
             prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
             Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
             path "/events" >=> handShake events
-            path "/" >=> OK template 
+            path "/" >=> OK (template Config.defaultDocumentTitle)
         ]
 
     let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =
