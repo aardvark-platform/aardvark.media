@@ -5,7 +5,7 @@ open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardvark.UI.Primitives.Golden
 open Aardium
-open Inc
+open Golden
 
 [<EntryPoint; STAThread>]
 let main argv = 
@@ -14,6 +14,8 @@ let main argv =
     
     use app = new OpenGlApplication()
     let instance = App.app |> App.start
+
+    Config.defaultDocumentTitle <- App.initialTitle
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 
@@ -34,6 +36,8 @@ let main argv =
         url "http://localhost:4321/"
         width 1024
         height 768
+        title App.initialTitle
+        dynamicTitle true
         debug true
         log (fun msg -> Report.Line(2, $"[Aardium] %s{msg}"))
     }

@@ -11,6 +11,12 @@ if (!aardvark.golden) {
         instances: new Map()
     };
 
+    /**
+     * @param {{element: HTMLElement}} container
+     * @param {HTMLElement} element
+     * @param {number} width
+     * @param {number} height
+     */
     const onVirtualRecting = function (container, element, width, height) {
         const containerBoundingClientRect = container.element.getBoundingClientRect();
         const left = containerBoundingClientRect.left;
@@ -21,6 +27,10 @@ if (!aardvark.golden) {
         element.style.height = `${height}px`;
     }
 
+    /**
+     * @param {HTMLElement} element
+     * @param {boolean} visible
+     */
     const onVisibilityChange = function (element, visible) {
         if (visible) {
             element.style.display = '';
@@ -29,12 +39,25 @@ if (!aardvark.golden) {
         }
     }
 
+    /**
+     * @param {HTMLElement} element
+     * @param {string} logicalZIndex
+     * @param {string} defaultZIndex
+     */
     const onVirtualZIndexChange = function (element, logicalZIndex, defaultZIndex) {
         element.style.zIndex = defaultZIndex;
     }
 
+    /**
+     * @param {HTMLElement} layoutElement
+     * @param {boolean} isPopout
+     * @param {boolean} setPopoutTitle
+     */
     const createInstance = function (layoutElement, isPopout, setPopoutTitle) {
-        const components = new Map();   // Currently bound components
+        /** @type {Map<any, {rootHtmlElement: HTMLElement}>} */
+        const components = new Map();   // Currently bound
+
+        /** @type {Map<string, HTMLElement>} */
         const elements = new Map();     // Elements to keep alive and hide if their component is unbound
 
         const onBindComponent = function (container, itemConfig) {
@@ -163,12 +186,20 @@ if (!aardvark.golden) {
         return instance;
     }
 
+    /**
+     * @param {HTMLElement} layoutElement
+     * @param {*} config
+     */
     aardvark.golden.setLayout = function (layoutElement, config) {
         const instance = aardvark.golden.instances.get(layoutElement.id);
         instance.layout.closeAllOpenPopouts(true);
         instance.layout.loadLayout(config);
     }
 
+    /**
+     * @param {HTMLElement} layoutElement
+     * @param {string | undefined} key
+     */
     aardvark.golden.saveLayout = function (layoutElement, key) {
         const instance = aardvark.golden.instances.get(layoutElement.id);
 
@@ -182,6 +213,10 @@ if (!aardvark.golden) {
         }
     }
 
+    /**
+     * @param {HTMLElement} layoutElement
+     * @param {string | undefined} key
+     */
     aardvark.golden.loadLayout = function (layoutElement, key) {
         const instance = aardvark.golden.instances.get(layoutElement.id);
 
@@ -201,6 +236,10 @@ if (!aardvark.golden) {
         }
     }
 
+    /**
+     * @param {HTMLElement} layoutElement
+     * @param {*} config
+     */
     aardvark.golden.createLayout = function (layoutElement, config) {
         var instance = aardvark.golden.instances.get(layoutElement.id);
         const isPopout = (config === undefined);
@@ -218,6 +257,9 @@ if (!aardvark.golden) {
         }
     }
 
+    /**
+     * @param {HTMLElement} layoutElement
+     */
     aardvark.golden.destroyLayout = function (layoutElement) {
         const instance = aardvark.golden.instances.get(layoutElement.id);
 

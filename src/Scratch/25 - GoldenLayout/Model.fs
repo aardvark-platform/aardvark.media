@@ -1,4 +1,4 @@
-﻿namespace Inc.Model
+﻿namespace Golden.Model
 
 open Aardvark.UI.Primitives
 open Adaptify

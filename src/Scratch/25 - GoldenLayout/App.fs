@@ -1,4 +1,5 @@
-﻿module Inc.App
+﻿module Golden.App
+
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.Golden
@@ -6,7 +7,7 @@ open Aardvark.UI.Primitives.Golden
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Rendering
-open Inc.Model
+open Golden.Model
 
 let initialTitle = "Golden Layout Example"
 
