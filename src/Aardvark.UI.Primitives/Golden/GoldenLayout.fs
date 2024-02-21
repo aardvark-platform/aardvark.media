@@ -407,19 +407,8 @@ module GoldenLayoutApp =
         let inline load (key : string) (model : GoldenLayout) =
             model |> update (GoldenLayout.Message.LoadLayout key)
 
-        /// View for a paged document using Golden Layout.
-        let pages (createPage : Page -> DomNode<'msg>) : DomNode<'msg> =
-            page (fun request ->
-                let p =
-                   match request.queryParams |> Map.tryFind "page" with
-                   | Some id -> Page.Element id
-                   | _ -> Page.Body
-
-                createPage p
-            )
-
         /// View for the body of a paged document using Golden Layout.
-        let body (attributes : Attribute<'msg> list) (model : AdaptiveGoldenLayout) =
+        let view (attributes : Attribute<'msg> list) (model : AdaptiveGoldenLayout) =
             let attributes =
                 attributes @ [
                     clazz "gl-aard-container"

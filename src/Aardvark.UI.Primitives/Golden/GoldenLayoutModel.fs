@@ -149,11 +149,6 @@ type LayoutConfig =
         LabelTabDropdown : string
     }
 
-[<RequireQualifiedAccess>]
-type Page =
-    | Body
-    | Element of id: string
-
 [<ModelType>]
 type GoldenLayout =
     {

@@ -4,6 +4,10 @@ open Aardvark.Base
 open Aardvark.Rendering
 open FSharp.Data.Adaptive
 
+[<RequireQualifiedAccess>]
+type Pages =
+    | Body
+    | Page of id: string
 
 module Incremental =
 
@@ -254,6 +258,16 @@ module Static =
 
     let page (createPage : Request -> DomNode<'msg>) =
         DomNode.Page createPage
+
+    let inline pages (createPage : Pages -> DomNode<'msg>) : DomNode<'msg> =
+        page (fun request ->
+            let p =
+               match request.queryParams |> Map.tryFind "page" with
+               | Some id -> Pages.Page id
+               | _ -> Pages.Body
+
+            createPage p
+        )
 
     let inline elem (tagName : string) (attrs : list<string * AttributeValue<'msg>>) (children : list<DomNode<'msg>>) =
         DomNode.Node(tagName, AttributeMap.ofList attrs, AList.ofList children)

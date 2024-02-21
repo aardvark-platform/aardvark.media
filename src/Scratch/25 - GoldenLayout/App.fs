@@ -71,8 +71,8 @@ let viewScene (model : AdaptiveModel) =
     }
 
 let view (model : AdaptiveModel) =
-    GoldenLayout.pages (function
-        | Page.Element "render" ->
+    pages (function
+        | Pages.Page "render" ->
             let attributes =
                 AttributeMap.ofListCond [
                     always <| style "width: 100%; height:100%; background: #2a2a2a"
@@ -92,7 +92,7 @@ let view (model : AdaptiveModel) =
 
             FreeFlyController.controlledControl model.cameraState Camera frustum attributes sg
 
-        | Page.Element "map" ->
+        | Pages.Page "map" ->
             body [ style "width: 100%; height: 100%; border: 0; padding: 0; margin: 0; overflow: hidden" ] [
                 iframe [
                     style "width: 100%; height: 100%"
@@ -100,7 +100,7 @@ let view (model : AdaptiveModel) =
                 ] []
             ]
 
-        | Page.Element "aux2" ->
+        | Pages.Page "aux2" ->
             div [style "color: white; padding: 10px"] [
                 button [onClick (fun _ -> Message.GoldenLayout GoldenLayout.Message.ResetLayout)] [
                     text "Reset layout"
@@ -115,12 +115,12 @@ let view (model : AdaptiveModel) =
                 ]
             ]
 
-        | Page.Element unknown ->
+        | Pages.Page unknown ->
             div [style "color: red; padding: 10px"] [
                 text $"Unknown element: {unknown}"
             ]
 
-        | Page.Body ->
+        | Pages.Body ->
             Html.title false model.title (
                 body [style "width: 100%; height: 100%; overflow: hidden; margin: 0"] [
                     let attributes = [
@@ -128,7 +128,7 @@ let view (model : AdaptiveModel) =
                         onLayoutChanged (fun _ -> LayoutChanged)
                     ]
 
-                    GoldenLayout.body attributes model.golden
+                    GoldenLayout.view attributes model.golden
                 ]
             )
     )
