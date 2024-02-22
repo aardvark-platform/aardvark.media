@@ -48,7 +48,7 @@ nuget BenchmarkDotNet                   ~> 0.13.1
 nuget TurboJpegWrapper                  ~> 1.5.2
 nuget Suave                             ~> 2.5.6
 
-nuget Aardium                           ~> 2.1.0-prerelease0003
+nuget Aardium                           ~> 2.1.0-prerelease0005
 nuget Chiron
 
 nuget Another.Unofficial.Xilium.CefGlue                          ~> 0.4.0
