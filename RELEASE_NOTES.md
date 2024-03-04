@@ -1,3 +1,11 @@
+### 5.4.3
+- Added Golden Layout support (https://github.com/aardvark-platform/aardvark.media/wiki/Golden-Layout)
+- [Primitives] Added before and after option to numeric input for labels and icons
+- [Primitives] Added Html.title to set document.title
+- [Giraffe] Added startServer variants and WebPart utilities
+- [Suave] Fixed setting default quality if useMapping = false
+- [ColorPicker] Fixed issue with positioning and scrolling
+
 ### 5.4.2
 - Added improved color picker
 - Added generic Html.color to convert colors to a CSS color string
