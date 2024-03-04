@@ -173,11 +173,11 @@ module SketchingApp =
       { model with depthOffset = Numeric.update model.depthOffset a }
     | SetAlphaArea a -> 
       { model with alphaArea = Numeric.update model.alphaArea a }
-    | Undo _ -> 
+    | Undo -> 
       match model.past with
         | None -> model // if we have no past our history is empty, so just return our current model
         | Some p -> { p with future = Some model }
-    | Redo _ -> 
+    | Redo -> 
       match model.future with
         | None -> model
         | Some f -> f
