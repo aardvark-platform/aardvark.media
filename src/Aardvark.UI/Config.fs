@@ -23,3 +23,6 @@ module Config =
     let mutable updateThreadFailed =
         fun (e : exn) -> 
             Log.error "[Media] UI update thread died (exn in view function?) : \n%A" e
+
+    /// The document title to set when a MutableApp is created.
+    let mutable defaultDocumentTitle = @"Aardvark rocks \o/"

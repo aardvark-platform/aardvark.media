@@ -24,12 +24,15 @@ open Aardvark.UI.Internal
 
 module MutableApp =
     open Aardvark.UI.Internal.Updaters
-    
-    let private template = 
-        let ass = typeof<DomNode<_>>.Assembly
-        use stream = ass.GetManifestResourceStream("Aardvark.UI.template.html")
-        let reader = new IO.StreamReader(stream)
-        reader.ReadToEnd()
+
+    let private template =
+        let html =
+            let ass = typeof<DomNode<_>>.Assembly
+            use stream = ass.GetManifestResourceStream("Aardvark.UI.template.html")
+            let reader = new IO.StreamReader(stream)
+            reader.ReadToEnd()
+
+        fun (title: string) -> html |> String.replace "__TITLE__" title
 
     type private EventMessage =
         {
@@ -329,7 +332,7 @@ module MutableApp =
                 route "/events" >=> Websockets.handShake events
             
 
-                route "/" >=> htmlString template
+                route "/" >=> htmlString (template Config.defaultDocumentTitle)
             ]
 
         route, waitForShutdown

@@ -14,6 +14,10 @@
   -webkit-user-select: none;
           user-select: none;
 }
+.lm_dragging iframe,
+.lm_pointer_tracking iframe {
+  pointer-events: none;
+}
 .lm_maximised {
   position: absolute;
   top: 0;
@@ -73,16 +77,19 @@
 .lm_header .lm_tabs {
   position: absolute;
   display: flex;
+  height: 20px;
+  overflow: hidden;
+  max-width: 100%;
 }
 .lm_header .lm_tab {
   cursor: pointer;
   float: left;
-  height: 14px;
   margin-top: 1px;
   padding: 0px 10px 5px;
-  padding-right: 25px;
   position: relative;
   touch-action: none;
+  max-width: 100%;
+  box-sizing: border-box !important;
 }
 .lm_header .lm_tab i {
   width: 2px;
@@ -101,6 +108,8 @@
   display: inline-block;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
 }
 .lm_header .lm_tab .lm_close_tab {
   width: 14px;
@@ -109,6 +118,9 @@
   top: 0;
   right: 0;
   text-align: center;
+}
+.lm_header .lm_closable.lm_tab {
+  padding-right: 25px;
 }
 .lm_stack {
   position: relative;
@@ -227,7 +239,6 @@
 .lm_drop_tab_placeholder {
   float: left;
   width: 100px;
-  height: 10px;
   visibility: hidden;
 }
 .lm_header .lm_controls .lm_tabdropdown:before {
@@ -266,7 +277,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  z-index: 30;
+  z-index: 31;
 }
 .lm_dragProxy .lm_header {
   background: transparent;
@@ -276,10 +287,10 @@
   overflow: hidden;
 }
 .lm_dropTargetIndicator {
-  display: none;
+  visibility: hidden;
   position: absolute;
-  z-index: 35;
-  transition: all 200ms ease;
+  z-index: 30;
+  transition: all 200ms ease, visibility 0ms linear;
 }
 .lm_dropTargetIndicator .lm_inner {
   width: 100%;
