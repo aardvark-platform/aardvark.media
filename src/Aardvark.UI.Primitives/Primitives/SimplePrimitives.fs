@@ -132,6 +132,12 @@ module SimplePrimitives =
             static member LargeStep = NumericConfigDefaults<'a>.large
             static member NumType = NumericConfigDefaults<'a>.numType
 
+            static member Get() =
+                { min = NumericConfigDefaults<'a>.MinValue;
+                  max = NumericConfigDefaults<'a>.MaxValue;
+                  smallStep = NumericConfigDefaults<'a>.SmallStep;
+                  largeStep = NumericConfigDefaults<'a>.LargeStep; }
+
             static do
                 let at = typedefof<'a>
                 if at = typeof<int> then
@@ -233,7 +239,8 @@ module SimplePrimitives =
                 )
             )
 
-        let numeric (cfg : NumericConfig<'a>) (atts : AttributeMap<'msg>) (value : aval<'a>) (update : 'a -> 'msg) =
+        let numeric' (cfg : NumericConfig<'a>) (atts : AttributeMap<'msg>)
+                     (before : aval<DomNode<'msg> option>) (after : aval<DomNode<'msg> option>) (value : aval<'a>) (update : 'a -> #seq<'msg>) =
 
             let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
 
@@ -244,7 +251,7 @@ module SimplePrimitives =
             let myAtts =
                 AttributeMap.ofList [
                     "class", AttributeValue.String "ui input"
-                    onEvent' "data-event" [] (function (str :: _) -> str |> unpickle |> Option.toList |> Seq.map update | _ -> Seq.empty)
+                    onEvent' "data-event" [] (function (str :: _) -> str |> unpickle |> Option.toList |> Seq.collect update | _ -> Seq.empty)
                 ]
 
             let boot =
@@ -263,6 +270,10 @@ module SimplePrimitives =
                 onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
+                            match! before with
+                            | Some n -> yield n
+                            | _ -> ()
+
                             yield
                                 input (att [
 
@@ -275,10 +286,17 @@ module SimplePrimitives =
                                     //attribute "data-numtype" (NumericConfigDefaults<'a>.NumType.ToString())
                                     attribute "pattern" pattern
                                 ])
+
+                            match! after with
+                            | Some n -> yield n
+                            | _ -> ()
                         }
                     )
                 )
             )
+
+        let numeric (cfg : NumericConfig<'a>) (atts : AttributeMap<'msg>) (value : aval<'a>) (update : 'a -> 'msg) =
+            numeric' cfg atts (AVal.constant None) (AVal.constant None) value (update >> List.singleton)
 
         let slider (cfg : SliderConfig<'a>) (atts : AttributeMap<'msg>) (value : aval<'a>) (update : 'a -> 'msg) =
 
@@ -629,6 +647,7 @@ module SimplePrimitives =
             member inline x.Run((a,c,(v,msg))) =
                 Incremental.checkbox a v msg c
 
+        // To be replaced by NumericBuilder2
         type NumericBuilder<'a>() =
 
             member inline x.Yield(()) =
@@ -658,6 +677,129 @@ module SimplePrimitives =
 
             member inline x.Run((a,v,cfg,msg)) =
                 Incremental.numeric cfg a v msg
+
+        type NumericBuilderState<'T, 'msg> =
+            { attributes : AttributeMap<'msg>
+              before     : aval<DomNode<'msg> option>
+              after      : aval<DomNode<'msg> option>
+              value      : aval<'T>
+              config     : NumericConfig<'T>
+              update     : 'T -> 'msg seq }
+
+        type NumericBuilder2<'T>() =
+
+            member inline x.Yield(()) : NumericBuilderState<'T, 'msg> =
+                { attributes = AttributeMap.empty
+                  before     = AVal.constant None
+                  after      = AVal.constant None
+                  value      = AVal.constant Unchecked.defaultof<'T>
+                  config     = NumericConfigDefaults<'T>.Get()
+                  update     = fun _ -> Seq.empty }
+
+            [<CustomOperation("attributes")>]
+            member inline x.Attributes(s : NumericBuilderState<'T, 'msg>, attributes) =
+                { s with attributes = AttributeMap.union s.attributes (att attributes) }
+
+            [<CustomOperation("value")>]
+            member inline x.Value(s : NumericBuilderState<'T, 'msg>, value : aval<'T>) =
+                { s with value = value }
+
+            [<CustomOperation("update")>]
+            member inline x.Update(s : NumericBuilderState<'T, 'msg>, update : 'T -> 'msg seq) =
+                { s with update = update }
+
+            [<CustomOperation("update")>]
+            member inline x.Update(s : NumericBuilderState<'T, 'msg>, update : 'T -> 'msg list) =
+                { s with update = update >> List.toSeq }
+
+            [<CustomOperation("update")>]
+            member inline x.Update(s : NumericBuilderState<'T, 'msg>, update : 'T -> 'msg array) =
+                { s with update = update >> Array.toSeq }
+
+            [<CustomOperation("update")>]
+            member inline x.Update(s : NumericBuilderState<'T, 'msg>, update : 'T -> 'msg) =
+                { s with update = update >> Seq.singleton }
+
+            [<CustomOperation("step")>]
+            member inline x.Step(s : NumericBuilderState<'T, 'msg>, step : 'T) =
+                { s with config = { s.config with NumericConfig.smallStep = step } }
+
+            [<CustomOperation("largeStep")>]
+            member inline x.LargeStep(s : NumericBuilderState<'T, 'msg>, step : 'T) =
+                { s with config = { s.config with NumericConfig.largeStep = step } }
+
+            [<CustomOperation("min")>]
+            member inline x.Min(s : NumericBuilderState<'T, 'msg>, min : 'T) =
+                { s with config = { s.config with NumericConfig.min = min } }
+
+            [<CustomOperation("max")>]
+            member inline x.Max(s : NumericBuilderState<'T, 'msg>, max : 'T) =
+                { s with config = { s.config with NumericConfig.max = max } }
+
+            [<CustomOperation("before")>]
+            member inline x.Before(s : NumericBuilderState<'T, 'msg>, before : aval<DomNode<'msg>>) =
+                { s with before = before |> AVal.map Some }
+
+            [<CustomOperation("before")>]
+            member inline x.Before(s : NumericBuilderState<'T, 'msg>, before : DomNode<'msg>) =
+                x.Before(s, AVal.constant before)
+
+            [<CustomOperation("after")>]
+            member inline x.After(s : NumericBuilderState<'T, 'msg>, after : aval<DomNode<'msg>>) =
+                { s with after = after |> AVal.map Some }
+
+            [<CustomOperation("after")>]
+            member inline x.After(s : NumericBuilderState<'T, 'msg>, after : DomNode<'msg>) =
+                x.After(s, AVal.constant after)
+
+            member private x.Icon(s : NumericBuilderState<'T, 'msg>, icon : string, left : bool) =
+                let node : DomNode<'msg> =
+                    i [clazz $"{icon} icon"] []
+
+                let s =
+                    let atts = AttributeMap.ofList [clazz (if left then "left icon" else "icon")]
+                    { s with attributes = AttributeMap.union s.attributes atts }
+
+                if left then x.Before(s, node)
+                else x.After(s, node)
+
+            [<CustomOperation("iconLeft")>]
+            member x.IconLeft(s : NumericBuilderState<'T, 'msg>, icon : string) =
+                x.Icon(s, icon, true)
+
+            [<CustomOperation("iconRight")>]
+            member x.IconRight(s : NumericBuilderState<'T, 'msg>, icon : string) =
+                x.Icon(s, icon, false)
+
+            member private x.Label(s : NumericBuilderState<'T, 'msg>, classes : string, label : string, left : bool) =
+                let node : DomNode<'msg> =
+                    div [clazz $"ui {classes} label"] [ text label ]
+
+                let s =
+                    let atts = AttributeMap.ofList [clazz (if left then "labeled" else "right labeled")]
+                    { s with attributes = AttributeMap.union s.attributes atts }
+
+                if left then x.Before(s, node)
+                else x.After(s, node)
+
+            [<CustomOperation("labelLeft")>]
+            member x.LabelLeft(s : NumericBuilderState<'T, 'msg>, classes : string, label : string) =
+                x.Label(s, classes, label, true)
+
+            [<CustomOperation("labelLeft")>]
+            member inline x.LabelLeft(s : NumericBuilderState<'T, 'msg>, label : string) =
+                x.LabelLeft(s, "", label)
+
+            [<CustomOperation("labelRight")>]
+            member x.LabelRight(s : NumericBuilderState<'T, 'msg>, classes : string, label : string) =
+                x.Label(s, classes, label, false)
+
+            [<CustomOperation("labelRight")>]
+            member inline x.LabelRight(s : NumericBuilderState<'T, 'msg>, label : string) =
+                x.LabelRight(s, "", label)
+
+            member inline x.Run(s : NumericBuilderState<'T, 'msg>) : DomNode<'msg> =
+                Incremental.numeric' s.config s.attributes s.before s.after s.value s.update
 
         type TextBuilder() =
 
@@ -713,6 +855,7 @@ module SimplePrimitives =
 
         let simplecheckbox = CheckBuilder()
         let simplenumeric<'a> = NumericBuilder<'a>()
+        let simplenumeric'<'T> = NumericBuilder2<'T>()
         let simpletextbox = TextBuilder()
         let simpledropdown = DropdownBuilder()
 

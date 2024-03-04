@@ -139,9 +139,10 @@ let view (model : AdaptiveModel) =
 
             div [ clazz "item" ] [
                 description "Numeric (integer)"
-                simplenumeric {
+                simplenumeric' {
                     attributes [clazz "ui inverted input"]
                     value model.intValue
+                    iconRight "inverted users"
                     update SetInt
                     step 1
                     largeStep 5
@@ -166,8 +167,10 @@ let view (model : AdaptiveModel) =
 
             div [ clazz "item" ] [
                 description "Numeric (unsigned integer)"
-                simplenumeric {
+                simplenumeric' {
                     attributes [clazz "ui inverted input"]
+                    labelLeft "$"
+                    labelRight "inverted basic" ".00"
                     value model.uintValue
                     update SetUInt
                     step 1u
