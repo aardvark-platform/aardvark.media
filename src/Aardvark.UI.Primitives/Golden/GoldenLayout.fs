@@ -80,8 +80,7 @@ module Builders =
         member inline x.Title(e : Element, title : string) =
             { e with Title = title }
 
-        /// Determines if the element can be closed.
-        /// Note: Unclosable elements cannot be popped out or moved to another window.
+        /// Determines if the element can be closed via buttons in the header and tab.
         [<CustomOperation("closable")>]
         member inline x.Closable(e : Element, closable : bool) =
             { e with Closable = closable }

@@ -35,8 +35,7 @@ type Element =
         /// Title shown in the header.
         Title     : string
 
-        /// Determines if the element can be closed.
-        /// Note: Unclosable elements cannot be popped out or moved to another window.
+        /// Determines if the element can be closed via buttons in the header and tab.
         Closable  : bool
 
         /// Determines the position of the header or if one is shown at all.
