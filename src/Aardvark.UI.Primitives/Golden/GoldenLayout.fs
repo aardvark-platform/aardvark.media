@@ -75,7 +75,7 @@ module Builders =
               Size      = Size.Weight 1
               KeepAlive = true }
 
-        /// Title shown in the header.
+        /// Title shown in the header tab. Default is "Untitled".
         [<CustomOperation("title")>]
         member inline x.Title(e : Element, title : string) =
             { e with Title = title }
@@ -85,12 +85,12 @@ module Builders =
         member inline x.Closable(e : Element, closable : bool) =
             { e with Closable = closable }
 
-        /// Determines the position of the header or if one is shown at all.
+        /// Determines the position of the header or if one is shown at all. Default is Header.Top.
         [<CustomOperation("header")>]
         member inline x.Header(e : Element, header : Header option) =
             { e with Header = header }
 
-        /// Determines the position of the header.
+        /// Determines the position of the header. Default is Header.Top.
         [<CustomOperation("header")>]
         member inline x.Header(e : Element, header : Header) =
             { e with Header = Some header }
@@ -110,7 +110,7 @@ module Builders =
         member inline x.Size(e : Element, size : Size) =
             { e with Size = size }
 
-        /// Size of the element in case the parent is a row or column container.
+        /// Size of the element (in percent) in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(e : Element, sizeInPercent : int) =
             { e with Size = Size.Percentage sizeInPercent }
@@ -156,7 +156,7 @@ module Builders =
         member inline x.Size(s : Stack, size : Size) =
             { s with Size = size }
 
-        /// Size of the stack in case the parent is a row or column container.
+        /// Size of the stack (in percent) in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(s : Stack, sizeInPercent : int) =
             { s with Size = Size.Percentage sizeInPercent }
@@ -196,7 +196,7 @@ module Builders =
         member inline x.Size(rc : RowOrColumn, size : Size) =
             { rc with Size = size }
 
-        /// Size of the container in case the parent is a row or column container.
+        /// Size of the container (in percent) in case the parent is a row or column container.
         [<CustomOperation("size")>]
         member inline x.Size(rc : RowOrColumn, sizeInPercent : int) =
             { rc with Size = Size.Percentage sizeInPercent }

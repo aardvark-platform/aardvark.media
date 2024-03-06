@@ -32,7 +32,7 @@ type Element =
         /// Unique name to identify the element in the view function.
         Id        : string
 
-        /// Title shown in the header.
+        /// Title shown in the header tab.
         Title     : string
 
         /// Determines if the element can be closed via buttons in the header and tab.
@@ -93,26 +93,26 @@ type Theme =
 
 type LayoutConfig =
     {
-        /// The color theme to use.
+        /// The color theme to use. Default is Theme.BorderlessDark.
         Theme : Theme
 
-        /// Determines whether popouts are automatically docked when the window is closed.
-        /// Shows a small dock button in popouts if false.
+        /// Determines whether items in popout windows are automatically docked when the window is closed.
+        /// Shows a small dock button in popout windows if false. Default is true.
         PopInOnClose : bool
 
-        /// Determines whether popout affects the whole stack or just the active tab.
+        /// Determines whether the popout header button affects the whole stack or just the active tab. Default is true.
         PopOutWholeStack : bool
 
-        /// Determines whether elements may be dragged from one window to another.
+        /// Determines whether elements may be dragged from one window to another. Default is true.
         DragBetweenWindows : bool
 
-        /// Determines whether elements may be dragged and dropped outside the containing window creating a new popout.
+        /// Determines whether elements may be dragged and dropped outside the containing window creating a new popout window. Default is true.
         DragToNewWindow : bool
 
         /// Default buttons to be displayed in the headers.
         HeaderButtons : Buttons
 
-        /// Determines whether the document.title of popouts is set and updated automatically to the document.title of the main window.
+        /// Determines whether the document.title of popout windows is set and updated automatically to the document.title of the main window.
         SetPopoutTitle : bool
 
         /// Default minimum width (in pixels) of any item. Default is 20.
@@ -121,10 +121,10 @@ type LayoutConfig =
         /// Default minimum height (in pixels) of any item. Default is 20.
         MinItemHeight : int
 
-        /// Width (in pixels) of drag proxy elements. Default is 300.
+        /// Width (in pixels) of drag proxy / preview elements. Default is 300.
         DragProxyWidth : int
 
-        /// Height (in pixels) of drag proxy elements. Default is 200.
+        /// Height (in pixels) of drag proxy / preview elements. Default is 200.
         DragProxyHeight : int
 
         /// Tooltip label of minimize button.
