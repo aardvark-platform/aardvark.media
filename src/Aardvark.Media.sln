@@ -150,6 +150,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "29 - Garbage Collection", "
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - GoldenLayout", "Examples (dotnetcore)\27 - GoldenLayout\27 - GoldenLayout.fsproj", "{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Notifications", "Examples (dotnetcore)\28 - Notifications\28 - Notifications.fsproj", "{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -400,6 +402,10 @@ Global
 		{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -466,6 +472,7 @@ Global
 		{E6E319E2-7A57-41B0-99B4-FF454EA81CF6} = {5DAFA99B-848D-4185-B4C1-287119815657}
 		{5F1B5AF1-73B4-44F4-89D7-84BBC929B770} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{3AFDD56A-F6AB-4BB0-AD88-8912071E998C} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}

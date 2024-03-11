@@ -62,6 +62,8 @@
     <Compile Include="Controllers\LegacyCameraController.fs" />
     <Compile Include="Golden\GoldenLayoutModel.fs" />
     <Compile Include="Golden\GoldenLayout.fs" />
+    <Compile Include="Notifications\NotificationsModel.fs" />
+    <Compile Include="Notifications\Notifications.fs" />
     <Compile Include="Docking.fs" />
     <Compile Include="OpenDialog.fs" />
     <Compile Include="SaveDialog.fs" />
@@ -79,6 +81,7 @@
     <EmbeddedResource Include="resources\spectrum.css" />
     <EmbeddedResource Include="resources\spectrum.js" />
     <EmbeddedResource Include="resources\spectrum-overrides.css" />
+    <EmbeddedResource Include="resources\notifications.js" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>
