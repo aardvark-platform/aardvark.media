@@ -4,6 +4,8 @@ open Aardvark.UI
 open Aardvark.Base
 open FSharp.Data.Adaptive
 
+// https://github.com/aardvark-community/spectrum
+
 // TODO: Move to Aardvark.UI.Primitives namespace and delete old color picker
 module ColorPicker =
 
@@ -349,12 +351,9 @@ module ColorPicker =
                 "const $self = $('#__ID__');"
 
                 "$self.spectrum({"
-                $"   appendTo: 'replacer',"
-
-                // A bit weird with buttons, without buttons this is the default behavior anyway.
-                // Setting this to false will make clicking outside reset the displayed color even if
-                // a color was selected from the palette (which fires a change immediately).
-                $"    clickoutFiresChange: true,"
+                $"    appendTo: 'replacer',"
+                $"    clickoutFiresChange: false,"
+                $"    fireChangeImmediately: true,"
 
                 if config.darkTheme then
                     "    replacerClassName: 'dark',"
@@ -378,12 +377,6 @@ module ColorPicker =
 
                 match config.pickerStyle with
                 | Some p ->
-                    // Make sure value is saved when clicking on the replacer itself
-                    if not p.showButtons then
-                        "$self.on('hide.spectrum', function (e, tinycolor) {"
-                        "    aardvark.processEvent('__ID__', 'data-event', tinycolor.toHex8());"
-                        "});"
-
                     // Disable text input if requested
                     if p.textInput = TextInput.Disabled then
                         "$self.spectrum('container').find('.sp-input').attr('disabled', true);"

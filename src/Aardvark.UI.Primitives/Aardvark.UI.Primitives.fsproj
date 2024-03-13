@@ -78,8 +78,10 @@
     <EmbeddedResource Include="resources\golden-layout\golden-layout-aard.css" LogicalName="resources\golden-layout\golden-layout-aard.css" />
     <EmbeddedResource Include="resources\golden-layout\golden-layout-aard.js" LogicalName="resources\golden-layout\golden-layout-aard.js" />
     <EmbeddedResource Include="resources\golden-layout\popout.html" LogicalName="resources\golden-layout\popout.html" />
-    <EmbeddedResource Include="resources\spectrum.css" />
-    <EmbeddedResource Include="resources\spectrum.js" />
+    <EmbeddedResource Include="resources\spectrum-min.css" LogicalName="resources\spectrum.css" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\spectrum.css" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\spectrum-min.js" LogicalName="resources\spectrum.js" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\spectrum.js" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
     <EmbeddedResource Include="resources\spectrum-overrides.css" />
     <EmbeddedResource Include="resources\notifications.js" />
     <None Include="paket.references" />
