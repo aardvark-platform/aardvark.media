@@ -75,8 +75,7 @@ let view (model : AdaptiveModel) =
         div [ style "margin-bottom: 10px" ] [ text str ]
 
     body [style "background-color: lightslategrey"] [
-        div [ clazz "ui vertical inverted menu"; style "min-width: 410px" ] [
-
+        div [ clazz "ui vertical inverted menu"; style "min-width: 420px" ] [
             div [ clazz "item" ] [
                 button [clazz "ui inverted labeled icon button"; onClick (fun _ -> Reset)] [
                     i [clazz "red delete icon"] []
@@ -84,177 +83,164 @@ let view (model : AdaptiveModel) =
                 ]
             ]
 
-            // Checkboxes
-            div [ clazz "header item" ] [
-                h3 [] [ text "Checkboxes" ]
-            ]
-
-            div [ clazz "item" ] [
-                simplecheckbox {
-                    attributes [clazz "ui inverted checkbox"]
-                    state model.active
-                    toggle ToggleActive
-                    content [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
-                }
-                //checkbox [clazz "ui inverted checkbox"] model.active ToggleActive [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
-            ]
-
-            div [ clazz "item" ] [
-                checkbox [clazz "ui inverted toggle checkbox"] model.active ToggleActive "Is the thing active?"
-            ]
-
-            // Sliders
-            div [ clazz "header item" ] [
-                h3 [] [ text "Sliders" ]
-            ]
-
-            div [ clazz "item" ] [
-                description "Float"
-                slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
-            ]
-
-            div [ clazz "item" ] [
-                description "Integer"
-                slider { min = 0; max = 20; step = 1 } [clazz "ui inverted small bottom aligned labeled ticked blue slider"] model.intValue SetInt
-            ]
-
-            // Input fields
-            div [ clazz "header item" ] [
-                h3 [] [ text "Input fields" ]
-            ]
-
-            div [ clazz "item" ] [
-                description "Numeric (float)"
-                simplenumeric {
-                    attributes [clazz "ui inverted input"]
-                    value model.value
-                    update SetValue
-                    step 0.1
-                    largeStep 1.0
-                    min 1.0
-                    max 100.0
-                }
-                //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
-            ]
-
-            div [ clazz "item" ] [
-                description "Numeric (integer)"
-                simplenumeric' {
-                    attributes [clazz "ui inverted input"]
-                    value model.intValue
-                    iconRight "inverted users"
-                    update SetInt
-                    step 1
-                    largeStep 5
-                    min -100000
-                    max 100000
-                }
-                //numeric { min = 0; max = 10000; smallStep = 1; largeStep = 10 } [clazz "ui inverted input"] model.intValue SetInt
-            ]
-
-            div [ clazz "item" ] [
-                description "Numeric (decimal)"
-                simplenumeric {
-                    attributes [clazz "ui inverted input"]
-                    value model.decValue
-                    update SetDecimal
-                    step 1m
-                    largeStep 5m
-                    min -100000m
-                    max 100000m
-                }
-            ]
-
-            div [ clazz "item" ] [
-                description "Numeric (unsigned integer)"
-                simplenumeric' {
-                    attributes [clazz "ui inverted input"]
-                    labelLeft "$"
-                    labelRight "inverted basic" ".00"
-                    value model.uintValue
-                    update SetUInt
-                    step 1u
-                    largeStep 5u
-                    min 0u
-                    max 100000u
-                }
-            ]
-
-            div [ clazz "item" ] [
-                description "Text input with validation"
-                textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
-            ]
-
-            // Dropdowns
-            div [ clazz "header item" ] [
-                h3 [] [ text "Dropdown menus" ]
-            ]
-
-            div [ clazz "item" ] [
-                description "Non-clearable"
-                dropdownUnclearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
-            ]
-
-            div [ clazz "item" ] [
-                description "Clearable"
-                dropdown { mode = DropdownMode.Text <| Some "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] alternatives model.alt SetAlternative
-            ]
-
-            div [ clazz "item" ] [
-                description "Icon mode"
-                dropdown { mode = DropdownMode.Icon "sidebar"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted icon top left pointing dropdown circular button" ] alternatives model.alt SetAlternative
-            ]
-
-            div [ clazz "item" ] [
-                description "Multi select"
-                let atts = AttributeMap.ofList [clazz "inverted clearable search"]
-                dropdownMultiSelect atts None "Search..." alternatives model.alts SetAlternatives
-            ]
-
-            // Color picker
-            div [ clazz "header item"; style "display: flex" ] [
-                h3 [] [ text "Color picker" ]
-
-                Incremental.div (AttributeMap.ofAMap <| amap {
-                    let! c = model.color
-                    yield style $"width: 16px; height: 16px; margin-left: 10px; margin-top: 5px; border: thin solid; background-color: #{c.ToHexString()}"
-                }) AList.empty
-            ]
-
-            div [ clazz "item" ] [
-                description "Dropdown variations"
-
-                div [style "display: flex"] [
-                    div [style "margin-right: 5px"] [
-                        let cfg = { ColorPicker.Config.Dark.Default with palette = Some ColorPicker.Palette.Basic }
-                        ColorPicker.view cfg SetColor model.color
+            accordionSimple false [ clazz "inverted item" ] [
+                // Checkboxes
+                "Checkboxes", div [ clazz "menu" ] [
+                    div [ clazz "item" ] [
+                        simplecheckbox {
+                            attributes [clazz "ui inverted checkbox"]
+                            state model.active
+                            toggle ToggleActive
+                            content [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
+                        }
+                        //checkbox [clazz "ui inverted checkbox"] model.active ToggleActive [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
                     ]
 
-                    div [style "margin-left: 5px; margin-right: 5px"] [
-                        let cfg = { ColorPicker.Config.Dark.PaletteOnly with palette = Some ColorPicker.Palette.Reduced }
-                        ColorPicker.view cfg SetColor model.color
-                    ]
-
-                    div [style "margin-left: 5px; margin-right: 5px"] [
-                        let cfg = { ColorPicker.Config.Dark.PickerOnlyWithAlpha with preferredFormat = ColorPicker.Format.HSL }
-                        ColorPicker.view cfg SetColor model.color
-                    ]
-
-                    div [style "margin-left: 5px"] [
-                        ColorPicker.view ColorPicker.Config.Dark.Disabled SetColor model.color
+                    div [ clazz "item" ] [
+                        checkbox [clazz "ui inverted toggle checkbox"] model.active ToggleActive "Is the thing active?"
                     ]
                 ]
-            ]
 
-            div [ clazz "item" ] [
-                description "Inline with persistent selection"
+                // Sliders
+                "Sliders", div [ clazz "menu" ] [
+                    div [ clazz "item" ] [
+                        description "Float"
+                        slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
+                    ]
 
-                let cfg = { ColorPicker.Config.Dark.Default with
-                                localStorageKey  = Some "aardvark.media.colorpicker.example"
-                                pickerStyle      = Some { ColorPicker.PickerStyle.ToggleWithAlpha with showButtons = true; textInput = ColorPicker.TextInput.Enabled }
-                                displayMode      = ColorPicker.DisplayMode.Inline }
+                    div [ clazz "item" ] [
+                        description "Integer"
+                        slider { min = 0; max = 20; step = 1 } [clazz "ui inverted small bottom aligned labeled ticked blue slider"] model.intValue SetInt
+                    ]
+                ]
 
-                ColorPicker.view cfg SetColor model.color
+                // Input fields
+                "Input fields", div [ clazz "menu" ] [
+                    div [ clazz "item" ] [
+                        description "Numeric (float)"
+                        simplenumeric {
+                            attributes [clazz "ui inverted input"]
+                            value model.value
+                            update SetValue
+                            step 0.1
+                            largeStep 1.0
+                            min 1.0
+                            max 100.0
+                        }
+                        //numeric { min = -1E15; max = 1E15; smallStep = 0.1; largeStep = 100.0 } [clazz "ui inverted input"] model.value SetValue
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Numeric (integer)"
+                        simplenumeric' {
+                            attributes [clazz "ui inverted input"]
+                            value model.intValue
+                            iconRight "inverted users"
+                            update SetInt
+                            step 1
+                            largeStep 5
+                            min -100000
+                            max 100000
+                        }
+                        //numeric { min = 0; max = 10000; smallStep = 1; largeStep = 10 } [clazz "ui inverted input"] model.intValue SetInt
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Numeric (decimal)"
+                        simplenumeric {
+                            attributes [clazz "ui inverted input"]
+                            value model.decValue
+                            update SetDecimal
+                            step 1m
+                            largeStep 5m
+                            min -100000m
+                            max 100000m
+                        }
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Numeric (unsigned integer)"
+                        simplenumeric' {
+                            attributes [clazz "ui inverted input"]
+                            labelLeft "$"
+                            labelRight "inverted basic" ".00"
+                            value model.uintValue
+                            update SetUInt
+                            step 1u
+                            largeStep 5u
+                            min 0u
+                            max 100000u
+                        }
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Text input with validation"
+                        textbox { regex = Some "^[a-zA-Z_]+$"; maxLength = Some 6 } [clazz "ui inverted input"] model.name SetName
+                    ]
+                ]
+
+                // Dropdowns
+                "Dropdown menus", div [ clazz "menu" ] [
+                    div [ clazz "item" ] [
+                        description "Non-clearable"
+                        dropdownUnclearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Clearable"
+                        dropdown { mode = DropdownMode.Text <| Some "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] alternatives model.alt SetAlternative
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Icon mode"
+                        dropdown { mode = DropdownMode.Icon "sidebar"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted icon top left pointing dropdown circular button" ] alternatives model.alt SetAlternative
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Multi select"
+                        let atts = AttributeMap.ofList [clazz "inverted clearable search"]
+                        dropdownMultiSelect atts None "Search..." alternatives model.alts SetAlternatives
+                    ]
+                ]
+
+                // Color picker
+                "Color picker", div [ clazz "menu" ] [
+                    div [ clazz "item" ] [
+                        description "Dropdown variations"
+
+                        div [style "display: flex"] [
+                            div [style "margin-right: 5px"] [
+                                let cfg = { ColorPicker.Config.Dark.Default with palette = Some ColorPicker.Palette.Basic }
+                                ColorPicker.view cfg SetColor model.color
+                            ]
+
+                            div [style "margin-left: 5px; margin-right: 5px"] [
+                                let cfg = { ColorPicker.Config.Dark.PaletteOnly with palette = Some ColorPicker.Palette.Reduced }
+                                ColorPicker.view cfg SetColor model.color
+                            ]
+
+                            div [style "margin-left: 5px; margin-right: 5px"] [
+                                let cfg = { ColorPicker.Config.Dark.PickerOnlyWithAlpha with preferredFormat = ColorPicker.Format.HSL }
+                                ColorPicker.view cfg SetColor model.color
+                            ]
+
+                            div [style "margin-left: 5px"] [
+                                ColorPicker.view ColorPicker.Config.Dark.Disabled SetColor model.color
+                            ]
+                        ]
+                    ]
+
+                    div [ clazz "item" ] [
+                        description "Inline with persistent selection palette"
+
+                        let cfg = { ColorPicker.Config.Dark.Default with
+                                        localStorageKey  = Some "aardvark.media.colorpicker.example"
+                                        pickerStyle      = Some { ColorPicker.PickerStyle.ToggleWithAlpha with showButtons = true; textInput = ColorPicker.TextInput.Enabled }
+                                        displayMode      = ColorPicker.DisplayMode.Inline }
+
+                        ColorPicker.view cfg SetColor model.color
+                    ]
+                ]
             ]
         ]
     ]

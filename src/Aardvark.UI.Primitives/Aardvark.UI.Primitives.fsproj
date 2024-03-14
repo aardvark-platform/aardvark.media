@@ -84,6 +84,7 @@
     <EmbeddedResource Include="resources\spectrum.js" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
     <EmbeddedResource Include="resources\spectrum-overrides.css" />
     <EmbeddedResource Include="resources\notifications.js" />
+    <EmbeddedResource Include="resources\accordion.js" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

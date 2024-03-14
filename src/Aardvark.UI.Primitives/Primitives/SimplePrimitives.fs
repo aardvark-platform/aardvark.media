@@ -619,6 +619,81 @@ module SimplePrimitives =
                 )
             )
 
+        let private accordionImpl (toggle: Option<bool -> int -> 'msg>) (active: Choice<aset<int>, aval<int>>)
+                                  (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
+            let dependencies =
+                Html.semui @ [ { name = "accordion"; url = "resources/accordion.js"; kind = Script }]
+
+            let attributes =
+                let basic =
+                    AttributeMap.ofList [
+                        clazz "ui accordion"
+
+                        if toggle.IsSome then
+                            onEvent "onopen" [] (List.head >> int >> toggle.Value true)
+                            onEvent "onclose" [] (List.head >> int >> toggle.Value false)
+                    ]
+
+                AttributeMap.union attributes basic
+
+            let boot =
+                let exclusive =
+                    match active with
+                    | Choice2Of2 _ -> "true"
+                    | _ -> "false"
+
+                String.concat "" [
+                    "const $self = $('#__ID__');"
+                    "aardvark.accordion($self, " + exclusive + ", channelActive);"
+                ]
+
+            let channels =
+                let channel =
+                    match active with
+                    | Choice1Of2 set -> ASet.channel set
+                    | Choice2Of2 index -> AVal.channel index
+
+                [ "channelActive", channel ]
+
+            require dependencies (
+                onBoot' channels boot (
+                    Incremental.div attributes <| alist {
+                        for (title, node) in sections do
+                            div [clazz "title"] [
+                                i [clazz "dropdown icon"] []
+                                text title
+                            ]
+                            div [clazz "content"] [
+                                node
+                            ]
+                    }
+                )
+            )
+
+        /// Simple container dividing content into titled sections, which can be opened and closed.
+        /// The active set holds the indices of the open sections.
+        /// The toggle (index, isOpen) message is fired when a section is opened or closed.
+        let accordion (toggle: int * bool -> 'msg) (active: aset<int>)
+                      (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
+            sections |> accordionImpl (Some (fun s i -> toggle (i, s))) (Choice1Of2 active) attributes
+
+        /// Simple container dividing content into titled sections, which can be opened and closed (only one can be open at a time).
+        /// The active value holds the index of the open section, or -1 if there is no open section.
+        /// The setActive (index | -1) message is fired when a section is opened or closed.
+        let accordionExclusive (setActive: int -> 'msg) (active: aval<int>)
+                               (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
+            let map o i = if o then i else -1
+            sections |> accordionImpl (Some (fun s -> map s >> setActive)) (Choice2Of2 active) attributes
+
+        /// Simple container dividing content into titled sections, which can be opened and closed.
+        /// If exclusive is true, only one section can be open at a time.
+        let accordionSimple (exclusive: bool) (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
+            let active =
+                if exclusive then Choice2Of2 (AVal.constant -1)
+                else Choice1Of2 ASet.empty
+
+            sections |> accordionImpl None active attributes
+
     [<AutoOpen>]
     module ``Primtive Builders`` =
 
@@ -884,3 +959,25 @@ module SimplePrimitives =
                                    (compare : Option<'T -> 'T -> int>) (defaultText : string)
                                    (values : amap<'T, DomNode<'msg>>) (selected : alist<'T>) (update : 'T list -> 'msg) =
         Incremental.dropdownMultiSelect attributes compare defaultText values selected update
+
+    /// Simple container dividing content into titled sections, which can be opened and closed.
+    /// The active set holds the indices of the open sections.
+    /// The toggle message (index, isOpen) is fired when a section is opened or closed.
+    let inline accordion (toggle: int * bool -> 'msg) (active: aset<int>)
+                         (attributes: Attribute<'msg> list) (sections: list<string * DomNode<'msg>>) =
+        let attributes = AttributeMap.ofList attributes
+        sections |> AList.ofList |> Incremental.accordion toggle active attributes
+
+    /// Simple container dividing content into titled sections, which can be opened and closed (only one can be open at a time).
+    /// The active value holds the index of the open section, or -1 if there is no open section.
+    /// The setActive (index | -1) message is fired when a section is opened or closed.
+    let inline accordionExclusive (setActive: int -> 'msg) (active: aval<int>)
+                                  (attributes: Attribute<'msg> list) (sections: list<string * DomNode<'msg>>) =
+        let attributes = AttributeMap.ofList attributes
+        sections |> AList.ofList |> Incremental.accordionExclusive setActive active attributes
+
+    /// Simple container dividing content into titled sections, which can be opened and closed.
+    /// If exclusive is true, only one section can be open at a time.
+    let inline accordionSimple (exclusive: bool) (attributes: Attribute<'msg> list) (sections: list<string * DomNode<'msg>>) =
+        let attributes = AttributeMap.ofList attributes
+        sections |> AList.ofList |> Incremental.accordionSimple exclusive attributes
