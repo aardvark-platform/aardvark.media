@@ -83,12 +83,12 @@ let view (model : AdaptiveModel) =
                 ]
             ]
 
-            accordionSimple false [ clazz "inverted item" ] [
+            accordionSimple true [ clazz "inverted item" ] [
                 // Checkboxes
                 "Checkboxes", div [ clazz "menu" ] [
                     div [ clazz "item" ] [
                         simplecheckbox {
-                            attributes [clazz "ui inverted checkbox"]
+                            attributes [clazz "inverted"]
                             state model.active
                             toggle ToggleActive
                             content [ text "Is the thing active?"; i [clazz "icon rocket" ] [] ]
@@ -97,7 +97,7 @@ let view (model : AdaptiveModel) =
                     ]
 
                     div [ clazz "item" ] [
-                        checkbox [clazz "ui inverted toggle checkbox"] model.active ToggleActive "Is the thing active?"
+                        checkbox [clazz "inverted toggle"] model.active ToggleActive "Is the thing active?"
                     ]
                 ]
 

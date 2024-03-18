@@ -9,14 +9,6 @@ open Aardvark.UI.Generic
 module SimplePrimitives =
     open System
 
-
-    let private bootCheckBox =
-        String.concat "" [
-            "$('#__ID__').checkbox().checkbox('__INITIALSTATE__');"
-            "$('#__ID__').get(0).addEventListener('click', function(e) { aardvark.processEvent('__ID__', 'onclick'); e.stopPropagation(); }, true);"
-            "isChecked.onmessage = function(s) { if (s) { $('#__ID__').checkbox('check'); } else { $('#__ID__').checkbox('uncheck'); } };"
-        ]
-        
     module internal Html =
 
         let semui =
@@ -200,37 +192,33 @@ module SimplePrimitives =
                     None
 
         let checkbox (atts : AttributeMap<'msg>) (state : aval<bool>) (toggle : 'msg) (l : list<DomNode<'msg>>) =
-            let state = if state.IsConstant then AVal.custom (fun t -> state.GetValue t) else state
-
-            let ev =
-                {
-                    clientSide = fun _ _ -> ""
-                    serverSide = fun _ _ _ -> Seq.singleton toggle
-                }
-
-            let boot = bootCheckBox.Replace("__INITIALSTATE__", if state.GetValue() then "check" else "uncheck")
+            let boot =
+                String.concat "" [
+                    "const $self = $('#__ID__');"
+                    "$self.checkbox();"
+                    "$self[0].addEventListener('click', function(e) { aardvark.processEvent('__ID__', 'onclick'); e.stopPropagation(); }, true);"
+                    "isChecked.onmessage = function(s) { const behavior = s ? 'set checked' : 'set unchecked'; $self.checkbox(behavior); };"
+                ]
 
             let myAtts =
                 AttributeMap.ofList [
-                    "onclick", AttributeValue.Event ev
-                    "class", AttributeValue.String "ui checkbox"
+                    clazz "ui checkbox"
+                    onClick (fun _ -> toggle)
                 ]
 
             let atts = AttributeMap.union atts myAtts
             require Html.semui (
                 onBoot' ["isChecked", AVal.channel state] boot (
-                    Incremental.div atts (
-                        alist {
-                            yield input [attribute "type" "checkbox"]
-                            match l with
-                            | [l] ->
-                                match l.NodeTag with
-                                | Some "label" -> yield l
-                                | _ -> yield label [] [l]
-                            | _ ->
-                                yield label [] l
-                        }
-                    )
+                    Incremental.div atts <| AList.ofList [
+                        yield input [attribute "type" "checkbox"]
+                        match l with
+                        | [l] ->
+                            match l.NodeTag with
+                            | Some "label" -> yield l
+                            | _ -> yield label [] [l]
+                        | _ ->
+                            yield label [] l
+                    ]
                 )
             )
 
