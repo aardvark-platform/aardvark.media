@@ -1,45 +1,34 @@
 if (!aardvark.accordion) {
     /**
      * @param {HTMLElement[]} $self
+     * @param {HTMLElement[]} $content
      * @param {HTMLElement} item
      * @param {string} event
     */
-    const onToggle = function ($self, item, event) {
-        const index = $self.children('.content').index(item);
+    const onToggle = function ($self, $content, item, event) {
+        const index = $content.index(item);
         aardvark.processEvent($self[0].id, event, index);
     };
 
     /**
      * @param {HTMLElement[]} $self
+     * @param {HTMLElement[]} $content
      * @param {{cnt: int, value: int}} op
      */
-    const processMessage = function ($self, op) {
-        if (op.value < 0 || op.value >= $self.children('.content').length) {
-            return;
+    const processMessage = function ($self, $content, op) {
+        var index = op.value;
+
+        // If we close a section in exclusive mode, we won't get
+        // the index from Media. Instead we have to figure it out here.
+        if (op.cnt < 0 && index < 0) {
+            index = $content.index($content.filter('.active')); 
         }
 
-        if (op.cnt > 0) {
-            $self.accordion('open', op.value);
-        } else if (op.cnt < 0) {
-            $self.accordion('close', op.value);
-        }
-    };
-
-    /**
-     * @param {HTMLElement[]} $self
-     * @param {int} index
-     */
-    const processExclusiveMessage = function ($self, index) {
-        if (index >= 0) {
-            if (index < $self.children('.content').length) {
+        if (index >= 0 && index < $content.length) {
+            if (op.cnt > 0) {
                 $self.accordion('open', index);
-            }
-        } else {
-            const $content = $self.children('.content');
-            const active = $content.index($content.filter('.active'));
-
-            if (active >= 0) {
-                $self.accordion('close', active);
+            } else if (op.cnt < 0) {
+                $self.accordion('close', index);
             }
         }
     };
@@ -47,19 +36,19 @@ if (!aardvark.accordion) {
     /**
      * @param {HTMLElement[]} $self
      * @param {boolean} exclusive
-     * @param {{onmessage: function}} channel
+     * @param {{onmessage: function} | null} channel
     */
     aardvark.accordion = function ($self, exclusive, channel) {
+        const $content = $self.children('.content');
+
         $self.accordion({
             exclusive: exclusive,
-            onOpen: function () { onToggle($self, this, 'onopen'); },
-            onClose: function () { onToggle($self, this, 'onclose'); }
+            onOpen: function () { onToggle($self, $content, this, 'onopen'); },
+            onClose: function () { onToggle($self, $content, this, 'onclose'); }
         });
 
-        if (exclusive) {
-            channel.onmessage = (index) => processExclusiveMessage($self, index);
-        } else {
-            channel.onmessage = (op) => processMessage($self, op);
+        if (channel) {
+            channel.onmessage = (op) => processMessage($self, $content, op);
         }
     };
 }

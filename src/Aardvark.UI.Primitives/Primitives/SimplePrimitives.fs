@@ -619,8 +619,23 @@ module SimplePrimitives =
                 )
             )
 
-        let private accordionImpl (toggle: Option<bool -> int -> 'msg>) (active: Choice<aset<int>, aval<int>>)
-                                  (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
+        [<RequireQualifiedAccess>]
+        type private AccordionInput<'msg> =
+            | Multi of active: aset<int> * callback: (bool -> int -> 'msg)
+            | Single of active: aval<int> * callback: (bool -> int -> 'msg)
+            | Empty of exclusive: bool
+
+            member inline x.Callback =
+                match x with
+                | Multi (_, cb) | Single (_, cb) -> Some cb
+                | _ -> None
+
+            member inline x.IsExclusive =
+                match x with
+                | Single _ | Empty true -> true
+                | _ -> false
+
+        let private accordionImpl (input: AccordionInput<'msg>) (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
             let dependencies =
                 Html.semui @ [ { name = "accordion"; url = "resources/accordion.js"; kind = Script }]
 
@@ -629,44 +644,57 @@ module SimplePrimitives =
                     AttributeMap.ofList [
                         clazz "ui accordion"
 
-                        if toggle.IsSome then
-                            onEvent "onopen" [] (List.head >> int >> toggle.Value true)
-                            onEvent "onclose" [] (List.head >> int >> toggle.Value false)
+                        match input.Callback with
+                        | Some cb ->
+                            onEvent "onopen" [] (List.head >> int >> cb true)
+                            onEvent "onclose" [] (List.head >> int >> cb false)
+
+                        | _ -> ()
                     ]
 
                 AttributeMap.union attributes basic
 
+            let channel =
+                match input with
+                | AccordionInput.Multi (set, _) ->
+                    Some (ASet.channel set)
+
+                | AccordionInput.Single (index, _) ->
+                    index |> AVal.map (fun i ->
+                        if i < 0 then SetOperation.Rem -1   // Handle in JS, we don't know the actual index here
+                        else SetOperation.Add i
+                    )
+                    |> AVal.channel
+                    |> Some
+
+                | _ -> None
+
             let boot =
-                let exclusive =
-                    match active with
-                    | Choice2Of2 _ -> "true"
-                    | _ -> "false"
+                let exclusive = if input.IsExclusive then "true" else "false"
+                let channel = if channel.IsSome then "channelActive" else "null"
 
                 String.concat "" [
                     "const $self = $('#__ID__');"
-                    "aardvark.accordion($self, " + exclusive + ", channelActive);"
+                    "aardvark.accordion($self, " + exclusive + ", " + channel + ");"
                 ]
 
             let channels =
-                let channel =
-                    match active with
-                    | Choice1Of2 set -> ASet.channel set
-                    | Choice2Of2 index -> AVal.channel index
-
-                [ "channelActive", channel ]
+                match channel with
+                | Some ch -> [ "channelActive", ch ]
+                | _ -> []
 
             require dependencies (
                 onBoot' channels boot (
-                    Incremental.div attributes <| alist {
+                    Incremental.div attributes <| AList.ofList [
                         for (title, node) in sections do
                             div [clazz "title"] [
                                 i [clazz "dropdown icon"] []
-                                text title
+                                Incremental.text title
                             ]
                             div [clazz "content"] [
                                 node
                             ]
-                    }
+                    ]
                 )
             )
 
@@ -674,25 +702,22 @@ module SimplePrimitives =
         /// The active set holds the indices of the open sections.
         /// The toggle (index, isOpen) message is fired when a section is opened or closed.
         let accordion (toggle: int * bool -> 'msg) (active: aset<int>)
-                      (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
-            sections |> accordionImpl (Some (fun s i -> toggle (i, s))) (Choice1Of2 active) attributes
+                      (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+            let cb s i = toggle (i, s)
+            sections |> accordionImpl (AccordionInput.Multi (active, cb)) attributes
 
         /// Simple container dividing content into titled sections, which can be opened and closed (only one can be open at a time).
         /// The active value holds the index of the open section, or -1 if there is no open section.
         /// The setActive (index | -1) message is fired when a section is opened or closed.
         let accordionExclusive (setActive: int -> 'msg) (active: aval<int>)
-                               (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
-            let map o i = if o then i else -1
-            sections |> accordionImpl (Some (fun s -> map s >> setActive)) (Choice2Of2 active) attributes
+                               (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+            let cb s i = (if s then i else -1) |> setActive
+            sections |> accordionImpl (AccordionInput.Single (active, cb)) attributes
 
         /// Simple container dividing content into titled sections, which can be opened and closed.
         /// If exclusive is true, only one section can be open at a time.
-        let accordionSimple (exclusive: bool) (attributes: AttributeMap<'msg>) (sections: alist<string * DomNode<'msg>>) =
-            let active =
-                if exclusive then Choice2Of2 (AVal.constant -1)
-                else Choice1Of2 ASet.empty
-
-            sections |> accordionImpl None active attributes
+        let accordionSimple (exclusive: bool) (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+            sections |> accordionImpl (AccordionInput.Empty exclusive) attributes
 
     [<AutoOpen>]
     module ``Primtive Builders`` =
@@ -966,7 +991,7 @@ module SimplePrimitives =
     let inline accordion (toggle: int * bool -> 'msg) (active: aset<int>)
                          (attributes: Attribute<'msg> list) (sections: list<string * DomNode<'msg>>) =
         let attributes = AttributeMap.ofList attributes
-        sections |> AList.ofList |> Incremental.accordion toggle active attributes
+        sections |> List.map (fun (t, n) -> AVal.constant t, n) |> Incremental.accordion toggle active attributes
 
     /// Simple container dividing content into titled sections, which can be opened and closed (only one can be open at a time).
     /// The active value holds the index of the open section, or -1 if there is no open section.
@@ -974,10 +999,10 @@ module SimplePrimitives =
     let inline accordionExclusive (setActive: int -> 'msg) (active: aval<int>)
                                   (attributes: Attribute<'msg> list) (sections: list<string * DomNode<'msg>>) =
         let attributes = AttributeMap.ofList attributes
-        sections |> AList.ofList |> Incremental.accordionExclusive setActive active attributes
+        sections |> List.map (fun (t, n) -> AVal.constant t, n) |> Incremental.accordionExclusive setActive active attributes
 
     /// Simple container dividing content into titled sections, which can be opened and closed.
     /// If exclusive is true, only one section can be open at a time.
     let inline accordionSimple (exclusive: bool) (attributes: Attribute<'msg> list) (sections: list<string * DomNode<'msg>>) =
         let attributes = AttributeMap.ofList attributes
-        sections |> AList.ofList |> Incremental.accordionSimple exclusive attributes
+        sections |> List.map (fun (t, n) -> AVal.constant t, n) |> Incremental.accordionSimple exclusive attributes
