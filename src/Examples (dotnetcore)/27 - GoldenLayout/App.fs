@@ -20,7 +20,7 @@ let layoutConfig =
     LayoutConfig.Default
 
 let defaultLayout =
-    row {
+    layout {
         column {
             element {
                 id "render"
@@ -34,15 +34,18 @@ let defaultLayout =
                 header Header.Left
                 buttons (Buttons.All ^^^ Buttons.Close)
             }
-
-            weight 2
         }
 
-        element {
-            id "aux2"
-            title "Some pretty long title"
-            buttons (Buttons.All ^^^ Buttons.Maximize)
-            weight 1
+        popout {
+            element {
+                id "aux2"
+                title "Some pretty long title"
+                buttons (Buttons.All ^^^ Buttons.Maximize)
+                weight 1
+            }
+
+            width 300
+            height 600
         }
     }
 
@@ -126,7 +129,7 @@ let view (model : AdaptiveModel) =
                 body [style "width: 100%; height: 100%; overflow: hidden; margin: 0"] [
                     let attributes = [
                         style "width: 100%; height: 100%; min-width: 400px; min-height: 400px; overflow: hidden"
-                        onLayoutChanged (fun _ -> LayoutChanged)
+                        onLayoutChanged' (fun _ -> LayoutChanged)
                     ]
 
                     GoldenLayout.view attributes model.golden

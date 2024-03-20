@@ -54,183 +54,37 @@ module Layout =
     let inline ofRoot (item : ^T) =
         ofRootAux Unchecked.defaultof<Converter> item
 
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module WindowLayout =
+
+    [<Sealed; AbstractClass>]
+    type Converter =
+        static member inline ToWindowLayout(layout : WindowLayout) = layout
+        static member inline ToWindowLayout(layout : Layout) = { Root = Some layout; PopoutWindows = [] }
+        static member inline ToWindowLayout(root : Element) = Converter.ToWindowLayout(Layout.Element root)
+        static member inline ToWindowLayout(root : Stack) = Converter.ToWindowLayout(Layout.Stack root)
+        static member inline ToWindowLayout(root : RowOrColumn) = Converter.ToWindowLayout(Layout.RowOrColumn root)
+
+    let inline private ofRootAux (_ : ^Z) (item : ^T) =
+        ((^Z or ^T) : (static member ToWindowLayout : ^T -> WindowLayout) (item))
+
+    let inline ofRoot (item : ^T) =
+        ofRootAux Unchecked.defaultof<Converter> item
+
 [<AutoOpen>]
-module Builders =
+module Events =
 
-    module ElementError =
-        type IdMustBeSpecified = IdMustBeSpecified
+    /// Fired whenever the layout changes. Does not serialize and pass the layout to the callback.
+    let inline onLayoutChanged' (callback : unit -> 'msg) =
+        onEvent "onLayoutChanged" [] (ignore >> callback)
 
-    type ElementBuilder() =
-        member inline x.Yield(()) = ElementError.IdMustBeSpecified
+    /// Fired whenever the layout changes. The first parameter of the callback contains the serialized layout.
+    let inline onLayoutChangedRaw (callback : string -> 'msg) =
+        onEvent "onSerializedLayoutChanged" [] (List.head >> callback)
 
-        /// Unique name to identify the element in the view function.
-        [<CustomOperation("id")>]
-        member inline x.Id(_ : ElementError.IdMustBeSpecified, id : string) =
-            { Id        = id
-              Title     = "Untitled"
-              Closable  = true
-              Header    = Some Header.Top
-              Buttons   = None
-              MinSize   = None
-              Size      = Size.Weight 1
-              KeepAlive = true }
-
-        /// Title shown in the header tab. Default is "Untitled".
-        [<CustomOperation("title")>]
-        member inline x.Title(e : Element, title : string) =
-            { e with Title = title }
-
-        /// Determines if the element can be closed via buttons in the header and tab.
-        [<CustomOperation("closable")>]
-        member inline x.Closable(e : Element, closable : bool) =
-            { e with Closable = closable }
-
-        /// Determines the position of the header or if one is shown at all. Default is Header.Top.
-        [<CustomOperation("header")>]
-        member inline x.Header(e : Element, header : Header option) =
-            { e with Header = header }
-
-        /// Determines the position of the header. Default is Header.Top.
-        [<CustomOperation("header")>]
-        member inline x.Header(e : Element, header : Header) =
-            { e with Header = Some header }
-
-        /// Buttons to display in the header.
-        [<CustomOperation("buttons")>]
-        member inline x.Buttons(e : Element, buttons : Buttons) =
-            { e with Buttons = Some buttons }
-
-        /// Minimum size (in pixels) of the element in any dimension.
-        [<CustomOperation("minSize")>]
-        member inline x.MinSize(e : Element, sizeInPixels : int) =
-            { e with MinSize = Some sizeInPixels }
-
-        /// Size of the element in case the parent is a row or column container.
-        [<CustomOperation("size")>]
-        member inline x.Size(e : Element, size : Size) =
-            { e with Size = size }
-
-        /// Size of the element (in percent) in case the parent is a row or column container.
-        [<CustomOperation("size")>]
-        member inline x.Size(e : Element, sizeInPercent : int) =
-            { e with Size = Size.Percentage sizeInPercent }
-
-        /// Size as weight relative to siblings in case the parent is a row or column container.
-        [<CustomOperation("weight")>]
-        member inline x.Weight(e : Element, weight : int) =
-            { e with Size = Size.Weight weight }
-
-        /// If true the DOM element is hidden rather than destroyed if it is removed from the layout.
-        /// This allows for faster restoring of the element but may come with a performance penalty. Default is true.
-        [<CustomOperation("keepAlive")>]
-        member inline x.KeepAlive(e : Element, keepAlive : bool) =
-            { e with KeepAlive = keepAlive }
-
-    type StackBuilder() =
-        static let empty =
-            { Header  = Header.Top
-              Buttons = None
-              Content = []
-              Size    = Size.Weight 1 }
-
-        member x.Yield(()) = empty
-        member x.Yield(e : Element) = { empty with Content = [e] }
-        member x.Yield(e : Element seq) = { empty with Content = List.ofSeq e }
-
-        member x.Delay(f : unit -> Stack) = f()
-        member x.Combine(a : Stack, b : Stack) = { a with Content = a.Content @ b.Content }
-        member x.For(s: Stack, f: unit -> Stack) = x.Combine(s, f())
-
-        /// Determines the position of the header.
-        [<CustomOperation("header")>]
-        member inline x.Header(s : Stack, header : Header) =
-            { s with Header = header }
-
-        /// Buttons to display in the header.
-        [<CustomOperation("buttons")>]
-        member inline x.Buttons(s : Stack, buttons : Buttons) =
-            { s with Buttons = Some buttons }
-
-        /// Size of the stack in case the parent is a row or column container.
-        [<CustomOperation("size")>]
-        member inline x.Size(s : Stack, size : Size) =
-            { s with Size = size }
-
-        /// Size of the stack (in percent) in case the parent is a row or column container.
-        [<CustomOperation("size")>]
-        member inline x.Size(s : Stack, sizeInPercent : int) =
-            { s with Size = Size.Percentage sizeInPercent }
-
-        /// Size as weight relative to siblings in case the parent is a row or column container.
-        [<CustomOperation("weight")>]
-        member inline x.Weight(s : Stack, weight : int) =
-            { s with Size = Size.Weight weight }
-
-        /// Content of the stack.
-        [<CustomOperation("content")>]
-        member inline x.Content(s : Stack, c : Element seq) =
-            { s with Content = List.ofSeq c }
-
-    type RowOrColumnBuilder(isRow : bool) =
-        let empty =
-            { IsRow   = isRow
-              Content = []
-              Size    = Size.Weight 1 }
-
-        member x.Yield(()) = empty
-        member x.Yield(l : Layout)           = { empty with Content = [l] }
-        member x.Yield(e : Element)          = x.Yield(Layout.Element e)
-        member x.Yield(s : Stack)            = x.Yield(Layout.Stack s)
-        member x.Yield(rc : RowOrColumn)     = x.Yield(Layout.RowOrColumn rc)
-        member x.Yield(l : Layout seq)       = { empty with Content = List.ofSeq l }
-        member x.Yield(e : Element seq)      = x.Yield(e |> Seq.map Layout.Element)
-        member x.Yield(s : Stack seq)        = x.Yield(s |> Seq.map Layout.Stack)
-        member x.Yield(rc : RowOrColumn seq) = x.Yield(rc |> Seq.map Layout.RowOrColumn)
-
-        member x.Delay(f : unit -> RowOrColumn) = f()
-        member x.Combine(a : RowOrColumn, b : RowOrColumn) = { a with Content = a.Content @ b.Content }
-        member x.For(rc: RowOrColumn, f: unit -> RowOrColumn) = x.Combine(rc, f())
-
-        /// Size of the container in case the parent is a row or column container.
-        [<CustomOperation("size")>]
-        member inline x.Size(rc : RowOrColumn, size : Size) =
-            { rc with Size = size }
-
-        /// Size of the container (in percent) in case the parent is a row or column container.
-        [<CustomOperation("size")>]
-        member inline x.Size(rc : RowOrColumn, sizeInPercent : int) =
-            { rc with Size = Size.Percentage sizeInPercent }
-
-        /// Size as weight relative to siblings in case the parent is a row or column container.
-        [<CustomOperation("weight")>]
-        member inline x.Weight(rc : RowOrColumn, weight : int) =
-            { rc with Size = Size.Weight weight }
-
-        /// Content of the container.
-        [<CustomOperation("content")>]
-        member inline x.Content(rc : RowOrColumn, c : Layout seq) =
-            { rc with Content = List.ofSeq c }
-
-        /// Content of the container.
-        [<CustomOperation("content")>]
-        member inline x.Content(rc : RowOrColumn, c : Element seq) =
-            x.Content(rc, c |> Seq.map Layout.Element)
-
-        /// Content of the container.
-        [<CustomOperation("content")>]
-        member inline x.Content(rc : RowOrColumn, c : Stack seq) =
-            x.Content(rc, c |> Seq.map Layout.Stack)
-
-        /// Content of the container.
-        [<CustomOperation("content")>]
-        member inline x.Content(rc : RowOrColumn, c : RowOrColumn seq) =
-            x.Content(rc, c |> Seq.map Layout.RowOrColumn)
-
-    let element = ElementBuilder()
-    let stack = StackBuilder()
-    let row = RowOrColumnBuilder true
-    let column = RowOrColumnBuilder false
-
+    /// Fired whenever the layout changes. The first parameter of the callback contains the new layout.
+    let inline onLayoutChanged (callback : WindowLayout -> 'msg) =
+        onLayoutChangedRaw (GoldenLayout.Json.deserialize >> callback)
 
 [<AutoOpen>]
 module GoldenLayoutApp =
@@ -255,9 +109,6 @@ module GoldenLayoutApp =
         new (data : aval<('T * int) option>) = TaggedChannel(data, Pickler.jsonToString)
         override x.GetReader() = new TaggedChannelReader<_>(data, pickle) :> ChannelReader
 
-    let onLayoutChanged (callback : unit -> 'msg) =
-        onEvent "onLayoutChanged" [] (ignore >> callback)
-
     module GoldenLayout =
         open Suave
         open Suave.Filters
@@ -265,107 +116,8 @@ module GoldenLayoutApp =
         open Suave.Successful
         open System.IO
 
-        module Json =
-            open Newtonsoft.Json
-            open Newtonsoft.Json.Linq
-
-            module private JObject =
-
-                let private ofHeader (config : LayoutConfig) (buttons : Buttons option) (header : Header option) =
-                    let o = JObject()
-
-                    let show =
-                        match header with
-                        | Some Header.Top    -> JToken.op_Implicit "top"
-                        | Some Header.Left   -> JToken.op_Implicit "left"
-                        | Some Header.Right  -> JToken.op_Implicit "right"
-                        | Some Header.Bottom -> JToken.op_Implicit "bottom"
-                        | _                  -> JToken.op_Implicit false
-
-                    let buttons = buttons |> Option.defaultValue config.HeaderButtons
-
-                    let button (property : string) (flag : Buttons) =
-                        if not <| buttons.HasFlag flag then
-                            o.[property] <- JToken.op_Implicit false
-
-                    o.["show"] <- show
-                    button "close" Buttons.Close
-                    button "popout" Buttons.Popout
-                    button "maximise" Buttons.Maximize
-                    o
-
-                let rec ofLayout (config : LayoutConfig) (layout : Layout) : JObject =
-                    let o = JObject()
-
-                    match layout with
-                    | Layout.Element e ->
-                        o.["type"] <- JToken.op_Implicit "component"
-                        o.["title"] <- JToken.op_Implicit e.Title
-                        o.["componentType"] <- JToken.op_Implicit e.Id
-                        o.["isClosable"] <- JToken.op_Implicit e.Closable
-                        o.["header"] <- ofHeader config e.Buttons e.Header
-                        o.["size"] <- JToken.op_Implicit (string e.Size)
-
-                        match e.MinSize with
-                        | Some s -> o.["minSize"] <- JToken.op_Implicit $"%d{s}px"
-                        | _ -> ()
-
-                        let s = JObject()
-                        s.["keepAlive"] <- JToken.op_Implicit e.KeepAlive
-                        o.["componentState"] <- s
-
-                    | Layout.Stack s ->
-                        let content = s.Content |> List.map (Layout.Element >> ofLayout config >> box)
-                        o.["type"] <- JToken.op_Implicit "stack"
-                        o.["header"] <- ofHeader config s.Buttons (Some s.Header)
-                        o.["size"] <- JToken.op_Implicit (string s.Size)
-                        o.["content"] <- JArray(List.toArray content)
-
-                    | Layout.RowOrColumn rc ->
-                        let content = rc.Content |> List.map (ofLayout config >> box)
-                        o.["type"] <- JToken.op_Implicit (if rc.IsRow then "row" else "column")
-                        o.["size"] <- JToken.op_Implicit (string rc.Size)
-                        o.["content"] <- JArray(List.toArray content)
-
-                    o
-
-                let ofConfigLabels (config : LayoutConfig) =
-                    let o = JObject()
-                    o.["close"] <- JToken.op_Implicit config.LabelClose
-                    o.["maximise"] <- JToken.op_Implicit config.LabelMaximize
-                    o.["minimise"] <- JToken.op_Implicit config.LabelMinimize
-                    o.["popout"] <- JToken.op_Implicit config.LabelPopOut
-                    o.["popin"] <- JToken.op_Implicit config.LabelPopIn
-                    o.["tabDropdown"] <- JToken.op_Implicit config.LabelTabDropdown
-                    o
-
-                let ofConfigSettings (config : LayoutConfig) =
-                    let o = JObject()
-                    o.["popInOnClose"] <- JToken.op_Implicit config.PopInOnClose
-                    o.["popoutWholeStack"] <- JToken.op_Implicit config.PopOutWholeStack
-                    o.["dragBetweenWindows"] <- JToken.op_Implicit config.DragBetweenWindows
-                    o.["dragToNewWindow"] <- JToken.op_Implicit config.DragToNewWindow
-                    o.["setPopoutTitle"] <- JToken.op_Implicit config.SetPopoutTitle
-                    o
-
-                let ofConfigDimensions (config : LayoutConfig) =
-                    let o = JObject()
-                    o.["defaultMinItemWidth"] <- JToken.op_Implicit $"{config.MinItemWidth}px"
-                    o.["defaultMinItemHeight"] <- JToken.op_Implicit $"{config.MinItemHeight}px"
-                    o.["dragProxyWidth"] <- JToken.op_Implicit config.DragProxyWidth
-                    o.["dragProxyHeight"] <- JToken.op_Implicit config.DragProxyHeight
-                    o
-
-            let ofLayoutConfig (config : LayoutConfig) (layout : Layout) =
-                let o = JObject()
-                o.["root"] <- JObject.ofLayout config layout
-                o.["settings"] <- JObject.ofConfigSettings config
-                o.["dimensions"] <- JObject.ofConfigDimensions config
-                o.["header"] <- JObject.ofConfigLabels config
-                o.ToString Formatting.None
-
         let inline create (config : LayoutConfig) (root : ^LayoutRoot) =
-            let layout = Layout.ofRoot root
+            let layout = WindowLayout.ofRoot root
 
             { DefaultLayout = layout
               Config        = config
@@ -376,9 +128,13 @@ module GoldenLayoutApp =
         let rec update (message : GoldenLayout.Message) (model : GoldenLayout) =
             match message with
             | GoldenLayout.Message.ResetLayout ->
-                model |> update (GoldenLayout.Message.SetLayout model.DefaultLayout)
+                model |> update (GoldenLayout.Message.SetWindowLayout model.DefaultLayout)
 
             | GoldenLayout.Message.SetLayout layout ->
+                let layout = WindowLayout.ofRoot layout
+                model |> update (GoldenLayout.Message.SetWindowLayout layout)
+
+            | GoldenLayout.Message.SetWindowLayout layout ->
                 let version = model.SetLayout |> Option.map snd |> Option.defaultValue 0
                 { model with SetLayout = Some (layout, version + 1) }
 
@@ -414,18 +170,25 @@ module GoldenLayoutApp =
                     attribute "data-theme" model.Config.Theme.Path
                 ]
 
+            let serializeLayout =
+                attributes |> List.exists (function
+                    | "onSerializedLayoutChanged", AttributeValue.Event _ -> true
+                    | _ -> false
+                )
+                |> fun r -> if r then "true" else "false"
+
             let channels : (string * Channel) list = [
-                "channelSet",  TaggedChannel (model.SetLayout, Json.ofLayoutConfig model.Config >> Pickler.jsonToString)
+                "channelSet",  TaggedChannel (model.SetLayout, GoldenLayout.Json.serialize model.Config)
                 "channelSave", TaggedChannel model.SaveLayout
                 "channelLoad", TaggedChannel model.LoadLayout
             ]
 
             let boot =
-                let configJson = Json.ofLayoutConfig model.Config model.DefaultLayout
+                let configJson = GoldenLayout.Json.serialize model.Config model.DefaultLayout
                 String.concat "" [
                     "const self = $('#__ID__')[0];"
-                    $"aardvark.golden.createLayout(self, {configJson});"
-                    "channelSet.onmessage = (layout) => aardvark.golden.setLayout(self, JSON.parse(layout));"
+                    $"aardvark.golden.createLayout(self, {configJson}, {serializeLayout});"
+                    "channelSet.onmessage = (layout) => aardvark.golden.setLayout(self, layout);"
                     "channelSave.onmessage = (key) => aardvark.golden.saveLayout(self, key);"
                     "channelLoad.onmessage = (key) => aardvark.golden.loadLayout(self, key);"
                 ]

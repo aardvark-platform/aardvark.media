@@ -61,7 +61,9 @@
     <Compile Include="Controllers\CameraUtilities.fs" />
     <Compile Include="Controllers\LegacyCameraController.fs" />
     <Compile Include="Golden\GoldenLayoutModel.fs" />
+    <Compile Include="Golden\GoldenLayoutJson.fs" />
     <Compile Include="Golden\GoldenLayout.fs" />
+    <Compile Include="Golden\GoldenLayoutBuilders.fs" />
     <Compile Include="Notifications\NotificationsModel.fs" />
     <Compile Include="Notifications\Notifications.fs" />
     <Compile Include="Docking.fs" />

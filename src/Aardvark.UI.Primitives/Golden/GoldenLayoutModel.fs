@@ -2,6 +2,7 @@
 
 open Adaptify
 open System
+open Aardvark.Base
 
 [<RequireQualifiedAccess>]
 type Size =
@@ -87,6 +88,27 @@ and [<RequireQualifiedAccess>] Layout =
     | Stack       of Stack
     | RowOrColumn of RowOrColumn
 
+type PopoutWindow =
+    {
+        // Layout of the window contents.
+        Root : Layout
+
+        // Position on the screen.
+        Position : V2i option
+
+        // Size in pixels.
+        Size : V2i option
+    }
+
+type WindowLayout =
+    {
+        // Layout of the main window.
+        Root : Layout option
+
+        // List of popout windows.
+        PopoutWindows : PopoutWindow list
+    }
+
 type Theme =
     | Theme of resourcePath: string
     member inline x.Path = let (Theme p) = x in p
@@ -152,13 +174,13 @@ type LayoutConfig =
 type GoldenLayout =
     {
         [<NonAdaptive>]
-        DefaultLayout : Layout
+        DefaultLayout : WindowLayout
 
         [<NonAdaptive>]
         Config        : LayoutConfig
 
         [<TreatAsValue>]
-        SetLayout     : Option<Layout * int>
+        SetLayout     : Option<WindowLayout * int>
 
         [<TreatAsValue>]
         SaveLayout    : Option<string * int>
@@ -177,6 +199,9 @@ module GoldenLayout =
 
         /// Sets the given layout.
         | SetLayout of layout: Layout
+
+        /// Sets the given window layout.
+        | SetWindowLayout of layout: WindowLayout
 
         /// Saves the current layout in local storage with the given key.
         | SaveLayout of key: string

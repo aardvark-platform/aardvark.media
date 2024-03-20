@@ -11,6 +11,24 @@ if (!aardvark.golden) {
         instances: new Map()
     };
 
+    const minifyLayout = function (layout) {
+        const strip = function (l) {
+            delete l.header;
+            delete l.settings;
+            delete l.dimensions;
+            delete l.resolved;
+            delete l.parentId;
+            delete l.indexInParent;
+        }
+
+        strip(layout);
+        for (const p of layout.openPopouts) {
+            strip(p);
+        }
+
+        return layout;
+    }
+
     /**
      * @param {{element: HTMLElement}} container
      * @param {HTMLElement} element
@@ -52,8 +70,9 @@ if (!aardvark.golden) {
      * @param {HTMLElement} layoutElement
      * @param {boolean} isPopout
      * @param {boolean} setPopoutTitle
+     * @param {boolean} serializeLayout
      */
-    const createInstance = function (layoutElement, isPopout, setPopoutTitle) {
+    const createInstance = function (layoutElement, isPopout, setPopoutTitle, serializeLayout) {
         /** @type {Map<any, {rootHtmlElement: HTMLElement}>} */
         const components = new Map();   // Currently bound
 
@@ -129,6 +148,12 @@ if (!aardvark.golden) {
         const addLayoutChangedHandler = function (layout) {
             layout.addEventListener('stateChanged', () => {
                 aardvark.processEvent(layoutElement.id, 'onLayoutChanged');
+
+                if (serializeLayout) {
+                    const root = layout.parent ?? layout;
+                    const newLayout = minifyLayout(root.saveLayout());
+                    aardvark.processEvent(layoutElement.id, 'onSerializedLayoutChanged', newLayout);
+                }
             }, { passive: true });
         };
 
@@ -239,14 +264,15 @@ if (!aardvark.golden) {
     /**
      * @param {HTMLElement} layoutElement
      * @param {*} config
+     * @param {boolean} serializeLayout
      */
-    aardvark.golden.createLayout = function (layoutElement, config) {
+    aardvark.golden.createLayout = function (layoutElement, config, serializeLayout) {
         var instance = aardvark.golden.instances.get(layoutElement.id);
         const isPopout = (config === undefined);
         const setPopoutTitle = (config?.settings?.setPopoutTitle === true);
 
         if (instance === undefined) {
-            instance = createInstance(layoutElement, isPopout, setPopoutTitle);
+            instance = createInstance(layoutElement, isPopout, setPopoutTitle, serializeLayout);
             aardvark.golden.instances.set(layoutElement.id, instance);
         }
 
