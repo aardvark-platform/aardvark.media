@@ -1,3 +1,10 @@
+### 5.4.4
+- [GoldenLayout] Implemented layout deserialization and multi-window layouts (breaking)
+- [SimplePrimitives] Optimized checkbox
+- [SimplePrimitives] Added accordion
+- [Primitives] Added notifications
+- [ColorPicker] Improved change message triggers
+
 ### 5.4.3
 - Added Golden Layout support (https://github.com/aardvark-platform/aardvark.media/wiki/Golden-Layout)
 - [Primitives] Added before and after option to numeric input for labels and icons
