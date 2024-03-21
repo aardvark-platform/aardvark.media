@@ -623,7 +623,7 @@ module SimplePrimitives =
                 | Single _ | Empty true -> true
                 | _ -> false
 
-        let private accordionImpl (input: AccordionInput<'msg>) (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+        let private accordionImpl (input: AccordionInput<'msg>) (attributes: AttributeMap<'msg>) (sections: list<DomNode<'msg> * DomNode<'msg>>) =
             let dependencies =
                 Html.semui @ [ { name = "accordion"; url = "resources/accordion.js"; kind = Script }]
 
@@ -677,7 +677,7 @@ module SimplePrimitives =
                         for (title, node) in sections do
                             div [clazz "title"] [
                                 i [clazz "dropdown icon"] []
-                                Incremental.text title
+                                title
                             ]
                             div [clazz "content"] [
                                 node
@@ -689,23 +689,42 @@ module SimplePrimitives =
         /// Simple container dividing content into titled sections, which can be opened and closed.
         /// The active set holds the indices of the open sections.
         /// The toggle (index, isOpen) message is fired when a section is opened or closed.
-        let accordion (toggle: int * bool -> 'msg) (active: aset<int>)
-                      (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+        let accordion' (toggle: int * bool -> 'msg) (active: aset<int>)
+                       (attributes: AttributeMap<'msg>) (sections: list<DomNode<'msg> * DomNode<'msg>>) =
             let cb s i = toggle (i, s)
             sections |> accordionImpl (AccordionInput.Multi (active, cb)) attributes
 
         /// Simple container dividing content into titled sections, which can be opened and closed (only one can be open at a time).
         /// The active value holds the index of the open section, or -1 if there is no open section.
         /// The setActive (index | -1) message is fired when a section is opened or closed.
-        let accordionExclusive (setActive: int -> 'msg) (active: aval<int>)
-                               (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+        let accordionExclusive' (setActive: int -> 'msg) (active: aval<int>)
+                                (attributes: AttributeMap<'msg>) (sections: list<DomNode<'msg> * DomNode<'msg>>) =
             let cb s i = (if s then i else -1) |> setActive
             sections |> accordionImpl (AccordionInput.Single (active, cb)) attributes
 
         /// Simple container dividing content into titled sections, which can be opened and closed.
         /// If exclusive is true, only one section can be open at a time.
-        let accordionSimple (exclusive: bool) (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+        let accordionSimple' (exclusive: bool) (attributes: AttributeMap<'msg>) (sections: list<DomNode<'msg> * DomNode<'msg>>) =
             sections |> accordionImpl (AccordionInput.Empty exclusive) attributes
+
+        /// Simple container dividing content into titled sections, which can be opened and closed.
+        /// The active set holds the indices of the open sections.
+        /// The toggle (index, isOpen) message is fired when a section is opened or closed.
+        let accordion (toggle: int * bool -> 'msg) (active: aset<int>)
+                      (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+            sections |> List.map (fun (t, c) -> Incremental.text t, c) |> accordion' toggle active attributes
+
+        /// Simple container dividing content into titled sections, which can be opened and closed (only one can be open at a time).
+        /// The active value holds the index of the open section, or -1 if there is no open section.
+        /// The setActive (index | -1) message is fired when a section is opened or closed.
+        let accordionExclusive (setActive: int -> 'msg) (active: aval<int>)
+                               (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+            sections |> List.map (fun (t, c) -> Incremental.text t, c) |> accordionExclusive' setActive active attributes
+
+        /// Simple container dividing content into titled sections, which can be opened and closed.
+        /// If exclusive is true, only one section can be open at a time.
+        let accordionSimple (exclusive: bool) (attributes: AttributeMap<'msg>) (sections: list<aval<string> * DomNode<'msg>>) =
+            sections |> List.map (fun (t, c) -> Incremental.text t, c) |> accordionSimple' exclusive attributes
 
     [<AutoOpen>]
     module ``Primtive Builders`` =
@@ -972,6 +991,28 @@ module SimplePrimitives =
                                    (compare : Option<'T -> 'T -> int>) (defaultText : string)
                                    (values : amap<'T, DomNode<'msg>>) (selected : alist<'T>) (update : 'T list -> 'msg) =
         Incremental.dropdownMultiSelect attributes compare defaultText values selected update
+
+    /// Simple container dividing content into titled sections, which can be opened and closed.
+    /// The active set holds the indices of the open sections.
+    /// The toggle message (index, isOpen) is fired when a section is opened or closed.
+    let inline accordion' (toggle: int * bool -> 'msg) (active: aset<int>)
+                          (attributes: Attribute<'msg> list) (sections: list<DomNode<'msg> * DomNode<'msg>>) =
+        let attributes = AttributeMap.ofList attributes
+        sections |> Incremental.accordion' toggle active attributes
+
+    /// Simple container dividing content into titled sections, which can be opened and closed (only one can be open at a time).
+    /// The active value holds the index of the open section, or -1 if there is no open section.
+    /// The setActive (index | -1) message is fired when a section is opened or closed.
+    let inline accordionExclusive' (setActive: int -> 'msg) (active: aval<int>)
+                                   (attributes: Attribute<'msg> list) (sections: list<DomNode<'msg> * DomNode<'msg>>) =
+        let attributes = AttributeMap.ofList attributes
+        sections |> Incremental.accordionExclusive' setActive active attributes
+
+    /// Simple container dividing content into titled sections, which can be opened and closed.
+    /// If exclusive is true, only one section can be open at a time.
+    let inline accordionSimple' (exclusive: bool) (attributes: Attribute<'msg> list) (sections: list<DomNode<'msg> * DomNode<'msg>>) =
+        let attributes = AttributeMap.ofList attributes
+        sections |> Incremental.accordionSimple' exclusive attributes
 
     /// Simple container dividing content into titled sections, which can be opened and closed.
     /// The active set holds the indices of the open sections.

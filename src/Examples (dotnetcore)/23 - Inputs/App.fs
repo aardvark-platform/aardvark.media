@@ -83,9 +83,9 @@ let view (model : AdaptiveModel) =
                 ]
             ]
 
-            accordionSimple true [ clazz "inverted item" ] [
+            accordionSimple' true [ clazz "inverted item" ] [
                 // Checkboxes
-                "Checkboxes", div [ clazz "menu" ] [
+                text "Checkboxes", div [ clazz "menu" ] [
                     div [ clazz "item" ] [
                         simplecheckbox {
                             attributes [clazz "inverted"]
@@ -102,7 +102,7 @@ let view (model : AdaptiveModel) =
                 ]
 
                 // Sliders
-                "Sliders", div [ clazz "menu" ] [
+                text "Sliders", div [ clazz "menu" ] [
                     div [ clazz "item" ] [
                         description "Float"
                         slider { min = 1.0; max = 100.0; step = 0.1 } [clazz "ui inverted red slider"] model.value SetValue
@@ -115,7 +115,7 @@ let view (model : AdaptiveModel) =
                 ]
 
                 // Input fields
-                "Input fields", div [ clazz "menu" ] [
+                text "Input fields", div [ clazz "menu" ] [
                     div [ clazz "item" ] [
                         description "Numeric (float)"
                         simplenumeric {
@@ -180,7 +180,7 @@ let view (model : AdaptiveModel) =
                 ]
 
                 // Dropdowns
-                "Dropdown menus", div [ clazz "menu" ] [
+                text "Dropdown menus", div [ clazz "menu" ] [
                     div [ clazz "item" ] [
                         description "Non-clearable"
                         dropdownUnclearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
@@ -204,7 +204,17 @@ let view (model : AdaptiveModel) =
                 ]
 
                 // Color picker
-                "Color picker", div [ clazz "menu" ] [
+                let colorHeader =
+                    span [] [
+                        text "Color picker"
+
+                        Incremental.i (AttributeMap.ofAMap <| amap {
+                            let! c = model.color
+                            yield style $"width: 16px; height: 16px; position: absolute; margin-left: 10px; border: thin solid; background-color: #{c.ToHexString()}"
+                        }) AList.empty
+                    ]
+
+                colorHeader, div [ clazz "menu" ] [
                     div [ clazz "item" ] [
                         description "Dropdown variations"
 
