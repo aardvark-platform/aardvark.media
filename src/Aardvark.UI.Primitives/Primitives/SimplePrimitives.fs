@@ -671,15 +671,29 @@ module SimplePrimitives =
                 | Some ch -> [ "channelActive", ch ]
                 | _ -> []
 
+            let isActive =
+                let set =
+                    match input with
+                    | AccordionInput.Multi (set, _) -> set |> ASet.toAVal |> AVal.force
+                    | AccordionInput.Single (index, _) -> index |> AVal.force |> HashSet.single
+                    | _ -> HashSet.empty
+
+                fun i -> set |> HashSet.contains i
+
             require dependencies (
                 onBoot' channels boot (
                     Incremental.div attributes <| AList.ofList [
-                        for (title, node) in sections do
-                            div [clazz "title"] [
+                        let sections = Array.ofList sections
+
+                        for index = 0 to sections.Length - 1 do
+                            let title, node = sections.[index]
+                            let active = isActive index
+
+                            div [clazz "title"; if active then clazz "active"] [
                                 i [clazz "dropdown icon"] []
                                 title
                             ]
-                            div [clazz "content"] [
+                            div [clazz "content"; if active then clazz "active"] [
                                 node
                             ]
                     ]
