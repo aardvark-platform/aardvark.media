@@ -291,11 +291,11 @@ module Animator =
 
     /// Removes all animation slots.
     let removeAll (model : 'Model) =
-        model |> filter (fun _ -> true)
+        model |> filter (fun _ -> false)
 
     /// Removes all finished animation slots.
     let removeFinished (model : 'Model) =
-        model |> filter (fun s -> s.Current.IsFinished)
+        model |> filter (fun s -> not s.Current.IsFinished)
 
     /// Stops the current animation instance in the slot with the given name if it exists.
     /// The name can be a string or Symbol.
