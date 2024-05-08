@@ -5,6 +5,8 @@ open Aardvark.UI
 open FSharp.Data.Adaptive
 open Aardvark.UI.Generic
 
+#nowarn "44" // TODO: Remove old dropdown stuff
+
 [<AutoOpen>]
 module SimplePrimitives =
     open System
@@ -166,6 +168,223 @@ module SimplePrimitives =
 
     module TextConfig =
         let empty = { regex = None; maxLength = None }
+
+    // TODO: Add [<AutoOpen>]
+    module Dropdown =
+
+        [<RequireQualifiedAccess>]
+        type DropdownValues<'T, 'msg> =
+            | List of alist<'T * DomNode<'msg>>
+            | Map of amap<'T, DomNode<'msg>>
+
+        module DropdownInternals =
+
+            [<AbstractClass; Sealed>]
+            type DropdownValueConverter() =
+                static member inline ToDropdownValues (values: DropdownValues<'T, 'msg>)  = values
+                static member inline ToDropdownValues (values: alist<'T * DomNode<'msg>>) = DropdownValues.List values
+                static member inline ToDropdownValues (values: amap<'T, DomNode<'msg>>)   = DropdownValues.Map values
+                static member inline ToDropdownValues (values: seq<'T * DomNode<'msg>>)   = DropdownValues.List <| AList.ofSeq values
+                static member inline ToDropdownValues (values: array<'T * DomNode<'msg>>) = DropdownValues.List <| AList.ofArray values
+                static member inline ToDropdownValues (values: list<'T * DomNode<'msg>>)  = DropdownValues.List <| AList.ofList values
+
+            let inline private toDropdownValuesAux (_: ^Converter) (values: ^Values) =
+                ((^Converter or ^Values) : (static member ToDropdownValues : ^Values -> DropdownValues<'T, 'msg>) (values))
+
+            let inline toDropdownValues (values: ^Values) : DropdownValues<'T, 'msg> =
+                toDropdownValuesAux Unchecked.defaultof<DropdownValueConverter> values
+
+            let inline getEnumValues<'T, 'U, 'msg when 'T : enum<'U>> (toNode: Option<'T -> DomNode<'msg>>) : array<'T * DomNode<'msg>> =
+                let values = Enum.GetValues typeof<'T> |> unbox<'T[]>
+                let nodes =
+                    match toNode with
+                    | Some f -> values |> Array.map f
+                    | _ -> Enum.GetNames typeof<'T> |> Array.map text
+
+                Array.zip values nodes
+
+            let private pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
+
+            let private dropdownImpl (update: 'T list -> 'msg) (activateOnHover: bool) (placeholder: string option) (multiSelect: bool) (icon: string option)
+                                     (selected: alist<'T>) (attributes: AttributeMap<'msg>) (values: DropdownValues<'T, 'msg>) =
+                let dependencies =
+                    Html.semui @ [ { name = "dropdown"; url = "resources/dropdown.js"; kind = Script }]
+
+                let valuesWithKeys =
+                    let sortedValues =
+                        match values with
+                        | DropdownValues.List list -> list
+                        | DropdownValues.Map map ->
+                            let cmp =
+                                if typeof<System.IComparable>.IsAssignableFrom typeof<'T> then Unchecked.compare<'T>
+                                else fun _ _ -> -1
+
+                            map |> AMap.toASet |> ASet.sortWith (fun (a, _) (b, _) -> cmp a b)
+
+                    sortedValues
+                    |> AList.map (fun (key, node) ->
+                        let hash = pickler.ComputeHash(key).Hash |> Convert.ToBase64String
+                        key, hash, node
+                    )
+
+                let lookup =
+                    valuesWithKeys
+                    |> AList.toAVal
+                    |> AVal.map (fun values ->
+                        let forward = values |> IndexList.map (fun (key, hash, _) -> struct (key, hash)) |> HashMap.ofSeqV
+                        let backward = values |> IndexList.map (fun (key, hash, _) -> struct (hash, key)) |> HashMap.ofSeqV
+                        forward, backward
+                    )
+
+                let update (args : string list) =
+                    try
+                        let data : string = Pickler.unpickleOfJson args.Head
+                        let _fw, bw = AVal.force lookup
+
+                        let values =
+                            data
+                            |> String.split ","
+                            |> Array.toList
+                            |> List.choose (fun k -> HashMap.tryFind k bw)
+
+                        Seq.singleton (update values)
+
+                    with exn ->
+                        Log.warn "[Dropdown] callback failed: %s" exn.Message
+                        Seq.empty
+
+                let selection =
+                    adaptive {
+                        let! selected = selected |> AList.toAVal
+                        let! fw, _bw = lookup
+
+                        return selected
+                            |> IndexList.choose (fun v -> HashMap.tryFind v fw)
+                            |> IndexList.toList
+                    }
+
+                let attributes =
+                    let disableClazz clazz disabled =
+                        if disabled then AttributeMap.removeClass clazz
+                        else id
+
+                    let toggleClazz clazz enabled =
+                        if enabled then AttributeMap.addClass clazz
+                        else AttributeMap.removeClass clazz
+
+                    let attributes =
+                        attributes
+                        |> toggleClazz "multiple" multiSelect
+                        |> toggleClazz "selection" icon.IsNone
+                        |> disableClazz "clearable" placeholder.IsNone
+
+                    AttributeMap.ofList [
+                        clazz "ui dropdown"
+                        onEvent' "data-event" [] update
+                    ]
+                    |> AttributeMap.union attributes
+
+                let boot =
+                    let trigger = if activateOnHover then "'hover'" else "'click'"
+
+                    String.concat "" [
+                        "const $self = $('#__ID__');"
+                        $"aardvark.dropdown($self, {trigger}, channelSelection);"
+                    ]
+
+                require dependencies (
+                    onBoot' ["channelSelection", AVal.channel selection] boot (
+                        Incremental.div attributes <| AList.ofList [
+                            input [ attribute "type" "hidden" ]
+
+                            match icon with
+                            | Some icon ->
+                                i [ clazz (sprintf "%s icon" icon)] []
+                            | _ ->
+                                i [ clazz "dropdown icon" ] []
+                                div [ clazz "default text"] (placeholder |> Option.defaultValue "")
+
+                            Incremental.div (AttributeMap.ofList [clazz "menu"]) <| alist {
+                                for (_, hash, node) in valuesWithKeys do
+                                    yield div [ clazz "ui item"; attribute "data-value" hash] [node]
+                            }
+                        ]
+                    )
+                )
+
+            let private dropdownOptionImpl (update: 'T option -> 'msg) (activateOnHover: bool) (icon: string option) (placeholder: string)
+                                           (selected: aval<'T option>) (attributes: AttributeMap<'msg>) (values: DropdownValues<'T, 'msg>) =
+                let selected = selected |> AVal.map Option.toList |> AList.ofAVal
+                let update = List.tryHead >> update
+                dropdownImpl update activateOnHover (Some placeholder) false icon selected attributes values
+
+            let private dropdownSingleImpl (update: 'T -> 'msg) (activateOnHover: bool) (icon: string option)
+                                           (selected: aval<'T>) (attributes: AttributeMap<'msg>) (values: DropdownValues<'T, 'msg>) =
+                let selected = selected |> AVal.map List.singleton |> AList.ofAVal
+                let update = List.head >> update
+                dropdownImpl update activateOnHover None false icon selected attributes values
+
+            /// Dropdown menu for a collection of values. Multiple items can be selected at a time.
+            let dropdownMultiSelect (update: 'T list -> 'msg) (activateOnHover: bool) (placeholder: string)
+                                    (selected: alist<'T>) (attributes: AttributeMap<'msg>) (values: DropdownValues<'T, 'msg>) =
+                dropdownImpl update activateOnHover (Some placeholder) true None selected attributes values
+
+            /// Dropdown menu for a collection of values. At most a single item can be selected at a time.
+            let dropdownOption (update: 'T option -> 'msg) (activateOnHover: bool) (icon: string option) (placeholder: string)
+                               (selected: aval<'T option>) (attributes: AttributeMap<'msg>) (values: DropdownValues<'T, 'msg>) =
+                dropdownOptionImpl update activateOnHover icon placeholder selected attributes values
+
+            /// Dropdown menu for a collection of values.
+            let dropdown (update: 'T -> 'msg) (activateOnHover: bool) (icon: string option)
+                         (selected: aval<'T>) (attributes: AttributeMap<'msg>) (values: DropdownValues<'T, 'msg>) =
+                dropdownSingleImpl update activateOnHover icon selected attributes values
+
+
+        /// Dropdown menu for a collection of values. Multiple items can be selected at a time.
+        /// The attributes can be provided as AttributeMap, amap, alist, or sequence of (conditional) attributes.
+        /// The values can be provided as alist, amap, or sequence of keys with DOM nodes.
+        let inline dropdownMultiSelect (update: 'T list -> 'msg) (activateOnHover: bool) (placeholder: string)
+                                       (selected: alist<'T>) attributes values =
+            let values: DropdownValues<'T, 'msg> = DropdownInternals.toDropdownValues values
+            DropdownInternals.dropdownMultiSelect update activateOnHover placeholder selected (att attributes) values
+
+        /// Dropdown menu for an enumeration type. Multiple items can be selected at a time.
+        /// The attributes can be provided as AttributeMap, amap, alist, or sequence of (conditional) attributes.
+        /// The displayed values are derived from the enumeration value names, if the values argument is None.
+        let inline dropdownEnumMultiSelect (update: 'T list -> 'msg) (activateOnHover: bool) (placeholder: string)
+                                           (selected: alist<'T>) attributes values  =
+            let values = DropdownInternals.getEnumValues<'T, _, 'msg> values |> DropdownInternals.toDropdownValues
+            dropdownMultiSelect update activateOnHover placeholder selected attributes values
+
+        /// Dropdown menu for a collection of values. At most a single item can be selected at a time.
+        /// The attributes can be provided as AttributeMap, amap, alist, or sequence of (conditional) attributes.
+        /// The values can be provided as alist, amap, or sequence of keys with DOM nodes.
+        let inline dropdownOption (update: 'T option -> 'msg) (activateOnHover: bool) (icon: string option) (placeholder: string)
+                                  (selected: aval<'T option>) attributes values =
+            let values: DropdownValues<'T, 'msg> = DropdownInternals.toDropdownValues values
+            DropdownInternals.dropdownOption update activateOnHover icon placeholder selected (att attributes) values
+
+        /// Dropdown menu for an enumeration type. At most a single item can be selected at a time.
+        /// The attributes can be provided as AttributeMap, amap, alist, or sequence of (conditional) attributes.
+        /// The displayed values are derived from the enumeration value names, if the values argument is None.
+        let inline dropdownEnumOption (update: 'T option -> 'msg) (activateOnHover: bool) (icon: string option) (placeholder: string)
+                                      (selected: aval<'T option>) attributes values =
+            let values = DropdownInternals.getEnumValues<'T, _, 'msg> values
+            dropdownOption update activateOnHover icon placeholder selected attributes values
+
+        /// Dropdown menu for a collection of values.
+        /// The attributes can be provided as AttributeMap, amap, alist, or sequence of (conditional) attributes.
+        /// The values can be provided as alist, amap, or sequence of keys with DOM nodes.
+        let inline dropdown (update: 'T -> 'msg) (activateOnHover: bool) (icon: string option) (selected: aval<'T>) attributes values =
+            let values: DropdownValues<'T, 'msg> = DropdownInternals.toDropdownValues values
+            DropdownInternals.dropdown update activateOnHover icon selected (att attributes) values
+
+        /// Dropdown menu for a an enumeration type.
+        /// The attributes can be provided as AttributeMap, amap, alist, or sequence of (conditional) attributes.
+        /// The displayed values are derived from the enumeration value names, if the values argument is None.
+        let inline dropdownEnum (update: 'T -> 'msg) (activateOnHover: bool) (icon: string option) (selected: aval<'T>) attributes values =
+            let values = DropdownInternals.getEnumValues<'T, _, 'msg> values
+            dropdown update activateOnHover icon selected attributes values
 
     module Incremental =
 
@@ -354,7 +573,7 @@ module SimplePrimitives =
                     )
                 )
             )
-            
+
         let textarea (cfg : TextAreaConfig) (atts : AttributeMap<'msg>) (value : aval<string>) (update : string -> 'msg) =
             let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
             let update v =
@@ -381,7 +600,7 @@ module SimplePrimitives =
                         alist {
                             yield
                                 textarea (att [
-                                    match cfg.placeholder with 
+                                    match cfg.placeholder with
                                     | Some ph when ph<>"" -> yield attribute "placeholder" ph
                                     | _ -> ()
                                     yield attribute "type" "text"
@@ -391,221 +610,39 @@ module SimplePrimitives =
                 )
             )
 
-        let private pickler = MBrace.FsPickler.FsPickler.CreateBinarySerializer()
-
+        [<Obsolete("Use Dropdown.dropdownOption instead. Add 'clearable' as class attribute if input should be clearable. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
         let dropdown (cfg : DropdownConfig) (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
+            let activateOnHover = cfg.onTrigger = TriggerDropdown.Hover
 
-            let selected = if selected.IsConstant then AVal.custom (fun t -> selected.GetValue t) else selected
+            match cfg.mode with
+            | DropdownMode.Icon icon ->
+                Dropdown.dropdownOption update activateOnHover (Some icon) "" selected atts values
 
-            let compare =
-                if typeof<System.IComparable>.IsAssignableFrom typeof<'a> then Some Unchecked.compare<'a>
-                else None
+            | DropdownMode.Text (Some placeholder) ->
+                let atts = AttributeMap.union atts (AttributeMap.ofList [clazz "clearable"])
+                Dropdown.dropdownOption update activateOnHover None placeholder selected atts values
 
-            let valuesWithKeys =
-                values
-                |> AMap.map (fun k v ->
-                    let hash = pickler.ComputeHash(k).Hash |> System.Convert.ToBase64String
-                    //let hash = System.Threading.Interlocked.Increment(&id) |> string
-                    hash, v
-                )
+            | DropdownMode.Text None ->
+                Dropdown.dropdownOption update activateOnHover None "" selected atts values
 
-            let m =
-                valuesWithKeys
-                |> AMap.toAVal
-                |> AVal.map (HashMap.map (fun k (v,_) -> v))
-                |> AVal.map (fun m -> m, HashMap.ofSeq (Seq.map (fun (a,b) -> b,a) m))
-
-            let update (k : string) =
-                let _fw, bw = AVal.force m
-                selected.MarkOutdated()
-                try
-                    match HashMap.tryFind k bw with
-                    | Some v -> update (Some v) |> Seq.singleton
-                    | None -> update None |> Seq.singleton
-                with _ ->
-                    Seq.empty
-
-            let selection =
-                selected |> AVal.bind (function Some v -> m |> AVal.map (fun (fw,_) -> HashMap.tryFind v fw) | None -> AVal.constant None)
-
-            let myAtts =
-                AttributeMap.ofList [
-                    clazz "ui dropdown"
-                    onEvent' "data-event" [] (function (str :: _) -> Seq.delay (fun () -> update (Pickler.unpickleOfJson str)) | _ -> Seq.empty)
-                ]
-
-            let initial =
-                match selection.GetValue() with
-                | Some v -> sprintf ".dropdown('set selected', '%s', '', true);" v
-                | None -> ".dropdown('clear');"
-
-            let boot =
-                let trigger =
-                    match cfg.onTrigger with
-                    | TriggerDropdown.Click -> "'click'" // default
-                    | TriggerDropdown.Hover -> "'hover'"
-
-                let clearable =
-                    match cfg.mode with
-                    | DropdownMode.Text (Some _) -> "true"
-                    |  _ -> "false"
-
-                String.concat ";" [
-                    "var $self = $('#__ID__');"
-                    "$self.dropdown({ on: " + trigger + ", clearable: " + clearable + ", onChange: function(value) {  aardvark.processEvent('__ID__', 'data-event', value); }, onHide : function() { var v = $self.dropdown('get value'); if(!v || v.length == 0) { $self.dropdown('clear'); } } })" + initial
-                    "selectedCh.onmessage = function(value) { if(value.value) { $self.dropdown('set selected', value.value.Some, '', true); } else { $self.dropdown('clear'); } }; "
-                ]
-
-            require Html.semui (
-                onBoot' ["selectedCh", AVal.channel (AVal.map thing selection)] boot (
-                    Incremental.div (AttributeMap.union atts myAtts) (
-                        alist {
-                            yield input [ attribute "type" "hidden" ]
-                            match cfg.mode with
-                            | DropdownMode.Text ph ->
-                                let ph = ph |> Option.defaultValue ""
-                                yield i [ clazz "dropdown icon" ] []
-                                yield div [ clazz "default text"] ph
-                            | DropdownMode.Icon iconName ->
-                                yield i [ clazz (sprintf "%s icon" iconName)] []
-                            yield
-                                Incremental.div (AttributeMap.ofList [clazz "ui menu"]) (
-                                    alist {
-                                        match compare with
-                                        | Some cmp ->
-                                            for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortWith (fun (a,_) (b,_) -> cmp a b) do
-                                                yield div [ clazz "ui item"; attribute "data-value" value] [node]
-                                        | None ->
-                                            for (_, (value, node)) in valuesWithKeys |> AMap.toASet |> ASet.sortBy (snd >> fst) do
-                                                yield div [ clazz "ui item"; attribute "data-value" value] [node]
-                                    }
-                                )
-                        }
-                    )
-                )
-            )
-
+        [<Obsolete("Use Dropdown.dropdown instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
         let dropdownUnclearable (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
-            dropdown DropdownConfig.unclearable atts values (AVal.map Some selected) (Option.get >> update)
+            Dropdown.dropdown update false None selected atts values
 
-        [<Obsolete("Renamed to dropdownUnclearable")>]
+        [<Obsolete("Use Dropdown.dropdown instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
         let dropdownUnClearable (atts : AttributeMap<'msg>) (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
-            dropdown DropdownConfig.unclearable atts values (AVal.map Some selected) (Option.get >> update)
+            Dropdown.dropdown update false None selected atts values
 
+        [<Obsolete("Use Dropdown.dropdownMultiSelect instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
         let dropdownMultiSelect (attributes : AttributeMap<'msg>)
                                 (compare : Option<'T -> 'T -> int>) (defaultText : string)
                                 (values : amap<'T, DomNode<'msg>>) (selected : alist<'T>) (update : 'T list -> 'msg) =
-            let valuesWithKeys =
-                values
-                |> AMap.map (fun k v ->
-                    let hash = pickler.ComputeHash(k).Hash |> Convert.ToBase64String
-                    hash, v
-                )
-
-            let lookup =
-                valuesWithKeys
-                |> AMap.toAVal
-                |> AVal.map (HashMap.map (fun k (v,_) -> v))
-                |> AVal.map (fun m -> m, HashMap.ofSeq (Seq.map (fun (a,b) -> b,a) m))
-
-            let items =
-                let set = valuesWithKeys |> AMap.toASet
-
-                let compare =
-                    compare |> Option.orElse (
-                        if typeof<IComparable>.IsAssignableFrom typeof<'T> then
-                            Some Unchecked.compare<'T>
-                        else
-                            None
-                    )
-
-                match compare with
-                | Some cmp ->
-                    set |> ASet.sortWith (fun (a,_) (b,_) -> cmp a b)
-                | _ ->
-                    set |> ASet.sortBy (snd >> fst)
-
-            let update (args : string list) =
-                try
-                    let data : string = Pickler.unpickleOfJson args.Head
-                    let _fw, bw = AVal.force lookup
-
-                    let values =
-                        data
-                        |> String.split ","
-                        |> Array.toList
-                        |> List.choose (fun k -> HashMap.tryFind k bw)
-
-                    Seq.singleton (update values)
-
-                with exn ->
-                    Log.warn "[dropdownMultiSelect] callback failed: %s" exn.Message
-                    Seq.empty
-
-            let selection =
-                adaptive {
-                    let! selected = selected |> AList.toAVal
-                    let! (fw, _) = lookup
-
-                    return selected
-                        |> IndexList.choose (fun v -> HashMap.tryFind v fw)
-                        |> IndexList.toList
-                }
-
-            let attributes =
-                AttributeMap.ofList [
-                    clazz "ui dropdown multiple selection"
-                    onEvent' "data-event" [] update
-                ]
-                |> AttributeMap.union attributes
-
-            let boot =
-                String.concat "" [
-                    "const $self = $('#__ID__');"
-
-                    "$self.dropdown({"
-                    "    onChange: function(value) { aardvark.processEvent('__ID__', 'data-event', value); },"
-                    "});"
-
-                    // God I hate JS...
-                    // https://stackoverflow.com/questions/7837456/how-to-compare-arrays-in-javascript/7837725#7837725
-                    "function arraysIdentical(a, b) {"
-                    "    var i = a.length;"
-                    "    if (i != b.length) return false;"
-                    "    while (i--) {"
-                    "        if (a[i] !== b[i]) return false;"
-                    "    }"
-                    "    return true;"
-                    "};"
-
-                    "selectedCh.onmessage = function(values) {"
-                    "    const curr = $self.dropdown('get values');"
-
-                         // Prevent resetting the same values (leads to flickering)
-                    "    if (arraysIdentical(curr, values)) {"
-                    "        return;"
-                    "    }"
-
-                    "    $self.dropdown('clear', true);"
-                    "    $self.dropdown('set selected', values, true);"  // set exactly bugged? clear seems to trigger event
-                    "};"
-                ]
-
-            require Html.semui (
-                onBoot' ["selectedCh", AVal.channel selection] boot (
-                    Incremental.div attributes <| AList.ofList [
-                        input [ attribute "type" "hidden" ]
-
-                        i [ clazz "dropdown icon" ] []
-                        div [ clazz "default text"] defaultText
-
-                        Incremental.div (AttributeMap.ofList [clazz "ui menu"]) <| alist {
-                            for (_, (value, node)) in items do
-                                yield div [ clazz "ui item"; attribute "data-value" value] [node]
-                        }
-                    ]
-                )
-            )
+            match compare with
+            | Some cmp ->
+                let values = values |> AMap.toASet |> ASet.sortWith (fun (a, _) (b, _) -> cmp a b)
+                Dropdown.dropdownMultiSelect update false defaultText selected attributes values
+            | _ ->
+                Dropdown.dropdownMultiSelect update false defaultText selected attributes values
 
         [<RequireQualifiedAccess>]
         type private AccordionInput<'msg> =
@@ -943,6 +980,7 @@ module SimplePrimitives =
             member inline x.Run((a,v : aval<_>,cfg,msg)) =
                 Incremental.textbox cfg a v msg
 
+        [<Obsolete("To be removed.")>]
         type DropdownBuilder() =
 
             member inline x.Yield(()) =
@@ -973,6 +1011,8 @@ module SimplePrimitives =
         let simplenumeric<'a> = NumericBuilder<'a>()
         let simplenumeric'<'T> = NumericBuilder2<'T>()
         let simpletextbox = TextBuilder()
+
+        [<Obsolete("To be removed.")>]
         let simpledropdown = DropdownBuilder()
 
 
@@ -991,16 +1031,19 @@ module SimplePrimitives =
     let inline textarea (cfg : TextAreaConfig) atts (state : aval<string>) (update : string -> 'msg) =
         Incremental.textarea cfg (att atts) state update
 
+    [<Obsolete("Use Dropdown.dropdownOption instead. Add 'clearable' as class attribute if input should be clearable. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
     let inline dropdown (cfg : DropdownConfig) atts (values : amap<'a, DomNode<'msg>>) (selected : aval<Option<'a>>) (update : Option<'a> -> 'msg) =
         Incremental.dropdown cfg (att atts) values selected update
 
+    [<Obsolete("Use Dropdown.dropdown instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
     let inline dropdownUnclearable atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
         Incremental.dropdownUnclearable (att atts) values selected update
 
-    [<Obsolete("Renamed to dropdownUnclearable")>]
+    [<Obsolete("Use Dropdown.dropdown instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
     let inline dropdownUnClearable atts (values : amap<'a, DomNode<'msg>>) (selected : aval<'a>) (update : 'a -> 'msg) =
         Incremental.dropdownUnclearable (att atts) values selected update
 
+    [<Obsolete("Use Dropdown.dropdownMultiSelect instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
     let inline dropdownMultiSelect (attributes : AttributeMap<'msg>)
                                    (compare : Option<'T -> 'T -> int>) (defaultText : string)
                                    (values : amap<'T, DomNode<'msg>>) (selected : alist<'T>) (update : 'T list -> 'msg) =

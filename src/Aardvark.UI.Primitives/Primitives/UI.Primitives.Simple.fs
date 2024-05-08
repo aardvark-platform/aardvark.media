@@ -215,31 +215,11 @@ module Simple =
     let largeTextArea (changed : string -> 'msg) (value : aval<string>) =
         largeTextArea' changed value AttributeMap.empty
 
+    [<System.Obsolete("Use Dropdown.dropdown instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
     let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : list<string * AttributeValue<'msg>>) (current : aval<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
-        
-        let mutable back = Map.empty
-        let forth = 
-            names |> Map.map (fun a s -> 
-                let id = System.Guid.NewGuid()
-                back <- Map.add id a back
-                id
-            )
-        
-        let selectedValue = current |> AVal.map (fun c -> Map.find c forth)
-        
-        let boot = 
-            String.concat "\r\n" [
-                sprintf "$('#__ID__').dropdown().dropdown('set selected', '%s');" (string (AVal.force selectedValue))
-                "current.onmessage = function(v) { $('#__ID__').dropdown('set selected', v); };"
-            ]
+        let values: seq<'a * DomNode<'msg>> = names |> Seq.map (fun (KeyValue(value, str)) -> value, text str)
+        Dropdown.dropdown update false None current att values
 
-        onBoot' ["current", AVal.channel selectedValue] boot  (
-            select ((onChange (fun str -> Map.find (str |> System.Guid.Parse) back |> update))::att) [
-                for (value, name) in Map.toSeq names do
-                    let v = Map.find value forth
-                    yield option [attribute "value" (string v)] [ text name ]
-            ]
-        )
-
+    [<System.Obsolete("Broken. To be removed.")>]
     let allValues<'a when 'a : comparison> =
         FSharpType.GetUnionCases(typeof<'a>,true) |> Array.map (fun c -> unbox<'a>(FSharpValue.MakeUnion(c, [||], true)), c.Name) |> Map.ofArray

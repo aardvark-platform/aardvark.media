@@ -87,6 +87,7 @@
     <EmbeddedResource Include="resources\spectrum-overrides.css" />
     <EmbeddedResource Include="resources\notifications.js" />
     <EmbeddedResource Include="resources\accordion.js" />
+    <EmbeddedResource Include="resources\dropdown.js" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

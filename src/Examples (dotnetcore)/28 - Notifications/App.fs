@@ -133,24 +133,17 @@ let view (model : AdaptiveModel) =
                 text "Remove"
             ]
 
-            let values =
-                Enum.GetValues<Position>()
-                |> Array.map (fun p ->
-                    let n =
-                        match p with
-                        | Position.TopRight     -> text "Top Right"
-                        | Position.TopLeft      -> text "Top Left"
-                        | Position.TopCenter    -> text "Top Center"
-                        | Position.TopAttached  -> text "Top Attached"
-                        | Position.BottomRight  -> text "Bottom Right"
-                        | Position.BottomLeft   -> text "Bottom Left"
-                        | Position.BottomCenter -> text "Bottom Center"
-                        | _                     -> text "Bottom Attached"
-                    p, n
-                )
-                |> AMap.ofArray
+            let values = Some <| function
+                | Position.TopRight     -> text "Top Right"
+                | Position.TopLeft      -> text "Top Left"
+                | Position.TopCenter    -> text "Top Center"
+                | Position.TopAttached  -> text "Top Attached"
+                | Position.BottomRight  -> text "Bottom Right"
+                | Position.BottomLeft   -> text "Bottom Left"
+                | Position.BottomCenter -> text "Bottom Center"
+                | _                     -> text "Bottom Attached"
 
-            dropdownUnclearable [clazz "selection"; style "margin: 10px"] values model.position SetPosition
+            Dropdown.dropdownEnum SetPosition false None model.position [clazz "selection"; style "margin: 10px"] values
         ]
     ]
 

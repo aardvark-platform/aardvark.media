@@ -273,7 +273,7 @@ module ClientApp =
                 yield br []
                 yield text "Color Mode: "
                 yield div [] [
-                    dropDown [] colorMode (changeMode >> SetColorMode) (Map.ofList [ "Constant", "Constant"; "Vertical Gradient", "Vertical Gradient";"Horizontal Gradient", "Horizontal Gradient";"Points", "Points"])
+                    Dropdown.dropdown (changeMode >> SetColorMode) false None colorMode AttributeMap.empty [ "Constant", text "Constant"; "Vertical Gradient", text "Vertical Gradient";"Horizontal Gradient", text "Horizontal Gradient";"Points", text "Points"]
                 ]
                 yield button [style "ui small red button"; onClick (fun _ -> Delete id)] [text "Delete"]
             ]

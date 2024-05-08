@@ -27,6 +27,7 @@ let main argv =
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
     WebPart.startServerLocalhost 4321 [ 
         MutableApp.toWebPart' app.Runtime false instance
+        Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
         Suave.Files.browseHome
     ] |> ignore
 

@@ -66,11 +66,6 @@ let update (model : Model) (msg : Message) =
 let view (model : AdaptiveModel) =
     let alternatives = model.options |> AMap.map (fun _ v -> text v)
 
-    let enumValues : amap<EnumValue, DomNode<Message>> =
-        Enum.GetValues<EnumValue>()
-        |> Array.map (fun e -> e, text (string e))
-        |> AMap.ofArray
-
     let description (str : string) =
         div [ style "margin-bottom: 10px" ] [ text str ]
 
@@ -183,23 +178,23 @@ let view (model : AdaptiveModel) =
                 text "Dropdown menus", div [ clazz "menu" ] [
                     div [ clazz "item" ] [
                         description "Non-clearable"
-                        dropdownUnclearable [ clazz "inverted selection" ] enumValues model.enumValue SetEnumValue
+                        Dropdown.dropdownEnum SetEnumValue false None model.enumValue [ clazz "inverted" ] None
                     ]
 
                     div [ clazz "item" ] [
                         description "Clearable"
-                        dropdown { mode = DropdownMode.Text <| Some "blub"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted selection" ] alternatives model.alt SetAlternative
+                        Dropdown.dropdownOption SetAlternative true None "Select..." model.alt [ clazz "inverted clearable" ] alternatives
                     ]
 
                     div [ clazz "item" ] [
                         description "Icon mode"
-                        dropdown { mode = DropdownMode.Icon "sidebar"; onTrigger = TriggerDropdown.Hover } [ clazz "inverted icon top left pointing dropdown circular button" ] alternatives model.alt SetAlternative
+                        Dropdown.dropdownOption SetAlternative true (Some "sidebar") "" model.alt [ clazz "inverted icon top left pointing dropdown circular button" ] alternatives
                     ]
 
                     div [ clazz "item" ] [
                         description "Multi select"
                         let atts = AttributeMap.ofList [clazz "inverted clearable search"]
-                        dropdownMultiSelect atts None "Search..." alternatives model.alts SetAlternatives
+                        Dropdown.dropdownMultiSelect SetAlternatives false "Search..." model.alts atts alternatives
                     ]
                 ]
 

@@ -180,9 +180,7 @@ let view (model : AdaptiveModel) =
                         br []
                         br []
 
-                        //Html.SemUi.dropDown model.mode SetMode 
-                        let enumValues = AMap.ofArray((System.Enum.GetValues typeof<CameraMode> :?> (CameraMode [])) |> Array.map (fun c -> (c, text (System.Enum.GetName(typeof<CameraMode>, c)) )))
-                        dropdownUnclearable [ clazz "ui inverted selection dropdown" ] enumValues model.mode SetMode
+                        Dropdown.dropdownEnum SetMode false None model.mode [ clazz "ui inverted selection dropdown" ] None
                         br []
                         br []
                     ]
