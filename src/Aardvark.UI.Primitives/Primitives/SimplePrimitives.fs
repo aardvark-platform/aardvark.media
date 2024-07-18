@@ -499,37 +499,6 @@ module SimplePrimitives =
             member inline x.Run((a,c,(v,msg))) =
                 Incremental.checkbox a v msg c
 
-        // To be replaced by NumericBuilder2
-        type NumericBuilder<'a>() =
-
-            member inline x.Yield(()) =
-                (AttributeMap.empty, AVal.constant 0.0, { min = NumericConfigDefaults<'a>.MinValue; max = NumericConfigDefaults<'a>.MaxValue; smallStep = NumericConfigDefaults<'a>.SmallStep; largeStep = NumericConfigDefaults<'a>.LargeStep; }, (fun _ -> ()))
-
-            [<CustomOperation("attributes")>]
-            member inline x.Attributes((a,u,c,m), na) = (AttributeMap.union a (att na), u, c, m)
-
-            [<CustomOperation("value")>]
-            member inline x.Value((a,_,cfg,m), vv) = (a, vv, cfg, m)
-
-            [<CustomOperation("update")>]
-            member inline x.Update((a,v,cfg,_), msg) = (a,v, cfg, msg)
-
-            [<CustomOperation("step")>]
-            member inline x.Step((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.smallStep = s }, m)
-
-            [<CustomOperation("largeStep")>]
-            member inline x.LargeStep((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.largeStep = s }, m)
-
-            [<CustomOperation("min")>]
-            member inline x.Min((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.min = s }, m)
-
-            [<CustomOperation("max")>]
-            member inline x.Max((a,v,cfg,m), s) = (a,v, { cfg with NumericConfig.max = s }, m)
-
-
-            member inline x.Run((a,v,cfg,msg)) =
-                Incremental.numeric cfg a v msg
-
         type NumericBuilderState<'T, 'msg> =
             { attributes : AttributeMap<'msg>
               before     : aval<DomNode<'msg> option>
@@ -538,7 +507,7 @@ module SimplePrimitives =
               config     : NumericConfig<'T>
               update     : 'T -> 'msg seq }
 
-        type NumericBuilder2<'T>() =
+        type NumericBuilder<'T>() =
 
             member inline x.Yield(()) : NumericBuilderState<'T, 'msg> =
                 { attributes = AttributeMap.empty
@@ -680,8 +649,7 @@ module SimplePrimitives =
                 Incremental.textbox cfg a v msg
 
         let simplecheckbox = CheckBuilder()
-        let simplenumeric<'a> = NumericBuilder<'a>()
-        let simplenumeric'<'T> = NumericBuilder2<'T>()
+        let simplenumeric<'T> = NumericBuilder<'T>()
         let simpletextbox = TextBuilder()
 
 

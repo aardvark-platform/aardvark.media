@@ -125,7 +125,7 @@ let view (model : AdaptiveModel) =
 
                     div [ clazz "item" ] [
                         description "Numeric (integer)"
-                        simplenumeric' {
+                        simplenumeric {
                             attributes [clazz "ui inverted input"]
                             value model.intValue
                             iconRight "inverted users"
@@ -153,7 +153,7 @@ let view (model : AdaptiveModel) =
 
                     div [ clazz "item" ] [
                         description "Numeric (unsigned integer)"
-                        simplenumeric' {
+                        simplenumeric {
                             attributes [clazz "ui inverted input"]
                             labelLeft "$"
                             labelRight "inverted basic" ".00"
