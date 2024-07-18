@@ -38,23 +38,5 @@ type Tree =
 module Tree =
     let node v p c = Node(v, p, c)
 
-
 [<ModelType>]
 type TreeModel = { data: Tree }
-
-// TODO: Delete
-[<ModelType>]
-type D3TestInput = 
-    {
-        t1 : int
-        t2 : int
-    }
-
-// TODO: Delete
-[<ModelType>]
-type D3AxisInput = 
-    {
-        min : float
-        max : float
-        tickCount : float
-    }
