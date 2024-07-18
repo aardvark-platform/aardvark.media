@@ -7,7 +7,7 @@ open Aardvark.SceneGraph
 
 open Aardvark.Application
 open Aardvark.UI
-open Aardvark.UI.Primitives.ColorPicker2
+open Aardvark.UI.Primitives
 open Adaptify.FSharp.Core
 open Uncodium
 

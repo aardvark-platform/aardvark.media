@@ -1,12 +1,10 @@
-﻿namespace Aardvark.UI.Primitives.ColorPicker2
+﻿namespace Aardvark.UI.Primitives
 
 open Aardvark.UI
 open Aardvark.Base
 open FSharp.Data.Adaptive
 
 // https://github.com/aardvark-community/spectrum
-
-// TODO: Move to Aardvark.UI.Primitives namespace and delete old color picker
 module ColorPicker =
 
     [<AutoOpen>]

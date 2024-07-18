@@ -2,7 +2,6 @@ module App
 
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open Aardvark.UI.Primitives.ColorPicker2
 
 open Aardvark.Base
 open FSharp.Data.Adaptive

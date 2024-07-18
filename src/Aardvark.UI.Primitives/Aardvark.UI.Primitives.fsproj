@@ -18,9 +18,6 @@
     <Compile Include="Primitives\UI.Primitives.Models.fs" />
     <Compile Include="Primitives\UI.Primitives.fs" />
     <Compile Include="Primitives\UI.Primitives.Simple.fs" />
-    <Compile Include="Color\Deprecated\ColorBrewer.fs" />
-    <Compile Include="Color\Deprecated\ColorInput.fs" />
-    <Compile Include="Color\Deprecated\ColorPicker.fs" />
     <Compile Include="Color\ColorPicker.fs" />
     <Compile Include="TrafoControls\TrafoModel.fs" />
     <Compile Include="TrafoControls\TrafoController.fs" />
