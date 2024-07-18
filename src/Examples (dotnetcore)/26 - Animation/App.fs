@@ -4,7 +4,7 @@ open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI
 open Aardvark.UI.Primitives
-open Aardvark.UI.Anewmation
+open Aardvark.UI.Animation
 open FSharp.Data.Adaptive
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

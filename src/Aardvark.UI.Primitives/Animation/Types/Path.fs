@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Anewmation
+﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base
 open Aether

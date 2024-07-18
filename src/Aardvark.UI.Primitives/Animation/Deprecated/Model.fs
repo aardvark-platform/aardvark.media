@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Animation
+﻿namespace Aardvark.UI.Animation.Deprecated
 
 open Aardvark.Base
 open Aardvark.Rendering

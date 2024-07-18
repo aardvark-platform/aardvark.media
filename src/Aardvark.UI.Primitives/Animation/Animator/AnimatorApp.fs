@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Anewmation
+﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
@@ -51,7 +51,7 @@ module InternalAnimatorUtilities =
 
 module Animator =
     open Aether
-    open Aardvark.UI.Anewmation
+    open Aardvark.UI.Animation
     open InternalAnimatorUtilities
     open InternalAnimatorUtilities.Converters
 

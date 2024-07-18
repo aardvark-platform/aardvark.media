@@ -2,7 +2,7 @@
 
 open Aardvark.Base
 open Aardvark.Rendering
-open Aardvark.UI.Anewmation
+open Aardvark.UI.Animation
 
 open Aether
 

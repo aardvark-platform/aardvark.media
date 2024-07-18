@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Anewmation
+﻿namespace Aardvark.UI.Animation
 
 type private ValueCache<'Value>(creator : unit -> 'Value) =
     let mutable cache = ValueNone

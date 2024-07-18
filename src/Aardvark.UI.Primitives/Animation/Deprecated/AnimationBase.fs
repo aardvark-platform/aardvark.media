@@ -1,4 +1,4 @@
-namespace Aardvark.UI.Animation
+namespace Aardvark.UI.Animation.Deprecated
 
 module AnimationApp = 
     open Aardvark.Base
@@ -11,7 +11,7 @@ module AnimationApp =
     let shouldAnimate (m : AnimationModel) =
           m.animation = Animate.On && IndexList.count m.animations > 0
       
-    let updateAnimation (m : 'm) (t : Aardvark.UI.Animation.Time) (a : Animation<'m,'s,'a>) =
+    let updateAnimation (m : 'm) (t : Aardvark.UI.Animation.Deprecated.Time) (a : Animation<'m,'s,'a>) =
           match a.state with
               | None ->
                   let s = a.start m

@@ -1,7 +1,7 @@
 ﻿namespace Aardvark.UI.Animation.Benchmarks
 
 open Aardvark.Base
-open Aardvark.UI.Anewmation
+open Aardvark.UI.Animation
 open BenchmarkDotNet.Attributes;
 
 [<MemoryDiagnoser>]

@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Anewmation
+﻿namespace Aardvark.UI.Animation
 
 open System
 
