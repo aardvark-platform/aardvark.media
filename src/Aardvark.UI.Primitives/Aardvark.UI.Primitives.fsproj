@@ -16,6 +16,7 @@
   <ItemGroup>
 	  <Compile Include="Primitives\SimplePrimitives.fs" />
 	  <Compile Include="Primitives\Dropdown.fs" />
+	  <Compile Include="Primitives\Accordion.fs" />
     <Compile Include="Primitives\UI.Primitives.Models.fs" />
     <Compile Include="Primitives\UI.Primitives.fs" />
     <Compile Include="Primitives\UI.Primitives.Simple.fs" />

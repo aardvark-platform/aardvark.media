@@ -76,7 +76,7 @@ let view (model : AdaptiveModel) =
                 ]
             ]
 
-            accordionSimple' true [ clazz "inverted item" ] [
+            Accordion.accordionSimple true [ clazz "inverted item" ] [
                 // Checkboxes
                 text "Checkboxes", div [ clazz "menu" ] [
                     div [ clazz "item" ] [
