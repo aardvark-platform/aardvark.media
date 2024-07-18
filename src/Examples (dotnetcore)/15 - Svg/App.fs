@@ -7,7 +7,6 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Rendering
 open Model
-open Aardvark.UI.Html
  
 let (%) (v : V2d) (f : float) = V2d(f * float (int v.X / int f), f * float (int v.Y / int f))
 
@@ -58,7 +57,7 @@ let view (model : AdaptiveModel) =
                     )
                 ]
                 br []
-                SemUi.dropDown model.dragMode SetDragMode
+                Html.SemUi.dropDown model.dragMode SetDragMode
                 br []
                 text "StepSize "
                 Numeric.numericField (SetStepSize >> Seq.singleton) AttributeMap.empty model.stepSize Slider

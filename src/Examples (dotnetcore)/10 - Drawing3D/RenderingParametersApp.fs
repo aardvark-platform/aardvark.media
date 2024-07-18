@@ -2,6 +2,7 @@
 
 open Aardvark.Rendering
 open Aardvark.UI
+open Aardvark.UI.Primitives
 
 open RenderingParametersModel
 

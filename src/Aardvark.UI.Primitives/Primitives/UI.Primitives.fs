@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI
+﻿namespace Aardvark.UI.Primitives
 
 open System
 
@@ -7,6 +7,7 @@ open FSharp.Data.Adaptive
 
 open Aardvark.UI
 open Aardvark.UI.Operators
+open Aardvark.UI.Primitives
 
 
 
@@ -85,7 +86,7 @@ module Html =
         onBoot' ["chDocumentTitle", AVal.channel title] code node
 
     let semui =
-        Primitives.SimplePrimitives.Html.semui
+        SimplePrimitives.Html.semui
 
     let multiselectList (entries : list<'a>) (getId : 'a -> string) (getDomNode : 'a -> DomNode<'msg>) (getValue : string -> 'a) (onSelected : list<'a> -> 'msg) =
         div [attribute "style" "width:100%"] [

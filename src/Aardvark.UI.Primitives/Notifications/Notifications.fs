@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI.Primitives.Notifications
 
 open Aardvark.UI
+open Aardvark.UI.Primitives
 open FSharp.Data.Adaptive
 
 [<AutoOpen>]

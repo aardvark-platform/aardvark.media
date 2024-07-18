@@ -12,9 +12,9 @@ type Message =
     | Tick of float
     | ToggleAnimation
 
-    | SetUpdateLoad of Aardvark.UI.Numeric.Action
-    | SetGpuLoad    of Aardvark.UI.Numeric.Action
-    | SetModLoad    of Aardvark.UI.Numeric.Action
+    | SetUpdateLoad of Numeric.Action
+    | SetGpuLoad    of Numeric.Action
+    | SetModLoad    of Numeric.Action
 
 [<ModelType>]
 type Model = 
