@@ -214,12 +214,3 @@ module Simple =
 
     let largeTextArea (changed : string -> 'msg) (value : aval<string>) =
         largeTextArea' changed value AttributeMap.empty
-
-    [<System.Obsolete("Use Dropdown.dropdown instead. Make sure to add the Aardvark.UI.Primitives WebPart.")>]
-    let dropDown<'a, 'msg when 'a : comparison and 'a : equality> (att : list<string * AttributeValue<'msg>>) (current : aval<'a>) (update : 'a -> 'msg) (names : Map<'a, string>) : DomNode<'msg> =
-        let values: seq<'a * DomNode<'msg>> = names |> Seq.map (fun (KeyValue(value, str)) -> value, text str)
-        Dropdown.dropdown update false None current att values
-
-    [<System.Obsolete("Broken. To be removed.")>]
-    let allValues<'a when 'a : comparison> =
-        FSharpType.GetUnionCases(typeof<'a>,true) |> Array.map (fun c -> unbox<'a>(FSharpValue.MakeUnion(c, [||], true)), c.Name) |> Map.ofArray
