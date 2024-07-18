@@ -4,19 +4,12 @@ open Aardvark.Base
 
 [<Struct>]
 [<RequireQualifiedAccess>]
-[<DefaultAugmentation(false)>]
 type Duration =
     | Finite of MicroTime
     | Infinite
 
     member x.IsZero =
         match x with | Duration.Finite t -> t.IsZero | _ -> false
-
-    member x.IsFinite =
-        match x with | Duration.Finite _ -> true | _ -> false
-
-    member x.IsInfinite =
-        not x.IsFinite
 
     static member inline (*) (x : Duration, y : ^Value) =
         match x with
@@ -111,8 +104,8 @@ module Duration =
     let inline ofMinutes (us : ^Minutes)           = Duration.Finite <| MicroTime.FromMinutes(float us)
 
     let isZero (d : Duration) = d.IsZero
-    let isFinite (d : Duration) = d.IsFinite
-    let isInfinite (d : Duration) = d.IsInfinite
+    let isFinite (d : Duration) = match d with | Duration.Finite _ -> true | _ -> false
+    let isInfinite (d : Duration) = not <| isFinite d
 
     let ofLocalTime = function
         | LocalTime.Offset o -> Duration.Finite o

@@ -33,7 +33,7 @@ module private Groups =
 
         let apply (localTime : LocalTime) =
             let d = animation.Duration
-            if d.IsFinite then
+            if Duration.isFinite d then
                 LocalTime.max (d * animation.DistanceTime(localTime))
             else
                 localTime
