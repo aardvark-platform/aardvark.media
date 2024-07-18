@@ -1,7 +1,6 @@
 ﻿namespace Aardvark.Service.Giraffe
 
 open Microsoft.AspNetCore.Http
-open FSharp.Control.Tasks
 open System.Net.WebSockets
 open System.Threading.Tasks
 

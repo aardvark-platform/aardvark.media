@@ -2,11 +2,12 @@
 <Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFrameworks>net471;net6.0-windows7.0</TargetFrameworks>
+    <TargetFrameworks>net471;net8.0-windows10.0.17763.0</TargetFrameworks>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <UseWindowsForms>true</UseWindowsForms>
     <WarnOn>3389;3390;3395</WarnOn>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\bin\Debug\</OutputPath>

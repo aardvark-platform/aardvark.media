@@ -13,8 +13,8 @@ files
     ..\..\bin\Release\net471\Aardvark.Cef.WinForms.Process.exe ==> lib\net471
     ..\..\bin\Release\net471\Aardvark.Cef.WinForms.Process.exe.config ==> lib\net471
     ..\..\bin\Release\net471\Aardvark.Cef.WinForms.Process.pdb ==> lib\net471
-    ..\..\bin\Release\net6.0-windows7.0\Aardvark.Cef.WinForms.Process.dll ==> lib\net6.0-windows7.0
-    ..\..\bin\Release\net6.0-windows7.0\Aardvark.Cef.WinForms.Process.pdb ==> lib\net6.0-windows7.0
-	..\..\bin\Release\net6.0-windows7.0\Aardvark.Cef.WinForms.Process.exe ==> process\net6.0-windows7.0
-    ..\..\bin\Release\net6.0-windows7.0\Aardvark.Cef.WinForms.Process.runtimeconfig.json ==> process\net6.0-windows7.0
+    ..\..\bin\Release\net8.0-windows10.0.17763.0\Aardvark.Cef.WinForms.Process.dll ==> lib\net8.0-windows10.0.17763.0
+    ..\..\bin\Release\net8.0-windows10.0.17763.0\Aardvark.Cef.WinForms.Process.pdb ==> lib\net8.0-windows10.0.17763.0
+	..\..\bin\Release\net8.0-windows10.0.17763.0\Aardvark.Cef.WinForms.Process.exe ==> process\net8.0-windows10.0.17763.0
+    ..\..\bin\Release\net8.0-windows10.0.17763.0\Aardvark.Cef.WinForms.Process.runtimeconfig.json ==> process\net8.0-windows10.0.17763.0
     Aardvark.Cef.WinForms.targets ==> build

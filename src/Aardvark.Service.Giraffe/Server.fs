@@ -3,7 +3,6 @@ namespace Aardvark.Service.Giraffe
 
 
 open Giraffe
-open FSharp.Control.Tasks
 
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting

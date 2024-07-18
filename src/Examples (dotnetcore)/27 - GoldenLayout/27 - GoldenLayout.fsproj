@@ -2,10 +2,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <AssemblyName>$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
     <WarnOn>3389;3390;3395</WarnOn>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>

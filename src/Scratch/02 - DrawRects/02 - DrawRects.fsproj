@@ -2,9 +2,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <AssemblyName>$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>
@@ -19,8 +20,8 @@
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Program.fs" />
-	<EmbeddedResource Include="resources\drawRects.js" />
-	<EmbeddedResource Include="resources\drawRects.css" />
+    <EmbeddedResource Include="resources\drawRects.js" />
+    <EmbeddedResource Include="resources\drawRects.css" />
     <None Include="App.config" />
     <None Include="paket.references" />
   </ItemGroup>

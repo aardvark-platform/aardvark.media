@@ -24,5 +24,5 @@ module RenderQuads =
              |> Sg.compile runtime signature
              |> RenderTask.renderToColor (AVal.constant size)
         let t = rt.GetValue()
-        let t2 = runtime.Download(t |> unbox)
-        encode (unbox t2.Data), size
+        let t2 = runtime.Download(t |> unbox).AsPixImage<byte>()
+        encode t2.Data, size

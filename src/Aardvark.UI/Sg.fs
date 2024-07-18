@@ -10,7 +10,6 @@ open FSharp.Data.Adaptive
 open FSharp.Data.Traceable
 open Aardvark.SceneGraph
 open Aardvark.Application
-open Suave.Logging
 
 
 module AMap =
@@ -900,8 +899,8 @@ module ``F# Sg`` =
             sg |> unboxed (Sg.effect e)
 
         /// Applies the given surface to the scene.
-        let surface (m : ISurface) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.surface m)
+        let inline surface (s : ^Surface) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.surface s)
 
         /// Applies the given pool of effects to the scene.
         /// The index active determines which effect is used at a time.

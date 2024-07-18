@@ -2,10 +2,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <GenerateLenses>True</GenerateLenses>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <AssemblyName>$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>
@@ -13,7 +14,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
     <OutputPath>..\..\..\bin\Release\</OutputPath>
   </PropertyGroup>
-  <ItemGroup>    
+  <ItemGroup>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Serialization.fs" />
     <Compile Include="KdTrees.fs" />

@@ -10,7 +10,6 @@ open System.Net.WebSockets
 
 open Giraffe
 open FSharp.Data.Adaptive
-open FSharp.Control.Tasks
 
 open Aardvark.UI
 open Aardvark.Service

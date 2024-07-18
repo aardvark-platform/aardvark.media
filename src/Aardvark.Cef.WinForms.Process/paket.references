@@ -6,10 +6,8 @@ Another.Unofficial.Xilium.CefGlue.WindowsForms
 Microsoft.NETFramework.ReferenceAssemblies
 
 Aardvark.Base
-Aardvark.Base.Incremental
 Aardvark.Base.FSharp
 
 FsPickler
-FsPickler.Json
 
 FSharp.Core
