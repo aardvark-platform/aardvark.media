@@ -1253,6 +1253,9 @@ and DomNode private() =
 
         DomNode.RenderControl(attributes, proc, getState, scene, htmlChildren)
 
+module UI =
+    let inline map (mapping: 'T1 -> 'T2) (source: DomNode<'T1>) : DomNode<'T2> =
+        DomNode.Map(mapping, source)
 
 type Unpersist<'model, 'mmodel> =
     {

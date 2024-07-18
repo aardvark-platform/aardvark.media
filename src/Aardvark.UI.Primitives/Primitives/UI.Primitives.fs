@@ -9,14 +9,6 @@ open Aardvark.UI
 open Aardvark.UI.Operators
 open Aardvark.UI.Primitives
 
-
-
-module UI =
-    let map (f : 'a -> 'b) (source : DomNode<'a>) : DomNode<'b> =
-        MapNode<'a, 'b>(f, source) :> DomNode<_>
-        //source.Map f
-
-
 type NumericInputType = Slider | InputBox
 
 module List =
