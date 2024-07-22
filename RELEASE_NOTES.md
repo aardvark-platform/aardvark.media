@@ -1,3 +1,9 @@
+### 5.4.5
+- [SimplePrimitives] Added accordion variants with custom titles
+- [SimplePrimitives] Avoid accordion animation for initially active sections
+- [Primitives] Reworked dropdown
+- [Animations] Fixed Animator removeAll and removeFinished
+
 ### 5.4.4
 - [GoldenLayout] Implemented layout deserialization and multi-window layouts (breaking)
 - [SimplePrimitives] Optimized checkbox
