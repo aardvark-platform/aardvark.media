@@ -152,6 +152,10 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - GoldenLayout", "Exampl
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Notifications", "Examples (dotnetcore)\28 - Notifications\28 - Notifications.fsproj", "{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Screenshotr", "Aardvark.UI.Screenshotr\Aardvark.UI.Screenshotr.fsproj", "{24D7C14A-3337-494B-8D72-4A2104D4956D}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "04 - Screenshotr", "Scratch\04 - Screenshotr\04 - Screenshotr.fsproj", "{F54A0F8D-DBF7-4483-B47E-DFBB3273027B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -406,6 +410,14 @@ Global
 		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{24D7C14A-3337-494B-8D72-4A2104D4956D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{24D7C14A-3337-494B-8D72-4A2104D4956D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{24D7C14A-3337-494B-8D72-4A2104D4956D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{24D7C14A-3337-494B-8D72-4A2104D4956D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F54A0F8D-DBF7-4483-B47E-DFBB3273027B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F54A0F8D-DBF7-4483-B47E-DFBB3273027B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F54A0F8D-DBF7-4483-B47E-DFBB3273027B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F54A0F8D-DBF7-4483-B47E-DFBB3273027B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -473,6 +485,8 @@ Global
 		{5F1B5AF1-73B4-44F4-89D7-84BBC929B770} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{3AFDD56A-F6AB-4BB0-AD88-8912071E998C} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{24D7C14A-3337-494B-8D72-4A2104D4956D} = {5DAFA99B-848D-4185-B4C1-287119815657}
+		{F54A0F8D-DBF7-4483-B47E-DFBB3273027B} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}

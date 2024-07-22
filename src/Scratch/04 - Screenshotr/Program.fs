@@ -28,6 +28,7 @@ let main args =
         width 1024
         height 768
         url mediaUrl
+        debug true
     }
 
     0

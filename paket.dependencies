@@ -31,6 +31,8 @@ nuget Another.Unofficial.Xilium.CefGlue                             ~> 0.4.0
 nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies    ~> 0.4.0
 nuget Another.Unofficial.Xilium.CefGlue.WindowsForms                ~> 0.4.0
 
+nuget Screenshotr.Client                                            ~> 1.5.2
+
 // Examples & Demos
 nuget Aardvark.Geometry.Intersection                                ~> 5.5.0-prerelease0001
 nuget Aardium                                                       ~> 2.1.1-prerelease0002

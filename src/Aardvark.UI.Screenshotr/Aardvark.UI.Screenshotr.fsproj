@@ -17,6 +17,11 @@
     <Compile Include="Screenshot.fs" />
     <Compile Include="View.fs" />
     <Compile Include="Update.fs" />
+    <None Include="paket.references" />
+    <None Include="paket.template" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
 </Project>

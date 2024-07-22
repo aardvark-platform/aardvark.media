@@ -2,10 +2,14 @@ type project
 id Aardvark.UI.Screenshotr
 authors Aardvark Platform Team
 owners Aardvark Platform Team
-projectUrl http://github.com/aardvark-community
+projectUrl http://github.com/aardvark-platform
 licenseUrl http://www.apache.org/licenses/LICENSE-2.0.txt
 repositoryType git
-repositoryUrl http://github.com/aardvark-community/ScreenshotrExample
+repositoryUrl https://github.com/aardvark-platform/aardvark.media
 description
     Aardvark is an open-source platform for visual computing, real-time graphics and visualization.
 include-pdbs true
+excludeddependencies
+    Adaptify.MSBuild
+dependencies
+    Adaptify.Core ~> LOCKEDVERSION

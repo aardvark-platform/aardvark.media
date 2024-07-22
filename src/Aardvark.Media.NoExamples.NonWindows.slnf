@@ -5,6 +5,7 @@
       "Aardvark.Service.Giraffe\\Aardvark.Service.Giraffe.fsproj",
       "Aardvark.Service\\Aardvark.Service.fsproj",
       "Aardvark.UI.Primitives\\Aardvark.UI.Primitives.fsproj",
+      "Aardvark.UI.Screenshotr\\Aardvark.UI.Screenshotr.fsproj",
       "Aardvark.UI\\Aardvark.UI.fsproj",
       "Tests\\Aardvark.UI.Animation.Benchmarks\\Aardvark.UI.Animation.Benchmarks.fsproj"
     ]

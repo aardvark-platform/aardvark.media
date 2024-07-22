@@ -88,6 +88,7 @@
     <EmbeddedResource Include="resources\accordion.js" />
     <EmbeddedResource Include="resources\dropdown.js" />
     <None Include="paket.references" />
+    <None Include="paket.template" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />
