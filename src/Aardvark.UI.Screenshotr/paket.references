@@ -1,0 +1,14 @@
+FSharp.Core
+
+FSharp.Data.Adaptive
+Aardvark.Base
+Aardvark.Base.Incremental
+Aardvark.Base.FSharp
+
+Aardvark.UI
+Aardvark.UI.Primitives
+Adaptify.MSBuild
+Aardvark.Build
+
+Microsoft.Bcl.AsyncInterfaces
+Screenshotr.Client
