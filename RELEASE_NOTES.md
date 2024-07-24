@@ -1,3 +1,6 @@
+### 5.5.0-prerelease0001
+- Initial prerelease
+
 ### 5.4.5
 - [SimplePrimitives] Added accordion variants with custom titles
 - [SimplePrimitives] Avoid accordion animation for initially active sections
