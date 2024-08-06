@@ -1,3 +1,12 @@
+### 5.5.0
+- Updated to NET 8 and Aardvark.Rendering 5.5
+- Promoted new color picker from `Aardvark.UI.Primitives.ColorPicker2` to `Aardvark.UI.Primitives`. The old color picker is deleted.
+- Renamed `Aardvark.UI.Anewmation` to `Aardvark.UI.Animation`. The old animation system was moved to `Aardvark.UI.Animation.Deprecated`.
+- Fixed the namespace of some primitives. E.g. `NumericInput` is now in `Aardvark.UI.Primitives` instead of `Aardvark.UI`.
+- Moved `UI.map` from `Aardvark.UI.Primitives` to `Aardvark.UI` namespace and assembly.
+- [Primitives] Deleted old dropdown implementation (update to 5.4.5 to see obsolete warnings with replacement suggestions).
+- [Primitives] Simplified accordion and moved to `Accordion` module.
+
 ### 5.5.0-prerelease0001
 - Initial prerelease
 
