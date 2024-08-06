@@ -6,7 +6,6 @@ Aardvark.Rendering.Vulkan
 Aardvark.Rendering.Text
 Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
-Aardvark.SceneGraph.IO
 Aardvark.SceneGraph.Opc
 Adaptify.MSBuild
 

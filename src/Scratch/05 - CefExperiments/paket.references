@@ -5,7 +5,6 @@ Aardvark.Rendering
 Aardvark.Rendering.Vulkan
 Aardvark.Application.WinForms.GL
 Aardvark.SceneGraph
-Aardvark.SceneGraph.IO
 Aardvark.Rendering.Text
 Aardvark.GPGPU
 

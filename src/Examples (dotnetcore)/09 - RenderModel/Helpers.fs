@@ -11,7 +11,7 @@ module Sg =
 
    module Assimp =
         let loadFromFile zUp f =  
-            f |> Aardvark.SceneGraph.IO.Loader.Assimp.load 
+            f |> Aardvark.SceneGraph.Assimp.Loader.Assimp.load 
               |> Sg.adapter 
               |> Sg.noEvents
               // z up transform (optionally)
