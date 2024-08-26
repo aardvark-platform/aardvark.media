@@ -1,13 +1,9 @@
 Aardvark.Build
+Microsoft.NETFramework.ReferenceAssemblies
+FSharp.Core
 
 Another.Unofficial.Xilium.CefGlue
 Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies
 Another.Unofficial.Xilium.CefGlue.WindowsForms
-Microsoft.NETFramework.ReferenceAssemblies
 
-Aardvark.Base
 Aardvark.Base.FSharp
-
-FsPickler
-
-FSharp.Core
