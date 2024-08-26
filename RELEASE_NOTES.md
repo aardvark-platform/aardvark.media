@@ -1,3 +1,6 @@
+### 5.5.1
+- [Cef.WinForms] Fixed missing dependencies
+
 ### 5.5.0
 - Updated to NET 8 and Aardvark.Rendering 5.5
 - Promoted new color picker from `Aardvark.UI.Primitives.ColorPicker2` to `Aardvark.UI.Primitives`. The old color picker is deleted.
