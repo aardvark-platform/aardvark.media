@@ -27,7 +27,7 @@ let runDirect () =
 
 
     Aardium.run {
-        url "http://localhost:4321/test"
+        url "http://localhost:4321/"
         width 1024
         height 768
         debug true
@@ -48,7 +48,7 @@ let runWithRoute () =
 
 
     Aardium.run {
-        url "http://localhost:4321/test"
+        url "http://localhost:4321/test/"
         width 1024
         height 768
         debug true
@@ -108,5 +108,7 @@ let main argv =
     Aardvark.Init()
     Aardium.init()
 
-    runWithSaturn ()
+    runDirect ()
+    //runWithRoute()
+    //runWithSaturn()
 
