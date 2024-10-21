@@ -99,7 +99,7 @@ NUGET
     Aardvark.Base.TypeProviders (4.5.15)
       FSharp.Core (>= 3.1.2.5) - restriction: || (== net471) (&& (== net8.0) (>= net45)) (&& (== net8.0-windows10.0.17763.0) (>= net45)) (&& (== netstandard2.0) (>= net45))
       FSharp.Core (>= 4.2.3) - restriction: || (&& (== net471) (< net45)) (== net8.0) (== net8.0-windows10.0.17763.0) (== netstandard2.0)
-    Aardvark.Build (1.0.25)
+    Aardvark.Build (2.0.3)
     Aardvark.FontProvider (0.1)
       Aardvark.Base.Fonts (>= 5.3)
       FSharp.Core (>= 8.0.100)

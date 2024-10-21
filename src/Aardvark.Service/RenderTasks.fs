@@ -636,8 +636,8 @@ module Internals =
                     GL.BindFramebuffer(FramebufferTarget.DrawFramebuffer, temp)
 
                     GL.BlitFramebuffer(
-                        0, 0, size.X - 1, size.Y - 1, 
-                        0, 0, size.X - 1, size.Y - 1,
+                        0, 0, size.X, size.Y,
+                        0, 0, size.X, size.Y,
                         ClearBufferMask.ColorBufferBit,
                         BlitFramebufferFilter.Nearest
                     )
@@ -699,8 +699,8 @@ module Internals =
                     GL.FramebufferRenderbuffer(FramebufferTarget.DrawFramebuffer, FramebufferAttachment.ColorAttachment0, RenderbufferTarget.Renderbuffer, rbo)
                 
                     GL.BlitFramebuffer(
-                        0, 0, size.X - 1, size.Y - 1, 
-                        0, 0, size.X - 1, size.Y - 1,
+                        0, 0, size.X, size.Y,
+                        0, 0, size.X, size.Y,
                         ClearBufferMask.ColorBufferBit,
                         BlitFramebufferFilter.Nearest
                     )
