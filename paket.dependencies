@@ -35,7 +35,7 @@ nuget Screenshotr.Client                                            ~> 1.5.2
 
 // Examples & Demos
 nuget Aardvark.Geometry.Intersection                                ~> 5.5.0
-nuget Aardium                                                       ~> 2.1.1
+nuget Aardium                                                       ~> 2.1.2
 nuget Uncodium.Eigensystems
 nuget FSharp.Data                                                   ~> 3.0.0
 nuget Aether                                                        ~> 8.3.1

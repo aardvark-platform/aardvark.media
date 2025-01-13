@@ -50,8 +50,6 @@ module RenderControlConfig =
 
 [<AutoOpen>]
 module private Utils =
-    open Aardvark.Base.TypeInfo
-
     let typename<'a> = Aardvark.Base.ReflectionHelpers.getPrettyName typeof<'a>
 
 module Pickler =
