@@ -58,7 +58,7 @@ module App =
         | _ ->
             model
 
-    let app =
+    let app : App<_,_,_> =
         let model = Model.initial Model.animator_
 
         {

@@ -222,7 +222,7 @@ let one =
     }
     [ name, newObject ] |>  HashMap.ofList
 
-let app =
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance
         threads = fun (model : Scene) -> FreeFlyController.threads model.camera |> ThreadPool.map CameraMessage

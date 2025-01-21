@@ -166,7 +166,7 @@ module App =
         surfaceFolder = List.empty
     }
     
-    let app = {
+    let app : App<_,_,_> = {
         unpersist = Unpersist.instance     
         threads = threads 
         initial = initPaths |> SetPaths |> update initial

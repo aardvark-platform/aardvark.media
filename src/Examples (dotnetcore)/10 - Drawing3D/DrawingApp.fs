@@ -152,7 +152,7 @@ let initial =
         points = []
     }
 
-let app =
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance
         threads = fun model -> ArcBallController.threads model.camera |> ThreadPool.map CameraMessage

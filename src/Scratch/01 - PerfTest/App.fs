@@ -70,7 +70,7 @@ let viewScene (model : AdaptiveModel) =
 
 
 let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
-    let app =
+    let app : App<_,_,_> =
         {
             initial = ()
             update = fun () _ -> ()
@@ -129,7 +129,7 @@ let threads (model : Model) =
     else cameraController
 
 
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance     
         threads = threads 

@@ -159,7 +159,7 @@ let viewScene (model : AdaptiveModel) =
     Sg.ofSeq [regular; redMask; yellowMask; redMask; yellowMask; redOutline; yellowOutline] |> Sg.noEvents 
 
 let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
-    let app =
+    let app : App<_,_,_> =
         {
             initial = ()
             update = fun () _ -> ()
@@ -223,7 +223,7 @@ let initLineThickness =
     value  = 2.0
   }
 
-let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance     
         threads = threads 

@@ -212,7 +212,7 @@ let threads (model : Model) =
     ThreadPool.empty
 
 
-let app =       
+let app : App<_,_,_> =       
     let world = Box3d.Unit
     let freeFly, orbit = getInitial world 
     {

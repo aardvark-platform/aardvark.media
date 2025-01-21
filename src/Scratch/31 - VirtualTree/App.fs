@@ -166,7 +166,7 @@ let view (model : AdaptiveModel) =
 let threads (model : Model) =
     ThreadPool.empty
 
-let app =
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance
         threads = threads

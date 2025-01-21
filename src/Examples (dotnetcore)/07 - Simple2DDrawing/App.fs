@@ -143,7 +143,7 @@ let threads (m : Model) =
     ThreadPool.empty
 
 // finally provide an app instance.
-let app =
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance // this code automatically creates functions for updating daptive datastrucutres.
                                        // we do not care much about this here. however, if you get errors in this line, most likely

@@ -40,7 +40,7 @@ module IncApp' =
             ]
         ]
 
-    let app =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+    let app : App<_,_,_> =
         {
             unpersist = Unpersist.instance     
             threads = threads 
@@ -96,7 +96,7 @@ let view (model : AdaptiveModel) =
 
 
 
-let app =                  
+let app : App<_,_,_> =                  
     let rec inc() =
         proclist {
             do! Async.Sleep 2000

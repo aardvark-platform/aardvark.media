@@ -109,7 +109,7 @@ let view (m : AdaptiveModel) =
 let threads (model : Model) = 
     FreeFlyController.threads model.cameraState |> ThreadPool.map CameraAction // compute threads for camera controller and map its outputs with our CameraAction
 
-let app =
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance
         threads = threads

@@ -63,7 +63,7 @@ let threads (model : Model) =
     FreeFlyController.threads model.cameraState |> ThreadPool.map Camera
 
 
-let app =
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance
         threads = threads

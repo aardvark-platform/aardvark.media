@@ -211,7 +211,7 @@ let threads model =
     | NavigationMode.ArcBall -> ArcBallController.threads model.camera |> ThreadPool.map ArcBallAction
     | _ -> failwith "invalid navmode"
 
-let app =
+let app : App<_,_,_> =
     {
         unpersist = Unpersist.instance
         threads   = threads            
