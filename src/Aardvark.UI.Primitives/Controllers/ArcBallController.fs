@@ -252,7 +252,7 @@ module ArcBallController =
 
                 { model with view = cam; dragStart = pos; orbitCenter = center }
 
-
+    [<Obsolete>]
     let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
         onEvent 
             "onmousedown" 
@@ -288,14 +288,12 @@ module ArcBallController =
     let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
-            always (onMouseDown (fun b p -> f (Down(b,p))))
-            //always (onCapturedPointerDown (Some 2) (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f (Down(b,p))))
-            //always (onCapturedPointerUp (Some 2) (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f (Down(b,p))))
-            always (onMouseUp (fun b p -> f (Up b)))
+            always (onCapturedPointerDown None (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f Nop))
+            always (onCapturedPointerUp None (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f Nop))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))
             always (onWheelPrevent true (fun x -> f (Wheel x)))
-            onlyWhen (state.look %|| state.pan %|| state.zoom) (onMouseMove (Move >> f))
+            onlyWhen (state.look %|| state.pan %|| state.zoom) (onCapturedPointerMove None (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
         ]
 
     let extractAttributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg)  =

@@ -1,4 +1,5 @@
 - Fixed multisampled raw download
+- [ArcBallController] Use captured pointer events
 
 ### 5.5.2
 - updated Adaptify.Core to 1.3.0 (using local, new style adaptify)
