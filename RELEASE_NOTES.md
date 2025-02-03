@@ -1,5 +1,6 @@
 - Fixed multisampled raw download
 - [ArcBallController] Use captured pointer events
+- [FreeFlyController] Fix pointer capture for middle mouse button when using iframes
 
 ### 5.5.2
 - updated Adaptify.Core to 1.3.0 (using local, new style adaptify)
