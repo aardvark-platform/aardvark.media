@@ -288,7 +288,10 @@ module ArcBallController =
     let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
-            always (onCapturedPointerDown None (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f Nop))
+            always (onCapturedPointerDownModifiers None (fun t m b p ->
+                let b = if b = MouseButtons.Left && m.ctrl then MouseButtons.Right else b // Workaround for ctrl click on Mac, not sure if still required
+                f <| match t with Mouse -> Down(b, p) | _ -> Nop
+            ))
             always (onCapturedPointerUp None (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f Nop))
             always (onKeyDown (KeyDown >> f))
             always (onKeyUp (KeyUp >> f))
