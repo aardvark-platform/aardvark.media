@@ -1,4 +1,5 @@
 - Fixed multisampled raw download
+- Added pointer event variants with keyboard modifiers
 - [ArcBallController] Use captured pointer events
 - [FreeFlyController] Fix pointer capture for middle mouse button when using iframes
 

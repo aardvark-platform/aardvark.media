@@ -168,6 +168,15 @@ module Events =
             ctrl : bool
         }
 
+    module internal KeyModifiers =
+
+        let ofString (shift: string) (alt: string) (ctrl: string) =
+            {
+                shift = shift = "true"
+                alt = alt = "true"
+                ctrl = ctrl = "true"
+            }
+
     let onKeyDownModifiers (cb : KeyModifiers -> Keys -> 'msg) =
         "onkeydown" ,
         AttributeValue.Event(
@@ -179,12 +188,7 @@ module Events =
                             if rep <> "true" then
                                 let keyCode = int (float keyCode)
                                 let key = KeyConverter.keyFromVirtualKey keyCode
-                                let m = 
-                                    { 
-                                        shift = shift = "true"; 
-                                        alt = alt = "true"
-                                        ctrl = ctrl = "true"
-                                    }
+                                let m = KeyModifiers.ofString shift alt ctrl
                                 Seq.delay (fun () -> Seq.singleton (cb m key))
                             else
                                 Seq.empty
@@ -330,13 +334,23 @@ module Events =
                     | _ ->
                         Seq.empty      
         }
-        
+
     type PointerType =
         | Mouse
         | Touch
         | Pen
 
-    let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : PointerType -> MouseButtons -> V2i -> 'msg) =
+    module internal PointerType =
+
+        let ofString (str: string) =
+            match str.Trim('\"', '\\') with // Is this really needed?
+            | "mouse" -> Mouse
+            | "touch" -> Touch
+            | "pen" -> Pen
+            | _ -> failwith $"PointerType '{str}' not supported"
+
+    let onPointerEventModifiers (name: string) (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>)
+                                (cb : PointerType -> KeyModifiers -> MouseButtons -> V2i -> 'msg) =
         name, AttributeValue.Event {
                 clientSide = fun send src -> 
                     String.concat ";" [
@@ -345,24 +359,41 @@ module Events =
                         yield "var y = (event.clientY - rect.top)"
                         match preventDefault with | None -> () | Some i -> yield (sprintf "if(event.which==%d){event.preventDefault();};" i)
                         match useCapture with | None -> () | Some b -> if b then yield "this.setPointerCapture(event.pointerId)" else yield "this.releasePointerCapture(event.pointerId)"
-                        yield send src ["event.pointerType";"event.which"; "x|0"; "y|0"]
-                        
+                        yield send src ["event.pointerType";"event.which"; "x|0"; "y|0"; "event.shiftKey"; "event.altKey"; "event.ctrlKey"]
+
                     ]
                 serverSide = fun client src args -> 
                     match args with
-                        | pointertypestr :: which :: x :: y :: _ ->
+                        | pointertypestr :: which :: x :: y :: shift :: alt :: ctrl :: _ ->
                             let v : V2i = V2i(int x, int y)
                             let button = if needButton then button which else MouseButtons.None
-                            let pointertypestrp = pointertypestr.Trim('\"').Trim('\\')
-                            let pointertype = match pointertypestrp with | "mouse" -> Mouse | "pen" -> Pen | "touch" -> Touch | _ -> failwith "PointerType not supported"
-                            Seq.singleton (f pointertype button v)
+                            let modifiers = KeyModifiers.ofString shift alt ctrl
+                            let pointertype = PointerType.ofString pointertypestr
+                            Seq.singleton (cb pointertype modifiers button v)
                         | _ ->
-                            Seq.empty      
+                            Seq.empty
             }
-            
-    let onCapturedPointerDown (preventDefault : Option<int>) cb  = onPointerEvent "onpointerdown" true preventDefault (Some true) cb
-    let onCapturedPointerUp (preventDefault : Option<int>) cb = onPointerEvent "onpointerup" true preventDefault (Some false) cb
-    let onCapturedPointerMove (preventDefault : Option<int>) cb = onPointerEvent "onpointermove" false preventDefault None (fun t _ v -> cb t v)
+
+    let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : PointerType -> MouseButtons -> V2i -> 'msg) =
+        onPointerEventModifiers name needButton preventDefault useCapture (fun t _ b p -> f t b p)
+
+    let onCapturedPointerDown preventDefault cb  =
+        onPointerEvent "onpointerdown" true preventDefault (Some true) cb
+
+    let onCapturedPointerDownModifiers preventDefault cb  =
+        onPointerEventModifiers "onpointerdown" true preventDefault (Some true) cb
+
+    let onCapturedPointerUp preventDefault cb =
+        onPointerEvent "onpointerup" true preventDefault (Some false) cb
+
+    let onCapturedPointerUpModifiers preventDefault cb =
+        onPointerEventModifiers "onpointerup" true preventDefault (Some false) cb
+
+    let onCapturedPointerMove preventDefault cb =
+        onPointerEvent "onpointermove" false preventDefault None (fun t _ v -> cb t v)
+
+    let onCapturedPointerMoveModifiers preventDefault cb =
+        onPointerEventModifiers "onpointermove" false preventDefault None (fun t _ v -> cb t v)
 
 module Gamepad =
     
