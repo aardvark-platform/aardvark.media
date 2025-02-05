@@ -1,4 +1,5 @@
 - Fixed multisampled raw download
+- [Animation] Improved adaptive sampling scheme for splines to avoid infinite recursion when control points are coinciding
 
 ### 5.5.2
 - updated Adaptify.Core to 1.3.0 (using local, new style adaptify)

@@ -5,8 +5,18 @@ open Aardvark.Base
 [<AutoOpen>]
 module AnimationSplinePrimitives =
 
+    // TODO (Breaking): Rename user provided epsilon to errorTolerance
     module Splines =
 
+        /// Epsilon value to compare difference between float values.
+        [<Literal>]
+        let Epsilon = 1e-8
+
+        /// Minimum error tolerance for subdividing spline segments.
+        [<Literal>]
+        let MinErrorTolerance = 1e-5
+
+        [<Struct>]
         type private Segment<'T> =
             {
                 mutable MinT   : float
@@ -19,6 +29,7 @@ module AnimationSplinePrimitives =
         /// Represents a spline segment, parameterized by normalized arc length.
         /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
         type Spline<'T>(distance : 'T -> 'T -> float, evaluate : float -> 'T, epsilon : float) =
+            let errorTolerance = max epsilon MinErrorTolerance
 
             let full =
                 let p0 = evaluate 0.0
@@ -33,27 +44,36 @@ module AnimationSplinePrimitives =
                 let p = evaluate t
                 let a = { s with MaxT = t; End = p; Length = distance s.Start p }
                 let b = { s with MinT = t; Start = p; Length = distance p s.End }
-                [a; b]
+                struct (a, b)
 
             let subdivide (segment : Segment<'T>) =
-                let rec inner (accum : Segment<'T> list) (segments : Segment<'T> list) =
+                let rec inner (result : Segment<'T> list) (segments : Segment<'T> list) =
                     match segments with
-                    | [] -> accum
-                    | s::st ->
-                        let halves = half s
-                        let quarters = halves |> List.collect half
-                        let quarterLength = s.Length * 0.25
+                    | [] ->
+                        result |> List.rev |> Array.ofList // Avoid O(n) append, reverse when finished
 
-                        let isQuarterValid (x : Segment<'T>) =
-                            Fun.ApproximateEquals(x.Length / quarterLength, 1.0, epsilon)
+                    // Do not subdivide if length is below epsilon
+                    | s::rest when s.Length < Epsilon ->
+                        inner (s :: result) rest
 
-                        if (quarters |> List.forall isQuarterValid) then
-                            inner (s :: accum) st   // avoid O(n) append, reverse when finished
+                    | s::rest ->
+                        let struct (a, b) = half s
+
+                        // Subdivide if ratio between sum of halves and full segment exceeds tolerance
+                        // Also force an initial subdivision
+                        let isWithinErrorTolerance() =
+                            if result.IsEmpty && rest.IsEmpty then false
+                            else
+                                let errorRatio = (a.Length + b.Length) / s.Length
+                                Fun.ApproximateEquals(errorRatio, 1.0, errorTolerance)
+
+                        if a.Length < Epsilon || b.Length < Epsilon || isWithinErrorTolerance() then
+                            inner (s :: result) rest
                         else
-                            inner accum (halves @ st)
+                            inner result (a :: b :: rest)
 
-                if isFinite epsilon then
-                    [ segment ] |> inner [] |> List.rev |> Array.ofList
+                if isFinite errorTolerance then
+                    [ segment ] |> inner []
                 else
                     [| segment |]
 
@@ -66,7 +86,7 @@ module AnimationSplinePrimitives =
                           Length = s.Length }
                     )
 
-                //// Sum and normalize
+                // Sum and normalize
                 let n = s.Length
                 let mutable sum = KahanSum.Zero
 
@@ -90,7 +110,7 @@ module AnimationSplinePrimitives =
                     elif s > 1.0 then segments.Length - 1
                     else
                         segments |> Array.binarySearch (fun segment ->
-                            if s < segment.Start then -1 elif s > segment.End then 1  else 0
+                            if s < segment.Start then -1 elif s > segment.End then 1 else 0
                         ) |> ValueOption.get
 
                 let t = Fun.InvLerp(s, segments.[i].Start, segments.[i].End)
@@ -126,7 +146,6 @@ module AnimationSplinePrimitives =
 
                 Spline(distance, evaluate, epsilon)
 
-
             if Array.isEmpty points then
                 Array.empty
             else
@@ -141,7 +160,7 @@ module AnimationSplinePrimitives =
 
                 for i = 1 to points.Length - 1 do
                     let d = sqrt (distance pj.[n - 1] points.[i])
-                    if d.ApproximateEquals 0.0 then
+                    if d.IsTiny Epsilon then
                         Log.warn "[Animation] Ignoring duplicate control point in spline"
                     else
                         pj.[n] <- points.[i]
@@ -177,10 +196,9 @@ module AnimationSplinePrimitives =
             /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
             /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
             let inline smoothPath' (distance : ^Value -> ^Value -> float) (epsilon : float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
-
                 let points = Array.ofSeq points
                 let spline = points |> Splines.catmullRom distance epsilon
-                let maxLength = spline |> Array.map (fun s -> s.Length) |> Array.max
+                let maxLength = spline.MaxValue _.Length
 
                 spline |> Array.map (fun s ->
                     let duration = s.Length / maxLength
