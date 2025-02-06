@@ -391,7 +391,4 @@ module Animator =
                 yield! time()
             }
 
-        if model.Slots |> HashMap.exists (fun _ s -> s.Current.IsRunning) then
-            ThreadPool.add "animationTicks" (time()) ThreadPool.empty
-        else
-            ThreadPool.empty
+        ThreadPool.add "animationTicks" (time()) ThreadPool.empty

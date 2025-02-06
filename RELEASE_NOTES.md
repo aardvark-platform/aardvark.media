@@ -1,5 +1,6 @@
 - Fixed multisampled raw download
 - [Animation] Improved adaptive sampling scheme for splines to avoid infinite recursion when control points are coinciding
+- [Animation] Fixed issue with ticks not being processed when all animations are paused
 
 ### 5.5.2
 - updated Adaptify.Core to 1.3.0 (using local, new style adaptify)

@@ -6,6 +6,7 @@ open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Animation
 open FSharp.Data.Adaptive
+open Aardvark.Application
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Model =
@@ -32,6 +33,7 @@ module App =
                     style "width: 100%; height:100%"
                     onEvent "onRendered" [] (fun _ -> Animation AnimatorMessage.RealTimeTick)
                     onClick (fun _ -> GameMessage.Start |> Game)
+                    onKeyDown OnKeyDown
                     attribute "showFPS" "true"
                     attribute "data-samples" "8"
                 ]) RenderControlConfig.standard
@@ -44,7 +46,7 @@ module App =
             ThreadPool.union camera animation
 
 
-    let update (model : Model) (msg : Message) =
+    let rec update (model : Model) (msg : Message) =
         match msg with
         | Game m ->
             m |> Game.update model
@@ -54,6 +56,9 @@ module App =
 
         | Animation msg ->
             model |> Animator.update msg
+
+        | OnKeyDown Keys.Space ->
+            Game GameMessage.Pause |> update model
 
         | _ ->
             model

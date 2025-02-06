@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.UI.Primitives
 open Aardvark.UI.Animation
+open Aardvark.Application
 open FSharp.Data.Adaptive
 open Adaptify
 
@@ -52,6 +53,7 @@ type GameState =
     | Preparing
     | Running of resolved: int
     | Finished
+    | Paused of original: GameState
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module GameState =
@@ -78,8 +80,10 @@ type GameMessage =
     | Select of V2i
     | Hover of V2i
     | Unhover of V2i
+    | Pause
 
 type Message =
+    | OnKeyDown of Keys
     | Game of GameMessage
     | Camera of OrbitMessage
     | Animation of AnimatorMessage<Model>

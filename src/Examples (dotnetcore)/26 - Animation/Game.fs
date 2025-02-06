@@ -495,6 +495,16 @@ module Game =
         | Start when model.state = Introduction ->
             model |> Transitions.flyover
 
+        | Pause ->
+            match model.state with
+            | Paused original ->
+                { model with state = original }
+                |> Animator.iterate (fun a -> a.Resume())
+
+            | _ ->
+                { model with state = Paused model.state }
+                |> Animator.iterate (fun a -> a.Pause())
+
         | _ when not <| GameState.isRunning model.state ->
             model
 
