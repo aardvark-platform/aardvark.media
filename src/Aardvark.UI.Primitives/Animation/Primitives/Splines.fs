@@ -207,7 +207,10 @@ module AnimationSplinePrimitives =
                     |> Animation.seconds (if isFinite duration then duration else 1.0)
                 )
 
+            /// <summary>
             /// Creates an animation that smoothly interpolates along the path given by the control points. Coinciding points are ignored.
             /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
+            /// </summary>
+            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline smoothPath (distance : ^Value -> ^Value -> float) (epsilon : float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
                 points |> smoothPath' distance epsilon |> Animation.path

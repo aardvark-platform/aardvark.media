@@ -138,7 +138,10 @@ module AnimationPrimitives =
 
                         segments
 
+            /// <summary>
             /// Creates an animation that interpolates between the given points. Coinciding points are ignored.
+            /// </summary>
+            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline path (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                             (distance : ^Value -> ^Value -> float)
                             (points : ^Value seq) : IAnimation<'Model, ^Value> =
@@ -151,6 +154,9 @@ module AnimationPrimitives =
             let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 points |> path' lerp distance
 
+            /// <summary>
             /// Creates an animation that linearly interpolates between the given points. Coinciding points are ignored.
+            /// </summary>
+            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline linearPath (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
                 points |> path lerp distance

@@ -162,7 +162,7 @@ module AnimationCameraPrimitives =
                 let points = Array.ofSeq points
 
                 if Array.isEmpty points then
-                    raise <| System.ArgumentException("Camera path cannot be empty")
+                    raise <| System.ArgumentException("Camera path cannot be empty.")
 
                 let sky = points.[0].Sky
                 let positions = points |> Array.map CameraView.location
@@ -195,8 +195,8 @@ module AnimationCameraPrimitives =
             let smoothPath' (epsilon : float) (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
                 let points = Array.ofSeq points
 
-                if Seq.isEmpty points then
-                    raise <| System.ArgumentException("Camera path cannot be empty")
+                if Array.isEmpty points then
+                    raise <| System.ArgumentException("Camera path cannot be empty.")
 
                 let sky = points.[0].Sky
 

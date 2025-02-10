@@ -37,12 +37,12 @@ module InternalAnimatorUtilities =
                     if keys.Length > 0 then
                         let n = Environment.NewLine
                         let lines = n + (keys |> String.concat n)
-                        sprintf "[Animation] Lens for model type '%A' not found. There are %d lenses for the following types:%s" t keys.Length lines
+                        $"[Animation] Unknown model type '{t}'. Registered model types:{lines}"
                     else
-                        "[Animation] No lenses registered. Did you call Animator.initial?"
+                        $"[Animation] Unknown model type '{t}'. Register model types by with Animator.initial."
 
                 Log.error "%s" message
-                raise <| KeyNotFoundException()
+                raise <| InvalidOperationException(message)
 
         let set (lens : Lens<'Model, Animator<'Model>>) =
             let t = typeof<'Model>

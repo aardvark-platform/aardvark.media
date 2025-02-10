@@ -147,7 +147,7 @@ module AnimationPathExtensions =
                 animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation path cannot be empty")
+                raise <| System.ArgumentException("Animation path cannot be empty.")
 
             { Members = PathMembers animations
               DistanceTimeFunction = DistanceTimeFunction.empty

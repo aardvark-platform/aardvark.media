@@ -119,7 +119,7 @@ module AnimationGroupExtensions =
                 animations |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation group cannot be empty")
+                raise <| System.ArgumentException("Animation group cannot be empty.")
 
             { Members = ConcurrentGroupMembers animations
               Mapping = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)

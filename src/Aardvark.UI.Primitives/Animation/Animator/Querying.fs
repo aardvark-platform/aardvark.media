@@ -29,7 +29,7 @@ module AnimatorQuerying =
         /// </summary>
         /// <exception cref="KeyNotFoundException">Thrown if the slot does not exist.</exception>
         let inline getSlot (name : ^Name) (model : 'Model) =
-            model |> tryGetSlot name |> Option.defaultWith (raise <| KeyNotFoundException())
+            model |> tryGetSlot name |> Option.defaultWith (fun _ -> raise <| KeyNotFoundException($"Slot with name '{name}' does not exist."))
 
         /// Tries to get the current (untyped) animation instance in the slot with the given name.
         /// The name can be a string or Symbol. Returns None if the
