@@ -55,7 +55,8 @@
       "Scratch\\26 - ReplaceTest\\26 - ReplaceTest.fsproj",
       "Scratch\\27 - NavigationDemoNew\\27 - NavigationDemoNew.fsproj",
       "Scratch\\28 - Giraffe\\28 - Giraffe.fsproj",
-      "Tests\\Aardvark.UI.Animation.Benchmarks\\Aardvark.UI.Animation.Benchmarks.fsproj"
+      "Tests\\Aardvark.UI.Animation.Benchmarks\\Aardvark.UI.Animation.Benchmarks.fsproj",
+      "Tests\\Aardvark.UI.Animation.Tests\\Aardvark.UI.Animation.Tests.fsproj"
     ]
   }
 }

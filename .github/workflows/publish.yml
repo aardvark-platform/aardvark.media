@@ -22,12 +22,11 @@ jobs:
         run: dotnet tool restore
       - name: Restore
         run: dotnet paket restore
-      # - name: Generate Code
-      #   shell: cmd
-      #   run: generate.cmd
       - name: Build
         shell: cmd
         run: dotnet build -c Release src\Aardvark.Media.NoExamples.slnf
+      - name: Test
+        run: dotnet test src\Aardvark.Media.NoExamples.slnf -c Release --no-build --nologo --logger:"console;verbosity=normal"        
       - name: Pack
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

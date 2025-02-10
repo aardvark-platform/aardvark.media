@@ -42,4 +42,10 @@ nuget Aether                                                        ~> 8.3.1
 nuget Chiron
 nuget Saturn                                                        ~> 0.15.0
 nuget Microsoft.AspNetCore.Authentication.JwtBearer                 ~> 8.0.0
-nuget BenchmarkDotNet                                               ~> 0.13.1
+
+// Tests
+nuget Expecto                                                       ~> 10.2.1
+nuget Expecto.FsCheck                                               ~> 10.2.1
+nuget BenchmarkDotNet                                               ~> 0.14.0
+nuget YoloDev.Expecto.TestSdk                                       ~> 0.15.0
+nuget Microsoft.NET.Test.Sdk                                        ~> 17.12.0

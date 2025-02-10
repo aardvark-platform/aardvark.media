@@ -158,6 +158,8 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "04 - Screenshotr", "Scratch
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "32 - Splines", "Scratch\32 - Splines\32 - Splines.fsproj", "{B315793A-9E8F-4472-8DA4-58E507BFB2E3}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Animation.Tests", "Tests\Aardvark.UI.Animation.Tests\Aardvark.UI.Animation.Tests.fsproj", "{9F11A02C-489E-4CC2-99EC-64D657A5D567}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -424,6 +426,10 @@ Global
 		{B315793A-9E8F-4472-8DA4-58E507BFB2E3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B315793A-9E8F-4472-8DA4-58E507BFB2E3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B315793A-9E8F-4472-8DA4-58E507BFB2E3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F11A02C-489E-4CC2-99EC-64D657A5D567}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F11A02C-489E-4CC2-99EC-64D657A5D567}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F11A02C-489E-4CC2-99EC-64D657A5D567}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F11A02C-489E-4CC2-99EC-64D657A5D567}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -494,6 +500,7 @@ Global
 		{24D7C14A-3337-494B-8D72-4A2104D4956D} = {5DAFA99B-848D-4185-B4C1-287119815657}
 		{F54A0F8D-DBF7-4483-B47E-DFBB3273027B} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{B315793A-9E8F-4472-8DA4-58E507BFB2E3} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
+		{9F11A02C-489E-4CC2-99EC-64D657A5D567} = {C47A910F-5F84-4084-BFE4-47E7EB45B1B0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}

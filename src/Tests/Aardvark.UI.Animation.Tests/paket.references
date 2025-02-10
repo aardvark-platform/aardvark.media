@@ -1,0 +1,7 @@
+FSharp.Core
+
+Expecto
+Expecto.FsCheck
+BenchmarkDotNet
+YoloDev.Expecto.TestSdk
+Microsoft.NET.Test.Sdk
