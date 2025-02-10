@@ -45,7 +45,6 @@ module private StateMachine =
             machine.State <- State.Running (tick - startFrom)
             machine.Position <- startFrom
             queue.Enqueue { Type = EventType.Start; Value = machine.Value }
-            queue.Enqueue { Type = EventType.Progress; Value = machine.Value }
 
         | Action.Pause ->
             match machine.State with

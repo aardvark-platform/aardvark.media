@@ -76,11 +76,15 @@ module Animator =
             let animator = { Optic.get lens model with CurrentTick = ValueSome time }
             let mutable model = model |> Optic.set lens animator
 
-            // Update all running animations
+            // Process pending actions
+            for (_, s) in animator.Slots do
+                model <- s.Commit(model, time)
+
+            // Update all running animations by generating and enqueuing Update actions
             for (_, s) in animator.Slots do
                 s.Update time
 
-            // Notify all observers
+            // Process Update actions
             for (_, s) in animator.Slots do
                 model <- s.Commit(model, time)
 
