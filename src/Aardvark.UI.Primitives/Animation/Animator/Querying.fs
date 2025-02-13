@@ -60,7 +60,7 @@ module AnimatorQuerying =
         /// </summary>
         /// <exception cref="KeyNotFoundException">Thrown if the slot does not exist.</exception>
         /// <exception cref="InvalidCastException">Thrown if the animation instance is not of the expected type.</exception>
-        let inline get (name : ^Name) (model : 'Model) : IAnimation<'Model, 'Value> =
+        let inline get (name : ^Name) (model : 'Model) : IAnimationInstance<'Model, 'Value> =
             model |> getUntyped name |> unbox
 
         /// Returns whether an animator slot with the given name exists.

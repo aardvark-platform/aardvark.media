@@ -2,6 +2,7 @@
 - [Animation] Improved adaptive sampling scheme for splines to avoid infinite recursion when control points are coinciding
 - [Animation] Fixed issue with ticks not being processed when all animations are paused
 - [Animation] Adjust action processing to resolve an issue with events when restarting an animation
+- [Animation] Fixed broken Animator.get (wrong return type)
 
 ### 5.5.2
 - updated Adaptify.Core to 1.3.0 (using local, new style adaptify)
