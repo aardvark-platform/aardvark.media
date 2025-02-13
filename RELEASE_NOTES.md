@@ -1,4 +1,7 @@
 - Fixed multisampled raw download
+- Added pointer event variants with keyboard modifiers
+- [ArcBallController] Use captured pointer events
+- [FreeFlyController] Fix pointer capture for middle mouse button when using iframes
 - [Animation] Improved adaptive sampling scheme for splines to avoid infinite recursion when control points are coinciding
 - [Animation] Fixed issue with ticks not being processed when all animations are paused
 - [Animation] Adjust action processing to resolve an issue with events when restarting an animation

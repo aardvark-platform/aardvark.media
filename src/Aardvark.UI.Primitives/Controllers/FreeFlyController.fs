@@ -610,11 +610,11 @@ module FreeFlyController =
     let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) = 
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))
-            always (onCapturedPointerDown (Some 2) (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f Nop))
-            always (onCapturedPointerUp (Some 2) (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f Nop))
+            always (onCapturedPointerDown None (fun t b p -> match t with Mouse -> f (Down(b,p)) | _ -> f Nop))
+            always (onCapturedPointerUp None (fun t b p -> match t with Mouse -> f (Up(b)) | _ -> f Nop))
             onlyWhen 
                 (state.look %|| state.pan %|| state.dolly %|| state.zoom) 
-                (onCapturedPointerMove (Some 2) (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
+                (onCapturedPointerMove None (fun t p -> match t with Mouse -> f (Move p) | _ -> f Nop ))
             always (onKeyDownModifiers (fun m k -> KeyDown(m,k) |> f))
             always (onKeyUpModifiers (fun m k -> KeyUp(m,k) |> f))
             always (onWheelPrevent true (fun x -> f (Wheel x)))
