@@ -20,6 +20,7 @@
   <ItemGroup>
     <Compile Include="Utilities.fs" />
     <Compile Include="SimpleTests.fs" />
+    <Compile Include="AnimatorTests.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

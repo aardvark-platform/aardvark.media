@@ -72,20 +72,22 @@ module Animator =
 
         let tick (lens : Lens<'Model, Animator<'Model>>) (time : GlobalTime) (model : 'Model) =
 
+            let getSlots model = (Optic.get lens model).Slots
+
             // Set the current tick
             let animator = { Optic.get lens model with CurrentTick = ValueSome time }
             let mutable model = model |> Optic.set lens animator
 
             // Process pending actions
-            for (_, s) in animator.Slots do
+            for (_, s) in getSlots model do
                 model <- s.Commit(model, time)
 
             // Update all running animations by generating and enqueuing Update actions
-            for (_, s) in animator.Slots do
+            for (_, s) in getSlots model do
                 s.Update time
 
             // Process Update actions
-            for (_, s) in animator.Slots do
+            for (_, s) in getSlots model do
                 model <- s.Commit(model, time)
 
             // Reset current tick and increase tick count
@@ -109,11 +111,14 @@ module Animator =
 
             | _ ->
                 let slot = AnimatorSlot(name, animation.Create name)
+
+                let model =
+                    model |> Optic.map lens (fun animator ->
+                        { animator with Slots = animator.Slots |> HashMap.add name slot }
+                    )
+
                 slot.Perform(action)
                 slot.Commit(model, &animator.CurrentTick)
-                |> Optic.map lens (fun animator ->
-                    { animator with Slots = animator.Slots |> HashMap.add name slot }
-                )
 
         let enqueue (lens : Lens<'Model, Animator<'Model>>)
                     (name : Symbol) (animation : 'Model -> IAnimation<'Model>)
@@ -129,11 +134,14 @@ module Animator =
 
             | _ ->
                 let slot = AnimatorSlot(name, (animation model).Create name)
+
+                let model =
+                    model |> Optic.map lens (fun animator ->
+                        { animator with Slots = animator.Slots |> HashMap.add name slot }
+                    )
+
                 slot.Perform(action)
                 slot.Commit(model, &animator.CurrentTick)
-                |> Optic.map lens (fun animator ->
-                    { animator with Slots = animator.Slots |> HashMap.add name slot }
-                )
 
         let remove (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
             model |> Optic.map lens (fun animator ->
