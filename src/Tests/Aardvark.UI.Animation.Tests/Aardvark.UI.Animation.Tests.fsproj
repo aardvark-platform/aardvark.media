@@ -21,6 +21,7 @@
     <Compile Include="Utilities.fs" />
     <Compile Include="SimpleTests.fs" />
     <Compile Include="AnimatorTests.fs" />
+    <Compile Include="PrimitivesTests.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

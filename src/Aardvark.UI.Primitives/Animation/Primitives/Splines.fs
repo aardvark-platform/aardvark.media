@@ -4,13 +4,10 @@ open Aardvark.Base
 
 [<AutoOpen>]
 module AnimationSplinePrimitives =
+    open Animation.Primitives.Utilities
 
     // TODO (Breaking): Rename user provided epsilon to errorTolerance
     module Splines =
-
-        /// Epsilon value to compare difference between float values.
-        [<Literal>]
-        let Epsilon = 1e-8
 
         /// Minimum error tolerance for subdividing spline segments.
         [<Literal>]
@@ -72,12 +69,12 @@ module AnimationSplinePrimitives =
                         else
                             inner result (a :: b :: rest)
 
-                if isFinite errorTolerance then
+                if isFinite errorTolerance && not <| isNaN segment.Length then
                     [ segment ] |> inner []
                 else
                     [| segment |]
 
-            let segments, length =
+            let struct (segments, length) =
 
                 let s =
                     full |> subdivide |> Array.map (fun s ->
@@ -98,10 +95,12 @@ module AnimationSplinePrimitives =
                 sum <- sum + s.[n - 1].Length
                 s.[n - 1].End <- sum.Value
 
-                for i = 0 to n - 1 do
-                    s.[i].Start <- s.[i].Start / sum.Value
-                    s.[i].End <- s.[i].End / sum.Value
+                if sum.Value >= Epsilon then
+                    for i = 0 to n - 1 do
+                        s.[i].Start <- s.[i].Start / sum.Value
+                        s.[i].End <- s.[i].End / sum.Value
 
+                s.[n - 1].End <- 1.0
                 s, sum.Value
 
             let lookup s =
@@ -124,7 +123,7 @@ module AnimationSplinePrimitives =
         let inline private scale (t : float) (x : ^T) =
             t |> lerp zero x
 
-        /// Computes a Catmull-Rom spline from the given points, parameterized by arc length.
+        /// Computes a centripetal Catmull-Rom spline from the given points, parameterized by arc length.
         /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
         let inline catmullRom (distance : ^T -> ^T -> float) (epsilon : float) (points : ^T[]) : Spline< ^T>[] =
 
@@ -146,11 +145,32 @@ module AnimationSplinePrimitives =
 
                 Spline(distance, evaluate, epsilon)
 
+            // Linear evaluation for segments with zero length
+            let linearSegment (pj : ^T[]) (index: int) =
+                let evaluate =
+                    if Unchecked.equals pj.[index] pj.[index + 1] then
+                        fun _ -> pj.[index]
+                    else
+                        lerp pj.[index] pj.[index + 1]
+
+                Spline(distance, evaluate, infinity)
+
             if Array.isEmpty points then
                 Array.empty
+
+            elif points.Length = 1 then
+                let constDist _ _ = 0.0
+                let constValue _ = points.[0]
+                Array.singleton <| Spline(constDist, constValue, infinity)
+
             else
                 let tj = Array.zeroCreate (points.Length + 2)
                 let pj = Array.zeroCreate (points.Length + 2)
+
+                // Offset of the first of four control points for each segment
+                // Set to -1 if segment has zero length
+                let offset = Array.zeroCreate (points.Length - 1)
+                offset.[0] <- -1
 
                 pj.[1] <- points.[0]
                 tj.[1] <- 0.0
@@ -158,57 +178,59 @@ module AnimationSplinePrimitives =
                 let mutable n = 2
                 let mutable sum = KahanSum.Zero
 
-                for i = 1 to points.Length - 1 do
-                    let d = sqrt (distance pj.[n - 1] points.[i])
-                    if d.IsTiny Epsilon then
-                        Log.warn "[Animation] Ignoring duplicate control point in spline"
+                for i = 0 to points.Length - 2 do
+                    let d = sqrt (distance pj.[n - 1] points.[i + 1]) // alpha = 0.5 -> centripetal
+                    if d < Epsilon then
+                        offset.[i] <- -1
                     else
-                        pj.[n] <- points.[i]
+                        offset.[i] <- n - 2
+                        pj.[n] <- points.[i + 1]
                         sum <- sum + d
                         tj.[n] <- sum.Value
                         inc &n
 
-                // At this point n is the number of control points + 1, or number of final points
-                // minus 1 since we compute and add a point to each end.
-                if n = 2 then
-                    let zeroDist _ _ = 0.0
-                    let constPoint _ = pj.[1]
-                    [| Spline(zeroDist, constPoint, infinity) |]
-                else
+                // Add an additional control point at the beginning and end
+                if n > 2 then
                     pj.[0] <- pj.[1] + (pj.[1] - pj.[2])
                     tj.[0] <- 0.0
 
                     pj.[n] <- pj.[n - 1] + (pj.[n - 1] - pj.[n - 2])
-                    tj.[n] <- tj.[n - 1] + sqrt (distance pj.[n - 1] pj.[n])
+                    tj.[n] <- tj.[n - 1] + (tj.[n - 1] - tj.[n - 2])
 
-                    let d = sqrt (distance pj.[0] pj.[1])
+                    let d = tj.[2] - tj.[1]
                     for i = 1 to n do
                         tj.[i] <- tj.[i] + d
 
-                    Array.init (n - 2) (segment tj pj)
-
+                Array.init (points.Length - 1) (fun i ->
+                    if offset.[i] > -1 then
+                        segment tj pj offset.[i]
+                    else
+                        linearSegment points i
+                )
 
     module Animation =
 
         module Primitives =
 
             /// Creates an array of animations that smoothly interpolate along the path given by the control points.
-            /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
+            /// The animations are scaled according to the length of the spline segments.
             /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
             let inline smoothPath' (distance : ^Value -> ^Value -> float) (epsilon : float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 let points = Array.ofSeq points
                 let spline = points |> Splines.catmullRom distance epsilon
-                let maxLength = spline.MaxValue _.Length
+                let totalLength = spline |> Array.stableSumBy _.Length
 
                 spline |> Array.map (fun s ->
-                    let duration = s.Length / maxLength
+                    let duration =
+                        if totalLength < Epsilon || not <| isFinite s.Length then 0.0
+                        else s.Length / totalLength
 
                     Animation.create s.Evaluate
-                    |> Animation.seconds (if isFinite duration then duration else 1.0)
+                    |> Animation.seconds duration
                 )
 
             /// <summary>
-            /// Creates an animation that smoothly interpolates along the path given by the control points. Coinciding points are ignored.
+            /// Creates an animation that smoothly interpolates along the path given by the control points.
             /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>

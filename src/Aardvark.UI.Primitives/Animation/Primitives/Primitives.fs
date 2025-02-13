@@ -11,6 +11,21 @@ module AnimationPrimitives =
 
             module Utilities =
 
+                /// Epsilon value to compare difference between float values.
+                [<Literal>]
+                let Epsilon = 1e-8
+
+                // TODO: Remove when updated to Aarvark.Base > 5.3.7
+                module Array =
+
+                    let inline stableSumBy ([<InlineIfLambda>] mapping: 'T -> float) (arr: 'T[]) =
+                        let mutable sum = KahanSum.Zero
+                        for x in arr do sum <- sum + mapping x
+                        sum.Value
+
+                    let inline stableSum (arr: float[]) =
+                        arr |> stableSumBy id
+
                 type DoubleConverter =
                     static member inline ToDouble(x : float) = x
                     static member inline ToDouble(x : float32) = float x
@@ -58,8 +73,11 @@ module AnimationPrimitives =
 
             /// Creates an animation that linearly interpolates between src and dst.
             let inline lerp (src : ^Value) (dst : ^Value) : IAnimation<'Model, ^Value> =
-                Animation.create (lerp src dst)
-                |> Animation.seconds 1
+                if Unchecked.equals src dst then
+                    constant src
+                else
+                    Animation.create (lerp src dst)
+                    |> Animation.seconds 1
 
             /// Creates an animation that linearly interpolates the variable specified by
             /// the lens to dst. The animation is linked to that variable via an observer with a progress callback.
@@ -71,11 +89,14 @@ module AnimationPrimitives =
             /// Creates an animation that linearly interpolates between the given angles in radians.
             /// The value type can be either float or float32.
             let inline lerpAngle (srcInRadians : ^Value) (dstInRadians : ^Value) : IAnimation<'Model, ^Value> =
-                let src, dst = toDouble srcInRadians, toDouble dstInRadians
-                let diff = Fun.AngleDifference(src, dst)
+                if Unchecked.equals srcInRadians dstInRadians then
+                    constant srcInRadians
+                else
+                    let src, dst = toDouble srcInRadians, toDouble dstInRadians
+                    let diff = Fun.AngleDifference(src, dst)
 
-                lerp src (src + diff)
-                |> Animation.map (fun value -> ofDouble <| value % Constant.PiTimesTwo)
+                    lerp src (src + diff)
+                    |> Animation.map (fun value -> ofDouble <| value % Constant.PiTimesTwo)
 
             /// Creates an animation that linearly interpolates the variable specified by
             /// the lens to the given angle in radians. The animation is linked to that variable via an observer with a progress callback.
@@ -88,11 +109,14 @@ module AnimationPrimitives =
             /// Creates an animation using spherical linear interpolation between the given orientations.
             /// The orientation type can be either Rot3d or Rot3f.
             let inline slerp (src : ^Rot3) (dst : ^Rot3) : IAnimation<'Model, ^Rot3> =
-                let src, dst = toRot3d src, toRot3d dst
+                if Unchecked.equals src dst then
+                    constant src
+                else
+                    let src, dst = toRot3d src, toRot3d dst
 
-                Animation.create (fun t -> Rot.SlerpShortest(src, dst, t))
-                |> Animation.seconds 1
-                |> Animation.map (ofRot3d)
+                    Animation.create (fun t -> Rot.SlerpShortest(src, dst, t))
+                    |> Animation.seconds 1
+                    |> Animation.map (ofRot3d)
 
             /// Creates an animation using spherical linear interpolation.
             /// The animation is linked to the variable specified by the given lens via an observer with a progress callback.
@@ -103,43 +127,34 @@ module AnimationPrimitives =
 
 
             /// Creates an array of animations that interpolate between pairs of the given points.
-            /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
+            /// The animations are scaled according to the distance between the points.
             let inline path' (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                              (distance : ^Value -> ^Value -> float)
                              (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
 
                 let pj = Array.ofSeq points
-                let dj = Array.zeroCreate pj.Length
 
-                // Filter duplicates and create animations
-                if Array.isEmpty pj then
-                    [||]
+                if pj.Length = 0 then
+                    Array.empty
+
+                elif pj.Length = 1 then
+                    Array.singleton <| constant pj.[0]
+
                 else
-                    let mutable n = 1
+                    let dj = Array.init (pj.Length - 1) (fun i -> distance pj.[i] pj.[i + 1])
+                    let totalLength = dj |> Array.stableSum
 
-                    for i = 1 to pj.Length - 1 do
-                        let d = distance pj.[n - 1] pj.[i]
-                        if d.ApproximateEquals 0.0 then
-                            Log.warn "[Animation] Ignoring duplicate control point in path"
-                        else
-                            pj.[n] <- pj.[i]
-                            dj.[n] <- d
-                            inc &n
+                    Array.init dj.Length (fun i ->
+                        let duration =
+                            if totalLength < Epsilon || not <| isFinite dj.[i] then 0.0
+                            else dj.[i] / totalLength
 
-                    if n = 1 then
-                        [| constant pj.[0] |]
-                    else
-                        let maxLength = dj |> Array.max
-
-                        let segments = Array.zeroCreate (n - 1)
-                        for i = 0 to (n - 2) do
-                            let d = dj.[i + 1] / maxLength
-                            segments.[i] <- interpolate pj.[i] pj.[i + 1] |> Animation.seconds d
-
-                        segments
+                        interpolate pj[i] pj[i + 1]
+                        |> Animation.seconds duration
+                    )
 
             /// <summary>
-            /// Creates an animation that interpolates between the given points. Coinciding points are ignored.
+            /// Creates an animation that interpolates between the given points.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline path (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
@@ -150,12 +165,12 @@ module AnimationPrimitives =
 
 
             /// Creates an array of animations that interpolate linearly between pairs of the given points.
-            /// The animations are scaled according to the distance between the points. Coinciding points are ignored.
+            /// The animations are scaled according to the distance between the points.
             let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 points |> path' lerp distance
 
             /// <summary>
-            /// Creates an animation that linearly interpolates between the given points. Coinciding points are ignored.
+            /// Creates an animation that linearly interpolates between the given points.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline linearPath (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> =

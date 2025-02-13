@@ -48,3 +48,6 @@ module Expect =
     let checkEvents (actual: ResizeArray<'T>) (expected: 'T seq) =
         Expect.sequenceEqual actual expected "Unexpected events"
         actual.Clear()
+
+    let v3dClose (accuracy: Accuracy) (actual: V3d) (expected: V3d) (message: string) =
+        for i = 0 to 2 do Expect.floatClose accuracy actual.[i] expected.[i] message

@@ -3,6 +3,7 @@
 - [Animation] Fixed issue with ticks not being processed when all animations are paused
 - [Animation] Adjust action processing to resolve an issue with events when restarting an animation
 - [Animation] Fixed broken Animator.get (wrong return type)
+- [Animation] Coinciding control points for linear and smooth paths are no longer removed
 
 ### 5.5.2
 - updated Adaptify.Core to 1.3.0 (using local, new style adaptify)
