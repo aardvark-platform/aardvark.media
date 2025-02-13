@@ -31,6 +31,8 @@
       "Examples (dotnetcore)\\24 - Channels\\24 - Channels.fsproj",
       "Examples (dotnetcore)\\25 - BackgroundOperation\\25 - BackgroundOperation.fsproj",
       "Examples (dotnetcore)\\26 - Animation\\26 - Animation.fsproj",
+      "Examples (dotnetcore)\\27 - GoldenLayout\\27 - GoldenLayout.fsproj",
+      "Examples (dotnetcore)\\28 - Notifications\\28 - Notifications.fsproj",
       "Scratch\\01 - PerfTest\\01 - PerfTest.fsproj",
       "Scratch\\02 - DrawRects\\02 - DrawRects.fsproj",
       "Scratch\\03 - LinePicking\\03 - LinePicking.fsproj",
@@ -51,10 +53,12 @@
       "Scratch\\22 - FootPrint\\22 - FootPrint.fsproj",
       "Scratch\\23 - OrthographicCamera\\23 - OrthographicCamera.fsproj",
       "Scratch\\24 - FileWatcher\\24 - FileWatcher.fsproj",
-      "Scratch\\25 - GoldenLayout\\25 - GoldenLayout.fsproj",
       "Scratch\\26 - ReplaceTest\\26 - ReplaceTest.fsproj",
       "Scratch\\27 - NavigationDemoNew\\27 - NavigationDemoNew.fsproj",
       "Scratch\\28 - Giraffe\\28 - Giraffe.fsproj",
+      "Scratch\\29 - Garbage Collection\\29 - Garbage Collection.fsproj",
+      "Scratch\\31 - VirtualTree\\31 - VirtualTree.fsproj",
+      "Scratch\\32 - Splines\\32 - Splines.fsproj",
       "Tests\\Aardvark.UI.Animation.Benchmarks\\Aardvark.UI.Animation.Benchmarks.fsproj",
       "Tests\\Aardvark.UI.Animation.Tests\\Aardvark.UI.Animation.Tests.fsproj"
     ]
