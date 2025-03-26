@@ -9,7 +9,7 @@ open FSharp.Data.Adaptive
 open Aardvark.Rendering
 open Aardvark.SceneGraph
 open Aardvark.SceneGraph.Semantics
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 open Aardvark.SceneGraph.SgPrimitives
 open Aardvark.Rendering.Text
 open Aardvark.UI.Primitives

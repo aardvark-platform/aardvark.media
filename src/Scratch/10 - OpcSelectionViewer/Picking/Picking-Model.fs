@@ -6,7 +6,7 @@ open FSharp.Data.Adaptive
 open Aardvark.Geometry
 open OpcSelectionViewer
 open OpcSelectionViewer.KdTrees
-open Aardvark.SceneGraph.Opc
+open Aardvark.Data.Opc
 open Adaptify
 
 type PickingAction = 

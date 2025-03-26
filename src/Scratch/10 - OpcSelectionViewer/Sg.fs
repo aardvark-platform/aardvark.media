@@ -12,7 +12,7 @@ open Aardvark.UI.``F# Sg``
 open OpcSelectionViewer.Picking
 
 module SceneObjectHandling = 
-  open Aardvark.SceneGraph.Opc
+  open Aardvark.Data.Opc
   open Aardvark.UI
   open Aardvark.UI
 

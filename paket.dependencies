@@ -13,7 +13,6 @@ nuget Aardvark.Application.WinForms.GL                              ~> 5.5.0
 nuget Aardvark.Application.Slim.GL                                  ~> 5.5.0
 nuget Aardvark.SceneGraph                                           ~> 5.5.0
 nuget Aardvark.SceneGraph.Assimp                                    ~> 5.5.0
-nuget Aardvark.SceneGraph.Opc                                       ~> 5.5.0
 nuget Aardvark.Rendering.Text                                       ~> 5.5.0
 nuget Aardvark.Rendering.Vulkan                                     ~> 5.5.0
 nuget Aardvark.GPGPU                                                ~> 5.5.0
@@ -34,6 +33,7 @@ nuget Another.Unofficial.Xilium.CefGlue.WindowsForms                ~> 0.4.0
 nuget Screenshotr.Client                                            ~> 1.5.2
 
 // Examples & Demos
+nuget Aardvark.Data.Opc                                             ~> 0.11.0
 nuget Aardvark.Geometry.Intersection                                ~> 5.5.0
 nuget Aardium                                                       ~> 2.1.2
 nuget Uncodium.Eigensystems

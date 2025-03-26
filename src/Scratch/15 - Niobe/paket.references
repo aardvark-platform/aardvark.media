@@ -1,12 +1,12 @@
 Aardvark.Base
 Aardvark.Base.FSharp
+Aardvark.Data.Opc
 
 Aardvark.Rendering
 Aardvark.Rendering.Vulkan
 Aardvark.Rendering.Text
 Aardvark.Application.Slim.GL
 Aardvark.SceneGraph
-Aardvark.SceneGraph.Opc
 Adaptify.MSBuild
 
 FsPickler
