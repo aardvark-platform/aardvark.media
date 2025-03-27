@@ -1,3 +1,6 @@
+### 5.6.0-prerelease0001
+- Updated to Aarvark.Rendering 5.6.0-prerelease0001
+
 ### 5.5.3
 - Fixed multisampled raw download
 - Added pointer event variants with keyboard modifiers
