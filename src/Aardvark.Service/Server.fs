@@ -268,7 +268,7 @@ module private ReadPixel =
         open Aardvark.Rendering.Vulkan
 
         let downloadDepth (pixel : V2i) (img : Image) =
-            let temp = img.Device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit (int64 sizeof<uint32>)
+            let temp = img.Device.ReadbackMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit (uint64 sizeof<uint32>)
             img.Device.perform {
                 do! Command.TransformLayout(img, VkImageLayout.TransferSrcOptimal)
                 //do! Command.TransformLayout(temp, VkImageLayout.TransferDstOptimal)

@@ -49,7 +49,7 @@ module private Tools =
             let device = fbo.Device
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[TextureAspect.Color, 0, 0]
 
-            let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
+            let tmp = device.ReadbackMemory.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
 
             let small =
                 if size <> fbo.Size then
@@ -104,7 +104,7 @@ module private Tools =
                 else
                     None
 
-            let tmp = device.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
+            let tmp = device.ReadbackMemory.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
             let oldLayout = color.Image.Layout
             device.perform {
                 do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
