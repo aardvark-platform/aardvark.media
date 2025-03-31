@@ -6,6 +6,7 @@ storage: none
 nuget Aardvark.Build                                                ~> 2.0.3
 
 nuget FSharp.Core                                                   >= 8.0.0 lowest_matching: true
+nuget System.Text.Json                                              >= 8.0.5 lowest_matching: true
 nuget Microsoft.NETFramework.ReferenceAssemblies                    >= 1.0.0 lowest_matching: true
 
 nuget Aardvark.Rendering                                            ~> 5.5.0
