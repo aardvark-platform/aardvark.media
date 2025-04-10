@@ -1,6 +1,5 @@
-![Windows](https://github.com/aardvark-platform/aardvark.media/workflows/Windows/badge.svg)
-![MacOS](https://github.com/aardvark-platform/aardvark.media/workflows/MacOS/badge.svg)
-![Linux](https://github.com/aardvark-platform/aardvark.media/workflows/Linux/badge.svg)
+![Build](https://github.com/aardvark-platform/aardvark.media/workflows/Build/badge.svg)
+![Publish](https://github.com/aardvark-platform/aardvark.media/workflows/Publish/badge.svg)
 
 [![Discord](https://badgen.net/discord/online-members/UyecnhM)](https://discord.gg/UyecnhM)
 [![license](https://img.shields.io/github/license/aardvark-platform/aardvark.media.svg)](https://github.com/aardvark-platform/aardvark.media/blob/master/LICENSE)
