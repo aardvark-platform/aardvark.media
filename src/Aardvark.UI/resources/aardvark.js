@@ -934,21 +934,22 @@ if (!aardvark.addReferences) {
                         var kind = ref.kind;
                         var name = ref.name;
                         var url = ref.url;
-                        if (kind === "script") {
+                        if (kind === "script" || kind === "module") {
                             if (!aardvark.referencedScripts[name]) {
                                 aardvark.referencedScripts[name] = true;
                                 return function () {
                                     var script = document.createElement("script");
                                     var cc = function (evt) {
-                                        console.debug("[Aardvark] referenced script \"" + name + "\" (" + url + ")");
+                                        console.debug(`[Aardvark] referenced ${kind} "${name}" (${url})`);
                                         acc(i + 1)();
                                     };
                                     var err = function (evt) {
-                                        console.warn("[Aardvark] failed to referenced script \"" + name + "\" (" + url + ")");
+                                        console.warn(`[Aardvark] failed to referenced ${kind} "${name}" (${url})`);
                                         acc(i + 1)();
                                     };
                                     script.src = url;
                                     script.async = true;
+                                    if (kind === "module") script.type = "module";
                                     script.addEventListener("load", cc);
                                     script.addEventListener("error", err);
                                     document.getElementsByTagName("script")[0].parentNode.appendChild(script);

@@ -43,6 +43,7 @@ module Reflection =
     let private mimeTypes =
         Dictionary.ofList [
             ".js", "text/javascript"
+            ".mjs", "text/javascript"
             ".css", "text/css"
             ".svg", "image/svg+xml"
             ".woff", "application/x-font-woff"
