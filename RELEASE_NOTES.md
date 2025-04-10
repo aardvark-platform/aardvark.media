@@ -1,3 +1,7 @@
+### 5.5.4
+- Added basic support for JavaScript modules.
+- [Screenshotr] Fixed System.Text.Json dependency
+
 ### 5.5.3
 - Fixed multisampled raw download
 - Added pointer event variants with keyboard modifiers
