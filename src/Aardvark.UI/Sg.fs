@@ -312,7 +312,7 @@ module ``F# Sg`` =
         let adapter (o : obj) =
             Sg.adapter o |> box
 
-        /// Applies the given activation function to the the given scene graph.
+        /// Applies the given activation function to the given scene graph.
         /// An activation function is invoked when the render objects of the scene graph are prepared.
         /// The resulting IDisposable is disposed when the render objects are disposed.
         let onActivation (f : unit -> IDisposable) (sg : ISg<'msg>) =
@@ -422,12 +422,12 @@ module ``F# Sg`` =
 
         /// Sets the sampler state for the texture slot with the given name.
         /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
-        let inline samplerState (name : ^Name) (state : aval<SamplerState option>) (sg : ISg<'msg>) =
+        let inline samplerState (name : ^Name) (state : aval<SamplerState>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.samplerState name state)
 
         /// Sets the sampler state for the texture slot with the given name.
         /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
-        let inline samplerState' (name : ^Name) (state : Option<SamplerState>) (sg : ISg<'msg>) =
+        let inline samplerState' (name : ^Name) (state : SamplerState) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.samplerState' name state)
 
 
@@ -861,13 +861,13 @@ module ``F# Sg`` =
         let inline instanceArray (name : ^Name) (value : System.Array) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceArray name value)
 
-        /// Provides a instance attribute with the given name by supplying a single value.
+        /// Provides an instance attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
         let inline instanceBufferValue (name : ^Name) (value : aval< ^Value>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceBufferValue name value)
 
-        /// Provides a instance attribute with the given name by supplying a single value.
+        /// Provides an instance attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
         let inline instanceBufferValue' (name : ^Name) (value : ^Value) (sg : ISg<'msg>) =
