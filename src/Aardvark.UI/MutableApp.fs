@@ -225,8 +225,13 @@ module MutableApp =
                                             
                                                 if newReferences.Length > 0 then
                                                     let args = 
-                                                        newReferences |> Seq.map (fun r -> 
-                                                            sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" (if r.kind = Script then "script" else "stylesheet") r.name r.url
+                                                        newReferences |> Seq.map (fun r ->
+                                                            let kind =
+                                                                match r.kind with
+                                                                | Script -> "script"
+                                                                | Stylesheet -> "stylesheet"
+                                                                | Module -> "module"
+                                                            sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" kind r.name r.url
                                                         ) |> String.concat "," |> sprintf "[%s]" 
                                                     let code = String.indent 1 code
                                                     sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
