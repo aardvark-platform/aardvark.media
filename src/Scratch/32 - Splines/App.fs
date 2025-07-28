@@ -13,7 +13,7 @@ module PointShaders =
     open FShade
 
     type UniformScope with
-        member x.PointSize : float = uniform?PointSize
+        member x.PointSize : float32 = uniform?PointSize
 
     module Semantic =
         let PointSize = Sym.ofString "PointSize"
@@ -21,13 +21,13 @@ module PointShaders =
     module Shader =
         type PointVertex =
             {
-                [<Position>] pos : V4d
-                [<TexCoord; Interpolation(InterpolationMode.Sample)>] tc : V2d
+                [<Position>] pos : V4f
+                [<TexCoord; Interpolation(InterpolationMode.Sample)>] tc : V2f
             }
 
         let pointTransform (v: PointVertex) =
             vertex {
-                return V4d(v.pos.XY * 2.0 - 1.0, 0.0, 1.0)
+                return V4f(v.pos.XY * 2.0f - 1.0f, 0.0f, 1.0f)
             }
 
 let camera =

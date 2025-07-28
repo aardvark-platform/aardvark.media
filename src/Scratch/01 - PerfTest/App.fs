@@ -47,10 +47,10 @@ module Shader =
     let badShader (v : Effects.Vertex) =
         fragment {
             let load = uniform.GpuLoad
-            let mutable strange = v.tc.X * float uniform.BadMod
+            let mutable strange = v.tc.X * float32 uniform.BadMod
             for i in 0 .. load  do
                 strange <- sin strange * cos strange
-            return v.c + 0.01 * strange * V4d.IIII
+            return v.c + 0.01f * strange * V4f.IIII
         }
 
 let viewScene (model : AdaptiveModel) =

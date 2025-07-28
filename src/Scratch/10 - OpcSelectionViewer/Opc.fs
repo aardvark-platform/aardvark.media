@@ -37,15 +37,15 @@ module Opc =
   type IUniformProvider with
     member x.TryGetViewTrafo() =
       match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ViewTrafo") with
-        | Some (:? aval<Trafo3d> as t) -> t |> Some
-        | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
-        | _ -> None
+      | ValueSome (:? aval<Trafo3d> as t) -> t |> ValueSome
+      | ValueSome (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> ValueSome
+      | _ -> ValueNone
   
       member x.TryGetProjTrafo() =
         match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ProjTrafo") with
-          | Some (:? aval<Trafo3d> as t) -> t |> Some
-          | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
-          | _ -> None
+        | ValueSome (:? aval<Trafo3d> as t) -> t |> ValueSome
+        | ValueSome (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> ValueSome
+        | _ -> ValueNone
   
   let isNan (v : V3f) =
     System.Single.IsNaN(v.X) || System.Single.IsNaN(v.Y) || System.Single.IsNaN(v.Z)

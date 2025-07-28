@@ -139,24 +139,24 @@ module Shader =
 
     type Vertex =
         {
-            [<Position>]                pos     : V4d            
-            [<WorldPosition>]           wp      : V4d
-            [<TexCoord>]                tc      : V2d
-            [<Color>]                   c       : V4d
-            [<Normal>]                  n       : V3d
-            [<Semantic("Scalar")>]      scalar  : float
-            [<Semantic("LightDir")>]    ldir    : V3d
+            [<Position>]                pos     : V4f
+            [<WorldPosition>]           wp      : V4f
+            [<TexCoord>]                tc      : V2f
+            [<Color>]                   c       : V4f
+            [<Normal>]                  n       : V3f
+            [<Semantic("Scalar")>]      scalar  : float32
+            [<Semantic("LightDir")>]    ldir    : V3f
         }
 
     let hoverColor (v : Vertex) =
         vertex {
-            let c : V4d = uniform?HoverColor
+            let c : V4f = uniform?HoverColor
             return { v with c = c }
         }
 
     [<ReflectedDefinition>]
-    let transformNormal (n : V3d) =
-        uniform.ModelViewTrafoInv.Transposed * V4d(n, 0.0)
+    let transformNormal (n : V3f) =
+        uniform.ModelViewTrafoInv.Transposed * V4f(n, 0.0f)
             |> Vec.xyz
             |> Vec.normalize
 
@@ -169,6 +169,6 @@ module Shader =
                     pos  = uniform.ProjTrafo * vp
                     wp   = wp
                     n    = transformNormal v.n
-                    ldir = V3d.Zero - vp.XYZ |> Vec.normalize
+                    ldir = V3f.Zero - vp.XYZ |> Vec.normalize
             } 
         } 

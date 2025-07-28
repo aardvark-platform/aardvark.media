@@ -23,15 +23,15 @@ module Shader =
 
     let fullScreen (v : Effects.Vertex) =
         fragment {
-            let coord = V2d(0.5 + 0.5 * v.pos.X, 0.5 - 0.5 * v.pos.Y)
-            let pixel = V2d uniform.ViewportSize * coord |> V2i
+            let coord = V2f(0.5f + 0.5f * v.pos.X, 0.5f - 0.5f * v.pos.Y)
+            let pixel = V2f uniform.ViewportSize * coord |> V2i
             let textureSize = browserSampler.Size
 
             if pixel.X < textureSize.X && pixel.Y < textureSize.Y then
                 let color = browserSampler.[pixel]
                 return color
             else
-                return V4d(0.0,0.0,0.0,0.0)
+                return V4f.Zero
         }
 
 [<EntryPoint>]
