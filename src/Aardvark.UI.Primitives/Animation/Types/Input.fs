@@ -97,4 +97,4 @@ module AnimationInputExtensions =
         /// the resulting animation. Likewise, the state and events of the resulting animation remain independent of the input
         /// animation.
         let input (mapping : 'Input -> 'T -> 'U) (input : IAnimation<'Model, 'Input>) (animation : IAnimation<'Model, 'T>) =
-            (input, animation) ||> input' (fun _ input value -> mapping input value)
+            (input, animation) ||> input' (fun _ -> mapping)

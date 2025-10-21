@@ -12,6 +12,10 @@ module AnimationSplinePrimitives =
         [<Literal>]
         let MinErrorTolerance = 1e-5
 
+        /// Default error tolerance for subdividing spline segments.
+        [<Literal>]
+        let DefaultErrorTolerance = 1e-2
+
         [<Struct>]
         type private Segment<'T> =
             {
@@ -23,7 +27,8 @@ module AnimationSplinePrimitives =
             }
 
         /// Represents a spline segment, parameterized by normalized arc length.
-        /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+        /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
+        /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
         type Spline<'T>(distance : 'T -> 'T -> float, evaluate : float -> 'T, errorTolerance : float) =
             let errorTolerance = max errorTolerance MinErrorTolerance
 
@@ -123,7 +128,8 @@ module AnimationSplinePrimitives =
             t |> lerp zero x
 
         /// Computes a centripetal Catmull-Rom spline from the given points, parameterized by arc length.
-        /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+        /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
+        /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
         let inline catmullRom (distance : ^T -> ^T -> float) (errorTolerance : float) (points : ^T[]) : Spline< ^T>[] =
 
             // Evaluation of a single segment (4 control points)
@@ -213,7 +219,8 @@ module AnimationSplinePrimitives =
 
             /// Creates an array of animations that smoothly interpolate along the path given by the control points.
             /// The animations are scaled according to the length of the spline segments.
-            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+            /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
+            /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
             let inline smoothPath' (distance : ^Value -> ^Value -> float) (errorTolerance : float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 let points = Array.ofSeq points
                 let spline = points |> Splines.catmullRom distance errorTolerance
@@ -230,7 +237,8 @@ module AnimationSplinePrimitives =
 
             /// <summary>
             /// Creates an animation that smoothly interpolates along the path given by the control points.
-            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+            /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
+            /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline smoothPath (distance : ^Value -> ^Value -> float) (errorTolerance : float) (points : ^Value seq) : IAnimation<'Model, ^Value> =

@@ -182,7 +182,7 @@ let app : App<_,_,_> =
             {
                Points = [||]
                Position = V2d.NaN
-               ErrorTolerance = 0.01
+               ErrorTolerance = Splines.DefaultErrorTolerance
                Animator = Animator.initial Model.Animator_
             }
         update = update

@@ -188,8 +188,9 @@ module AnimationCameraPrimitives =
 
             /// <summary>
             /// Creates an array of animations that smoothly interpolate between the given camera views.
-            /// The animations are scaled according to the distance between the camera view locations. Coinciding camera views are ignored.
-            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+            /// The animations are scaled according to the distance between the camera view locations.
+            /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
+            /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let smoothPath' (errorTolerance : float) (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
@@ -217,8 +218,9 @@ module AnimationCameraPrimitives =
                 )
 
             /// <summary>
-            /// Creates an animation that smoothly interpolates between the given camera views. Coinciding camera views are ignored.
-            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+            /// Creates an animation that smoothly interpolates between the given camera views.
+            /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
+            /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let smoothPath (errorTolerance : float) (points : CameraView seq) : IAnimation<'Model, CameraView> =

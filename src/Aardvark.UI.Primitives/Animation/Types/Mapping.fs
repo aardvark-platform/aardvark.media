@@ -111,7 +111,7 @@ module AnimationMappingExtensions =
 
         /// Returns a new animation that applies the mapping function to the input animation.
         let map (mapping : 'T -> 'U) (animation : IAnimation<'Model, 'T>) =
-            animation |> map' (fun _ x -> mapping x)
+            animation |> map' (fun _ -> mapping)
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map2' (mapping : 'Model -> 'T1 -> 'T2 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) =
@@ -128,7 +128,7 @@ module AnimationMappingExtensions =
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map2 (mapping : 'T1 -> 'T2 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) =
-            (x, y) ||> map2' (fun _ a b -> mapping a b)
+            (x, y) ||> map2' (fun _ -> mapping)
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map3' (mapping : 'Model -> 'T1 -> 'T2 -> 'T3 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) (z : IAnimation<'Model, 'T3>) =
@@ -145,4 +145,4 @@ module AnimationMappingExtensions =
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map3 (mapping : 'T1 -> 'T2 -> 'T3 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) (z : IAnimation<'Model, 'T3>) =
-            (x, y, z) |||> map3' (fun _ a b c -> mapping a b c)
+            (x, y, z) |||> map3' (fun _ -> mapping)
