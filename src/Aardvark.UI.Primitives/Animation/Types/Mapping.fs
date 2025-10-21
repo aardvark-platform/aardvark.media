@@ -3,7 +3,7 @@
 open Aardvark.Base
 open OptimizedClosures
 
-type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping<'Model, 'T, 'U>) =
+type internal MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping<'Model, 'T, 'U>) =
     let input = definition.Input.Create(name)
     let mutable value = System.Func<'U> (fun _ -> Unchecked.defaultof<'U>)
 
@@ -41,7 +41,7 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
         member x.Definition = x.Definition :> IAnimation<'Model, 'U>
 
 
-and private Mapping<'Model, 'T, 'U> =
+and internal Mapping<'Model, 'T, 'U> =
     {
         Input : IAnimation<'Model, 'T>
         Mapping : FSharpFunc<'Model, 'T, 'U>

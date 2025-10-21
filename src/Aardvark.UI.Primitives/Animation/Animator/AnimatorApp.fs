@@ -2,7 +2,6 @@
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open System.Collections.Generic
 
 // Need to be public for inlined functions with SRTPs
 module InternalAnimatorUtilities =
@@ -16,7 +15,7 @@ module InternalAnimatorUtilities =
         [<AutoOpen>]
         module internal Aux =
             let inline symbol (_ : ^z) (name : ^Name) =
-                ((^z or ^Name) : (static member GetSymbol : ^Name -> Symbol) (name))
+                ((^z or ^Name) : (static member GetSymbol : ^Name -> Symbol) name)
 
     // We cache the lenses for each model type so the user doesn't have to keep passing them around.
     module Lenses =
@@ -29,7 +28,7 @@ module InternalAnimatorUtilities =
         let get<'Model> : Lens<'Model, Animator<'Model>>=
             let t = typeof<'Model>
             match cache.TryGetValue(t) with
-            | (true, lens) -> lens |> unbox
+            | true, lens -> lens |> unbox
             | _ ->
                 let message =
                     let keys = cache.Keys |> Seq.toArray |> Array.map (string >> (+) "      ")
@@ -71,7 +70,6 @@ module Animator =
             animation :> IAnimation<'Model>
 
         let tick (lens : Lens<'Model, Animator<'Model>>) (time : GlobalTime) (model : 'Model) =
-
             let getSlots model = (Optic.get lens model).Slots
 
             // Set the current tick
@@ -79,15 +77,15 @@ module Animator =
             let mutable model = model |> Optic.set lens animator
 
             // Process pending actions
-            for (_, s) in getSlots model do
+            for _, s in getSlots model do
                 model <- s.Commit(model, time)
 
             // Update all running animations by generating and enqueuing Update actions
-            for (_, s) in getSlots model do
+            for _, s in getSlots model do
                 s.Update time
 
             // Process Update actions
-            for (_, s) in getSlots model do
+            for _, s in getSlots model do
                 model <- s.Commit(model, time)
 
             // Reset current tick
@@ -161,19 +159,19 @@ module Animator =
         let iterate (lens : Lens<'Model, Animator<'Model>>) (action : IAnimationInstance<'Model> -> unit) (model : 'Model) =
             let animator = model |> Optic.get lens
 
-            for (_, s) in animator.Slots do
+            for _, s in animator.Slots do
                 s.Perform(action)
 
             let mutable model = model
 
-            for (_, s) in animator.Slots do
+            for _, s in animator.Slots do
                 model <- s.Commit(model, &animator.CurrentTick)
 
             model
 
         let filter (lens : Lens<'Model, Animator<'Model>>) (predicate : AnimatorSlot<'Model> -> bool) (model : 'Model) =
             model |> Optic.map lens (fun animator ->
-                { animator with Slots = animator.Slots |> HashMap.filter (fun _ s -> predicate s) }
+                { animator with Slots = animator.Slots |> HashMap.filter (fun _ -> predicate) }
             )
 
     /// Processes animation messages.
@@ -239,21 +237,21 @@ module Animator =
     /// Replaces any existing instances (current and queued) in the given slot.
     /// The name can be a string or Symbol.
     let inline createAndStart (name : ^Name) (animation : IAnimation<'Model>) (model : 'Model) =
-        model |> createAndPerform name animation (fun a -> a.Start())
+        model |> createAndPerform name animation _.Start()
 
     /// Creates and starts an animation instance for the slot with the given name.
     /// The animation is started from the given normalized position.
     /// Replaces any existing instances (current and queued) in the given slot.
     /// The name can be a string or Symbol.
     let inline createAndStartFrom (name : ^Name) (animation : IAnimation<'Model>) (startFrom : float) (model : 'Model) =
-        model |> createAndPerform name animation (fun a -> a.Start startFrom)
+        model |> createAndPerform name animation _.Start(startFrom)
 
     /// Creates and starts an animation instance for the slot with the given name.
     /// The animation is started from the given local time.
     /// Replaces any existing instances (current and queued) in the given slot.
     /// The name can be a string or Symbol.
     let inline createAndStartFromLocal (name : ^Name) (animation : IAnimation<'Model>) (startFrom : LocalTime) (model : 'Model) =
-        model |> createAndPerform name animation (fun a -> a.Start startFrom)
+        model |> createAndPerform name animation _.Start(startFrom)
 
     /// Enqueues an animation in the slot with the given name.
     /// When all the previous instances in the slot have finished, the animation is computed, instantiated and the given action is performed.
@@ -272,21 +270,21 @@ module Animator =
     /// When all the previous instances in the slot have finished, the animation is computed, instantiated and started.
     /// The name can be a string or Symbol.
     let inline createAndStartDelayed (name : ^Name) (animation : 'Model -> #IAnimation<'Model>) (model : 'Model) =
-        model |> createAndPerformDelayed name animation (fun a -> a.Start())
+        model |> createAndPerformDelayed name animation _.Start()
 
     /// Enqueues an animation in the slot with the given name.
     /// When all the previous instances in the slot have finished, the animation is computed, instantiated and started.
     /// The animation is started from the given normalized position.
     /// The name can be a string or Symbol.
     let inline createAndStartFromDelayed (name : ^Name) (animation : 'Model -> #IAnimation<'Model>) (startFrom : float) (model : 'Model) =
-        model |> createAndPerformDelayed name animation (fun a -> a.Start startFrom)
+        model |> createAndPerformDelayed name animation _.Start(startFrom)
 
     /// Enqueues an animation in the slot with the given name.
     /// When all the previous instances in the slot have finished, the animation is computed, instantiated and started.
     /// The animation is started from the given local time.
     /// The name can be a string or Symbol.
     let inline createAndStartFromLocalDelayed (name : ^Name) (animation : 'Model -> #IAnimation<'Model>) (startFrom : LocalTime) (model : 'Model) =
-        model |> createAndPerformDelayed name animation (fun a -> a.Start startFrom)
+        model |> createAndPerformDelayed name animation _.Start(startFrom)
 
     /// Performs the action for the current animation instance in the slot with the given name if it exists.
     /// The name can be a string or Symbol.
@@ -311,16 +309,16 @@ module Animator =
     /// Stops the current animation instance in the slot with the given name if it exists.
     /// The name can be a string or Symbol.
     let inline stop (name : ^Name) (model : 'Model) =
-        model |> perform name (fun a -> a.Stop())
+        model |> perform name _.Stop()
 
-    /// Starts the current animation instance in the slot with the given name if it exists and it is not running or paused.
+    /// Starts the current animation instance in the slot with the given name if it exists, and it is not running or paused.
     /// The name can be a string or Symbol.
     let inline start (name : ^Name) (model : 'Model) =
         model |> perform name (fun a ->
             if a.IsStopped || a.IsFinished then a.Start()
         )
 
-    /// Starts or resumes the current animation instance in the slot with the given name if it exists and it is not running.
+    /// Starts or resumes the current animation instance in the slot with the given name if it exists, and it is not running.
     /// The name can be a string or Symbol.
     let inline startOrResume (name : ^Name) (model : 'Model) =
         model |> perform name (fun a ->
@@ -328,7 +326,7 @@ module Animator =
             elif a.IsStopped || a.IsFinished then a.Start()
         )
 
-    /// Starts the current animation instance in the slot with the given name if it exists and it is not running or paused.
+    /// Starts the current animation instance in the slot with the given name if it exists, and it is not running or paused.
     /// The animation is started from the given normalized position.
     /// The name can be a string or Symbol.
     let inline startFrom (name : ^Name) (startFrom : float) (model : 'Model) =
@@ -336,7 +334,7 @@ module Animator =
             if a.IsStopped || a.IsFinished then a.Start startFrom
         )
 
-    /// Starts the current animation instance in the slot with the given name if it exists and it is not running or paused.
+    /// Starts the current animation instance in the slot with the given name if it exists, and it is not running or paused.
     /// The animation is started from the given local time.
     /// The name can be a string or Symbol.
     let inline startFromLocal (name : ^Name) (startFrom : LocalTime) (model : 'Model) =
@@ -347,29 +345,29 @@ module Animator =
     /// Starts or restarts the current animation instance in the slot with the given name if it exists.
     /// The name can be a string or Symbol.
     let inline restart (name : ^Name) (model : 'Model) =
-        model |> perform name (fun a -> a.Start())
+        model |> perform name _.Start()
 
     /// Starts or restarts the current animation instance in the slot with the given name if it exists.
     /// The animation is started from the given normalized position.
     /// The name can be a string or Symbol.
     let inline restartFrom (name : ^Name) (startFrom : float) (model : 'Model) =
-        model |> perform name (fun a -> a.Start startFrom)
+        model |> perform name _.Start(startFrom)
 
     /// Starts or restarts the current animation instance in the slot with the given name if it exists.
     /// The animation is started from the given local time.
     /// The name can be a string or Symbol.
     let inline restartFromLocal (name : ^Name) (startFrom : LocalTime) (model : 'Model) =
-        model |> perform name (fun a -> a.Start startFrom)
+        model |> perform name _.Start(startFrom)
 
-    /// Pauses the current animation instance in the slot with the given name if it exists and it is running.
+    /// Pauses the current animation instance in the slot with the given name if it exists, and it is running.
     /// The name can be a string or Symbol.
     let inline pause (name : ^Name) (model : 'Model) =
-        model |> perform name (fun a -> a.Pause())
+        model |> perform name _.Pause()
 
-    /// Resumes the current animation instance in the slot with the given name if it exists and it is paused.
+    /// Resumes the current animation instance in the slot with the given name if it exists, and it is paused.
     /// The name can be a string or Symbol.
     let inline resume (name : ^Name) (model : 'Model) =
-        model |> perform name (fun a -> a.Resume())
+        model |> perform name _.Resume()
 
     /// Creates an initial state for the animator.
     /// The lens is cached and used to update the manager in the containing model.

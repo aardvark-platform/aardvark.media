@@ -3,15 +3,15 @@
 open System.Collections.Generic
 
 [<Struct>]
-type private EventTrigger<'Value> =
+type internal EventTrigger<'Value> =
     {
         Type : EventType
         Value : 'Value
     }
 
-type private EventQueue<'Value> = ArrayQueue<EventTrigger<'Value>>
+type internal EventQueue<'Value> = ArrayQueue<EventTrigger<'Value>>
 
-type private StateMachine<'Value> =
+type internal StateMachine<'Value> =
     class
         val mutable State : State
         val mutable Value : 'Value
@@ -27,7 +27,7 @@ type private StateMachine<'Value> =
     end
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module private StateMachine =
+module internal StateMachine =
 
     let private processAction (evaluate : LocalTime -> 'Value) (action : Action) (tick : GlobalTime) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>)  =
         match action with

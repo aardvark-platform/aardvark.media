@@ -3,7 +3,7 @@
 open Aardvark.Base
 open OptimizedClosures
 
-type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definition : InputMapping<'Model, 'T, 'Input, 'U>) =
+type internal InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definition : InputMapping<'Model, 'T, 'Input, 'U>) =
     inherit AbstractAnimationInstance<'Model, 'U, InputMapping<'Model, 'T, 'Input, 'U>>(name, definition)
 
     let wrapped = definition.Animation.Create(name)
@@ -28,7 +28,7 @@ type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definit
         result
 
 
-and private InputMapping<'Model, 'T, 'Input, 'U> =
+and internal InputMapping<'Model, 'T, 'Input, 'U> =
     {
         Animation : IAnimation<'Model, 'T>
         Input : IAnimation<'Model, 'Input>

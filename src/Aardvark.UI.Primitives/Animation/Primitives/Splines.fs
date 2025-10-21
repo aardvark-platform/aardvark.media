@@ -6,7 +6,6 @@ open Aardvark.Base
 module AnimationSplinePrimitives =
     open Animation.Primitives.Utilities
 
-    // TODO (Breaking): Rename user provided epsilon to errorTolerance
     module Splines =
 
         /// Minimum error tolerance for subdividing spline segments.
@@ -24,9 +23,9 @@ module AnimationSplinePrimitives =
             }
 
         /// Represents a spline segment, parameterized by normalized arc length.
-        /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
-        type Spline<'T>(distance : 'T -> 'T -> float, evaluate : float -> 'T, epsilon : float) =
-            let errorTolerance = max epsilon MinErrorTolerance
+        /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+        type Spline<'T>(distance : 'T -> 'T -> float, evaluate : float -> 'T, errorTolerance : float) =
+            let errorTolerance = max errorTolerance MinErrorTolerance
 
             let full =
                 let p0 = evaluate 0.0
@@ -124,8 +123,8 @@ module AnimationSplinePrimitives =
             t |> lerp zero x
 
         /// Computes a centripetal Catmull-Rom spline from the given points, parameterized by arc length.
-        /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
-        let inline catmullRom (distance : ^T -> ^T -> float) (epsilon : float) (points : ^T[]) : Spline< ^T>[] =
+        /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+        let inline catmullRom (distance : ^T -> ^T -> float) (errorTolerance : float) (points : ^T[]) : Spline< ^T>[] =
 
             // Evaluation of a single segment (4 control points)
             let segment (tj : float[]) (pj : ^T[]) (index : int) =
@@ -143,7 +142,7 @@ module AnimationSplinePrimitives =
                     let b2 = scale ((t3 - t) / (t3 - t1)) a2 + scale ((t - t1) / (t3 - t1)) a3
                     scale ((t2 - t) / (t2 - t1)) b1 + scale ((t - t1) / (t2 - t1)) b2
 
-                Spline(distance, evaluate, epsilon)
+                Spline(distance, evaluate, errorTolerance)
 
             // Linear evaluation for segments with zero length
             let linearSegment (pj : ^T[]) (index: int) =
@@ -189,7 +188,7 @@ module AnimationSplinePrimitives =
                         tj.[n] <- sum.Value
                         inc &n
 
-                // Add an additional control point at the beginning and end
+                // Add a control point at the beginning and end
                 if n > 2 then
                     pj.[0] <- pj.[1] + (pj.[1] - pj.[2])
                     tj.[0] <- 0.0
@@ -214,10 +213,10 @@ module AnimationSplinePrimitives =
 
             /// Creates an array of animations that smoothly interpolate along the path given by the control points.
             /// The animations are scaled according to the length of the spline segments.
-            /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
-            let inline smoothPath' (distance : ^Value -> ^Value -> float) (epsilon : float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
+            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
+            let inline smoothPath' (distance : ^Value -> ^Value -> float) (errorTolerance : float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 let points = Array.ofSeq points
-                let spline = points |> Splines.catmullRom distance epsilon
+                let spline = points |> Splines.catmullRom distance errorTolerance
                 let totalLength = spline |> Array.stableSumBy _.Length
 
                 spline |> Array.map (fun s ->
@@ -231,8 +230,8 @@ module AnimationSplinePrimitives =
 
             /// <summary>
             /// Creates an animation that smoothly interpolates along the path given by the control points.
-            /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
+            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-            let inline smoothPath (distance : ^Value -> ^Value -> float) (epsilon : float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
-                points |> smoothPath' distance epsilon |> Animation.path
+            let inline smoothPath (distance : ^Value -> ^Value -> float) (errorTolerance : float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
+                points |> smoothPath' distance errorTolerance |> Animation.path

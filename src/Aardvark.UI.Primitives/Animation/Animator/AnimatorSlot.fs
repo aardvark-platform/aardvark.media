@@ -2,7 +2,7 @@
 
 open Aardvark.Base
 
-type private DelayedAnimation<'Model> =
+type internal DelayedAnimation<'Model> =
     struct
         val Animation : 'Model -> IAnimation<'Model>
         val Action : IAnimationInstance<'Model> -> unit
@@ -51,7 +51,7 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
 
         if current.IsFinished then
             match queue.Dequeue() with
-            | (true, delayed) ->
+            | true, delayed ->
                 let animation = delayed.Animation model
                 current <- animation.Create(name)
                 x.Perform(delayed.Action)

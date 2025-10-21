@@ -4,7 +4,7 @@ open Aardvark.Base
 open OptimizedClosures
 
 [<AbstractClass>]
-type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definition :> IAnimation<'Model, 'Value>>(name : Symbol, definition : 'Definition) =
+type internal AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definition :> IAnimation<'Model, 'Value>>(name : Symbol, definition : 'Definition) =
     let eventQueue = EventQueue<'Value>()
     let stateMachine = StateMachine<'Value>()
 
@@ -39,7 +39,7 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
         member x.Definition = x.Definition :> IAnimation<'Model, 'Value>
 
 
-type private AnimationInstance<'Model, 'Value>(name : Symbol, definition : Animation<'Model, 'Value>) =
+type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Animation<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, Animation<'Model, 'Value>>(name, definition)
 
     override x.Perform(action) =
@@ -57,7 +57,7 @@ type private AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anima
 /// An animation consists of a space function and a distance-time function.
 /// The space function defines the animation values based on position (parameterized by arc length in the range of [0, 1]).
 /// The distance-time function controls how the position changes over time.
-and private Animation<'Model, 'Value> =
+and internal Animation<'Model, 'Value> =
     {
         SpaceFunction : FSharpFunc<'Model, float, 'Value>
         DistanceTimeFunction : DistanceTimeFunction

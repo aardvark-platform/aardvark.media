@@ -1,6 +1,5 @@
 ﻿namespace Aardvark.UI.Animation
 
-open Aardvark.Base
 open FSharp.Data.Adaptive
 
 [<AutoOpen>]

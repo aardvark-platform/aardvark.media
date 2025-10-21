@@ -3,7 +3,7 @@
 open Aardvark.Base
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module private Groups =
+module internal Groups =
 
     [<Struct>]
     type Segment =

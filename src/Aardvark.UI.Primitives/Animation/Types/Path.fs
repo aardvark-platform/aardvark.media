@@ -1,9 +1,8 @@
 ﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base
-open Aether
 
-type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Model, 'Value>) =
+type internal PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, Path<'Model, 'Value>>(name, definition)
 
     let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
@@ -35,7 +34,7 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
         result
 
 
-and private PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
+and internal PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
     let offsets =
         ValueCache (fun _ ->
             (LocalTime.zero, members) ||> Array.scan (fun t a -> t + a.TotalDuration)
@@ -59,7 +58,7 @@ and private PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) 
     member x.GroupDuration : Duration = duration.Value
 
 
-and private Path<'Model, 'Value> =
+and internal Path<'Model, 'Value> =
     {
         Members : PathMembers<'Model, 'Value>
         DistanceTimeFunction : DistanceTimeFunction

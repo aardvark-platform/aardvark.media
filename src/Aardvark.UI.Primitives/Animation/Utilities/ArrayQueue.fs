@@ -5,7 +5,7 @@ open System
 // Queue based on an array that is grown on demand.
 // Dequeuing does not move any data around, instead the head index is incremented.
 // Useful in scenarios where the queue is emptied regularly (to reset the head).
-type private ArrayQueue<'Value>() =
+type internal ArrayQueue<'Value>() =
     let mutable data = Array.zeroCreate 1
     let mutable count = 0
     let mutable head = 0

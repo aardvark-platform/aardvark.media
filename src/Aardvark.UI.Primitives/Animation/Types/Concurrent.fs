@@ -3,7 +3,7 @@
 open Aardvark.Base
 open OptimizedClosures
 
-type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition : ConcurrentGroup<'Model, 'Value>) =
+type internal ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition : ConcurrentGroup<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, ConcurrentGroup<'Model, 'Value>>(name, definition)
 
     let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
@@ -34,7 +34,7 @@ type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition :
 
         result
 
-and private ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
+and internal ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
     let duration =
         ValueCache (fun _ ->
             members |> Array.map (fun a -> a.TotalDuration) |> Array.max
@@ -43,7 +43,7 @@ and private ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
     member x.Data : IAnimation<'Model>[] = members
     member x.GroupDuration : Duration = duration.Value
 
-and private ConcurrentGroup<'Model, 'Value> =
+and internal ConcurrentGroup<'Model, 'Value> =
     {
         Members : ConcurrentGroupMembers<'Model>
         Mapping : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>

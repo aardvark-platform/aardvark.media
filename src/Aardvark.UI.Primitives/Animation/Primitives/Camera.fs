@@ -189,10 +189,10 @@ module AnimationCameraPrimitives =
             /// <summary>
             /// Creates an array of animations that smoothly interpolate between the given camera views.
             /// The animations are scaled according to the distance between the camera view locations. Coinciding camera views are ignored.
-            /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
+            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-            let smoothPath' (epsilon : float) (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
+            let smoothPath' (errorTolerance : float) (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
                 let points = Array.ofSeq points
 
                 if Array.isEmpty points then
@@ -203,7 +203,7 @@ module AnimationCameraPrimitives =
                 let locations =
                     points
                     |> Array.map CameraView.location
-                    |> Primitives.smoothPath' Vec.distance epsilon
+                    |> Primitives.smoothPath' Vec.distance errorTolerance
 
                 let orientations =
                     points
@@ -218,8 +218,8 @@ module AnimationCameraPrimitives =
 
             /// <summary>
             /// Creates an animation that smoothly interpolates between the given camera views. Coinciding camera views are ignored.
-            /// The accuracy of the parameterization depends on the given epsilon, where values closer to zero result in higher accuracy.
+            /// The accuracy of the parameterization depends on the given error tolerance, where values closer to zero result in higher accuracy.
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-            let smoothPath (epsilon : float) (points : CameraView seq) : IAnimation<'Model, CameraView> =
-                points |> smoothPath' epsilon |> Animation.path
+            let smoothPath (errorTolerance : float) (points : CameraView seq) : IAnimation<'Model, CameraView> =
+                points |> smoothPath' errorTolerance |> Animation.path

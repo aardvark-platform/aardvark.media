@@ -2,7 +2,7 @@
 
 open Aardvark.Base
 
-type private AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter<'Model, 'Value>) =
+type internal AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, Adapter<'Model, 'Value>>(name, definition)
 
     let wrapped = definition.Animation.Create(name)
@@ -26,7 +26,7 @@ type private AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter
         result
 
 
-and private Adapter<'Model, 'Value> =
+and internal Adapter<'Model, 'Value> =
     {
         Animation : IAnimation<'Model>
         Observable : Observable<'Model, 'Value>

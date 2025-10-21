@@ -4,7 +4,7 @@ open System
 open Aardvark.Base
 
 [<AutoOpen>]
-module private DistanceTimeFunctionUtilities =
+module internal DistanceTimeFunctionUtilities =
 
     let repeat (s : float) =
         if s = 0.0 then
@@ -23,7 +23,7 @@ module private DistanceTimeFunctionUtilities =
         | LoopMode.Mirror -> mirror s
 
 
-type private DistanceTimeFunction =
+type internal DistanceTimeFunction =
     {
         Easing : Func<float, float>
         Iterations : Iterations
@@ -58,7 +58,7 @@ type private DistanceTimeFunction =
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module private DistanceTimeFunction =
+module internal DistanceTimeFunction =
 
     let empty =
         { Easing = Func<_,_> id
