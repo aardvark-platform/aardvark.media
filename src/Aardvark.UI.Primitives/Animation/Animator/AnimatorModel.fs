@@ -5,10 +5,9 @@ open FSharp.Data.Adaptive
 
 type Animator<'Model> =
     {
-        Slots : HashMap<Symbol, AnimatorSlot<'Model>>
-        TickRate : int
+        Slots       : HashMap<Symbol, AnimatorSlot<'Model>>
+        TickRate    : int
         CurrentTick : GlobalTime voption
-        mutable TickCount : int
     }
 
 [<RequireQualifiedAccess>]

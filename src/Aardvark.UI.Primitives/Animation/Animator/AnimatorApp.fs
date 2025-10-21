@@ -90,9 +90,8 @@ module Animator =
             for (_, s) in getSlots model do
                 model <- s.Commit(model, time)
 
-            // Reset current tick and increase tick count
+            // Reset current tick
             model |> Optic.map lens (fun animator ->
-                inc &animator.TickCount
                 { animator with CurrentTick = ValueNone }
             )
 
@@ -377,30 +376,25 @@ module Animator =
     let initial (lens : Lens<'Model, Animator<'Model>>) : Animator<'Model> =
         lens |> Lenses.set
         {
-            Slots = HashMap.empty
-            TickRate = 60
+            Slots       = HashMap.empty
+            TickRate    = 60
             CurrentTick = ValueNone
-            TickCount = 0
         }
 
-    /// Thread pool that generates real-time tick messages in case no ticks have been processed.
-    /// Tick messages are generated on demand, because optimally the animations are updated on Rendered messages.
-    /// This thread pool makes sure animations are updated when the scene does not change (e.g. when starting or resuming animations).
-    // NOTE: very naive, tick rate not accurate
+    /// Thread pool that generates real-time tick messages at a fixed rate.
+    /// Use this in addition to updates on Rendered messages. This makes sure animations are updated when the scene
+    /// does not change (e.g. when starting or resuming animations in a static scene).
     let threads (model : Animator<'Model>) =
-        let timestep = 1000 / model.TickRate
-        let mutable lastTick = model.TickCount
+        let timeStep = 1000 / model.TickRate
 
-        let rec time() =
+        let rec time () =
             proclist {
-                do! Proc.Sleep(timestep)
-
-                if lastTick = model.TickCount then
-                    yield AnimatorMessage.RealTimeTick
-                else
-                    lastTick <- model.TickCount
-
+                yield AnimatorMessage.RealTimeTick
+                do! Proc.Sleep timeStep
                 yield! time()
             }
 
-        ThreadPool.add "animationTicks" (time()) ThreadPool.empty
+        if model.Slots |> HashMap.exists (fun _ s -> s.Current.IsRunning || s.Current.OutOfDate) then
+            ThreadPool.empty |> ThreadPool.add $"animationTicks_{model.TickRate}" (time())
+        else
+            ThreadPool.empty

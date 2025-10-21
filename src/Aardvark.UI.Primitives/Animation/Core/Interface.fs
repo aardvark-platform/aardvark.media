@@ -116,6 +116,9 @@ type IAnimationInstance<'Model> =
     /// Returns the current position of the animation instance.
     abstract member Position : LocalTime
 
+    /// Returns whether the animation instance is out of date, i.e. whether there are uncommitted actions.
+    abstract member OutOfDate : bool
+
     /// Performs the given action.
     abstract member Perform : Action -> unit
 

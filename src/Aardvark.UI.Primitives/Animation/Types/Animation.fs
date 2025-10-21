@@ -12,6 +12,7 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
     member x.State = stateMachine.State
     member x.Value = stateMachine.Value
     member x.Position = stateMachine.Position
+    member x.OutOfDate = stateMachine.Actions.Count > 0
     member x.Definition = definition
     member x.EventQueue = eventQueue
     member x.StateMachine = stateMachine
@@ -28,6 +29,7 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
         member x.Name = x.Name
         member x.State = x.State
         member x.Position = x.Position
+        member x.OutOfDate = x.OutOfDate
         member x.Perform(action) = x.Perform(action)
         member x.Commit(model, tick) = x.Commit(model, tick)
         member x.Definition = x.Definition :> IAnimation<'Model>
