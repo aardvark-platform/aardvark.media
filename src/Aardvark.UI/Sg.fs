@@ -805,6 +805,62 @@ module ``F# Sg`` =
             sg |> unboxed (Sg.conservativeRaster' mode)
 
         // ================================================================================================================
+        // Viewport
+        // ================================================================================================================
+
+        /// <summary>
+        /// Sets a custom viewport for the scene.
+        /// The viewport is the region of the framebuffer that will be rendered to.
+        /// It determines the transformation from normalized device coordinates to framebuffer coordinates.
+        /// </summary>
+        /// <remarks>
+        /// The default viewport is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The viewport to set. Min and Max are the framebuffer coordinates of the viewport's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the viewport to.</param>
+        let viewport (region : aval<Box2i>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.viewport region)
+
+        /// <summary>
+        /// Sets a custom viewport for the scene.
+        /// The viewport is the region of the framebuffer that will be rendered to.
+        /// It determines the transformation from normalized device coordinates to framebuffer coordinates.
+        /// </summary>
+        /// <remarks>
+        /// The default viewport is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The viewport to set. Min and Max are the framebuffer coordinates of the viewport's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the viewport to.</param>
+        let viewport' (region : Box2i) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.viewport' region)
+
+        /// <summary>
+        /// Sets a custom scissor for the scene.
+        /// The scissor is the region of the framebuffer that can be modified by the render task.
+        /// Fragments with coordinates outside the scissor region will be discarded.
+        /// </summary>
+        /// <remarks>
+        /// The default scissor is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The scissor to set. Min and Max are the framebuffer coordinates of the scissor's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the scissor to.</param>
+        let scissor (region : aval<Box2i>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scissor region)
+
+        /// <summary>
+        /// Sets a custom scissor for the scene.
+        /// The scissor is the region of the framebuffer that can be modified by the render task.
+        /// Fragments with coordinates outside the scissor region will be discarded.
+        /// </summary>
+        /// <remarks>
+        /// The default scissor is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The scissor to set. Min and Max are the framebuffer coordinates of the scissor's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the scissor to.</param>
+        let scissor' (region : Box2i) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scissor' region)
+
+        // ================================================================================================================
         // Attributes & Indices
         // ================================================================================================================
 
@@ -934,6 +990,10 @@ module ``F# Sg`` =
         /// Supplies the draw calls in the given indirect buffer with the given geometry mode.
         let indirectDraw (mode : IndexedGeometryMode) (buffer : aval<IndirectBuffer>) =
             Sg.indirectDraw mode buffer |> box<'msg>
+
+        /// Supplies the draw calls in the given indirect buffer with the given geometry mode.
+        let inline indirectDraw' (mode : IndexedGeometryMode) (buffer : IndirectBuffer) =
+            Sg.indirectDraw' mode buffer |> box<'msg>
 
         /// Creates a draw call from the given indexed geometry.
         let ofIndexedGeometry (g : IndexedGeometry) =
