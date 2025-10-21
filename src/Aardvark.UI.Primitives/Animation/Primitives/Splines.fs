@@ -234,4 +234,4 @@ module AnimationSplinePrimitives =
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline smoothPath (distance : ^Value -> ^Value -> float) (errorTolerance : float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
-                points |> smoothPath' distance errorTolerance |> Animation.path
+                points |> smoothPath' distance errorTolerance |> Animation.sequential

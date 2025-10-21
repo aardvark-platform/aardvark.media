@@ -233,7 +233,7 @@ module Animations =
             |> Animation.loop LoopMode.Repeat
             |> Animation.seconds duration
 
-        Animation.path [accel; orbit]
+        Animation.sequential [accel; orbit]
 
     let resolve (id : V2i) (other : V2i) (model : Model) =
 
@@ -279,7 +279,7 @@ module Animations =
                 )
                 |> Animation.seconds (durationInSeconds - turnDurationInSeconds)
 
-            Animation.path [turn; fixOnCenter]
+            Animation.sequential [turn; fixOnCenter]
             |> Animation.map CameraView.forward
 
         (location, forward) ||> Animation.map2 (fun l f ->

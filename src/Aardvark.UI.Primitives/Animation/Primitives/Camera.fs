@@ -184,7 +184,7 @@ module AnimationCameraPrimitives =
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let linearPath (points : CameraView seq) : IAnimation<'Model, CameraView> =
-                points |> linearPath' |> Animation.path
+                points |> linearPath' |> Animation.sequential
 
             /// <summary>
             /// Creates an array of animations that smoothly interpolate between the given camera views.
@@ -222,4 +222,4 @@ module AnimationCameraPrimitives =
             /// </summary>
             /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let smoothPath (errorTolerance : float) (points : CameraView seq) : IAnimation<'Model, CameraView> =
-                points |> smoothPath' errorTolerance |> Animation.path
+                points |> smoothPath' errorTolerance |> Animation.sequential

@@ -41,7 +41,7 @@
     <Compile Include="Animation\Types\Adapter.fs" />
     <Compile Include="Animation\Types\Groups.fs" />
     <Compile Include="Animation\Types\Concurrent.fs" />
-    <Compile Include="Animation\Types\Path.fs" />
+    <Compile Include="Animation\Types\Sequential.fs" />
     <Compile Include="Animation\Types\Mapping.fs" />
     <Compile Include="Animation\Types\Input.fs" />
     <Compile Include="Animation\Primitives\Primitives.fs" />

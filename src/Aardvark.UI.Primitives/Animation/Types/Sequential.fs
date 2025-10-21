@@ -2,8 +2,8 @@
 
 open Aardvark.Base
 
-type internal PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Model, 'Value>) =
-    inherit AbstractAnimationInstance<'Model, 'Value, Path<'Model, 'Value>>(name, definition)
+type internal SequentialGroupInstance<'Model, 'Value>(name : Symbol, definition : SequentialGroup<'Model, 'Value>) =
+    inherit AbstractAnimationInstance<'Model, 'Value, SequentialGroup<'Model, 'Value>>(name, definition)
 
     let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
     let segments = definition.Members.Segments
@@ -34,7 +34,7 @@ type internal PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mod
         result
 
 
-and internal PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
+and internal SequentialGroupMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
     let offsets =
         ValueCache (fun _ ->
             (LocalTime.zero, members) ||> Array.scan (fun t a -> t + a.TotalDuration)
@@ -58,15 +58,15 @@ and internal PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[])
     member x.GroupDuration : Duration = duration.Value
 
 
-and internal Path<'Model, 'Value> =
+and internal SequentialGroup<'Model, 'Value> =
     {
-        Members : PathMembers<'Model, 'Value>
+        Members : SequentialGroupMembers<'Model, 'Value>
         DistanceTimeFunction : DistanceTimeFunction
         Observable : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
-        PathInstance(name, x)
+        SequentialGroupInstance(name, x)
 
     member x.Duration =
         x.Members.GroupDuration
@@ -95,7 +95,7 @@ and internal Path<'Model, 'Value> =
         let scale (a : IAnimation<'Model, 'Value>) =
             a.Scale(a.Duration * s)
 
-        { x with Members = PathMembers (x.Members.Data |> Array.map scale) }
+        { x with Members = SequentialGroupMembers (x.Members.Data |> Array.map scale) }
 
     member x.Ease(easing, compose) =
         { x with DistanceTimeFunction = x.DistanceTimeFunction.Ease(easing, compose)}
@@ -108,7 +108,7 @@ and internal Path<'Model, 'Value> =
 
     member x.UnsubscribeAll() =
         { x with
-            Members = PathMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
+            Members = SequentialGroupMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
             Observable = Observable.empty }
 
     interface IAnimation with
@@ -133,7 +133,7 @@ and internal Path<'Model, 'Value> =
 
 
 [<AutoOpen>]
-module AnimationPathExtensions =
+module AnimationSequentialExtensions =
 
     module Animation =
 
@@ -141,20 +141,20 @@ module AnimationPathExtensions =
         /// Creates a sequential animation group from a sequence of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let path (animations : #IAnimation<'Model, 'Value> seq) =
+        let sequential (animations : #IAnimation<'Model, 'Value> seq) =
             let animations =
                 animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation path cannot be empty.")
+                raise <| System.ArgumentException("Animation group cannot be empty.")
 
-            { Members = PathMembers animations
+            { Members = SequentialGroupMembers animations
               DistanceTimeFunction = DistanceTimeFunction.empty
               Observable = Observable.empty } :> IAnimation<'Model, 'Value>
 
         /// <summary>
-        /// Creates a sequential animation group from a sequence of animations.
+        /// Creates a sequential animation group from a sequence of untyped animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let sequential (animations : IAnimation<'Model> seq) : IAnimation<'Model, unit> =
-            animations |> Seq.map Animation.adapter |> path
+        let sequential' (animations : #IAnimation<'Model> seq) : IAnimation<'Model, unit> =
+            animations |> Seq.map Animation.adapter |> sequential
