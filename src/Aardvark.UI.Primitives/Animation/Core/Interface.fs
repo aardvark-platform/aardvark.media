@@ -67,31 +67,6 @@ type LoopMode =
     /// Animation is reversed upon reaching the end.
     | Mirror
 
-[<RequireQualifiedAccess>]
-type Iterations =
-    /// Finite number of iterations (must be > 0)
-    | Finite of int
-
-    /// Infinite number of iterations
-    | Infinite
-
-    static member Zero =
-        Finite 0
-
-    static member inline (*) (x : Iterations, y : Duration) =
-        match x with
-        | Finite n -> y * n
-        | Infinite -> Duration.infinite
-
-    static member inline (*) (x : Duration, y : Iterations) =
-        y * x
-
-    static member inline op_Explicit (x : Iterations) : float =
-        match x with
-        | Finite n -> float n
-        | Infinite -> infinity
-
-
 type IAnimation =
 
     /// Returns the duration (per iteration) of the animation.
@@ -159,9 +134,9 @@ and IAnimation<'Model> =
     /// <summary>
     /// Sets the number of iterations and loop mode.
     /// </summary>
-    /// <param name="iterations">The number of iterations.</param>
+    /// <param name="iterations">The number of iterations or a non-positive value for an unlimited number of iterations.</param>
     /// <param name="mode">The loop or wrap mode.</param>
-    abstract member Loop : iterations: Iterations * mode: LoopMode -> IAnimation<'Model>
+    abstract member Loop : iterations: int * mode: LoopMode -> IAnimation<'Model>
 
     /// Removes all callbacks.
     abstract member UnsubscribeAll : unit -> IAnimation<'Model>
@@ -185,9 +160,9 @@ and IAnimation<'Model, 'Value> =
     /// <summary>
     /// Sets the number of iterations and loop mode.
     /// </summary>
-    /// <param name="iterations">The number of iterations.</param>
+    /// <param name="iterations">The number of iterations or a non-positive value for an unlimited number of iterations.</param>
     /// <param name="mode">The loop or wrap mode.</param>
-    abstract member Loop : iterations: Iterations * mode: LoopMode -> IAnimation<'Model, 'Value>
+    abstract member Loop : iterations: int * mode: LoopMode -> IAnimation<'Model, 'Value>
 
     /// Registers a new callback.
     abstract member Subscribe : event: EventType * callback: (Symbol -> 'Value -> 'Model -> 'Model) -> IAnimation<'Model, 'Value>

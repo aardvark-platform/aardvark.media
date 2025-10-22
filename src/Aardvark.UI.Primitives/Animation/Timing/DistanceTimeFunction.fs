@@ -26,7 +26,7 @@ module internal DistanceTimeFunctionUtilities =
 type internal DistanceTimeFunction =
     {
         Easing     : Func<float, float>
-        Iterations : Iterations
+        Iterations : float
         Mode       : LoopMode
     }
 
@@ -35,9 +35,7 @@ type internal DistanceTimeFunction =
         if not <| isFinite t then
             Log.warn "[Animation] Distance-time function invoked with %f" t
 
-        let tmax = float x.Iterations
-
-        if t < 0.0 || t > tmax then t
+        if t < 0.0 || t > x.Iterations then t
         else x.Easing.Invoke(t |> wrap x.Mode)
 
     /// <summary>
@@ -51,9 +49,10 @@ type internal DistanceTimeFunction =
     /// <summary>
     /// Sets the number of iterations and loop mode.
     /// </summary>
-    /// <param name="iterations">The number of iterations or a nonpositive value for an unlimited number of iterations.</param>
+    /// <param name="iterations">The number of iterations or a non-positive value for an unlimited number of iterations.</param>
     /// <param name="mode">The loop or wrap mode.</param>
     member x.Loop(iterations, mode) =
+        let iterations = if iterations > 0 then float iterations else infinity
         { x with Iterations = iterations; Mode = mode }
 
 
@@ -62,7 +61,7 @@ module internal DistanceTimeFunction =
 
     let empty =
         { Easing     = Func<_,_> id
-          Iterations = Iterations.Finite 1
+          Iterations = 1.0
           Mode       = LoopMode.Repeat }
 
 
@@ -95,14 +94,10 @@ module AnimationTimeExtensions =
         let inline nanoseconds (ns : ^Nanoseconds) (animation : IAnimation<'Model, 'Value>) =
             animation |> duration (Duration.ofNanoseconds ns)
 
-        /// Sets the number of iterations and loop mode of the given animation.
-        let loop' (mode : LoopMode) (count : Iterations) (animation : IAnimation<'Model, 'Value>) =
-            animation.Loop(count, mode)
-
         /// Loops the given animation infinitely according to the given mode.
         let loop (mode : LoopMode) (animation : IAnimation<'Model, 'Value>) =
-            animation |> loop' mode Iterations.Infinite
+            animation.Loop(0, mode)
 
-        /// Sets the number of iterations (must be > 0) and loop mode of the given animation.
+        /// Sets the number of iterations (non-positive for unlimited iterations) and loop mode of the given animation.
         let loopN (mode : LoopMode) (count : int) (animation : IAnimation<'Model, 'Value>) =
-            animation |> loop' mode (Iterations.Finite count)
+            animation.Loop(count, mode)
