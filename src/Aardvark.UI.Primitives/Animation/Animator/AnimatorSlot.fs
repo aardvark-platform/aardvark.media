@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base
+open System.Collections.Generic
 
 type internal DelayedAnimation<'Model> =
     struct
@@ -13,7 +14,7 @@ type internal DelayedAnimation<'Model> =
 
 type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) =
     let mutable current = instance
-    let queue = ArrayQueue<DelayedAnimation<'Model>>()
+    let queue = Queue<DelayedAnimation<'Model>>()
 
     /// The name of the animator slot.
     member x.Name = name
@@ -50,14 +51,14 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
         let model = current.Commit(model, tick)
 
         if current.IsFinished then
-            match queue.Dequeue() with
-            | true, delayed ->
+            if queue.Count > 0 then
+                let delayed = queue.Dequeue()
                 let animation = delayed.Animation model
                 current <- animation.Create(name)
                 x.Perform(delayed.Action)
                 x.Commit(model, tick)
-
-            | _ -> model
+            else
+                model
         else
             model
 

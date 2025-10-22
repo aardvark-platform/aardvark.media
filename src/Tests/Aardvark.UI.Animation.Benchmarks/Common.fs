@@ -18,23 +18,23 @@ type Model =
 module Model =
 
     let SomeInt_ : Lens<Model, int> =
-        (fun model -> model.SomeInt),
+        _.SomeInt,
         (fun value model -> { model with SomeInt = value })
 
     let SomeFloat_ : Lens<Model, float> =
-        (fun model -> model.SomeFloat),
+        _.SomeFloat,
         (fun value model -> { model with SomeFloat = value })
 
     let SomeVector_ : Lens<Model, V3d> =
-        (fun model -> model.SomeVector),
+        _.SomeVector,
         (fun value model -> { model with SomeVector = value })
 
     let SomeCamera_ : Lens<Model, CameraView> =
-        (fun model -> model.SomeCamera),
+        _.SomeCamera,
         (fun value model -> { model with SomeCamera = value })
 
     let Animator_ : Lens<Model, Animator<Model>> =
-        (fun model -> model.Animator),
+        _.Animator,
         (fun value model -> { model with Animator = value })
 
     let initial =
@@ -75,9 +75,9 @@ module Animations =
     let add (rnd : RandomSystem) (count : int) (model : Model) =
         (model, [| 0 .. count - 1 |]) ||> Array.fold (fun model i ->
             model
-            |> Animator.createAndStart (Sym.ofString (sprintf "int%d" i)) (simpleIntLerp rnd)
-            |> Animator.createAndStart (Sym.ofString (sprintf "float%d" i)) (simpleFloatLerp rnd)
-            |> Animator.createAndStart (Sym.ofString (sprintf "path%d" i)) (linearPath rnd)
+            |> Animator.createAndStart $"int{i}" (simpleIntLerp rnd)
+            |> Animator.createAndStart $"float{i}" (simpleFloatLerp rnd)
+            |> Animator.createAndStart $"path{i}" (linearPath rnd)
         )
 
     let getRandomName (rnd : RandomSystem) (countPerType : int) =
@@ -89,4 +89,4 @@ module Animations =
             elif kind = 1 then "float"
             else "path"
 
-        Sym.ofString <| sprintf "%s%d" baseName index
+        $"{baseName}{index}"

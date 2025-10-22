@@ -29,7 +29,6 @@ module internal Observable =
         | _ -> ()
 
     let notify (observable : Observable<'Model, 'Value>) (name : Symbol) (events : EventQueue<'Value>) (model : byref<'Model>) =
-        let mutable event = Unchecked.defaultof<_>
-
-        while events.Dequeue &event do
+        while events.Count > 0 do
+            let event = events.Dequeue()
             trigger observable name event.Type &event.Value &model

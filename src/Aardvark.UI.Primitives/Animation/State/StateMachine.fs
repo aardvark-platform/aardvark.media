@@ -9,7 +9,7 @@ type internal EventTrigger<'Value> =
         Value : 'Value
     }
 
-type internal EventQueue<'Value> = ArrayQueue<EventTrigger<'Value>>
+type internal EventQueue<'Value> = Queue<EventTrigger<'Value>>
 
 type internal StateMachine<'Value> =
     class

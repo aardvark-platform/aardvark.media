@@ -29,7 +29,6 @@
     <Compile Include="Animation\Deprecated\Model.fs" />
     <Compile Include="Animation\Deprecated\AnimationBase.fs" />
     <Compile Include="Animation\Utilities\ValueCache.fs" />
-    <Compile Include="Animation\Utilities\ArrayQueue.fs" />
     <Compile Include="Animation\Core\Time.fs" />
     <Compile Include="Animation\Core\Interface.fs" />
     <Compile Include="Animation\Timing\DistanceTimeFunction.fs" />
