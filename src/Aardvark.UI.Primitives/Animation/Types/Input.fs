@@ -30,9 +30,9 @@ type internal InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, defini
 
 and internal InputMapping<'Model, 'T, 'Input, 'U> =
     {
-        Animation : IAnimation<'Model, 'T>
-        Input : IAnimation<'Model, 'Input>
-        Mapping : FSharpFunc<'Model, 'T, 'Input, 'U>
+        Animation  : IAnimation<'Model, 'T>
+        Input      : IAnimation<'Model, 'Input>
+        Mapping    : FSharpFunc<'Model, 'T, 'Input, 'U>
         Observable : Observable<'Model, 'U>
     }
 
@@ -53,7 +53,7 @@ and internal InputMapping<'Model, 'T, 'Input, 'U> =
 
     member x.UnsubscribeAll() =
         { x with
-            Animation = x.Animation.UnsubscribeAll()
+            Animation  = x.Animation.UnsubscribeAll()
             Observable = Observable.empty }
 
     interface IAnimation with
@@ -87,9 +87,9 @@ module AnimationInputExtensions =
         /// the resulting animation. Likewise, the state and events of the resulting animation remain independent of the input
         /// animation.
         let input' (mapping : 'Model -> 'Input -> 'T -> 'U) (input : IAnimation<'Model, 'Input>) (animation : IAnimation<'Model, 'T>) =
-            { Animation = animation
-              Input = input.UnsubscribeAll()
-              Mapping = FSharpFunc<_,_,_,_>.Adapt (fun model value input -> value |> mapping model input)
+            { Animation  = animation
+              Input      = input.UnsubscribeAll()
+              Mapping    = FSharpFunc<_,_,_,_>.Adapt (fun model value input -> value |> mapping model input)
               Observable = Observable.empty } :> IAnimation<'Model, 'U>
 
         /// Applies the given input animation using the given mapping function.

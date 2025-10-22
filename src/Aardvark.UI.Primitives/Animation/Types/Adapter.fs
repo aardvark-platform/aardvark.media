@@ -28,7 +28,7 @@ type internal AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapte
 
 and internal Adapter<'Model, 'Value> =
     {
-        Animation : IAnimation<'Model>
+        Animation  : IAnimation<'Model>
         Observable : Observable<'Model, 'Value>
     }
 
@@ -48,9 +48,8 @@ and internal Adapter<'Model, 'Value> =
         { x with Observable = x.Observable |> Observable.subscribe event callback }
 
     member x.UnsubscribeAll() =
-        { x with
-            Animation = x.Animation.UnsubscribeAll()
-            Observable = Observable.empty }
+        { Animation  = x.Animation.UnsubscribeAll()
+          Observable = Observable.empty }
 
     interface IAnimation with
         member x.Duration = x.Animation.Duration
@@ -79,5 +78,5 @@ module AnimationAdapterExtensions =
 
         /// Creates a typed animation which always returns a default value.
         let adapter (animation : IAnimation<'Model>) : IAnimation<'Model, 'Value> =
-            { Animation = animation
-              Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+            { Animation  = animation
+              Observable = Observable.empty }

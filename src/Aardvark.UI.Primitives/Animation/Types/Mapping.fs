@@ -43,7 +43,7 @@ type internal MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mappin
 
 and internal Mapping<'Model, 'T, 'U> =
     {
-        Input : IAnimation<'Model, 'T>
+        Input   : IAnimation<'Model, 'T>
         Mapping : FSharpFunc<'Model, 'T, 'U>
     }
 
@@ -105,8 +105,7 @@ module AnimationMappingExtensions =
 
         /// Returns a new animation that applies the mapping function to the input animation.
         let map' (mapping : 'Model -> 'T -> 'U) (animation : IAnimation<'Model, 'T>) =
-            //{ Value = System.Func<_> (fun _ -> Unchecked.defaultof<'U>)
-            { Input = animation
+            { Input   = animation
               Mapping = FSharpFunc<_,_,_>.Adapt mapping } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animation.
@@ -121,10 +120,10 @@ module AnimationMappingExtensions =
                 let y = unbox<IAnimationInstance<'Model, 'T2>> arr.[1]
                 mapping model x.Value y.Value
 
-            { Members = ConcurrentGroupMembers [| x; y |]
-              Mapping = FSharpFunc<_,_,_>.Adapt eval
+            { Members              = ConcurrentGroupMembers [| x; y |]
+              Mapping              = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, 'U>
+              Observable           = Observable.empty } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map2 (mapping : 'T1 -> 'T2 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) =
@@ -138,10 +137,10 @@ module AnimationMappingExtensions =
                 let z = unbox<IAnimationInstance<'Model, 'T3>> arr.[2]
                 mapping model x.Value y.Value z.Value
 
-            { Members = ConcurrentGroupMembers [| x; y; z |]
-              Mapping = FSharpFunc<_,_,_>.Adapt eval
+            { Members              = ConcurrentGroupMembers [| x; y; z |]
+              Mapping              = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, 'U>
+              Observable           = Observable.empty } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map3 (mapping : 'T1 -> 'T2 -> 'T3 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) (z : IAnimation<'Model, 'T3>) =

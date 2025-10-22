@@ -25,9 +25,9 @@ module internal DistanceTimeFunctionUtilities =
 
 type internal DistanceTimeFunction =
     {
-        Easing : Func<float, float>
+        Easing     : Func<float, float>
         Iterations : Iterations
-        Mode : LoopMode
+        Mode       : LoopMode
     }
 
     /// Returns the normalized distance along the space curve based on the given local time stamp.
@@ -61,9 +61,9 @@ type internal DistanceTimeFunction =
 module internal DistanceTimeFunction =
 
     let empty =
-        { Easing = Func<_,_> id
+        { Easing     = Func<_,_> id
           Iterations = Iterations.Finite 1
-          Mode = LoopMode.Repeat }
+          Mode       = LoopMode.Repeat }
 
 
 [<AutoOpen>]

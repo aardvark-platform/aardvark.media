@@ -59,10 +59,10 @@ type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anim
 /// The distance-time function controls how the position changes over time.
 and internal Animation<'Model, 'Value> =
     {
-        SpaceFunction : FSharpFunc<'Model, float, 'Value>
+        SpaceFunction        : FSharpFunc<'Model, float, 'Value>
         DistanceTimeFunction : DistanceTimeFunction
-        Duration : Duration
-        Observable : Observable<'Model, 'Value>
+        Duration             : Duration
+        Observable           : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
@@ -122,18 +122,18 @@ module Animation =
 
     /// Empty animation.
     let empty<'Model, 'Value> : IAnimation<'Model, 'Value> =
-        { SpaceFunction = SpaceFunction.Default
+        { SpaceFunction        = SpaceFunction.Default
           DistanceTimeFunction = DistanceTimeFunction.empty
-          Duration = Duration.zero
-          Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+          Duration             = Duration.zero
+          Observable           = Observable.empty }
 
     /// Creates an animation from the given space function.
-    let create' (spaceFunction : 'Model -> float -> 'Value) =
-        { SpaceFunction = FSharpFunc<_,_,_>.Adapt spaceFunction
+    let create' (spaceFunction : 'Model -> float -> 'Value) : IAnimation<'Model, 'Value> =
+        { SpaceFunction        = FSharpFunc<_,_,_>.Adapt spaceFunction
           DistanceTimeFunction = DistanceTimeFunction.empty
-          Duration = Duration.zero
-          Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+          Duration             = Duration.zero
+          Observable           = Observable.empty }
 
     /// Creates an animation from the given space function.
     let create (spaceFunction : float -> 'Value) : IAnimation<'Model, 'Value> =
-        create' (fun _ s -> spaceFunction s)
+        create' (fun _ -> spaceFunction)

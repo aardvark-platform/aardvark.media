@@ -37,7 +37,7 @@ type internal ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition 
 and internal ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
     let duration =
         ValueCache (fun _ ->
-            members |> Array.map (fun a -> a.TotalDuration) |> Array.max
+            members |> Array.map _.TotalDuration |> Array.max
         )
 
     member x.Data : IAnimation<'Model>[] = members
@@ -45,10 +45,10 @@ and internal ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
 
 and internal ConcurrentGroup<'Model, 'Value> =
     {
-        Members : ConcurrentGroupMembers<'Model>
-        Mapping : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>
+        Members              : ConcurrentGroupMembers<'Model>
+        Mapping              : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>
         DistanceTimeFunction : DistanceTimeFunction
-        Observable : Observable<'Model, 'Value>
+        Observable           : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
@@ -82,7 +82,7 @@ and internal ConcurrentGroup<'Model, 'Value> =
 
     member x.UnsubscribeAll() =
         { x with
-            Members = ConcurrentGroupMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
+            Members    = ConcurrentGroupMembers (x.Members.Data |> Array.map _.UnsubscribeAll())
             Observable = Observable.empty }
 
     interface IAnimation with
@@ -114,17 +114,17 @@ module AnimationGroupExtensions =
         /// Creates a concurrent animation group from a sequence of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let concurrent (animations : IAnimation<'Model> seq) =
+        let concurrent (animations : IAnimation<'Model> seq) : IAnimation<'Model, unit> =
             let animations =
                 animations |> Array.ofSeq
 
             if animations.Length = 0 then
                 raise <| System.ArgumentException("Animation group cannot be empty.")
 
-            { Members = ConcurrentGroupMembers animations
-              Mapping = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
+            { Members              = ConcurrentGroupMembers animations
+              Mapping              = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, unit>
+              Observable           = Observable.empty }
 
         /// Combines two animations into a concurrent group.
         let andAlso (x : IAnimation<'Model>) (y : IAnimation<'Model>) =

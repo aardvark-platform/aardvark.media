@@ -60,9 +60,9 @@ and internal SequentialGroupMembers<'Model, 'Value>(members : IAnimation<'Model,
 
 and internal SequentialGroup<'Model, 'Value> =
     {
-        Members : SequentialGroupMembers<'Model, 'Value>
+        Members              : SequentialGroupMembers<'Model, 'Value>
         DistanceTimeFunction : DistanceTimeFunction
-        Observable : Observable<'Model, 'Value>
+        Observable           : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
@@ -108,7 +108,7 @@ and internal SequentialGroup<'Model, 'Value> =
 
     member x.UnsubscribeAll() =
         { x with
-            Members = SequentialGroupMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
+            Members    = SequentialGroupMembers (x.Members.Data |> Array.map _.UnsubscribeAll())
             Observable = Observable.empty }
 
     interface IAnimation with
@@ -141,16 +141,16 @@ module AnimationSequentialExtensions =
         /// Creates a sequential animation group from a sequence of animations.
         /// </summary>
         /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let sequential (animations : #IAnimation<'Model, 'Value> seq) =
+        let sequential (animations : #IAnimation<'Model, 'Value> seq) : IAnimation<'Model, 'Value> =
             let animations =
                 animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
 
             if animations.Length = 0 then
                 raise <| System.ArgumentException("Animation group cannot be empty.")
 
-            { Members = SequentialGroupMembers animations
+            { Members              = SequentialGroupMembers animations
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+              Observable           = Observable.empty }
 
         /// <summary>
         /// Creates a sequential animation group from a sequence of untyped animations.

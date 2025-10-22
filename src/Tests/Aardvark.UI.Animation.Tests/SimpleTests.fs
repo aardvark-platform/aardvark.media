@@ -11,7 +11,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 4.0
                     |> Animation.trackEvents
 
@@ -42,7 +42,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
@@ -110,7 +110,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
@@ -150,7 +150,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
@@ -213,7 +213,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
