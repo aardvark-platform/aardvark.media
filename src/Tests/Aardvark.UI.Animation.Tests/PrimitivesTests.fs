@@ -93,24 +93,17 @@ module ``Primitives Tests`` =
                 let a = Animation.Primitives.linearPath' Vec.distance [| p |]
                 Expect.hasLength a 1 "Invalid segment count"
 
-                let d =
-                    match a.[0].Duration with
-                    | Duration.Finite d -> d.TotalSeconds
-                    | _ -> failwith "Infinite duration"
-
-                Expect.equal d 0.0 "Invalid duration"
+                let d = a.[0].Duration
+                Expect.isTrue d.IsFinite "Infinite duration"
+                Expect.equal d.TotalSeconds 0.0 "Invalid duration"
             }
 
         let simple =
             test "Simple" {
                 let a = Animation.Primitives.linearPath Vec.distance [ V3d(1, 2, 3); V3d(-2, 5, -7); V3d(21, -6, 0); ]
 
-                let d =
-                    match a.Duration with
-                    | Duration.Finite d -> d.TotalSeconds
-                    | _ -> failwith "Infinite duration"
-
-                Expect.floatClose Accuracy.high d 1.0 "Invalid duration"
+                Expect.isTrue a.Duration.IsFinite "Infinite duration"
+                Expect.floatClose Accuracy.high a.Duration.TotalSeconds 1.0 "Invalid duration"
             }
 
         let degenerated =
@@ -122,12 +115,8 @@ module ``Primitives Tests`` =
                 let p3 = V3d(p2.XY, p2.Z + eps)
                 let a = Animation.Primitives.linearPath Vec.distance [| p0; p1; p2; p3 |]
 
-                let d =
-                    match a.Duration with
-                    | Duration.Finite d -> d.TotalSeconds
-                    | _ -> failwith "Infinite duration"
-
-                Expect.equal d 0.0 "Invalid duration"
+                Expect.isTrue a.Duration.IsFinite "Infinite duration"
+                Expect.equal a.Duration.TotalSeconds 0.0 "Invalid duration"
             }
 
     module private SmoothPath =
@@ -144,24 +133,17 @@ module ``Primitives Tests`` =
                 let a = Animation.Primitives.smoothPath' Vec.distance 0.1 [| p |]
                 Expect.hasLength a 1 "Invalid segment count"
 
-                let d =
-                    match a.[0].Duration with
-                    | Duration.Finite d -> d.TotalSeconds
-                    | _ -> failwith "Infinite duration"
-
-                Expect.equal d 0.0 "Invalid duration"
+                let d = a.[0].Duration
+                Expect.isTrue d.IsFinite "Infinite duration"
+                Expect.equal d.TotalSeconds 0.0 "Invalid duration"
             }
 
         let simple =
             test "Simple" {
                 let a = Animation.Primitives.smoothPath Vec.distance 0.1 [ V3d(1, 2, 3); V3d(-2, 5, -7); V3d(21, -6, 0); ]
 
-                let d =
-                    match a.Duration with
-                    | Duration.Finite d -> d.TotalSeconds
-                    | _ -> failwith "Infinite duration"
-
-                Expect.floatClose Accuracy.high d 1.0 "Invalid duration"
+                Expect.isTrue a.Duration.IsFinite "Infinite duration"
+                Expect.floatClose Accuracy.high a.Duration.TotalSeconds 1.0 "Invalid duration"
             }
 
         let degenerated =
@@ -173,12 +155,8 @@ module ``Primitives Tests`` =
                 let p3 = V3d(p2.XY, p2.Z + eps)
                 let a = Animation.Primitives.smoothPath Vec.distance 0.1 [| p0; p1; p2; p3 |]
 
-                let d =
-                    match a.Duration with
-                    | Duration.Finite d -> d.TotalSeconds
-                    | _ -> failwith "Infinite duration"
-
-                Expect.equal d 0.0 "Invalid duration"
+                Expect.isTrue a.Duration.IsFinite "Infinite duration"
+                Expect.equal a.Duration.TotalSeconds 0.0 "Invalid duration"
             }
 
     module Camera =
@@ -196,12 +174,8 @@ module ``Primitives Tests`` =
                 let a =
                     Animation.Camera.smoothPath 0.1 [| c0; c1; c2; c3 |]
 
-                let d =
-                    match a.Duration with
-                    | Duration.Finite d -> d.TotalSeconds
-                    | _ -> failwith "Infinite duration"
-
-                Expect.floatClose Accuracy.high d 0.0 "Invalid duration"
+                Expect.isTrue a.Duration.IsFinite "Infinite duration"
+                Expect.floatClose Accuracy.high a.Duration.TotalSeconds 0.0 "Invalid duration"
             }
 
     [<Tests>]

@@ -60,8 +60,7 @@ module Animator =
 
         let private sw = Stopwatch.StartNew()
 
-        let get() =
-            sw.Elapsed.MicroTime |> GlobalTime.Timestamp
+        let get() = GlobalTime sw.Elapsed.MicroTime
 
     [<AutoOpen>]
     module private Implementation =

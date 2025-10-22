@@ -81,7 +81,7 @@ type Iterations =
     static member inline (*) (x : Iterations, y : Duration) =
         match x with
         | Finite n -> y * n
-        | Infinite -> Duration.Infinite
+        | Infinite -> Duration.infinite
 
     static member inline (*) (x : Duration, y : Iterations) =
         y * x
