@@ -77,7 +77,7 @@ and internal SequentialGroup<'Model, 'Value> =
     member x.FindMemberIndex(groupLocalTime : LocalTime) : int =
         if groupLocalTime < LocalTime.zero then
             0
-        elif groupLocalTime > LocalTime.max x.Duration then
+        elif groupLocalTime > LocalTime x.Duration then
             x.Members.Data.Length - 1
         else
             x.Members.Segments |> Array.binarySearch (fun s ->

@@ -31,7 +31,7 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
         | State.Running startTime ->
             let action =
                 let localTime = tick |> LocalTime.relative startTime
-                let endTime = LocalTime.max current.TotalDuration
+                let endTime = LocalTime current.TotalDuration
 
                 if localTime >= endTime then
                     Action.Update(endTime, true)
