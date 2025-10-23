@@ -6,7 +6,7 @@ open OptimizedClosures
 [<AbstractClass>]
 type internal AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definition :> IAnimation<'Model, 'Value>>(name : Symbol, definition : 'Definition) =
     let eventQueue = EventQueue<'Value>()
-    let stateMachine = StateMachine<'Value>()
+    let stateMachine = StateMachine<'Value> definition.TotalDuration
 
     member x.Name = name
     member x.State = stateMachine.State

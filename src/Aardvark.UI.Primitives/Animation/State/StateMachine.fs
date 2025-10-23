@@ -1,30 +1,28 @@
 ﻿namespace Aardvark.UI.Animation
 
+open Aardvark.Base
 open System.Collections.Generic
 
 [<Struct>]
 type internal EventTrigger<'Value> =
-    {
-        Type : EventType
-        Value : 'Value
-    }
+    { Type  : EventType
+      Value : 'Value }
 
 type internal EventQueue<'Value> = Queue<EventTrigger<'Value>>
 
 type internal StateMachine<'Value> =
-    class
-        val mutable State : State
-        val mutable Value : 'Value
-        val mutable Position : LocalTime
-        val Actions : List<Action>
+    val mutable State    : State
+    val mutable Value    : 'Value
+    val mutable Position : LocalTime
+    val EndPosition      : LocalTime
+    val Actions          : List<Action>
 
-        new () = {
-            State = State.Stopped;
-            Value = Unchecked.defaultof<_>;
-            Position = LocalTime.zero
-            Actions = List()
-        }
-    end
+    new (totalDuration : Duration) =
+        { State       = State.Stopped
+          Value       = Unchecked.defaultof<_>
+          Position    = LocalTime.zero
+          EndPosition = LocalTime totalDuration
+          Actions     = List() }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal StateMachine =
@@ -41,6 +39,7 @@ module internal StateMachine =
                 queue.Enqueue { Type = EventType.Stop; Value = machine.Value }
 
         | Action.Start startFrom ->
+            let startFrom = startFrom |> clamp LocalTime.zero machine.EndPosition
             machine.Value <- evaluate startFrom
             machine.State <- State.Running (tick - startFrom)
             machine.Position <- startFrom

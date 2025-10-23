@@ -247,6 +247,85 @@ module ``Simple Tests`` =
                 ]
             }
 
+        let startFrom =
+            test "Start from" {
+                use _ = Animator.initTest()
+
+                let events, animation =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.trackEvents
+
+                Animator.createAndStartFrom "Test" animation 0.75 ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.75
+                    EventType.Progress, 0.75
+                ]
+
+                Animator.restartFrom "Test" -0.25 ()
+                Animator.tickSeconds 1.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Animator.restartFrom "Test" 1.25 ()
+                Animator.tickSeconds 3.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 1.0
+                    EventType.Progress, 1.0
+                    EventType.Finalize, 1.0
+                ]
+            }
+
+        let startFromLooped =
+            test "Start from (looped)" {
+                use _ = Animator.initTest()
+
+                let events, animation =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.loopN LoopMode.Mirror 3
+                    |> Animation.trackEvents
+
+                Animator.createAndStartFrom "Test" animation 0.75 ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.75
+                    EventType.Progress, 0.75
+                ]
+
+                Animator.restartFrom "Test" 1.75 ()
+                Animator.tickSeconds 1.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.25
+                    EventType.Progress, 0.25
+                ]
+
+                Animator.restartFrom "Test" 2.75 ()
+                Animator.tickSeconds 2.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.75
+                    EventType.Progress, 0.75
+                ]
+
+                Animator.restartFrom "Test" 3.01 ()
+                Animator.tickSeconds 3.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 1.0
+                    EventType.Progress, 1.0
+                    EventType.Finalize, 1.0
+                ]
+            }
+
     [<Tests>]
     let tests =
         testList "Simple" [
@@ -256,5 +335,7 @@ module ``Simple Tests`` =
                 Events.pauseFinish
                 Events.stopRestartFrom
                 Events.stopFinish
+                Events.startFrom
+                Events.startFromLooped
             ]
         ]

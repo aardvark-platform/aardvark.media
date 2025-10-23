@@ -198,8 +198,8 @@ module IAnimationInstanceExtensions =
 
         /// Starts the animation instance from the given normalized position.
         member x.Start(startFrom: float) =
-            let lt = if startFrom = 0.0 then LocalTime.zero else startFrom |> LocalTime.ofNormalizedPosition x.Definition.Duration
-            x.Perform <| Action.Start lt
+            let startFromLocal = startFrom |> LocalTime.ofNormalizedPosition x.Definition.Duration
+            x.Perform <| Action.Start startFromLocal
 
         /// Starts the animation instance from the beginning.
         member x.Start() =
