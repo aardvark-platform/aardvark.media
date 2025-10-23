@@ -60,7 +60,6 @@ and [<StructuredFormatDisplay("{AsString}")>] LocalTime =
         val MicroTime : MicroTime
 
         new (time: MicroTime) = { MicroTime = time }
-        new (duration: Duration) = LocalTime duration.MicroTime
 
         member inline this.IsZero             = this.MicroTime.IsZero
         member inline this.IsFinite           = this.MicroTime.IsFinite
@@ -104,5 +103,11 @@ module LocalTime =
             Log.warn "[Animation] Trying to compute local time from infinity"
             infinite
 
+    let inline ofNanoseconds (ns : ^Nanoseconds)   = LocalTime <| MicroTime(int64 ns)
+    let inline ofMicroseconds (us : ^Microseconds) = LocalTime <| MicroTime.FromMicroseconds(float us)
+    let inline ofMilliseconds (ms : ^Milliseconds) = LocalTime <| MicroTime.FromMilliseconds(float ms)
+    let inline ofSeconds (s : ^Seconds)            = LocalTime <| MicroTime.FromSeconds(float s)
+    let inline ofMinutes (m : ^Minutes)            = LocalTime <| MicroTime.FromMinutes(float m)
+    let inline ofDuration (d : Duration)           = LocalTime d.MicroTime
     let inline ofNormalizedPosition (duration : Duration) (position : float) = LocalTime (position * duration.MicroTime)
     let inline toNormalizedPosition (duration : Duration) (position : LocalTime) : float = position / duration

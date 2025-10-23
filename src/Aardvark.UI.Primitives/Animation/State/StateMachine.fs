@@ -21,7 +21,7 @@ type internal StateMachine<'Value> =
         { State       = State.Stopped
           Value       = Unchecked.defaultof<_>
           Position    = LocalTime.zero
-          EndPosition = LocalTime totalDuration
+          EndPosition = LocalTime.ofDuration totalDuration
           Actions     = List() }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]

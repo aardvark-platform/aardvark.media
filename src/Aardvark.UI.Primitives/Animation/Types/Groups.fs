@@ -16,7 +16,7 @@ module internal Groups =
             { Start = s; End = e}
 
         let ofDuration (d : Duration) =
-            { Start = LocalTime.zero; End = LocalTime d}
+            { Start = LocalTime.zero; End = LocalTime.ofDuration d }
 
 
     /// Computes the duration scale for the group animation
@@ -52,7 +52,7 @@ module internal Groups =
     /// Performs a group action for the given member.
     let perform (segment : Segment) (action : Action) (group : IAnimationInstance<'Model>) (animation : IAnimationInstance<'Model>) =
         let isFirstSegment = (segment.Start = LocalTime.zero)
-        let isLastSegment = (segment.End = LocalTime group.Duration)
+        let isLastSegment = (segment.End = LocalTime.ofDuration group.Duration)
 
         let inBounds t =
             (t >= segment.Start || isFirstSegment) && (t < segment.End || isLastSegment)
