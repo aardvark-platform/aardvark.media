@@ -57,7 +57,7 @@ and internal SequentialGroupMembers<'Model, 'Value>(members : IAnimation<'Model,
     member x.GroupDuration : Duration = duration.Value
 
 
-and internal SequentialGroup<'Model, 'Value> =
+and [<ReferenceEquality>] internal SequentialGroup<'Model, 'Value> =
     {
         Members              : SequentialGroupMembers<'Model, 'Value>
         DistanceTimeFunction : DistanceTimeFunction

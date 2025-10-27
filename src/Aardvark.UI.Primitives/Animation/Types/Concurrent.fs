@@ -42,7 +42,7 @@ and internal ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
     member x.Data : IAnimation<'Model>[] = members
     member x.GroupDuration : Duration = duration.Value
 
-and internal ConcurrentGroup<'Model, 'Value> =
+and [<ReferenceEquality>] internal ConcurrentGroup<'Model, 'Value> =
     {
         Members              : ConcurrentGroupMembers<'Model>
         Mapping              : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>

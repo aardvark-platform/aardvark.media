@@ -26,7 +26,7 @@ type internal AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapte
         result
 
 
-and internal Adapter<'Model, 'Value> =
+and [<ReferenceEquality>] internal Adapter<'Model, 'Value> =
     {
         Animation  : IAnimation<'Model>
         Observable : Observable<'Model, 'Value>

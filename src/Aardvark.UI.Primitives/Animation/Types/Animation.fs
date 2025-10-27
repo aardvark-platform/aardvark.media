@@ -57,7 +57,7 @@ type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anim
 /// An animation consists of a space function and a distance-time function.
 /// The space function defines the animation values based on position (parameterized by arc length in the range of [0, 1]).
 /// The distance-time function controls how the position changes over time.
-and internal Animation<'Model, 'Value> =
+and [<ReferenceEquality>] internal Animation<'Model, 'Value> =
     {
         SpaceFunction        : FSharpFunc<'Model, float, 'Value>
         DistanceTimeFunction : DistanceTimeFunction

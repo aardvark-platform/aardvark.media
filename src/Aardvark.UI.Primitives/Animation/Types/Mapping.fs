@@ -41,7 +41,7 @@ type internal MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mappin
         member x.Definition = x.Definition :> IAnimation<'Model, 'U>
 
 
-and internal Mapping<'Model, 'T, 'U> =
+and [<ReferenceEquality>] internal Mapping<'Model, 'T, 'U> =
     {
         Input   : IAnimation<'Model, 'T>
         Mapping : FSharpFunc<'Model, 'T, 'U>

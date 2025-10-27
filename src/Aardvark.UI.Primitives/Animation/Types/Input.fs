@@ -28,7 +28,7 @@ type internal InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, defini
         result
 
 
-and internal InputMapping<'Model, 'T, 'Input, 'U> =
+and [<ReferenceEquality>] internal InputMapping<'Model, 'T, 'Input, 'U> =
     {
         Animation  : IAnimation<'Model, 'T>
         Input      : IAnimation<'Model, 'Input>
