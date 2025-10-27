@@ -6,8 +6,8 @@ open OptimizedClosures
 type internal ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition : ConcurrentGroup<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, ConcurrentGroup<'Model, 'Value>>(name, definition)
 
-    let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
-    let segments = definition.Members.Data |> Array.map (fun a -> Groups.Segment.ofDuration a.Duration)
+    let members = definition.Members.Data |> Array.map _.Create(name)
+    let segments = definition.Members.Data |> Array.map (_.TotalDuration >> Groups.Segment.ofDuration)
 
     override x.Perform(action) =
         let action = Groups.applyDistanceTimeToAction action x
@@ -18,7 +18,6 @@ type internal ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition 
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-
         // Commit members
         let mutable result =
             (model, members) ||> Array.fold (fun model animation ->
