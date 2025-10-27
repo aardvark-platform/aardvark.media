@@ -14,15 +14,15 @@ type internal StateMachine<'Value> =
     val mutable State    : State
     val mutable Value    : 'Value
     val mutable Position : LocalTime
-    val EndPosition      : LocalTime
+    val FinalPosition    : LocalTime
     val Actions          : List<Action>
 
-    new (totalDuration : Duration) =
-        { State       = State.Stopped
-          Value       = Unchecked.defaultof<_>
-          Position    = LocalTime.zero
-          EndPosition = LocalTime.ofDuration totalDuration
-          Actions     = List() }
+    new (finalPosition: LocalTime) =
+        { State         = State.Stopped
+          Value         = Unchecked.defaultof<_>
+          Position      = LocalTime.zero
+          FinalPosition = finalPosition
+          Actions       = List() }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal StateMachine =
@@ -39,7 +39,7 @@ module internal StateMachine =
                 queue.Enqueue { Type = EventType.Stop; Value = machine.Value }
 
         | Action.Start startFrom ->
-            let startFrom = startFrom |> clamp LocalTime.zero machine.EndPosition
+            let startFrom = startFrom |> clamp LocalTime.zero machine.FinalPosition
             machine.Value <- evaluate startFrom
             machine.State <- State.Running (tick - startFrom)
             machine.Position <- startFrom

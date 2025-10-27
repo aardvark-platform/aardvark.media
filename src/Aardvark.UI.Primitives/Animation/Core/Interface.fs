@@ -172,48 +172,53 @@ and IAnimation<'Model, 'Value> =
 
 
 [<AutoOpen>]
-module IAnimationInstanceExtensions =
+module InterfaceExtensions =
+
+    type IAnimation with
+
+        /// Returns the final position of the animation as LocalTime.
+        member inline this.FinalPosition = LocalTime.ofDuration this.TotalDuration
 
     type IAnimationInstance<'Model> with
 
         /// Returns whether the animation instance is running.
-        member x.IsRunning = x.State |> function State.Running _ -> true | _ -> false
+        member inline this.IsRunning = this.State |> function State.Running _ -> true | _ -> false
 
         /// Returns whether the animation instance is stopped.
-        member x.IsStopped = x.State = State.Stopped
+        member inline this.IsStopped = this.State = State.Stopped
 
         /// Returns whether the animation instance is finished.
-        member x.IsFinished = x.State = State.Finished
+        member inline this.IsFinished = this.State = State.Finished
 
         /// Returns whether the animation instance is paused.
-        member x.IsPaused = x.State |> function State.Paused _ -> true | _ -> false
+        member inline this.IsPaused = this.State |> function State.Paused _ -> true | _ -> false
 
         /// Stops the animation instance and resets it.
-        member x.Stop() =
-            x.Perform Action.Stop
+        member inline this.Stop() =
+            this.Perform Action.Stop
 
         /// Starts the animation instance from the given start time.
-        member x.Start(startFrom: LocalTime) =
-            x.Perform <| Action.Start startFrom
+        member inline this.Start(startFrom: LocalTime) =
+            this.Perform <| Action.Start startFrom
 
         /// Starts the animation instance from the given normalized position.
-        member x.Start(startFrom: float) =
-            let startFromLocal = startFrom |> LocalTime.ofNormalizedPosition x.Definition.Duration
-            x.Perform <| Action.Start startFromLocal
+        member inline this.Start(startFrom: float) =
+            let startFromLocal = startFrom |> LocalTime.ofNormalizedPosition this.Definition.Duration
+            this.Perform <| Action.Start startFromLocal
 
         /// Starts the animation instance from the beginning.
-        member x.Start() =
-            x.Perform <| Action.Start LocalTime.zero
+        member inline this.Start() =
+            this.Perform <| Action.Start LocalTime.zero
 
         /// Pauses the animation instance if it is running or has started.
-        member x.Pause() =
-            x.Perform <| Action.Pause
+        member inline this.Pause() =
+            this.Perform <| Action.Pause
 
         /// Resumes the animation instance from the point it was paused.
         /// Has no effect if the animation instance is not paused.
-        member x.Resume() =
-            x.Perform <| Action.Resume
+        member inline this.Resume() =
+            this.Perform <| Action.Resume
 
         /// Updates the animation instance to the given local time.
-        member x.Update(time: LocalTime, finalize: bool) =
-            x.Perform <| Action.Update(time, finalize)
+        member inline this.Update(time: LocalTime, finalize: bool) =
+            this.Perform <| Action.Update(time, finalize)
