@@ -28,23 +28,24 @@ module internal Groups =
             Log.warn "[Animation] Cannot scale composite animation with duration %A" animation.Duration
             1.0
 
+    /// Applies the distance-time function of the animation to the given time stamp.
+    let applyDistanceTimeToLocalTime (localTime : LocalTime) (animation : IAnimation) =
+        let duration = animation.Duration
+        if duration.IsFinite then
+            let t = animation.DistanceTime(localTime)
+            t |> LocalTime.ofNormalizedPosition duration
+        else
+            localTime
+
     /// Applies the distance-time function of the animation to time stamps contained in the given action.
-    let applyDistanceTime (action : Action) (animation : IAnimationInstance<'Model>) =
-
-        let apply (localTime : LocalTime) =
-            let duration = animation.Duration
-            if duration.IsFinite then
-                let t = animation.DistanceTime(localTime)
-                t |> LocalTime.ofNormalizedPosition duration
-            else
-                localTime
-
+    let applyDistanceTimeToAction (action : Action) (animation : IAnimation) =
         match action with
         | Action.Start startFrom ->
-            Action.Start (apply startFrom)
+            let startFrom = startFrom |> clamp LocalTime.zero animation.FinalPosition
+            Action.Start (applyDistanceTimeToLocalTime startFrom animation)
 
         | Action.Update (time, finalize) ->
-            Action.Update (apply time, finalize)
+            Action.Update (applyDistanceTimeToLocalTime time animation, finalize)
 
         | _ ->
             action
@@ -77,6 +78,7 @@ module internal Groups =
                 else
                     let startTime = localBoundary (group.Position < groupLocalTime)
                     animation.Perform <| Action.Start startTime
+                    animation.Perform <| Action.Update (startTime, false)
 
                     if startTime <> localTime then
                         animation.Perform <| Action.Update (localTime, false)

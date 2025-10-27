@@ -5,19 +5,18 @@ open Aardvark.Base
 type internal SequentialGroupInstance<'Model, 'Value>(name : Symbol, definition : SequentialGroup<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, SequentialGroup<'Model, 'Value>>(name, definition)
 
-    let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
+    let members = definition.Members.Data |> Array.map _.Create(name)
     let segments = definition.Members.Segments
 
     override x.Perform(action) =
-        let action = Groups.applyDistanceTime action x
+        let innerAction = Groups.applyDistanceTimeToAction action x
 
         for i = 0 to members.Length - 1 do
-            members.[i] |> Groups.perform segments.[i] action x
+            members.[i] |> Groups.perform segments.[i] innerAction x
 
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-
         // Commit members
         let mutable result =
             (model, members) ||> Array.fold (fun model animation ->
@@ -75,14 +74,16 @@ and internal SequentialGroup<'Model, 'Value> =
         x.Duration * x.DistanceTimeFunction.Iterations
 
     member x.FindMemberIndex(groupLocalTime : LocalTime) : int =
+        let groupLocalTime = Groups.applyDistanceTimeToLocalTime groupLocalTime x
+
         if groupLocalTime < LocalTime.zero then
             0
-        elif groupLocalTime > LocalTime.ofDuration x.Duration then
+        elif groupLocalTime >= LocalTime.ofDuration x.Duration then
             x.Members.Data.Length - 1
         else
             x.Members.Segments |> Array.binarySearch (fun s ->
                 if groupLocalTime < s.Start then -1
-                elif groupLocalTime > s.End then 1
+                elif groupLocalTime >= s.End then 1
                 else 0
             ) |> ValueOption.get
 

@@ -10,7 +10,7 @@ type internal ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition 
     let segments = definition.Members.Data |> Array.map (fun a -> Groups.Segment.ofDuration a.Duration)
 
     override x.Perform(action) =
-        let action = Groups.applyDistanceTime action x
+        let action = Groups.applyDistanceTimeToAction action x
 
         for i = 0 to members.Length - 1 do
             members.[i] |> Groups.perform segments.[i] action x
