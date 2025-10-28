@@ -416,6 +416,69 @@ module ``Groups Tests`` =
                 ]
             }
 
+        let negativeEasing (mode: LoopMode) =
+            test $"Negative easing ({mode})" {
+                use _ = Animator.initTest()
+
+                let eventsI, i =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.loopN mode 1
+                    |> Animation.trackEvents
+
+                let eventsO, o =
+                    Animation.sequential [i]
+                    |> Animation.easeCustom false ((*) -1.0)
+                    |> Animation.trackEvents
+
+                Animator.createAndStart "Test" o ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents eventsI [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Expect.checkEvents eventsO [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Animator.tickSeconds 0.25
+
+                let value =
+                    match mode with
+                    | LoopMode.Mirror -> 0.25
+                    | LoopMode.Repeat -> 0.75
+                    | _ -> -0.25
+
+                Expect.checkEvents eventsI [
+                    EventType.Progress, value
+                ]
+
+                Expect.checkEvents eventsO [
+                    EventType.Progress, value
+                ]
+
+                Animator.tickSeconds 1.0
+
+                let value =
+                    match mode with
+                    | LoopMode.Mirror -> 1.0
+                    | LoopMode.Repeat -> 1.0
+                    | _ -> -1.0
+
+                Expect.checkEvents eventsI [
+                    EventType.Progress, value
+                    EventType.Finalize, value
+                ]
+
+                Expect.checkEvents eventsO [
+                    EventType.Progress, value
+                    EventType.Finalize, value
+                ]
+            }
+
     module Concurrent =
 
         let progress =
@@ -579,6 +642,9 @@ module ``Groups Tests`` =
                 Sequential.positionWithEasing
                 Sequential.pauseResumeWithEasing
                 Sequential.outOfBoundsEasing
+                Sequential.negativeEasing LoopMode.Repeat
+                Sequential.negativeEasing LoopMode.Mirror
+                Sequential.negativeEasing LoopMode.Continue
             ]
 
             testList "Concurrent" [

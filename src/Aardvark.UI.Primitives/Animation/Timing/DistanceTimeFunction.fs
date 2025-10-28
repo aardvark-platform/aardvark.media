@@ -10,11 +10,11 @@ module internal DistanceTimeFunctionUtilities =
         if s = 0.0 then
             0.0
         else
-            let t = s % 1.0
+            let t = s - floor s
             if t = 0.0 then 1.0 else t
 
     let mirror (s : float) =
-        let t = s % 1.0
+        let t = abs (s % 1.0)
         if int s % 2 = 0 then t else 1.0 - t
 
     let wrap (mode : LoopMode) (s : float) =
