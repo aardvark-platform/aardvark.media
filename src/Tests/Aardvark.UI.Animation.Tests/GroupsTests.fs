@@ -1,5 +1,6 @@
 namespace Aardvark.UI.Animation.Tests
 
+open Aardvark.Base
 open Aardvark.UI.Animation
 open Expecto
 
@@ -633,6 +634,158 @@ module ``Groups Tests`` =
                 ]
             }
 
+        let positionWithEasing =
+            test "Position (with easing)" {
+                use _ = Animator.initTest()
+
+                let eventsA, a =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.loopN LoopMode.Mirror 2
+                    |> Animation.trackEvents
+
+                let eventsB, b =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.loopN LoopMode.Repeat 2
+                    |> Animation.trackEvents
+
+                let eventsC, c =
+                    Animation.map2 (fun x y -> (x, y)) a b
+                    |> Animation.easeCustom false ((+) 0.1 >> saturate)
+                    |> Animation.trackEvents
+
+                let instance =
+                    Animator.createAndStart "Test" c ()
+                    Animator.getUntyped "Test" ()
+
+                // 0.0
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents eventsA [
+                    EventType.Start, 0.2
+                    EventType.Progress, 0.2
+                ]
+
+                Expect.checkEvents eventsB [
+                    EventType.Start, 0.2
+                    EventType.Progress, 0.2
+                ]
+
+                Expect.checkEvents eventsC [
+                    EventType.Start, (0.2, 0.2)
+                    EventType.Progress, (0.2, 0.2)
+                ]
+
+                Expect.equal instance.Position LocalTime.zero "Unexpected position"
+
+                // 1.3
+                Animator.tickSeconds 1.3
+
+                Expect.checkEvents eventsA [
+                    EventType.Progress, 0.5
+                ]
+
+                Expect.checkEvents eventsB [
+                    EventType.Progress, 0.5
+                ]
+
+                Expect.checkEvents eventsC [
+                    EventType.Progress, (0.5, 0.5)
+                ]
+
+                Expect.equal instance.Position (LocalTime.ofSeconds 1.3) "Unexpected position"
+
+                // 2.1
+                Animator.tickSeconds 2.1
+
+                Expect.checkEvents eventsA [
+                    EventType.Progress, 0.0
+                    EventType.Finalize, 0.0
+                ]
+
+                Expect.checkEvents eventsB [
+                    EventType.Progress, 1.0
+                    EventType.Finalize, 1.0
+                ]
+
+                Expect.checkEvents eventsC [
+                    EventType.Progress, (0.0, 1.0)
+                    EventType.Finalize, (0.0, 1.0)
+                ]
+
+                Expect.equal instance.Position (LocalTime.ofSeconds 2.0) "Unexpected position"
+            }
+
+        let pauseResumeWithEasing =
+            test "Pause / Resume (with easing)" {
+                use _ = Animator.initTest()
+
+                let eventsA, a =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.loopN LoopMode.Mirror 2
+                    |> Animation.trackEvents
+
+                let eventsB, b =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.loopN LoopMode.Repeat 2
+                    |> Animation.trackEvents
+
+                let eventsC, c =
+                    Animation.map2 (fun x y -> (x, y)) a b
+                    |> Animation.easeCustom false ((+) 0.1 >> saturate)
+                    |> Animation.trackEvents
+
+                Animator.createAndStart "Test" c ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents eventsA [
+                    EventType.Start, 0.2
+                    EventType.Progress, 0.2
+                ]
+
+                Expect.checkEvents eventsB [
+                    EventType.Start, 0.2
+                    EventType.Progress, 0.2
+                ]
+
+                Expect.checkEvents eventsC [
+                    EventType.Start, (0.2, 0.2)
+                    EventType.Progress, (0.2, 0.2)
+                ]
+
+                Animator.pause "Test" ()
+                Animator.tickSeconds 0.4
+
+                Expect.checkEvents eventsA [
+                ]
+
+                Expect.checkEvents eventsB [
+                ]
+
+                Expect.checkEvents eventsC [
+                    EventType.Pause, (0.2, 0.2)
+                ]
+
+                Animator.resume "Test" ()
+                Animator.tickSeconds 10.0
+
+                Expect.checkEvents eventsA [
+                    EventType.Progress, 0.6
+                ]
+
+                Expect.checkEvents eventsB [
+                    EventType.Progress, 0.6
+                ]
+
+                Expect.checkEvents eventsC [
+                    EventType.Resume, (0.2, 0.2)
+                    EventType.Progress, (0.6, 0.6)
+                ]
+            }
+
     [<Tests>]
     let tests =
         testList "Groups" [
@@ -649,5 +802,7 @@ module ``Groups Tests`` =
 
             testList "Concurrent" [
                 Concurrent.progress
+                Concurrent.positionWithEasing
+                Concurrent.pauseResumeWithEasing
             ]
         ]
