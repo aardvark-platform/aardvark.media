@@ -59,13 +59,15 @@ type State =
 
 
 /// Loop mode for animation iterations.
-[<RequireQualifiedAccess>]
 type LoopMode =
     /// Animation restarts at the beginning.
-    | Repeat
+    | Repeat = 0
 
     /// Animation is reversed upon reaching the end.
-    | Mirror
+    | Mirror = 1
+
+    /// Animation continues beyond the end (i.e. the normalized position can be greater than 1.0).
+    | Continue = 2
 
 type IAnimation =
 

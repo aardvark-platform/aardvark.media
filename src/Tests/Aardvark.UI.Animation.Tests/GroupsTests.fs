@@ -366,6 +366,56 @@ module ``Groups Tests`` =
                 ]
             }
 
+        let outOfBoundsEasing =
+            test "Out-of-bounds easing" {
+                use _ = Animator.initTest()
+
+                let eventsI, i =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.trackEvents
+
+                let eventsO, o =
+                    Animation.sequential [i]
+                    |> Animation.easeCustom false ((*) 10.0)
+                    |> Animation.trackEvents
+
+                Animator.createAndStart "Test" o ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents eventsI [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Expect.checkEvents eventsO [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Animator.tickSeconds 0.5
+
+                Expect.checkEvents eventsI [
+                    EventType.Progress, 5.0
+                ]
+
+                Expect.checkEvents eventsO [
+                    EventType.Progress, 5.0
+                ]
+
+                Animator.tickSeconds 1.0
+
+                Expect.checkEvents eventsI [
+                    EventType.Progress, 10.0
+                    EventType.Finalize, 10.0
+                ]
+
+                Expect.checkEvents eventsO [
+                    EventType.Progress, 10.0
+                    EventType.Finalize, 10.0
+                ]
+            }
+
     module Concurrent =
 
         let progress =
@@ -528,6 +578,7 @@ module ``Groups Tests`` =
                 Sequential.startFrom
                 Sequential.positionWithEasing
                 Sequential.pauseResumeWithEasing
+                Sequential.outOfBoundsEasing
             ]
 
             testList "Concurrent" [

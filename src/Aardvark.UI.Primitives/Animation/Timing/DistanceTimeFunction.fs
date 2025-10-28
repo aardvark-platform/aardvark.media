@@ -21,6 +21,7 @@ module internal DistanceTimeFunctionUtilities =
         match mode with
         | LoopMode.Repeat -> repeat s
         | LoopMode.Mirror -> mirror s
+        | _ -> s
 
 
 type internal DistanceTimeFunction =
@@ -31,29 +32,28 @@ type internal DistanceTimeFunction =
     }
 
     /// Returns the normalized distance along the space curve based on the given local time stamp.
-    member x.Invoke(t : float) =
+    member this.Invoke(t : float) =
         if not <| isFinite t then
             Log.warn "[Animation] Distance-time function invoked with %f" t
 
-        if t < 0.0 || t > x.Iterations then t
-        else x.Easing.Invoke(t |> wrap x.Mode)
+        this.Easing.Invoke(t |> wrap this.Mode)
 
     /// <summary>
     /// Applies an easing function, i.e. a function f: s -> s on the normalized distance s where f(0) = 0 and f(1) = 1.
     /// </summary>
     /// <param name="easing">The easing function to apply.</param>
     /// <param name="compose">Indicates whether easing is composed or overwritten.</param>
-    member x.Ease(easing, compose) =
-        { x with Easing = Func<_,_> (if compose then x.Easing.Invoke >> easing else easing) }
+    member this.Ease(easing, compose) =
+        { this with Easing = Func<_,_> (if compose then this.Easing.Invoke >> easing else easing) }
 
     /// <summary>
     /// Sets the number of iterations and loop mode.
     /// </summary>
     /// <param name="iterations">The number of iterations or a non-positive value for an unlimited number of iterations.</param>
     /// <param name="mode">The loop or wrap mode.</param>
-    member x.Loop(iterations, mode) =
+    member this.Loop(iterations, mode) =
         let iterations = if iterations > 0 then float iterations else infinity
-        { x with Iterations = iterations; Mode = mode }
+        { this with Iterations = iterations; Mode = mode }
 
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
@@ -62,7 +62,7 @@ module internal DistanceTimeFunction =
     let empty =
         { Easing     = Func<_,_> id
           Iterations = 1.0
-          Mode       = LoopMode.Repeat }
+          Mode       = LoopMode.Continue }
 
 
 [<AutoOpen>]
