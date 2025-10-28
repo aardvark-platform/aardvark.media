@@ -59,7 +59,7 @@ and [<ReferenceEquality>] internal InputMapping<'Model, 'T, 'Input, 'U> =
     interface IAnimation with
         member x.Duration = x.Animation.Duration
         member x.TotalDuration = x.Animation.TotalDuration
-        member x.DistanceTime(localTime) = x.Animation.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.Animation.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>

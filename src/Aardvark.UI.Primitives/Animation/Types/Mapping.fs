@@ -53,8 +53,8 @@ and [<ReferenceEquality>] internal Mapping<'Model, 'T, 'U> =
     member x.TotalDuration =
         x.Input.TotalDuration
 
-    member x.DistanceTime(localTime) =
-        x.Input.DistanceTime(localTime)
+    member x.DistanceTime(position) =
+        x.Input.DistanceTime(position)
 
     member x.Create(name) =
         MappingInstance(name, x)
@@ -80,7 +80,7 @@ and [<ReferenceEquality>] internal Mapping<'Model, 'T, 'U> =
     interface IAnimation with
         member x.Duration = x.Duration
         member x.TotalDuration = x.TotalDuration
-        member x.DistanceTime(localTime) = x.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>

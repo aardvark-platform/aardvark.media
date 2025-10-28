@@ -87,8 +87,8 @@ and [<ReferenceEquality>] internal SequentialGroup<'Model, 'Value> =
                 else 0
             ) |> ValueOption.get
 
-    member x.DistanceTime(groupLocalTime : LocalTime) =
-        x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
+    member x.DistanceTime(groupPosition : float) =
+        x.DistanceTimeFunction.Invoke(groupPosition)
 
     member x.Scale(duration) =
         let s = x |> Groups.scale duration
@@ -115,7 +115,7 @@ and [<ReferenceEquality>] internal SequentialGroup<'Model, 'Value> =
     interface IAnimation with
         member x.Duration = x.Duration
         member x.TotalDuration = x.TotalDuration
-        member x.DistanceTime(localTime) = x.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>

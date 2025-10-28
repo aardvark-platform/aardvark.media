@@ -75,8 +75,8 @@ type IAnimation =
     /// Returns the total duration of the animation.
     abstract member TotalDuration : Duration
 
-    /// Returns the normalized distance along the space curve based on the given local time stamp.
-    abstract member DistanceTime : LocalTime -> float
+    /// Returns the effective normalized distance along the space curve based on the given normalized position.
+    abstract member DistanceTime : position: float -> float
 
 
 type IAnimationInstance<'Model> =
@@ -178,6 +178,11 @@ module InterfaceExtensions =
 
         /// Returns the final position of the animation as LocalTime.
         member inline this.FinalPosition = LocalTime.ofDuration this.TotalDuration
+
+        /// Returns the effective normalized distance along the space curve based on the given local time stamp.
+        member inline this.DistanceTime(localTime: LocalTime) =
+            let duration = this.Duration
+            if duration.IsZero then 1.0 else this.DistanceTime(localTime / duration)
 
     type IAnimationInstance<'Model> with
 

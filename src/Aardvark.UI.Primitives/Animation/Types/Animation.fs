@@ -71,13 +71,14 @@ and [<ReferenceEquality>] internal Animation<'Model, 'Value> =
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
 
-    member x.DistanceTime(localTime : LocalTime) =
-        x.DistanceTimeFunction.Invoke(localTime / x.Duration)
+    member x.DistanceTime(position) =
+        x.DistanceTimeFunction.Invoke(position)
 
     member x.Evaluate(model : 'Model, localTime : LocalTime) : 'Value =
         x.SpaceFunction.Invoke(model, x.DistanceTime(localTime))
 
-    member x.Scale(duration) =
+    member x.Scale(duration : Duration) =
+        if duration.TotalNanoseconds < 0L then raise <| System.ArgumentOutOfRangeException(nameof duration, "Duration cannot be negative.")
         { x with Duration = duration }
 
     member x.Ease(easing, compose) =
@@ -95,7 +96,7 @@ and [<ReferenceEquality>] internal Animation<'Model, 'Value> =
     interface IAnimation with
         member x.Duration = x.Duration
         member x.TotalDuration = x.TotalDuration
-        member x.DistanceTime(localTime) = x.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>

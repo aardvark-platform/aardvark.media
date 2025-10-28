@@ -16,6 +16,7 @@ type Duration =
         member inline this.TotalSeconds       = this.MicroTime.TotalSeconds
         member inline this.TotalMilliseconds  = this.MicroTime.TotalMilliseconds
         member inline this.TotalMicroseconds  = this.MicroTime.TotalMicroseconds
+        member inline this.TotalNanoseconds   = this.MicroTime.TotalNanoseconds
 
         static member inline (*) (x : Duration, y : float) = Duration (x.MicroTime * y)
         static member inline (*) (x : Duration, y : int)   = Duration (x.MicroTime * y)
@@ -41,6 +42,7 @@ type GlobalTime =
         member inline this.TotalSeconds       = this.MicroTime.TotalSeconds
         member inline this.TotalMilliseconds  = this.MicroTime.TotalMilliseconds
         member inline this.TotalMicroseconds  = this.MicroTime.TotalMicroseconds
+        member inline this.TotalNanoseconds   = this.MicroTime.TotalNanoseconds
 
         static member inline (+) (x : GlobalTime, y : GlobalTime) = GlobalTime (x.MicroTime + y.MicroTime)
         static member inline (+) (x : GlobalTime, y : LocalTime) = GlobalTime (x.MicroTime + y.MicroTime)
@@ -68,6 +70,7 @@ and [<StructuredFormatDisplay("{AsString}")>] LocalTime =
         member inline this.TotalSeconds       = this.MicroTime.TotalSeconds
         member inline this.TotalMilliseconds  = this.MicroTime.TotalMilliseconds
         member inline this.TotalMicroseconds  = this.MicroTime.TotalMicroseconds
+        member inline this.TotalNanoseconds   = this.MicroTime.TotalNanoseconds
 
         static member inline (+) (x : LocalTime, y : LocalTime) = LocalTime (x.MicroTime + y.MicroTime)
         static member inline (-) (x : LocalTime, y : LocalTime) = LocalTime (x.MicroTime - y.MicroTime)
