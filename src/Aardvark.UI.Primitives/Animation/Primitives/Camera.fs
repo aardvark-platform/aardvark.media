@@ -9,9 +9,7 @@ module AnimationCameraPrimitives =
     module Animation =
 
         module Camera =
-
             open Aether
-            open Animation
 
             /// Creates an animation that moves the camera view to the given location.
             let move (dst : V3d) (camera : CameraView) : IAnimation<'Model, CameraView> =
@@ -90,8 +88,8 @@ module AnimationCameraPrimitives =
 
             /// Creates an animation that interpolates between the camera views src and dst.
             let interpolate (src : CameraView) (dst : CameraView) : IAnimation<'Model, CameraView> =
-                let animPos = Primitives.lerp src.Location dst.Location
-                let animOri = Primitives.slerp src.Orientation dst.Orientation
+                let animPos = Animation.Primitives.lerp src.Location dst.Location
+                let animOri = Animation.Primitives.slerp src.Orientation dst.Orientation
 
                 (animPos, animOri)
                 ||> Animation.map2 (fun pos ori -> CameraView.orient pos ori dst.Sky)
@@ -155,34 +153,33 @@ module AnimationCameraPrimitives =
 
             /// <summary>
             /// Creates an array of animations that interpolate linearly between pairs of the given camera views.
+            /// Returns an empty array if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let linearPath' (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
-
-                let points = Array.ofSeq points
+                let points = Seq.asArray points
 
                 if Array.isEmpty points then
-                    raise <| System.ArgumentException("Camera path cannot be empty.")
+                    Array.empty
+                else
+                    let sky = points.[0].Sky
+                    let positions = points |> Array.map CameraView.location
+                    let orientations = points |> Array.map CameraView.orientation
 
-                let sky = points.[0].Sky
-                let positions = points |> Array.map CameraView.location
-                let orientations = points |> Array.map CameraView.orientation
+                    let interp (p : V3d, o : Rot3d) (p' : V3d, o' : Rot3d) =
+                        (Animation.Primitives.lerp p p', Animation.Primitives.slerp o o')
+                        ||> Animation.map2 (fun l o -> l, o)
 
-                let interp (p : V3d, o : Rot3d) (p' : V3d, o' : Rot3d) =
-                    (Primitives.lerp p p', Primitives.slerp o o')
-                    ||> Animation.map2 (fun l o -> l, o)
+                    let dist (x : V3d, _) (y : V3d, _) =
+                        Vec.distance x y
 
-                let dist (x : V3d, _) (y : V3d, _) =
-                    Vec.distance x y
-
-                Array.zip positions orientations
-                |> Primitives.path' interp dist
-                |> Array.map (Animation.map (fun (l, o) -> CameraView.orient l o sky))
+                    Array.zip positions orientations
+                    |> Animation.Primitives.path' interp dist
+                    |> Array.map (Animation.map (fun (l, o) -> CameraView.orient l o sky))
 
             /// <summary>
             /// Creates an animation that interpolates linearly between the given camera views.
+            /// Returns an empty animation if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let linearPath (points : CameraView seq) : IAnimation<'Model, CameraView> =
                 points |> linearPath' |> Animation.sequential
 
@@ -191,37 +188,37 @@ module AnimationCameraPrimitives =
             /// The animations are scaled according to the distance between the camera view locations.
             /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
             /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
+            /// Returns an empty array if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let smoothPath' (errorTolerance : float) (points : CameraView seq) : IAnimation<'Model, CameraView>[] =
-                let points = Array.ofSeq points
+                let points = Seq.asArray points
 
                 if Array.isEmpty points then
-                    raise <| System.ArgumentException("Camera path cannot be empty.")
+                    Array.empty
+                else
+                    let sky = points.[0].Sky
 
-                let sky = points.[0].Sky
+                    let locations =
+                        points
+                        |> Array.map CameraView.location
+                        |> Animation.Primitives.smoothPath' Vec.distance errorTolerance
 
-                let locations =
-                    points
-                    |> Array.map CameraView.location
-                    |> Primitives.smoothPath' Vec.distance errorTolerance
+                    let orientations =
+                        points
+                        |> Array.map CameraView.orientation
+                        |> Animation.Primitives.path' Animation.Primitives.slerp (fun _ _ -> 1.0)
 
-                let orientations =
-                    points
-                    |> Array.map CameraView.orientation
-                    |> Primitives.path' Primitives.slerp (fun _ _ -> 1.0)
-
-                (locations, orientations)
-                ||> Array.map2 (fun l o ->
-                    let o = o |> Animation.duration l.Duration
-                    (l, o) ||> Animation.map2 (fun l o -> CameraView.orient l o sky)
-                )
+                    (locations, orientations)
+                    ||> Array.map2 (fun l o ->
+                        let o = o |> Animation.duration l.Duration
+                        (l, o) ||> Animation.map2 (fun l o -> CameraView.orient l o sky)
+                    )
 
             /// <summary>
             /// Creates an animation that smoothly interpolates between the given camera views.
             /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
             /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
+            /// Returns an empty animation if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let smoothPath (errorTolerance : float) (points : CameraView seq) : IAnimation<'Model, CameraView> =
                 points |> smoothPath' errorTolerance |> Animation.sequential

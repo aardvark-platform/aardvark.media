@@ -194,13 +194,13 @@ module Animations =
         >> Animation.ease (Easing.Out <| EasingFunction.Elastic (1.8, 0.5))
 
     let reveal (id : V2i) (model : Model) =
-        let color = model |> fadeReveal id
-        let shape = model |> scaleToCube id
+        let color : IAnimation<Model> = fadeReveal id model
+        let shape : IAnimation<Model> = scaleToCube id model
         Animation.concurrent [color; shape]
 
     let hide (id : V2i) (model : Model) =
-        let color = model |> fadeNeutral id
-        let shape = model |> scaleToTile id
+        let color : IAnimation<Model> = fadeNeutral id model
+        let shape : IAnimation<Model> = scaleToTile id model
         Animation.concurrent [color; shape]
 
     let private orbit (center : V2d) (position : V2d) (a : float) (b : float) =

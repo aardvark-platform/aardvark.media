@@ -21,12 +21,11 @@ module internal Groups =
 
     /// Computes the duration scale for the group animation
     let scale (duration : Duration) (animation : IAnimation<'Model>) =
-        let s = duration / animation.Duration
-
-        if isFinite s then s
-        else
-            Log.warn "[Animation] Cannot scale composite animation with duration %A" animation.Duration
+        if animation.Duration.IsZero then
+            Log.warn "[Animation] Cannot scale composite animation with zero duration"
             1.0
+        else
+            duration / animation.Duration
 
     /// Applies the distance-time function of the animation to the given time stamp.
     let applyDistanceTimeToLocalTime (localTime : LocalTime) (animation : IAnimation) =

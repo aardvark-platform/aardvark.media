@@ -121,7 +121,7 @@ module Animation =
         static let defaultFunction = FSharpFunc<'Model, float, 'Value>.Adapt (fun _ _ -> Unchecked.defaultof<'Value>)
         static member Default = defaultFunction
 
-    /// Empty animation.
+    /// Empty animation with zero duration returning the default value.
     let empty<'Model, 'Value> : IAnimation<'Model, 'Value> =
         { SpaceFunction        = SpaceFunction.Default
           DistanceTimeFunction = DistanceTimeFunction.empty

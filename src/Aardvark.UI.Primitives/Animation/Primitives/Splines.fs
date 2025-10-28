@@ -221,8 +221,9 @@ module AnimationSplinePrimitives =
             /// The animations are scaled according to the length of the spline segments.
             /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
             /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
+            /// Returns an empty array if the input sequence is empty.
             let inline smoothPath' (distance : ^Value -> ^Value -> float) (errorTolerance : float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
-                let points = Array.ofSeq points
+                let points = Seq.asArray points
                 let spline = points |> Splines.catmullRom distance errorTolerance
                 let totalLength = spline |> Array.stableSumBy _.Length
 
@@ -239,7 +240,7 @@ module AnimationSplinePrimitives =
             /// Creates an animation that smoothly interpolates along the path given by the control points.
             /// The accuracy of the parameterization depends on the given error tolerance, a value in the range of [Splines.MinErrorTolerance, 1].
             /// Reducing the error tolerance increases both accuracy and memory usage; use Splines.DefaultErrorTolerance for a good balance.
+            /// Returns an empty animation if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline smoothPath (distance : ^Value -> ^Value -> float) (errorTolerance : float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
                 points |> smoothPath' distance errorTolerance |> Animation.sequential

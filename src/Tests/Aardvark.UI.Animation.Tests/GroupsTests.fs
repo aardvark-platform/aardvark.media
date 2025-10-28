@@ -480,6 +480,105 @@ module ``Groups Tests`` =
                 ]
             }
 
+        let empty =
+            test "Empty" {
+                use _ = Animator.initTest()
+
+                let events, animation =
+                    Animation.sequential []
+                    |> Animation.seconds 1
+                    |> Animation.trackEvents
+
+                Animator.createAndStart "Test" animation ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Animator.tickSeconds 1.0
+
+                Expect.checkEvents events [
+                    EventType.Progress, 0.0
+                    EventType.Finalize, 0.0
+                ]
+            }
+
+        let emptyMember =
+            test "Empty member" {
+                use _ = Animator.initTest()
+
+                let eventsA, a =
+                    Animation.empty
+                    |> Animation.trackEvents
+
+                let eventsB, b =
+                    Animation.create id
+                    |> Animation.seconds 1
+                    |> Animation.trackEvents
+
+                let eventsC, c =
+                    Animation.empty
+                    |> Animation.trackEvents
+
+                let eventsD, d =
+                    Animation.create ((+) 0.1)
+                    |> Animation.seconds 1
+                    |> Animation.trackEvents
+
+                let events, seq =
+                    Animation.sequential [a; b; c; d]
+                    |> Animation.seconds 4.0
+                    |> Animation.trackEvents
+
+                Expect.equal seq.Duration.TotalSeconds 4.0 "Unexpected duration"
+
+                Animator.createAndStart "Test" seq ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents eventsA [
+                ]
+
+                Expect.checkEvents eventsB [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Expect.checkEvents eventsC [
+                ]
+
+                Expect.checkEvents eventsD [
+                ]
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Animator.tickSeconds 2.0
+
+                Expect.checkEvents eventsA [
+                ]
+
+                Expect.checkEvents eventsB [
+                    EventType.Progress, 1.0
+                    EventType.Finalize, 1.0
+                ]
+
+                Expect.checkEvents eventsC [
+                ]
+
+                Expect.checkEvents eventsD [
+                    EventType.Start,    0.1
+                    EventType.Progress, 0.1
+                ]
+
+                Expect.checkEvents events [
+                    EventType.Progress, 0.1
+                ]
+            }
+
     module Concurrent =
 
         let progress =
@@ -798,6 +897,8 @@ module ``Groups Tests`` =
                 Sequential.negativeEasing LoopMode.Repeat
                 Sequential.negativeEasing LoopMode.Mirror
                 Sequential.negativeEasing LoopMode.Continue
+                Sequential.empty
+                Sequential.emptyMember
             ]
 
             testList "Concurrent" [

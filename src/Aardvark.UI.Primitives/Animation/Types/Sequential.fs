@@ -8,6 +8,10 @@ type internal SequentialGroupInstance<'Model, 'Value>(name : Symbol, definition 
     let members = definition.Members.Data |> Array.map _.Create(name)
     let segments = definition.Members.Segments
 
+    let evaluate t =
+        let i = definition.FindMemberIndex(t)
+        members.[i].Value
+
     override x.Perform(action) =
         let innerAction = Groups.applyDistanceTimeToAction action x
 
@@ -24,7 +28,6 @@ type internal SequentialGroupInstance<'Model, 'Value>(name : Symbol, definition 
             )
 
         // Process all actions, from oldest to newest
-        let evaluate t = let i = definition.FindMemberIndex(t) in members.[i].Value
         StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         // Notify observers about changes
@@ -140,22 +143,22 @@ module AnimationSequentialExtensions =
 
         /// <summary>
         /// Creates a sequential animation group from a sequence of animations.
+        /// Returns an empty animation if the input sequence is empty.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
         let sequential (animations : #IAnimation<'Model, 'Value> seq) : IAnimation<'Model, 'Value> =
             let animations =
                 animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation group cannot be empty.")
-
-            { Members              = SequentialGroupMembers animations
-              DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable           = Observable.empty }
+                Animation.empty
+            else
+                { Members              = SequentialGroupMembers animations
+                  DistanceTimeFunction = DistanceTimeFunction.empty
+                  Observable           = Observable.empty }
 
         /// <summary>
         /// Creates a sequential animation group from a sequence of untyped animations.
+        /// Returns an empty animation if the input sequence is empty.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
         let sequential' (animations : #IAnimation<'Model> seq) : IAnimation<'Model, unit> =
             animations |> Seq.map Animation.adapter |> sequential

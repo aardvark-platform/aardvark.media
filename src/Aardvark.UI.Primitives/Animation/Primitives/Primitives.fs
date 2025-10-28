@@ -117,11 +117,12 @@ module AnimationPrimitives =
 
             /// Creates an array of animations that interpolate between pairs of the given points.
             /// The animations are scaled according to the distance between the points.
+            /// Returns an empty array if the input sequence is empty.
             let inline path' (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                              (distance : ^Value -> ^Value -> float)
                              (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
 
-                let pj = Array.ofSeq points
+                let pj = Seq.asArray points
 
                 if pj.Length = 0 then
                     Array.empty
@@ -144,8 +145,8 @@ module AnimationPrimitives =
 
             /// <summary>
             /// Creates an animation that interpolates between the given points.
+            /// Returns an empty animation if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline path (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                             (distance : ^Value -> ^Value -> float)
                             (points : ^Value seq) : IAnimation<'Model, ^Value> =
@@ -155,12 +156,13 @@ module AnimationPrimitives =
 
             /// Creates an array of animations that interpolate linearly between pairs of the given points.
             /// The animations are scaled according to the distance between the points.
+            /// Returns an empty array if the input sequence is empty.
             let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 points |> path' lerp distance
 
             /// <summary>
             /// Creates an animation that linearly interpolates between the given points.
+            /// Returns an empty animation if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline linearPath (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
                 points |> path lerp distance

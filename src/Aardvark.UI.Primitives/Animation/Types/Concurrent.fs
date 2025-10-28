@@ -111,19 +111,19 @@ module AnimationGroupExtensions =
 
         /// <summary>
         /// Creates a concurrent animation group from a sequence of animations.
+        /// Returns an empty animation if the input sequence is empty.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let concurrent (animations : IAnimation<'Model> seq) : IAnimation<'Model, unit> =
+        let concurrent (animations : #IAnimation<'Model> seq) : IAnimation<'Model, unit> =
             let animations =
-                animations |> Array.ofSeq
+                animations |> Seq.map (fun a -> a :> IAnimation<'Model>) |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation group cannot be empty.")
-
-            { Members              = ConcurrentGroupMembers animations
-              Mapping              = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
-              DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable           = Observable.empty }
+                Animation.empty
+            else
+                { Members              = ConcurrentGroupMembers animations
+                  Mapping              = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
+                  DistanceTimeFunction = DistanceTimeFunction.empty
+                  Observable           = Observable.empty }
 
         /// Combines two animations into a concurrent group.
         let andAlso (x : IAnimation<'Model>) (y : IAnimation<'Model>) =

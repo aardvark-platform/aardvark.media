@@ -6,18 +6,17 @@ type internal AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapte
     inherit AbstractAnimationInstance<'Model, 'Value, Adapter<'Model, 'Value>>(name, definition)
 
     let wrapped = definition.Animation.Create(name)
+    let evaluate (_: LocalTime) = Unchecked.defaultof<'Value>
 
     override x.Perform(action) =
         wrapped.Perform(action)
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-
         // Commit wrapped animation
         let mutable result = wrapped.Commit(model, tick)
 
         // Process all actions, from oldest to newest
-        let evaluate _ = Unchecked.defaultof<'Value>
         StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         // Notify observers about changes
