@@ -68,28 +68,29 @@ module Animator =
         let inline untyped (animation : #IAnimation<'Model>) =
             animation :> IAnimation<'Model>
 
-        let tick (lens : Lens<'Model, Animator<'Model>>) (time : GlobalTime) (model : 'Model) =
-            let getSlots model = (Optic.get lens model).Slots
+        let inline getSlots (lens : Lens<'Model, Animator<'Model>>) (model : 'Model) =
+            HashMap.toValueSeq (Optic.get lens model).Slots
 
+        let tick (lens : Lens<'Model, Animator<'Model>>) (time : GlobalTime) (model : 'Model) =
             // Set the current tick
-            let animator = { Optic.get lens model with CurrentTick = ValueSome time }
+            let animator = { Optic.get lens model with CurrentTick = time }
             let mutable model = model |> Optic.set lens animator
 
             // Process pending actions
-            for _, s in getSlots model do
+            for s in getSlots lens model do
                 model <- s.Commit(model, time)
 
             // Update all running animations by generating and enqueuing Update actions
-            for _, s in getSlots model do
+            for s in getSlots lens model do
                 s.Update time
 
             // Process Update actions
-            for _, s in getSlots model do
+            for s in getSlots lens model do
                 model <- s.Commit(model, time)
 
             // Reset current tick
             model |> Optic.map lens (fun animator ->
-                { animator with CurrentTick = ValueNone }
+                { animator with CurrentTick = GlobalTime.infinite }
             )
 
         let set (lens : Lens<'Model, Animator<'Model>>)
@@ -99,11 +100,11 @@ module Animator =
 
             let animator = model |> Optic.get lens
 
-            match animator.Slots |> HashMap.tryFind name with
-            | Some slot ->
+            match animator.Slots |> HashMap.tryFindV name with
+            | ValueSome slot ->
                 slot.Set(animation)
                 slot.Perform(action)
-                slot.Commit(model, &animator.CurrentTick)
+                slot.Commit(model, animator.CurrentTick)
 
             | _ ->
                 let slot = AnimatorSlot(name, animation.Create name)
@@ -114,7 +115,7 @@ module Animator =
                     )
 
                 slot.Perform(action)
-                slot.Commit(model, &animator.CurrentTick)
+                slot.Commit(model, animator.CurrentTick)
 
         let enqueue (lens : Lens<'Model, Animator<'Model>>)
                     (name : Symbol) (animation : 'Model -> IAnimation<'Model>)
@@ -123,10 +124,10 @@ module Animator =
 
             let animator = model |> Optic.get lens
 
-            match animator.Slots |> HashMap.tryFind name with
-            | Some slot ->
+            match animator.Slots |> HashMap.tryFindV name with
+            | ValueSome slot ->
                 slot.Enqueue(animation, action)
-                slot.Commit(model, &animator.CurrentTick)
+                slot.Commit(model, animator.CurrentTick)
 
             | _ ->
                 let slot = AnimatorSlot(name, (animation model).Create name)
@@ -137,7 +138,7 @@ module Animator =
                     )
 
                 slot.Perform(action)
-                slot.Commit(model, &animator.CurrentTick)
+                slot.Commit(model, animator.CurrentTick)
 
         let remove (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (model : 'Model) =
             model |> Optic.map lens (fun animator ->
@@ -147,10 +148,10 @@ module Animator =
         let perform (lens : Lens<'Model, Animator<'Model>>) (name : Symbol) (action : IAnimationInstance<'Model> -> unit) (model : 'Model) =
             let animator = model |> Optic.get lens
 
-            match animator.Slots |> HashMap.tryFind name with
-            | Some slot ->
+            match animator.Slots |> HashMap.tryFindV name with
+            | ValueSome slot ->
                 slot.Perform(action)
-                slot.Commit(model, &animator.CurrentTick)
+                slot.Commit(model, animator.CurrentTick)
 
             | _ ->
                 model
@@ -158,13 +159,13 @@ module Animator =
         let iterate (lens : Lens<'Model, Animator<'Model>>) (action : IAnimationInstance<'Model> -> unit) (model : 'Model) =
             let animator = model |> Optic.get lens
 
-            for _, s in animator.Slots do
+            for s in getSlots lens model do
                 s.Perform(action)
 
             let mutable model = model
 
-            for _, s in animator.Slots do
-                model <- s.Commit(model, &animator.CurrentTick)
+            for s in getSlots lens model do
+                model <- s.Commit(model, animator.CurrentTick)
 
             model
 
@@ -374,8 +375,8 @@ module Animator =
         lens |> Lenses.set
         {
             Slots       = HashMap.empty
-            TickRate    = 60
-            CurrentTick = ValueNone
+            TickRate    = 30
+            CurrentTick = GlobalTime.infinite
         }
 
     /// Thread pool that generates real-time tick messages at a fixed rate.

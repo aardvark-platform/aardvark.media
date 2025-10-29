@@ -7,7 +7,7 @@ type Animator<'Model> =
     {
         Slots       : HashMap<Symbol, AnimatorSlot<'Model>>
         TickRate    : int
-        CurrentTick : GlobalTime voption
+        CurrentTick : GlobalTime
     }
 
 [<RequireQualifiedAccess>]
