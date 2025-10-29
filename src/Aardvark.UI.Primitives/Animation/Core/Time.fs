@@ -95,6 +95,17 @@ module Duration =
     let inline ofLocalTime (t : LocalTime)         = Duration t.MicroTime
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
+module GlobalTime =
+    let zero = GlobalTime MicroTime.zero
+    let infinite = GlobalTime MicroTime.PositiveInfinity
+
+    let inline ofNanoseconds (ns : ^Nanoseconds)   = GlobalTime <| MicroTime(int64 ns)
+    let inline ofMicroseconds (us : ^Microseconds) = GlobalTime <| MicroTime.FromMicroseconds(float us)
+    let inline ofMilliseconds (ms : ^Milliseconds) = GlobalTime <| MicroTime.FromMilliseconds(float ms)
+    let inline ofSeconds (s : ^Seconds)            = GlobalTime <| MicroTime.FromSeconds(float s)
+    let inline ofMinutes (m : ^Minutes)            = GlobalTime <| MicroTime.FromMinutes(float m)
+
+[<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module LocalTime =
     let zero = LocalTime MicroTime.zero
     let infinite = LocalTime MicroTime.PositiveInfinity
