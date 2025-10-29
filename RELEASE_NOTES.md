@@ -1,3 +1,7 @@
+### 5.6.0-prerelease0002
+- Updated rendering packages
+- Various improvements and fixes for the animation system
+
 ### 5.6.0-prerelease0001
 - Updated to Aarvark.Rendering 5.6.0-prerelease0001
 
