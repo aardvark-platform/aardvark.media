@@ -1,3 +1,13 @@
+### 5.6.0
+- Updated to Aardvark.Rendering 5.6 packages
+- [Animation] Improved real-time tick generation
+- [Animation] Renamed path to sequential
+- [Animation] Added Splines.DefaultErrorTolerance
+- [Animation] Added and simplified time-related utilities
+- [Animation] Simplified specifying iterations
+- [Animation] Composite animations can now be created from empty inputs resulting in empty animations
+- [Animation] Fixed various bugs
+
 ### 5.6.0-prerelease0002
 - Updated rendering packages
 - Various improvements and fixes for the animation system
