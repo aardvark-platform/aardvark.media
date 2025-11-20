@@ -27,8 +27,6 @@ if (!aardvark) {
 // until new aardium version available
 if (aardvark.electron) {
 
-
-
     aardvark.openFileDialog = function (config, callback) {
         if (!callback) callback = config;
         const props = {properties: ['openFile', 'multiSelections']};
@@ -42,6 +40,23 @@ if (aardvark.electron) {
         const all = {...props, ...config};
         aardvark.electron.remote.dialog.showSaveDialog(all).then(e => callback([e.filePath]));
     };
+
+} else {
+    const showError = () => console.error("File dialogs only work with Aardium.");
+
+    if (!aardvark.dialog) {
+        aardvark.dialog = {};
+        aardvark.dialog.showOpenDialog = () => { showError(); return Promise.resolve({ filePaths: [] }) };
+        aardvark.dialog.showSaveDialog = () => { showError(); return Promise.resolve({ filePath: "" }) };
+    }
+
+    if (!aardvark.openFileDialog) {
+        aardvark.openFileDialog = showError;
+    }
+
+    if (!aardvark.saveFileDialog) {
+        aardvark.saveFileDialog = showError;
+    }
 }
 
 if (!aardvark.promise)
@@ -421,70 +436,6 @@ class Renderer {
                 };
             };
         }
-
-		var downloadDirect = function (dataurl, filename) {
-			var a = document.createElement("a");
-			a.href = dataurl;
-			a.setAttribute("download", filename);
-			var b = document.createEvent("MouseEvents");
-			b.initEvent("click", false, true);
-			a.dispatchEvent(b);
-
-			return false;
-		};
-
-		function downloadURI(uri, name) {
-			console.log("downloading " + uri + " -> " + name);
-			var link = document.createElement("a");
-			link.download = name;
-			link.href = uri;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-		};
-
-		var screenshot = function () {
-			var name = "screenshot"; 
-			if (self.useMapping || true) {
-				//name += ".png";
-				//var dataurl = self.img.toDataURL("image/png");
-				//download(dataurl, name);
-				// workaround for currently flipped stuff.
-				console.log("mapping enabled -> using fallback download mechanism via screenshot service...");
-				name += ".jpg";
-				var url3 = window.top.location.href + "/rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8&fmt=png" ;
-				downloadURI(url3, name);
-			} 
-			else {
-				name += ".jpg";
-				downloadURI(self.img.src, name);
-			}
-		};
-		var ctrlDown = false;
-		this.div.addEventListener("keydown", (e) => {
-			if (e.keyCode === 123 && !ctrlDown) { //F12 {
-				screenshot();
-			}
-		});
-
-        if (getTopAardvark().captureFullscreen && getTopAardvark().electron) {
-			console.log("installing fullscreen capturer");
-			this.div.addEventListener("keydown", (e) => {
-				if (e.keyCode === 17) ctrlDown = true;
-                else if (e.keyCode === 123 && ctrlDown) {
-                    var path = getTopAardvark().dialog.showSaveDialog({
-						filters: [
-							{ name: 'Images', extensions: ['png','jpg'] }
-						]});
-                    console.log("saving fullscreen screenshot to" + path);
-                    getTopAardvark().captureFullscreen(path);
-				}
-			});
-			this.div.addEventListener("keyup", (e) => {
-				if (e.keyCode === 17) ctrlDown = false;
-			});
-		}
-
 
         connect();
 
@@ -999,19 +950,6 @@ if (!aardvark.addReferences) {
             });
         });
     };
-}
-
-
-if (!aardvark.openFileDialog) {
-
-    if (getTopAardvark().openFileDialog) {
-        aardvark.openFileDialog = getTopAardvark().openFileDialog;
-    }
-    else {
-        aardvark.openFileDialog = function () {
-            alert("Aardvark openFileDialog is not yet available");
-        };
-    }
 }
 
 class Channel {

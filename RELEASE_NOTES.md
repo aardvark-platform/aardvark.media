@@ -1,3 +1,6 @@
+- Removed broken fallback file dialogs
+- Removed broken F12 screenshot shortcut
+
 ### 5.6.0
 - Updated to Aardvark.Rendering 5.6 packages
 - [Animation] Improved real-time tick generation
@@ -14,6 +17,10 @@
 
 ### 5.6.0-prerelease0001
 - Updated to Aarvark.Rendering 5.6.0-prerelease0001
+
+### 5.5.5
+- Removed broken fallback file dialogs
+- Removed broken F12 screenshot shortcut
 
 ### 5.5.4
 - Added basic support for JavaScript modules.
