@@ -1,3 +1,7 @@
+### 5.5.5
+- Removed broken fallback file dialogs
+- Removed broken F12 screenshot shortcut
+
 ### 5.5.4
 - Added basic support for JavaScript modules.
 - [Screenshotr] Fixed System.Text.Json dependency
