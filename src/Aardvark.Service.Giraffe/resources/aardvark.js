@@ -27,8 +27,6 @@ if (!aardvark) {
 // until new aardium version available
 if (aardvark.electron) {
 
-
-
     aardvark.openFileDialog = function (config, callback) {
         if (!callback) callback = config;
         const props = {properties: ['openFile', 'multiSelections']};
@@ -42,6 +40,23 @@ if (aardvark.electron) {
         const all = {...props, ...config};
         aardvark.electron.remote.dialog.showSaveDialog(all).then(e => callback([e.filePath]));
     };
+
+} else {
+    const showError = () => console.error("File dialogs only work with Aardium.");
+
+    if (!aardvark.dialog) {
+        aardvark.dialog = {};
+        aardvark.dialog.showOpenDialog = () => { showError(); return Promise.resolve({ filePaths: [] }) };
+        aardvark.dialog.showSaveDialog = () => { showError(); return Promise.resolve({ filePath: "" }) };
+    }
+
+    if (!aardvark.openFileDialog) {
+        aardvark.openFileDialog = showError;
+    }
+
+    if (!aardvark.saveFileDialog) {
+        aardvark.saveFileDialog = showError;
+    }
 }
 
 if (!aardvark.promise)
@@ -999,19 +1014,6 @@ if (!aardvark.addReferences) {
             });
         });
     };
-}
-
-
-if (!aardvark.openFileDialog) {
-
-    if (getTopAardvark().openFileDialog) {
-        aardvark.openFileDialog = getTopAardvark().openFileDialog;
-    }
-    else {
-        aardvark.openFileDialog = function () {
-            alert("Aardvark openFileDialog is not yet available");
-        };
-    }
 }
 
 class Channel {

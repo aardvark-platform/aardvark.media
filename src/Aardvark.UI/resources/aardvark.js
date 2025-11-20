@@ -25,8 +25,6 @@ if (!aardvark) {
 // until new aardium version available
 if (aardvark.electron) {
 
-
-
     aardvark.openFileDialog = function (config, callback) {
         if (!callback) callback = config;
         const props = {properties: ['openFile', 'multiSelections']};
@@ -40,6 +38,23 @@ if (aardvark.electron) {
         const all = {...props, ...config};
         aardvark.electron.remote.dialog.showSaveDialog(all).then(e => callback([e.filePath]));
     };
+
+} else {
+    const showError = () => console.error("File dialogs only work with Aardium.");
+
+    if (!aardvark.dialog) {
+        aardvark.dialog = {};
+        aardvark.dialog.showOpenDialog = () => { showError(); return Promise.resolve({ filePaths: [] }) };
+        aardvark.dialog.showSaveDialog = () => { showError(); return Promise.resolve({ filePath: "" }) };
+    }
+
+    if (!aardvark.openFileDialog) {
+        aardvark.openFileDialog = showError;
+    }
+
+    if (!aardvark.saveFileDialog) {
+        aardvark.saveFileDialog = showError;
+    }
 }
 
 if (!aardvark.promise)
@@ -987,109 +1002,6 @@ if (!aardvark.addReferences) {
             });
         });
     };
-}
-
-
-if (!aardvark.openFileDialog) {
-
-    if (getTopAardvark().openFileDialog) {
-        aardvark.openFileDialog = getTopAardvark().openFileDialog;
-    }
-    else {
-        aardvark.openFileDialog = function () {
-            alert("Aardvark openFileDialog is not yet available");
-        };
-
-        var refs =
-            [
-                { kind: "stylesheet", name: "semui-css", url: "./resources/fomantic/semantic.css" },
-                { kind: "stylesheet", name: "semui-overrides-css", url: "./resources/fomantic/semantic-overrides.css" },
-                { kind: "script", name: "semui-js", url: "./resources/fomantic/semantic.js" },
-                { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
-                { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
-                { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
-                { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
-                { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
-            ]
-
-        $(document).ready(function () {
-
-
-            aardvark.addReferences(refs, function () {
-                var modal = document.getElementById("filebrowser-modal");
-                if (!modal) {
-                    var root = document.createElement("div");
-                    root.setAttribute("id", "filebrowser-modal");
-                    root.setAttribute("class", "ui modal");
-                    $(root).html(
-                        "<div class='content'>" +
-                        "	<div id='filebrowser-browser'>" +
-                        "	</div>" +
-                        "</div>" +
-                        "	<div class='actions'>" +
-                        "		<div class='ui approve button'>OK</div>" +
-                        "		<div class='ui cancel button'>Cancel</div>" +
-                        "	</div>" +
-                        "</div>"
-                    );
-
-                    document.body.appendChild(root);
-
-
-                    modal = root;
-
-                }
-
-                console.debug("[FS] filebrowser installed")
-                aardvark.openFileDialog = function (openFileConfig, callback) {
-
-                    // if only one argument
-                    if (!callback) {
-                        callback = openFileConfig;
-                        openFileConfig = {};
-                    }
-
-                    if (!openFileConfig.mode) openFileConfig.mode = "file";
-                    if (!openFileConfig.startPath) openFileConfig.startPath = "/";
-                    if (!openFileConfig.title) openFileConfig.title = "Open File";
-                    if (!openFileConfig.filters) openFileConfig.filters = [];
-                    if (!openFileConfig.activeFilter) openFileConfig.activeFilter = -1;
-                    if (!openFileConfig.allowMultiple) openFileConfig.allowMultiple = false;
-
-                    var config =
-                    {
-                        url: aardvark.getScriptRelativeUrl("http", "fs"),
-                        caching: true,
-                        folderSelect: (openFileConfig.mode === "folder"),
-                        fileSelect: (openFileConfig.mode === "file"),
-                        hideFiles: false,
-                        onselect: function (path) { },
-                        submit: function (path) { callback([path]); $(modal).modal('hide'); },
-                        cancel: function () { console.log("[FS] cancel"); }
-                    };
-
-                    var browser = new FileBrowser(config);
-                    var $browser = $('#filebrowser-browser');
-                    $browser.filebrowser(browser);
-                    $browser.height(screen.height - 600);
-
-                    $(modal).modal({
-                        keyboardShortcuts: true,
-                        blurring: true,
-                        onDeny: function () {
-                            browser.cancel();
-                            return true;
-                        },
-                        onApprove: function () {
-                            browser.submit();
-                        }
-                    });
-                    $(modal).modal('show');
-
-                };
-            });
-        });
-    }
 }
 
 class Channel {
