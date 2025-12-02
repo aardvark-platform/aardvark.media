@@ -34,11 +34,13 @@ type Browser(signature : IFramebufferSignature, time : aval<System.DateTime>, ru
     member x.Time = time
     member x.MipMaps = mipMaps
 
+    member x.Dispose() = (client :> IDisposable).Dispose()
+
     new(ctrl : Aardvark.Application.IRenderControl) =
         new Browser(ctrl.FramebufferSignature, ctrl.Time, ctrl.Runtime, false, ctrl.Sizes)
 
     interface IDisposable with
-        member x.Dispose() = (client :> IDisposable).Dispose()
+        member x.Dispose() = x.Dispose()
 
 module Chromium =
     let init'(windowless : bool) = Cef.init' windowless

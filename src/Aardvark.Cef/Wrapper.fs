@@ -1052,41 +1052,38 @@ type Client(runtime : IRuntime, mipMaps : bool, size : aval<V2i>) as this =
                 fail "Disposed"
         )
 
+    member x.Dispose() =
+        try
+            Monitor.Enter(lockObj)
+                
+            if isDisposed then
+                Log.warn "Double Dispose"
+            else
+
+                isDisposed <- true
+
+                // NOTE: Cef/RenderProcess is only shut down when using CloseBrowser
+                if isNull host |> not then 
+                    host.CloseBrowser(true) // proper shutdown of Client (don't know if Dispose of frame/browser/host is actually required, )
+                    host.Dispose() // this is the only thing we created our own using GetHost()
+                    host <- null
+
+                // NOTE: only Dispose will crash if App.Model is changed afterwards
+                //if isNull frame |> not then frame.Dispose(); frame <- null
+                //if isNull browser |> not then browser.Dispose(); browser <- null
+                frame <- null
+                browser <- null
+
+                // NOTE: do not Dispose anything... it crashes stuff sometimes
+                //       Xilium seems to be using finalizers, lets hope they take care of this
+                //       host is the only thing that has been created on our side using GetHost()
+
+                //base.Dispose(true)
+        finally
+            Monitor.Exit(lockObj)
 
     interface IDisposable with
-        member x.Dispose() = 
-            try
-                Monitor.Enter(lockObj)
-                
-                if isDisposed then
-                    Log.warn "Double Dispose"
-                else
-
-                    isDisposed <- true
-
-                    // NOTE: Cef/RenderProcess is only shut down when using CloseBrowser
-                    if isNull host |> not then 
-                        host.CloseBrowser(true) // proper shutdown of Client (don't know if Dispose of frame/browser/host is actually required, )
-                        host.Dispose() // this is the only thing we created our own using GetHost()
-                        host <- null
-
-                    // NOTE: only Dispose will crash if App.Model is changed afterwards
-                    //if isNull frame |> not then frame.Dispose(); frame <- null
-                    //if isNull browser |> not then browser.Dispose(); browser <- null
-                    frame <- null
-                    browser <- null
-
-                    // NOTE: do not Dispose anything... it crashes stuff sometimes
-                    //       Xilium seems to be using finalizers, lets hope they take care of this
-                    //       host is the only thing that has been created on our side using GetHost()
-
-                    //base.Dispose(true)
-            finally
-                Monitor.Exit(lockObj)
-                
-
-       
-
+        member x.Dispose() = x.Dispose()
 
 
 and LoadHandler(parent : Client) =
