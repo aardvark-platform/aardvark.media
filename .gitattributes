@@ -1,0 +1,64 @@
+# Auto detect text files and normalize line endings to LF
+* text=auto
+
+# F# source files
+*.fs text eol=crlf
+*.fsx text eol=crlf
+*.fsi text eol=crlf
+
+# Project files
+*.fsproj text eol=crlf merge=union
+*.csproj text eol=crlf merge=union
+*.vbproj text eol=crlf merge=union
+*.proj text eol=crlf merge=union
+*.projitems text eol=crlf merge=union
+*.shproj text eol=crlf merge=union
+*.sln text eol=crlf merge=union
+
+# Configuration files
+*.config text eol=crlf
+*.json text eol=crlf
+*.xml text eol=crlf
+*.yml text eol=crlf
+*.yaml text eol=crlf
+paket.dependencies text eol=crlf
+paket.lock text eol=crlf
+global.json text eol=crlf
+
+# Documentation
+*.md text eol=crlf
+*.txt text eol=crlf
+
+# Shell scripts
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Batch files
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# Binary files
+*.dll binary
+*.exe binary
+*.o binary
+*.obj binary
+*.lib binary
+*.a binary
+*.so binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.db binary
+*.sqlite binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.zip binary
+*.7z binary
+*.gz binary
+*.tar binary
+*.rar binary
+*.class binary
+*.jar binary

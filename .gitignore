@@ -33,3 +33,4 @@ bin/Debug
 *.adaptifycache
 **/.DS_Store
 *.DotSettings.user
+/.boss
