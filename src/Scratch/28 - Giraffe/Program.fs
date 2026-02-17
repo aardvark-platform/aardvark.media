@@ -15,6 +15,7 @@ open System.Threading.Tasks
 open Microsoft.AspNetCore
 open Microsoft.AspNetCore.WebSockets
 open Microsoft.AspNetCore.Builder
+open Microsoft.Extensions.Hosting
 
 let runDirect () =
 
@@ -25,13 +26,28 @@ let runDirect () =
     use cts = new CancellationTokenSource()
     let server = Server.startServer "http://localhost:4321" cts.Token webApp 
 
-
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
         debug true
     }
+    cts.Cancel()
+    instance.shutdown()
+
+    0 
+
+let runHost () =
+
+    use app = new OpenGlApplication()
+    let instance = RenderControl.App.app |> App.start
+
+    let webApp = MutableApp.toWebPart app.Runtime instance
+    use cts = new CancellationTokenSource()
+    let host = Server.createHost "http://localhost:4321" [ webApp ]
+
+    host.Build().Run()
+    
     cts.Cancel()
     instance.shutdown()
 
@@ -106,9 +122,9 @@ let runWithSaturn () =
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
-    Aardium.init()
+    //Aardium.init()
 
-    runDirect ()
+    runHost ()
     //runWithRoute()
     //runWithSaturn()
 
