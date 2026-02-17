@@ -74,7 +74,7 @@ $.fn.numeric = function (ob, value) {
         this["numericsetvalue"] = setValue;
 
         $(this)
-            .bind('mousewheel', function (e) { step(-Math.sign(e.originalEvent.deltaY) * (e.originalEvent.shiftKey ? largeStep() : 1)); e.preventDefault(); })
+            .bind('wheel', function (e) { step(-Math.sign(e.deltaY) * (e.shiftKey ? largeStep() : 1)); e.preventDefault(); })
             .keypress(function (e) { checkKey(e); })
             .keydown(function (e) { down(e); })
             .change(function (e) { setValue(e.target.value, true); });
