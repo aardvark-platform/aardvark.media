@@ -925,9 +925,7 @@ if (!aardvark.addReferences) {
             });
         }
 
-        refs.forEach(ref => {
-            aardvark.promise = aardvark.promise.then(() => loadScript(ref));
-        });
+        aardvark.promise = aardvark.promise.then(() => Promise.all(refs.map(loadScript)));
 
         aardvark.promise = aardvark.promise.then(() => userCode());
     };
