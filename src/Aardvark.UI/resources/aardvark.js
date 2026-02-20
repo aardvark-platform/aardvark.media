@@ -97,17 +97,12 @@ if (!aardvark.channels) {
     aardvark.channels = {};
 }
 
-if (!aardvark.referencedScripts) {
-    console.debug("[Aardvark] creating aardvark-script-references");
-    aardvark.referencedScripts = {};
+if (!aardvark.references) {
+    console.debug("[Aardvark] creating aardvark-references");
+    aardvark.references = {};
 }
 
-if (!aardvark.referencedStyles) {
-    console.debug("[Aardvark] creating aardvark-stylesheet-references");
-    aardvark.referencedStyles = {};
-}
-
-aardvark.referencedScripts["jquery"] = true;
+aardvark.references["jquery-script"] = true;
 
 if (!aardvark.processEvent) {
     console.debug("[Aardvark] creating aardvark-event-processor");
@@ -879,48 +874,40 @@ if (!aardvark.addReferences) {
                 const name = ref.name;
                 const url = ref.url;
 
-                const key = `${name}-${kind}`; // allow using identical names for stylesheet and scripts
+                const key = `${name}-${kind}`; // allow using identical names for stylesheet and scripts tracked in single dictionary
 
-                if (aardvark.referencedScripts[key]) {
+                if (aardvark.references[key]) {
                     return resolve();
                 }
 
-                aardvark.referencedScripts[key] = true;
+                aardvark.references[key] = true;
 
-                if (kind === "script" || kind === "module") {
-                
-                    const script = document.createElement("script");
-                    const cc = function (evt) {
-                        console.debug(`[Aardvark] referenced ${kind} "${name}" (${url})`);
-                        resolve();
-                    };
-                    const err = function (evt) {
-                        console.warn(`[Aardvark] failed to referenced ${kind} "${name}" (${url})`);
-                        resolve();
-                    };
-                    script.src = url;
-                    script.async = true;
-                    if (kind === "module") script.type = "module";
-                    script.addEventListener("load", cc);
-                    script.addEventListener("error", err);
-                    document.getElementsByTagName("script")[0].parentNode.appendChild(script);
+                const isScript = kind === "script" || kind === "module";
+                const refElem = document.createElement(isScript ? "script" : "link");
+                const cc = function (evt) {
+                    console.debug(`[Aardvark] referenced ${kind} "${name}" (${url})`);
+                    resolve();
+                };
+                const err = function (evt) {
+                    console.warn(`[Aardvark] failed to reference ${kind} "${name}" (${url})`);
+                    resolve();
+                };
+
+                refElem.addEventListener("load", cc);
+                refElem.addEventListener("error", err);
+
+                if (isScript) {
+                    if (kind === "module") {
+                        refElem.type = "module";
+                    }
+                    refElem.src = url;
+                    refElem.async = true;
+                    document.getElementsByTagName("script")[0].parentNode.appendChild(refElem);
                 }
-                else {   
-                    
-                    const script = document.createElement("link");
-                    const cc = function (evt) {
-                        console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
-                        resolve();
-                    };
-                    const err = function (evt) {
-                        console.warn("[Aardvark] failed to reference stylesheet \"" + name + "\" (" + url + ")");
-                        resolve();
-                    };
-                    script.addEventListener("load", cc);
-                    script.addEventListener("error", err);
-                    script.setAttribute("rel", "stylesheet");
-                    script.setAttribute("href", url);
-                    document.head.appendChild(script);
+                else {
+                    refElem.setAttribute("rel", "stylesheet");
+                    refElem.setAttribute("href", url);
+                    document.head.appendChild(refElem);
                 }
             });
         }
