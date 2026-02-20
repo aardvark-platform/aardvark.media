@@ -44,7 +44,7 @@ let runHost () =
 
     let webApp = MutableApp.toWebPart app.Runtime instance
     use cts = new CancellationTokenSource()
-    let host = Server.createHost "http://localhost:4321" [ webApp ]
+    let host = Server.createHost "http://localhost:4321" webApp
 
     host.Build().Run()
     
