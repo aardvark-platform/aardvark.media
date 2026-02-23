@@ -870,11 +870,11 @@ if (!aardvark.addReferences) {
         function loadScript(ref) {
             return new Promise((resolve, reject) => {
 
-                const kind = ref.kind;
                 const name = ref.name;
+                const kind = ref.kind; // "script", "module", or "stylesheet"
                 const url = ref.url;
 
-                const key = `${name}-${kind}`; // allow using identical names for stylesheet and scripts tracked in single dictionary
+                const key = `${name}-${kind}`; // allow using identical names for different kinds
 
                 if (aardvark.references[key]) {
                     return resolve();
@@ -1049,25 +1049,24 @@ if (!aardvark.connect) {
         eventSocket.onmessage = function (m) {
 
             var c = m.data.substring(0, 1);
-            if (c === "x") {
+            if (c === "r" || c === "x") {
                 const code = m.data.substring(1, m.data.length);
-                // check if user code includes loading of scripts or stylesheets
-                if (code.startsWith("aardvark.addReferences")) { 
+                const evaluate = function () {
+                    try {
+                        (new Function(`{ ${code} }`))();
+                    } catch (e) {
+                        console.warn("could not execute event message with exn " + e + ":\n" + code);
+                        debugger;
+                    }
+                }
+                
+                if (c === "r") {
                     // addReferences function directly chains script/stylesheet loading and user code execution in aardvark.promise chain
-                    (new Function("{\r\n" + code + "\r\n}"))();
+                    evaluate();
+                } else {
+                    aardvark.promise = aardvark.promise.then(evaluate);
                 }
-                else {
-                    aardvark.promise = aardvark.promise.then(function () {
-                        try {
-                            (new Function("{\r\n" + code + "\r\n}"))();
-                        } catch (e) {
-                            console.warn("could not execute event message with exn " + e + ":\n" + code);
-                            debugger;
-                        }
-                    });
-                }
-            }
-            else {
+            } else {
                 var data = m.data;
                 // { targetId : string; channel : string; data : 'a }
                 var message = JSON.parse(data);

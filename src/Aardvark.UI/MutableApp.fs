@@ -257,7 +257,8 @@ module MutableApp =
                                                                 printfn "%A" e
                                                 )
 
-                                                send (Text.Encoding.UTF8.GetBytes("x" + code))
+                                                let tag = if state.references.Count > 0 then "r" else "x"
+                                                send (Text.Encoding.UTF8.GetBytes(tag + code))
     
                                                 
                                             let mutable o = oldChannels
