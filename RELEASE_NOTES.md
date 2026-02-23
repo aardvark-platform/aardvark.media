@@ -1,6 +1,9 @@
+### 5.6.1
+- Fixed race condition during execution of boot code with script / stylesheet loading
 - Removed broken fallback file dialogs
 - Removed broken F12 screenshot shortcut
 - Exposed explicit IDisposable interface implementations of Cef Browser/Client
+- [Primitives] Fixed mouse wheel events for numeric inputs in Firefox
 
 ### 5.6.0
 - Updated to Aardvark.Rendering 5.6 packages
