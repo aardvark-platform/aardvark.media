@@ -67,12 +67,17 @@ type Event<'msg> =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Event =
 
-    let private processEvent (name : string) (id : string) (args : list<string>) =
-        let args = sprintf "'%s'" id :: sprintf "'%s'" name :: args
-        sprintf "aardvark.processEvent(%s);" (String.concat ", " args)
+    let private processEvent (name : string) (version : byte voption) (id : string) (args : list<string>) =
+        let event = match version with ValueSome version -> $"{{ name: '{name}', version: {version} }}" | _ -> $"'{name}'"
+        let args = $"'{id}'" :: event :: args |> String.concat ", "
+        $"aardvark.processEvent({args});"
 
     let toString (id : string) (name : string) (evt : Event<'msg>) =
-        let send = processEvent name
+        let send = processEvent name ValueNone
+        evt.clientSide send id
+
+    let toString' (id : string) (name : string) (version : byte) (evt : Event<'msg>) =
+        let send = processEvent name (ValueSome version)
         evt.clientSide send id
 
     let empty<'msg> : Event<'msg> =

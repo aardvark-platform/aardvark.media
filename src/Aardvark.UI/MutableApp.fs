@@ -6,24 +6,19 @@ open System.Collections.Generic
 open System.Collections.Concurrent
 
 open Aardvark.Base
-open Aardvark.Base.Geometry
 open Aardvark.GPGPU
 open Aardvark.Rendering
-open Aardvark.SceneGraph
 open FSharp.Data.Adaptive
-open Aardvark.Application
 open Aardvark.Service
 open Aardvark.UI.Internal
 
 open Suave
-open Suave.Control
 open Suave.Filters
 open Suave.Operators
 open Suave.WebSocket
 open Suave.Successful
 open Suave.Sockets.Control
 open Suave.Sockets
-open Suave.State.CookieStateStore
 
 type EmbeddedResources = EmbeddedResources
 
@@ -73,12 +68,60 @@ module MutableApp =
 
         fun (title: string) -> html |> String.replace "__TITLE__" title
 
-    type private EventMessage =
-        {
-            sender  : string
-            name    : string
-            args    : array<string>
-        }
+    [<AutoOpen>]
+    module Internals =
+
+        type EventMessage =
+            {
+                sender  : string
+                name    : string
+                version : byte voption
+                args    : string[]
+            }
+
+        module EventMessage =
+            open System.Text.Json
+            open System.Text.Json.Serialization
+
+            // FSPickler cannot handle options properly, we'd have to write { Some: value } on JS side instead of simply omitting the property
+            // For ValueOption it's even more stupid so we use System.Text.Json instead...
+            type private EventMessageConverter() =
+                inherit JsonConverter<EventMessage>()
+
+                override this.Write(_, _, _) =
+                    raise <| NotImplementedException()
+
+                override this.Read(reader, _, options) =
+                    let mutable sender = ""
+                    let mutable name = ""
+                    let mutable version = ValueNone
+                    let mutable args = [||]
+
+                    while reader.Read() && reader.TokenType <> JsonTokenType.EndObject do
+                        match reader.TokenType with
+                        | JsonTokenType.PropertyName ->
+                            let propertyName = reader.GetString()
+                            reader.Read() |> ignore
+
+                            match propertyName with
+                            | "sender"  -> sender <- reader.GetString()
+                            | "name"    -> name <- reader.GetString()
+                            | "version" -> version <- ValueSome <| reader.GetByte()
+                            | "args"    -> args <- JsonSerializer.Deserialize<string[]>(&reader, options)
+                            | _         -> reader.Skip()
+
+                        | token ->
+                            raise <| JsonException($"Expected property name but got {token}.")
+
+                    { sender = sender; name = name; version = version; args = args }
+
+            let private serializerOptions =
+                let opts = JsonSerializerOptions()
+                opts.Converters.Add(EventMessageConverter())
+                opts
+
+            let fromJson (data: byte[]) =
+                JsonSerializer.Deserialize<EventMessage>(data, serializerOptions)
 
     let private (|Guid|_|) (str : string) =
         match Guid.TryParse str with
@@ -156,13 +199,13 @@ module MutableApp =
 
                     let updater = app.ui.NewUpdater(request)
                     
-                    let handlers = Dictionary()
+                    let handlers = ConcurrentDictionary()
                     let scenes = Dictionary()
 
                     let state : UpdateState<'msg> =
                         {
                             scenes          = ContraDict.ofDictionary scenes
-                            handlers        = ContraDict.ofDictionary handlers
+                            handlers        = ContraDict.ofConcurrentDictionary handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
                             messages        = app.messages
@@ -204,14 +247,12 @@ module MutableApp =
                                                 Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
    
                                             let code = 
-                                                let expr = 
-                                                    lock state (fun () -> 
-                                                        state.references.Clear()
-                                                        if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                        let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
-                                                        if Config.shouldTimeUIUpdate then Log.stop ()
-                                                        r
-                                                    )
+                                                let expr =
+                                                    state.references.Clear()
+                                                    if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
+                                                    let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
+                                                    if Config.shouldTimeUIUpdate then Log.stop ()
+                                                    r
 
                                                 for (name, sd) in Dictionary.toSeq scenes do
                                                     sceneStore.TryAdd(name, sd) |> ignore
@@ -306,14 +347,19 @@ module MutableApp =
                                                 | _ ->
                                                     Log.warn "bad opcode: %A" str
                                         else
-                                            let evt : EventMessage = Pickler.json.UnPickle data
-                                            match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
-                                                | (true, handler) ->
-                                                    let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                            let evt = EventMessage.fromJson data
+                                            let key = evt.sender, evt.name
+
+                                            match handlers.TryGetValue key with
+                                            | true, handler ->
+                                                let version =
+                                                    evt.version |> ValueOption.defaultValue handler.version
+
+                                                if version = handler.version then
+                                                    let msgs = handler.invoke sessionId evt.sender (Array.toList evt.args)
                                                     app.update sessionId msgs
-                                                    
-                                                | _ ->
-                                                    ()
+
+                                            | _ -> ()
 
                                     with e ->
                                         Log.warn "unpickle faulted: %A" e

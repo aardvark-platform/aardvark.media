@@ -23,6 +23,7 @@ open Aardvark.UI.Internal
 
 module MutableApp =
     open Aardvark.UI.Internal.Updaters
+    open Aardvark.UI.MutableApp.Internals
 
     let private template =
         let html =
@@ -32,13 +33,6 @@ module MutableApp =
             reader.ReadToEnd()
 
         fun (title: string) -> html |> String.replace "__TITLE__" title
-
-    type private EventMessage =
-        {
-            sender  : string
-            name    : string
-            args    : array<string>
-        }
 
     let private (|Guid|_|) (str : string) =
         match Guid.TryParse str with
@@ -117,14 +111,14 @@ module MutableApp =
                         }
 
                     let updater = app.ui.NewUpdater(request)
-                    
-                    let handlers = Dictionary()
+
+                    let handlers = ConcurrentDictionary()
                     let scenes = Dictionary()
 
                     let state : UpdateState<'msg> =
                         {
                             scenes          = ContraDict.ofDictionary scenes
-                            handlers        = ContraDict.ofDictionary handlers
+                            handlers        = ContraDict.ofConcurrentDictionary handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
                             messages        = app.messages
@@ -169,14 +163,12 @@ module MutableApp =
                                                     Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
    
                                                 let code = 
-                                                    let expr = 
-                                                        lock state (fun () -> 
-                                                            state.references.Clear()
-                                                            if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                            let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
-                                                            if Config.shouldTimeUIUpdate then Log.stop ()
-                                                            r
-                                                        )
+                                                    let expr =
+                                                        state.references.Clear()
+                                                        if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
+                                                        let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
+                                                        if Config.shouldTimeUIUpdate then Log.stop ()
+                                                        r
 
                                                     for (name, sd) in Dictionary.toSeq scenes do
                                                         sceneStore.TryAdd(name, sd) |> ignore
@@ -283,14 +275,19 @@ module MutableApp =
                                                             | _ ->
                                                                 Log.warn "bad opcode: %A" str
                                                     else
-                                                        let evt : EventMessage = Pickler.json.UnPickle data
-                                                        match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
-                                                            | (true, handler) ->
-                                                                let msgs = handler sessionId evt.sender (Array.toList evt.args)
+                                                        let evt = EventMessage.fromJson data
+                                                        let key = evt.sender, evt.name
+
+                                                        match handlers.TryGetValue key with
+                                                        | true, handler ->
+                                                            let version =
+                                                                evt.version |> ValueOption.defaultValue handler.version
+
+                                                            if version = handler.version then
+                                                                let msgs = handler.invoke sessionId evt.sender (Array.toList evt.args)
                                                                 app.update sessionId msgs
-                                                    
-                                                            | _ ->
-                                                                ()
+
+                                                        | _ -> ()
 
                                                 with e ->
                                                     Log.warn "unpickle faulted: %A" e
