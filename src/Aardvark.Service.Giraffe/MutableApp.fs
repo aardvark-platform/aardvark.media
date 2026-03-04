@@ -53,10 +53,9 @@ module MutableApp =
             if useGpuCompression then new JpegCompressor(runtime) |> Some
             else None
 
-        let mutable running = true
         let cts = new CancellationTokenSource()
-        let requestDone = new CountdownEvent(2) // updater thread and request need to be done.
-         
+        let sessionCount = new CountdownEvent(1)
+
         let renderer =
             {
                 runtime = runtime
@@ -128,7 +127,8 @@ module MutableApp =
                     
                     let update = MVar.create true
                     let subscription = o.AddMarkingCallback(fun () -> MVar.put update true)
-                    
+
+                    let mutable running = true
                     let mutable oldChannels : Set<string * string> = Set.empty
 
                     let send (arr : byte[]) =
@@ -153,8 +153,9 @@ module MutableApp =
                                                 
                     let updateFunction () =
                         try
+                            sessionCount.AddCount()
                             try
-                                while Volatile.Read(&running) do
+                                while running && not cts.IsCancellationRequested do
                                     let cont = MVar.take update
                                     if cont then
                                         lock app.lock (fun () ->
@@ -237,7 +238,7 @@ module MutableApp =
                               with e -> 
                                 Config.updateThreadFailed e
                         finally
-                            requestDone.Signal() |> ignore
+                            sessionCount.Signal() |> ignore
 
                     let updateThread = Thread(ThreadStart updateFunction)
                     updateThread.IsBackground <- true
@@ -254,6 +255,8 @@ module MutableApp =
                         }
 
                     task {
+                        sessionCount.AddCount()
+
                         try
                             while running do
                                 let buffer = Array.zeroCreate 1024
@@ -262,7 +265,8 @@ module MutableApp =
                                 | Choice1Of2 result -> 
                                     let data = Array.sub buffer 0 result.Count
                                     if result.CloseStatus.HasValue then
-                                        running <- true
+                                        Log.line $"[Server] event socket for session {sessionId} closed: {result.CloseStatus.Value}"
+                                        running <- false
                                     else
                                         match result.MessageType with
                                             | WebSocketMessageType.Text ->
@@ -299,8 +303,8 @@ module MutableApp =
                             updater.Destroy(state, JSExpr.Body) |> ignore
                             subscription.Dispose()
 
-                        finally 
-                            requestDone.Signal() |> ignore
+                        finally
+                            sessionCount.Signal() |> ignore
 
                     }
                 | _ ->
@@ -308,10 +312,11 @@ module MutableApp =
 
         let waitForShutdown = 
             { new IDisposable with 
-                member x.Dispose() = 
-                    running <- true
+                member x.Dispose() =
                     cts.Cancel()
-                    requestDone.Wait()
+                    sessionCount.Signal() |> ignore
+                    sessionCount.Wait()
+                    sessionCount.Dispose()
             }
 
         let route  =

@@ -255,7 +255,7 @@ type internal Client(updateLock : obj, createInfo : ClientCreateInfo, getState :
                     let! r = createInfo.socket.ReceiveAsync(ArraySegment(buffer), CancellationToken.None)
                     let data = Array.sub buffer 0 r.Count
                     if r.CloseStatus.HasValue  then
-                        Log.warn "[Client] %d:closed  %A" id r.CloseStatus
+                        Log.line "[Client] %d: socket closed: %A" id r.CloseStatus
                         running <- false
                     else
                     
