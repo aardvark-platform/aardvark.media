@@ -14,6 +14,7 @@ type JSExpr =
     | CreateElement of tag : string * ns : Option<string>
     | SetAttribute of target : JSExpr * name : string * value : string
     | RemoveAttribute of target : JSExpr * name : string
+    | SetEventHandler of target : JSExpr * name : string * version : byte
 
     | Remove of target : JSExpr
     | InnerText of target : JSExpr * text : string 
@@ -60,6 +61,10 @@ module JSExpr =
                 | RemoveAttribute(t, name) ->
                     let! t = eliminateDeadBindings t
                     return RemoveAttribute(t, name)
+
+                | SetEventHandler(t, name, version) ->
+                    let! t = eliminateDeadBindings t
+                    return SetEventHandler(t, name, version)
 
                 | Let(v,e,b) ->
                     let! b = eliminateDeadBindings b
@@ -140,6 +145,10 @@ module JSExpr =
             | RemoveAttribute(t, name) ->
                 let t = toStringInternal t
                 sprintf "%s.removeAttribute(\"%s\");" t name
+
+            | SetEventHandler(t, name, version) ->
+                let t = toStringInternal t
+                $"aardvark.setEventHandler(\"{t}\", \"{name}\", {version});"
 
             | GetElementById(id) ->
                 sprintf "document.getElementById(\"%s\")" id

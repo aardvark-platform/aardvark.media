@@ -3,6 +3,7 @@
 open System
 open System.Threading
 open System.Collections.Generic
+open System.Collections.Concurrent
 open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Service
@@ -43,19 +44,73 @@ module Updaters =
             postRender : ClientInfo -> seq<'msg>
         }
 
-
     module SceneMessages =
         let map (mapping : 'a -> 'b) (msgs : SceneMessages<'a>) =
             { 
                 preRender = msgs.preRender >> Seq.map mapping
                 postRender = msgs.postRender >> Seq.map mapping
             }
-            
+    type EventHandler<'msg> =
+        {
+            version : byte
+            invoke  : Guid -> string -> string list -> 'msg seq
+        }
+
+    module EventHandler =
+        let map mapping (handler: EventHandler<'T1>) : EventHandler<'T2> =
+            { version = handler.version; invoke = mapping handler.invoke }
+
+    type EventHandlers<'msg>() =
+        let store = Dictionary<string * string, {| current: EventHandler<'msg> voption; pending: ConcurrentQueue<EventHandler<'msg>> |}>()
+
+        // Dequeues pending handlers until the one with the given version is found or the queue is empty
+        static let rec tryGet (queue: ConcurrentQueue<EventHandler<'msg>>) version =
+            match queue.TryDequeue() with
+            | true, handler ->
+                if handler.version = version then
+                    ValueSome handler
+                else
+                    tryGet queue version
+            | _ ->
+                ValueNone
+
+        member _.Enqueue(key, handler) =
+            let value = store.GetCreate(key, fun _ -> {| current = ValueNone; pending = ConcurrentQueue() |} )
+            value.pending.Enqueue handler
+
+        member _.TryGet(key) =
+            match store.TryGetValue key with
+            | true, state -> state.current
+            | _ -> ValueNone
+
+        member _.TryGet(key, version) =
+            match store.TryGetValue key with
+            | true, state ->
+                match state.current with
+                | ValueSome handler when handler.version = version -> state.current
+                | _ ->
+                    let result = tryGet state.pending version
+                    store.[key] <- {| state with current = result |} // Make the found handler active
+                    result
+            | _ ->
+                ValueNone
+
+        member this.TryGet(key, version) =
+            match version with
+            | ValueSome version -> this.TryGet(key, version)
+            | _ -> this.TryGet key
+
+        member _.Remove(key) =
+            store.Remove key
+
+        interface ContraDict<string * string, EventHandler<'msg>> with
+            member this.Item with set key value = this.Enqueue(key, value)
+            member this.Remove key = this.Remove key
 
     type UpdateState<'msg> =
         {
             scenes              : ContraDict<string, Scene * Option<SceneMessages<'msg>> * (ClientInfo -> ClientState)>
-            handlers            : ContraDict<string * string, Guid -> string -> list<string> -> seq<'msg>>
+            handlers            : ContraDict<string * string, EventHandler<'msg>>
             references          : Dictionary<string * ReferenceKind, Reference>
             activeChannels      : Dict<string * string, ChannelReader>
             messages            : IObservable<'msg>
@@ -80,7 +135,7 @@ module Updaters =
         let setup (state : UpdateState<'msg>) =
             if id.IsValueCreated then
                 for (name,cb) in Map.toSeq node.Callbacks do
-                    state.handlers.[(id.Value,name)] <- fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v))
+                    state.handlers.[(id.Value,name)] <- { version = 0uy; invoke = fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v)) }
 
             for r in node.Required do
                 state.references.[(r.name, r.kind)] <- r
@@ -277,6 +332,21 @@ module Updaters =
         let mutable reader = attributes.GetReader()
         let registeredHandlers = System.Collections.Generic.HashSet<string * string>()
 
+        // We assign a version number to each event handler and each sent event.
+        // Event handlers are not made active immediately but put in a 'pending' queue.
+        // When an event is received by the server, the version of the event is compared against the version of active handler (if present).
+        // If the comparsion fails, event handlers are dequeued until the correct handler is found.
+        // This makes sure that the correct handler is dispatched for an incoming event, which is crucial in case
+        // the parameters expected by the handlers change.
+        // A common example of diverging parameters is switching between one and multiple event handlers (see Event.combine).
+        let getVersion =
+            let mutable next = 0uy
+
+            fun () ->
+                let version = next
+                next <- next + 1uy
+                version
+
         member x.TryGetAttrbute(name : string) =
             HashMap.tryFind name reader.State
 
@@ -286,22 +356,20 @@ module Updaters =
                 for (name, op) in atts do
                     match op with
                         | Set value ->
-                            let value =
-                                match value with
-                                    | AttributeValue.RenderEvent f -> 
-                                        None
-                                    | AttributeValue.String str -> 
-                                        Some str
-                                    | AttributeValue.Event evt ->
-                                        let key = (id, name)
-                                        state.handlers.[key] <- evt.serverSide
-                                        registeredHandlers.Add(key) |> ignore
-                                        Event.toString id name evt |> Some
-
                             match value with
-                            | Some value ->
-                                yield JSExpr.SetAttribute(self, name, value)
-                            | _ -> ()
+                            | AttributeValue.RenderEvent f -> ()
+                            | AttributeValue.String str ->
+                                yield JSExpr.SetAttribute(self, name, str)
+
+                            | AttributeValue.Event evt ->
+                                let key = (id, name)
+                                let version = getVersion()
+                                state.handlers.[key] <- { version = version; invoke = evt.serverSide } // Enqueue handler
+                                registeredHandlers.Add(key) |> ignore
+
+                                let str = Event.toString' id name version evt
+                                yield JSExpr.SetAttribute(self, name, str)
+                                yield JSExpr.SetEventHandler(self, name, version) // Sends and empty event to set the event handler active
 
                         | Remove ->
                             let key = (id, name) 
@@ -571,7 +639,7 @@ module Updaters =
                     let mapped = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, (msg |> Option.map (SceneMessages.map m.Mapping)), getState))
                     {
                         scenes              = mapped
-                        handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
+                        handlers            = state.handlers |> ContraDict.map (fun _ -> EventHandler.map mapMsg)
                         references          = state.references
                         activeChannels      = state.activeChannels
                         messages            = subject.Publish
@@ -639,7 +707,7 @@ module Updaters =
                 let innerState =
                     {
                         scenes              = state.scenes |> ContraDict.map (fun _ (scene, msg, getState) -> (scene, sceneMessages scene msg getState, getState))
-                        handlers            = state.handlers |> ContraDict.map (fun _ v -> mapMsg v)
+                        handlers            = state.handlers |> ContraDict.map (fun _ -> EventHandler.map mapMsg)
                         references          = state.references
                         activeChannels      = state.activeChannels
                         messages            = subject.Publish

@@ -116,6 +116,7 @@ if (!aardvark.processEvent) {
     aardvark.processEvent = function () {
         console.warn("[Aardvark] cannot process events yet (websocket not opened)");
     };
+    aardvark.setEventHandler = aardvark.processEvent;
 }
 
 if (!aardvark.localhost) {
@@ -1068,13 +1069,27 @@ if (!aardvark.connect) {
 
         eventSocket.onopen = function () {
             aardvark.processEvent = function () {
-                var sender = arguments[0];
-                var name = arguments[1];
-                var args = [];
-                for (var i = 2; i < arguments.length; i++) {
+                const sender = arguments[0];
+
+                const event = arguments[1];
+                const name = event.name ?? event; // event can be a string or an object with name and version
+                const version = event.version;
+
+                const args = [];
+                for (let i = 2; i < arguments.length; i++) {
                     args.push(JSON.stringify(arguments[i]));
                 }
-                var message = JSON.stringify({ sender: sender, name: name, args: args });
+
+                const message = JSON.stringify({ sender: sender, name: name, version: version, args: args });
+                eventSocket.send(message);
+            };
+            // Sends an empty event message, indicating that the event handler for the given version should be set active
+            aardvark.setEventHandler = function () {
+                const sender = arguments[0];
+                const name = arguments[1];
+                const version = arguments[2];
+
+                const message = JSON.stringify({ sender: sender, name: name, version: version });
                 eventSocket.send(message);
             };
             doPing();
