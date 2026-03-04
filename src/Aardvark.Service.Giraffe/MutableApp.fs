@@ -209,8 +209,8 @@ module MutableApp =
                                                                     printfn "%A" e
                                                     )
 
-                                                
-                                                    let r = send (Text.Encoding.UTF8.GetBytes("x" + code))
+                                                    let tag = if state.references.Count > 0 then "r" else "x"
+                                                    let r = send (Text.Encoding.UTF8.GetBytes(tag + code))
                                                     r.Result |> ignore
 
     
