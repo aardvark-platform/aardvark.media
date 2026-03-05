@@ -86,6 +86,7 @@
     <EmbeddedResource Include="resources\notifications.js" />
     <EmbeddedResource Include="resources\accordion.js" />
     <EmbeddedResource Include="resources\dropdown.js" />
+    <EmbeddedResource Include="resources\numeric.js" />
     <None Include="paket.references" />
     <None Include="paket.template" />
   </ItemGroup>
