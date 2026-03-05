@@ -16,7 +16,6 @@ module SimplePrimitives =
                 { kind = Stylesheet; name = "semui"; url = "./resources/fomantic/semantic.css" }
                 { kind = Script; name = "semui"; url = "./resources/fomantic/semantic.js" }
                 { kind = Stylesheet; name = "semui-overrides"; url = "./resources/fomantic/semantic-overrides.css" }
-                { kind = Script; name = "essential"; url = "./resources/essentialstuff.js" }
             ]
 
 
@@ -177,7 +176,7 @@ module SimplePrimitives =
         let numeric' (cfg : NumericConfig<'a>) (atts : AttributeMap<'msg>)
                      (before : aval<DomNode<'msg> option>) (after : aval<DomNode<'msg> option>) (value : aval<'a>) (update : 'a -> #seq<'msg>) =
 
-            let value = if value.IsConstant then AVal.custom (fun t -> value.GetValue t) else value
+            let value = if value.IsConstant then AVal.custom value.GetValue else value
 
             let update (v : 'a) =
                 value.MarkOutdated()
@@ -185,23 +184,29 @@ module SimplePrimitives =
 
             let myAtts =
                 AttributeMap.ofList [
-                    "class", AttributeValue.String "ui input"
+                    "class", AttributeValue.String "ui numeric input"
                     onEvent' "data-event" [] (function (str :: _) -> str |> unpickle |> Option.toList |> Seq.collect update | _ -> Seq.empty)
                 ]
 
             let boot =
-                String.concat ";" [
-                    "var $__ID__ = $('#__ID__');"
-                    "$__ID__.numeric({ changed: function(v) { aardvark.processEvent('__ID__', 'data-event', v); } });"
-                    "valueCh.onmessage = function(v) { $__ID__.numeric('set', v.value); };"
+                String.concat "" [
+                    "const $self = $('#__ID__');"
+                    "aardvark.numeric($self);"
+                    "valueCh.onmessage = msg => aardvark.numeric($self, 'set', msg.value);"
                 ]
 
-            let pattern =
+            let dataType, inputMode =
                 match NumericConfigDefaults<'a>.NumType with
-                | NumberType.Int -> "[0-9]+"
-                | _ -> "[0-9]*(\.[0-9]*)?"
+                | NumberType.Int -> "int", "numeric"
+                | _ -> "float", "decimal"
 
-            require Html.semui (
+            let dependencies =
+                Html.semui @ [
+                    { name = "numeric"; url = "resources/numeric.js";  kind = Script }
+                    { name = "numeric"; url = "resources/numeric.css"; kind = Stylesheet }
+                ]
+
+            require dependencies (
                 onBoot' ["valueCh", AVal.channel (AVal.map thing value)] boot (
                     Incremental.div (AttributeMap.union atts myAtts) (
                         alist {
@@ -211,15 +216,15 @@ module SimplePrimitives =
 
                             yield
                                 input (att [
-
                                     attribute "value" (value.GetValue() |> pickle)
                                     attribute "type" "text"
-                                    attribute "min" (pickle cfg.min)
-                                    attribute "max" (pickle cfg.max)
-                                    attribute "step" (pickle cfg.smallStep)
-                                    attribute "data-largestep" (pickle cfg.largeStep)
-                                    //attribute "data-numtype" (NumericConfigDefaults<'a>.NumType.ToString())
-                                    attribute "pattern" pattern
+                                    attribute "spellcheck" "false"
+                                    attribute "inputmode" inputMode
+                                    attribute "data-min-value" (pickle cfg.min)
+                                    attribute "data-max-value" (pickle cfg.max)
+                                    attribute "data-small-step" (pickle cfg.smallStep)
+                                    attribute "data-large-step" (pickle cfg.largeStep)
+                                    attribute "data-type" dataType
                                 ])
 
                             match! after with
