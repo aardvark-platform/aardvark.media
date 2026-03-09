@@ -1,3 +1,9 @@
+### 5.6.2
+- Fixed race condition in event handling (https://github.com/aardvark-platform/aardvark.media/issues/1)
+- [Giraffe] Fixed handling of multiple sessions (https://github.com/aardvark-platform/aardvark.media/issues/50)
+- [Giraffe] Fixed race condition during execution of boot code with script / stylesheet loading
+- [Primitives] Reworked numeric inputs
+
 ### 5.6.1
 - Fixed race condition during execution of boot code with script / stylesheet loading
 - Removed broken fallback file dialogs
