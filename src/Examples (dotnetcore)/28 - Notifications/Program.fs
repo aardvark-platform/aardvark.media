@@ -3,6 +3,7 @@
 open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI
+open Aardvark.Service.Suave
 open Aardium
 open NotificationsExample
 
@@ -22,16 +23,14 @@ let main argv =
         else
             let app = new Aardvark.Application.Slim.OpenGlApplication()
             app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
+    use _ = disposable
 
-    let app = App.app
+    use mapp =
+        App.app |> App.start
 
-    let instance =
-        app |> App.start
-
-    Suave.WebPart.startServerLocalhost 4321 [
-        MutableApp.toWebPart runtime instance
-        Suave.Reflection.assemblyWebPart typeof<Primitives.EmbeddedResources>.Assembly
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        MutableApp.toWebPart runtime mapp
+        WebPart.ofAssembly typeof<Primitives.EmbeddedResources>.Assembly
     ] |> ignore
 
     Aardium.run {
@@ -39,7 +38,12 @@ let main argv =
         width 1024
         height 768
         title "28 - Notifications"
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
 
     0

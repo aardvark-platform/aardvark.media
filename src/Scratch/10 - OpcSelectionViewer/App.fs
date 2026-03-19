@@ -2,7 +2,6 @@ namespace OpcSelectionViewer
 
 open System
 open System.IO
-open Aardvark.UI
 open Aardvark.Base
 open Aardvark.Base.Ag
 open FSharp.Data.Adaptive
@@ -12,12 +11,12 @@ open Aardvark.SceneGraph.Semantics
 open Aardvark.Data.Opc
 open Aardvark.SceneGraph.SgPrimitives
 open Aardvark.Rendering.Text
+open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Trafos
 open FShade
 open Aardvark.Base.Geometry
 open Aardvark.Geometry
-open ``F# Sg``
 
 open OpcSelectionViewer.Picking
 

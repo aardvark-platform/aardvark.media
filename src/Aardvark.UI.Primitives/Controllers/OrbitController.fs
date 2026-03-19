@@ -4,13 +4,8 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Rendering
 open Aardvark.Application
-open Aardvark.SceneGraph
 open Aardvark.UI
-open Aardvark.Service
-
 open Aardvark.UI.Primitives
-
-
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module OrbitState =
@@ -221,7 +216,7 @@ module OrbitController =
     let extractAttributes (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) =
         attributes model f |> AttributeMap.toAMap
         
-    let controlledControlWithClientValues (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : RenderClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
         let cam = AVal.map2 Camera.create state._view frustum
         Incremental.renderControlWithClientValues' cam attributes config sg
@@ -229,19 +224,19 @@ module OrbitController =
     let controlledControl (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         let cam = AVal.map2 Camera.create model._view  frustum
         let controllerAtts = attributes model f
-        DomNode.RenderControl(AttributeMap.union att controllerAtts, cam, sg, RenderControlConfig.standard, None)
+        DomNode.RenderControl(AttributeMap.union att controllerAtts, cam, sg, RenderControlConfig.standard)
 
     let withControls (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (node : DomNode<'msg>) =
         let cam = AVal.map2 Camera.create state._view frustum 
         match node with
             | :? SceneNode<'msg> as node ->
-                let getState(c : Aardvark.Service.ClientInfo) =
+                let getState(c : RenderClientInfo) =
                     let cam = cam.GetValue(c.token)
                     let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
 
                     {
-                        Aardvark.Service.ClientState.viewTrafo = CameraView.viewTrafo cam.cameraView
-                        Aardvark.Service.ClientState.projTrafo = Frustum.projTrafo cam.frustum
+                        RenderState.viewTrafo = CameraView.viewTrafo cam.cameraView
+                        RenderState.projTrafo = Frustum.projTrafo cam.frustum
                     }
 
                 let attributes = attributes state f
@@ -267,7 +262,7 @@ module OrbitController =
             }
         )
         
-    let app : App<_,_,_> =                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       
+    let app : App<_,_,_> =
         {
             unpersist = Unpersist.instance     
             threads = threads 

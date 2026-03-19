@@ -14,9 +14,9 @@
     <OutputPath>..\..\bin\Release</OutputPath>
   </PropertyGroup>
   <ItemGroup>
-	  <Compile Include="Primitives\SimplePrimitives.fs" />
-	  <Compile Include="Primitives\Dropdown.fs" />
-	  <Compile Include="Primitives\Accordion.fs" />
+    <Compile Include="Primitives\SimplePrimitives.fs" />
+    <Compile Include="Primitives\Dropdown.fs" />
+    <Compile Include="Primitives\Accordion.fs" />
     <Compile Include="Primitives\UI.Primitives.Models.fs" />
     <Compile Include="Primitives\UI.Primitives.fs" />
     <Compile Include="Primitives\UI.Primitives.Simple.fs" />
@@ -92,7 +92,6 @@
     <None Include="paket.template" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Aardvark.Service\Aardvark.Service.fsproj" />
     <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />

@@ -48,7 +48,7 @@ module OpenDialogConfig =
                 yield sprintf "title: '%s'" cfg.title
                     
                 if not (String.IsNullOrWhiteSpace cfg.startPath) then
-                    yield sprintf "startPath: '%s'" (Aardvark.Service.PathUtils.toUnixStyle cfg.startPath)
+                    yield sprintf "startPath: '%s'" (Path.toUnixStyle cfg.startPath)
 
                 if cfg.filters.Length > 0 then
                     yield sprintf "filters: %s" (cfg.filters |> Seq.map (sprintf "'%s'") |> String.concat ", " |> sprintf "[%s]")
@@ -72,7 +72,7 @@ module OpenFileDialogExtensions =
             ] content
 
         let onChooseFiles (chosen : list<string> -> 'msg) =
-            onEvent "onchoosefile" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> List.map Aardvark.Service.PathUtils.ofUnixStyle >> chosen)
+            onEvent "onchoosefile" [] (List.head >> Pickler.json.UnPickleOfString >> List.map Path.ofUnixStyle >> chosen)
         
         let onChooseFile (chosen : string -> 'msg) =
-            onEvent "onchoosefile" [] (List.head >> Aardvark.Service.Pickler.json.UnPickleOfString >> List.head >> Aardvark.Service.PathUtils.ofUnixStyle >> chosen)
+            onEvent "onchoosefile" [] (List.head >> Pickler.json.UnPickleOfString >> List.head >> Path.ofUnixStyle >> chosen)

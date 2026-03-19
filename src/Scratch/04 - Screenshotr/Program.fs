@@ -3,32 +3,37 @@
 open Aardvark.Base
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Suave
 open Aardium
-open Suave
 
 type Resources = Resources
 
 [<EntryPoint>]
 let main args =
-
     Aardvark.Init()
     Aardium.init()
 
-    let app = new OpenGlApplication()
+    use app = new OpenGlApplication()
 
     let port = 1338
-    let mediaUrl = sprintf "http://localhost:%i/" port
-    
-    WebPart.startServerLocalhost port [
-        MutableApp.toWebPart' app.Runtime false (App.start (App.app mediaUrl))
+    let mediaUrl = $"http://localhost:{port}/"
+    use mapp = App.app mediaUrl |> App.start
+
+    Server.startLocalhost port mapp.CancellationToken [
+        MutableApp.toWebPart' app.Runtime false mapp
     ] |> ignore
-    
+
     Aardium.run {
         title "Screenshotr Example"
         width 1024
         height 768
         url mediaUrl
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
 
     0

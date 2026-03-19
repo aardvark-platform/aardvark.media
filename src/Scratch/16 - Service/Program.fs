@@ -3,17 +3,15 @@ open System.Threading
 open Aardvark.Base
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Suave
 open Aardium
 open Inc
 open Inc.Model
 
-open Suave
 open System.Collections.Concurrent
 
 [<EntryPoint; STAThread>]
-let main argv = 
-
-    
+let main argv =
     Aardvark.Init()
     Aardium.init()
 
@@ -22,13 +20,13 @@ let main argv =
     let backChannel = new BlockingCollection<_>()
     let send v = backChannel.Add v
 
-    let instance = App.app send |> App.start
+    use mapp = App.app send |> App.start
 
     let backThread =
         Thread(ThreadStart (fun _ -> 
             while true do
                 let msg = backChannel.Take()
-                instance.update Guid.Empty (Seq.singleton (InstanceStatus msg))
+                mapp.Update(Guid.Empty, (Seq.singleton (InstanceStatus msg)))
         ))
     backThread.Name <- "backChannel thread"
     backThread.IsBackground <- true
@@ -36,9 +34,9 @@ let main argv =
 
     let outputDir = System.Environment.CurrentDirectory
 
-    WebPart.runServer 4321 [ 
+    Server.run 4321 [
         Suave.Files.browse outputDir
-        MutableApp.toWebPart' app.Runtime false instance
+        MutableApp.toWebPart' app.Runtime false mapp
     ]
 
     0 

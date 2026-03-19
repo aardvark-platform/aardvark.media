@@ -168,7 +168,7 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
             threads = fun () -> ThreadPool.empty
         }
 
-    subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) [] app
+    subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) app
 
 // variant with html5 grid layouting (currently not working in our cef)
 let view (model : AdaptiveModel) =
@@ -190,7 +190,7 @@ let view (model : AdaptiveModel) =
             button [onClick (fun _ -> CenterScene)] [text "Center Scene.."]
           ]
           renderControl
-          div[style "width:400px"] [
+          div [style "width:400px"] [
             Html.table [
               Html.row "Animate:"   [Html.SemUi.iconCheckBox model.animationEnabled ToggleAnimation]
               Html.row "Thickness:" [Numeric.view' [NumericInputType.Slider] model.thickness |> UI.map ChangeThickness ]                  

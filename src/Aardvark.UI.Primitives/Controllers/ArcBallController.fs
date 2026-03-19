@@ -6,16 +6,8 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.Rendering
 open Aardvark.Application
-open Aardvark.SceneGraph
 open Aardvark.UI
-open Aardvark.Service
-
 open Aardvark.UI.Primitives
-
-open System
-open System.Runtime.InteropServices
-open System.Security
-open Aardvark.Base
 
 module ArcBallController =
     open FSharp.Data.Adaptive.Operators
@@ -262,7 +254,7 @@ module ArcBallController =
                     | x :: y :: b :: isControl :: _ ->
                         let x = int (float x)
                         let y = int (float y)
-                        let b = Aardvark.UI.Helpers.button b
+                        let b = MouseButtons.ofEventStr b
                         let modKey = if b = MouseButtons.Left && isControl = "true" then MouseButtons.Right else b
                         cb modKey (V2i(x,y))
                     | _ ->
@@ -302,7 +294,7 @@ module ArcBallController =
     let extractAttributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg)  =
         attributes state f |> AttributeMap.toAMap
 
-    let controlledControlWithClientValues (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : RenderClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
         let cam = AVal.map2 Camera.create state.view frustum 
         Incremental.renderControlWithClientValues cam attributes sg

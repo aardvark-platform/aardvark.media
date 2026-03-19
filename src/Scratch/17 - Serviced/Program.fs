@@ -3,11 +3,9 @@ open Aardvark.Base
 open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Suave
 open Aardium
 open Inc
-
-open Suave
-open Suave.WebPart
 
 open System.Threading
 open Aardvark.Rendering.Vulkan
@@ -45,11 +43,10 @@ let main argv =
     //System.Diagnostics.Debugger.Launch()
 
     use app = new HeadlessVulkanApplication(true)
-    let instance = Inc.Master.app |> App.start
+    let mapp = Inc.Master.app |> App.start
 
-    WebPart.startServerLocalhost port [ 
-        MutableApp.toWebPart' app.Runtime false instance
-        Suave.Files.browseHome
+    Server.startLocalhost port mapp.CancellationToken [
+        MutableApp.toWebPart' app.Runtime false mapp
     ] |> ignore
 
     if processId < 0 then
@@ -57,7 +54,12 @@ let main argv =
             url "http://localhost:4321/"
             width 1024
             height 768
+#if DEBUG
             debug true
+            log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+            debug false
+#endif
         }
     else Console.ReadLine() |> ignore
 

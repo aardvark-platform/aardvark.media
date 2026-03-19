@@ -207,10 +207,8 @@ class Renderer {
 
         this.depthCallbacks = [];
 
-        var renderAlways = this.div.getAttribute("data-renderalways");
-        if (renderAlways) renderAlways = true;
-        else renderAlways = false;
-        this.renderAlways = renderAlways;
+        const renderAlways = this.div.getAttribute("data-renderalways");
+        this.renderAlways = !!renderAlways;
 
         this.init();
     }
@@ -461,16 +459,6 @@ class Renderer {
         setInterval(check, 50);
     }
 
-    change(scene, samples) {
-        if (this.scene != scene || this.samples != samples) {
-            console.warn("changing to " + scene + "/" + samples);
-            var message = { Case: "Change", scene: scene, samples: samples };
-            this.send(JSON.stringify(message));
-            this.scene = scene;
-            this.samples = samples;
-        }
-    }
-
     send(data) {
         if (this.isOpen) {
             this.socket.send(data);
@@ -489,147 +477,6 @@ class Renderer {
         }
         var message = JSON.stringify({ sender: sender, name: name, args: args });
         this.send(message);
-    }
-
-    subscribe(eventName) {
-        var self = this;
-
-        switch (eventName) {
-            case "click":
-                this.img.onclick = function (e) {
-                    self.processEvent('click', e.offsetX, e.offsetY, e.button);
-                    e.preventDefault();
-                };
-                break;
-
-            case "dblclick":
-                this.img.ondblclick = function (e) {
-                    self.processEvent('dblclick', e.offsetX, e.offsetY, e.button);
-                    e.preventDefault();
-                };
-                break;
-                    
-            case "mousedown":
-                this.img.onmousedown = function (e) {
-                    self.processEvent('mousedown', e.offsetX, e.offsetY, e.button);
-                    e.preventDefault();
-                }
-                break;
-
-            case "mouseup":
-                this.img.onmouseup = function (e) {
-                    self.processEvent('mouseup', e.offsetX, e.offsetY, e.button);
-                    e.preventDefault();
-                }
-                break;
-
-            case "mousemove":
-                this.img.onmousemove = function (e) {
-                    self.processEvent('mousemove', e.offsetX, e.offsetY);
-                    e.preventDefault();
-                }
-                break;
-
-            case "mouseenter":
-                this.img.onmouseenter = function (e) {
-                    self.processEvent('mouseenter', e.offsetX, e.offsetY);
-                    e.preventDefault();
-                }
-                break;
-
-            case "mouseout":
-                this.img.onmouseout = function (e) {
-                    self.processEvent('mouseout', e.offsetX, e.offsetY);
-                    e.preventDefault();
-                }
-                break;
-
-            case "mousewheel":
-                this.img.onmousewheel = function(e) {
-                    if (document.activeElement === this.img) {
-                        self.processEvent('mousewheel', e.wheelDelta);
-                        e.preventDefault();
-                    }
-                };
-                break;
-
-            case "keydown":
-                this.img.onkeydown = function (e) {
-                    self.processEvent('keydown', e.keyCode);
-                    e.preventDefault();
-                };
-                break;
-
-            case "keyup":
-                this.img.onkeyup = function (e) {
-                    self.processEvent('keyup', e.keyCode);
-                    e.preventDefault();
-                };
-                break;
-
-            case "keypress":
-                this.img.onkeypress = function (e) {
-                    self.processEvent('keypress', e.key);
-                    e.preventDefault();
-                };
-                break;
-
-            default:
-                console.warn("cannot subscribe to event " + eventName);
-
-        }
-    }
-
-    unsubscribe(eventName) {
-        switch (eventName) {
-            case "click":
-                delete this.img.onclick;
-                break;
-
-            case "dblclick":
-                delete this.img.ondblclick;
-                break;
-
-            case "mousedown":
-                delete this.img.onmousedown;
-                break;
-
-            case "mouseup":
-                delete this.img.onmouseup;
-                break;
-
-            case "mousemove":
-                delete this.img.onmousemove;
-                break;
-
-            case "mouseenter":
-                delete this.img.onmousemouseenter;
-                break;
-
-            case "mouseout":
-                delete this.img.onmouseout;
-                break;
-
-            case "mousewheel":
-                delete this.img.onmousewheel;
-                break;
-
-            case "keydown":
-                delete this.img.onkeydown;
-                break;
-
-            case "keyup":
-                delete this.img.onkeyup;
-                break;
-
-            case "keypress":
-                delete this.img.onkeypress;
-                break;
-
-            default:
-                console.warn("cannot unsubscribe from event " + eventName);
-
-        }
     }
 
     fadeIn() {
@@ -658,33 +505,25 @@ class Renderer {
         }
     }
 
-    setRenderAlways(r) {
-        if (r) {
-            this.renderAlways = true;
-            this.render();
-        }
-        else this.renderAlways = false;
-    }
-
     getWorldPosition(pixel, callback) {
         this.depthCallbacks.push({ pixel: pixel, callback: callback });
-        this.send(JSON.stringify({ Case: "RequestWorldPosition", pixel: { X: pixel.x, Y: pixel.y } }));
+        this.send(JSON.stringify({ case: "RequestWorldPosition", pixel: { X: pixel.x, Y: pixel.y } }));
     }
 
     received(msg) {
         if (msg.data instanceof Blob) {
-            var now = performance.now();
+            const now = performance.now();
             if (!this.lastTime) {
                 this.lastTime = now;
             }
 
             if (now - this.lastTime > 1000.0) {
                 if (this.frameCount > 0) {
-                    var dt = now - this.lastTime;
-                    var cnt = this.frameCount;
+                    const dt = now - this.lastTime;
+                    const cnt = this.frameCount;
                     this.lastTime = now;
                     this.frameCount = 0;
-                    var fps = 1000.0 * cnt / dt;
+                    const fps = 1000.0 * cnt / dt;
                     this.overlay.innerText = fps.toFixed(2) + " fps";
                     if (this.overlay.style.opacity < 0.5) {
                         $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
@@ -699,21 +538,19 @@ class Renderer {
 
             this.frameCount++;
 
-
-            var oldUrl = this.img.src;
+            const oldUrl = this.img.src;
             this.img.src = urlCreator.createObjectURL(msg.data);
             delete msg.data;
 
             urlCreator.revokeObjectURL(oldUrl);
 
-			this.send(JSON.stringify({ Case: "Rendered" }));
+			this.send(JSON.stringify({ case: "Rendered" }));
 
-
-            var shouldSay = this.div.getAttribute("onRendered");
+            const shouldSay = this.div.getAttribute("onRendered");
             if (shouldSay) {
-                if (this.div.onRenderedCode != shouldSay) {
+                if (this.div.onRenderedCode !== shouldSay) {
                     this.div.onRenderedCode = shouldSay;
-                    var f = new Function(shouldSay);
+                    const f = new Function(shouldSay);
                     this.div.onRendered = f.bind(this.div);
                 }
                 this.div.onRendered();
@@ -734,47 +571,34 @@ class Renderer {
             }
         }
         else {
-            var o = JSON.parse(msg.data);
+            const data = JSON.parse(msg.data);
 
-            //type Command =
-            //    | Invalidate
-            //    | Subscribe of eventName : string
-            //    | Unsubscribe of eventName : string
-
-            if (o.Case === "Invalidate") {
+            if (data.Case === "Invalidate") {
                 if (!this.renderAlways) {
                     // TODO: what if not visible??
                     this.render();
                 }
             }
-            else if (o.Case === "WorldPosition" && o.pos) {
+            else if (data.Case === "WorldPosition" && data.position) {
                 if (this.depthCallbacks.length > 0) {
-                    var cb = this.depthCallbacks[0];
-                    cb.callback(o.pos);
+                    const cb = this.depthCallbacks[0];
+                    cb.callback(data.position);
                     this.depthCallbacks.splice(0, 1);
                 }
             }
-            else if (o.Case === "Subscribe") {
-                var evt = o.eventName;
-                this.subscribe(evt);
-            }
-            else if (o.Case === "Unsubscribe") {
-                var evt = o.eventName;
-                this.unsubscribe(evt);
-            }
-            else if (o.name && o.size && o.length) {
-                var now = performance.now();
+            else if (data.name && data.size && data.length) {
+                const now = performance.now();
                 if (!this.lastTime) {
                     this.lastTime = now;
                 }
 
                 if (now - this.lastTime > 1000.0) {
                     if (this.frameCount > 0) {
-                        var dt = now - this.lastTime;
-                        var cnt = this.frameCount;
+                        const dt = now - this.lastTime;
+                        const cnt = this.frameCount;
                         this.lastTime = now;
                         this.frameCount = 0;
-                        var fps = 1000.0 * cnt / dt;
+                        const fps = 1000.0 * cnt / dt;
                         this.overlay.innerText = fps.toFixed(2) + " fps";
                         if (this.overlay.style.opacity < 0.5) {
                             $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
@@ -791,42 +615,42 @@ class Renderer {
 
                 //HERE
                 if (this.mapping) {
-                    if (this.mapping.name !== o.name) {
+                    if (this.mapping.name !== data.name) {
                         this.mapping.close();
-                        this.mapping = getTopAardvark().openMapping(o.name, o.length);
+                        this.mapping = getTopAardvark().openMapping(data.name, data.length);
                     }
                 }
                 else {
-                    this.mapping = getTopAardvark().openMapping(o.name, o.length);
+                    this.mapping = getTopAardvark().openMapping(data.name, data.length);
                 }
 
                 if (this.frameBufferSize) {
-                    if (this.frameBufferSize.X != o.size.X || this.frameBufferSize.Y != o.size.Y) {
-                        var len = o.size.X * o.size.Y * 4;
+                    if (this.frameBufferSize.X !== data.size.X || this.frameBufferSize.Y !== data.size.Y) {
+                        const len = data.size.X * data.size.Y * 4;
                         this.frameBuffer = new Uint8ClampedArray(len);
-                        this.frameBufferSize = o.size;
+                        this.frameBufferSize = data.size;
                         this.frameBufferLength = len;
                     }
                 }
                 else {
-                    var len = o.size.X * o.size.Y * 4;
+                    const len = data.size.X * data.size.Y * 4;
                     this.frameBuffer = new Uint8ClampedArray(len);
-                    this.frameBufferSize = o.size;
+                    this.frameBufferSize = data.size;
                     this.frameBufferLength = len;
                 }
 
-                this.canvas.width = o.size.X;
-                this.canvas.height = o.size.Y;
+                this.canvas.width = data.size.X;
+                this.canvas.height = data.size.Y;
                 this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
-                this.ctx.putImageData(new ImageData(this.frameBuffer, o.size.X, o.size.Y), 0, 0);
-                
-				this.send(JSON.stringify({ Case: "Rendered" }));
+                this.ctx.putImageData(new ImageData(this.frameBuffer, data.size.X, data.size.Y), 0, 0);
 
-                var shouldSay = this.div.getAttribute("onRendered");
+				this.send(JSON.stringify({ case: "Rendered" }));
+
+                const shouldSay = this.div.getAttribute("onRendered");
                 if (shouldSay) {
-                    if (this.div.onRenderedCode != shouldSay) {
+                    if (this.div.onRenderedCode !== shouldSay) {
                         this.div.onRenderedCode = shouldSay;
-                        var f = new Function(shouldSay);
+                        const f = new Function(shouldSay);
                         this.div.onRendered = f.bind(this.div);
                     }
                     this.div.onRendered();
@@ -847,22 +671,25 @@ class Renderer {
                 }
             }
             else {
-                console.warn("unexpected message " + o);
+                console.warn("Unexpected render message: " + JSON.stringify(data));
             }
         }
     }
 
     render() {
-        var rect = this.div.getBoundingClientRect();
+        const rect = this.div.getBoundingClientRect();
 
-        var color = { r: 0, g: 0, b: 0 };
-        var bg = window.getComputedStyle(this.div).backgroundColor;
-        if(typeof bg != undefined)
-            color = new RGBColor(bg);
+        const bg = window.getComputedStyle(this.div).backgroundColor;
+        const color = bg ? new RGBColor(bg) : { r: 0, g: 0, b: 0 };
 
-        this.send(JSON.stringify({ Case: "RequestImage", background: { A: 255, B: color.b, G: color.g, R: color.r }, size: { X: Math.round(rect.width), Y: Math.round(rect.height) } }));
+        const message = {
+            case: "RequestImage",
+            size: { X: Math.round(rect.width), Y: Math.round(rect.height) },
+            background: { A: 255, B: color.b, G: color.g, R: color.r }
+        };
+
+        this.send(JSON.stringify(message));
     }
-
 }
 
 if (!aardvark.addReferences) {

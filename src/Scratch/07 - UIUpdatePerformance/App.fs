@@ -91,10 +91,10 @@ let view (runtime : IRuntime) (model : AdaptiveModel) =
                 Frustum.perspective 60.0 0.1 150.0 1.0 |> Frustum.projTrafo |> AVal.constant
 
             let signature =
-                runtime.CreateFramebufferSignature [
-                    DefaultSemantic.Colors, TextureFormat.Rgba32f
+                runtime.CreateFramebufferSignature([
+                    DefaultSemantic.Colors, TextureFormat.Rgba8
                     DefaultSemantic.DepthStencil, TextureFormat.Depth24Stencil8
-                ]
+                ], samples = 8)
 
             let mkTrafo = 
                 let rnd = new System.Random()

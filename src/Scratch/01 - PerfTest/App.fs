@@ -79,7 +79,7 @@ let mymap (f : 'a -> 'b) (ui : DomNode<'a>) : DomNode<'b> =
             threads = fun () -> ThreadPool.empty
         }
 
-    subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) [] app
+    subApp' (fun _ msg -> Seq.singleton (f msg)) (fun _ _ -> Seq.empty) app
 
 // variant with html5 grid layouting (currently not working in our cef)
 let view (model : AdaptiveModel) =

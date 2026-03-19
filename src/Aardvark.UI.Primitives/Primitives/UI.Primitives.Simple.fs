@@ -4,9 +4,9 @@ open FSharp.Data.Adaptive
 open Aardvark.UI
 
 type EmbeddedResources = EmbeddedResources
+
 module Resources =
-    open Suave
-    let WebPart = Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
+    let toWebPart (http: IHttpBackend<'HttpContext, 'HttpHandler>) = http.assembly typeof<EmbeddedResources>.Assembly
 
 [<AutoOpen>]
 module Simple =

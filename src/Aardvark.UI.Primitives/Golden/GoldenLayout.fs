@@ -110,10 +110,6 @@ module GoldenLayoutApp =
         override x.GetReader() = new TaggedChannelReader<_>(data, pickle) :> ChannelReader
 
     module GoldenLayout =
-        open Suave
-        open Suave.Filters
-        open Suave.Operators
-        open Suave.Successful
         open System.IO
 
         let inline create (config : LayoutConfig) (root : ^LayoutRoot) =
@@ -211,54 +207,51 @@ module GoldenLayoutApp =
                 )
             )
 
-        module WebPart =
+        let private template =
+            try
+                let asm = typeof<LayoutConfig>.Assembly
+                let path = "resources/golden-layout/popout.html"
 
-            let private template =
-                try
-                    let asm = typeof<LayoutConfig>.Assembly
-                    let path = "resources/golden-layout/popout.html"
+                let resourceName =
+                    asm.GetManifestResourceNames()
+                    |> Array.tryFind (String.replace "\\" "/" >> (=) path)
 
-                    let resourceName =
-                        asm.GetManifestResourceNames()
-                        |> Array.tryFind (String.replace "\\" "/" >> (=) path)
+                match resourceName with
+                | Some name ->
+                    use stream = asm.GetManifestResourceStream(name)
+                    let reader = new StreamReader(stream)
+                    reader.ReadToEnd()
 
-                    match resourceName with
-                    | Some name ->
-                        use stream = asm.GetManifestResourceStream(name)
-                        let reader = new StreamReader(stream)
-                        reader.ReadToEnd()
+                | _ ->
+                    raise <| FileNotFoundException($"Failed to read template HTML from '{path}'.", path)
 
-                    | _ ->
-                        raise <| FileNotFoundException($"Failed to read template HTML from '{path}'.", path)
+            with e ->
+                Log.error "[GoldenAard] %s" e.Message
+                $"<!doctype html><html><body><h1>Error</h1>{e.GetType().Name}: {e.Message}</body></html>"
 
-                with e ->
-                    Log.error "[GoldenAard] %s" e.Message
-                    $"<!doctype html><html><body><h1>Error</h1>{e.GetType().Name}: {e.Message}</body></html>"
+        let toWebPart (http: IHttpBackend<'HttpContext, 'HttpHandler>) : 'HttpHandler =
+            let handler =
+                http.withContext (fun ctx ->
+                    let args = http.requestQueryParams ctx
 
-            [<Literal>]
-            let route = "/gl-popout"
+                    let id =
+                        match args |> Map.tryFind "gl-window" with
+                        | Some id -> id
+                        | _ ->
+                            Log.warn "[GoldenAard] Query parameter 'gl-window' missing."
+                            Guid.NewGuid().ToString()
 
-            let handler (getQueryParam : string -> string option) =
-                let id =
-                    match getQueryParam "gl-window" with
-                    | Some id -> id
-                    | _ ->
-                        Log.warn "[GoldenAard] Query parameter 'gl-window' missing."
-                        Guid.NewGuid().ToString()
+                    let theme =
+                        match args |> Map.tryFind "gl-theme" with
+                        | Some p -> p
+                        | _ ->
+                            Log.warn "[GoldenAard] Query parameter 'gl-theme' missing. Falling back to borderless-dark theme for popout."
+                            Theme.BorderlessDark.Path
 
-                let theme =
-                    match getQueryParam "gl-theme" with
-                    | Some p -> p
-                    | _ ->
-                        Log.warn "[GoldenAard] Query parameter 'gl-theme' missing. Falling back to borderless-dark theme for popout."
-                        Theme.BorderlessDark.Path
-
-                template
-                |> String.replace "__ID__" id
-                |> String.replace "__THEME__" theme
-
-            let suave : WebPart =
-                path route >=> request (fun r ->
-                    let response = handler (r.queryParamOpt >> Option.bind snd)
-                    OK response
+                    template
+                    |> String.replace "__ID__" id
+                    |> String.replace "__THEME__" theme
+                    |> http.ok
                 )
+
+            http.compose (http.route "/gl-popout") handler

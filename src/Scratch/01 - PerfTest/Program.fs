@@ -2,17 +2,13 @@
 
 open Aardvark.Base
 open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
-
-open Suave
-open Suave.WebPart
+open Aardvark.Service.Suave
 open Aardium
 
 [<EntryPoint; STAThread>]
-let main argv = 
-    
+let main argv =
     Aardvark.Init()
     Aardium.init()
 
@@ -27,25 +23,25 @@ let main argv =
         else
             let app = new OpenGlApplication()
             app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
-    
-    let app = App.app
+    use _ = disposable
 
-    let instance = 
-        app |> App.start
+    use mapp =
+        App.app |> App.start
 
-
-    WebPart.startServerLocalhost 4321 [ 
-        Aardvark.UI.Primitives.Resources.WebPart 
-        MutableApp.toWebPart' runtime false instance
-        Suave.Files.browseHome
-    ] |> ignore 
-    
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        Aardvark.UI.Primitives.Resources.toWebPart HttpBackend.Instance
+        MutableApp.toWebPart' runtime false mapp
+    ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1280
         height 1000
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
     0 

@@ -1,23 +1,20 @@
 ﻿open System
 open Aardvark.Base
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Suave
 open Aardium
 open Inc
-
-open Suave
-open Suave.WebPart
 
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
     Aardium.init()
-    
+
     use app = new OpenGlApplication()
-    let mutable mapp : Option<MutableApp<_,_>> = None
-    let sendMessage (msg : Inc.Model.Message) = match mapp with None -> () | Some mapp -> mapp.update (Guid.NewGuid()) (Seq.singleton msg)
-    let instance = 
+    let mutable mapp : Option<MutableApp<_,_,_>> = None
+    let sendMessage (msg : Inc.Model.Message) = match mapp with None -> () | Some mapp -> mapp.Update(Guid.NewGuid(), Seq.singleton msg)
+    use mapp =
         let i = App.app sendMessage |> App.start
         mapp <- Some i
         i
@@ -30,25 +27,20 @@ let main argv =
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-    WebPart.startServerLocalhost 4321 [ 
-        MutableApp.toWebPart' app.Runtime false instance
-        Suave.Files.browseHome
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        MutableApp.toWebPart' app.Runtime false mapp
     ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
 
-    //use ctrl = new AardvarkCefBrowser()
-    //ctrl.Dock <- DockStyle.Fill
-    //form.Controls.Add ctrl
-    //ctrl.StartUrl <- "http://localhost:4321/"
-    //ctrl.ShowDevTools()
-    //form.Text <- "Examples"
-    //form.Icon <- Icons.aardvark 
-
-    //Application.Run form
     0 

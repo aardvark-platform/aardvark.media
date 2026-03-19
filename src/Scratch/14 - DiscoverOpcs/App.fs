@@ -20,7 +20,7 @@ module App =
             let cb xs =
                 match xs with
                 | [] -> chosen []
-                | x::[] when x <> null -> x |> Aardvark.Service.Pickler.json.UnPickleOfString |> List.map Aardvark.Service.PathUtils.ofUnixStyle |> chosen
+                | x::[] when x <> null -> x |> Pickler.json.UnPickleOfString |> List.map Path.ofUnixStyle |> chosen
                 | _ -> chosen []//failwithf "onChooseFiles: %A" xs
             onEvent "onchoose" [] cb   
     

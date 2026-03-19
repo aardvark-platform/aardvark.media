@@ -8,7 +8,6 @@ open Aardvark.Rendering
 open Aardvark.Application
 open Aardvark.SceneGraph
 open Aardvark.UI
-open Aardvark.Service
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.TouchStick
 open FSharp.Data.Adaptive.Operators
@@ -634,7 +633,7 @@ module FreeFlyController =
 
     let extractAttributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         attributes state f |> AttributeMap.toAMap
-    let controlledControlWithClientValues (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : Aardvark.Service.ClientValues -> ISg<'msg>) =
+    let controlledControlWithClientValues (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (config : RenderControlConfig) (sg : RenderClientValues -> ISg<'msg>) =
         let attributes = AttributeMap.union att (attributes state f)
         let cam = AVal.map2 Camera.create state.view frustum 
         
@@ -655,7 +654,7 @@ module FreeFlyController =
         let cam = AVal.map2 Camera.create state.view frustum 
         match node with
             | :? SceneNode<'msg> as node ->
-                let getState(c : Aardvark.Service.ClientInfo) =
+                let getState(c : RenderClientInfo) =
                     let cam = cam.GetValue(c.token)
                     let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
 

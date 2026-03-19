@@ -1,392 +1,505 @@
 ﻿namespace Aardvark.UI
 
 open System
+open System.IO
+open System.Text
 open System.Threading
 open System.Collections.Generic
 open System.Collections.Concurrent
+open System.Threading.Tasks
 
 open Aardvark.Base
 open Aardvark.GPGPU
 open Aardvark.Rendering
 open FSharp.Data.Adaptive
-open Aardvark.Service
-open Aardvark.UI.Internal
 
-open Suave
-open Suave.Filters
-open Suave.Operators
-open Suave.WebSocket
-open Suave.Successful
-open Suave.Sockets.Control
-open Suave.Sockets
+type internal Messages<'msg> =
+    {
+        messages : 'msg seq
+        event    : ManualResetEventSlim
+    }
 
-type EmbeddedResources = EmbeddedResources
+type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersist: Unpersist<'model, 'mmodel>) =
+    let updateLock = obj()
+    let source = new CancellationTokenSource()
+    let resources = Stack<IDisposable>()
 
-[<AutoOpen>]
-module private Tools =
-    type WebSocket with
-        member x.readMessage() =
-            socket {
-                let! (t,d,fin) = x.read()
-                if fin then 
-                    return (t,d)
-                else
-                    let! (_, rest) = x.readMessage()
-                    return (t, Array.append d rest)
-            }
+    let state = AVal.init app.Initial
+    let mstate = unpersist.create app.Initial
+    let node = app.View mstate :?> DomNode<'msg>
 
-// https://github.com/aardvark-platform/aardvark.media/issues/19
-module ThreadPoolAdjustment =
+    let messageQueue = List<Messages<'msg>>(128)
+    let subject = new FSharp.Control.Event<'msg>()
+    let messages = subject.Publish
 
-    let mutable shouldAdjust = true
-    
-    let adjust () =
-        if shouldAdjust then
-            let mutable maxThreads,maxIOThreads = 0,0
-            System.Threading.ThreadPool.GetMaxThreads(&maxThreads,&maxIOThreads)
-            let mutable minThreads, minIOThreads = 0,0
-            System.Threading.ThreadPool.GetMinThreads(&minThreads,&minIOThreads)
-            if minThreads < 12 || minIOThreads < 12 then
-                Log.warn "[aardvark.media] currently ThreadPool.MinThreads is (%d,%d)" minThreads minIOThreads
-                let minThreads   = max 12 minThreads
-                let minIOThreads = max 12 minIOThreads
-                Log.warn "[aardvark.media] unfortunately, currently we need to adjust this to at least (12,12) due to an open issue https://github.com/aardvark-platform/aardvark.media/issues/19"
-                if not <| System.Threading.ThreadPool.SetMinThreads(minThreads, minIOThreads) then Log.warn "could not set min threads"
-                if maxThreads < 12 || maxIOThreads < 12 then
-                    Log.warn "[aardvark.media] detected less than 12 threadpool threads: (%d,%d). Be aware that this will result in severe stutters... Consider switching back to the default (65537,1000)." maxThreads maxIOThreads
+    let emit (messages: 'msg seq) =
+        lock messageQueue (fun () ->
+            messageQueue.Add { messages = messages; event = null }
+            Monitor.Pulse messageQueue
+        )
 
+    let adjustThreads (oldThreads: ThreadPool<'msg>) (newThreads: ThreadPool<'msg>) =
+        let merge (_ : string) (oldThread: Command<'msg> voption) (newThread: Command<'msg> voption) =
+            match oldThread, newThread with
+            | ValueSome o, ValueNone   -> o.Stop(); newThread
+            | ValueNone, ValueSome n   -> n.Start(Seq.singleton >> emit); newThread
+            | ValueSome _, ValueSome _ -> oldThread
+            | ValueNone, ValueNone     -> ValueNone
+
+        ThreadPool<'msg>(HashMap.choose2V merge oldThreads.store newThreads.store)
+
+    let mutable currentThreads =
+        let initialThreads = app.Threads app.Initial
+        initialThreads |> adjustThreads ThreadPool.empty
+
+    let processMessages (msgs: Messages<'msg> list) =
+        if not msgs.IsEmpty then
+            let messagesForward = List<_>()
+
+            lock updateLock (fun () ->
+                if Config.shouldTimeUpdate then Log.startTimed "[Aardvark.UI] update/adjustThreads/unpersist"
+
+                transact (fun () ->
+                    let mutable newState = state.Value
+                    for msg in msgs do
+                        for msg in msg.messages do
+                            newState <-
+                                try
+                                    app.Update(state.Value, msg)
+                                with exn ->
+                                    Log.error $"[Aardvark.UI] Update failed: {exn}"
+                                    state.Value
+
+                            let newThreads = app.Threads newState
+                            currentThreads <- newThreads |> adjustThreads currentThreads
+
+                            state.Value <- newState
+
+                            messagesForward.Add(msg)
+
+                        // if somebody awaits message processing, trigger it
+                        if notNull msg.event then
+                            msg.event.Set()
+
+                    unpersist.update mstate newState
+                )
+
+                if Config.shouldTimeUpdate then Log.stop ()
+            )
+
+            for msg in messagesForward do
+                subject.Trigger(msg)
+
+    let updateThread =
+        let update () =
+            while not source.IsCancellationRequested do
+                Monitor.Enter(messageQueue)
+                while not source.IsCancellationRequested && messageQueue.Count = 0 do
+                    Monitor.Wait(messageQueue) |> ignore
+
+                let messages =
+                    if not source.IsCancellationRequested then
+                        let messages = messageQueue |> CSharpList.toList
+                        messages
+                    else
+                        []
+
+                messageQueue.Clear()
+
+                Monitor.Exit(messageQueue)
+
+                processMessages messages
+
+        let thread = Thread(ThreadStart update)
+        thread.Name <- "MutableApp (Update)"
+        thread.IsBackground <- true
+        thread.Start()
+        thread
+
+    member _.Dom = node
+    member _.Model = state :> aval<_>
+    member _.MutableModel = mstate
+    member _.Messages = messages
+    member _.UpdateLock = updateLock
+    member _.CancellationToken = source.Token
+
+    member this.Update(_: Guid, messages: 'msg seq) =
+        //use mri = new System.Threading.ManualResetEventSlim()
+        emit messages
+        //  mri.Wait()
+
+    member this.UpdateSync(_: Guid, messages: 'msg seq) =
+        processMessages [ { messages = messages; event = null } ]
+
+    member _.AcquireLock() =
+        Monitor.Enter(updateLock)
+        new MutableAppLock(updateLock)
+
+    member _.Register(resource: IDisposable) =
+        lock resources (fun _ -> resources.Push resource)
+
+    member _.Dispose() =
+        source.Cancel()
+
+        lock messageQueue (fun () -> Monitor.PulseAll messageQueue)
+        updateThread.Join()
+
+        lock resources (fun _ ->
+            for r in resources do r.Dispose()
+            resources.Clear()
+        )
+
+        source.Dispose()
+
+    interface IMutableApp<'model, 'msg> with
+        member this.Dom = this.Dom
+        member this.Model = this.Model
+        member this.UpdateLock = this.UpdateLock
+        member this.CancellationToken = this.CancellationToken
+        member this.Update(session, messages) = this.Update(session, messages)
+        member this.AcquireLock() = this.AcquireLock()
+        member this.Register(resource) = this.Register resource
+        member this.Dispose() = this.Dispose()
 
 module MutableApp =
-    open Aardvark.UI.Internal.Updaters
-    
+    open Updaters
+
     let private template =
         let html =
             let ass = typeof<DomNode<_>>.Assembly
             use stream = ass.GetManifestResourceStream("Aardvark.UI.template.html")
-            let reader = new IO.StreamReader(stream)
+            let reader = new StreamReader(stream)
             reader.ReadToEnd()
 
         fun (title: string) -> html |> String.replace "__TITLE__" title
 
     [<AutoOpen>]
-    module Internals =
+    module private Internals =
 
+        type ChannelMessage =
+            {
+                targetId : string
+                channel  : string
+                data     : string list
+            }
+
+        [<Struct>]
         type EventMessage =
             {
-                sender  : string
-                name    : string
-                version : byte voption
-                args    : string[]
+                mutable sender  : string
+                mutable name    : string
+                mutable version : byte voption
+                mutable args    : string[]
             }
 
         module EventMessage =
             open System.Text.Json
-            open System.Text.Json.Serialization
 
             // FSPickler cannot handle options properly, we'd have to write { Some: value } on JS side instead of simply omitting the property
-            // For ValueOption it's even more stupid so we use System.Text.Json instead...
-            type private EventMessageConverter() =
-                inherit JsonConverter<EventMessage>()
+            // For ValueOption it's even more stupid so we use System.Text.Json instead.
+            // Also, FSPickler cannot deal with ArraySegments so we'd have to do another copy.
+            type private JsonEventMessageConverter() =
+                inherit JsonStructConverter<EventMessage>()
 
-                override this.Write(_, _, _) =
-                    raise <| NotImplementedException()
-
-                override this.Read(reader, _, options) =
-                    let mutable sender = ""
-                    let mutable name = ""
-                    let mutable version = ValueNone
-                    let mutable args = null
-
-                    while reader.Read() && reader.TokenType <> JsonTokenType.EndObject do
-                        match reader.TokenType with
-                        | JsonTokenType.PropertyName ->
-                            let propertyName = reader.GetString()
-                            reader.Read() |> ignore
-
-                            match propertyName with
-                            | "sender"  -> sender <- reader.GetString()
-                            | "name"    -> name <- reader.GetString()
-                            | "version" -> version <- ValueSome <| reader.GetByte()
-                            | "args"    -> args <- JsonSerializer.Deserialize<string[]>(&reader, options)
-                            | _         -> reader.Skip()
-
-                        | token ->
-                            raise <| JsonException($"Expected property name but got {token}.")
-
-                    { sender = sender; name = name; version = version; args = args }
+                override this.ReadField(reader, name, value, options) =
+                    match name with
+                    | "sender"  -> value.sender <- reader.GetString()
+                    | "name"    -> value.name <- reader.GetString()
+                    | "version" -> value.version <- ValueSome <| reader.GetByte()
+                    | "args"    -> value.args <- JsonSerializer.Deserialize<string[]>(&reader, options)
+                    | _         -> reader.Skip()
 
             let private serializerOptions =
                 let opts = JsonSerializerOptions()
-                opts.Converters.Add(EventMessageConverter())
+                opts.Converters.Add(JsonEventMessageConverter())
                 opts
 
-            let fromJson (data: byte[]) =
-                JsonSerializer.Deserialize<EventMessage>(ReadOnlySpan<_> data, serializerOptions)
+            let fromJson (data: ArraySegment<byte>) =
+                JsonSerializer.Deserialize<EventMessage>(data, serializerOptions)
 
-    let private (|Guid|_|) (str : string) =
-        match Guid.TryParse str with
-            | (true, guid) -> Some guid
-            | _ -> None
-
-
-
-    type private DummyObject() =
-        inherit AdaptiveObject()
-
-    let toWebPart' (runtime : IRuntime) (useGpuCompression : bool) (app : MutableApp<'model, 'msg>) =
-        
-        ThreadPoolAdjustment.adjust ()
-
+    let toWebPart' (http: IHttpBackend<'HttpContext, 'HttpHandler>) (runtime: IRuntime) (useGpuCompression: bool) (app: MutableApp<'model, 'mmodel, 'msg>) =
         let sceneStore =
-            ConcurrentDictionary<string, Scene * Option<SceneMessages<'msg>> * (ClientInfo -> ClientState)>()
-
+            ConcurrentDictionary<string, SceneInfo<'msg>>()
 
         let compressor =
-            if useGpuCompression then new JpegCompressor(runtime) |> Some
-            else None
-         
-        let renderer =
+            if useGpuCompression then new JpegCompressor(runtime) |> ValueSome
+            else ValueNone
+
+        let sessionCount = new CountdownEvent(1)
+        let cancellationToken = app.CancellationToken
+
+        let renderServer =
             {
                 runtime = runtime
                 content = fun sceneName ->
                     match sceneStore.TryGetValue sceneName with
-                        | (true, (scene, _, _)) -> Some scene
-                        | _ -> None
+                    | true, info -> ValueSome info.scene
+                    | _ -> ValueNone
 
                 getState = fun clientInfo ->
                     match sceneStore.TryGetValue clientInfo.sceneName with
-                        | (true, (scene, update, cam)) -> 
-                            match update with
-                                | Some sceneMessages ->
-                                    let msgs = sceneMessages.preRender clientInfo
-                                    if not (Seq.isEmpty msgs) then
-                                        app.updateSync clientInfo.session msgs
-                                | None ->
-                                    ()
+                    | true, info ->
+                        match info.messages with
+                        | ValueSome sceneMessages ->
+                            let msgs = sceneMessages.preRender clientInfo
+                            app.UpdateSync(clientInfo.session, msgs)
+                        | _ ->
+                            ()
 
-                            Some (cam clientInfo)
-                        | _ -> 
-                            None
+                        ValueSome <| info.getState clientInfo
+                    | _ ->
+                        ValueNone
 
                 compressor = compressor
 
                 rendered = fun clientInfo ->
                     match sceneStore.TryGetValue clientInfo.sceneName with
-                        | (true, (scene, update, cam)) -> 
-                            match update with
-                                | Some sceneMessages -> 
-                                    let msgs = sceneMessages.postRender clientInfo
-                                    if not (Seq.isEmpty msgs) then
-                                        app.updateSync clientInfo.session msgs
-                                | None ->
-                                    ()
+                    | true, info ->
+                        match info.messages with
+                        | ValueSome sceneMessages ->
+                            let msgs = sceneMessages.postRender clientInfo
+                            app.UpdateSync(clientInfo.session, msgs)
                         | _ ->
                             ()
-                    
-
-                fileSystemRoot = None //Some "/"
+                    | _ ->
+                        ()
             }
 
-        let events (ws : WebSocket) (context: HttpContext) =
-            match context.request.queryParam "session" with
-                | Choice1Of2 (Guid sessionId) ->
+        let events (socket: IWebSocket) (context: 'HttpContext) : Task =
+            let request = http.request context
 
-                    let request = 
-                        {
-                            requestPath = context.request.path
-                            queryParams = context.request.query |> List.choose (function (k, Some v) -> Some (k,v) | _ -> None) |> Map.ofList
-                        }
+            match request.queryParams |> Map.tryFind "session" with
+            | Some (Guid sessionId) ->
+                let updater = app.Dom.NewUpdater(request)
 
-                    let updater = app.ui.NewUpdater(request)
-                    
-                    let handlers = EventHandlers<'msg>()
-                    let scenes = Dictionary()
+                let handlers = EventHandlers<'msg>()
+                let scenes = Dictionary()
 
-                    let state : UpdateState<'msg> =
-                        {
-                            scenes          = ContraDict.ofDictionary scenes
-                            handlers        = handlers
-                            references      = Dictionary()
-                            activeChannels  = Dict()
-                            messages        = app.messages
-                        }
-
-                    let o = DummyObject()
-                    
-                    let update = MVar.create true
-                    let subscription = o.AddMarkingCallback(fun () -> MVar.put update true)
-                    
-                    let mutable running = true
-                    let mutable oldChannels : Set<string * string> = Set.empty
-
-                    let send (arr : byte[]) =
-                        let rec res retries = 
-                            async {
-                                try 
-                                    return! ws.send Opcode.Text (ByteSegment(arr)) true 
-                                with e -> 
-                                    Log.warn "[Media] send failed: %s (retries=%d)" e.Message retries
-                                    do! Async.Sleep 100
-                                    return! res (retries - 1)
-                            }
-                        let res = res 10 |> Async.RunSynchronously
-                        match res with
-                            | Choice1Of2 () ->
-                                ()
-                            | Choice2Of2 err ->
-                                failwithf "[WS] error: %A" err
-                                                
-                    let updateFunction () =
-                        try
-                            while running do
-                                let cont = MVar.take update
-                                if cont then
-                                    lock app.lock (fun () ->
-                                        o.EvaluateAlways AdaptiveToken.Top (fun t ->
-                                            if Config.shouldTimeJsCodeGeneration then 
-                                                Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
-   
-                                            let code = 
-                                                let expr =
-                                                    state.references.Clear()
-                                                    if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                    let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
-                                                    if Config.shouldTimeUIUpdate then Log.stop ()
-                                                    r
-
-                                                for (name, sd) in Dictionary.toSeq scenes do
-                                                    sceneStore.TryAdd(name, sd) |> ignore
-
-                                                let newReferences = state.references.Values |> Seq.toArray
-                            
-                                                if Config.showTimeJsAssembly then Log.startTimed "[Aardvark.UI] JS assembler"
-                                                let code = expr |> JSExpr.toString
-                                                let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
-                                                if Config.showTimeJsAssembly then Log.stop()
-                                            
-                                                if newReferences.Length > 0 then
-                                                    let args = 
-                                                        newReferences |> Seq.map (fun r ->
-                                                            let kind =
-                                                                match r.kind with
-                                                                | Script -> "script"
-                                                                | Stylesheet -> "stylesheet"
-                                                                | Module -> "module"
-                                                            sprintf "{ kind: \"%s\", name: \"%s\", url: \"%s\" }" kind r.name r.url
-                                                        ) |> String.concat "," |> sprintf "[%s]" 
-                                                    let code = String.indent 1 code
-                                                    sprintf "aardvark.addReferences(%s, function() {\r\n%s\r\n});" args code
-                                                else
-                                                    code
-
-                                            if Config.shouldTimeJsCodeGeneration then 
-                                                Log.line "[Aardvark.UI] code length: %d" (code.Length); Log.stop()
-
-                                            if code <> "" then
-                                                lock app (fun () -> 
-                                                    if Config.shouldPrintDOMUpdates then
-                                                        let lines = code.Split([| "\r\n" |], System.StringSplitOptions.None)
-                                                        Log.start "update"
-                                                        for l in lines do Log.line "%s" l
-                                                        Log.stop()
-                                                    match Config.dumpJsCodeFile with
-                                                        | None -> ()
-                                                        | Some file -> 
-                                                            try
-                                                                System.IO.File.AppendAllText(file,code)
-                                                            with e -> 
-                                                                printfn "%A" e
-                                                )
-
-                                                let tag = if state.references.Count > 0 then "r" else "x"
-                                                send (Text.Encoding.UTF8.GetBytes(tag + code))
-    
-                                                
-                                            let mutable o = oldChannels
-                                            let mutable c = Set.empty
-                                            for (KeyValue((id,name), cr)) in state.activeChannels do
-                                                match cr.GetMessages(t) with
-                                                    | [] -> ()
-                                                    | messages ->
-                                                        let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
-                                                        send message
-
-                                                c <- Set.add (id, name) c
-                                                o <- Set.remove (id, name) o
-
-                                            for (id, name) in o do
-                                                let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
-                                                send message
-                                            
-                                            oldChannels <- c
-                                        )
-                                    )
-                          with e -> 
-                            Config.updateThreadFailed e
-                            ()
-                            //raise e
-
-
-                    let updateThread = Thread(ThreadStart updateFunction)
-                    updateThread.IsBackground <- true
-                    updateThread.Name <- "[media] UpdateThread"
-                    updateThread.Start()
-                    
-
-                    socket {
-                        while running do
-                            let! code, data = ws.readMessage()
-                            match code with
-                                | Opcode.Text ->
-                                    try
-                                        if data.Length > 0 && data.[0] = uint8 '#' then
-                                            let str = System.Text.Encoding.UTF8.GetString(data, 1, data.Length - 1)
-                                            match str with
-                                                | "ping" -> 
-                                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
-                                                | _ ->
-                                                    Log.warn "bad opcode: %A" str
-                                        else
-                                            let evt = EventMessage.fromJson data
-                                            let key = evt.sender, evt.name
-
-                                            match handlers.TryGet(key, evt.version) with
-                                            | ValueSome handler when notNull evt.args ->
-                                                let msgs = handler.invoke sessionId evt.sender (Array.toList evt.args)
-                                                app.update sessionId msgs
-
-                                            | _ -> ()
-
-                                    with e ->
-                                        Log.warn "unpickle faulted: %A" e
-
-                                | Opcode.Close ->
-                                    running <- false
-
-                                | Opcode.Ping -> 
-                                    do! ws.send Opcode.Pong (ByteSegment([||])) true
-
-                                | _ ->
-                                    Log.warn "[MutableApp] unknown message: %A" (code,data)
-                        
-                        MVar.put update false
-                        updater.Destroy(state, JSExpr.Body) |> ignore
-                        subscription.Dispose()
+                let state : UpdateState<'msg> =
+                    {
+                        scenes          = ContraDict.ofDictionary scenes
+                        handlers        = handlers
+                        references      = Dictionary()
+                        activeChannels  = Dictionary()
+                        messages        = app.Messages
                     }
-                | _ ->
-                    SocketOp.abort(Error.InputDataError(None, "no session id")) 
 
-        choose [            
-            prefix "/rendering" >=> Aardvark.Service.Server.toWebPart app.lock renderer
-            Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
-            path "/events" >=> handShake events
-            path "/" >=> OK (template Config.defaultDocumentTitle)
+                let sender = AdaptiveObject.Create()
+
+                let update = MVar.create true
+                let subscription = sender.AddMarkingCallback(fun () -> MVar.put update true)
+
+                let mutable oldChannels : Set<string * string> = Set.empty
+
+                let send (data: byte[]) =
+                    let rec send retries =
+                        task {
+                            try
+                                cancellationToken.ThrowIfCancellationRequested()
+                                return! socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
+                            with
+                            | :? OperationCanceledException -> return ()
+                            | e ->
+                                Log.warn "[Media] Socket send failed: %s (retries=%d)" e.Message retries
+                                do! Task.Delay(100, cancellationToken)
+                                return! send (retries - 1)
+                        }
+
+                    let task = send 10
+                    task.Result
+
+                let updateFunction () =
+                    use _ = sessionCount.Acquire()
+                    Report.Line(3, $"[Media] Started UI update thread for session {sessionId}")
+
+                    while MVar.take update && not cancellationToken.IsCancellationRequested do
+                        use _ = app.AcquireLock()
+
+                        sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                            if Config.shouldTimeJsCodeGeneration then
+                                Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
+
+                            let code =
+                                let expr =
+                                    state.references.Clear()
+                                    if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
+                                    let js = updater.Update(token, state, ValueSome (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
+                                    if Config.shouldTimeUIUpdate then Log.stop ()
+                                    js
+
+                                for name, info in Dictionary.toSeq scenes do
+                                    sceneStore.TryAdd(name, info) |> ignore
+
+                                let newReferences = state.references.Values |> Seq.toArray
+
+                                if Config.showTimeJsAssembly then Log.startTimed "[Aardvark.UI] JS assembler"
+                                let code = expr |> JSExpr.toString
+                                let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
+                                if Config.showTimeJsAssembly then Log.stop()
+
+                                if newReferences.Length > 0 then
+                                    let args =
+                                        newReferences |> Seq.map (fun r ->
+                                            let kind =
+                                                match r.kind with
+                                                | Script     -> "script"
+                                                | Stylesheet -> "stylesheet"
+                                                | Module     -> "module"
+
+                                            $"{{ kind: \"{kind}\", name: \"{r.name}\", url: \"{r.url}\" }}"
+                                        ) |> String.concat ","
+
+                                    let code = String.indent 1 code
+                                    $"aardvark.addReferences([{args}], function() {{\r\n{code}\r\n}});"
+                                else
+                                    code
+
+                            if Config.shouldTimeJsCodeGeneration then
+                                Log.line "[Aardvark.UI] code length: %d" code.Length
+                                Log.stop()
+
+                            if code <> "" then
+                                lock app (fun () ->
+                                    if Config.shouldPrintDOMUpdates then
+                                        let lines = code.Split([| "\r\n" |], StringSplitOptions.None)
+                                        Log.start "update"
+                                        for l in lines do Log.line "%s" l
+                                        Log.stop()
+
+                                    match Config.dumpJsCodeFile with
+                                    | None -> ()
+                                    | Some file ->
+                                        try
+                                            File.AppendAllText(file, code)
+                                        with e ->
+                                            printfn "%A" e
+                                )
+
+                                let tag = if state.references.Count > 0 then "r" else "x"
+                                send <| Encoding.UTF8.GetBytes(tag + code)
+
+                            let mutable o = oldChannels
+                            let mutable c = Set.empty
+
+                            for KeyValue((id, name), reader) in state.activeChannels do
+                                let messages =
+                                    try
+                                        reader.GetMessages token
+                                    with exn ->
+                                        Log.error $"[Media] Failed to get '{name}' messages for {id}: {exn}"
+                                        []
+
+                                match messages with
+                                | [] -> ()
+                                | messages ->
+                                    let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
+                                    send message
+
+                                c <- Set.add (id, name) c
+                                o <- Set.remove (id, name) o
+
+                            for id, name in o do
+                                let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
+                                send message
+
+                            oldChannels <- c
+                        )
+
+                    Report.Line(3, $"[Media] Stopped UI update thread for session {sessionId}")
+
+                let updateThread = Thread(ThreadStart updateFunction)
+                updateThread.IsBackground <- true
+                updateThread.Name <- $"MutableApp (UI Update - {sessionId})"
+                updateThread.Start()
+
+                task {
+                    Report.Line(3, $"[Media] Created session {sessionId}")
+                    use _ = sessionCount.Acquire()
+
+                    let mutable running = true
+                    let buffer = SocketBuffer(128)
+
+                    while running && not cancellationToken.IsCancellationRequested do
+                        try
+                            buffer.Position <- 0
+
+                            let! message = socket.Receive(buffer, cancellationToken)
+                            let data = buffer.Data
+
+                            match message with
+                            | WebSocketOpCode.Text when data.Count > 0 ->
+                                if data.[0] = uint8 '#' then
+                                    do! socket.SendPong cancellationToken
+                                else
+                                    try
+                                        let evt = EventMessage.fromJson data
+                                        let key = evt.sender, evt.name
+
+                                        match handlers.TryGet(key, evt.version) with
+                                        | ValueSome handler when notNull evt.args ->
+                                            let msgs =
+                                                try
+                                                    handler.invoke sessionId evt.sender (Array.toList evt.args)
+                                                with exn ->
+                                                    Log.error $"[Media] Event handler '{evt.name}' for {evt.sender} faulted: {exn}"
+                                                    Seq.empty
+
+                                            app.Update(sessionId, msgs)
+
+                                        | _ -> ()
+
+                                    with exn ->
+                                        let str = Encoding.UTF8.TryGetString data
+                                        if notNull str then
+                                            Log.error $"[Media] Failed to process event message '{str}': {exn}"
+                                        else
+                                            Log.error $"[Media] Failed to process event message: {exn}"
+
+                            | WebSocketOpCode.Close ->
+                                running <- false
+
+                            | WebSocketOpCode.Ping ->
+                                do! socket.SendPong cancellationToken
+
+                            | _ ->
+                                Log.warn $"[Media] Unexpected event message: {message}"
+
+                        with
+                        | :? OperationCanceledException ->
+                            running <- false
+
+                        | exn ->
+                            Log.error $"[Media] Event socket I/O failed: {exn}"
+
+                    MVar.put update false
+                    updateThread.Join()
+
+                    updater.Destroy(state, JSExpr.Body) |> ignore
+                    subscription.Dispose()
+                    socket.Dispose()
+
+                    Report.Line(3, $"[Media] Closed session {sessionId}")
+                }
+
+            | _ ->
+                Task.FromException(Exception("Request does not contain a session id."))
+
+        app.Register {
+            new IDisposable with
+                member x.Dispose() =
+                    sessionCount.Signal() |> ignore
+                    sessionCount.Wait()
+                    sessionCount.Dispose()
+        }
+
+        let (>=>) a b = http.compose a b
+
+        http.choose [
+            http.subRoute "/rendering" (RenderServer.toWebPart http app renderServer)
+            http.route "/events" >=> http.handShake events
+            http.route "/" >=> http.ok (template Config.defaultDocumentTitle)
+            http.assembly typeof<MutableApp<_, _, _>>.Assembly
         ]
 
-    let toWebPart (runtime : IRuntime) (app : MutableApp<'model, 'msg>) =
-        toWebPart' runtime false app
-
-
-
-
-
+    let toWebPart (http: IHttpBackend<'HttpContext, 'HttpHandler>) (runtime: IRuntime) (app: MutableApp<'model, 'mmodel, 'msg>) =
+        toWebPart' http runtime false app

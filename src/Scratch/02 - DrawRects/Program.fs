@@ -1,41 +1,37 @@
 ﻿open System
 open Aardvark.Base
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Suave
 open Aardium
 open DrawRects
-
-open Suave
-open Suave.WebPart
-
-open MBrace.FsPickler
-open MBrace.FsPickler.Json
 
 type EmbeddedResources = EmbeddedResources
 
 [<EntryPoint; STAThread>]
-let main argv = 
-    
+let main argv =
     Aardvark.Init()
     Aardium.init()
-    
 
     use app = new OpenGlApplication()
-    let instance = DrawRectsApp.app app.Runtime |> App.start
+    use mapp = DrawRectsApp.app app.Runtime |> App.start
 
-    WebPart.startServerLocalhost 4321 [ 
-        MutableApp.toWebPart' app.Runtime false instance
-        Reflection.assemblyWebPart typeof<EmbeddedResources>.Assembly
-        Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
-        Suave.Files.browseHome
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        MutableApp.toWebPart' app.Runtime false mapp
+        WebPart.ofAssembly typeof<EmbeddedResources>.Assembly
+        WebPart.ofAssembly typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
     ] |> ignore  
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
 
     0 

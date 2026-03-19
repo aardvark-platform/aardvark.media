@@ -31,7 +31,7 @@ module SaveDialogConfig =
                 yield sprintf "title: '%s'" cfg.title
                     
                 if not (String.IsNullOrWhiteSpace cfg.startPath) then
-                    yield sprintf "startPath: '%s'" (Aardvark.Service.PathUtils.toUnixStyle cfg.startPath)
+                    yield sprintf "startPath: '%s'" (Path.toUnixStyle cfg.startPath)
 
                 if cfg.filters.Length > 0 then
                     yield sprintf "filters: [%s]" (cfg.filters |> Seq.map (fun {name = name; extensionWithoutDot = ext} -> sprintf "{name:'%s',extensions:['%s']}" name ext) |> String.concat ", ")

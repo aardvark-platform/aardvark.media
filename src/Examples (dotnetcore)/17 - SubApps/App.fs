@@ -71,8 +71,7 @@ let view (model : AdaptiveModel) =
                                 | ResetAll -> Seq.singleton Inc.Model.Message.Inc 
                                 | Ping -> Log.warn "ping inc"; Seq.empty
                                 | _ -> Seq.empty
-                        ) 
-                        [] 
+                        )
                         IncApp'.app
                 ]
             ]
@@ -87,7 +86,7 @@ let view (model : AdaptiveModel) =
                                 | Ping -> Log.warn "ping rc"; Seq.empty
                                 | _ -> Seq.empty
                         ) 
-                        [] RenderControl.App.app
+                        RenderControl.App.app
                 ]
             ]
         ]

@@ -1,18 +1,14 @@
 ﻿open System
 open Aardvark.Base
 open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Suave
 open Aardium
 open Niobe
 
-open Suave
-open Suave.WebPart
-
 [<EntryPoint; STAThread>]
-let main argv = 
-    
+let main argv =
     Aardvark.Init()
     Aardium.init()
 
@@ -25,12 +21,10 @@ let main argv =
         else
             let app = new OpenGlApplication()
             app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
+    use _ = disposable
 
-    let app = App.app
-
-    let instance = 
-        app |> App.start
+    use mapp =
+        App.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
     // startServerLocalhost is one of the convinience functions which sets up 
@@ -40,26 +34,21 @@ let main argv =
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-    WebPart.startServerLocalhost 4321 [ 
-        MutableApp.toWebPart' runtime false instance
-        Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
-        Suave.Files.browseHome
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        MutableApp.toWebPart' runtime false mapp
+        WebPart.ofAssembly typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
     ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
 
-    //use ctrl = new AardvarkCefBrowser()
-    //ctrl.Dock <- DockStyle.Fill
-    //form.Controls.Add ctrl
-    //ctrl.StartUrl <- "http://localhost:4321/"
-    //ctrl.ShowDevTools()
-    //form.Text <- "Examples"
-    //form.Icon <- Icons.aardvark 
-
-    //Application.Run form
     0 

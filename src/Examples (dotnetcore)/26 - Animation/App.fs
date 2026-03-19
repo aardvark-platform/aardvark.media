@@ -27,7 +27,7 @@ module App =
 
             let renderControl =
                 let frustum = AVal.constant <| Frustum.perspective 60.0 0.1 100.0 1.0
-                let sg (cv : ClientValues) = model.scene |> Scene.view cv.runtime cv.size |> Sg.map Game
+                let sg (cv : RenderClientValues) = model.scene |> Scene.view cv.runtime cv.size |> Sg.map Game
 
                 sg |> OrbitController.controlledControlWithClientValues model.camera Camera frustum (AttributeMap.ofList [
                     style "width: 100%; height:100%"

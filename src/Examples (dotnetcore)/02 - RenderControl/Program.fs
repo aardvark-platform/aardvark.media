@@ -2,14 +2,12 @@
 
 open Aardvark.Base
 open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 
 open Aardium
 open RenderControl
-open Aardvark.UI.Giraffe
-
+open Aardvark.Service.Giraffe
 
 [<EntryPoint; STAThread>]
 let main argv = 
@@ -29,22 +27,25 @@ let main argv =
         else
             let app = new OpenGlApplication()
             app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
-    
-    let app = App.app
+    use _ = disposable
 
-    let instance = 
-        app |> App.start
+    use app = App.app.start()
+    Report.Verbosity <- 3
 
-    Server.startServerLocalhost 4321 Threading.CancellationToken.None [
-        MutableApp.toWebPart runtime instance
+    Server.startLocalhost 4321 app.CancellationToken [
+        MutableApp.toWebPart runtime app
     ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
 
     0

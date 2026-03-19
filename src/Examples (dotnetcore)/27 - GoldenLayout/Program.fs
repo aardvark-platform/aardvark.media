@@ -1,9 +1,9 @@
 ﻿open System
 open Aardvark.Base
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardvark.UI.Primitives.Golden
+open Aardvark.Service.Giraffe
 open Aardium
 open Golden
 
@@ -11,9 +11,9 @@ open Golden
 let main argv = 
     Aardvark.Init()
     Aardium.init()
-    
+
     use app = new OpenGlApplication()
-    let instance = App.app |> App.start
+    use mapp = App.app |> App.start
 
     Config.defaultDocumentTitle <- App.initialTitle
 
@@ -25,11 +25,12 @@ let main argv =
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-    Suave.WebPart.startServerLocalhost 4321 [ 
-        Aardvark.UI.Primitives.Resources.WebPart
-        MutableApp.toWebPart' app.Runtime false instance
-        GoldenLayout.WebPart.suave
-        Suave.Files.browseHome
+    let http = HttpBackend.Instance
+
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        Aardvark.UI.Primitives.Resources.toWebPart http
+        MutableApp.toWebPart' app.Runtime false mapp
+        GoldenLayout.toWebPart http
     ] |> ignore
 
     Aardium.run {
@@ -38,17 +39,13 @@ let main argv =
         height 768
         title App.initialTitle
         dynamicTitle true
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
         log (fun msg -> Report.Line(2, $"[Aardium] %s{msg}"))
     }
 
-    //use ctrl = new AardvarkCefBrowser()
-    //ctrl.Dock <- DockStyle.Fill
-    //form.Controls.Add ctrl
-    //ctrl.StartUrl <- "http://localhost:4321/"
-    //ctrl.ShowDevTools()
-    //form.Text <- "Examples"
-    //form.Icon <- Icons.aardvark 
-
-    //Application.Run form
     0 

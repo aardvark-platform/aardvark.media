@@ -11,9 +11,8 @@ open System.IO
 open System.Reflection
 open Aardvark.Base
 open Aardvark.Application.WinForms
-open Suave
 open Aardvark.UI
-open Aardvark.Rendering.Vulkan
+open Aardvark.Service.Suave
 
 type MyCefClient(browser : CefWebBrowser) =
     inherit CefWebClient(browser)
@@ -254,7 +253,7 @@ module TestApp =
         let view (model : AdaptiveServerModel) =
 
             body [] [
-                subApp' (fun _ _ -> Seq.empty) (fun _ _ -> Seq.empty) [] PerClient.app
+                subApp' (fun _ _ -> Seq.empty) (fun _ _ -> Seq.empty) PerClient.app
             ]
 
         let threads (model : ServerModel) = 
@@ -278,11 +277,10 @@ let main argv =
     Xilium.CefGlue.ChromiumUtilities.unpackCef()
     Chromium.init ()
 
-    
     Aardvark.Init()
 
     use app = new OpenGlApplication()
-    let instance = TestApp.app |> App.start
+    use mapp = TestApp.app |> App.start
     //let instance = TestApp2.Server.app |> App.start
 
     // use can use whatever suave server to start you mutable app. 
@@ -293,11 +291,9 @@ let main argv =
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
-    WebPart.startServerLocalhost 4321 [ 
-        MutableApp.toWebPart' app.Runtime false instance
-        Suave.Files.browseHome
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        MutableApp.toWebPart' app.Runtime false mapp
     ] |> ignore
-
 
     use form = new Form()
     form.Width <- 800

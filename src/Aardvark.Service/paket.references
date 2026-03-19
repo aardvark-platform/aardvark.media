@@ -1,7 +1,2 @@
 Aardvark.Build
-Aardvark.Application
-Aardvark.Rendering.GL
-Aardvark.Rendering.Vulkan
-Aardvark.GPGPU
 Suave
-FsPickler.Json

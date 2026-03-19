@@ -6,10 +6,10 @@ open Aardvark.Base
 open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Giraffe
 open Aardium
 
 
-open Aardvark.UI.Giraffe
 open Saturn
 open System.Threading.Tasks
 open Microsoft.AspNetCore
@@ -18,72 +18,72 @@ open Microsoft.AspNetCore.Builder
 open Microsoft.Extensions.Hosting
 
 let runDirect () =
-
     use app = new OpenGlApplication()
-    let instance = RenderControl.App.app |> App.start
+    use mapp = RenderControl.App.app |> App.start
 
-    let webApp = MutableApp.toWebPart app.Runtime instance
-    use cts = new CancellationTokenSource()
-    let server = Server.startServer "http://localhost:4321" cts.Token webApp 
+    Server.start "http://localhost:4321" mapp.CancellationToken [
+        MutableApp.toWebPart app.Runtime mapp
+    ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
-    cts.Cancel()
-    instance.shutdown()
 
     0 
 
 let runHost () =
 
     use app = new OpenGlApplication()
-    let instance = RenderControl.App.app |> App.start
+    use mapp = RenderControl.App.app |> App.start
 
-    let webApp = MutableApp.toWebPart app.Runtime instance
-    use cts = new CancellationTokenSource()
-    let host = Server.createHost "http://localhost:4321" webApp
+    let host =
+        Server.createHost "http://localhost:4321" [
+            MutableApp.toWebPart app.Runtime mapp
+        ]
 
     host.Build().Run()
-    
-    cts.Cancel()
-    instance.shutdown()
 
     0 
 
-let runWithRoute () = 
+let runWithRoute () =
+    Aardium.init()
 
     use app = new OpenGlApplication()
-    let instance = RenderControl.App.app |> App.start
+    use mapp = RenderControl.App.app |> App.start
 
-    let webApp = subRoute "/test"  (MutableApp.toWebPart app.Runtime instance)
-    use cts = new CancellationTokenSource()
-    let server = Server.startServer "http://localhost:4321" cts.Token webApp 
-
+    Server.start "http://localhost:4321" mapp.CancellationToken [
+        subRoute "/test" (MutableApp.toWebPart app.Runtime mapp)
+    ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/test/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
-    cts.Cancel()
-    instance.shutdown()
 
-    0 
-
-
+    0
 
 let runWithSaturn () = 
+    Aardium.init()
 
     use app = new OpenGlApplication()
-    let instance = RenderControl.App.app |> App.start
+    let mapp = RenderControl.App.app |> App.start
 
-    use cts = new CancellationTokenSource()
-
-    let renderApp, disposeRenderApp = MutableApp.toWebPart' app.Runtime false instance
+    let renderApp = MutableApp.toWebPart' app.Runtime false mapp
 
     let app = 
         choose [
@@ -101,19 +101,21 @@ let runWithSaturn () =
         }
 
     use serverApp = app.Build()
-    let server = serverApp.StartAsync(cts.Token)
-
+    let server = serverApp.StartAsync(mapp.CancellationToken)
 
     Aardium.run {
         url "http://localhost:8085/render/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
 
-    disposeRenderApp.Dispose()
-    cts.Cancel()
-    instance.shutdown()
+    mapp.Dispose()
     server.Wait()
 
     0 
@@ -122,9 +124,7 @@ let runWithSaturn () =
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
-    //Aardium.init()
 
-    runHost ()
-    //runWithRoute()
-    //runWithSaturn()
-
+    // runHost ()
+    // runWithRoute()
+    runWithSaturn()

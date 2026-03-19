@@ -130,19 +130,19 @@ module OrbitController =
     let controlledControl (model : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
         let cam = AVal.map2 Camera.create model.view  frustum
         let controllerAtts = attributes model f
-        DomNode.RenderControl(AttributeMap.union att controllerAtts, cam, sg, RenderControlConfig.standard, None)
+        DomNode.RenderControl(AttributeMap.union att controllerAtts, cam, sg, RenderControlConfig.standard)
 
     let withControls (state : AdaptiveOrbitState) (f : OrbitMessage -> 'msg) (frustum : aval<Frustum>) (node : DomNode<'msg>) =
         let cam = AVal.map2 Camera.create state.view frustum 
         match node with
             | :? SceneNode<'msg> as node ->
-                let getState(c : Aardvark.Service.ClientInfo) =
+                let getState(c : RenderClientInfo) =
                     let cam = cam.GetValue(c.token)
                     let cam = { cam with frustum = cam.frustum |> Frustum.withAspect (float c.size.X / float c.size.Y) }
 
                     {
-                        Aardvark.Service.ClientState.viewTrafo = CameraView.viewTrafo cam.cameraView
-                        Aardvark.Service.ClientState.projTrafo = Frustum.projTrafo cam.frustum
+                        RenderState.viewTrafo = CameraView.viewTrafo cam.cameraView
+                        RenderState.projTrafo = Frustum.projTrafo cam.frustum
                     }
 
                 let attributes = attributes state f

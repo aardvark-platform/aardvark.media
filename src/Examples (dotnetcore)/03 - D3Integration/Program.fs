@@ -1,11 +1,9 @@
 ﻿open System
 open Aardvark.Base
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
+open Aardvark.Service.Suave
 
-open Suave
-open Suave.WebPart
 open Aardium
 
 type Resources = Resources
@@ -18,19 +16,24 @@ let main argv =
 
     use app = new OpenGlApplication()
 
-    let instance = 
+    use mapp =
         App.app |> App.start
 
-    WebPart.startServerLocalhost 4321 [ 
-        Reflection.assemblyWebPart typeof<Resources>.Assembly
-        Reflection.assemblyWebPart typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
-        MutableApp.toWebPart' app.Runtime false instance
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        WebPart.ofAssembly typeof<Resources>.Assembly
+        WebPart.ofAssembly typeof<Aardvark.UI.Primitives.EmbeddedResources>.Assembly
+        MutableApp.toWebPart' app.Runtime false mapp
     ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
     0 

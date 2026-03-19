@@ -7,7 +7,6 @@ open Aardvark.Rendering
 open Aardvark.SceneGraph
 open Aardvark.Rendering.Text
 open FShade
-open Aardvark.UI.``F# Sg``
 
 open OpcSelectionViewer.Picking
 

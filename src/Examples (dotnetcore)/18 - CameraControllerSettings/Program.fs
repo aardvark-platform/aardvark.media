@@ -2,21 +2,15 @@
 
 open Aardvark.Base
 open Aardvark.Rendering
-open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
-
-open Suave
-open Suave.WebPart
+open Aardvark.Service.Suave
 open Aardium
 open RenderControl
 
 [<EntryPoint; STAThread>]
-let main argv = 
-    printfn "%A" System.Environment.CurrentDirectory
-
+let main argv =
     Aardvark.Init()
-    
     Aardium.init()
 
     // media apps require a runtime, which serves as renderer for your render controls.
@@ -30,25 +24,24 @@ let main argv =
         else
             let app = new OpenGlApplication()
             app.Runtime :> IRuntime, app :> IDisposable
-    use __ = disposable
-    
-    let app = App.app
+    use _ = disposable
 
-    let instance = 
-        app |> App.start
+    use mapp =
+        App.app |> App.start
 
-
-
-    WebPart.startServerLocalhost 4321 [ 
-        MutableApp.toWebPart' runtime false instance
-        Suave.Files.browseHome
-    ] |> ignore  
-    
+    Server.startLocalhost 4321 mapp.CancellationToken [
+        MutableApp.toWebPart' runtime false mapp
+    ] |> ignore
 
     Aardium.run {
         url "http://localhost:4321/"
         width 1024
         height 768
+#if DEBUG
         debug true
+        log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))
+#else
+        debug false
+#endif
     }
     0 

@@ -39,14 +39,14 @@ let onChooseFiles (chosen : list<string> -> 'msg) =
     let cb xs =
         match xs with
             | [] -> chosen []
-            | x::[] when x <> null -> x |> Aardvark.Service.Pickler.json.UnPickleOfString |> List.map Aardvark.Service.PathUtils.ofUnixStyle |> chosen
+            | x::[] when x <> null -> x |> Pickler.json.UnPickleOfString |> List.map Path.ofUnixStyle |> chosen
             | _ -> failwithf "onChooseFiles: %A" xs
     onEvent "onchoose" [] cb
         
 let onSaveFile (chosen : string -> 'msg) =
     let cb xs =
         match xs with
-            | x::[] when x <> null -> x |> Aardvark.Service.Pickler.json.UnPickleOfString |> Aardvark.Service.PathUtils.ofUnixStyle |> chosen
+            | x::[] when x <> null -> x |> Pickler.json.UnPickleOfString |> Path.ofUnixStyle |> chosen
             | _ -> failwithf "onSaveFile: %A" xs
     onEvent "onsave" [] cb
 

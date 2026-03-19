@@ -32,6 +32,7 @@ module Nvg =
 
 module ClientApp =
     open Aardvark.Application
+    open DrawRects
 
     type ClientMessage = 
         | MouseDown of MouseButtons * V2d
@@ -114,7 +115,7 @@ module ClientApp =
                 match args with
                     | x :: b :: _ ->
                         let v : Option<V2d> = Pickler.json.UnPickleOfString x
-                        let b : MouseButtons =  b |> Helpers.button
+                        let b : MouseButtons =  b |> MouseButtons.ofEventStr
                         match v with
                             | Some v -> cb b v |> Seq.singleton
                             | None -> Seq.empty
@@ -338,6 +339,7 @@ type Message =
 
 
 module DrawRectsApp =
+    open DrawRects
     
     let update (m : Model) (msg : Message) =
         //printfn "[server] %A" msg
@@ -409,7 +411,7 @@ module DrawRectsApp =
 
     let view (runtime : IRuntime) (m : AdaptiveModel) =
         body ["oncontextmenu" => "return false;"] [
-            subApp' mapOut (fun _ msg -> match msg with Translate(_,_) -> Seq.singleton ClientMessage.StopDrag | _ -> Seq.empty) [] (ClientApp.app runtime m)
+            subApp' mapOut (fun _ msg -> match msg with Translate _ -> Seq.singleton ClientMessage.StopDrag | _ -> Seq.empty) (ClientApp.app runtime m)
         ]
 
     let threads (m : Model) = ThreadPool.empty

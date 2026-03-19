@@ -72,7 +72,7 @@ type AardvarkIO(browser : CefBrowser) as this =
                                         use warn = console.GetValue("warn");
 
                                         use err = CefV8Value.CreateString(err)
-                                        use __ = warn.ExecuteFunction(console, [| err |])
+                                        use _ = warn.ExecuteFunction(console, [| err |])
 
                                         ()
                             )

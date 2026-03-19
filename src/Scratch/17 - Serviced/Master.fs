@@ -35,7 +35,7 @@ let view (model : AdaptiveMasterModel) =
         br []
         onBoot "console.log('boot')" (
             onShutdown "console.log('shtudown')" (
-                subApp' mapOut mapIn [] (Inc.App.app scene)
+                subApp' mapOut mapIn (Inc.App.app scene)
             )
         )
     ]
