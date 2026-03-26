@@ -1,4 +1,4 @@
-﻿namespace Aardvark.Service.Giraffe
+﻿namespace Aardvark.UI.Giraffe
 
 open System.Reflection
 open Aardvark.Rendering

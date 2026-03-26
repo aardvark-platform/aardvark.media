@@ -1,4 +1,4 @@
-﻿namespace Aardvark.Service.Suave
+﻿namespace Aardvark.UI.Suave
 
 open Aardvark.Base
 open System.Threading

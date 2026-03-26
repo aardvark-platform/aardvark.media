@@ -3,7 +3,7 @@ open Aardvark.Base
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardium
-open Aardvark.Service.Suave
+open Aardvark.UI.Suave
 
 type Resources = Resources
 

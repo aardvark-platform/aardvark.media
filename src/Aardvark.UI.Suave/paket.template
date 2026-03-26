@@ -1,5 +1,5 @@
 type project
-id Aardvark.Service
+id Aardvark.UI.Suave
 authors Aardvark Platform Team
 owners Aardvark Platform Team
 projectUrl http://github.com/aardvark-platform

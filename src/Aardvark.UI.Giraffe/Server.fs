@@ -1,4 +1,4 @@
-﻿namespace Aardvark.Service.Giraffe
+﻿namespace Aardvark.UI.Giraffe
 
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting

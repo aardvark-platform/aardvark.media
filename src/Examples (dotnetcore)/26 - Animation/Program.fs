@@ -4,7 +4,7 @@ open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.Application.Slim
 open Aardvark.UI
-open Aardvark.Service.Giraffe
+open Aardvark.UI.Giraffe
 open Aardium
 open AdvancedAnimations
 

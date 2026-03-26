@@ -3,7 +3,7 @@
 open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI
-open Aardvark.Service.Suave
+open Aardvark.UI.Suave
 open Aardium
 open SplinesTest
 

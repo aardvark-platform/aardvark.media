@@ -3,7 +3,7 @@ open Aardvark.Base
 open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardvark.UI.Primitives.Golden
-open Aardvark.Service.Giraffe
+open Aardvark.UI.Giraffe
 open Aardium
 open Golden
 
@@ -21,7 +21,7 @@ let main argv =
     // startServerLocalhost is one of the convinience functions which sets up 
     // a server without much boilerplate.
     // there is also WebPart.startServer and WebPart.runServer. 
-    // look at their implementation here: https://github.com/aardvark-platform/aardvark.media/blob/master/src/Aardvark.Service/Suave.fs#L10
+    // look at their implementation here: https://github.com/aardvark-platform/aardvark.media/blob/master/src/Aardvark.UI.Suave/Suave.fs#L10
     // if you are unhappy with them, you can always use your own server config.
     // the localhost variant does not require to allow the port through your firewall.
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)

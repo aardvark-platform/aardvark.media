@@ -10,7 +10,7 @@ open Aardvark.Rendering
 open Aardvark.Application.Slim
 open Aardvark.UI
 
-open Aardvark.Service.Suave
+open Aardvark.UI.Suave
 open Aardium
 
 [<EntryPoint; STAThread>]

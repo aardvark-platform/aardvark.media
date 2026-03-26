@@ -21,7 +21,7 @@ module App =
 
     [<AutoOpen>]
     module private Internal =
-        open Aardvark.Service
+        open Aardvark.UI.Suave
 
         let view (model : AdaptiveModel) =
 

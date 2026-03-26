@@ -1,4 +1,4 @@
-﻿namespace Aardvark.Service.Suave
+﻿namespace Aardvark.UI.Suave
 
 open System.Reflection
 open Aardvark.Rendering

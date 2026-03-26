@@ -1,15 +1,14 @@
-﻿namespace Aardvark.Service.Giraffe
+﻿namespace Aardvark.UI.Giraffe
 
 open System
-open System.IO
 open System.Threading
 open System.Threading.Tasks
 open System.Net.WebSockets
 open Microsoft.AspNetCore.Http
+open Giraffe
 
 open Aardvark.Base
 open Aardvark.UI
-open Giraffe
 
 [<AutoOpen>]
 module internal AspNetExtensions =

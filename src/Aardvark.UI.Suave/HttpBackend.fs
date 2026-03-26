@@ -1,7 +1,5 @@
-﻿namespace Aardvark.Service.Suave
+﻿namespace Aardvark.UI.Suave
 
-open Aardvark.Base
-open Aardvark.UI
 open Suave
 open Suave.Filters
 open Suave.RequestErrors
@@ -11,6 +9,8 @@ open System
 open System.Net.Sockets
 open System.Threading
 open System.Threading.Tasks
+open Aardvark.Base
+open Aardvark.UI
 
 module internal Opcode =
 

@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31912.275
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11605.296 insiders
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "31 - VirtualTree", "Scratch\31 - VirtualTree\31 - VirtualTree.fsproj", "{E31551E9-48F2-4527-9DC5-B64323030E71}"
 EndProject
@@ -14,7 +14,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.Process", "Aar
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.WinForms", "Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj", "{F20C78DD-06CB-44E8-90DB-6DE144863078}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Service", "Aardvark.Service\Aardvark.Service.fsproj", "{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Suave", "Aardvark.UI.Suave\Aardvark.UI.Suave.fsproj", "{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI", "Aardvark.UI\Aardvark.UI.fsproj", "{222260E2-428B-485D-89FB-BFBF1D87CD06}"
 EndProject
@@ -139,7 +139,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01 - PerfTest", "Scratch\01
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - ReplaceTest", "Scratch\26 - ReplaceTest\26 - ReplaceTest.fsproj", "{0B82634B-7605-4798-AD95-C96036661C61}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Service.Giraffe", "Aardvark.Service.Giraffe\Aardvark.Service.Giraffe.fsproj", "{E6E319E2-7A57-41B0-99B4-FF454EA81CF6}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Giraffe", "Aardvark.UI.Giraffe\Aardvark.UI.Giraffe.fsproj", "{E6E319E2-7A57-41B0-99B4-FF454EA81CF6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{B9F6DDEC-5566-408F-BCEC-D9B4F336D4F1}"
 	ProjectSection(SolutionItems) = preProject

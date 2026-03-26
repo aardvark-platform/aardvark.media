@@ -6,7 +6,7 @@ open Aardvark.Base
 open Aardvark.Application
 open Aardvark.Application.Slim
 open Aardvark.UI
-open Aardvark.Service.Giraffe
+open Aardvark.UI.Giraffe
 open Aardium
 
 
