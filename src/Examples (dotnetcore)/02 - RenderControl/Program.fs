@@ -34,6 +34,7 @@ let main argv =
 
     Server.startLocalhost 4321 app.CancellationToken [
         MutableApp.toWebPart runtime app
+        WebPart.ofType<Primitives.EmbeddedResources>
     ] |> ignore
 
     Aardium.run {

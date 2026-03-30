@@ -10,6 +10,9 @@ module WebPart =
     let ofAssembly (assembly: Assembly) : WebPart =
         HttpBackend.Instance.assembly assembly
 
+    let ofType<'T> : WebPart =
+        ofAssembly typeof<'T>.Assembly
+
 module MutableApp =
     let toWebPart' (runtime : IRuntime) (useGpuCompression: bool) (app: MutableApp<'model, 'mmodel, 'msg>) : WebPart =
         MutableApp.toWebPart' HttpBackend.Instance runtime useGpuCompression app
