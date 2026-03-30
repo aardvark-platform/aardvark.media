@@ -60,7 +60,6 @@
     <EmbeddedResource Include="resources\aardvark-light.svg" />
     <EmbeddedResource Include="resources\aardvark.js" />
     <EmbeddedResource Include="resources\renderer.js" />
-    <EmbeddedResource Include="resources\gamepad.js" />
     <EmbeddedResource Include="resources\jquery-3-3-1.js" />
     <EmbeddedResource Include="resources\rgbcolor.js" />
     <EmbeddedResource Include="resources\favicon.ico" />

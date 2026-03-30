@@ -1,11 +1,10 @@
 ﻿namespace Aardvark.UI.Primitives
 
-open System
 open Aardvark.Base
 open Aardvark.UI
 
 module TouchStick =
-    
+
     type StickConfig =
         {
             name : string
@@ -14,31 +13,34 @@ module TouchStick =
         }
 
     let withTouchSticks ( configs : list<StickConfig> ) el =
-        let rs = 
+        let dependencies =
             [
-                { name = "touchstick.js"; url = "./resources/touchstick.js"; kind = Script }
-            ]       
+                { name = "touchstick.js"; url = "resources/touchstick.js"; kind = Script }
+            ]
 
-        let str =
-            sprintf
-                "initTouchSticks('__ID__',[%s]);"
-                (configs 
-                    |> List.map ( fun cfg -> 
-                        sprintf "{name:'%s',minx:%f,maxx:%f,miny:%f,maxy:%f,maxr:%f}" 
-                            cfg.name 
-                            cfg.area.Min.X 
-                            cfg.area.Max.X  
-                            cfg.area.Min.Y 
-                            cfg.area.Max.Y 
-                            cfg.radius
-                        )
-                    |> String.concat ","
-                )
+        let boot =
+            let configs =
+                configs |> List.map (fun cfg ->
+                    sprintf "{name:'%s',minx:%f,maxx:%f,miny:%f,maxy:%f,maxr:%f}"
+                        cfg.name
+                        cfg.area.Min.X
+                        cfg.area.Max.X
+                        cfg.area.Min.Y
+                        cfg.area.Max.Y
+                        cfg.radius
+                    )
+                |> String.concat ","
 
-        require rs (
-            onBoot str (
-                el
-            )
+            String.concat "" [
+                "if (typeof initTouchSticks === 'function') {"
+                $"    initTouchSticks('__ID__',[{configs}]);"
+                "} else {"
+                "    console.warn('Cannot initialize TouchSticks (initTouchSticks undefined).');"
+                "}"
+            ]
+
+        require dependencies (
+            onBoot boot el
         )
 
     type TouchStickState =

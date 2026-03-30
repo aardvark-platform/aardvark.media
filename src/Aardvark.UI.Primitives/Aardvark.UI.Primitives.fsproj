@@ -52,6 +52,7 @@
     <Compile Include="Animation\Animator\Querying.fs" />
     <Compile Include="Controllers\IntegrationHelpers.fs" />
     <Compile Include="Controllers\TouchStick.fs" />
+    <Compile Include="Controllers\Gamepad.fs" />
     <Compile Include="Controllers\CameraModel.fs" />
     <Compile Include="Controllers\FreeFlyController.fs" />
     <Compile Include="Controllers\ArcBallController.fs" />
@@ -99,6 +100,7 @@
     <EmbeddedResource Include="resources\docking.js" />
     <EmbeddedResource Include="resources\docking.css" />
     <EmbeddedResource Include="resources\touchstick.js" />
+    <EmbeddedResource Include="resources\gamepad.js" />
     <None Include="paket.references" />
     <None Include="paket.template" />
   </ItemGroup>

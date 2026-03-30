@@ -10,6 +10,7 @@ open Aardvark.SceneGraph
 open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.TouchStick
+open Aardvark.UI.Primitives.Gamepad
 open FSharp.Data.Adaptive.Operators
 
 module FreeFlyController =
@@ -624,10 +625,10 @@ module FreeFlyController =
             always <| onTouchStickStop "ritestick" (fun _ -> ReleaseRotStick |> f)
 
 
-            always <| Gamepad.onLeftTriggerChanged 0 (fun v -> [PanDown v |> f])
-            always <| Gamepad.onRightTriggerChanged 0 (fun v -> [PanUp v |> f])
-            always <| Gamepad.onLeftStickChanged 0 (fun v -> [MoveMovStick { distance = v.Length; angle = if v = V2d.Zero then 0.0 else Constant.DegreesPerRadian * atan2 v.Y v.X } |> f])
-            always <| Gamepad.onRightStickChanged 0 (fun v -> [MoveRotStick { distance = v.Length; angle = if v = V2d.Zero then 0.0 else Constant.DegreesPerRadian * atan2 v.Y v.X } |> f])
+            always <| onLeftTriggerChanged 0 (fun v -> [PanDown v |> f])
+            always <| onRightTriggerChanged 0 (fun v -> [PanUp v |> f])
+            always <| onLeftStickChanged 0 (fun v -> [MoveMovStick { distance = v.Length; angle = if v = V2d.Zero then 0.0 else Constant.DegreesPerRadian * atan2 v.Y v.X } |> f])
+            always <| onRightStickChanged 0 (fun v -> [MoveRotStick { distance = v.Length; angle = if v = V2d.Zero then 0.0 else Constant.DegreesPerRadian * atan2 v.Y v.X } |> f])
 
         ]
 
@@ -644,7 +645,7 @@ module FreeFlyController =
             ]
 
         withTouchSticks sticks (
-            Incremental.renderControlWithClientValues' cam attributes config sg
+            withGamepad <| Incremental.renderControlWithClientValues' cam attributes config sg
         )
 
     let controlledControl (state : AdaptiveCameraControllerState) (f : Message -> 'msg) (frustum : aval<Frustum>) (att : AttributeMap<'msg>) (sg : ISg<'msg>) =
