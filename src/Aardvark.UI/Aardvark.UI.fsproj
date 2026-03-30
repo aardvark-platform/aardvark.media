@@ -54,7 +54,6 @@
     <Compile Include="Frontend\Attributes.fs" />
     <Compile Include="MutableApp.fs" />
     <Compile Include="App.fs" />
-    <Compile Include="Dialog.fs" />
     <EmbeddedResource Include="template.html" />
     <EmbeddedResource Include="resources\aardvark.js" />
     <EmbeddedResource Include="resources\aardvark.css" />
