@@ -113,16 +113,22 @@ let view (m : AdaptiveModel) =
             ]
 
         // finally create our svg. since our content is dynamic we use the incremental version of svg
-        Incremental.Svg.svg attributes <| 
-            alist {
-                // loop over polygons and emit html code to render the svg
-                for polygon in m.finishedPolygons do
-                    yield! viewPolygon (AVal.constant []) polygon.points
+        let dependencies = [
+            { kind = ReferenceKind.Script; name = "utilities"; url = "resources/utilities.js" }
+        ]
 
-                // let us prepent our current cursor position in order to get a preview of the 
-                // last point.
-                yield! viewPolygon (AVal.map Option.toList m.cursor) m.workingPolygon.points
-            }
+        require dependencies (
+            Incremental.Svg.svg attributes <|
+                alist {
+                    // loop over polygons and emit html code to render the svg
+                    for polygon in m.finishedPolygons do
+                        yield! viewPolygon (AVal.constant []) polygon.points
+
+                    // let us prepent our current cursor position in order to get a preview of the
+                    // last point.
+                    yield! viewPolygon (AVal.map Option.toList m.cursor) m.workingPolygon.points
+                }
+        )
 
     // body creates a html body
     body [] [

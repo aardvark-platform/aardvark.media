@@ -55,11 +55,12 @@
     <Compile Include="MutableApp.fs" />
     <Compile Include="App.fs" />
     <EmbeddedResource Include="template.html" />
-    <EmbeddedResource Include="resources\aardvark.js" />
     <EmbeddedResource Include="resources\aardvark.css" />
     <EmbeddedResource Include="resources\aardvark.svg" />
     <EmbeddedResource Include="resources\aardvark-light.svg" />
-    <EmbeddedResource Include="resources\stats.html" />
+    <EmbeddedResource Include="resources\aardvark.js" />
+    <EmbeddedResource Include="resources\renderer.js" />
+    <EmbeddedResource Include="resources\gamepad.js" />
     <EmbeddedResource Include="resources\jquery-3-3-1.js" />
     <EmbeddedResource Include="resources\rgbcolor.js" />
     <EmbeddedResource Include="resources\favicon.ico" />

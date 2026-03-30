@@ -4,6 +4,7 @@ open Aardvark.Application.Slim
 open Aardvark.UI
 open Aardvark.UI.Suave
 open Aardium
+open Simple2DDrawing
 
 [<EntryPoint; STAThread>]
 let main argv = 
@@ -18,6 +19,7 @@ let main argv =
 
     Server.startLocalhost 4321 mapp.CancellationToken [
         MutableApp.toWebPart' app.Runtime false mapp
+        WebPart.ofAssembly typeof<Model>.Assembly
     ] |> ignore
 
     Aardium.run {
