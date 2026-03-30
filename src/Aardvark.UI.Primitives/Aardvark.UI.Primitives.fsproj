@@ -67,6 +67,14 @@
     <Compile Include="Docking.fs" />
     <Compile Include="OpenDialog.fs" />
     <Compile Include="SaveDialog.fs" />
+    <EmbeddedResource Include="resources\fomantic\themes\default\**">
+      <LogicalName>resources\fomantic\themes\default\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="resources\fomantic\semantic.js" LogicalName="resources/fomantic/semantic.js" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\fomantic\semantic.css" LogicalName="resources/fomantic/semantic.css" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\fomantic\semantic.min.js" LogicalName="resources/fomantic/semantic.js" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\fomantic\semantic.min.css" LogicalName="resources/fomantic/semantic.css" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
+    <EmbeddedResource Include="resources\fomantic\semantic-overrides.css" LogicalName="resources/fomantic/semantic-overrides.css" />
     <EmbeddedResource Include="resources\golden-layout\bundle\umd\golden-layout.min.js" LogicalName="resources\golden-layout\bundle\umd\golden-layout.js" Condition="'$(Configuration)|$(Platform)'!='Debug|AnyCPU'" />
     <EmbeddedResource Include="resources\golden-layout\bundle\umd\golden-layout.js" LogicalName="resources\golden-layout\bundle\umd\golden-layout.js" Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'" />
     <EmbeddedResource Include="resources\golden-layout\css\**">
@@ -88,6 +96,9 @@
     <EmbeddedResource Include="resources\dropdown.js" />
     <EmbeddedResource Include="resources\numeric.js" />
     <EmbeddedResource Include="resources\numeric.css" />
+    <EmbeddedResource Include="resources\docking.js" />
+    <EmbeddedResource Include="resources\docking.css" />
+    <EmbeddedResource Include="resources\touchstick.js" />
     <None Include="paket.references" />
     <None Include="paket.template" />
   </ItemGroup>

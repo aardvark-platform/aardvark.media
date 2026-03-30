@@ -33,6 +33,7 @@ let main argv =
     // the non localhost variant runs in 127.0.0.1 which enables remote acces (e.g. via your mobile phone)
     Server.startLocalhost 4321 mapp.CancellationToken [
         MutableApp.toWebPart' app.Runtime false mapp
+        WebPart.ofAssembly typeof<Primitives.EmbeddedResources>.Assembly
     ] |> ignore  
 
     Aardium.run {
