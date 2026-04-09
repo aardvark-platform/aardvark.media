@@ -16,7 +16,6 @@
 
         this.buffer = [];
         this.loading = true;
-        this.depthCallbacks = [];
 
         const self = this;
         const useMapping = aardvark.localhost && getTopAardvark().openMapping && this.useMapping;
@@ -227,11 +226,6 @@
         }
     }
 
-    getWorldPosition(pixel, callback) {
-        this.depthCallbacks.push({ pixel: pixel, callback: callback });
-        this.send(JSON.stringify({ case: "RequestWorldPosition", pixel: { X: pixel.x, Y: pixel.y } }));
-    }
-
     updateOverlay() {
         const now = performance.now();
         if (!this.lastTime) {
@@ -288,13 +282,6 @@
                 if (!this.renderAlways) {
                     // TODO: what if not visible??
                     this.requestImage();
-                }
-            }
-            else if (data.Case === "WorldPosition" && data.position) {
-                if (this.depthCallbacks.length > 0) {
-                    const cb = this.depthCallbacks[0];
-                    cb.callback(data.position);
-                    this.depthCallbacks.splice(0, 1);
                 }
             }
             else if (data.name && data.size && data.length) {
@@ -369,11 +356,4 @@ if (!aardvark.destroyRenderer) {
         const div = document.getElementById(id);
         div.renderer?.destroy();
     }
-}
-
-if (!aardvark.getWorldPosition) {
-    aardvark.getWorldPosition = function (id, pixel, callback) {
-        const r = aardvark.getRenderer(id);
-        r.getWorldPosition(pixel, callback)
-    };
 }

@@ -187,20 +187,6 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                                     roundTripTime.Start()
                                     MVar.put requestedImage request
 
-                                | RenderServerMessage.RequestWorldPosition pixel ->
-                                    let wp =
-                                        match renderTask.GetWorldPosition pixel with
-                                        | ValueSome d -> d
-                                        | ValueNone -> V3d.Zero
-
-                                    try
-                                        do! send (RenderClientMessage.WorldPosition wp)
-                                    with
-                                    | :? OperationCanceledException -> ()
-                                    | exn ->
-                                        running <- false
-                                        Log.error $"[Client] {id}: Could not send world position (stopping): {exn}"
-
                                 | RenderServerMessage.Rendered ->
                                     roundTripTime.Stop()
                                     frameCount <- frameCount + 1

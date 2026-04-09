@@ -76,35 +76,6 @@ type internal ClientRenderTask(runtime: IRuntime, client: int, getScene: IFrameb
     let getInfo() =
         { currentInfo with time = MicroTime.Now; token = AdaptiveToken.Top }
 
-    member _.DownloadDepth(pixel: V2i) =
-        if notNull output then
-            match output.DepthStencil with
-            | :? ITextureLevel as level ->
-                if pixel.AllGreaterOrEqual 0 && pixel.AllSmaller level.Size.XY then
-                    ReadPixel.downloadDepth pixel level.Texture
-                else
-                    ValueNone
-            | _ ->
-               ValueNone
-        else
-            ValueNone
-
-    member this.GetWorldPosition(pixel: V2i) =
-        this.DownloadDepth pixel |> ValueOption.bind (fun depth ->
-            let tc = (V2d pixel + V2d(0.5, 0.5)) / V2d output.Size.XY
-            let ndc = V3d(2.0 * tc.X - 1.0, 1.0 - 2.0 * tc.Y, 2.0 * float depth - 1.0)
-
-            if notNull currentScene then
-                let view = currentScene.Values.viewTrafo |> AVal.force
-                let proj = currentScene.Values.projTrafo |> AVal.force
-
-                let vp = proj.Backward.TransformPosProj ndc
-                let wp = view.Backward.TransformPos vp
-                ValueSome wp
-            else
-                ValueNone
-        )
-
     abstract member ProcessImage : IFramebuffer * IRenderbuffer * RenderQuality -> RenderResult
     abstract member Release : unit -> unit
 

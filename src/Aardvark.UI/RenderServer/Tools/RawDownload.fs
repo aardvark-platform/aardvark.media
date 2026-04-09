@@ -4,30 +4,6 @@ open System
 open Aardvark.Base
 open Aardvark.Rendering
 
-module internal ReadPixel =
-    module private Vulkan =
-        open Aardvark.Rendering.Vulkan
-
-        let downloadDepth (pixel : V2i) (img : Image) =
-            let temp = img.Device.ReadbackMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit (uint64 sizeof<uint32>)
-            img.Device.perform {
-                do! Command.TransformLayout(img, VkImageLayout.TransferSrcOptimal)
-                //do! Command.TransformLayout(temp, VkImageLayout.TransferDstOptimal)
-                //do! Command.Copy(img.[TextureAspect.Depth, 0, 0], V3i(pixel, 0), img.[TextureAspect.Depth, 0, 0], V3i.Zero, V3i.III)
-                do! Command.Copy(img.[TextureAspect.Depth, 0, 0], V3i(pixel.X, img.Size.Y - 1 - pixel.Y, 0), temp, 0L, V2i.Zero, V3i.III)
-                do! Command.TransformLayout(img, VkImageLayout.DepthStencilAttachmentOptimal)
-            }
-
-            let result = temp.Memory.Mapped NativeInt.read<uint32>
-            let frac = float (result &&& 0xFFFFFFu) / float ((1 <<< 24) - 1)
-            temp.Dispose()
-            frac
-
-    let downloadDepth (pixel: V2i) (texture: IBackendTexture) =
-        match texture with
-        | :? Aardvark.Rendering.Vulkan.Image as img -> Vulkan.downloadDepth pixel img |> ValueSome
-        | _ -> ValueNone
-
 module internal RawDownload =
     open System.Runtime.InteropServices
 

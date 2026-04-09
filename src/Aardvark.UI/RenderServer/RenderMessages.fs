@@ -14,13 +14,11 @@ module internal ImageRequest =
 [<RequireQualifiedAccess>]
 type internal RenderClientMessage =
     | Invalidate
-    | WorldPosition of position: V3d
 
 /// Messages sent from the JS frontend to the render server.
 [<RequireQualifiedAccess>]
 type internal RenderServerMessage =
-    | RequestImage         of request: ImageRequest
-    | RequestWorldPosition of pixel: V2i
+    | RequestImage of request: ImageRequest
     | Rendered
 
 module internal RenderServerMessage =
@@ -30,7 +28,6 @@ module internal RenderServerMessage =
     [<Struct>]
     type private JsonReadState =
         { mutable case       : string
-          mutable pixel      : V2i
           mutable size       : V2i
           mutable background : C4b }
 
@@ -39,16 +36,14 @@ module internal RenderServerMessage =
 
         override _.GetValue(state) =
             match state.case with
-            | "RequestImage"         -> RenderServerMessage.RequestImage { size = state.size; background = state.background }
-            | "RequestWorldPosition" -> RenderServerMessage.RequestWorldPosition state.pixel
-            | "Rendered"             -> RenderServerMessage.Rendered
+            | "RequestImage" -> RenderServerMessage.RequestImage { size = state.size; background = state.background }
+            | "Rendered"     -> RenderServerMessage.Rendered
             | _ ->
                 raise <| JsonException($"Unknown RenderServerMessage: {state.case}")
 
         override this.ReadField(reader, name, state, options) =
             match name with
             | "case"       -> state.case <- reader.GetString()
-            | "pixel"      -> state.pixel <- JsonSerializer.Deserialize<V2i>(&reader, options)
             | "size"       -> state.size <- JsonSerializer.Deserialize<V2i>(&reader, options)
             | "background" -> state.background <- JsonSerializer.Deserialize<C4b>(&reader, options)
             | _            -> reader.Skip()

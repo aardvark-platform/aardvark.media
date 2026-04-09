@@ -100,23 +100,6 @@ let viewScene (m : AdaptiveModel) =
        }
 
 let view (m : AdaptiveModel) =
-    let doubleClick (callback : V3d -> seq<'msg>) =
-        "ondblclick", AttributeValue.Event {
-            clientSide = fun send id -> 
-                "aardvark.getWorldPosition('" + id + "', {x : event.clientX, y: event.clientY }, function(d) { " + send id ["d"] + " })"
-            serverSide = fun client id args -> 
-                match args with
-                    | h :: _ ->
-                        let v : V3d = Pickler.json.UnPickleOfString h
-                        Log.warn "wp: %A" v
-                        callback v
-                    | _ ->
-                        Seq.empty
-        }   
-
-    let callback (v : V3d) =
-        Seq.empty
-
     body [ style "background: #1B1C1E"] [
         require (Html.semui) (
             div [clazz "ui"; style "background: #1B1C1E"] [
@@ -125,7 +108,6 @@ let view (m : AdaptiveModel) =
                         attribute "style" "width:85%; height: 100%; float: left;";
                         attribute "data-samples" "8"
                         attribute "showFPS" "true"
-                        doubleClick callback
                      ]) (viewScene m)
 
                 div [style "width:15%; height: 100%; float:right"] [
