@@ -31,7 +31,7 @@ module App =
 
                 sg |> OrbitController.controlledControlWithClientValues model.camera Camera frustum (AttributeMap.ofList [
                     style "width: 100%; height:100%"
-                    onEvent "onRendered" [] (fun _ -> Animation AnimatorMessage.RealTimeTick)
+                    onAfterRender (fun _ -> Animation AnimatorMessage.RealTimeTick)
                     onClick (fun _ -> GameMessage.Start |> Game)
                     onKeyDown OnKeyDown
                     attribute "showFPS" "true"

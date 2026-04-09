@@ -618,7 +618,7 @@ module FreeFlyController =
             always (onKeyDownModifiers (fun m k -> KeyDown(m,k) |> f))
             always (onKeyUpModifiers (fun m k -> KeyUp(m,k) |> f))
             always (onWheelPrevent true (fun x -> f (Wheel x)))
-            always <| onEvent "onRendered" [] (fun _ -> f Rendered)
+            always <| onAfterRender (fun _ -> f Rendered)
             always <| onTouchStickMove "leftstick" (fun stick -> MoveMovStick stick |> f)
             always <| onTouchStickMove "ritestick" (fun stick -> MoveRotStick stick |> f)
             always <| onTouchStickStop "leftstick" (fun _ -> ReleaseMovStick |> f)

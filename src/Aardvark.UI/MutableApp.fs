@@ -437,11 +437,13 @@ module MutableApp =
 
                                         match handlers.TryGet(key, evt.version) with
                                         | ValueSome handler when notNull evt.args ->
+                                            let args = Array.toList evt.args
+
                                             let msgs =
                                                 try
-                                                    handler.invoke sessionId evt.sender (Array.toList evt.args)
+                                                    handler.invoke sessionId evt.sender args
                                                 with exn ->
-                                                    Log.error $"[Media] Event handler '{evt.name}' for {evt.sender} faulted: {exn}"
+                                                    Log.error $"[Media] Event handler '{evt.name}' for {evt.sender} faulted (args: {args}): {exn}"
                                                     Seq.empty
 
                                             app.Update(sessionId, msgs)

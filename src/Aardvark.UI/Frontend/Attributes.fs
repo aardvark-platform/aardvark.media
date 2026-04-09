@@ -28,18 +28,55 @@ module Operators =
 module Events =
     open Aardvark.Application
 
-    let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> = 
-        let e args () =
-            try
-                args |> cb |> Seq.singleton
-            with e ->
-                Log.warn "[Media] onEvent callback faulted: %s" e.Message
-                Seq.empty
+    let inline onEvent' (eventType : string) (args : list<string>) (cb : list<string> -> seq<'msg>) : Attribute<'msg> =
+        eventType, AttributeValue.Event(Event.ofDynamicArgs args cb)
 
-        eventType, AttributeValue.Event(Event.ofDynamicArgs args (fun args -> Seq.delay (e args)))
+    let inline onEvent (eventType : string) (args : list<string>) (cb : list<string> -> 'msg) : Attribute<'msg> =
+        onEvent' eventType args (cb >> Seq.singleton)
 
-    let inline onEvent' (eventType : string) (args : list<string>) (cb : list<string> -> seq<'msg>) : Attribute<'msg> = 
-        eventType, AttributeValue.Event(Event.ofDynamicArgs args (cb))
+    /// <summary>
+    /// Render control event triggered immediately before or after rendering.
+    /// </summary>
+    /// <param name="eventType">Type of the event; must be 'onBeforeRender' or 'onAfterRender'.</param>
+    /// <param name="cb">Callback to be invoked.</param>
+    let inline onRenderEvent' (eventType: string) (cb: RenderClientInfo -> 'msg seq) : Attribute<'msg> =
+        eventType, AttributeValue.RenderEvent cb
+
+    /// <summary>
+    /// Render control event triggered immediately before or after rendering.
+    /// </summary>
+    /// <param name="eventType">Type of the event; must be 'onBeforeRender' or 'onAfterRender'.</param>
+    /// <param name="cb">Callback to be invoked.</param>
+    let inline onRenderEvent (eventType: string) (cb: RenderClientInfo -> 'msg) : Attribute<'msg> =
+        onRenderEvent' eventType (cb >> Seq.singleton)
+
+    /// <summary>
+    /// Render control event triggered immediately before rendering.
+    /// </summary>
+    /// <param name="cb">Callback to be invoked.</param>
+    let inline onBeforeRender' (cb: RenderClientInfo -> 'msg seq) : Attribute<'msg> =
+        onRenderEvent' "onBeforeRender" cb
+
+    /// <summary>
+    /// Render control event triggered immediately before rendering.
+    /// </summary>
+    /// <param name="cb">Callback to be invoked.</param>
+    let inline onBeforeRender (cb: RenderClientInfo -> 'msg) : Attribute<'msg> =
+        onRenderEvent "onBeforeRender" cb
+
+    /// <summary>
+    /// Render control event triggered immediately after rendering.
+    /// </summary>
+    /// <param name="cb">Callback to be invoked.</param>
+    let inline onAfterRender' (cb: RenderClientInfo -> 'msg seq) : Attribute<'msg> =
+        onRenderEvent' "onAfterRender" cb
+
+    /// <summary>
+    /// Render control event triggered immediately after rendering.
+    /// </summary>
+    /// <param name="cb">Callback to be invoked.</param>
+    let inline onAfterRender (cb: RenderClientInfo -> 'msg) : Attribute<'msg> =
+        onRenderEvent "onAfterRender" cb
 
     let onFocus (cb : unit -> 'msg) =
         onEvent "onfocus" [] (ignore >> cb)

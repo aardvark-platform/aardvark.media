@@ -532,30 +532,52 @@ module internal Updaters =
         let mutable initial = true
         let att = AttributeUpdater<_>(e.Attributes)
 
+        static let processDeprecatedRenderEvents =
+            let renderEventNames = ["onRendered"; "onRender"; "onrendered"; "onrender"]
+            let mutable found = Set.empty
+
+            fun (info: RenderClientInfo) (attributes: HashMap<string, AttributeValue<'msg>>) ->
+                let event =
+                    renderEventNames |> List.tryPickV (fun name ->
+                        match attributes |> HashMap.tryFindV name with
+                        | ValueSome event -> ValueSome (name, event)
+                        | _ -> ValueNone
+                    )
+
+                match event with
+                | ValueSome (name, AttributeValue.Event evt) ->
+                    if found |> Set.contains name |> not then
+                        Log.warn $"[Media] Deprecated render event '{name}'. Use predefined attribute 'onAfterRender' instead"
+                        found <- found |> Set.add name
+
+                    evt.serverSide info.session info.id.elementId [Pickler.json.PickleToString info.size]
+                | _ ->
+                    Seq.empty
+
         let sceneMessages =
             { 
                 preRender = fun (info : RenderClientInfo) ->
-                    let attributes = e.Attributes.Content.GetValue()
-                    let keys = ["preRender"; "prerender"]
-                    match keys |> List.tryPickV (flip HashMap.tryFindV attributes) with
-                    | ValueSome (AttributeValue.RenderEvent f) ->
-                        f info
-                    | ValueSome (AttributeValue.Event evt) ->
-                        evt.serverSide info.session info.id.elementId [Pickler.json.PickleToString info.size]
-                    | _ ->
+                    try
+                        let attributes = e.Attributes.Content.GetValue()
+                        match attributes |> HashMap.tryFindV "onBeforeRender" with
+                        | ValueSome (AttributeValue.RenderEvent f) -> f info
+                        | _ -> Seq.empty
+                    with exn ->
+                        Log.error $"[Media] Event handler 'onBeforeRender' for {info.id.elementId} faulted: {exn}"
                         Seq.empty
 
                 postRender = fun (info : RenderClientInfo) ->
-                    let attributes = e.Attributes.Content.GetValue()
-
-                    let keys = ["onRendered"; "onRender"; "onrendered"; "onrender"]
-
-                    match keys |> List.tryPickV (flip HashMap.tryFindV attributes) with
-                    | ValueSome (AttributeValue.RenderEvent f) ->
-                        f info
-                    | ValueSome (AttributeValue.Event evt) ->
-                        evt.serverSide info.session info.id.elementId [Pickler.json.PickleToString info.size]
-                    | _ ->
+                    try
+                        let attributes = e.Attributes.Content.GetValue()
+                        match attributes |> HashMap.tryFindV "onAfterRender" with
+                        | ValueSome (AttributeValue.RenderEvent f) -> f info
+                        | _ ->
+                            if Config.allowDeprecatedRenderEvents then
+                                processDeprecatedRenderEvents info attributes
+                            else
+                                Seq.empty
+                    with exn ->
+                        Log.error $"[Media] Event handler 'onAfterRender' for {info.id.elementId} faulted: {exn}"
                         Seq.empty
             }
 

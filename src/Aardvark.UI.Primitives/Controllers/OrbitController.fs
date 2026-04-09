@@ -208,7 +208,7 @@ module OrbitController =
         AttributeMap.ofListCond [
             always <| onCapturedPointerDown None (fun k b p -> MouseDown(b, p) |> f)
             always <| onCapturedPointerUp None (fun k b p -> MouseUp(b, p) |> f)
-            always <| onEvent "onRendered" [] (fun _ -> Rendered |> f)
+            always <| onAfterRender (fun _ -> Rendered |> f)
             always <| onWheel (fun delta -> Wheel delta |> f)
             onlyWhen down <| onCapturedPointerMove None (fun k p -> MouseMove p |> f)
         ]

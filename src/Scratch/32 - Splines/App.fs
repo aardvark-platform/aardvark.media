@@ -161,7 +161,7 @@ let view (model: AdaptiveModel) =
              onMouseClickRel (fun _ p -> Add p)
              onKeyDown OnKeyDown
              onWheel OnWheel
-             onEvent "onRendered" [] (fun _ -> Animation AnimatorMessage.RealTimeTick)
+             onAfterRender (fun _ -> Animation AnimatorMessage.RealTimeTick)
         ] sg
 
         div [style "position: absolute; left: 10px; top: 10px; color: white; pointer-events: none; font-family: monospace; font-size: larger;"] [

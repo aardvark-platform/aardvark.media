@@ -104,51 +104,53 @@ type internal RenderClient(app: IMutableApp,
             let request = MVar.take requestedImage
 
             if request.size.AllGreater 0 && running && not cancellationToken.IsCancellationRequested then
-                use _ = app.AcquireLock()
+                lock app.UpdateLock (fun _ ->
+                    sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                        try
+                            let info =
+                                { info with
+                                    token      = token
+                                    size       = request.size
+                                    time       = MicroTime.Now
+                                    clearColor = c4f request.background
+                                }
+                                |> RenderClientInfo.withState getState
 
-                sender.EvaluateAlways AdaptiveToken.Top (fun token ->
-                    try
-                        let info =
-                            { info with
-                                token      = token
-                                size       = request.size
-                                time       = MicroTime.Now
-                                clearColor = c4f request.background
-                            }
-                            |> RenderClientInfo.withState getState
+                            let data = renderTask.Run(token, info)
 
-                        let data = renderTask.Run(token, info)
+                            match data with
+                            | RenderResult.Jpeg data ->
+                                try
+                                    let task = createInfo.socket.Send(WebSocketOpCode.Binary, data, true, cancellationToken)
+                                    task.Wait()
+                                with
+                                | :? OperationCanceledException -> ()
+                                | exn ->
+                                    running <- false
+                                    Log.error $"[Client] {id}: Could not send render result (stopping): {exn}"
 
-                        match data with
-                        | RenderResult.Jpeg data ->
-                            try
-                                let task = createInfo.socket.Send(WebSocketOpCode.Binary, data, true, cancellationToken)
-                                task.Wait()
-                            with
-                            | :? OperationCanceledException -> ()
-                            | exn ->
-                                running <- false
-                                Log.error $"[Client] {id}: Could not send render result (stopping): {exn}"
+                            | RenderResult.Png _ ->
+                                Log.error $"[Client] {id}: Requested png render control which is not supported at the moment (png conversion too slow)"
 
-                        | RenderResult.Png _ ->
-                            Log.error $"[Client] {id}: Requested png render control which is not supported at the moment (png conversion too slow)"
+                            | RenderResult.Mapping img ->
+                                let data = Pickler.json.Pickle img
 
-                        | RenderResult.Mapping img ->
-                            let data = Pickler.json.Pickle img
+                                try
+                                    let task = createInfo.socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
+                                    task.Wait()
+                                with
+                                | :? OperationCanceledException -> ()
+                                | exn ->
+                                    running <- false
+                                    Log.error $"[Client] {id}: Could not send render result (stopping): {exn}"
 
-                            try
-                                let task = createInfo.socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
-                                task.Wait()
-                            with
-                            | :? OperationCanceledException -> ()
-                            | exn ->
-                                running <- false
-                                Log.error $"[Client] {id}: Could not send render result (stopping): {exn}"
-
-                    with exn ->
-                        running <- false
-                        Log.error $"[Client] {id}: Rendering faulted (stopping): {exn}"
+                        with exn ->
+                            running <- false
+                            Log.error $"[Client] {id}: Rendering faulted (stopping): {exn}"
+                    )
                 )
+
+                createInfo.server.rendered info
 
         Report.Line(3, $"[Client] {id}: Stopped render thread for {info.id.session}/{info.id.elementId}")
 

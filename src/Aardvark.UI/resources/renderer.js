@@ -15,12 +15,118 @@
         this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
 
         this.buffer = [];
-        this.isOpen = false;
-        this.isClosed = false;
         this.loading = true;
         this.depthCallbacks = [];
 
-        this.init();
+        const self = this;
+        const useMapping = aardvark.localhost && getTopAardvark().openMapping && this.useMapping;
+
+        if (useMapping) {
+            this.canvas = document.createElement("canvas");
+            this.context = this.canvas.getContext("2d");
+        } else {
+            this.canvas = document.createElement("img");
+        }
+
+        this.div.appendChild(this.canvas);
+        this.canvas.setAttribute("class", "rendercontrol");
+        this.canvas.style.cursor = "default";
+
+        if (this.showLoader) {
+            this.createLoader();
+        }
+
+        this.overlay = document.createElement("span");
+        if (!this.showFPS) this.overlay.style = "display:none;";
+        this.div.appendChild(this.overlay);
+        this.overlay.className = "fps";
+        this.overlay.innerText = "";
+        this.frameCount = 0;
+        this.div.tabIndex = 1;
+
+        const url =
+            aardvark.getScriptRelativeUrl(
+                "ws",
+                `../rendering/render/${this.id}?session=${aardvark.guid}&scene=${this.scene}&samples=${this.samples}&mapped=${useMapping}&quality=${this.quality}`
+            );
+
+        const onGlobalClick = function (event) {
+            if (event.target === self.div) self.div.focus();
+        };
+        document.addEventListener("click", onGlobalClick, false);
+
+        const socket = new WebSocket(url);
+        socket.binaryType = "blob";
+        self.socket = socket;
+
+        const doPing = function () {
+            const state = self.getState();
+
+            if (state === WebSocket.OPEN) {
+                socket.send("#ping");
+            }
+
+            if (state <= WebSocket.OPEN) {
+                setTimeout(doPing, 1000);
+            }
+        };
+
+        socket.onopen = function () {
+            for (let i = 0; i < self.buffer.length; i++) {
+                socket.send(self.buffer[i]);
+            }
+            self.buffer = [];
+
+            self.requestImage();
+
+            doPing();
+        };
+
+        socket.onmessage = function (msg) {
+            self.received(msg);
+        };
+
+        socket.onclose = function () {
+            delete self.socket;
+            self.fadeOut();
+        };
+
+        socket.onerror = function (err) {
+            console.error(err);
+            socket.close();
+            delete self.socket;
+            self.fadeOut();
+        };
+
+        this.div.oncontextmenu = function (e) { e.preventDefault(); };
+
+        const $self = $(this.div);
+        let w = $self.width();
+        let h = $self.height();
+        let currentColor = { r: 0, g: 0, b: 0 };
+
+        const check = function () {
+            const cw = $self.width();
+            const ch = $self.height();
+
+            let color = { r: 0, g: 0, b: 0 };
+            const bg = window.getComputedStyle($self.get(0)).backgroundColor;
+            if (bg) {
+                color = new RGBColor(bg);
+            }
+            if (cw !== w || ch !== h || currentColor.r !== color.r || currentColor.g !== color.g || currentColor.b !== color.b) {
+                w = cw;
+                h = ch;
+                currentColor = color;
+                self.requestImage();
+            }
+        };
+        check();
+        setInterval(check, 50);
+    }
+
+    getState() {
+        return this.socket ? this.socket.readyState : WebSocket.CLOSED;
     }
 
     createLoader() {
@@ -69,197 +175,18 @@
         }
     }
 
-    init() {
-        let connect = null;
-        const self = this;
-
-        if (aardvark.localhost && getTopAardvark().openMapping && this.useMapping) {
-            const canvas = document.createElement("canvas");
-            this.div.appendChild(canvas);
-            canvas.setAttribute("class", "rendercontrol");
-
-            if (this.showLoader) this.createLoader();
-
-            this.canvas = canvas;
-            this.ctx = canvas.getContext("2d");
-            this.img = canvas;
-
-            const overlay = document.createElement("span");
-            if (!this.showFPS) overlay.style = "display:none;";
-            this.div.appendChild(overlay);
-            overlay.className = "fps";
-            overlay.innerText = "";
-            this.overlay = overlay;
-            this.frameCount = 0;
-            this.div.tabIndex = 1;
-            canvas.style.cursor = "default";
-
-            const url =
-                aardvark.getScriptRelativeUrl(
-                    "ws",
-                    `../rendering/render/${this.id}?session=${aardvark.guid}&scene=${this.scene}&samples=${this.samples}&mapped=${this.useMapping}`
-                );
-
-            const onGlobalClick = function (event) {
-                if (event.target === self.div) self.div.focus();
-            };
-            document.addEventListener("click", onGlobalClick, false);
-
-            connect = function () {
-                const socket = new WebSocket(url);
-                socket.binaryType = "blob";
-                self.socket = socket;
-
-                const doPing = function () {
-                    if (socket.readyState <= 1) {
-                        socket.send("#ping");
-                        setTimeout(doPing, 1000);
-                    }
-                };
-
-                socket.onopen = function () {
-                    for (let i = 0; i < self.buffer.length; i++) {
-                        socket.send(self.buffer[i]);
-                    }
-                    self.isClosed = false;
-                    self.isOpen = true;
-                    self.buffer = [];
-
-                    self.render();
-
-                    doPing();
-
-                };
-
-                socket.onmessage = function (msg) {
-                    self.received(msg);
-                };
-
-                socket.onclose = function () {
-                    self.isOpen = false;
-                    self.isClosed = true;
-                    self.fadeOut();
-                };
-
-                socket.onerror = function (err) {
-                    console.error(err);
-                    self.isClosed = true;
-                    self.fadeOut();
-                };
-            };
+    destroy() {
+        if (this.socket) {
+            const socket = this.socket;
+            delete this.socket;
+            socket.close();
         }
-        else {
-            const img = document.createElement("img");
-            this.div.appendChild(img);
-            img.setAttribute("class", "rendercontrol");
-
-            if (this.showLoader) this.createLoader();
-
-            this.img = img;
-
-            const overlay = document.createElement("span");
-            if (!this.showFPS) overlay.style = "display:none;";
-            this.div.appendChild(overlay);
-            overlay.className = "fps";
-            overlay.innerText = "";
-            this.overlay = overlay;
-            this.frameCount = 0;
-            this.div.tabIndex = 1;
-
-            img.style.cursor = "default";
-
-            const url =
-                aardvark.getScriptRelativeUrl(
-                    "ws",
-                    `../rendering/render/${this.id}?session=${aardvark.guid}&scene=${this.scene}&samples=${this.samples}&quality=${this.quality}`
-                );
-
-            const self = this;
-
-            const onGlobalClick = function (event) {
-                if (event.target === self.div) self.div.focus();
-            };
-            document.addEventListener("click", onGlobalClick, false);
-
-            connect = function () {
-                const socket = new WebSocket(url);
-                socket.binaryType = "blob";
-                self.socket = socket;
-
-                const doPing = function () {
-                    if (socket.readyState <= 1) {
-                        socket.send("#ping");
-                        setTimeout(doPing, 1000);
-                    }
-                };
-
-                socket.onopen = function () {
-                    for (let i = 0; i < self.buffer.length; i++) {
-                        socket.send(self.buffer[i]);
-                    }
-                    self.isClosed = false;
-                    self.isOpen = true;
-                    self.buffer = [];
-
-                    self.render();
-
-                    doPing();
-
-                };
-
-                socket.onmessage = function (msg) {
-                    self.received(msg);
-                };
-
-                socket.onclose = function () {
-                    self.isOpen = false;
-                    self.isClosed = true;
-                    self.fadeOut();
-                };
-
-                socket.onerror = function (err) {
-                    console.error(err);
-                    self.isClosed = true;
-                    self.fadeOut();
-                };
-            };
-        }
-
-        connect();
-
-        this.div.oncontextmenu = function (e) { e.preventDefault(); };
-
-       const $self = $(this.div);
-       let w = $self.width();
-       let h = $self.height();
-       let currentColor = { r: 0, g: 0, b: 0 };
-
-        const check = function () {
-            const cw = $self.width();
-            const ch = $self.height();
-
-            let color = { r: 0, g: 0, b: 0 };
-            const bg = window.getComputedStyle($self.get(0)).backgroundColor;
-            if (bg) {
-                color = new RGBColor(bg);
-            }
-            if (cw !== w || ch !== h || currentColor.r !== color.r || currentColor.g !== color.g || currentColor.b !== color.b) {
-                w = cw;
-                h = ch;
-                currentColor = color;
-                self.render();
-            }
-        };
-        check();
-        setInterval(check, 50);
     }
 
     send(data) {
-        if (this.isOpen) {
-            this.socket.send(data);
-        }
-        else if(!this.isClosed) {
-            this.buffer.push(data);
+        switch (this.getState()) {
+            case WebSocket.OPEN: this.socket.send(data); break;
+            case WebSocket.CONNECTING: this.buffer.push(data); break;
         }
     }
 
@@ -279,7 +206,7 @@
             this.loading = false;
             const self = this;
             console.debug("[Aardvark] initialized renderControl " + this.id);
-            $(this.img).animate({ opacity: 1.0 }, 400, "swing", function () {
+            $(this.canvas).animate({ opacity: 1.0 }, 400, "swing", function () {
                 self.destroyLoader();
             });
 
@@ -296,7 +223,7 @@
             }
 
             console.debug("[Aardvark] closed renderControl " + this.id);
-            $(this.img).animate({ opacity: 0.0 }, 400, "swing");
+            $(this.canvas).animate({ opacity: 0.0 }, 400, "swing");
         }
     }
 
@@ -305,73 +232,62 @@
         this.send(JSON.stringify({ case: "RequestWorldPosition", pixel: { X: pixel.x, Y: pixel.y } }));
     }
 
-    received(msg) {
-        if (msg.data instanceof Blob) {
-            const now = performance.now();
-            if (!this.lastTime) {
+    updateOverlay() {
+        const now = performance.now();
+        if (!this.lastTime) {
+            this.lastTime = now;
+        }
+
+        if (now - this.lastTime > 1000.0) {
+            if (this.frameCount > 0) {
+                const dt = now - this.lastTime;
+                const cnt = this.frameCount;
                 this.lastTime = now;
-            }
-
-            if (now - this.lastTime > 1000.0) {
-                if (this.frameCount > 0) {
-                    const dt = now - this.lastTime;
-                    const cnt = this.frameCount;
-                    this.lastTime = now;
-                    this.frameCount = 0;
-                    const fps = 1000.0 * cnt / dt;
-                    this.overlay.innerText = fps.toFixed(2) + " fps";
-                    if (this.overlay.style.opacity < 0.5) {
-                        $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
-                    }
+                this.frameCount = 0;
+                const fps = 1000.0 * cnt / dt;
+                this.overlay.innerText = fps.toFixed(2) + " fps";
+                if (this.overlay.style.opacity < 0.5) {
+                    $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
                 }
-                else {
-                    if (this.overlay.style.opacity > 0.5) {
-                        $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
-                    }
-                }
-            }
-
-            this.frameCount++;
-
-            const oldUrl = this.img.src;
-            this.img.src = window.URL.createObjectURL(msg.data);
-            delete msg.data;
-
-            window.URL.revokeObjectURL(oldUrl);
-
-            this.send(JSON.stringify({ case: "Rendered" }));
-
-            const shouldSay = this.div.getAttribute("onRendered");
-            if (shouldSay) {
-                if (this.div.onRenderedCode !== shouldSay) {
-                    this.div.onRenderedCode = shouldSay;
-                    const f = new Function(shouldSay);
-                    this.div.onRendered = f.bind(this.div);
-                }
-                this.div.onRendered();
             }
             else {
-                delete this.div.onRenderedCode;
-                delete this.div.onRendered;
-            }
-
-            if (this.loading) {
-                this.fadeIn();
-            }
-
-            if (this.renderAlways) {
-
-                //artificial render looop (uncommend in invalidate)
-                this.render();
+                if (this.overlay.style.opacity > 0.5) {
+                    $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
+                }
             }
         }
-        else {
+    }
+
+    afterRender() {
+        this.send(JSON.stringify({ case: "Rendered" }));
+
+        if (this.loading) {
+            this.fadeIn();
+        }
+
+        if (this.renderAlways) {
+            this.requestImage();
+        }
+    }
+
+    received(msg) {
+        if (msg.data instanceof Blob) {
+            this.updateOverlay();
+            this.frameCount++;
+
+            const oldUrl = this.canvas.src;
+            this.canvas.src = window.URL.createObjectURL(msg.data);
+            delete msg.data;
+            window.URL.revokeObjectURL(oldUrl);
+
+            this.afterRender();
+        } else {
             const data = JSON.parse(msg.data);
 
             if (data.Case === "Invalidate") {
                 if (!this.renderAlways) {
                     // TODO: what if not visible??
-                    this.render();
+                    this.requestImage();
                 }
             }
             else if (data.Case === "WorldPosition" && data.position) {
@@ -382,33 +298,9 @@
                 }
             }
             else if (data.name && data.size && data.length) {
-                const now = performance.now();
-                if (!this.lastTime) {
-                    this.lastTime = now;
-                }
-
-                if (now - this.lastTime > 1000.0) {
-                    if (this.frameCount > 0) {
-                        const dt = now - this.lastTime;
-                        const cnt = this.frameCount;
-                        this.lastTime = now;
-                        this.frameCount = 0;
-                        const fps = 1000.0 * cnt / dt;
-                        this.overlay.innerText = fps.toFixed(2) + " fps";
-                        if (this.overlay.style.opacity < 0.5) {
-                            $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
-                        }
-                    }
-                    else {
-                        if (this.overlay.style.opacity > 0.5) {
-                            $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
-                        }
-                    }
-                }
-
+                this.updateOverlay();
                 this.frameCount++;
 
-                //HERE
                 if (this.mapping) {
                     if (this.mapping.name !== data.name) {
                         this.mapping.close();
@@ -437,41 +329,16 @@
                 this.canvas.width = data.size.X;
                 this.canvas.height = data.size.Y;
                 this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
-                this.ctx.putImageData(new ImageData(this.frameBuffer, data.size.X, data.size.Y), 0, 0);
+                this.context.putImageData(new ImageData(this.frameBuffer, data.size.X, data.size.Y), 0, 0);
 
-                this.send(JSON.stringify({ case: "Rendered" }));
-
-                const shouldSay = this.div.getAttribute("onRendered");
-                if (shouldSay) {
-                    if (this.div.onRenderedCode !== shouldSay) {
-                        this.div.onRenderedCode = shouldSay;
-                        const f = new Function(shouldSay);
-                        this.div.onRendered = f.bind(this.div);
-                    }
-                    this.div.onRendered();
-                }
-                else {
-                    delete this.div.onRenderedCode;
-                    delete this.div.onRendered;
-                }
-
-                if (this.loading) {
-                    this.fadeIn();
-                }
-
-                if (this.renderAlways) {
-
-                    //artificial render looop (uncommend in invalidate)
-                    this.render();
-                }
-            }
-            else {
+                this.afterRender();
+            } else {
                 console.warn("Unexpected render message: " + JSON.stringify(data));
             }
         }
     }
 
-    render() {
+    requestImage() {
         const rect = this.div.getBoundingClientRect();
 
         const bg = window.getComputedStyle(this.div).backgroundColor;
@@ -494,6 +361,13 @@ if (!aardvark.getRenderer) {
             div.renderer = new Renderer(id);
         }
         return div.renderer;
+    }
+}
+
+if (!aardvark.destroyRenderer) {
+    aardvark.destroyRenderer = function (id) {
+        const div = document.getElementById(id);
+        div.renderer?.destroy();
     }
 }
 
