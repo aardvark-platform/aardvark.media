@@ -9,7 +9,6 @@ type DomNode<'msg>() =
     let mutable required : list<Reference> = []
     let mutable boot : ValueOption<string -> string> = ValueNone
     let mutable shutdown : ValueOption<string -> string> = ValueNone
-    let mutable callbacks : Map<string, list<string> -> 'msg> = Map.empty
     let mutable channels : Map<string, Channel> = Map.empty
 
     member x.Required
@@ -24,10 +23,6 @@ type DomNode<'msg>() =
         with get() = shutdown
         and set v = shutdown <- v
 
-    member x.Callbacks
-        with get() = callbacks
-        and set v = callbacks <- v
-
     member x.Channels
         with get() = channels
         and set v = channels <- v
@@ -36,7 +31,6 @@ type DomNode<'msg>() =
         required <- other.Required
         boot <- other.Boot
         shutdown <- other.Shutdown
-        callbacks <- other.Callbacks
         channels <- other.Channels
         x
 
@@ -85,11 +79,6 @@ type DomNode<'msg>() =
         res.Shutdown <- r
         res
 
-    member x.WithCallbacks r =
-        let res = x.Clone()
-        res.Callbacks <- r
-        res
-
     member x.WithChannels r =
         let res = x.Clone()
         res.Channels <- r
@@ -104,7 +93,6 @@ type DomNode<'msg>() =
         match x.Shutdown with
         | ValueNone -> x.WithShutdown (ValueSome r)
         | ValueSome b -> x.WithShutdown (ValueSome (fun self -> b self + ";" + r self))
-    member x.AddCallbacks r = x.WithCallbacks (Map.union x.Callbacks r)
     member x.AddChannels r = x.WithChannels (Map.union x.Channels r)
 
     interface IDomNode<'msg>

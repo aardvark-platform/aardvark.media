@@ -139,10 +139,6 @@ module internal Updaters =
         let id = lazy Id.newId()
 
         let setup (state : UpdateState<'msg>) =
-            if id.IsValueCreated then
-                for name, cb in Map.toSeq node.Callbacks do
-                    state.handlers.[(id.Value,name)] <- { version = 0uy; invoke = fun _ _ v -> Seq.delay (fun () -> Seq.singleton (cb v)) }
-
             for r in node.Required do
                 state.references.[(r.name, r.kind)] <- r
 
