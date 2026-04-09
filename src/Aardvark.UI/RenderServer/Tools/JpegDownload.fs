@@ -31,26 +31,25 @@ module internal ``JpegDownload Extensions`` =
             let device = fbo.Device
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[TextureAspect.Color, 0, 0]
 
-            let tmp = device.ReadbackMemory.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
+            let resultBuffer = device.ReadbackMemory.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
 
-            let small =
+            let scaled =
                 if size <> fbo.Size then
                     let usage = VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit
-                    device.CreateImage(size.XYI, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage) |> Some
+                    device.CreateImage(size.XYI, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage)
                 else
-                    None
+                    Unchecked.defaultof<_>
 
             let oldLayout = color.Image.Layout
             device.perform {
                 do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
-                match small with
-                | Some small ->
-                    do! Command.TransformLayout(small, VkImageLayout.TransferDstOptimal)
-                    do! Command.Blit(color, VkImageLayout.TransferSrcOptimal, small.[TextureAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
-                    do! Command.TransformLayout(small, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Copy(small.[TextureAspect.Color, 0, 0], tmp)
-                | None ->
-                    do! Command.Copy(color, tmp)
+                if notNull scaled then
+                    do! Command.TransformLayout(scaled, VkImageLayout.TransferDstOptimal)
+                    do! Command.Blit(color, VkImageLayout.TransferSrcOptimal, scaled.[TextureAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
+                    do! Command.TransformLayout(scaled, VkImageLayout.TransferSrcOptimal)
+                    do! Command.Copy(scaled.[TextureAspect.Color, 0, 0], resultBuffer)
+                else
+                    do! Command.Copy(color, resultBuffer)
                 do! Command.TransformLayout(color.Image, oldLayout)
             }
 
@@ -58,7 +57,7 @@ module internal ``JpegDownload Extensions`` =
             let alignedRowSize = rowSize
 
             let result =
-                tmp.Volume.Mapped (fun src ->
+                resultBuffer.Volume.Mapped (fun src ->
                     jpeg.Compress(
                         NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y,
                         TJPixelFormat.RGBX,
@@ -68,8 +67,8 @@ module internal ``JpegDownload Extensions`` =
                     )
                 )
 
-            small |> Option.iter (fun s -> s.Dispose())
-            tmp.Dispose()
+            if notNull scaled then scaled.Dispose()
+            resultBuffer.Dispose()
             result
 
         let downloadFBOMS (jpeg : TJCompressor) (size : V2i) (quality : int) (fbo : Framebuffer) =
@@ -77,30 +76,35 @@ module internal ``JpegDownload Extensions`` =
             let color = fbo.Attachments.[DefaultSemantic.Colors].Image.[TextureAspect.Color, 0, 0]
 
             let usage = VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit
-            let tempImage = device.CreateImage(size.XYI, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage)
+            let resolved = device.CreateImage(size.XYI, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage)
 
-            let full =
+            let resolvedFull =
                 if size <> fbo.Size then
                     device.CreateImage(fbo.Size.XYI, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage)
-                    |> Some
                 else
-                    None
+                    Unchecked.defaultof<_>
 
-            let tmp = device.ReadbackMemory.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
+            let resultBuffer = device.ReadbackMemory.CreateTensorImage<byte>(V3i(size, 1), Col.Format.RGBA, false)
             let oldLayout = color.Image.Layout
             device.perform {
                 do! Command.TransformLayout(color.Image, VkImageLayout.TransferSrcOptimal)
 
-                match full with
-                | Some full ->
-                    do! Command.TransformLayout(full, VkImageLayout.TransferDstOptimal)
-                    do! Command.ResolveMultisamples(color.Image.[TextureAspect.Color, 0, 0], V3i.Zero, full.[TextureAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
-                    do! Command.TransformLayout(full, VkImageLayout.TransferSrcOptimal)
-                    do! Command.Blit(full.[TextureAspect.Color, 0, 0], VkImageLayout.TransferSrcOptimal, tempImage.[TextureAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal, VkFilter.Linear)
-                | None ->
-                    do! Command.ResolveMultisamples(color.Image.[TextureAspect.Color, 0, 0], V3i.Zero, tempImage.[TextureAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
-                do! Command.TransformLayout(tempImage, VkImageLayout.TransferSrcOptimal)
-                do! Command.Copy(tempImage.[TextureAspect.Color, 0, 0], tmp)
+                if notNull resolvedFull then
+                    do! Command.TransformLayout(resolvedFull, VkImageLayout.TransferDstOptimal)
+                    do! Command.ResolveMultisamples(color.Image.[TextureAspect.Color, 0, 0], V3i.Zero, resolvedFull.[TextureAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+                    do! Command.TransformLayout(resolvedFull, VkImageLayout.TransferSrcOptimal)
+                    do! Command.TransformLayout(resolved, VkImageLayout.TransferDstOptimal)
+                    do! Command.Blit(
+                        resolvedFull.[TextureAspect.Color, 0, 0], VkImageLayout.TransferSrcOptimal,
+                        resolved.[TextureAspect.Color, 0, 0], VkImageLayout.TransferDstOptimal,
+                        VkFilter.Linear
+                    )
+                else
+                    do! Command.TransformLayout(resolved, VkImageLayout.TransferDstOptimal)
+                    do! Command.ResolveMultisamples(color.Image.[TextureAspect.Color, 0, 0], V3i.Zero, resolved.[TextureAspect.Color, 0, 0], V3i.Zero, color.Image.Size)
+
+                do! Command.TransformLayout(resolved, VkImageLayout.TransferSrcOptimal)
+                do! Command.Copy(resolved.[TextureAspect.Color, 0, 0], resultBuffer)
                 do! Command.TransformLayout(color.Image, oldLayout)
             }
 
@@ -108,7 +112,7 @@ module internal ``JpegDownload Extensions`` =
             let alignedRowSize = rowSize
 
             let result =
-                tmp.Volume.Mapped (fun src ->
+                resultBuffer.Volume.Mapped (fun src ->
                     jpeg.Compress(
                         NativePtr.toNativeInt src.Pointer, alignedRowSize, size.X, size.Y,
                         TJPixelFormat.RGBX,
@@ -118,9 +122,9 @@ module internal ``JpegDownload Extensions`` =
                     )
                 )
 
-            full |> Option.iter (fun f -> f.Dispose())
-            tempImage.Dispose()
-            tmp.Dispose()
+            if notNull resolvedFull then resolvedFull.Dispose()
+            resolved.Dispose()
+            resultBuffer.Dispose()
             result
 
         type Framebuffer with
