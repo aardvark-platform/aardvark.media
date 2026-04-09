@@ -1,12 +1,12 @@
-var aardvark = document.aardvark;
-
 // Popouts do not load Aardvark itself, they just contain Golden Layout and some iframes.
-if (!aardvark) {
-    aardvark = {};
-    document.aardvark = aardvark;
+if (!document.aardvark) {
+    document.aardvark = { initialized: false };
+    window.aardvark = document.aardvark;
 }
 
-if (!aardvark.golden) {
+if (!document.aardvark.golden) {
+    const aardvark = document.aardvark;
+
     aardvark.golden = {
         instances: new Map()
     };

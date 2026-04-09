@@ -126,7 +126,10 @@ module ``RenderControl DomNode`` =
             let boot (id : string) =
                 $"aardvark.getRenderer(\"{id}\");"
 
-            DomNode.Scene(ownAttributes, scene, getState).WithBoot(ValueSome boot)
+            let shutdown (id : string) =
+                $"aardvark.destroyRenderer(\"{id}\");"
+
+            DomNode.Scene(ownAttributes, scene, getState).WithBoot(ValueSome boot).WithShutdown(ValueSome shutdown)
 
         static member RenderControl(attributes : AttributeMap<'msg>, getState : RenderClientInfo -> RenderState, scene : Scene) =
             DomNode.RenderControl(attributes, SceneEventProcessor.empty, getState, scene)

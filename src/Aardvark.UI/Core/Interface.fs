@@ -6,16 +6,10 @@ open FSharp.Data.Adaptive
 
 type IDomNode<'msg> = interface end
 
-[<Struct>]
-type MutableAppLock(lockObj: obj) =
-    member _.Dispose() = Monitor.Exit lockObj
-    interface IDisposable with member this.Dispose() = this.Dispose()
-
 type IMutableApp =
     inherit IDisposable
     abstract member UpdateLock : obj
     abstract member CancellationToken : CancellationToken
-    abstract member AcquireLock : unit -> MutableAppLock
     abstract member Register : resource: IDisposable -> unit
 
 type IMutableApp<'model, 'msg> =

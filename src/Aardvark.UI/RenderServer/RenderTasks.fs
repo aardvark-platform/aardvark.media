@@ -133,7 +133,8 @@ type internal ClientRenderTask(runtime: IRuntime, client: int, getScene: IFrameb
             if notNull output then output.Dispose()
             output <- new ClientRenderTaskOutput(info.signature, info.size)
 
-        // TODO: Rework sharing between render clients
+        // Avoid marking the render task out-of-date as this would break incremental rendering
+        // with multiple clients that depend on the same render task.
         currentScene.EvaluateAlways token (fun token ->
             currentScene.OutOfDate <- true
 
@@ -158,6 +159,11 @@ type internal ClientRenderTask(runtime: IRuntime, client: int, getScene: IFrameb
         try
             this.Release()
 
+            // Note: We only dispose the render task here, which will decrement the reference count of
+            // the concrete scene. If the reference count reaches zero, a timer is started to dispose the
+            // concrete scene itself.
+            task.Dispose()
+
             if notNull currentScene then
                 currentScene.Scene.RemoveClientInfo currentInfo.id
                 currentScene <- Unchecked.defaultof<_>
@@ -167,7 +173,6 @@ type internal ClientRenderTask(runtime: IRuntime, client: int, getScene: IFrameb
                 output.Dispose()
                 output <- null
 
-            task.Dispose()
             renderTime.Reset()
             compressTime.Reset()
             frameCount <- 0

@@ -57,7 +57,6 @@ type RenderClientInfo =
         signature  : IFramebufferSignature
         sceneName  : string
         size       : V2i
-        samples    : int
         quality    : RenderQuality
         state      : RenderState
         time       : MicroTime
@@ -65,6 +64,7 @@ type RenderClientInfo =
     }
 
     member inline this.session = this.id.session
+    member inline this.samples = this.signature.Samples
 
 module RenderClientInfo =
 

@@ -1,7 +1,7 @@
 ﻿namespace Aardvark.UI
 
 open System
-open System.Collections.Concurrent
+open System.Collections.Generic
 open System.Text
 open System.Threading
 open System.Threading.Tasks
@@ -15,51 +15,60 @@ open System.Diagnostics
 type internal RenderServer =
     {
         runtime    : IRuntime
-        content    : string -> Scene voption
+        getScene   : string -> Scene
+        getState   : RenderClientInfo -> RenderState
         rendered   : RenderClientInfo -> unit
-        getState   : RenderClientInfo -> RenderState voption
         compressor : JpegCompressor voption
     }
 
 type internal RenderClientCreateInfo =
     {
-        server        : RenderServer
-        id            : RenderClientId
-        sceneName     : string
-        samples       : int
-        socket        : IWebSocket
-        useMapping    : bool
-        getSignature  : int -> IFramebufferSignature
-        targetQuality : RenderQuality
+        id               : RenderClientId
+        server           : RenderServer
+        socket           : IWebSocket
+        signature        : IFramebufferSignature
+        sceneName        : string
+        getScene         : IFramebufferSignature -> string -> ConcreteScene
+        useMapping       : bool
+        targetQuality    : RenderQuality
     }
 
     member inline this.runtime    = this.server.runtime
     member inline this.compressor = this.server.compressor
 
-type internal RenderClient(app: IMutableApp,
-                           createInfo: RenderClientCreateInfo,
-                           getState: RenderClientInfo -> RenderState,
-                           getContent: IFramebufferSignature -> string -> ConcreteScene) as this =
+type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo) =
     static let mutable currentId = 0
 
-    static let newRenderTask (id: int) (info: RenderClientCreateInfo) getContent =
+    static let newRenderTask (id: int) (info: RenderClientCreateInfo) =
         if info.useMapping then
-            new MappedClientRenderTask(info.runtime, id, getContent) :> ClientRenderTask
+            new MappedClientRenderTask(info.runtime, id, info.getScene) :> ClientRenderTask
         else
-            new JpegClientRenderTask(info.runtime, info.compressor, id, getContent, info.targetQuality) :> ClientRenderTask
+            new JpegClientRenderTask(info.runtime, info.compressor, id, info.getScene, info.targetQuality) :> ClientRenderTask
 
     let id = Interlocked.Increment(&currentId)
-    let sender = AdaptiveObject.Create()
     let requestedImage : MVar<ImageRequest> = MVar.empty()
-    let mutable createInfo = createInfo
-    let mutable renderTask = newRenderTask id createInfo getContent
-    let mutable running = false
-    let mutable disposed = 0
+    let renderTask = newRenderTask id createInfo
     let cancellationToken = app.CancellationToken
+
+    [<VolatileField>]
+    let mutable running = false
 
     let mutable frameCount = 0
     let roundTripTime = Stopwatch()
     let invalidateTime = Stopwatch()
+
+    let info =
+        {
+            id         = createInfo.id
+            token      = Unchecked.defaultof<AdaptiveToken>
+            signature  = createInfo.signature
+            sceneName  = createInfo.sceneName
+            quality    = createInfo.targetQuality
+            state      = RenderState.identity
+            size       = V2i.II
+            time       = MicroTime.Now
+            clearColor = C4f.Black
+        }
 
     let send (msg: RenderClientMessage) =
         let data = Pickler.json.Pickle msg
@@ -73,29 +82,15 @@ type internal RenderClient(app: IMutableApp,
         | :? OperationCanceledException -> ()
         | exn ->
             Log.error $"[Client] {id}: Send of {msg} faulted (stopping): {exn}"
-            this.Dispose()
+            running <- false
 
-    let subscribe() =
+    let sender = AdaptiveObject.Create()
+
+    let subscription =
         sender.AddMarkingCallback(fun () ->
             invalidateTime.Start()
             sendSync RenderClientMessage.Invalidate
         )
-
-    let info =
-        {
-            id         = createInfo.id
-            token      = Unchecked.defaultof<AdaptiveToken>
-            signature  = createInfo.getSignature createInfo.samples
-            sceneName  = createInfo.sceneName
-            samples    = createInfo.samples
-            quality    = createInfo.targetQuality
-            state      = RenderState.identity
-            size       = V2i.II
-            time       = MicroTime.Now
-            clearColor = C4f.Black
-        }
-
-    let mutable subscription = subscribe()
 
     let renderLoop() =
         Report.Line(3, $"[Client] {id}: Started render thread for {info.id.session}/{info.id.elementId}")
@@ -114,7 +109,7 @@ type internal RenderClient(app: IMutableApp,
                                     time       = MicroTime.Now
                                     clearColor = c4f request.background
                                 }
-                                |> RenderClientInfo.withState getState
+                                |> RenderClientInfo.withState createInfo.server.getState
 
                             let data = renderTask.Run(token, info)
 
@@ -163,28 +158,7 @@ type internal RenderClient(app: IMutableApp,
     member _.RenderTime = renderTask.RenderTime
     member _.CompressTime = renderTask.CompressTime
 
-    member _.Revive(newInfo : RenderClientCreateInfo) =
-        if Interlocked.Exchange(&disposed, 0) = 1 then
-            Log.line $"[Client] {id}: Revived"
-            createInfo <- newInfo
-            renderTask <- newRenderTask id newInfo getContent
-            subscription <- subscribe()
-            renderThread <- Thread(ThreadStart(renderLoop), IsBackground = true, Name = $"RenderClient ({createInfo.id.session})")
-
-    member _.Dispose() =
-        if Interlocked.Exchange(&disposed, 1) = 0 then
-            running <- false
-            MVar.put requestedImage ImageRequest.empty
-            renderThread.Join()
-            renderThread <- null
-            renderTask.Dispose()
-            subscription.Dispose()
-            frameCount <- 0
-            roundTripTime.Reset()
-            invalidateTime.Reset()
-            createInfo.socket.Dispose()
-
-    member this.Run =
+    member this.Run() =
         running <- true
         renderThread.Start()
 
@@ -252,12 +226,15 @@ type internal RenderClient(app: IMutableApp,
                 | exn ->
                     Log.error $"[Client] {id}: Socket I/O failed: {exn}"
 
-            this.Dispose()
+            running <- false
+            MVar.put requestedImage ImageRequest.empty
+            renderThread.Join()
+            renderThread <- null
+            renderTask.Dispose()
+            subscription.Dispose()
+
             Log.line $"[Client] {id}: Stopped"
         }
-
-    interface IDisposable with
-        member this.Dispose() = this.Dispose()
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal RenderServer =
@@ -287,58 +264,32 @@ module internal RenderServer =
                     frameTime      = this.FrameTime.TotalSeconds
                 }
 
-    let empty (useGpuCompression: bool) (runtime: IRuntime) =
-        let compressor =
-            if useGpuCompression then new JpegCompressor(runtime) |> ValueSome
-            else ValueNone
-
-        {
-            runtime        = runtime
-            rendered       = fun _ -> ()
-            content        = fun _ -> ValueNone
-            getState       = fun _ -> ValueNone
-            compressor     = compressor
-        }
-
-    let withState (getState: RenderClientInfo -> RenderState) (server: RenderServer) =
-        { server with getState = getState >> ValueSome }
-
-    let withContent (getContent: string -> Scene voption) (server: RenderServer) =
-        { server with content = getContent }
-
-    let addScenes (findScene: string -> Scene voption) (server: RenderServer) =
-        { server with content = fun n -> findScene n |> ValueOption.orElseWith (fun () -> server.content n) }
-
-    let addScene (name: string) (scene: Scene) (server: RenderServer) =
-        { server with content = fun n -> if n = name then ValueSome scene else server.content n }
-
-    let add (name: string) (create: RenderClientValues -> IRenderTask) (server: RenderServer) =
-        addScene name (Scene.custom create) server
-
     let toWebPart (http: IHttpBackend<'HttpContext, 'HttpHandler>) (app: IMutableApp) (server: RenderServer) =
         let (>=>) a b = http.compose a b
 
-        let clients = ConcurrentDictionary<RenderClientId, Lazy<RenderClient>>()
-        let signatures = ConcurrentDictionary<int, Lazy<IFramebufferSignature>>()
+        let clientCount = new CountdownEvent(1)
+        let clients     = Dictionary<RenderClientId, RenderClient>()
+        let signatures  = Dictionary<int, IFramebufferSignature>()
+        let scenes      = Dictionary<Scene * IFramebufferSignature, ConcreteScene>()
 
         let getSignature (samples: int) =
-            signatures.GetOrAdd(samples, fun samples ->
-                lazy server.runtime.CreateFramebufferSignature(
-                     [
-                         DefaultSemantic.Colors, TextureFormat.Rgba8
-                         DefaultSemantic.DepthStencil, TextureFormat.Depth24Stencil8
-                     ],
-                     samples
+            use _ = signatures.Locked
+            signatures.GetCreate(samples, fun samples ->
+                server.runtime.CreateFramebufferSignature(
+                    [
+                        DefaultSemantic.Colors, TextureFormat.Rgba8
+                        DefaultSemantic.DepthStencil, TextureFormat.Depth24Stencil8
+                    ],
+                    samples
                 )
-            ).Value
+            )
 
-        let getState =
-            server.getState >> ValueOption.defaultValue RenderState.identity
-
-        let content signature name  =
-            match server.content name with
-            | ValueSome scene -> scene.GetConcreteScene(signature)
-            | _ -> Scene.empty.GetConcreteScene(signature)
+        let getScene signature name =
+            let scene = server.getScene name
+            use _ = scenes.Locked
+            scenes.GetCreate((scene, signature), fun (scene, signature) ->
+                new ConcreteScene(scene, signature)
+            )
 
         let render (targetId: string) (socket: IWebSocket) (context: 'HttpContext) : Task =
             let args = http.requestQueryParams context
@@ -377,41 +328,55 @@ module internal RenderServer =
 
             let clientId = { session = sessionId; elementId = targetId }
 
+            let signature = getSignature samples
+
             let createInfo =
                 {
-                    server          = server
                     id              = clientId
-                    sceneName       = sceneName
-                    samples         = samples
-                    targetQuality   = { RenderQuality.full with quality = quality }
+                    server          = server
                     socket          = socket
+                    signature       = signature
+                    sceneName       = sceneName
+                    getScene        = getScene
                     useMapping      = useMapping
-                    getSignature    = getSignature
+                    targetQuality   = { RenderQuality.full with quality = quality }
                 }
 
-            let client =
-                clients.GetOrAdd(clientId, fun _ ->
-                    lazy (
-                        Log.line "[Server] Created client for %A/%s, mapping %s" sessionId targetId (if useMapping then "enabled" else "disabled")
-                        new RenderClient(app, createInfo, getState, content)
-                    )
-                ).Value
+            let client = RenderClient(app, createInfo)
 
-            client.Revive(createInfo)
-            client.Run
+            lock clients (fun _ ->
+                clients.[clientId] <- client
+            )
+
+            task {
+                clientCount.AddCount()
+
+                try do! client.Run()
+                finally
+                    lock clients (fun _ ->
+                        match clients.TryGetValue clientId with
+                        | true, oldClient when oldClient = client -> clients.Remove clientId |> ignore
+                        | _ -> ()
+                    )
+
+                    socket.Dispose()
+                    clientCount.Signal() |> ignore
+            }
 
         let statistics =
             http.withContext (fun context ->
                 let args = http.requestQueryParams context
 
                 let clients =
-                    match Map.tryFindV "session" args, Map.tryFindV "name" args with
-                    | ValueSome (Guid sid), ValueSome name ->
-                        match clients.TryGetValue { session = sid; elementId = name } with
-                        | true, c -> [| c.Value |]
-                        | _ -> [||]
-                    | _ ->
-                        clients.Values |> Seq.map _.Value |> Seq.toArray
+                    lock clients (fun _ ->
+                        match Map.tryFindV "session" args, Map.tryFindV "name" args with
+                        | ValueSome (Guid sid), ValueSome name ->
+                            match clients.TryGetValue { session = sid; elementId = name } with
+                            | true, client -> [| client |]
+                            | _ -> [||]
+                        | _ ->
+                            clients.Values |> Seq.toArray
+                    )
 
                 let stats = clients |> Array.map _.GetStatistics() |> Array.filter (fun s -> s.frameCount > 0)
                 let json = Pickler.json.PickleToString stats
@@ -432,8 +397,6 @@ module internal RenderServer =
 
                 match Map.tryFindV "w" args, Map.tryFindV "h" args with
                 | ValueSome (Int w), ValueSome (Int h) when w > 0 && h > 0 ->
-                    //let scene = content signature sceneName
-
                     let clearColor =
                         match Map.tryFindV "background" args with // fmt: C4f.Parse("[1.0,2.0,0.2,0.2]")
                         | ValueSome (C4f c) -> c
@@ -449,13 +412,12 @@ module internal RenderServer =
                             signature  = signature
                             sceneName  = sceneName
                             size       = V2i(w, h)
-                            samples    = samples
                             time       = MicroTime.Now
                             clearColor = clearColor
                             quality    = RenderQuality.full
                             state      = RenderState.identity
                         }
-                        |> RenderClientInfo.withState getState
+                        |> RenderClientInfo.withState server.getState
 
                     let respondOK (mime : string) (task : ClientRenderTask)  =
                         let data =
@@ -468,11 +430,11 @@ module internal RenderServer =
 
                     match Map.tryFindV "fmt" args with
                     | ValueSome "jpg" | ValueNone ->
-                        use t = new JpegClientRenderTask(server.runtime, server.compressor, 0, content, RenderQuality.full) :> ClientRenderTask
+                        use t = new JpegClientRenderTask(server.runtime, server.compressor, 0, getScene, RenderQuality.full) :> ClientRenderTask
                         t |> respondOK "image/jpeg"
 
                     | ValueSome "png" ->
-                        use t = new PngClientRenderTask(server.runtime, 0, content) :> ClientRenderTask
+                        use t = new PngClientRenderTask(server.runtime, 0, getScene) :> ClientRenderTask
                         t |> respondOK "image/png"
 
                     | ValueSome fmt ->
@@ -481,6 +443,24 @@ module internal RenderServer =
                 | _ ->
                     http.badRequest "No width / height specified"
             )
+
+        app.Register {
+            new IDisposable with
+                member x.Dispose() =
+                    clientCount.Signal() |> ignore
+                    clientCount.Wait()
+                    clientCount.Dispose()
+
+                    lock signatures (fun _ ->
+                        for KeyValue(_, s) in signatures do s.Dispose()
+                        signatures.Clear()
+                    )
+
+                    lock scenes (fun _ ->
+                       for KeyValue(_, s) in scenes do s.Dispose()
+                       scenes.Clear()
+                    )
+        }
 
         http.choose [
             http.routef "/render/%s" (render >> http.handShake)

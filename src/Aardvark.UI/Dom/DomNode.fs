@@ -49,7 +49,7 @@ type DomNode<'msg>() =
                 member x.Empty e    = DomNode.Empty().WithAttributesFrom e
                 member x.Inner n    = DomNode.Element(n.Tag, n.Namespace, n.Attributes, n.Children).WithAttributesFrom n
                 member x.Void n     = DomNode.Element(n.Tag, n.Namespace, n.Attributes).WithAttributesFrom n
-                member x.Scene n    = DomNode.Scene(n.Attributes, n.Scene, n.GetClientState).WithAttributesFrom n
+                member x.Scene n    = DomNode.Scene(n.Attributes, n.Scene, n.GetState).WithAttributesFrom n
                 member x.Text n     = DomNode.Text(n.Tag, n.Namespace, n.Attributes, n.Text).WithAttributesFrom n
                 member x.Page n     = DomNode.Page(n.Content).WithAttributesFrom n
                 member x.SubApp n   = DomNode.SubApp(n.App).WithAttributesFrom n
@@ -63,7 +63,7 @@ type DomNode<'msg>() =
                 member x.Empty e    = DomNode.Empty().WithAttributesFrom e
                 member x.Inner n    = DomNode.Element(n.Tag, n.Namespace, n.Attributes ||| additional, n.Children).WithAttributesFrom n
                 member x.Void n     = DomNode.Element(n.Tag, n.Namespace, n.Attributes ||| additional).WithAttributesFrom n
-                member x.Scene n    = DomNode.Scene(n.Attributes ||| additional, n.Scene, n.GetClientState).WithAttributesFrom n
+                member x.Scene n    = DomNode.Scene(n.Attributes ||| additional, n.Scene, n.GetState).WithAttributesFrom n
                 member x.Text n     = DomNode.Text(n.Tag, n.Namespace, n.Attributes ||| additional, n.Text).WithAttributesFrom n
                 member x.Page n     = DomNode.Page(n.Content).WithAttributesFrom n
                 member x.SubApp n   = DomNode.SubApp(n.App).WithAttributesFrom n
@@ -131,11 +131,11 @@ and VoidNode<'msg>(tag : string, ns : string, attributes : AttributeMap<'msg>) =
     override x.Visit v = v.Void x
     override x.NodeTag = Some tag
 
-and SceneNode<'msg>(attributes : AttributeMap<'msg>, scene : Scene, getClientState : RenderClientInfo -> RenderState) =
+and SceneNode<'msg>(attributes : AttributeMap<'msg>, scene : Scene, getState : RenderClientInfo -> RenderState) =
     inherit DomNode<'msg>()
     member x.Attributes = attributes
     member x.Scene = scene
-    member x.GetClientState i = getClientState i
+    member x.GetState i = getState i
     override x.Visit v = v.Scene x
     override x.NodeTag = None
 

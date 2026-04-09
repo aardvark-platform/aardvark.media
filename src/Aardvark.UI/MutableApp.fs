@@ -131,10 +131,6 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
     member this.UpdateSync(_: Guid, messages: 'msg seq) =
         processMessages [ { messages = messages; event = null } ]
 
-    member _.AcquireLock() =
-        Monitor.Enter(updateLock)
-        new MutableAppLock(updateLock)
-
     member _.Register(resource: IDisposable) =
         lock resources (fun _ -> resources.Push resource)
 
@@ -157,7 +153,6 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
         member this.UpdateLock = this.UpdateLock
         member this.CancellationToken = this.CancellationToken
         member this.Update(session, messages) = this.Update(session, messages)
-        member this.AcquireLock() = this.AcquireLock()
         member this.Register(resource) = this.Register resource
         member this.Dispose() = this.Dispose()
 
@@ -231,10 +226,11 @@ module MutableApp =
         let renderServer =
             {
                 runtime = runtime
-                content = fun sceneName ->
+
+                getScene = fun sceneName ->
                     match sceneStore.TryGetValue sceneName with
-                    | true, info -> ValueSome info.scene
-                    | _ -> ValueNone
+                    | true, info -> info.scene
+                    | _ -> Scene.empty
 
                 getState = fun clientInfo ->
                     match sceneStore.TryGetValue clientInfo.sceneName with
@@ -246,9 +242,9 @@ module MutableApp =
                         | _ ->
                             ()
 
-                        ValueSome <| info.getState clientInfo
+                        info.getState clientInfo
                     | _ ->
-                        ValueNone
+                        RenderState.identity
 
                 compressor = compressor
 
@@ -313,7 +309,7 @@ module MutableApp =
                     Report.Line(3, $"[Media] Started UI update thread for session {sessionId}")
 
                     while MVar.take update && not cancellationToken.IsCancellationRequested do
-                        use _ = app.AcquireLock()
+                        use _ = app.UpdateLock.Locked
 
                         sender.EvaluateAlways AdaptiveToken.Top (fun token ->
                             if Config.shouldTimeJsCodeGeneration then

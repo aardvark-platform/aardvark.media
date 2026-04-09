@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.UI
 
+open System
 open System.Collections.Concurrent
 open System.Threading
 
@@ -9,7 +10,6 @@ open FSharp.Data.Adaptive
 
 [<AbstractClass>]
 type Scene() =
-    let cache = ConcurrentDictionary<IFramebufferSignature, ConcreteScene>()
     let clientInfos = ConcurrentDictionary<RenderClientId, unit -> RenderClientInfo>()
 
     member internal _.AddClientInfo(id: RenderClientId, getter: unit -> RenderClientInfo) =
@@ -22,9 +22,6 @@ type Scene() =
         match clientInfos.TryGetValue id with
         | true, getter -> ValueSome <| getter()
         | _ -> ValueNone
-
-    member internal this.GetConcreteScene(signature: IFramebufferSignature) =
-        cache.GetOrAdd(signature, fun signature -> ConcreteScene(this, signature))
 
     abstract member Compile : RenderClientValues -> IRenderTask
 
@@ -45,7 +42,6 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
                         task <- None
                         Some t
                     | None ->
-                        Log.error "[Scene] Invalid state"
                         None
                 else
                     None
@@ -107,6 +103,16 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
         )
 
     member _.FramebufferSignature = signature
+
+    member  _.Dispose() =
+        lock this (fun _ ->
+            if refCount = 0 then
+                timer.Change(Timeout.Infinite, Timeout.Infinite) |> ignore
+                destroy()
+        )
+
+    interface IDisposable with
+        member this.Dispose() = this.Dispose()
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Scene =

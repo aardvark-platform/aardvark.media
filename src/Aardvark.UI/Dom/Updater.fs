@@ -586,7 +586,7 @@ module internal Updaters =
         override this.PerformUpdate(token : AdaptiveToken, state : UpdateState<'msg>, self : JSExpr) =
             if initial then
                 initial <- false
-                state.scenes.[this.Id] <- { scene = e.Scene; messages = ValueSome sceneMessages; getState = e.GetClientState }
+                state.scenes.[this.Id] <- { scene = e.Scene; messages = ValueSome sceneMessages; getState = e.GetState }
 
             let id = this.Id
             att.Update(token, state, id, self)

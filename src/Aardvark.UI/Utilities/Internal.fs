@@ -31,6 +31,21 @@ module internal ``Internal Utilities`` =
             this.AddCount count
             new CountdownEventDisposable(this, count)
 
+    [<Struct>]
+    type LockDisposable(lockObj: obj) =
+        member _.Dispose() = Monitor.Exit lockObj
+        interface IDisposable with member this.Dispose() = this.Dispose()
+
+    type Object with
+        member this.Locked =
+            let mutable lockTaken = false
+            try
+                Monitor.Enter(this, &lockTaken)
+                new LockDisposable(this)
+            with _ ->
+                if lockTaken then Monitor.Exit this
+                reraise()
+
     type Encoding with
         member inline this.GetString(data: ArraySegment<byte>) = this.GetString(data.Array, data.Offset, data.Count)
         member inline this.TryGetString(data: ArraySegment<byte>) = try this.GetString(data) with _ -> null

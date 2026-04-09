@@ -3,6 +3,7 @@
 if (!aardvark) {
     aardvark = { initialized: false };
     document.aardvark = aardvark;
+    window.aardvark = aardvark;
 }
 
 function getTopAardvark() {
