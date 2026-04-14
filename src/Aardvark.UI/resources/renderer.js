@@ -22,7 +22,7 @@
 
         if (useMapping) {
             this.canvas = document.createElement("canvas");
-            this.context = this.canvas.getContext("2d");
+            this.context = this.canvas.getContext("2d", { willReadFrequently: true }); // Explicitly disable GPU acceleration
         } else {
             this.canvas = document.createElement("img");
         }
