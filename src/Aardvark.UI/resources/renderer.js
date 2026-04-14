@@ -10,7 +10,7 @@
         this.showLoader          = this.div.getAttribute("showLoader") !== "false";
         this.useMapping          = this.div.getAttribute("useMapping") !== "false";
         this.onRendered          = this.div.getAttribute("onRendered");
-        this.renderAlways        = !!this.div.getAttribute("data-renderalways");
+        this.renderAlways        = this.div.getAttribute("data-renderalways") === "true";
         this.customLoaderImg     = this.div.getAttribute("data-customLoaderImg");
         this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
 
@@ -99,29 +99,35 @@
 
         this.div.oncontextmenu = function (e) { e.preventDefault(); };
 
-        const $self = $(this.div);
-        let w = $self.width();
-        let h = $self.height();
-        let currentColor = { r: 0, g: 0, b: 0 };
-
-        const check = function () {
-            const cw = $self.width();
-            const ch = $self.height();
-
-            let color = { r: 0, g: 0, b: 0 };
-            const bg = window.getComputedStyle($self.get(0)).backgroundColor;
-            if (bg) {
-                color = new RGBColor(bg);
+        if (!this.renderAlways) {
+            const onSizeChanged = function (entries) {
+                for (const entry of entries) {
+                    const w = entry.borderBoxSize[0].inlineSize;
+                    const h = entry.borderBoxSize[0].blockSize;
+                    self.requestImage({ width: w, height: h });
+                }
             }
-            if (cw !== w || ch !== h || currentColor.r !== color.r || currentColor.g !== color.g || currentColor.b !== color.b) {
-                w = cw;
-                h = ch;
-                currentColor = color;
-                self.requestImage();
+
+            this.resizeObserver = new ResizeObserver(onSizeChanged);
+            this.resizeObserver.observe(this.div);
+
+            let currentColor = { r: 0, g: 0, b: 0 };
+
+            const onStyleChanged = function (entries) {
+                for (const mutation of entries) {
+                    const bg = mutation.target.style.backgroundColor;
+                    const color = bg ? new RGBColor(bg) : { r: 0, g: 0, b: 0 };
+
+                    if (currentColor.r !== color.r || currentColor.g !== color.g || currentColor.b !== color.b) {
+                        currentColor = color;
+                        self.requestImage({ color: currentColor })
+                    }
+                }
             }
-        };
-        check();
-        setInterval(check, 50);
+
+            this.mutationObserver = new MutationObserver(onStyleChanged);
+            this.mutationObserver.observe(this.div, { attributes: true, attributeFilter: ["style"] });
+        }
     }
 
     getState() {
@@ -180,6 +186,16 @@
             delete this.socket;
             socket.close();
         }
+
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            delete this.resizeObserver;
+        }
+
+        if (this.mutationObserver) {
+            this.mutationObserver.disconnect();
+            delete this.mutationObserver;
+        }
     }
 
     send(data) {
@@ -232,22 +248,23 @@
             this.lastTime = now;
         }
 
-        if (now - this.lastTime > 1000.0) {
-            if (this.frameCount > 0) {
-                const dt = now - this.lastTime;
-                const cnt = this.frameCount;
-                this.lastTime = now;
-                this.frameCount = 0;
-                const fps = 1000.0 * cnt / dt;
-                this.overlay.innerText = fps.toFixed(2) + " fps";
-                if (this.overlay.style.opacity < 0.5) {
-                    $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
-                }
+        const deltaTime = now - this.lastTime;
+        if (deltaTime < 1000) {
+            return;
+        }
+
+        if (this.frameCount > 0) {
+            const count = this.frameCount;
+            this.lastTime = now;
+            this.frameCount = 0;
+            const fps = 1000.0 * count / deltaTime;
+            this.overlay.innerText = fps.toFixed(2) + " fps";
+            if (this.overlay.style.opacity < 0.5) {
+                $(this.overlay).animate({ opacity: 1.0 }, 400, "swing");
             }
-            else {
-                if (this.overlay.style.opacity > 0.5) {
-                    $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
-                }
+        } else {
+            if (this.overlay.style.opacity > 0.5) {
+                $(this.overlay).animate({ opacity: 0.0 }, 400, "swing");
             }
         }
     }
@@ -283,8 +300,7 @@
                     // TODO: what if not visible??
                     this.requestImage();
                 }
-            }
-            else if (data.name && data.size && data.length) {
+            } else if (data.name && data.size && data.length) {
                 this.updateOverlay();
                 this.frameCount++;
 
@@ -293,8 +309,7 @@
                         this.mapping.close();
                         this.mapping = getTopAardvark().openMapping(data.name, data.length);
                     }
-                }
-                else {
+                } else {
                     this.mapping = getTopAardvark().openMapping(data.name, data.length);
                 }
 
@@ -305,8 +320,7 @@
                         this.frameBufferSize = data.size;
                         this.frameBufferLength = len;
                     }
-                }
-                else {
+                } else {
                     const len = data.size.X * data.size.Y * 4;
                     this.frameBuffer = new Uint8ClampedArray(len);
                     this.frameBufferSize = data.size;
@@ -325,11 +339,14 @@
         }
     }
 
-    requestImage() {
-        const rect = this.div.getBoundingClientRect();
+    requestImage(args) {
+        const rect = (args?.width !== undefined && args?.height !== undefined) ? args : this.div.getBoundingClientRect();
 
-        const bg = window.getComputedStyle(this.div).backgroundColor;
-        const color = bg ? new RGBColor(bg) : { r: 0, g: 0, b: 0 };
+        let color = args?.color;
+        if (color === undefined) {
+            const bg = args?.color ?? window.getComputedStyle(this.div).backgroundColor;
+            color = bg ? new RGBColor(bg) : { r: 0, g: 0, b: 0 };
+        }
 
         const message = {
             case: "RequestImage",
