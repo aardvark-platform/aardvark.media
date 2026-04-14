@@ -244,39 +244,6 @@ module ArcBallController =
 
                 { model with view = cam; dragStart = pos; orbitCenter = center }
 
-    [<Obsolete>]
-    let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
-        onEvent 
-            "onmousedown" 
-            ["event.clientX"; "event.clientY"; "event.which"; "event.getModifierState('Control')" ]
-            (fun args ->
-                match args with
-                    | x :: y :: b :: isControl :: _ ->
-                        let x = int (float x)
-                        let y = int (float y)
-                        let b = MouseButtons.ofEventStr b
-                        let modKey = if b = MouseButtons.Left && isControl = "true" then MouseButtons.Right else b
-                        cb modKey (V2i(x,y))
-                    | _ ->
-                        failwith "asdasd"
-            )
-
-    (*let onMouseUp (cb : MouseButtons -> V2i -> 'msg) = 
-        onEvent 
-            "onmouseup" 
-            ["event.clientX"; "event.clientY"; "event.which"; "event.getModifierState('Control')" ]
-            (fun args ->
-                match args with
-                    | x :: y :: b :: isControl :: _ ->
-                        let x = int (float x)
-                        let y = int (float y)
-                        let b = Aardvark.UI.Helpers.button b
-                        let modKey = if b = MouseButtons.Left && isControl = "true" then MouseButtons.Right else b
-                        cb modKey (V2i(x,y))
-                    | _ ->
-                        failwith "asdasd"
-            )*)
-
     let attributes (state : AdaptiveCameraControllerState) (f : Message -> 'msg) =
         AttributeMap.ofListCond [
             always (onBlur (fun _ -> f Blur))

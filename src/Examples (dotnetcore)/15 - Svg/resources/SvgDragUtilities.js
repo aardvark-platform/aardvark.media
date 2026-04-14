@@ -145,6 +145,10 @@ function getScreenCTM(doc) {
     return sCTM
 }
 
+function toFixedV2d(v) {
+    return { X: v.x.toFixed(10), Y: v.y.toFixed(10) };
+}
+
 function mouseUp(documentElement, evt) {
     if (draggingElement) {
 

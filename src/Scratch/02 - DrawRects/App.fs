@@ -110,12 +110,12 @@ module ClientApp =
     let myMouseCbRelButton (evtName : string) (containerClass : string)  (cb : MouseButtons -> V2d -> 'msg) = 
         onEvent' 
             evtName
-            [sprintf "relativeCoords2(event,'%s')" containerClass; "event.which"] 
+            [sprintf "relativeCoords2(event,'%s')" containerClass; "event.button"]
             (fun args ->
                 match args with
                     | x :: b :: _ ->
                         let v : Option<V2d> = Pickler.json.UnPickleOfString x
-                        let b : MouseButtons =  b |> MouseButtons.ofEventStr
+                        let b : MouseButtons =  b |> MouseButtons.parseEventButton
                         match v with
                             | Some v -> cb b v |> Seq.singleton
                             | None -> Seq.empty

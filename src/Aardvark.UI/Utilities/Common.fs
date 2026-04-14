@@ -15,15 +15,45 @@ type RayPartExtensions =
 
 module MouseButtons =
 
-    let ofEvent (button: int) =
+    /// See: https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
+    let ofEventButton (button: int) =
         match button with
-        | 1 -> MouseButtons.Left
-        | 2 -> MouseButtons.Middle
-        | 3 -> MouseButtons.Right
+        | 0 -> MouseButtons.Left
+        | 1 -> MouseButtons.Middle
+        | 2 -> MouseButtons.Right
         | _ -> MouseButtons.None
 
-    let ofEventStr (button: string) =
-        button |> float |> int |> ofEvent
+    /// See: https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
+    let toEventButton (button: MouseButtons) =
+        match button with
+        | MouseButtons.Left   -> 0
+        | MouseButtons.Middle -> 1
+        | MouseButtons.Right  -> 2
+        | _ -> 0
+
+    /// See: https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
+    let parseEventButton (button: string) =
+        button |> float |> int |> ofEventButton
+
+    /// See: https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/buttons
+    let ofEventButtons (buttons: int) =
+        let mutable result = MouseButtons.None
+        if buttons &&& 1 = 1 then &result |||= MouseButtons.Left
+        if buttons &&& 2 = 2 then &result |||= MouseButtons.Right
+        if buttons &&& 4 = 4 then &result |||= MouseButtons.Middle
+        result
+
+    /// See: https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/buttons
+    let parseEventButtons (buttons: string) =
+        buttons |> float |> int |> ofEventButtons
+
+    /// See: https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/buttons
+    let toEventButtons (buttons: MouseButtons) =
+        let mutable result = 0
+        if buttons.HasFlag MouseButtons.Left then &result |||= 1
+        if buttons.HasFlag MouseButtons.Right then &result |||= 2
+        if buttons.HasFlag MouseButtons.Middle then &result |||= 4
+        result
 
 [<AutoOpen>]
 module ``Path Utilities`` =

@@ -27,13 +27,6 @@ module ``RenderControl DomNode`` =
         let needingButton = Set.ofList [SceneEventKind.Click; SceneEventKind.DoubleClick; SceneEventKind.Down; SceneEventKind.Up]
         fun k -> Set.contains k needingButton
 
-    let private button (code : int) =
-        match code with
-        | 1 -> MouseButtons.Left
-        | 2 -> MouseButtons.Middle
-        | 3 -> MouseButtons.Right
-        | _ -> MouseButtons.None
-
     type DomNode with
         static member RenderControl(attributes : AttributeMap<'msg>, processor : SceneEventProcessor<'msg>,
                                     getState : RenderClientInfo -> RenderState, scene : Scene) =
@@ -68,17 +61,17 @@ module ``RenderControl DomNode`` =
 
             let rayEvent (includeButton : bool) (kind : SceneEventKind) =
                 let args =
-                    if includeButton then ["event.offsetX"; "event.offsetY"; "event.altKey"; "event.shiftKey"; "event.ctrlKey"; "event.which"]
+                    if includeButton then ["event.offsetX"; "event.offsetY"; "event.altKey"; "event.shiftKey"; "event.ctrlKey"; "event.button"]
                     else ["event.offsetX"; "event.offsetY"; "event.altKey"; "event.shiftKey"; "event.ctrlKey" ]
 
                 {
                     clientSide = fun send id -> send id args + ";"
                     serverSide = fun session id args ->
                         match args with
-                        | x :: y :: alt :: shift :: ctrl :: which :: _ ->
+                        | x :: y :: alt :: shift :: ctrl :: buttons :: _ ->
                             let x = round (float x) |> int
                             let y = round (float y) |> int
-                            let button = int which |> button
+                            let button = MouseButtons.parseEventButton buttons
                             let alt = Boolean.Parse alt
                             let shift = Boolean.Parse shift
                             let ctrl = Boolean.Parse ctrl

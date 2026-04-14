@@ -170,13 +170,13 @@ module Events =
     let onMouseDown (cb : MouseButtons -> V2i -> 'msg) = 
         onEvent 
             "onmousedown" 
-            ["event.clientX"; "event.clientY"; "event.which"] 
+            ["event.clientX"; "event.clientY"; "event.button"]
             (fun args ->
                 match args with
                     | x :: y :: b :: _ ->
                         let x = int (float x)
                         let y = int (float y)
-                        let b = MouseButtons.ofEventStr b
+                        let b = MouseButtons.parseEventButton b
                         cb b (V2i(x,y))
                     | _ ->
                         failwith "asdasd"
@@ -185,13 +185,13 @@ module Events =
     let onMouseUp (cb : MouseButtons -> V2i -> 'msg) = 
         onEvent 
             "onmouseup" 
-            ["event.clientX"; "event.clientY"; "event.which"] 
+            ["event.clientX"; "event.clientY"; "event.button"]
             (fun args ->
                 match args with
                     | x :: y :: b :: _ ->
                         let x = int (float x)
                         let y = int (float y)
-                        let b = MouseButtons.ofEventStr b
+                        let b = MouseButtons.parseEventButton b
                         cb b (V2i(x,y))
                     | _ ->
                         failwith "asdasd"
@@ -303,45 +303,55 @@ module Events =
         k, m |> AVal.map (function true -> Some v | false -> None)
 
 
-    let internal onMouseRel (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> 'msg) =
+    let private onMouseRel (kind : string) (needButton : bool) (cb : MouseButtons -> V2d -> 'msg) =
+        let eventButton, parseEventButton =
+            if needButton then
+                "button",  MouseButtons.parseEventButton
+            else
+                "buttons", MouseButtons.parseEventButtons
+
         kind, AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
                     "var x = (event.clientX - rect.left) / rect.width"
                     "var y = (event.clientY - rect.top) / rect.height"
-                    send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
-                        
+                    send src [$"event.{eventButton}"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
                 ]
             serverSide = fun client src args -> 
                 match args with
-                    | which :: pos :: _ ->
-                        let v : V2d = Pickler.json.UnPickleOfString pos
-                        let button = if needButton then MouseButtons.ofEventStr which else MouseButtons.Left
-                        Seq.singleton (f button v)
-                    | _ ->
-                        Seq.empty
+                | buttons :: pos :: _ ->
+                    let v : V2d = Pickler.json.UnPickleOfString pos
+                    let button = parseEventButton buttons
+                    Seq.singleton (cb button v)
+                | _ ->
+                    Seq.empty
         }
 
-    let internal onMouseAbs (kind : string) (needButton : bool) (f : MouseButtons -> V2d -> V2d -> 'msg) =
+    let private onMouseAbs (kind : string) (needButton : bool) (cb : MouseButtons -> V2d -> V2d -> 'msg) =
+        let eventButton, parseEventButton =
+            if needButton then
+                "button",  MouseButtons.parseEventButton
+            else
+                "buttons", MouseButtons.parseEventButtons
+
         kind, AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
                     "var rect = getBoundingClientRect(event.target)"
                     "var x = (event.clientX - rect.left)"
                     "var y = (event.clientY - rect.top)"
-                    send src ["event.which"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"; "{ X: rect.width.toFixed(10), Y: rect.height.toFixed(10) }"]
-                        
+                    send src [$"event.{eventButton}"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"; "{ X: rect.width.toFixed(10), Y: rect.height.toFixed(10) }"]
                 ]
             serverSide = fun client src args -> 
                 match args with
-                    | which :: pos :: size :: _ ->
-                        let pos : V2d = Pickler.json.UnPickleOfString pos
-                        let size : V2d = Pickler.json.UnPickleOfString size
-                        let button = if needButton then MouseButtons.ofEventStr which else MouseButtons.Left
-                        Seq.singleton (f button pos size)
-                    | _ ->
-                        Seq.empty
+                | buttons :: pos :: size :: _ ->
+                    let pos : V2d = Pickler.json.UnPickleOfString pos
+                    let size : V2d = Pickler.json.UnPickleOfString size
+                    let button = parseEventButton buttons
+                    Seq.singleton (cb button pos size)
+                | _ ->
+                    Seq.empty
         }
 
     let onMouseDownAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
@@ -355,11 +365,9 @@ module Events =
 
     let onMouseClickAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
         onMouseAbs "onclick" true f
-        
+
     let onMouseDoubleClickAbs (f : MouseButtons -> V2d -> V2d -> 'msg) =
         onMouseAbs "ondblclick" true f
-
-
 
     let onMouseDownRel (f : MouseButtons -> V2d -> 'msg) =
         onMouseRel "onmousedown" true f
@@ -408,32 +416,44 @@ module Events =
             | "pen" -> Pen
             | _ -> failwith $"PointerType '{str}' not supported"
 
-    let onPointerEventModifiers (name: string) (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>)
+    let onPointerEventModifiers (name: string) (needButton : bool) (preventDefault : Option<MouseButtons>) (useCapture : Option<bool>)
                                 (cb : PointerType -> KeyModifiers -> MouseButtons -> V2i -> 'msg) =
+        let eventButton, parseEventButton, toEventButton =
+            if needButton then
+                "button",  MouseButtons.parseEventButton,  MouseButtons.toEventButton
+            else
+                "buttons", MouseButtons.parseEventButtons, MouseButtons.toEventButtons
+
         name, AttributeValue.Event {
-                clientSide = fun send src -> 
-                    String.concat ";" [
-                        yield "var rect = getBoundingClientRect(this)"
-                        yield "var x = (event.clientX - rect.left)"
-                        yield "var y = (event.clientY - rect.top)"
-                        match preventDefault with | None -> () | Some i -> yield (sprintf "if(event.which==%d){event.preventDefault();};" i)
-                        match useCapture with | None -> () | Some b -> if b then yield "this.setPointerCapture(event.pointerId)" else yield "this.releasePointerCapture(event.pointerId)"
-                        yield send src ["event.pointerType";"event.which"; "x|0"; "y|0"; "event.shiftKey"; "event.altKey"; "event.ctrlKey"]
+            clientSide = fun send src ->
+                String.concat ";" [
+                    "var rect = getBoundingClientRect(this)"
+                    "var x = (event.clientX - rect.left)"
+                    "var y = (event.clientY - rect.top)"
 
-                    ]
-                serverSide = fun client src args -> 
-                    match args with
-                        | pointertypestr :: which :: x :: y :: shift :: alt :: ctrl :: _ ->
-                            let v : V2i = V2i(int x, int y)
-                            let button = if needButton then MouseButtons.ofEventStr which else MouseButtons.None
-                            let modifiers = KeyModifiers.ofString shift alt ctrl
-                            let pointertype = PointerType.ofString pointertypestr
-                            Seq.singleton (cb pointertype modifiers button v)
-                        | _ ->
-                            Seq.empty
-            }
+                    match preventDefault with
+                    | Some b -> $"if(event.{eventButton}=={toEventButton b}){{event.preventDefault();}};"
+                    | _ -> ()
 
-    let onPointerEvent name (needButton : bool) (preventDefault : Option<int>) (useCapture : Option<bool>) (f : PointerType -> MouseButtons -> V2i -> 'msg) =
+                    match useCapture with
+                    | Some b -> if b then "this.setPointerCapture(event.pointerId)" else "this.releasePointerCapture(event.pointerId)"
+                    | _ -> ()
+
+                    send src ["event.pointerType";$"event.{eventButton}"; "x|0"; "y|0"; "event.shiftKey"; "event.altKey"; "event.ctrlKey"]
+                ]
+            serverSide = fun client src args ->
+                match args with
+                    | pointertypestr :: buttons :: x :: y :: shift :: alt :: ctrl :: _ ->
+                        let v : V2i = V2i(int x, int y)
+                        let button = parseEventButton buttons
+                        let modifiers = KeyModifiers.ofString shift alt ctrl
+                        let pointertype = PointerType.ofString pointertypestr
+                        Seq.singleton (cb pointertype modifiers button v)
+                    | _ ->
+                        Seq.empty
+        }
+
+    let onPointerEvent name (needButton : bool) (preventDefault : Option<MouseButtons>) (useCapture : Option<bool>) (f : PointerType -> MouseButtons -> V2i -> 'msg) =
         onPointerEventModifiers name needButton preventDefault useCapture (fun t _ b p -> f t b p)
 
     let onCapturedPointerDown preventDefault cb  =
