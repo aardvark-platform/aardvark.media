@@ -3,16 +3,37 @@
         this.id = id;
         this.div = document.getElementById(id);
 
-        this.scene               = this.div.getAttribute("data-scene") || id;
-        this.samples             = this.div.getAttribute("data-samples") || 1;
-        this.quality             = this.div.getAttribute("data-quality") || 80;
-        this.showFPS             = this.div.getAttribute("showFPS") === "true";
-        this.showLoader          = this.div.getAttribute("showLoader") !== "false";
-        this.useMapping          = this.div.getAttribute("useMapping") !== "false";
-        this.onRendered          = this.div.getAttribute("onRendered");
-        this.renderAlways        = this.div.getAttribute("data-renderalways") === "true";
-        this.customLoaderImg     = this.div.getAttribute("data-customLoaderImg");
-        this.customLoaderImgSize = this.div.getAttribute("data-customLoaderSize");
+        const getAttribute = input => {
+            const names = Array.isArray(input) ? input : [input];
+
+            for (const name of names) {
+                const value = this.div.getAttribute(name);
+                if (value !== null) return value;
+            }
+
+            return null;
+        }
+
+        const isTrue = input => {
+            const value = input?.toLowerCase()?.trim();
+            return value === "true" || value === "1";
+        }
+
+        const isFalse = input => {
+            const value = input?.toLowerCase()?.trim();
+            return value === "false" || value === "0";
+        }
+
+        this.scene               = getAttribute("data-scene") || id;
+        this.samples             = getAttribute("data-samples") || 1;
+        this.quality             = getAttribute("data-quality") || 80;
+        this.showFPS             = isTrue(getAttribute(["data-show-fps", "showFPS"]));
+        this.showLoader          = !isFalse(getAttribute(["data-show-loader", "showLoader"]));
+        this.useMapping          = !isFalse(getAttribute(["data-use-mapping", "useMapping"]));
+        this.onRendered          = getAttribute("onRendered");
+        this.renderAlways        = isTrue(getAttribute(["data-render-always", "data-renderalways"]));
+        this.customLoaderImg     = getAttribute("data-custom-loader-img");
+        this.customLoaderImgSize = getAttribute("data-custom-loader-size");
 
         this.buffer = [];
         this.loading = true;

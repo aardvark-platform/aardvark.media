@@ -21,6 +21,37 @@ module Attributes =
             serverSide = fun _ _ _ -> Seq.empty
         }
 
+    /// Attributes for render controls.
+    module RenderAttribute =
+
+        /// Background color (clear color) of the render control. Default is solid black.
+        let inline background (color: string) = style $"background: {color}"
+
+        /// Samples of the render control. Default is 1.
+        let inline samples (samples: int) = attribute "data-samples" <| string samples
+
+        /// JPEG quality of the render control image. Has no effect when mapping is used. Default is 80.
+        let inline quality (quality: int) = attribute "data-quality" <| string quality
+
+        /// If true, an overlay with the current frame rate will be displayed. Default is false.
+        let inline showFps (enabled: bool) = attribute "data-show-fps" <| string enabled
+
+        /// If true, an animated loader will be displayed until the first rendered frame is available. Default is true.
+        let inline showLoader (enabled: bool) = attribute "data-show-loader" <| string enabled
+
+        /// If true, rendered frames will be transferred to the client directly via shared memory. Default is true.
+        let inline useMapping (enabled: bool) = attribute "data-use-mapping" <| string enabled
+
+        /// If true, the client requests a new frame immediately after a frame has finished processing. Default is false.
+        let inline renderAlways (enabled: bool) = attribute "data-render-always" <| string enabled
+
+        /// Custom background image of the loader.
+        let inline customLoaderImage (image: string) = attribute "data-custom-loader-img" image
+
+        /// Custom background image size of the loader.
+        let inline customLoaderImageSize (size: string) = attribute "data-custom-loader-size" size
+
+
 module Operators =
     let inline (=>) (key: string) (value: string) : Attribute<'msg> = attribute key value
 
