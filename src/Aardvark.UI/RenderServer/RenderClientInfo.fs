@@ -9,7 +9,6 @@ type RenderQuality =
     {
         quality   : float
         scale     : float
-        framerate : float
     }
 
 module RenderQuality =
@@ -17,7 +16,6 @@ module RenderQuality =
         {
             quality = 90.0
             scale = 1.0
-            framerate = 60.0
         }
 
 type RenderState =

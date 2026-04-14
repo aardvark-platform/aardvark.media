@@ -71,7 +71,6 @@ type internal ClientRenderTask(runtime: IRuntime, client: int, getScene: IFrameb
 
     let renderTime = Stopwatch()
     let compressTime = Stopwatch()
-    let mutable frameCount = 0
 
     let getInfo() =
         { currentInfo with time = MicroTime.Now; token = AdaptiveToken.Top }
@@ -123,7 +122,6 @@ type internal ClientRenderTask(runtime: IRuntime, client: int, getScene: IFrameb
         let data = this.ProcessImage(output.Framebuffer, output.Color, info.quality)
         compressTime.Stop()
 
-        frameCount <- frameCount + 1
         data
 
     member this.Dispose() =
@@ -146,13 +144,11 @@ type internal ClientRenderTask(runtime: IRuntime, client: int, getScene: IFrameb
 
             renderTime.Reset()
             compressTime.Reset()
-            frameCount <- 0
         with exn ->
             Log.error $"[Client] {client}: Render task disposal failed: {exn}"
 
     member _.RenderTime = renderTime.MicroTime
     member _.CompressTime = compressTime.MicroTime
-    member _.FrameCount = frameCount
 
     interface IDisposable with
         member this.Dispose() = this.Dispose()

@@ -318,7 +318,6 @@
 
             if (data.Case === "Invalidate") {
                 if (!this.renderAlways) {
-                    // TODO: what if not visible??
                     this.requestImage();
                 }
             } else if (data.name && data.size && data.length) {
