@@ -45,10 +45,14 @@ module internal SocketOp =
 
             | Choice2Of2 (Error.InputDataError (status, message)) ->
                 let code = match status with Some status -> $" ({status})" | _ -> ""
-                return failwith $"[Suave] Input data error: {message}{code}"
+                return raise <| ConnectionException($"Input data error: {message}{code}")
 
             | Choice2Of2 (Error.ConnectionError message) ->
-                return failwith $"[Suave] Connection error: {message}"
+                // See: https://github.com/SuaveIO/suave/blob/v2.5.6/src/Suave/Sockets/TcpTransport.fs
+                if message.Contains "acceptArgs.AcceptSocket = null" then
+                    return raise <| ConnectionException(ConnectionError.Lost)
+                else
+                    return raise <| ConnectionException(message)
         }
 
 type internal WebSocket(socket: WebSocket.WebSocket) =
@@ -145,7 +149,7 @@ type HttpBackend private () =
                         return Choice1Of2 ()
 
                     with
-                    | :? OperationCanceledException ->
+                    | exn when (exn.GetBaseException() :? OperationCanceledException) ->
                         return Choice1Of2 ()
 
                     | :? SocketException as exn ->

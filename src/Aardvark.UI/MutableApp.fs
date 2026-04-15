@@ -282,33 +282,36 @@ module MutableApp =
 
                 let sender = AdaptiveObject.Create()
 
+                let mutable running = true
                 let update = MVar.create true
                 let subscription = sender.AddMarkingCallback(fun () -> MVar.put update true)
 
                 let mutable oldChannels : Set<string * string> = Set.empty
 
+                let handleConnectionError (message: string) (exn: Exception) =
+                    match ConnectionError.ofException exn with
+                    | ConnectionError.Canceled -> Report.Line(3, $"[Media] Stopping session {sessionId}")
+                    | ConnectionError.Closed   -> Report.Line(3, $"[Media] Connection for session {sessionId} closed")
+                    | ConnectionError.Lost     -> Report.Line(3, $"[Media] Connection for session {sessionId} lost")
+                    | _                        -> Log.warn $"[Media] {message}: {exn.GetBaseException().Message}"
+
                 let send (data: byte[]) =
-                    let rec send retries =
+                    let task =
                         task {
                             try
                                 cancellationToken.ThrowIfCancellationRequested()
                                 return! socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
-                            with
-                            | :? OperationCanceledException -> return ()
-                            | e ->
-                                Log.warn "[Media] Socket send failed: %s (retries=%d)" e.Message retries
-                                do! Task.Delay(100, cancellationToken)
-                                return! send (retries - 1)
+                            with exn ->
+                                handleConnectionError $"Sending update for session {sessionId} failed" exn
+                                Volatile.Write(&running, false)
                         }
-
-                    let task = send 10
-                    task.Result
+                    task.Wait()
 
                 let updateFunction () =
                     use _ = sessionCount.Acquire()
                     Report.Line(3, $"[Media] Started UI update thread for session {sessionId}")
 
-                    while MVar.take update && not cancellationToken.IsCancellationRequested do
+                    while MVar.take update && Volatile.Read &running && not cancellationToken.IsCancellationRequested do
                         use _ = app.UpdateLock.Locked
 
                         sender.EvaluateAlways AdaptiveToken.Top (fun token ->
@@ -409,13 +412,12 @@ module MutableApp =
                 updateThread.Start()
 
                 task {
-                    Report.Line(3, $"[Media] Created session {sessionId}")
+                    Log.line $"[Media] Created session {sessionId}"
                     use _ = sessionCount.Acquire()
 
-                    let mutable running = true
                     let buffer = SocketBuffer(128)
 
-                    while running && not cancellationToken.IsCancellationRequested do
+                    while Volatile.Read &running && not cancellationToken.IsCancellationRequested do
                         try
                             buffer.Position <- 0
 
@@ -454,7 +456,8 @@ module MutableApp =
                                             Log.error $"[Media] Failed to process event message: {exn}"
 
                             | WebSocketOpCode.Close ->
-                                running <- false
+                                Report.Line(3, $"[Media] Event socket for session {sessionId} closed")
+                                Volatile.Write(&running, false)
 
                             | WebSocketOpCode.Ping ->
                                 do! socket.SendPong cancellationToken
@@ -462,12 +465,9 @@ module MutableApp =
                             | _ ->
                                 Log.warn $"[Media] Unexpected event message: {message}"
 
-                        with
-                        | :? OperationCanceledException ->
-                            running <- false
-
-                        | exn ->
-                            Log.error $"[Media] Event socket I/O failed: {exn}"
+                        with exn ->
+                            handleConnectionError "Event socket I/O failed" exn
+                            Volatile.Write(&running, false)
 
                     MVar.put update false
                     updateThread.Join()
@@ -476,7 +476,7 @@ module MutableApp =
                     subscription.Dispose()
                     socket.Dispose()
 
-                    Report.Line(3, $"[Media] Closed session {sessionId}")
+                    Log.line $"[Media] Closed session {sessionId}"
                 }
 
             | _ ->

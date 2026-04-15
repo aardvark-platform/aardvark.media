@@ -48,11 +48,8 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
             )
 
         match deadTask with
-        | Some t ->
-            t.Dispose()
-            Log.line "[Scene] Destroyed"
-        | None ->
-            ()
+        | Some t -> t.Dispose()
+        | None -> ()
 
     let timer = new Timer(TimerCallback(destroy), null, Timeout.Infinite, Timeout.Infinite)
 
@@ -66,14 +63,13 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
                 task
             | None ->
                 // refCount was 0 and there was no task
-                Log.line "[Scene] Created"
                 let t = scene.Compile values
                 task <- Some t
                 t
         else
             match task with
             | Some t -> t
-            | None -> failwithf "[Scene] Invalid state"
+            | None -> failwithf $"[Scene] Invalid state (refCount = {refCount}, task = null)"
 
     let release() =
         refCount <- refCount - 1

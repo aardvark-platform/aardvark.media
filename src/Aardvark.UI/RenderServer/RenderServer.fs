@@ -70,26 +70,26 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
             clearColor = C4f.Black
         }
 
-    let send (msg: RenderClientMessage) =
-        let data = Pickler.json.Pickle msg
-        createInfo.socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
-
-    let sendSync (msg: RenderClientMessage) =
-        try
-            let task = send msg
-            task.Wait()
-        with
-        | :? OperationCanceledException -> ()
-        | exn ->
-            Log.error $"[Client] {id}: Send of {msg} faulted (stopping): {exn}"
-            running <- false
+    let handleConnectionError (message: string) (exn: Exception) =
+        match ConnectionError.ofException exn with
+        | ConnectionError.Canceled -> Report.Line(3, $"[Client] {id}: Stopping")
+        | ConnectionError.Closed   -> Report.Line(3, $"[Client] {id}: Connection closed")
+        | ConnectionError.Lost     -> Report.Line(3, $"[Client] {id}: Connection lost")
+        | _                        -> Log.warn $"[Client] {id}: {message}: {exn.GetBaseException().Message}"
 
     let sender = AdaptiveObject.Create()
 
     let subscription =
         sender.AddMarkingCallback(fun () ->
             invalidateTime.Start()
-            sendSync RenderClientMessage.Invalidate
+
+            try
+                let data = Pickler.json.Pickle RenderClientMessage.Invalidate
+                let task = createInfo.socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
+                task.Wait()
+            with exn ->
+                handleConnectionError "Failed to send invalidate message" exn
+                running <- false
         )
 
     let renderLoop() =
@@ -118,14 +118,12 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                                 try
                                     let task = createInfo.socket.Send(WebSocketOpCode.Binary, data, true, cancellationToken)
                                     task.Wait()
-                                with
-                                | :? OperationCanceledException -> ()
-                                | exn ->
+                                with exn ->
+                                    handleConnectionError "Could not send render result" exn
                                     running <- false
-                                    Log.error $"[Client] {id}: Could not send render result (stopping): {exn}"
 
                             | RenderResult.Png _ ->
-                                Log.error $"[Client] {id}: Requested png render control which is not supported at the moment (png conversion too slow)"
+                                raise <| NotSupportedException("PNG render control not supported.")
 
                             | RenderResult.Mapping img ->
                                 let data = Pickler.json.Pickle img
@@ -133,21 +131,19 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                                 try
                                     let task = createInfo.socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
                                     task.Wait()
-                                with
-                                | :? OperationCanceledException -> ()
-                                | exn ->
+                                with exn ->
+                                    handleConnectionError "Could not send render result" exn
                                     running <- false
-                                    Log.error $"[Client] {id}: Could not send render result (stopping): {exn}"
 
                         with exn ->
                             running <- false
-                            Log.error $"[Client] {id}: Rendering faulted (stopping): {exn}"
+                            Log.error $"[Client] {id}: Rendering faulted: {exn}"
                     )
                 )
 
                 createInfo.server.rendered info
 
-        Report.Line(3, $"[Client] {id}: Stopped render thread for {info.id.session}/{info.id.elementId}")
+        Report.Line(3, $"[Client] {id}: Stopped render thread")
 
     let mutable renderThread = Thread(ThreadStart(renderLoop), IsBackground = true, Name = $"RenderClient ({createInfo.id.session})")
 
@@ -163,7 +159,8 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
         renderThread.Start()
 
         task {
-            Log.line $"[Client] {id}: Running {info.sceneName}"
+            let mappingStatus = if createInfo.useMapping then "enabled" else "disabled"
+            Log.line $"[Client] {id}: Running {info.sceneName}, mapping {mappingStatus}"
             let buffer = SocketBuffer(128)
 
             while running && not cancellationToken.IsCancellationRequested do
@@ -175,10 +172,10 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
 
                     match message with
                     | WebSocketOpCode.Text when data.Count > 0 ->
-                        try
-                            if data.[0] = uint8 '#' then
-                                do! createInfo.socket.SendPong cancellationToken
-                            else
+                        if data.[0] = uint8 '#' then
+                            do! createInfo.socket.SendPong cancellationToken
+                        else
+                            try
                                 let msg = RenderServerMessage.fromJson data
 
                                 match msg with
@@ -191,12 +188,13 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                                     roundTripTime.Stop()
                                     frameCount <- frameCount + 1
 
-                        with exn ->
-                            let str = Encoding.UTF8.TryGetString data
-                            if notNull str then Log.error $"[Client] {id}: Failed to process message: {str}"
-                            Log.error $"[Client] {id}: Error during message processing: {exn}"
+                            with exn ->
+                                let str = Encoding.UTF8.TryGetString data
+                                if notNull str then Log.error $"[Client] {id}: Failed to process message: {str}"
+                                Log.error $"[Client] {id}: Error during message processing: {exn}"
 
                     | WebSocketOpCode.Close ->
+                        Report.Line(3, $"[Client] {id}: Socket closed")
                         running <- false
 
                     | WebSocketOpCode.Ping ->
@@ -205,12 +203,9 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                     | _ ->
                         Log.warn $"[Client] {id}: Unexpected message {message}"
 
-                with
-                | :? OperationCanceledException ->
+                with exn ->
+                    handleConnectionError "Socket I/O failed" exn
                     running <- false
-
-                | exn ->
-                    Log.error $"[Client] {id}: Socket I/O failed: {exn}"
 
             running <- false
             MVar.put requestedImage ImageRequest.empty

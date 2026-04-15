@@ -4,7 +4,7 @@ open System
 open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Geometry
- open Aardvark.Application
+open Aardvark.Application
 
 [<AbstractClass; Sealed; Extension>]
 type RayPartExtensions =
