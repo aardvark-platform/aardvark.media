@@ -263,7 +263,6 @@ module internal Updaters =
 
             match node.Boot with
             | ValueSome boot ->
-                let id = "NOT AN ID"
                 let code = boot id
 
                 if Map.isEmpty node.Channels then
@@ -285,10 +284,13 @@ module internal Updaters =
             | _ ->
                 JSExpr.Nop
 
-        let shutdown() =
+        let shutdown (state : UpdateState<'msg>) =
+            for name, _ in Map.toSeq node.Channels do
+                state.activeChannels.Remove((id, name)) |> ignore
+
             match node.Shutdown with
             | ValueSome shutdown ->
-                Raw (shutdown "NOT AN ID")
+                Raw <| shutdown id
             | _ ->
                 JSExpr.Nop
 
@@ -312,7 +314,7 @@ module internal Updaters =
         member x.Destroy(state, self) =
             lock x (fun () -> 
                 JSExpr.Sequential [
-                    shutdown()
+                    shutdown state
                     x.PerformDestroy(state, self)
                 ]
             )
