@@ -61,39 +61,45 @@ module Updaters =
             { version = handler.version; invoke = mapping handler.invoke }
 
     type EventHandlers<'msg>() =
-        let store = Dictionary<string * string, {| current: EventHandler<'msg> voption; pending: ConcurrentQueue<EventHandler<'msg>> |}>()
+        let store = Dictionary<string * string, {| current: EventHandler<'msg> voption; pending: Queue<EventHandler<'msg>> |}>()
 
         // Dequeues pending handlers until the one with the given version is found or the queue is empty
-        static let rec tryGet (queue: ConcurrentQueue<EventHandler<'msg>>) version =
-            match queue.TryDequeue() with
-            | true, handler ->
+        static let rec tryGet (queue: Queue<EventHandler<'msg>>) version =
+            if queue.Count > 0 then
+                let handler = queue.Dequeue()
                 if handler.version = version then
                     ValueSome handler
                 else
                     tryGet queue version
-            | _ ->
+            else
                 ValueNone
 
         member _.Enqueue(key, handler) =
-            let value = store.GetCreate(key, fun _ -> {| current = ValueNone; pending = ConcurrentQueue() |} )
-            value.pending.Enqueue handler
+            lock store (fun _ ->
+                let value = store.GetCreate(key, fun _ -> {| current = ValueNone; pending = Queue() |} )
+                value.pending.Enqueue handler
+            )
 
         member _.TryGet(key) =
-            match store.TryGetValue key with
-            | true, state -> state.current
-            | _ -> ValueNone
+            lock store (fun _ ->
+                match store.TryGetValue key with
+                | true, state -> state.current
+                | _ -> ValueNone
+            )
 
         member _.TryGet(key, version) =
-            match store.TryGetValue key with
-            | true, state ->
-                match state.current with
-                | ValueSome handler when handler.version = version -> state.current
+            lock store (fun _ ->
+                match store.TryGetValue key with
+                | true, state ->
+                    match state.current with
+                    | ValueSome handler when handler.version = version -> state.current
+                    | _ ->
+                        let result = tryGet state.pending version
+                        store.[key] <- {| state with current = result |} // Make the found handler active
+                        result
                 | _ ->
-                    let result = tryGet state.pending version
-                    store.[key] <- {| state with current = result |} // Make the found handler active
-                    result
-            | _ ->
-                ValueNone
+                    ValueNone
+            )
 
         member this.TryGet(key, version) =
             match version with
@@ -101,7 +107,7 @@ module Updaters =
             | _ -> this.TryGet key
 
         member _.Remove(key) =
-            store.Remove key
+            lock store (fun _ -> store.Remove key)
 
         interface ContraDict<string * string, EventHandler<'msg>> with
             member this.Item with set key value = this.Enqueue(key, value)

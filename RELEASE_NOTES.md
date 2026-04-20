@@ -1,3 +1,6 @@
+### 5.6.3
+- Added missing lock for event handler dictionary
+
 ### 5.6.2
 - Fixed race condition in event handling (https://github.com/aardvark-platform/aardvark.media/issues/1)
 - [Giraffe] Fixed handling of multiple sessions (https://github.com/aardvark-platform/aardvark.media/issues/50)
