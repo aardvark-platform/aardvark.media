@@ -6,6 +6,7 @@ open System.Text
 open System.Threading
 open System.Collections.Generic
 open System.Collections.Concurrent
+open System.Runtime.InteropServices
 open System.Threading.Tasks
 
 open Aardvark.Base
@@ -178,6 +179,25 @@ module MutableApp =
                 data     : string list
             }
 
+        type ChannelMap() =
+            let fw = Dictionary<ChannelId, ChannelReader>()
+            let bw = Dictionary<ChannelReader, ChannelId>()
+
+            member _.Add(id: ChannelId, reader: ChannelReader) =
+                fw.[id] <- reader
+                bw.[reader] <- id
+
+            member _.GetAndRemove(id: ChannelId, [<Out>] reader: byref<ChannelReader>) =
+                if fw.TryGetValue(id, &reader) then
+                    fw.Remove id |> ignore
+                    bw.Remove reader |> ignore
+                    true
+                else
+                    false
+
+            member _.TryGetId(reader: ChannelReader, [<Out>] id: byref<ChannelId>) =
+                bw.TryGetValue(reader, &id)
+
         [<Struct>]
         type EventMessage =
             {
@@ -273,20 +293,27 @@ module MutableApp =
 
                 let state : UpdateState<'msg> =
                     {
-                        scenes          = ContraDict.ofDictionary scenes
-                        handlers        = handlers
-                        references      = Dictionary()
-                        activeChannels  = Dictionary()
-                        messages        = app.Messages
+                        scenes     = ContraDict.ofDictionary scenes
+                        handlers   = handlers
+                        references = Dictionary()
+                        channels   = Dictionary()
+                        messages   = app.Messages
                     }
 
-                let sender = AdaptiveObject.Create()
+                let activeChannels = ChannelMap()
+                let pendingChannels = LockedSet<ChannelReader>()
+
+                let sender =
+                    { new AdaptiveObject() with
+                        member _.InputChangedObject(_, object) =
+                            match object with
+                            | :? ChannelReader as reader -> pendingChannels.Add reader |> ignore
+                            | _ -> ()
+                    }
 
                 let mutable running = true
                 let update = MVar.create true
                 let subscription = sender.AddMarkingCallback(fun () -> MVar.put update true)
-
-                let mutable oldChannels : Set<string * string> = Set.empty
 
                 let handleConnectionError (message: string) (exn: Exception) =
                     match ConnectionError.ofException exn with
@@ -320,7 +347,6 @@ module MutableApp =
 
                             let code =
                                 let expr =
-                                    state.references.Clear()
                                     if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
                                     let js = updater.Update(token, state, ValueSome (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
                                     if Config.shouldTimeUIUpdate then Log.stop ()
@@ -372,32 +398,44 @@ module MutableApp =
                                 let tag = if state.references.Count > 0 then "r" else "x"
                                 send <| Encoding.UTF8.GetBytes(tag + code)
 
-                            let mutable o = oldChannels
-                            let mutable c = Set.empty
+                            // Handle added and removed channels
+                            for KeyValue(id, reader) in state.channels do
+                                if isNull reader then
+                                    match activeChannels.GetAndRemove id with
+                                    | true, reader ->
+                                        pendingChannels.Remove reader |> ignore
+                                        reader.Outputs.Remove sender |> ignore
+                                        reader.Dispose()
+                                    | _ -> ()
 
-                            for KeyValue((id, name), reader) in state.activeChannels do
-                                let messages =
-                                    try
-                                        reader.GetMessages token
-                                    with exn ->
-                                        Log.error $"[Media] Failed to get '{name}' messages for {id}: {exn}"
-                                        []
-
-                                match messages with
-                                | [] -> ()
-                                | messages ->
-                                    let message = Pickler.json.Pickle { targetId = id; channel = name; data = messages }
+                                    let message = Pickler.json.Pickle { targetId = id.ElementId; channel = id.ChannelName; data = ["\"commit-suicide\""] }
                                     send message
+                                else
+                                    pendingChannels.Add reader |> ignore
+                                    activeChannels.Add(id, reader)
 
-                                c <- Set.add (id, name) c
-                                o <- Set.remove (id, name) o
+                            // Send messages for out-of-date channels
+                            for reader in pendingChannels.GetAndClear() do
+                                match activeChannels.TryGetId reader with
+                                | true, id ->
+                                    let messages =
+                                        try
+                                            reader.GetMessages token
+                                        with exn ->
+                                            Log.error $"[Media] Failed to get '{id.ChannelName}' messages for {id.ElementId}: {exn}"
+                                            []
 
-                            for id, name in o do
-                                let message = Pickler.json.Pickle { targetId = id; channel = name; data = [Pickler.json.PickleToString "commit-suicide"] }
-                                send message
+                                    match messages with
+                                    | [] -> ()
+                                    | messages ->
+                                        let message = Pickler.json.Pickle { targetId = id.ElementId; channel = id.ChannelName; data = messages }
+                                        send message
 
-                            oldChannels <- c
+                                | _ -> ()
                         )
+
+                        state.references.Clear()
+                        state.channels.Clear()
 
                     Report.Line(3, $"[Media] Stopped UI update thread for session {sessionId}")
 
@@ -426,7 +464,7 @@ module MutableApp =
                                 else
                                     try
                                         let evt = EventMessage.fromJson data
-                                        let key = evt.sender, evt.name
+                                        let key = ChannelId(evt.sender, evt.name)
 
                                         match handlers.TryGet(key, evt.version) with
                                         | ValueSome handler when notNull evt.args ->

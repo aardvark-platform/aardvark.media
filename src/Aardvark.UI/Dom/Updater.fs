@@ -4,7 +4,6 @@ open System
 open System.Text
 open System.Threading
 open System.Collections.Generic
-open System.Collections.Concurrent
 open Aardvark.UI
 open Aardvark.Base
 open System.Runtime.CompilerServices
@@ -53,12 +52,18 @@ module internal Updaters =
             invoke  : Guid -> string -> string list -> 'msg seq
         }
 
+    [<Struct>]
+    type ChannelId =
+        val ElementId   : string
+        val ChannelName : string
+        new (elementId, channelName) = { ElementId = elementId; ChannelName = channelName }
+
     module EventHandler =
         let map mapping (handler: EventHandler<'T1>) : EventHandler<'T2> =
             { version = handler.version; invoke = mapping handler.invoke }
 
     type EventHandlers<'msg>() =
-        let store = Dictionary<string * string, {| current: EventHandler<'msg> voption; pending: Queue<EventHandler<'msg>> |}>()
+        let store = Dictionary<ChannelId, {| current: EventHandler<'msg> voption; pending: Queue<EventHandler<'msg>> |}>()
 
         // Dequeues pending handlers until the one with the given version is found or the queue is empty
         static let rec tryGet (queue: Queue<EventHandler<'msg>>) version =
@@ -106,7 +111,7 @@ module internal Updaters =
         member _.Remove(key) =
             lock store (fun _ -> store.Remove key)
 
-        interface ContraDict<string * string, EventHandler<'msg>> with
+        interface ContraDict<ChannelId, EventHandler<'msg>> with
             member this.Item with set key value = this.Enqueue(key, value)
             member this.Remove key = this.Remove key
 
@@ -121,13 +126,19 @@ module internal Updaters =
               messages = info.messages |> ValueOption.map (SceneMessages.map mapping)
               getState = info.getState }
 
+    [<Struct>]
+    type ReferenceId =
+        val Name : string
+        val Kind : ReferenceKind
+        new (name, kind) = { Name = name; Kind = kind }
+
     type UpdateState<'msg> =
         {
-            scenes         : ContraDict<string, SceneInfo<'msg>>
-            handlers       : ContraDict<string * string, EventHandler<'msg>>
-            references     : Dictionary<string * ReferenceKind, Reference>
-            activeChannels : Dictionary<string * string, ChannelReader>
-            messages       : IObservable<'msg>
+            scenes     : ContraDict<string, SceneInfo<'msg>>
+            handlers   : ContraDict<ChannelId, EventHandler<'msg>>
+            references : Dictionary<ReferenceId, Reference>          // Added references
+            channels   : Dictionary<ChannelId, ChannelReader>        // Added or removed channels (value = null -> removed)
+            messages   : IObservable<'msg>
         }
 
     type IUpdater =
@@ -147,7 +158,7 @@ module internal Updaters =
 
         let setup (state : UpdateState<'msg>) =
             for r in node.Required do
-                state.references.[(r.name, r.kind)] <- r
+                state.references.[ReferenceId(r.name, r.kind)] <- r
 
             match node.Boot with
             | ValueSome boot ->
@@ -160,7 +171,7 @@ module internal Updaters =
                     let sb = StringBuilder()
 
                     for KeyValue(name, c) in node.Channels do
-                        state.activeChannels.[(id,name)] <- c.GetReader()
+                        state.channels.[ChannelId(id, name)] <- c.GetReader()
                         sb.Append $"var {name} = aardvark.getChannel(\"{id}\", \"{name}\");" |> ignore
 
                     sb.Append code |> ignore
@@ -173,7 +184,7 @@ module internal Updaters =
         let shutdown (state : UpdateState<'msg>) =
             if id.IsValueCreated then
                 for KeyValue(name, _) in node.Channels do
-                    state.activeChannels.Remove((id.Value,name)) |> ignore
+                    state.channels.[ChannelId(id.Value, name)] <- Unchecked.defaultof<_>
 
             match node.Shutdown with
             | ValueSome shutdown ->
@@ -257,7 +268,7 @@ module internal Updaters =
 
         let setup (state : UpdateState<'msg>) =
             for r in node.Required do
-                state.references.[(r.name, r.kind)] <- r
+                state.references.[ReferenceId(r.name, r.kind)] <- r
 
             match node.Boot with
             | ValueSome boot ->
@@ -269,7 +280,7 @@ module internal Updaters =
                     let sb = StringBuilder()
 
                     for KeyValue(name, c) in node.Channels do
-                        state.activeChannels.[(id,name)] <- c.GetReader()
+                        state.channels.[ChannelId(id, name)] <- c.GetReader()
                         sb.Append $"var {name} = aardvark.getChannel(\"{id}\", \"{name}\");" |> ignore
 
                     sb.Append code |> ignore
@@ -281,7 +292,7 @@ module internal Updaters =
 
         let shutdown (state : UpdateState<'msg>) =
             for KeyValue(name, _) in node.Channels do
-                state.activeChannels.Remove((id, name)) |> ignore
+                state.channels.[ChannelId(id, name)] <- Unchecked.defaultof<_>
 
             match node.Shutdown with
             | ValueSome shutdown ->
@@ -321,7 +332,7 @@ module internal Updaters =
 
     type AttributeUpdater<'msg>(attributes : AttributeMap<'msg>) =
         let mutable reader = attributes.GetReader()
-        let registeredHandlers = System.Collections.Generic.HashSet<string * string>()
+        let registeredHandlers = System.Collections.Generic.HashSet<ChannelId>()
 
         // We assign a version number to each event handler and each sent event.
         // Event handlers are not made active immediately but put in a 'pending' queue.
@@ -350,7 +361,7 @@ module internal Updaters =
                             yield JSExpr.SetAttribute(self, name, str)
 
                         | AttributeValue.Event evt ->
-                            let key = (id, name)
+                            let key = ChannelId(id, name)
                             let version = getVersion()
                             state.handlers.[key] <- { version = version; invoke = evt.serverSide } // Enqueue handler
                             registeredHandlers.Add(key) |> ignore
@@ -360,7 +371,7 @@ module internal Updaters =
                             yield JSExpr.SetEventHandler(self, name, version) // Sends and empty event to set the event handler active
 
                     | Remove ->
-                        let key = (id, name)
+                        let key = ChannelId(id, name)
                         registeredHandlers.Remove(key) |> ignore
                         state.handlers.Remove(key) |> ignore
                         yield JSExpr.RemoveAttribute(self, name)
@@ -636,7 +647,7 @@ module internal Updaters =
                         scenes              = state.scenes |> ContraDict.map (fun _  -> SceneInfo.map m.Mapping)
                         handlers            = state.handlers |> ContraDict.map (fun _ -> EventHandler.map mapMsg)
                         references          = state.references
-                        activeChannels      = state.activeChannels
+                        channels            = state.channels
                         messages            = subject.Publish
                     }
                 cache <- ValueSome (innerState, subject)
@@ -701,7 +712,7 @@ module internal Updaters =
                         scenes              = state.scenes |> ContraDict.map (fun _ -> mapSceneInfo)
                         handlers            = state.handlers |> ContraDict.map (fun _ -> EventHandler.map mapMsg)
                         references          = state.references
-                        activeChannels      = state.activeChannels
+                        channels            = state.channels
                         messages            = subject.Publish
                     }
 
