@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI
 
 open System
+open System.Text
 
 type internal JSExpr =
     | Body
@@ -12,7 +13,7 @@ type internal JSExpr =
     | InnerText       of target : JSExpr * text : string
     | Replace         of oldElement : JSExpr * newElement : JSExpr
     | AppendChild     of parent : JSExpr * inner : JSExpr
-    | InsertBefore    of reference : JSExpr * inner : JSExpr // in html arguments switched
+    | InsertBefore    of reference : JSExpr * inner : JSExpr // in HTML arguments switched
     | InsertAfter     of reference : JSExpr * inner : JSExpr
     | Raw             of code : string
     | Sequential      of JSExpr list
@@ -25,15 +26,16 @@ type internal JSExpr =
 module internal JSExpr =
     open Aardvark.Base.Monads.State
 
-    let rx = System.Text.RegularExpressions.Regex "\\\"|\\\\"
+    let private escape =
+        let rx = System.Text.RegularExpressions.Regex "\\\"|\\\\"
 
-    let escape (str : string) =
-        rx.Replace(str, fun m ->
-            if m.Value = "\"" then "\\\""
-            else "\\\\"
-        )
+        fun (str: string) ->
+            rx.Replace(str, fun m ->
+                if m.Value = "\"" then "\\\""
+                else "\\\\"
+            )
 
-    let rec eliminateDeadBindings (e : JSExpr) : State<Set<string>, JSExpr> =
+    let rec private eliminateDeadBindings (e : JSExpr) : State<Set<string>, JSExpr> =
         state {
             match e with
             | Raw _ | Body | Nop | CreateElement _ | GetElementById _ ->
@@ -58,13 +60,11 @@ module internal JSExpr =
                     let! e = eliminateDeadBindings e
                     return Let(v, e, b)
                 else
-                    let! e = withoutValue e
-                    return Sequential [e; b]
+                    return b
 
             | Sequential children ->
                 let! children = children |> List.rev |> List.mapS eliminateDeadBindings |> State.map List.rev
                 return Sequential children
-
 
             | InnerText(t, text) ->
                 let! t = eliminateDeadBindings t
@@ -99,96 +99,110 @@ module internal JSExpr =
                 return Remove e
         }
 
-    and withoutValue (e : JSExpr) =
-        state {
-            return Nop
-        }
+    let inline private (<<) (sb: StringBuilder) (str: string) =
+        sb.Append str |> ignore
 
-    let rec toStringInternal (e : JSExpr) =
+    let rec private toStringInternal (e : JSExpr) : string =
+        let sb = StringBuilder()
+        buildStringInternal sb e
+        sb.ToString()
+
+    and private buildStringInternal (sb : StringBuilder) (e : JSExpr) : unit =
         match e with
         | Raw code ->
-            "(function() { " + code + "})();"
+            sb << $"(function() {{ {code} }})();"
 
         | Body ->
-            "document.body"
+            sb << "document.body"
 
         | Nop ->
-            ""
+            ()
 
         | CreateElement(tag, ns) ->
             if String.IsNullOrEmpty ns then
-                $"document.createElement(\"{tag}\")"
+                sb << $"document.createElement(\"{tag}\")"
             else
-                $"document.createElementNS(\"{ns}\", \"{tag}\")"
+                sb << $"document.createElementNS(\"{ns}\", \"{tag}\")"
 
         | SetAttribute(t, name, value) ->
-            let t = toStringInternal t
-            $"aardvark.setAttribute({t}, \"{name}\", \"{escape value}\");"
+            sb << "aardvark.setAttribute("
+            buildStringInternal sb t
+            sb << $", \"{name}\", \"{escape value}\");"
 
         | RemoveAttribute(t, name) ->
-            let t = toStringInternal t
-            $"{t}.removeAttribute(\"{name}\");"
+            buildStringInternal sb t
+            sb << $".removeAttribute(\"{name}\");"
 
         | SetEventHandler(t, name, version) ->
-            let t = toStringInternal t
-            $"aardvark.setEventHandler(\"{t}\", \"{name}\", {version});"
+            sb << "aardvark.setEventHandler(\""
+            buildStringInternal sb t
+            sb << $"\", \"{name}\", {version});"
 
         | GetElementById(id) ->
-            $"document.getElementById(\"{id}\")"
+            sb << $"document.getElementById(\"{id}\")"
 
         | Let(var, value, body) ->
-            match toStringInternal body  with
-            | "" -> ""
-            | body -> $"var {var} = {toStringInternal value};\r\n{body}"
+            let body = toStringInternal body
+
+            if body.Length > 0 then
+                sb << $"var {var} = "
+                buildStringInternal sb value
+                sb << $"; {body}"
 
         | Sequential all ->
-            match all |> List.map toStringInternal |> List.filter (fun str -> str <> "") with
-            | [] -> ""
-            | l -> l |> String.concat "\r\n"
+            for e in all do buildStringInternal sb e
 
         | InnerText(target, text) ->
             let o = text |> System.Web.HttpUtility.JavaScriptStringEncode
-            let target = toStringInternal target
-            $"{target}.textContent = \"{o}\";"
+            buildStringInternal sb target
+            sb << $".textContent = \"{o}\";"
 
         | AppendChild(parent, inner) ->
-            let parent = toStringInternal parent
-            let inner = toStringInternal inner
-            $"{parent}.appendChild({inner});"
+            buildStringInternal sb parent
+            sb << ".appendChild("
+            buildStringInternal sb inner
+            sb << ");"
 
         | InsertBefore(reference, element) ->
-            let element = toStringInternal element
-
             match reference with
             | Var v ->
-                $"{v}.parentElement.insertBefore({element}, {v});"
+                sb << $"{v}.parentElement.insertBefore("
+                buildStringInternal sb element
+                sb << $", {v});"
             | _ ->
-                let reference = toStringInternal reference
-                $"var _temp = {reference};\r\n_temp.parentElement.insertBefore({element}, _temp);"
+                sb << "var _temp = "
+                buildStringInternal sb reference
+                sb << "; _temp.parentElement.insertBefore("
+                buildStringInternal sb element
+                sb << ", _temp);"
 
         | InsertAfter(reference, element) ->
-            let name, binding =
-                match reference with
-                | Var v -> v, ""
-                | v -> "_temp", $"var _temp = {toStringInternal v};\r\n"
-
             let element = toStringInternal element
 
-            binding +
-            $"if(!{name}.nextElementSibling) {name}.parentElement.appendChild({element});\r\n" +
-            $"else {name}.parentElement.insertBefore({element}, {name}.nextElementSibling);"
+            let add (name: string) =
+                sb << $"if(!{name}.nextElementSibling) {name}.parentElement.appendChild({element}); "
+                sb << $"else {name}.parentElement.insertBefore({element}, {name}.nextElementSibling);"
+
+            match reference with
+            | Var v -> add v
+            | v ->
+                sb << "var _temp = "
+                buildStringInternal sb v
+                sb << "; "
+                add "_temp"
 
         | Replace(o, n) ->
             let o = toStringInternal o
-            let n = toStringInternal n
-            $"{o}.parentElement.replaceChild({n}, {o});"
+            sb << $"{o}.parentElement.replaceChild("
+            buildStringInternal sb n
+            sb << $", {o});"
 
         | Var v ->
-            v
+            sb << v
 
         | Remove e ->
-            let e = toStringInternal e
-            $"{e}.remove();"
+            buildStringInternal sb e
+            sb << ".remove();"
 
     let toString (e : JSExpr) =
         let e = eliminateDeadBindings e

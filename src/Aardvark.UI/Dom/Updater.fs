@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI
 
 open System
+open System.Text
 open System.Threading
 open System.Collections.Generic
 open System.Collections.Concurrent
@@ -15,7 +16,7 @@ module internal Updaters =
         let mutable private currentId = 0
         let newId() =
             let id = Interlocked.Increment(&currentId)
-            "n" + string id
+            $"n{id}"
 
     type ContraDict<'k, 'v> =
         abstract member Item : 'k -> 'v with set
@@ -42,7 +43,7 @@ module internal Updaters =
 
     module SceneMessages =
         let map (mapping : 'a -> 'b) (msgs : SceneMessages<'a>) =
-            { 
+            {
                 preRender = msgs.preRender >> Seq.map mapping
                 postRender = msgs.postRender >> Seq.map mapping
             }
@@ -150,25 +151,22 @@ module internal Updaters =
                 if Map.isEmpty node.Channels then
                     Raw code
                 else
-                    for name, c in Map.toSeq node.Channels do
+                    let sb = StringBuilder()
+
+                    for KeyValue(name, c) in node.Channels do
                         state.activeChannels.[(id,name)] <- c.GetReader()
+                        sb.Append $"var {name} = aardvark.getChannel(\"{id}\", \"{name}\");" |> ignore
 
-                    let prefix =
-                        node.Channels
-                        |> Map.toList
-                        |> List.map (fun (name, _) ->
-                            $"var {name} = aardvark.getChannel(\"{id}\", \"{name}\");"
-                        )
-                        |> String.concat "\r\n"
+                    sb.Append code |> ignore
 
-                    Raw (prefix + "\r\n" + code)
+                    Raw <| sb.ToString()
 
             | _ ->
                 JSExpr.Nop
 
         let shutdown (state : UpdateState<'msg>) =
             if id.IsValueCreated then
-                for name, _ in Map.toSeq node.Channels do
+                for KeyValue(name, _) in node.Channels do
                     state.activeChannels.Remove((id.Value,name)) |> ignore
 
             match node.Shutdown with
@@ -235,16 +233,10 @@ module internal Updaters =
 
         member this.Destroy(state, self) =
             lock this (fun () ->
-                if this.CreateElement.IsSome then
-                    JSExpr.Sequential [
-                        shutdown state
-                        this.PerformDestroy(state, self)
-                    ]
-                else
-                    JSExpr.Sequential [
-                        shutdown state
-                        this.PerformDestroy(state, self)
-                    ]
+                JSExpr.Sequential [
+                    shutdown state
+                    this.PerformDestroy(state, self)
+                ]
             )
 
         interface IUpdater<'msg> with
@@ -268,24 +260,21 @@ module internal Updaters =
                 if Map.isEmpty node.Channels then
                     Raw code
                 else
-                    for name, c in Map.toSeq node.Channels do
+                    let sb = StringBuilder()
+
+                    for KeyValue(name, c) in node.Channels do
                         state.activeChannels.[(id,name)] <- c.GetReader()
+                        sb.Append $"var {name} = aardvark.getChannel(\"{id}\", \"{name}\");" |> ignore
 
-                    let prefix =
-                        node.Channels
-                        |> Map.toList
-                        |> List.map (fun (name, _) ->
-                            $"var {name} = aardvark.getChannel(\"{id}\", \"{name}\");"
-                        )
-                        |> String.concat "\r\n"
+                    sb.Append code |> ignore
 
-                    Raw (prefix + "\r\n" + code)
+                    Raw <| sb.ToString()
 
             | _ ->
                 JSExpr.Nop
 
         let shutdown (state : UpdateState<'msg>) =
-            for name, _ in Map.toSeq node.Channels do
+            for KeyValue(name, _) in node.Channels do
                 state.activeChannels.Remove((id, name)) |> ignore
 
             match node.Shutdown with

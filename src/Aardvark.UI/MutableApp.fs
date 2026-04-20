@@ -333,7 +333,6 @@ module MutableApp =
 
                                 if Config.showTimeJsAssembly then Log.startTimed "[Aardvark.UI] JS assembler"
                                 let code = expr |> JSExpr.toString
-                                let code = code.Trim [| ' '; '\r'; '\n'; '\t' |]
                                 if Config.showTimeJsAssembly then Log.stop()
 
                                 if newReferences.Length > 0 then
@@ -348,8 +347,7 @@ module MutableApp =
                                             $"{{ kind: \"{kind}\", name: \"{r.name}\", url: \"{r.url}\" }}"
                                         ) |> String.concat ","
 
-                                    let code = String.indent 1 code
-                                    $"aardvark.addReferences([{args}], function() {{\r\n{code}\r\n}});"
+                                    $"aardvark.addReferences([{args}], function() {{ {code} }});"
                                 else
                                     code
 
@@ -358,21 +356,18 @@ module MutableApp =
                                 Log.stop()
 
                             if code <> "" then
-                                lock app (fun () ->
-                                    if Config.shouldPrintDOMUpdates then
-                                        let lines = code.Split([| "\r\n" |], StringSplitOptions.None)
-                                        Log.start "update"
-                                        for l in lines do Log.line "%s" l
-                                        Log.stop()
+                                if Config.shouldPrintDOMUpdates then
+                                    Log.start "update"
+                                    Log.line "%s" code
+                                    Log.stop()
 
-                                    match Config.dumpJsCodeFile with
-                                    | None -> ()
-                                    | Some file ->
-                                        try
-                                            File.AppendAllText(file, code)
-                                        with e ->
-                                            printfn "%A" e
-                                )
+                                match Config.dumpJsCodeFile with
+                                | None -> ()
+                                | Some file ->
+                                    try
+                                        File.AppendAllText(file, code)
+                                    with e ->
+                                        printfn "%A" e
 
                                 let tag = if state.references.Count > 0 then "r" else "x"
                                 send <| Encoding.UTF8.GetBytes(tag + code)
