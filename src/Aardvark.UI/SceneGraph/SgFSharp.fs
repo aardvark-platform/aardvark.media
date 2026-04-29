@@ -285,6 +285,14 @@ module SgFSharp =
 
 
         /// Rotates the scene by the given Euler angles.
+        let rotation (rollPitchYawInRadians : aval<V3d>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.rotation rollPitchYawInRadians)
+
+        /// Rotates the scene by the given Euler angles.
+        let rotation' (rollPitchYawInRadians : V3d) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.rotation' rollPitchYawInRadians)
+
+        /// Rotates the scene by the given Euler angles.
         let rotate (rollInRadians : float) (pitchInRadians : float) (yawInRadians : float) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.rotate rollInRadians pitchInRadians yawInRadians)
 
