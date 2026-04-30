@@ -12,12 +12,19 @@ open Giraffe
 
 module Server =
 
-    let createHost (url: string) (content: WebPart seq)  =
+    let createHost (url: string) (responseCompression: bool) (content: WebPart seq)  =
         let configureApp (app: IApplicationBuilder) =
+            let app =
+                if responseCompression then
+                    app.UseResponseCompression()
+                else
+                    app
+
             app.UseWebSockets().UseGiraffe (choose <| List.ofSeq content)
 
         let configureServices (services: IServiceCollection) =
             services.AddGiraffe() |> ignore
+            if responseCompression then services.AddResponseCompression() |> ignore
 
         let configureLogging (builder: ILoggingBuilder) =
             builder
@@ -37,10 +44,10 @@ module Server =
                         |> ignore
                 )
 
-    let start (url: string) (cancellationToken: CancellationToken) (content: WebPart seq) : Task =
-        let host = createHost url content
+    let start (url: string) (cancellationToken: CancellationToken) (responseCompression: bool) (content: WebPart seq) : Task =
+        let host = createHost url responseCompression content
         host.Build().StartAsync(cancellationToken)
 
     let startLocalhost (port: int) (cancellationToken: CancellationToken) (content: WebPart seq) : Task =
         let url = $"http://{IPAddress.Loopback}:{port}"
-        start url cancellationToken content
+        start url cancellationToken false content

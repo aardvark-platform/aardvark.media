@@ -21,7 +21,7 @@ let runDirect () =
     use app = new OpenGlApplication()
     use mapp = RenderControl.App.app |> App.start
 
-    Server.start "http://localhost:4321" mapp.CancellationToken [
+    Server.start "http://localhost:4321" mapp.CancellationToken false [
         MutableApp.toWebPart app.Runtime mapp
     ] |> ignore
 
@@ -45,7 +45,7 @@ let runHost () =
     use mapp = RenderControl.App.app |> App.start
 
     let host =
-        Server.createHost "http://localhost:4321" [
+        Server.createHost "http://localhost:4321" false [
             MutableApp.toWebPart app.Runtime mapp
         ]
 
@@ -59,7 +59,7 @@ let runWithRoute () =
     use app = new OpenGlApplication()
     use mapp = RenderControl.App.app |> App.start
 
-    Server.start "http://localhost:4321" mapp.CancellationToken [
+    Server.start "http://localhost:4321" mapp.CancellationToken false [
         subRoute "/test" (MutableApp.toWebPart app.Runtime mapp)
     ] |> ignore
 
