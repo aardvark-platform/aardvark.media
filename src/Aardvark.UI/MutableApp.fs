@@ -445,7 +445,7 @@ module MutableApp =
                 updateThread.Start()
 
                 task {
-                    Log.line $"[Media] Created session {sessionId}"
+                    Report.Line(3, $"[Media] Created session {sessionId}")
                     use _ = sessionCount.Acquire()
 
                     let buffer = SocketBuffer(128)
@@ -509,7 +509,7 @@ module MutableApp =
                     subscription.Dispose()
                     socket.Dispose()
 
-                    Log.line $"[Media] Closed session {sessionId}"
+                    Report.Line(3, $"[Media] Closed session {sessionId}")
                 }
 
             | _ ->
