@@ -23,16 +23,16 @@ type PickTree<'msg>(sg: ISg<'msg>) =
 
     static let intersectLeaf (_: SceneEventKind) (part: RayPart) (obj: PickObject) =
         let pickable = obj.Pickable |> AVal.force
-        match Pickable.intersect part pickable with
-        | Some t ->
+        match Pickable.intersectV part pickable with
+        | ValueSome t ->
             match obj.Scope.TryGetInheritedV "PickProcessor" with
-            | ValueSome (:? ISceneHitProcessor<'msg> as proc) -> Some <| RayHit(t, proc)
-            | _ -> None
-        | None ->
-            None
+            | ValueSome (:? ISceneHitProcessor<'msg> as proc) -> ValueSome <| RayHit(t, proc)
+            | _ -> ValueNone
+        | _ ->
+            ValueNone
 
     member private x.Perform(evt: SceneEvent, bvh: BvhTree<PickObject>) =
-        let intersections = bvh.Intersections(intersectLeaf evt.kind, evt.globalRay)
+        let intersections = bvh.IntersectionsV(intersectLeaf evt.kind, evt.globalRay)
         use e = intersections.GetEnumerator()
 
         let rec run (evt: SceneEvent) (seen: HashSet<ISceneHitProcessor<'msg>>) (contEnter: bool) =
