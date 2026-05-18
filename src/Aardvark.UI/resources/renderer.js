@@ -333,24 +333,15 @@
                     this.mapping = getTopAardvark().openMapping(data.name, data.length);
                 }
 
-                if (this.frameBufferSize) {
-                    if (this.frameBufferSize.X !== data.size.X || this.frameBufferSize.Y !== data.size.Y) {
-                        const len = data.size.X * data.size.Y * 4;
-                        this.frameBuffer = new Uint8ClampedArray(len);
-                        this.frameBufferSize = data.size;
-                        this.frameBufferLength = len;
-                    }
-                } else {
-                    const len = data.size.X * data.size.Y * 4;
-                    this.frameBuffer = new Uint8ClampedArray(len);
-                    this.frameBufferSize = data.size;
-                    this.frameBufferLength = len;
+                if (this.canvas.width !== data.size.X || this.canvas.height !== data.size.Y) {
+                    this.canvas.width = data.size.X;
+                    this.canvas.height = data.size.Y;
                 }
 
-                this.canvas.width = data.size.X;
-                this.canvas.height = data.size.Y;
-                this.frameBuffer.set(new Uint8ClampedArray(this.mapping.buffer, 0, this.frameBufferLength));
-                this.context.putImageData(new ImageData(this.frameBuffer, data.size.X, data.size.Y), 0, 0);
+                const totalBytes = data.size.X * data.size.Y * 4;
+                const pixelData = new Uint8ClampedArray(this.mapping.buffer, 0, totalBytes);
+
+                this.context.putImageData(new ImageData(pixelData, data.size.X, data.size.Y), 0, 0);
 
                 this.afterRender();
             } else {
