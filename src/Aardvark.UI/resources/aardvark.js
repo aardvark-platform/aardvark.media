@@ -8,7 +8,7 @@ if (!aardvark) {
 
 function getTopAardvark() {
     try {
-        return top.aardvark;
+        return top.aardvark ?? aardvark;
     } catch {
         return aardvark;
     }

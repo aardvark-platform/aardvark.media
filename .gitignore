@@ -6,6 +6,7 @@ bin/Release
 bin/Debug
 *.swp
 *.userprefs
+*.fsproj.user
 **/obj
 **/bin
 /packages

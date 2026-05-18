@@ -559,8 +559,8 @@ module ProjectDirectory =
 let private numberedRx = System.Text.RegularExpressions.Regex @"(?<number>[0-9]+) \- .*"
 let newExample (name : string) (dir : string) =
     let dirs = Directory.GetDirectories(dir, "*", SearchOption.TopDirectoryOnly)
-    let sourceProjectName = "01 - Inc"
-    let template = Path.Combine(dir,"..","Examples", sourceProjectName)
+    let sourceProjectName = "02 - RenderControl"
+    let template = Path.Combine(dir, sourceProjectName)
 
     let maxIndex =
         dirs |> Seq.map (fun d ->
@@ -574,7 +574,7 @@ let newExample (name : string) (dir : string) =
     let addToSolution (solutionName : string) =
         let slnPath = Path.Combine(dir, "..", solutionName)
         let sln = slnPath |> Solution.load
-        let examples = Solution.tryFindFolder "Scratch" sln
+        let examples = Solution.tryFindFolder "Examples" sln
 
         match Solution.tryFind sourceProjectName sln with
             | Some p -> 

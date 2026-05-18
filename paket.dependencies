@@ -7,7 +7,6 @@ nuget Aardvark.Build                                                ~> 2.0.3
 
 nuget FSharp.Core                                                   >= 8.0.300 lowest_matching: true
 nuget System.Text.Json                                              >= 8.0.5 lowest_matching: true
-nuget Microsoft.NETFramework.ReferenceAssemblies                    >= 1.0.0 lowest_matching: true
 
 nuget Aardvark.Rendering                                            ~> 5.6.5
 nuget Aardvark.Application.WinForms.GL                              ~> 5.6.5
@@ -27,10 +26,6 @@ nuget FsPickler.Json                                                ~> 5.3.2
 nuget Suave                                                         ~> 2.5.6
 nuget Giraffe                                                       ~> 7.0.0
 
-nuget Another.Unofficial.Xilium.CefGlue                             ~> 0.4.0
-nuget Another.Unofficial.Xilium.CefGlue.UnpackNativeDependencies    ~> 0.4.0
-nuget Another.Unofficial.Xilium.CefGlue.WindowsForms                ~> 0.4.0
-
 nuget Screenshotr.Client                                            ~> 1.5.2
 
 // Examples & Demos
@@ -49,4 +44,24 @@ nuget Expecto                                                       ~> 10.2.1
 nuget Expecto.FsCheck                                               ~> 10.2.1
 nuget BenchmarkDotNet                                               ~> 0.14.0
 nuget YoloDev.Expecto.TestSdk                                       ~> 0.15.0
+nuget Microsoft.Testing.Extensions.VSTestBridge                     ~> 1.5.3
 nuget Microsoft.NET.Test.Sdk                                        ~> 17.12.0
+
+group CefSharp-NetCore
+    source https://api.nuget.org/v3/index.json
+    framework: net8.0, net8.0-windows10.0.17763.0
+    storage: none
+
+    nuget CefSharp.Common.NETCore                                   ~> 147.0.100
+    nuget CefSharp.WinForms.NETCore                                 ~> 147.0.100
+    nuget CefSharp.OffScreen.NETCore                                ~> 147.0.100
+    nuget System.Drawing.Common                                     >= 8.0.27 lowest_matching: true
+
+group CefSharp-NetFramework
+    source https://api.nuget.org/v3/index.json
+    framework: net471
+    storage: none
+
+    nuget CefSharp.Common                                           ~> 147.0.100
+    nuget CefSharp.WinForms                                         ~> 147.0.100
+    nuget CefSharp.OffScreen                                        ~> 147.0.100

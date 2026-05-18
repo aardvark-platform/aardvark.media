@@ -1,16 +1,13 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
-VisualStudioVersion = 18.5.11605.296 insiders
+VisualStudioVersion = 18.5.11605.296
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "31 - VirtualTree", "Scratch\31 - VirtualTree\31 - VirtualTree.fsproj", "{E31551E9-48F2-4527-9DC5-B64323030E71}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Giraffe", "Scratch\28 - Giraffe\28 - Giraffe.fsproj", "{1A788AF4-257B-4C4C-8C5A-E379373B5838}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - NavigationDemoNew", "Scratch\27 - NavigationDemoNew\27 - NavigationDemoNew.fsproj", "{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef", "Aardvark.Cef\Aardvark.Cef.fsproj", "{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.WinForms", "Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj", "{F20C78DD-06CB-44E8-90DB-6DE144863078}"
 EndProject
@@ -20,77 +17,64 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI", "Aardvark.UI\
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Primitives", "Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj", "{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (dotnetcore)", "Examples (dotnetcore)", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples", "Examples", "{DAC89FC7-17D3-467D-929D-781A88DA5324}"
 	ProjectSection(SolutionItems) = preProject
-		Examples (dotnetcore)\new-examples.fsx = Examples (dotnetcore)\new-examples.fsx
+		Examples\new-examples.fsx = Examples\new-examples.fsx
 	EndProjectSection
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.Cef.WinForms.Process", "Aardvark.Cef.WinForms.Process\Aardvark.Cef.WinForms.Process.fsproj", "{EDE32464-755B-415A-B0CA-CDA89F49F6F5}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "05 - CEF", "Examples\05 - CEF\05 - CEF.fsproj", "{9824D872-86F5-4058-B378-9E922026FC70}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Examples (net471)", "Examples (net471)", "{6D553C3F-E56A-4B26-8018-DA17A4B4C407}"
-	ProjectSection(SolutionItems) = preProject
-		Examples (net471)\Readme.txt = Examples (net471)\Readme.txt
-	EndProjectSection
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01 - Inc", "Examples\01 - Inc\01 - Inc.fsproj", "{210CA4D7-4A23-43F9-9499-76ECAEE33F15}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net471", "net471", "{2FE8734A-BF34-43DE-8731-5D580FE4E83B}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "netstandard", "netstandard", "{5DAFA99B-848D-4185-B4C1-287119815657}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Hello World (CEF)", "Examples (net471)\Hello World (net471)\Hello World (CEF).fsproj", "{9824D872-86F5-4058-B378-9E922026FC70}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "RenderToTextureExample", "Examples (net471)\RenderToTextureExample\RenderToTextureExample.fsproj", "{7B055C74-1C24-4CB0-96E4-02E01914F60A}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "01 - Inc", "Examples (dotnetcore)\01 - Inc\01 - Inc.fsproj", "{210CA4D7-4A23-43F9-9499-76ECAEE33F15}"
-EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - RenderControl", "Examples (dotnetcore)\02 - RenderControl\02 - RenderControl.fsproj", "{8D161B57-D086-4848-85E1-A77A3F1D9215}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - RenderControl", "Examples\02 - RenderControl\02 - RenderControl.fsproj", "{8D161B57-D086-4848-85E1-A77A3F1D9215}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Animation.Benchmarks", "Tests\Aardvark.UI.Animation.Benchmarks\Aardvark.UI.Animation.Benchmarks.fsproj", "{75B6419D-2A3F-4FFF-8A92-EDA1DE90D09B}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{C47A910F-5F84-4084-BFE4-47E7EB45B1B0}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - Animation", "Examples (dotnetcore)\26 - Animation\26 - Animation.fsproj", "{C8AE4277-9B31-4C30-B72D-3E9E8FC39E1D}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - Animation", "Examples\26 - Animation\26 - Animation.fsproj", "{C8AE4277-9B31-4C30-B72D-3E9E8FC39E1D}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "25 - BackgroundOperation", "Examples (dotnetcore)\25 - BackgroundOperation\25 - BackgroundOperation.fsproj", "{557AEB28-C56B-48C1-9A1F-B913A3EC935A}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "25 - BackgroundOperation", "Examples\25 - BackgroundOperation\25 - BackgroundOperation.fsproj", "{557AEB28-C56B-48C1-9A1F-B913A3EC935A}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "24 - Channels", "Examples (dotnetcore)\24 - Channels\24 - Channels.fsproj", "{0CE9D6C9-CBEC-409E-A0FA-17F403453AC3}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "24 - Channels", "Examples\24 - Channels\24 - Channels.fsproj", "{0CE9D6C9-CBEC-409E-A0FA-17F403453AC3}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "23 - Inputs", "Examples (dotnetcore)\23 - Inputs\23 - Inputs.fsproj", "{51C76CD7-D218-423D-B7C0-7A57E735544A}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "23 - Inputs", "Examples\23 - Inputs\23 - Inputs.fsproj", "{51C76CD7-D218-423D-B7C0-7A57E735544A}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "22 - Orbit", "Examples (dotnetcore)\22 - Orbit\22 - Orbit.fsproj", "{D1517CB1-9221-4087-9329-E8628F7AC683}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "22 - Orbit", "Examples\22 - Orbit\22 - Orbit.fsproj", "{D1517CB1-9221-4087-9329-E8628F7AC683}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "21 - SimpleAsync", "Examples (dotnetcore)\21 - SimpleAsync\21 - SimpleAsync.fsproj", "{BDB968EA-C2A7-408F-9E8A-7F138D003982}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "21 - SimpleAsync", "Examples\21 - SimpleAsync\21 - SimpleAsync.fsproj", "{BDB968EA-C2A7-408F-9E8A-7F138D003982}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "20 - PlaceTransformObjects", "Examples (dotnetcore)\20 - PlaceTransformObjects\20 - PlaceTransformObjects.fsproj", "{B3A0FF5A-98D0-404B-9084-9DDAFCA70C2E}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "20 - PlaceTransformObjects", "Examples\20 - PlaceTransformObjects\20 - PlaceTransformObjects.fsproj", "{B3A0FF5A-98D0-404B-9084-9DDAFCA70C2E}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "18 - CameraControllerSettings", "Examples (dotnetcore)\18 - CameraControllerSettings\18 - CameraControllerSettings.fsproj", "{6F497777-C56D-4757-BEC5-37DFB2A1D1D6}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "18 - CameraControllerSettings", "Examples\18 - CameraControllerSettings\18 - CameraControllerSettings.fsproj", "{6F497777-C56D-4757-BEC5-37DFB2A1D1D6}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "17 - SubApps", "Examples (dotnetcore)\17 - SubApps\17 - SubApps.fsproj", "{2F2D1DE8-7C15-4DC9-9A48-262E820DCB65}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "17 - SubApps", "Examples\17 - SubApps\17 - SubApps.fsproj", "{2F2D1DE8-7C15-4DC9-9A48-262E820DCB65}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "16 - ElectronUsage", "Examples (dotnetcore)\16 - ElectronUsage\16 - ElectronUsage.fsproj", "{431507FB-BCA9-462A-A41A-FAC9CDEB9542}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "16 - ElectronUsage", "Examples\16 - ElectronUsage\16 - ElectronUsage.fsproj", "{431507FB-BCA9-462A-A41A-FAC9CDEB9542}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "15 - Svg", "Examples (dotnetcore)\15 - Svg\15 - Svg.fsproj", "{D1011001-C48B-49F2-8AB7-00EC5747CDD1}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "15 - Svg", "Examples\15 - Svg\15 - Svg.fsproj", "{D1011001-C48B-49F2-8AB7-00EC5747CDD1}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "14 - OpenFile", "Examples (dotnetcore)\14 - OpenFile\14 - OpenFile.fsproj", "{EF439FA8-8182-4FDD-BDC5-70103C3A39C7}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "14 - OpenFile", "Examples\14 - OpenFile\14 - OpenFile.fsproj", "{EF439FA8-8182-4FDD-BDC5-70103C3A39C7}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "13 - Pages", "Examples (dotnetcore)\13 - Pages\13 - Pages.fsproj", "{5FCE6FE9-364E-47F0-B25B-5E624E7037ED}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "13 - Pages", "Examples\13 - Pages\13 - Pages.fsproj", "{5FCE6FE9-364E-47F0-B25B-5E624E7037ED}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - NavigationDemo", "Examples (dotnetcore)\12 - NavigationDemo\12 - NavigationDemo.fsproj", "{C6B6DC68-698E-4331-BC31-0D676FF2EF5B}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - NavigationDemo", "Examples\12 - NavigationDemo\12 - NavigationDemo.fsproj", "{C6B6DC68-698E-4331-BC31-0D676FF2EF5B}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "11 - BoxSelection", "Examples (dotnetcore)\11 - BoxSelection\11 - BoxSelection.fsproj", "{4CDAD40B-A4E0-4555-B25E-5EF993E2B8CF}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "11 - BoxSelection", "Examples\11 - BoxSelection\11 - BoxSelection.fsproj", "{4CDAD40B-A4E0-4555-B25E-5EF993E2B8CF}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "10 - Drawing3D", "Examples (dotnetcore)\10 - Drawing3D\10 - Drawing3D.fsproj", "{0DF465C2-DCD9-4CB2-8796-DDA8F0D28873}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "10 - Drawing3D", "Examples\10 - Drawing3D\10 - Drawing3D.fsproj", "{0DF465C2-DCD9-4CB2-8796-DDA8F0D28873}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "09 - RenderModel", "Examples (dotnetcore)\09 - RenderModel\09 - RenderModel.fsproj", "{B8CE607F-5007-475E-863A-AAA7A500C494}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "09 - RenderModel", "Examples\09 - RenderModel\09 - RenderModel.fsproj", "{B8CE607F-5007-475E-863A-AAA7A500C494}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "08 - AnimationAsyncExample", "Examples (dotnetcore)\08 - AnimationAsyncExample\08 - AnimationAsyncExample.fsproj", "{46BF6E6B-19EA-4D42-B1A7-B2F8B8FAFCD9}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "08 - AnimationAsyncExample", "Examples\08 - AnimationAsyncExample\08 - AnimationAsyncExample.fsproj", "{46BF6E6B-19EA-4D42-B1A7-B2F8B8FAFCD9}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "07 - Simple2DDrawing", "Examples (dotnetcore)\07 - Simple2DDrawing\07 - Simple2DDrawing.fsproj", "{34EE41FD-E4F6-4670-835A-73F451A3A258}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "07 - Simple2DDrawing", "Examples\07 - Simple2DDrawing\07 - Simple2DDrawing.fsproj", "{34EE41FD-E4F6-4670-835A-73F451A3A258}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "06 - DragDiv", "Examples (dotnetcore)\06 - DragDiv\06 - DragDiv.fsproj", "{F1B1EF1C-44B4-4B57-97C9-FDB12C4677C5}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "06 - DragDiv", "Examples\06 - DragDiv\06 - DragDiv.fsproj", "{F1B1EF1C-44B4-4B57-97C9-FDB12C4677C5}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "04 - DragDropHtml5", "Examples (dotnetcore)\04 - DragDropHtml5\04 - DragDropHtml5.fsproj", "{334433F7-0B7A-489A-B7C0-9578E6F264CE}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "04 - DragDropHtml5", "Examples\04 - DragDropHtml5\04 - DragDropHtml5.fsproj", "{334433F7-0B7A-489A-B7C0-9578E6F264CE}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "03 - D3Integration", "Examples (dotnetcore)\03 - D3Integration\03 - D3Integration.fsproj", "{61B6175B-146D-45E0-A27F-DD5EC41786D6}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "03 - D3Integration", "Examples\03 - D3Integration\03 - D3Integration.fsproj", "{61B6175B-146D-45E0-A27F-DD5EC41786D6}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Scratch", "Scratch", "{49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}"
 	ProjectSection(SolutionItems) = preProject
@@ -129,8 +113,6 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "07 - UIUpdatePerformance", 
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "06 - DrawRectsShader", "Scratch\06 - DrawRectsShader\06 - DrawRectsShader.fsproj", "{2B7C85CA-D8A8-4CCE-9658-6D28B46B9B1B}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "05 - CefExperiments", "Scratch\05 - CefExperiments\05 - CefExperiments.fsproj", "{048E80EB-C3EE-4FDB-92BE-8DFDFE839C2F}"
-EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "03 - LinePicking", "Scratch\03 - LinePicking\03 - LinePicking.fsproj", "{C452ACA1-540D-4CD1-A212-D66C18659586}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "02 - DrawRects", "Scratch\02 - DrawRects\02 - DrawRects.fsproj", "{FF87534D-5B8C-44D5-B2D4-456515623D6A}"
@@ -149,9 +131,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "29 - Garbage Collection", "Scratch\29 - Garbage Collection\29 - Garbage Collection.fsproj", "{5F1B5AF1-73B4-44F4-89D7-84BBC929B770}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - GoldenLayout", "Examples (dotnetcore)\27 - GoldenLayout\27 - GoldenLayout.fsproj", "{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - GoldenLayout", "Examples\27 - GoldenLayout\27 - GoldenLayout.fsproj", "{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Notifications", "Examples (dotnetcore)\28 - Notifications\28 - Notifications.fsproj", "{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Notifications", "Examples\28 - Notifications\28 - Notifications.fsproj", "{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Screenshotr", "Aardvark.UI.Screenshotr\Aardvark.UI.Screenshotr.fsproj", "{24D7C14A-3337-494B-8D72-4A2104D4956D}"
 EndProject
@@ -160,6 +142,10 @@ EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "32 - Splines", "Scratch\32 - Splines\32 - Splines.fsproj", "{B315793A-9E8F-4472-8DA4-58E507BFB2E3}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Animation.Tests", "Tests\Aardvark.UI.Animation.Tests\Aardvark.UI.Animation.Tests.fsproj", "{9F11A02C-489E-4CC2-99EC-64D657A5D567}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.OffScreen", "Aardvark.Cef.OffScreen\Aardvark.Cef.OffScreen.fsproj", "{8016A935-5139-870C-3F83-81E1569989F9}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "19 - RenderToTexture (CEF)", "Examples\19 - RenderToTexture (CEF)\19 - RenderToTexture (CEF).fsproj", "{178F952C-0143-F8BB-BFB6-3C429F38C0EC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -179,14 +165,6 @@ Global
 		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}.Release|Any CPU.Build.0 = Release|Any CPU
-		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F20C78DD-06CB-44E8-90DB-6DE144863078}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{F20C78DD-06CB-44E8-90DB-6DE144863078}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F20C78DD-06CB-44E8-90DB-6DE144863078}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -203,18 +181,10 @@ Global
 		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{EDE32464-755B-415A-B0CA-CDA89F49F6F5}.Release|Any CPU.Build.0 = Release|Any CPU
 		{9824D872-86F5-4058-B378-9E922026FC70}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9824D872-86F5-4058-B378-9E922026FC70}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9824D872-86F5-4058-B378-9E922026FC70}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9824D872-86F5-4058-B378-9E922026FC70}.Release|Any CPU.Build.0 = Release|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A}.Release|Any CPU.Build.0 = Release|Any CPU
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -379,10 +349,6 @@ Global
 		{2B7C85CA-D8A8-4CCE-9658-6D28B46B9B1B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2B7C85CA-D8A8-4CCE-9658-6D28B46B9B1B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2B7C85CA-D8A8-4CCE-9658-6D28B46B9B1B}.Release|Any CPU.Build.0 = Release|Any CPU
-		{048E80EB-C3EE-4FDB-92BE-8DFDFE839C2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{048E80EB-C3EE-4FDB-92BE-8DFDFE839C2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{048E80EB-C3EE-4FDB-92BE-8DFDFE839C2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{048E80EB-C3EE-4FDB-92BE-8DFDFE839C2F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{C452ACA1-540D-4CD1-A212-D66C18659586}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{C452ACA1-540D-4CD1-A212-D66C18659586}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C452ACA1-540D-4CD1-A212-D66C18659586}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -431,6 +397,14 @@ Global
 		{9F11A02C-489E-4CC2-99EC-64D657A5D567}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9F11A02C-489E-4CC2-99EC-64D657A5D567}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9F11A02C-489E-4CC2-99EC-64D657A5D567}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8016A935-5139-870C-3F83-81E1569989F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8016A935-5139-870C-3F83-81E1569989F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8016A935-5139-870C-3F83-81E1569989F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8016A935-5139-870C-3F83-81E1569989F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{178F952C-0143-F8BB-BFB6-3C429F38C0EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{178F952C-0143-F8BB-BFB6-3C429F38C0EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{178F952C-0143-F8BB-BFB6-3C429F38C0EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{178F952C-0143-F8BB-BFB6-3C429F38C0EC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -439,15 +413,7 @@ Global
 		{E31551E9-48F2-4527-9DC5-B64323030E71} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{1A788AF4-257B-4C4C-8C5A-E379373B5838} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
-		{70C08F03-F4A5-414A-ABD6-CC07DC42E07C} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
-		{1DFEB808-39FA-4DB3-92B6-77BAADC1457D} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
-		{F20C78DD-06CB-44E8-90DB-6DE144863078} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
-		{773EB4C7-BA14-4A60-B6C5-8A27C7D80BE2} = {5DAFA99B-848D-4185-B4C1-287119815657}
-		{222260E2-428B-485D-89FB-BFBF1D87CD06} = {5DAFA99B-848D-4185-B4C1-287119815657}
-		{F0D88ACA-53DB-492C-88CF-080F67FEF6B8} = {5DAFA99B-848D-4185-B4C1-287119815657}
-		{EDE32464-755B-415A-B0CA-CDA89F49F6F5} = {2FE8734A-BF34-43DE-8731-5D580FE4E83B}
-		{9824D872-86F5-4058-B378-9E922026FC70} = {6D553C3F-E56A-4B26-8018-DA17A4B4C407}
-		{7B055C74-1C24-4CB0-96E4-02E01914F60A} = {6D553C3F-E56A-4B26-8018-DA17A4B4C407}
+		{9824D872-86F5-4058-B378-9E922026FC70} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{210CA4D7-4A23-43F9-9499-76ECAEE33F15} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{8D161B57-D086-4848-85E1-A77A3F1D9215} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{75B6419D-2A3F-4FFF-8A92-EDA1DE90D09B} = {C47A910F-5F84-4084-BFE4-47E7EB45B1B0}
@@ -489,19 +455,17 @@ Global
 		{A49F11D2-66B6-43B5-8412-288580A5C9FD} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{EEC5AA55-7C52-43DB-B439-C7A1B3AA2398} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{2B7C85CA-D8A8-4CCE-9658-6D28B46B9B1B} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
-		{048E80EB-C3EE-4FDB-92BE-8DFDFE839C2F} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{C452ACA1-540D-4CD1-A212-D66C18659586} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{FF87534D-5B8C-44D5-B2D4-456515623D6A} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{75631375-2F68-4B45-B366-26AAD84FE57B} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{0B82634B-7605-4798-AD95-C96036661C61} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
-		{E6E319E2-7A57-41B0-99B4-FF454EA81CF6} = {5DAFA99B-848D-4185-B4C1-287119815657}
 		{5F1B5AF1-73B4-44F4-89D7-84BBC929B770} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{3AFDD56A-F6AB-4BB0-AD88-8912071E998C} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 		{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
-		{24D7C14A-3337-494B-8D72-4A2104D4956D} = {5DAFA99B-848D-4185-B4C1-287119815657}
 		{F54A0F8D-DBF7-4483-B47E-DFBB3273027B} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{B315793A-9E8F-4472-8DA4-58E507BFB2E3} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{9F11A02C-489E-4CC2-99EC-64D657A5D567} = {C47A910F-5F84-4084-BFE4-47E7EB45B1B0}
+		{178F952C-0143-F8BB-BFB6-3C429F38C0EC} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}

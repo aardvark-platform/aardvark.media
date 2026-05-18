@@ -1,5 +1,5 @@
 type project
-id Aardvark.Cef.WinForms
+id Aardvark.Cef.OffScreen
 authors Aardvark Platform Team
 owners Aardvark Platform Team
 projectUrl http://github.com/aardvark-platform
@@ -12,7 +12,8 @@ include-pdbs true
 dependencies
     framework: net471
         CefSharp.Common ~> LOCKED:Major
-        CefSharp.WinForms ~> LOCKED:Major
+        CefSharp.OffScreen ~> LOCKED:Major
     framework: net8.0-windows10.0.17763.0
         CefSharp.Common.NETCore ~> LOCKED:Major
-        CefSharp.WinForms.NETCore ~> LOCKED:Major
+        CefSharp.OffScreen.NETCore ~> LOCKED:Major
+        System.Drawing.Common >= LOCKEDVERSION

@@ -1,11 +1,13 @@
 Aardvark.Build
 FSharp.Core
 Aardvark.Base.FSharp
+Aardvark.Application
 
 group CefSharp-NetCore
     CefSharp.Common.NETCore
-    CefSharp.WinForms.NETCore
+    CefSharp.OffScreen.NETCore
+    System.Drawing.Common
 
 group CefSharp-NetFramework
     CefSharp.Common
-    CefSharp.WinForms
+    CefSharp.OffScreen

@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFrameworks>net471;net8.0-windows10.0.17763.0</TargetFrameworks>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+    <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <OutputPath>..\..\..\bin\$(Configuration)\</OutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <WarnOn>3389;3390;3395</WarnOn>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Keyboard.fs" />
+    <Compile Include="Mouse.fs" />
+    <Compile Include="RenderHandler.fs" />
+    <Compile Include="Browser.fs" />
+    <Compile Include="AardvarkCef.fs" />
+    <None Include="paket.references" />
+    <None Include="paket.template" />
+  </ItemGroup>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

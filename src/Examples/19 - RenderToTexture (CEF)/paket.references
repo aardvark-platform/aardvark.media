@@ -1,0 +1,14 @@
+Aardvark.Base
+FSharp.Data.Adaptive
+Aardvark.Base.FSharp
+
+Aardvark.Rendering
+Aardvark.Application
+Aardvark.Application.WinForms.GL 
+Aardvark.SceneGraph
+Aardvark.Rendering.Vulkan
+
+FsPickler
+FsPickler.Json
+
+FSharp.Core
