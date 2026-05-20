@@ -1,3 +1,6 @@
+### 5.7.0-prerelease0001
+- Initial prerelease
+
 ### 5.6.3
 - Added missing lock for event handler dictionary
 
