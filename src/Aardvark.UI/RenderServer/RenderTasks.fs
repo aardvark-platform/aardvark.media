@@ -166,8 +166,6 @@ type internal JpegClientRenderTask(runtime: IRuntime, compressor: JpegCompressor
         match compressor with
         | ValueSome compressor ->
             if notNull gpuCompressorInstance then gpuCompressorInstance.Dispose()
-
-            Log.line "[Server] Creating GPU image compressor for size: %A" size
             gpuCompressorInstance <- compressor.NewInstance(size, Quantization.photoshop90)
 
             if notNull resolved then resolved.Dispose()
