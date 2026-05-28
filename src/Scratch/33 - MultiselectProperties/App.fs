@@ -196,12 +196,47 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
                             | None -> div [style "color: #aaa; padding: 10px"] [text "Box not found"]
                             | Some box ->
                                 require (Html.semui) (
-                                    div [style "height: 100%; overflow-y: auto; background: #1B1C1E"] [
-                                        Html.table [
-                                            Html.row "ID:"    [text (box.id.Substring(0, min 8 box.id.Length) + "...")]
-                                            Html.row "Min:"   [Incremental.text (box.geometry |> AVal.map (fun g -> sprintf "%.2f, %.2f, %.2f" g.Min.X g.Min.Y g.Min.Z))]
-                                            Html.row "Max:"   [Incremental.text (box.geometry |> AVal.map (fun g -> sprintf "%.2f, %.2f, %.2f" g.Max.X g.Max.Y g.Max.Z))]
-                                            Html.row "Color:" [ColorPicker.view ColorPicker.Config.Dark.Toggle (fun c -> SetBoxColor (id, c)) box.color]
+                                    div [style "height: 100%; overflow-y: auto; background: #1B1C1E; padding: 10px; color: #ccc; font-size: 13px"] [
+
+                                        // Section header
+                                        div [style "font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #666; margin-bottom: 8px"] [
+                                            text "VisibleBox"
+                                        ]
+
+                                        // ID row
+                                        div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a2a"] [
+                                            span [style "color: #777; font-size: 12px"] [text "ID"]
+                                            span [style "font-family: monospace; font-size: 12px; color: #aaa"] [text (box.id.Substring(0, min 8 box.id.Length) + "…")]
+                                        ]
+
+                                        // Min row
+                                        div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a2a"] [
+                                            span [style "color: #777; font-size: 12px"] [text "Min"]
+                                            Incremental.span (AttributeMap.ofList [style "font-family: monospace; font-size: 11px; color: #aaa"]) (
+                                                AList.ofList [Incremental.text (box.geometry |> AVal.map (fun g -> sprintf "%.2f, %.2f, %.2f" g.Min.X g.Min.Y g.Min.Z))]
+                                            )
+                                        ]
+
+                                        // Max row
+                                        div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a2a"] [
+                                            span [style "color: #777; font-size: 12px"] [text "Max"]
+                                            Incremental.span (AttributeMap.ofList [style "font-family: monospace; font-size: 11px; color: #aaa"]) (
+                                                AList.ofList [Incremental.text (box.geometry |> AVal.map (fun g -> sprintf "%.2f, %.2f, %.2f" g.Max.X g.Max.Y g.Max.Z))]
+                                            )
+                                        ]
+
+                                        // Color row
+                                        div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0"] [
+                                            span [style "color: #777; font-size: 12px"] [text "Color"]
+                                            div [style "display: flex; align-items: center; gap: 6px"] [
+                                                Incremental.div (AttributeMap.ofList [style "display: flex; align-items: center"]) (
+                                                    alist {
+                                                        let! c = box.color
+                                                        yield div [style (sprintf "width: 14px; height: 14px; border-radius: 50%%; background: %s; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0" (Html.color c))] []
+                                                    }
+                                                )
+                                                ColorPicker.view ColorPicker.Config.Dark.Toggle (fun c -> SetBoxColor (id, c)) box.color
+                                            ]
                                         ]
                                     ]
                                 )
