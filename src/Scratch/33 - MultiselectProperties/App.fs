@@ -298,14 +298,31 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
 
         | Pages.Page "controls" ->
             require (Html.semui) (
-                div [style "background: #1B1C1E; height: 100%; overflow-y: auto"] [
-                    Html.SemUi.accordion "Rendering" "configure" true [
+                div [style "background: #1B1C1E; height: 100%; overflow-y: auto; padding: 10px; color: #ccc; font-size: 13px"] [
+
+                    div [style "font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #555; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #2a2a2a"] [
+                        text "Rendering"
+                    ]
+                    div [style "margin-bottom: 16px"] [
                         RenderingParameters.view model.rendering |> UI.map RenderingAction
                     ]
-                    div [clazz "ui buttons"; style "padding: 4px"] [
-                        button [clazz "ui button"; onMouseClick (fun _ -> AddBox)] [text "Add Box"]
-                        button [clazz "ui button"; onMouseClick (fun _ -> RemoveBox)] [text "Remove Box"]
-                        button [clazz "ui button"; onMouseClick (fun _ -> ClearSelection)] [text "Clear Selection"]
+
+                    div [style "font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #555; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1px solid #2a2a2a"] [
+                        text "Scene"
+                    ]
+                    div [style "display: flex; flex-direction: column; gap: 4px"] [
+                        button [
+                            style "background: #252525; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; text-align: left; width: 100%"
+                            onMouseClick (fun _ -> AddBox)
+                        ] [text "+ Add Box"]
+                        button [
+                            style "background: #252525; color: #ccc; border: 1px solid #333; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; text-align: left; width: 100%"
+                            onMouseClick (fun _ -> RemoveBox)
+                        ] [text "− Remove Box"]
+                        button [
+                            style "background: #252525; color: #888; border: 1px solid #333; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; text-align: left; width: 100%"
+                            onMouseClick (fun _ -> ClearSelection)
+                        ] [text "✕ Clear Selection"]
                     ]
                 ]
             )
