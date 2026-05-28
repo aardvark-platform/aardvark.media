@@ -16,6 +16,28 @@ open Model
 
 type Action = MultiselectPropertiesAction
 
+module Shader =
+    open FShade
+
+    type SuperVertex =
+        {
+            [<Position>] pos : V4f
+            [<SourceVertexIndex>] i : int
+        }
+
+    let lines (t : Triangle<SuperVertex>) =
+        line {
+            yield t.P0
+            yield t.P1
+            restartStrip()
+            yield t.P1
+            yield t.P2
+            restartStrip()
+            yield t.P2
+            yield t.P0
+            restartStrip()
+        }
+
 let layoutConfig = LayoutConfig.Default
 
 let defaultLayout =
@@ -86,45 +108,80 @@ let update (model : MultiselectPropertiesModel) (act : Action) =
         { model with boxes = boxes }
     | GoldenLayoutMsg msg -> { model with golden = model.golden |> GoldenLayout.update msg }
                     
-let mkColor (model : AdaptiveMultiselectPropertiesModel) (box : AdaptiveVisibleBox) =
-    let id = box.id 
-
-    let color =  
-        model.selectedBoxes 
-            |> ASet.toAVal 
-            |> AVal.map (HashSet.contains id) 
-            |> AVal.bind (function 
-                | true -> AVal.constant Primitives.selectionColor 
-                | false -> box.color
-              )
-
-    let color = 
-        model.boxHovered |> AVal.bind (function 
-            | Some k -> if k = id then AVal.constant Primitives.hoverColor else color
-            | None -> color
-        )
-
-    color
-
 let mkISg (model : AdaptiveMultiselectPropertiesModel) (box : AdaptiveVisibleBox) =
-                
-    let color = mkColor model box
 
-    Sg.box color box.geometry
-        |> Sg.shader {
-            do! DefaultSurfaces.trafo
-            do! DefaultSurfaces.vertexColor
-            do! DefaultSurfaces.simpleLighting
-            }                
-        |> Sg.requirePicking
-        |> Sg.noEvents
-        |> Sg.fillMode model.rendering.fillMode
-        |> Sg.cullMode model.rendering.cullMode
-        |> Sg.withEvents [
-            Sg.onClick (fun _ -> Select box.id)
-            Sg.onEnter (fun _ -> Enter box.id)
-            Sg.onLeave (fun () -> Exit)
-        ]
+    let passMain    = RenderPass.main
+    let passOutline = RenderPass.after "outline" RenderPassOrder.Arbitrary passMain
+
+    let stencilWrite =
+        { StencilMode.None with
+            Pass       = StencilOperation.Replace
+            DepthFail  = StencilOperation.Replace
+            Reference  = 1
+            Comparison = ComparisonFunction.Greater }
+
+    let stencilRead =
+        { StencilMode.None with
+            Comparison = ComparisonFunction.Greater
+            Reference  = 1 }
+
+    let isHighlighted =
+        let sel = model.selectedBoxes |> ASet.toAVal |> AVal.map (HashSet.contains box.id)
+        let hov = model.boxHovered |> AVal.map (fun h -> h = Some box.id)
+        AVal.map2 (||) sel hov
+
+    let outlineColor =
+        let sel = model.selectedBoxes |> ASet.toAVal |> AVal.map (HashSet.contains box.id)
+        let hov = model.boxHovered |> AVal.map (fun h -> h = Some box.id)
+        AVal.map2 (fun s h -> if s then C4f.Red else if h then C4f.Blue else C4f.White) sel hov
+
+    let regular =
+        Sg.box box.color box.geometry
+            |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! DefaultSurfaces.vertexColor
+                do! DefaultSurfaces.simpleLighting
+            }
+            |> Sg.pass passMain
+            |> Sg.requirePicking
+            |> Sg.noEvents
+            |> Sg.fillMode model.rendering.fillMode
+            |> Sg.cullMode model.rendering.cullMode
+            |> Sg.withEvents [
+                Sg.onClick  (fun _ -> Select box.id)
+                Sg.onEnter  (fun _ -> Enter box.id)
+                Sg.onLeave  (fun () -> Exit)
+            ]
+
+    let mask =
+        Sg.box box.color box.geometry
+            |> Sg.pass passMain
+            |> Sg.stencilMode' stencilWrite
+            |> Sg.writeBuffers' (Set.singleton (WriteBuffer.Stencil))
+            |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! DefaultSurfaces.vertexColor
+            }
+            |> Sg.onOff isHighlighted
+
+    let outline =
+        Sg.box box.color box.geometry
+            |> Sg.pass passOutline
+            |> Sg.stencilMode' stencilRead
+            |> Sg.depthTest' DepthTest.None
+            |> Sg.writeBuffers' (Set.singleton (WriteBuffer.Color DefaultSemantic.Colors))
+            |> Sg.uniform "LineWidth" (AVal.constant 4.0)
+            |> Sg.uniform "Color" outlineColor
+            |> Sg.shader {
+                do! DefaultSurfaces.trafo
+                do! Shader.lines
+                do! DefaultSurfaces.thickLine
+                do! DefaultSurfaces.thickLineRoundCaps
+                do! DefaultSurfaces.sgColor
+            }
+            |> Sg.onOff isHighlighted
+
+    Sg.ofSeq [ regular; mask; outline ]
 
 let view (model : AdaptiveMultiselectPropertiesModel) =
     let frustum = AVal.constant (Frustum.perspective 60.0 0.1 100.0 1.0)
@@ -141,11 +198,6 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
                         |> AList.toASet
                         |> ASet.map (fun b -> mkISg model b)
                         |> Sg.set
-                        |> Sg.effect [
-                            toEffect DefaultSurfaces.trafo
-                            toEffect DefaultSurfaces.vertexColor
-                            toEffect DefaultSurfaces.simpleLighting
-                        ]
                         |> Sg.noEvents
                 )
 
@@ -165,8 +217,8 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
                                     |> AVal.map (fun h -> h = Some b.id)
 
                                 let borderStyle =
-                                    if isSelected then "border-left: 3px solid #4fc3f7; background: #2a3a4a;"
-                                    elif isHovered then "border-left: 3px solid #555; background: #252525;"
+                                    if isSelected then "border-left: 3px solid #e53935; background: #2e1a1a;"
+                                    elif isHovered then "border-left: 3px solid #1e88e5; background: #1a1e2e;"
                                     else "border-left: 3px solid transparent; background: #222;"
 
                                 yield
