@@ -25,7 +25,7 @@ module Animator =
             reraise()
 
     let inline tickSeconds (seconds: ^T) =
-        let gt = GlobalTime.Timestamp <| MicroTime.ofSeconds seconds
+        let gt = GlobalTime <| MicroTime.ofSeconds seconds
         () |> Animator.update (AnimatorMessage.Tick gt)
 
 module Animation =

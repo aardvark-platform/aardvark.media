@@ -1,3 +1,40 @@
+### 5.6.3
+- Added missing lock for event handler dictionary
+
+### 5.6.2
+- Fixed race condition in event handling (https://github.com/aardvark-platform/aardvark.media/issues/1)
+- [Giraffe] Fixed handling of multiple sessions (https://github.com/aardvark-platform/aardvark.media/issues/50)
+- [Giraffe] Fixed race condition during execution of boot code with script / stylesheet loading
+- [Primitives] Reworked numeric inputs
+
+### 5.6.1
+- Fixed race condition during execution of boot code with script / stylesheet loading
+- Removed broken fallback file dialogs
+- Removed broken F12 screenshot shortcut
+- Exposed explicit IDisposable interface implementations of Cef Browser/Client
+- [Primitives] Fixed mouse wheel events for numeric inputs in Firefox
+
+### 5.6.0
+- Updated to Aardvark.Rendering 5.6 packages
+- [Animation] Improved real-time tick generation
+- [Animation] Renamed path to sequential
+- [Animation] Added Splines.DefaultErrorTolerance
+- [Animation] Added and simplified time-related utilities
+- [Animation] Simplified specifying iterations
+- [Animation] Composite animations can now be created from empty inputs resulting in empty animations
+- [Animation] Fixed various bugs
+
+### 5.6.0-prerelease0002
+- Updated rendering packages
+- Various improvements and fixes for the animation system
+
+### 5.6.0-prerelease0001
+- Updated to Aarvark.Rendering 5.6.0-prerelease0001
+
+### 5.5.5
+- Removed broken fallback file dialogs
+- Removed broken F12 screenshot shortcut
+
 ### 5.5.4
 - Added basic support for JavaScript modules.
 - [Screenshotr] Fixed System.Text.Json dependency

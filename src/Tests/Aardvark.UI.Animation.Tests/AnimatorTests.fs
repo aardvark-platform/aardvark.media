@@ -15,7 +15,7 @@ module ``Animator Tests`` =
                 let updated = ref false
 
                 let a1 =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 4.0
                     |> Animation.onStart(fun _ _ model ->
                         started.Value <- true
@@ -27,9 +27,9 @@ module ``Animator Tests`` =
                     )
 
                 let a2 =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 4.0
-                    |> Animation.onStart(fun name _ model ->
+                    |> Animation.onStart(fun _ _ model ->
                         model |> Animator.createAndStart "a1" a1
                     )
 
@@ -47,7 +47,7 @@ module ``Animator Tests`` =
                 use _ = Animator.initTest()
 
                 let animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 4.0
                     |> Animation.onProgress (fun name _ model ->
                         Expect.isTrue (model |> Animator.exists name) "Exists returns false"
@@ -70,7 +70,7 @@ module ``Animator Tests`` =
                 use _ = Animator.initTest()
 
                 let a1 =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 4.0
                     |> Animation.onStart(fun name _ model ->
                         Expect.isTrue (model |> Animator.exists name) "Exists returns false"
@@ -79,9 +79,9 @@ module ``Animator Tests`` =
                     )
 
                 let a2 =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 4.0
-                    |> Animation.onStart(fun name _ model ->
+                    |> Animation.onStart(fun _ _ model ->
                         if delay then
                             model |> Animator.createAndStartDelayed "a1" (fun _ -> a1)
                         else

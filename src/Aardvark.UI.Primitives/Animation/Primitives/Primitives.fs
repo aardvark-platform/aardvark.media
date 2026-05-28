@@ -15,17 +15,6 @@ module AnimationPrimitives =
                 [<Literal>]
                 let Epsilon = 1e-8
 
-                // TODO: Remove when updated to Aarvark.Base > 5.3.7
-                module Array =
-
-                    let inline stableSumBy ([<InlineIfLambda>] mapping: 'T -> float) (arr: 'T[]) =
-                        let mutable sum = KahanSum.Zero
-                        for x in arr do sum <- sum + mapping x
-                        sum.Value
-
-                    let inline stableSum (arr: float[]) =
-                        arr |> stableSumBy id
-
                 type DoubleConverter =
                     static member inline ToDouble(x : float) = x
                     static member inline ToDouble(x : float32) = float x
@@ -116,7 +105,7 @@ module AnimationPrimitives =
 
                     Animation.create (fun t -> Rot.SlerpShortest(src, dst, t))
                     |> Animation.seconds 1
-                    |> Animation.map (ofRot3d)
+                    |> Animation.map ofRot3d
 
             /// Creates an animation using spherical linear interpolation.
             /// The animation is linked to the variable specified by the given lens via an observer with a progress callback.
@@ -128,11 +117,12 @@ module AnimationPrimitives =
 
             /// Creates an array of animations that interpolate between pairs of the given points.
             /// The animations are scaled according to the distance between the points.
+            /// Returns an empty array if the input sequence is empty.
             let inline path' (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                              (distance : ^Value -> ^Value -> float)
                              (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
 
-                let pj = Array.ofSeq points
+                let pj = Seq.asArray points
 
                 if pj.Length = 0 then
                     Array.empty
@@ -155,23 +145,24 @@ module AnimationPrimitives =
 
             /// <summary>
             /// Creates an animation that interpolates between the given points.
+            /// Returns an empty animation if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline path (interpolate : ^Value -> ^Value -> IAnimation<'Model, ^Value>)
                             (distance : ^Value -> ^Value -> float)
                             (points : ^Value seq) : IAnimation<'Model, ^Value> =
 
-                points |> path' interpolate distance |> Animation.path
+                points |> path' interpolate distance |> Animation.sequential
 
 
             /// Creates an array of animations that interpolate linearly between pairs of the given points.
             /// The animations are scaled according to the distance between the points.
+            /// Returns an empty array if the input sequence is empty.
             let inline linearPath' (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value>[] =
                 points |> path' lerp distance
 
             /// <summary>
             /// Creates an animation that linearly interpolates between the given points.
+            /// Returns an empty animation if the input sequence is empty.
             /// </summary>
-            /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
             let inline linearPath (distance : ^Value -> ^Value -> float) (points : ^Value seq) : IAnimation<'Model, ^Value> =
                 points |> path lerp distance

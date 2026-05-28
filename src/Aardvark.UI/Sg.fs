@@ -312,7 +312,7 @@ module ``F# Sg`` =
         let adapter (o : obj) =
             Sg.adapter o |> box
 
-        /// Applies the given activation function to the the given scene graph.
+        /// Applies the given activation function to the given scene graph.
         /// An activation function is invoked when the render objects of the scene graph are prepared.
         /// The resulting IDisposable is disposed when the render objects are disposed.
         let onActivation (f : unit -> IDisposable) (sg : ISg<'msg>) =
@@ -422,12 +422,12 @@ module ``F# Sg`` =
 
         /// Sets the sampler state for the texture slot with the given name.
         /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
-        let inline samplerState (name : ^Name) (state : aval<SamplerState option>) (sg : ISg<'msg>) =
+        let inline samplerState (name : ^Name) (state : aval<SamplerState>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.samplerState name state)
 
         /// Sets the sampler state for the texture slot with the given name.
         /// The name can be a string, Symbol, or TypedSymbol<ITexture>.
-        let inline samplerState' (name : ^Name) (state : Option<SamplerState>) (sg : ISg<'msg>) =
+        let inline samplerState' (name : ^Name) (state : SamplerState) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.samplerState' name state)
 
 
@@ -805,6 +805,62 @@ module ``F# Sg`` =
             sg |> unboxed (Sg.conservativeRaster' mode)
 
         // ================================================================================================================
+        // Viewport
+        // ================================================================================================================
+
+        /// <summary>
+        /// Sets a custom viewport for the scene.
+        /// The viewport is the region of the framebuffer that will be rendered to.
+        /// It determines the transformation from normalized device coordinates to framebuffer coordinates.
+        /// </summary>
+        /// <remarks>
+        /// The default viewport is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The viewport to set. Min and Max are the framebuffer coordinates of the viewport's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the viewport to.</param>
+        let viewport (region : aval<Box2i>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.viewport region)
+
+        /// <summary>
+        /// Sets a custom viewport for the scene.
+        /// The viewport is the region of the framebuffer that will be rendered to.
+        /// It determines the transformation from normalized device coordinates to framebuffer coordinates.
+        /// </summary>
+        /// <remarks>
+        /// The default viewport is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The viewport to set. Min and Max are the framebuffer coordinates of the viewport's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the viewport to.</param>
+        let viewport' (region : Box2i) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.viewport' region)
+
+        /// <summary>
+        /// Sets a custom scissor for the scene.
+        /// The scissor is the region of the framebuffer that can be modified by the render task.
+        /// Fragments with coordinates outside the scissor region will be discarded.
+        /// </summary>
+        /// <remarks>
+        /// The default scissor is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The scissor to set. Min and Max are the framebuffer coordinates of the scissor's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the scissor to.</param>
+        let scissor (region : aval<Box2i>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scissor region)
+
+        /// <summary>
+        /// Sets a custom scissor for the scene.
+        /// The scissor is the region of the framebuffer that can be modified by the render task.
+        /// Fragments with coordinates outside the scissor region will be discarded.
+        /// </summary>
+        /// <remarks>
+        /// The default scissor is specified in <see cref="OutputDescription"/>.
+        /// </remarks>
+        /// <param name="region">The scissor to set. Min and Max are the framebuffer coordinates of the scissor's lower left and upper right corners (exclusive) respectively.</param>
+        /// <param name="sg">The scene to apply the scissor to.</param>
+        let scissor' (region : Box2i) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.scissor' region)
+
+        // ================================================================================================================
         // Attributes & Indices
         // ================================================================================================================
 
@@ -861,13 +917,13 @@ module ``F# Sg`` =
         let inline instanceArray (name : ^Name) (value : System.Array) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceArray name value)
 
-        /// Provides a instance attribute with the given name by supplying a single value.
+        /// Provides an instance attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
         let inline instanceBufferValue (name : ^Name) (value : aval< ^Value>) (sg : ISg<'msg>) =
             sg |> unboxed (Sg.instanceBufferValue name value)
 
-        /// Provides a instance attribute with the given name by supplying a single value.
+        /// Provides an instance attribute with the given name by supplying a single value.
         /// The name can be a string, Symbol, or TypedSymbol.
         /// The value has to be compatible with V4f.
         let inline instanceBufferValue' (name : ^Name) (value : ^Value) (sg : ISg<'msg>) =
@@ -934,6 +990,10 @@ module ``F# Sg`` =
         /// Supplies the draw calls in the given indirect buffer with the given geometry mode.
         let indirectDraw (mode : IndexedGeometryMode) (buffer : aval<IndirectBuffer>) =
             Sg.indirectDraw mode buffer |> box<'msg>
+
+        /// Supplies the draw calls in the given indirect buffer with the given geometry mode.
+        let inline indirectDraw' (mode : IndexedGeometryMode) (buffer : IndirectBuffer) =
+            Sg.indirectDraw' mode buffer |> box<'msg>
 
         /// Creates a draw call from the given indexed geometry.
         let ofIndexedGeometry (g : IndexedGeometry) =

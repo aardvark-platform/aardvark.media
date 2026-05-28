@@ -3,7 +3,7 @@
 open Aardvark.Base
 open OptimizedClosures
 
-type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definition : InputMapping<'Model, 'T, 'Input, 'U>) =
+type internal InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definition : InputMapping<'Model, 'T, 'Input, 'U>) =
     inherit AbstractAnimationInstance<'Model, 'U, InputMapping<'Model, 'T, 'Input, 'U>>(name, definition)
 
     let wrapped = definition.Animation.Create(name)
@@ -28,11 +28,11 @@ type private InputMappingInstance<'Model, 'T, 'Input, 'U>(name : Symbol, definit
         result
 
 
-and private InputMapping<'Model, 'T, 'Input, 'U> =
+and [<ReferenceEquality>] internal InputMapping<'Model, 'T, 'Input, 'U> =
     {
-        Animation : IAnimation<'Model, 'T>
-        Input : IAnimation<'Model, 'Input>
-        Mapping : FSharpFunc<'Model, 'T, 'Input, 'U>
+        Animation  : IAnimation<'Model, 'T>
+        Input      : IAnimation<'Model, 'Input>
+        Mapping    : FSharpFunc<'Model, 'T, 'Input, 'U>
         Observable : Observable<'Model, 'U>
     }
 
@@ -53,13 +53,13 @@ and private InputMapping<'Model, 'T, 'Input, 'U> =
 
     member x.UnsubscribeAll() =
         { x with
-            Animation = x.Animation.UnsubscribeAll()
+            Animation  = x.Animation.UnsubscribeAll()
             Observable = Observable.empty }
 
     interface IAnimation with
         member x.Duration = x.Animation.Duration
         member x.TotalDuration = x.Animation.TotalDuration
-        member x.DistanceTime(localTime) = x.Animation.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.Animation.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>
@@ -87,9 +87,9 @@ module AnimationInputExtensions =
         /// the resulting animation. Likewise, the state and events of the resulting animation remain independent of the input
         /// animation.
         let input' (mapping : 'Model -> 'Input -> 'T -> 'U) (input : IAnimation<'Model, 'Input>) (animation : IAnimation<'Model, 'T>) =
-            { Animation = animation
-              Input = input.UnsubscribeAll()
-              Mapping = FSharpFunc<_,_,_,_>.Adapt (fun model value input -> value |> mapping model input)
+            { Animation  = animation
+              Input      = input.UnsubscribeAll()
+              Mapping    = FSharpFunc<_,_,_,_>.Adapt (fun model value input -> value |> mapping model input)
               Observable = Observable.empty } :> IAnimation<'Model, 'U>
 
         /// Applies the given input animation using the given mapping function.
@@ -97,4 +97,4 @@ module AnimationInputExtensions =
         /// the resulting animation. Likewise, the state and events of the resulting animation remain independent of the input
         /// animation.
         let input (mapping : 'Input -> 'T -> 'U) (input : IAnimation<'Model, 'Input>) (animation : IAnimation<'Model, 'T>) =
-            (input, animation) ||> input' (fun _ input value -> mapping input value)
+            (input, animation) ||> input' (fun _ -> mapping)

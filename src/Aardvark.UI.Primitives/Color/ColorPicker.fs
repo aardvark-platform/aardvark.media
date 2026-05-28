@@ -99,7 +99,6 @@ module ColorPicker =
         | RGB = 4
         | Name = 5
 
-    [<RequireQualifiedAccess>]
     type DisplayMode =
         /// Disabled dropdown menu.
         | Disabled = 0

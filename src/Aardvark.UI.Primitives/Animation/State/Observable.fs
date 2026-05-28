@@ -4,14 +4,14 @@ open Aardvark.Base
 open FSharp.Data.Adaptive
 open OptimizedClosures
 
-type private Callback<'Model, 'Value> =
+type internal Callback<'Model, 'Value> =
     FSharpFunc<Symbol, 'Value, 'Model, 'Model>
 
-type private Observable<'Model, 'Value> =
+type internal Observable<'Model, 'Value> =
     HashMap<EventType, Callback<'Model, 'Value>>
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module private Observable =
+module internal Observable =
 
     let empty : Observable<'Model, 'Value> = HashMap.empty
 
@@ -29,7 +29,6 @@ module private Observable =
         | _ -> ()
 
     let notify (observable : Observable<'Model, 'Value>) (name : Symbol) (events : EventQueue<'Value>) (model : byref<'Model>) =
-        let mutable event = Unchecked.defaultof<_>
-
-        while events.Dequeue &event do
+        while events.Count > 0 do
+            let event = events.Dequeue()
             trigger observable name event.Type &event.Value &model

@@ -194,13 +194,13 @@ module Animations =
         >> Animation.ease (Easing.Out <| EasingFunction.Elastic (1.8, 0.5))
 
     let reveal (id : V2i) (model : Model) =
-        let color = model |> fadeReveal id
-        let shape = model |> scaleToCube id
+        let color : IAnimation<Model> = fadeReveal id model
+        let shape : IAnimation<Model> = scaleToCube id model
         Animation.concurrent [color; shape]
 
     let hide (id : V2i) (model : Model) =
-        let color = model |> fadeNeutral id
-        let shape = model |> scaleToTile id
+        let color : IAnimation<Model> = fadeNeutral id model
+        let shape : IAnimation<Model> = scaleToTile id model
         Animation.concurrent [color; shape]
 
     let private orbit (center : V2d) (position : V2d) (a : float) (b : float) =
@@ -233,7 +233,7 @@ module Animations =
             |> Animation.loop LoopMode.Repeat
             |> Animation.seconds duration
 
-        Animation.path [accel; orbit]
+        Animation.sequential [accel; orbit]
 
     let resolve (id : V2i) (other : V2i) (model : Model) =
 
@@ -279,7 +279,7 @@ module Animations =
                 )
                 |> Animation.seconds (durationInSeconds - turnDurationInSeconds)
 
-            Animation.path [turn; fixOnCenter]
+            Animation.sequential [turn; fixOnCenter]
             |> Animation.map CameraView.forward
 
         (location, forward) ||> Animation.map2 (fun l f ->

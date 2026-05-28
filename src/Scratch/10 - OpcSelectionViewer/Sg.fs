@@ -34,16 +34,14 @@ module SceneObjectHandling =
         |> Seq.toList 
         |> List.map(fun y -> (opcData.patchHierarchy.opcPaths.Opc_DirAbsPath, y))
     
-    let sg = 
-      let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
-    
+    let sg =
       leaves 
         |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info,dir, patch.info)) 
         |> List.map(fun ((a,_),c,d) -> (a,c,d))
         |> List.map (fun (g,dir,info) -> 
         
           let texPath = Patch.extractTexturePath (OpcPaths dir) info 0
-          let tex = FileTexture(texPath,config) :> ITexture
+          let tex = FileTexture(texPath)
                     
           Sg.ofIndexedGeometry g
               |> Sg.trafo (AVal.constant info.Local2Global)             

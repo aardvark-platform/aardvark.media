@@ -29,7 +29,6 @@
     <Compile Include="Animation\Deprecated\Model.fs" />
     <Compile Include="Animation\Deprecated\AnimationBase.fs" />
     <Compile Include="Animation\Utilities\ValueCache.fs" />
-    <Compile Include="Animation\Utilities\ArrayQueue.fs" />
     <Compile Include="Animation\Core\Time.fs" />
     <Compile Include="Animation\Core\Interface.fs" />
     <Compile Include="Animation\Timing\DistanceTimeFunction.fs" />
@@ -41,7 +40,7 @@
     <Compile Include="Animation\Types\Adapter.fs" />
     <Compile Include="Animation\Types\Groups.fs" />
     <Compile Include="Animation\Types\Concurrent.fs" />
-    <Compile Include="Animation\Types\Path.fs" />
+    <Compile Include="Animation\Types\Sequential.fs" />
     <Compile Include="Animation\Types\Mapping.fs" />
     <Compile Include="Animation\Types\Input.fs" />
     <Compile Include="Animation\Primitives\Primitives.fs" />
@@ -87,6 +86,8 @@
     <EmbeddedResource Include="resources\notifications.js" />
     <EmbeddedResource Include="resources\accordion.js" />
     <EmbeddedResource Include="resources\dropdown.js" />
+    <EmbeddedResource Include="resources\numeric.js" />
+    <EmbeddedResource Include="resources\numeric.css" />
     <None Include="paket.references" />
     <None Include="paket.template" />
   </ItemGroup>

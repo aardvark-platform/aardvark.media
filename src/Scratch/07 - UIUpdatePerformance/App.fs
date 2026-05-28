@@ -36,8 +36,8 @@ let update (model : Model) (msg : Message) =
 
 let dependencies = 
     [
-        { url = "animation.css"; name = "resources/animation"; kind = Stylesheet }
-        { url = "support.js"; name = "resources/support"; kind = Script }
+        { url = "resources/animation.css"; name = "resources/animation"; kind = Stylesheet }
+        { url = "resources/support.js"; name = "resources/support"; kind = Script }
     ]
 
 let illegalString = """

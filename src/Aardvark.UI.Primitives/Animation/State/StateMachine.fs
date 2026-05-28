@@ -1,33 +1,31 @@
 ﻿namespace Aardvark.UI.Animation
 
+open Aardvark.Base
 open System.Collections.Generic
 
 [<Struct>]
-type private EventTrigger<'Value> =
-    {
-        Type : EventType
-        Value : 'Value
-    }
+type internal EventTrigger<'Value> =
+    { Type  : EventType
+      Value : 'Value }
 
-type private EventQueue<'Value> = ArrayQueue<EventTrigger<'Value>>
+type internal EventQueue<'Value> = Queue<EventTrigger<'Value>>
 
-type private StateMachine<'Value> =
-    class
-        val mutable State : State
-        val mutable Value : 'Value
-        val mutable Position : LocalTime
-        val Actions : List<Action>
+type internal StateMachine<'Value> =
+    val mutable State    : State
+    val mutable Value    : 'Value
+    val mutable Position : LocalTime
+    val FinalPosition    : LocalTime
+    val Actions          : List<Action>
 
-        new () = {
-            State = State.Stopped;
-            Value = Unchecked.defaultof<_>;
-            Position = LocalTime.zero
-            Actions = List()
-        }
-    end
+    new (finalPosition: LocalTime) =
+        { State         = State.Stopped
+          Value         = Unchecked.defaultof<_>
+          Position      = LocalTime.zero
+          FinalPosition = finalPosition
+          Actions       = List() }
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module private StateMachine =
+module internal StateMachine =
 
     let private processAction (evaluate : LocalTime -> 'Value) (action : Action) (tick : GlobalTime) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>)  =
         match action with
@@ -41,6 +39,7 @@ module private StateMachine =
                 queue.Enqueue { Type = EventType.Stop; Value = machine.Value }
 
         | Action.Start startFrom ->
+            let startFrom = startFrom |> clamp LocalTime.zero machine.FinalPosition
             machine.Value <- evaluate startFrom
             machine.State <- State.Running (tick - startFrom)
             machine.Position <- startFrom

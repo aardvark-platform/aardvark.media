@@ -3,7 +3,7 @@
 open Aardvark.Base
 open OptimizedClosures
 
-type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping<'Model, 'T, 'U>) =
+type internal MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping<'Model, 'T, 'U>) =
     let input = definition.Input.Create(name)
     let mutable value = System.Func<'U> (fun _ -> Unchecked.defaultof<'U>)
 
@@ -11,6 +11,7 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
     member x.State = input.State
     member x.Value = value.Invoke()
     member x.Position = input.Position
+    member x.OutOfDate = input.OutOfDate
     member x.Definition = definition
 
     member x.Perform(action) =
@@ -30,6 +31,7 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
          member x.Name = x.Name
          member x.State = x.State
          member x.Position = x.Position
+         member x.OutOfDate = x.OutOfDate
          member x.Perform(action) = x.Perform(action)
          member x.Commit(model, tick) = x.Commit(model, tick)
          member x.Definition = x.Definition :> IAnimation<'Model>
@@ -39,9 +41,9 @@ type private MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping
         member x.Definition = x.Definition :> IAnimation<'Model, 'U>
 
 
-and private Mapping<'Model, 'T, 'U> =
+and [<ReferenceEquality>] internal Mapping<'Model, 'T, 'U> =
     {
-        Input : IAnimation<'Model, 'T>
+        Input   : IAnimation<'Model, 'T>
         Mapping : FSharpFunc<'Model, 'T, 'U>
     }
 
@@ -51,8 +53,8 @@ and private Mapping<'Model, 'T, 'U> =
     member x.TotalDuration =
         x.Input.TotalDuration
 
-    member x.DistanceTime(localTime) =
-        x.Input.DistanceTime(localTime)
+    member x.DistanceTime(position) =
+        x.Input.DistanceTime(position)
 
     member x.Create(name) =
         MappingInstance(name, x)
@@ -78,7 +80,7 @@ and private Mapping<'Model, 'T, 'U> =
     interface IAnimation with
         member x.Duration = x.Duration
         member x.TotalDuration = x.TotalDuration
-        member x.DistanceTime(localTime) = x.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>
@@ -103,13 +105,12 @@ module AnimationMappingExtensions =
 
         /// Returns a new animation that applies the mapping function to the input animation.
         let map' (mapping : 'Model -> 'T -> 'U) (animation : IAnimation<'Model, 'T>) =
-            //{ Value = System.Func<_> (fun _ -> Unchecked.defaultof<'U>)
-            { Input = animation
+            { Input   = animation
               Mapping = FSharpFunc<_,_,_>.Adapt mapping } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animation.
         let map (mapping : 'T -> 'U) (animation : IAnimation<'Model, 'T>) =
-            animation |> map' (fun _ x -> mapping x)
+            animation |> map' (fun _ -> mapping)
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map2' (mapping : 'Model -> 'T1 -> 'T2 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) =
@@ -119,14 +120,14 @@ module AnimationMappingExtensions =
                 let y = unbox<IAnimationInstance<'Model, 'T2>> arr.[1]
                 mapping model x.Value y.Value
 
-            { Members = ConcurrentGroupMembers [| x; y |]
-              Mapping = FSharpFunc<_,_,_>.Adapt eval
+            { Members              = ConcurrentGroupMembers [| x; y |]
+              Mapping              = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, 'U>
+              Observable           = Observable.empty } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map2 (mapping : 'T1 -> 'T2 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) =
-            (x, y) ||> map2' (fun _ a b -> mapping a b)
+            (x, y) ||> map2' (fun _ -> mapping)
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map3' (mapping : 'Model -> 'T1 -> 'T2 -> 'T3 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) (z : IAnimation<'Model, 'T3>) =
@@ -136,11 +137,11 @@ module AnimationMappingExtensions =
                 let z = unbox<IAnimationInstance<'Model, 'T3>> arr.[2]
                 mapping model x.Value y.Value z.Value
 
-            { Members = ConcurrentGroupMembers [| x; y; z |]
-              Mapping = FSharpFunc<_,_,_>.Adapt eval
+            { Members              = ConcurrentGroupMembers [| x; y; z |]
+              Mapping              = FSharpFunc<_,_,_>.Adapt eval
               DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, 'U>
+              Observable           = Observable.empty } :> IAnimation<'Model, 'U>
 
         /// Returns a new animation that applies the mapping function to the input animations.
         let map3 (mapping : 'T1 -> 'T2 -> 'T3 -> 'U) (x : IAnimation<'Model, 'T1>) (y : IAnimation<'Model, 'T2>) (z : IAnimation<'Model, 'T3>) =
-            (x, y, z) |||> map3' (fun _ a b c -> mapping a b c)
+            (x, y, z) |||> map3' (fun _ -> mapping)

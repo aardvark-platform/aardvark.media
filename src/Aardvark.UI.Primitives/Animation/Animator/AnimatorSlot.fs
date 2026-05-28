@@ -1,8 +1,9 @@
 ﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base
+open System.Collections.Generic
 
-type private DelayedAnimation<'Model> =
+type internal DelayedAnimation<'Model> =
     struct
         val Animation : 'Model -> IAnimation<'Model>
         val Action : IAnimationInstance<'Model> -> unit
@@ -13,7 +14,7 @@ type private DelayedAnimation<'Model> =
 
 type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) =
     let mutable current = instance
-    let queue = ArrayQueue<DelayedAnimation<'Model>>()
+    let queue = Queue<DelayedAnimation<'Model>>()
 
     /// The name of the animator slot.
     member x.Name = name
@@ -30,7 +31,7 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
         | State.Running startTime ->
             let action =
                 let localTime = tick |> LocalTime.relative startTime
-                let endTime = LocalTime.max current.TotalDuration
+                let endTime = LocalTime.ofDuration current.TotalDuration
 
                 if localTime >= endTime then
                     Action.Update(endTime, true)
@@ -47,25 +48,22 @@ type AnimatorSlot<'Model>(name : Symbol, instance : IAnimationInstance<'Model>) 
 
     /// Commits the current animation instance and prepares the next in the queue if required.
     member internal x.Commit(model : 'Model, tick : GlobalTime) =
-        let model = current.Commit(model, tick)
+        if tick.IsFinite then
+            let model = current.Commit(model, tick)
 
-        if current.IsFinished then
-            match queue.Dequeue() with
-            | (true, delayed) ->
-                let animation = delayed.Animation model
-                current <- animation.Create(name)
-                x.Perform(delayed.Action)
-                x.Commit(model, tick)
-
-            | _ -> model
+            if current.IsFinished then
+                if queue.Count > 0 then
+                    let delayed = queue.Dequeue()
+                    let animation = delayed.Animation model
+                    current <- animation.Create(name)
+                    x.Perform(delayed.Action)
+                    x.Commit(model, tick)
+                else
+                    model
+            else
+                model
         else
             model
-
-    /// Commits the current animation instance and prepares the next in the queue if required.
-    member internal x.Commit(model : 'Model, tick : ValueOption<GlobalTime> inref) =
-        match tick with
-        | ValueSome t -> x.Commit(model, t)
-        | _ -> model
 
     /// Creates an instance of the given animation and sets it as current.
     /// Pending instances are removed.

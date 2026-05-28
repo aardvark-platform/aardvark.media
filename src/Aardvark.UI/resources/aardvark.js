@@ -25,8 +25,6 @@ if (!aardvark) {
 // until new aardium version available
 if (aardvark.electron) {
 
-
-
     aardvark.openFileDialog = function (config, callback) {
         if (!callback) callback = config;
         const props = {properties: ['openFile', 'multiSelections']};
@@ -40,6 +38,23 @@ if (aardvark.electron) {
         const all = {...props, ...config};
         aardvark.electron.remote.dialog.showSaveDialog(all).then(e => callback([e.filePath]));
     };
+
+} else {
+    const showError = () => console.error("File dialogs only work with Aardium.");
+
+    if (!aardvark.dialog) {
+        aardvark.dialog = {};
+        aardvark.dialog.showOpenDialog = () => { showError(); return Promise.resolve({ filePaths: [] }) };
+        aardvark.dialog.showSaveDialog = () => { showError(); return Promise.resolve({ filePath: "" }) };
+    }
+
+    if (!aardvark.openFileDialog) {
+        aardvark.openFileDialog = showError;
+    }
+
+    if (!aardvark.saveFileDialog) {
+        aardvark.saveFileDialog = showError;
+    }
 }
 
 if (!aardvark.promise)
@@ -82,23 +97,19 @@ if (!aardvark.channels) {
     aardvark.channels = {};
 }
 
-if (!aardvark.referencedScripts) {
-    console.debug("[Aardvark] creating aardvark-script-references");
-    aardvark.referencedScripts = {};
+if (!aardvark.references) {
+    console.debug("[Aardvark] creating aardvark-references");
+    aardvark.references = {};
 }
 
-if (!aardvark.referencedStyles) {
-    console.debug("[Aardvark] creating aardvark-stylesheet-references");
-    aardvark.referencedStyles = {};
-}
-
-aardvark.referencedScripts["jquery"] = true;
+aardvark.references["jquery-script"] = true;
 
 if (!aardvark.processEvent) {
     console.debug("[Aardvark] creating aardvark-event-processor");
     aardvark.processEvent = function () {
         console.warn("[Aardvark] cannot process events yet (websocket not opened)");
     };
+    aardvark.setEventHandler = aardvark.processEvent;
 }
 
 if (!aardvark.localhost) {
@@ -419,70 +430,6 @@ class Renderer {
                 };
             };
         }
-
-		var downloadDirect = function (dataurl, filename) {
-			var a = document.createElement("a");
-			a.href = dataurl;
-			a.setAttribute("download", filename);
-			var b = document.createEvent("MouseEvents");
-			b.initEvent("click", false, true);
-			a.dispatchEvent(b);
-
-			return false;
-		};
-
-		function downloadURI(uri, name) {
-			console.log("downloading " + uri + " -> " + name);
-			var link = document.createElement("a");
-			link.download = name;
-			link.href = uri;
-			document.body.appendChild(link);
-			link.click();
-			document.body.removeChild(link);
-		};
-
-		var screenshot = function () {
-			var name = "screenshot"; 
-			if (self.useMapping || true) {
-				//name += ".png";
-				//var dataurl = self.img.toDataURL("image/png");
-				//download(dataurl, name);
-				// workaround for currently flipped stuff.
-				console.log("mapping enabled -> using fallback download mechanism via screenshot service...");
-				name += ".jpg";
-				var url3 = window.top.location.href + "/rendering/screenshot/" + self.id + "?w=" + self.div.clientWidth + "&h=" + self.div.clientHeight + "&samples=8&fmt=png" ;
-				downloadURI(url3, name);
-			} 
-			else {
-				name += ".jpg";
-				downloadURI(self.img.src, name);
-			}
-		};
-		var ctrlDown = false;
-		this.div.addEventListener("keydown", (e) => {
-			if (e.keyCode === 123 && !ctrlDown) { //F12 {
-				screenshot();
-			}
-		});
-
-        if (getTopAardvark().captureFullscreen && getTopAardvark().electron) {
-			console.log("installing fullscreen capturer");
-			this.div.addEventListener("keydown", (e) => {
-				if (e.keyCode === 17) ctrlDown = true;
-                else if (e.keyCode === 123 && ctrlDown) {
-                    var path = getTopAardvark().dialog.showSaveDialog({
-						filters: [
-							{ name: 'Images', extensions: ['png','jpg'] }
-						]});
-                    console.log("saving fullscreen screenshot to" + path);
-                    getTopAardvark().captureFullscreen(path);
-				}
-			});
-			this.div.addEventListener("keyup", (e) => {
-				if (e.keyCode === 17) ctrlDown = false;
-			});
-		}
-
 
         connect();
 
@@ -919,177 +866,57 @@ class Renderer {
 }
 
 if (!aardvark.addReferences) {
-    aardvark.addReferences = function (refs, realCont) {
-        
-        aardvark.promise = aardvark.promise.then(function () {
-            return new Promise(function (s, e) {
-                var cont = function () { realCont(); s(); };
+    aardvark.addReferences = function (refs, userCode) {
 
-                function acc(i) {
-                    if (i >= refs.length) {
-                        return cont;
-                    }
-                    else {
-                        var ref = refs[i];
-                        var kind = ref.kind;
-                        var name = ref.name;
-                        var url = ref.url;
-                        if (kind === "script" || kind === "module") {
-                            if (!aardvark.referencedScripts[name]) {
-                                aardvark.referencedScripts[name] = true;
-                                return function () {
-                                    var script = document.createElement("script");
-                                    var cc = function (evt) {
-                                        console.debug(`[Aardvark] referenced ${kind} "${name}" (${url})`);
-                                        acc(i + 1)();
-                                    };
-                                    var err = function (evt) {
-                                        console.warn(`[Aardvark] failed to referenced ${kind} "${name}" (${url})`);
-                                        acc(i + 1)();
-                                    };
-                                    script.src = url;
-                                    script.async = true;
-                                    if (kind === "module") script.type = "module";
-                                    script.addEventListener("load", cc);
-                                    script.addEventListener("error", err);
-                                    document.getElementsByTagName("script")[0].parentNode.appendChild(script);
-                                };
-                            }
-                            else return acc(i + 1);
-                        }
-                        else {
-                            if (!aardvark.referencedStyles[name]) {
-                                aardvark.referencedStyles[name] = true;
-                                return function () {
-                                    var script = document.createElement("link");
-                                    var cc = function (evt) {
-                                        console.debug("[Aardvark] referenced stylesheet \"" + name + "\" (" + url + ")");
-                                        acc(i + 1)();
-                                    };
-                                    var err = function (evt) {
-                                        console.warn("[Aardvark] failed to reference stylesheet \"" + name + "\" (" + url + ")");
-                                        acc(i + 1)();
-                                    };
-                                    script.addEventListener("load", cc);
-                                    script.addEventListener("error", err);
-                                    script.setAttribute("rel", "stylesheet");
-                                    script.setAttribute("href", url);
-                                    document.head.appendChild(script);
-                                };
-                            }
-                            else return acc(i + 1);
-                        }
+        function loadScript(ref) {
+            return new Promise((resolve, reject) => {
 
-                    }
-                }
-                var real = acc(0);
-                real();
-            });
-        });
-    };
-}
+                const name = ref.name;
+                const kind = ref.kind; // "script", "module", or "stylesheet"
+                const url = ref.url;
 
+                const key = `${name}-${kind}`; // allow using identical names for different kinds
 
-if (!aardvark.openFileDialog) {
-
-    if (getTopAardvark().openFileDialog) {
-        aardvark.openFileDialog = getTopAardvark().openFileDialog;
-    }
-    else {
-        aardvark.openFileDialog = function () {
-            alert("Aardvark openFileDialog is not yet available");
-        };
-
-        var refs =
-            [
-                { kind: "stylesheet", name: "semui-css", url: "./resources/fomantic/semantic.css" },
-                { kind: "stylesheet", name: "semui-overrides-css", url: "./resources/fomantic/semantic-overrides.css" },
-                { kind: "script", name: "semui-js", url: "./resources/fomantic/semantic.js" },
-                { kind: "stylesheet", name: "jtree-base", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/themes/default/style.min.css" },
-                { kind: "stylesheet", name: "jtree-dark", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.3/themes/default-dark/style.min.css" },
-                { kind: "script", name: "jstree", url: "https://cdnjs.cloudflare.com/ajax/libs/jstree/3.1.1/jstree.min.js" },
-                { kind: "script", name: "tablesort", url: "https://semantic-ui.com/javascript/library/tablesort.js" },
-                { kind: "script", name: "colresize", url: "http://www.bacubacu.com/colresizable/js/colResizable-1.6.min.js" },
-            ]
-
-        $(document).ready(function () {
-
-
-            aardvark.addReferences(refs, function () {
-                var modal = document.getElementById("filebrowser-modal");
-                if (!modal) {
-                    var root = document.createElement("div");
-                    root.setAttribute("id", "filebrowser-modal");
-                    root.setAttribute("class", "ui modal");
-                    $(root).html(
-                        "<div class='content'>" +
-                        "	<div id='filebrowser-browser'>" +
-                        "	</div>" +
-                        "</div>" +
-                        "	<div class='actions'>" +
-                        "		<div class='ui approve button'>OK</div>" +
-                        "		<div class='ui cancel button'>Cancel</div>" +
-                        "	</div>" +
-                        "</div>"
-                    );
-
-                    document.body.appendChild(root);
-
-
-                    modal = root;
-
+                if (aardvark.references[key]) {
+                    return resolve();
                 }
 
-                console.debug("[FS] filebrowser installed")
-                aardvark.openFileDialog = function (openFileConfig, callback) {
+                aardvark.references[key] = true;
 
-                    // if only one argument
-                    if (!callback) {
-                        callback = openFileConfig;
-                        openFileConfig = {};
-                    }
-
-                    if (!openFileConfig.mode) openFileConfig.mode = "file";
-                    if (!openFileConfig.startPath) openFileConfig.startPath = "/";
-                    if (!openFileConfig.title) openFileConfig.title = "Open File";
-                    if (!openFileConfig.filters) openFileConfig.filters = [];
-                    if (!openFileConfig.activeFilter) openFileConfig.activeFilter = -1;
-                    if (!openFileConfig.allowMultiple) openFileConfig.allowMultiple = false;
-
-                    var config =
-                    {
-                        url: aardvark.getScriptRelativeUrl("http", "fs"),
-                        caching: true,
-                        folderSelect: (openFileConfig.mode === "folder"),
-                        fileSelect: (openFileConfig.mode === "file"),
-                        hideFiles: false,
-                        onselect: function (path) { },
-                        submit: function (path) { callback([path]); $(modal).modal('hide'); },
-                        cancel: function () { console.log("[FS] cancel"); }
-                    };
-
-                    var browser = new FileBrowser(config);
-                    var $browser = $('#filebrowser-browser');
-                    $browser.filebrowser(browser);
-                    $browser.height(screen.height - 600);
-
-                    $(modal).modal({
-                        keyboardShortcuts: true,
-                        blurring: true,
-                        onDeny: function () {
-                            browser.cancel();
-                            return true;
-                        },
-                        onApprove: function () {
-                            browser.submit();
-                        }
-                    });
-                    $(modal).modal('show');
-
+                const isScript = kind === "script" || kind === "module";
+                const refElem = document.createElement(isScript ? "script" : "link");
+                const cc = function (evt) {
+                    console.debug(`[Aardvark] referenced ${kind} "${name}" (${url})`);
+                    resolve();
                 };
+                const err = function (evt) {
+                    console.warn(`[Aardvark] failed to reference ${kind} "${name}" (${url})`);
+                    resolve();
+                };
+
+                refElem.addEventListener("load", cc);
+                refElem.addEventListener("error", err);
+
+                if (isScript) {
+                    if (kind === "module") {
+                        refElem.type = "module";
+                    }
+                    refElem.src = url;
+                    refElem.async = true;
+                    document.getElementsByTagName("script")[0].parentNode.appendChild(refElem);
+                }
+                else {
+                    refElem.setAttribute("rel", "stylesheet");
+                    refElem.setAttribute("href", url);
+                    document.head.appendChild(refElem);
+                }
             });
-        });
-    }
+        }
+
+        aardvark.promise = aardvark.promise.then(() => Promise.all(refs.map(loadScript)));
+
+        aardvark.promise = aardvark.promise.then(() => userCode());
+    };
 }
 
 class Channel {
@@ -1208,35 +1035,53 @@ if (!aardvark.connect) {
 
         eventSocket.onopen = function () {
             aardvark.processEvent = function () {
-                var sender = arguments[0];
-                var name = arguments[1];
-                var args = [];
-                for (var i = 2; i < arguments.length; i++) {
+                const sender = arguments[0];
+
+                const event = arguments[1];
+                const name = event.name ?? event; // event can be a string or an object with name and version
+                const version = event.version;
+
+                const args = [];
+                for (let i = 2; i < arguments.length; i++) {
                     args.push(JSON.stringify(arguments[i]));
                 }
-                var message = JSON.stringify({ sender: sender, name: name, args: args });
+
+                const message = JSON.stringify({ sender: sender, name: name, version: version, args: args });
+                eventSocket.send(message);
+            };
+            // Sends an empty event message, indicating that the event handler for the given version should be set active
+            aardvark.setEventHandler = function () {
+                const sender = arguments[0];
+                const name = arguments[1];
+                const version = arguments[2];
+
+                const message = JSON.stringify({ sender: sender, name: name, version: version });
                 eventSocket.send(message);
             };
             doPing();
         };
 
-        var exectutedCode = "";
-
         eventSocket.onmessage = function (m) {
+
             var c = m.data.substring(0, 1);
-            if (c === "x") {
-                var data = m.data.substring(1, m.data.length);
-                aardvark.promise = aardvark.promise.then(function () {
+            if (c === "r" || c === "x") {
+                const code = m.data.substring(1, m.data.length);
+                const evaluate = function () {
                     try {
-                        //exectutedCode = exectutedCode + "\r\n\r\n\r\n" + data;
-                        (new Function("{\r\n" + data + "\r\n}"))();
+                        (new Function(`{ ${code} }`))();
                     } catch (e) {
-                        console.warn("could not execute event message with exn " + e + ":\n" + data);
+                        console.warn("could not execute event message with exn " + e + ":\n" + code);
                         debugger;
                     }
-                });
-            }
-            else {
+                }
+                
+                if (c === "r") {
+                    // addReferences function directly chains script/stylesheet loading and user code execution in aardvark.promise chain
+                    evaluate();
+                } else {
+                    aardvark.promise = aardvark.promise.then(evaluate);
+                }
+            } else {
                 var data = m.data;
                 // { targetId : string; channel : string; data : 'a }
                 var message = JSON.parse(data);

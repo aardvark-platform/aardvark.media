@@ -68,12 +68,12 @@ let view (model : AdaptiveModel) =
             div [] [
                 button [
                     onChooseFiles (fun files -> printfn "%A" files; LoadFiles files)
-                    clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onchoose', aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}));") 
+                    clientEvent "onclick" ("aardvark.dialog.showOpenDialog({properties: ['openFile', 'openDirectory', 'multiSelections']}).then(result => aardvark.processEvent('__ID__', 'onchoose', result.filePaths));")
                 ] [text "open directory"]
                 br []
                 button [
                     onSaveFile SaveFile
-                    clientEvent "onclick" ("aardvark.processEvent('__ID__', 'onsave', aardvark.dialog.showSaveDialog({properties: []}));") 
+                    clientEvent "onclick" ("aardvark.dialog.showSaveDialog({properties: []}).then(result => aardvark.processEvent('__ID__', 'onsave', result.filePath));")
                 ] [text "save file"]
                 renderControl
                 button [

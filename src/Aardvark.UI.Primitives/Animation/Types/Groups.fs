@@ -3,7 +3,7 @@
 open Aardvark.Base
 
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
-module private Groups =
+module internal Groups =
 
     [<Struct>]
     type Segment =
@@ -16,34 +16,35 @@ module private Groups =
             { Start = s; End = e}
 
         let ofDuration (d : Duration) =
-            { Start = LocalTime.zero; End = LocalTime.max d}
+            { Start = LocalTime.zero; End = LocalTime.ofDuration d }
 
 
     /// Computes the duration scale for the group animation
     let scale (duration : Duration) (animation : IAnimation<'Model>) =
-        let s = duration / animation.Duration
-
-        if isFinite s then s
-        else
-            Log.warn "[Animation] Cannot scale composite animation with duration %A" animation.Duration
+        if animation.Duration.IsZero then
+            Log.warn "[Animation] Cannot scale composite animation with zero duration"
             1.0
+        else
+            duration / animation.Duration
+
+    /// Applies the distance-time function of the animation to the given time stamp.
+    let applyDistanceTimeToLocalTime (localTime : LocalTime) (animation : IAnimation) =
+        let duration = animation.Duration
+        if duration.IsFinite then
+            let t = animation.DistanceTime(localTime)
+            t |> LocalTime.ofNormalizedPosition duration
+        else
+            localTime
 
     /// Applies the distance-time function of the animation to time stamps contained in the given action.
-    let applyDistanceTime (action : Action) (animation : IAnimationInstance<'Model>) =
-
-        let apply (localTime : LocalTime) =
-            let d = animation.Duration
-            if Duration.isFinite d then
-                LocalTime.max (d * animation.DistanceTime(localTime))
-            else
-                localTime
-
+    let applyDistanceTimeToAction (action : Action) (animation : IAnimation) =
         match action with
         | Action.Start startFrom ->
-            Action.Start (apply startFrom)
+            let startFrom = startFrom |> clamp LocalTime.zero animation.FinalPosition
+            Action.Start (applyDistanceTimeToLocalTime startFrom animation)
 
         | Action.Update (time, finalize) ->
-            Action.Update (apply time, finalize)
+            Action.Update (applyDistanceTimeToLocalTime time animation, finalize)
 
         | _ ->
             action
@@ -51,7 +52,7 @@ module private Groups =
     /// Performs a group action for the given member.
     let perform (segment : Segment) (action : Action) (group : IAnimationInstance<'Model>) (animation : IAnimationInstance<'Model>) =
         let isFirstSegment = (segment.Start = LocalTime.zero)
-        let isLastSegment = (segment.End = LocalTime.max group.Duration)
+        let isLastSegment = (segment.End = LocalTime.ofDuration group.Duration)
 
         let inBounds t =
             (t >= segment.Start || isFirstSegment) && (t < segment.End || isLastSegment)
@@ -76,6 +77,7 @@ module private Groups =
                 else
                     let startTime = localBoundary (group.Position < groupLocalTime)
                     animation.Perform <| Action.Start startTime
+                    animation.Perform <| Action.Update (startTime, false)
 
                     if startTime <> localTime then
                         animation.Perform <| Action.Update (localTime, false)

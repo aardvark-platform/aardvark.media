@@ -2,22 +2,21 @@
 
 open Aardvark.Base
 
-type private AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter<'Model, 'Value>) =
+type internal AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, Adapter<'Model, 'Value>>(name, definition)
 
     let wrapped = definition.Animation.Create(name)
+    let evaluate (_: LocalTime) = Unchecked.defaultof<'Value>
 
     override x.Perform(action) =
         wrapped.Perform(action)
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-
         // Commit wrapped animation
         let mutable result = wrapped.Commit(model, tick)
 
         // Process all actions, from oldest to newest
-        let evaluate _ = Unchecked.defaultof<'Value>
         StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         // Notify observers about changes
@@ -26,9 +25,9 @@ type private AdapterInstance<'Model, 'Value>(name : Symbol, definition : Adapter
         result
 
 
-and private Adapter<'Model, 'Value> =
+and [<ReferenceEquality>] internal Adapter<'Model, 'Value> =
     {
-        Animation : IAnimation<'Model>
+        Animation  : IAnimation<'Model>
         Observable : Observable<'Model, 'Value>
     }
 
@@ -48,14 +47,13 @@ and private Adapter<'Model, 'Value> =
         { x with Observable = x.Observable |> Observable.subscribe event callback }
 
     member x.UnsubscribeAll() =
-        { x with
-            Animation = x.Animation.UnsubscribeAll()
-            Observable = Observable.empty }
+        { Animation  = x.Animation.UnsubscribeAll()
+          Observable = Observable.empty }
 
     interface IAnimation with
         member x.Duration = x.Animation.Duration
         member x.TotalDuration = x.Animation.TotalDuration
-        member x.DistanceTime(localTime) = x.Animation.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.Animation.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>
@@ -79,5 +77,5 @@ module AnimationAdapterExtensions =
 
         /// Creates a typed animation which always returns a default value.
         let adapter (animation : IAnimation<'Model>) : IAnimation<'Model, 'Value> =
-            { Animation = animation
-              Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+            { Animation  = animation
+              Observable = Observable.empty }

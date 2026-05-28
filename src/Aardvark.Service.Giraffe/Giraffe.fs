@@ -30,7 +30,7 @@ module Server =
 
     type WebApp = WebPart
 
-    let startServer' (url : string) (cancellationToken : CancellationToken) (content : WebApp list)  =
+    let createHost' (url : string) (content : WebApp list)  = 
         let configureApp (app : IApplicationBuilder) =
             app.UseWebSockets().UseGiraffe (choose content)
 
@@ -53,6 +53,12 @@ module Server =
                           .ConfigureLogging(configureLogging)
                           .UseUrls(url)
                           |> ignore)
+
+    let createHost (url : string) (webApp : WebApp)  = 
+        createHost' url [webApp]
+
+    let startServer' (url : string) (cancellationToken : CancellationToken) (content : WebApp list)  =
+        (createHost' url content)
              .Build()
              .StartAsync(cancellationToken)
 

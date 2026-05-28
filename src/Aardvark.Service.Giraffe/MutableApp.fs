@@ -23,6 +23,7 @@ open Aardvark.UI.Internal
 
 module MutableApp =
     open Aardvark.UI.Internal.Updaters
+    open Aardvark.UI.MutableApp.Internals
 
     let private template =
         let html =
@@ -32,13 +33,6 @@ module MutableApp =
             reader.ReadToEnd()
 
         fun (title: string) -> html |> String.replace "__TITLE__" title
-
-    type private EventMessage =
-        {
-            sender  : string
-            name    : string
-            args    : array<string>
-        }
 
     let private (|Guid|_|) (str : string) =
         match Guid.TryParse str with
@@ -59,10 +53,9 @@ module MutableApp =
             if useGpuCompression then new JpegCompressor(runtime) |> Some
             else None
 
-        let mutable running = true
         let cts = new CancellationTokenSource()
-        let requestDone = new CountdownEvent(2) // updater thread and request need to be done.
-         
+        let sessionCount = new CountdownEvent(1)
+
         let renderer =
             {
                 runtime = runtime
@@ -117,14 +110,14 @@ module MutableApp =
                         }
 
                     let updater = app.ui.NewUpdater(request)
-                    
-                    let handlers = Dictionary()
+
+                    let handlers = EventHandlers<'msg>()
                     let scenes = Dictionary()
 
                     let state : UpdateState<'msg> =
                         {
                             scenes          = ContraDict.ofDictionary scenes
-                            handlers        = ContraDict.ofDictionary handlers
+                            handlers        = handlers
                             references      = Dictionary()
                             activeChannels  = Dict()
                             messages        = app.messages
@@ -134,7 +127,8 @@ module MutableApp =
                     
                     let update = MVar.create true
                     let subscription = o.AddMarkingCallback(fun () -> MVar.put update true)
-                    
+
+                    let mutable running = true
                     let mutable oldChannels : Set<string * string> = Set.empty
 
                     let send (arr : byte[]) =
@@ -159,8 +153,9 @@ module MutableApp =
                                                 
                     let updateFunction () =
                         try
+                            sessionCount.AddCount()
                             try
-                                while Volatile.Read(&running) do
+                                while running && not cts.IsCancellationRequested do
                                     let cont = MVar.take update
                                     if cont then
                                         lock app.lock (fun () ->
@@ -169,14 +164,12 @@ module MutableApp =
                                                     Log.startTimed "[Aardvark.UI] generating code (updater.Update + js post processing)"
    
                                                 let code = 
-                                                    let expr = 
-                                                        lock state (fun () -> 
-                                                            state.references.Clear()
-                                                            if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
-                                                            let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
-                                                            if Config.shouldTimeUIUpdate then Log.stop ()
-                                                            r
-                                                        )
+                                                    let expr =
+                                                        state.references.Clear()
+                                                        if Config.shouldTimeUIUpdate then Log.startTimed "[Aardvark.UI] updating UI"
+                                                        let r = updater.Update(t,state, Some (fun n -> JSExpr.AppendChild(JSExpr.Body, n)))
+                                                        if Config.shouldTimeUIUpdate then Log.stop ()
+                                                        r
 
                                                     for (name, sd) in Dictionary.toSeq scenes do
                                                         sceneStore.TryAdd(name, sd) |> ignore
@@ -217,8 +210,8 @@ module MutableApp =
                                                                     printfn "%A" e
                                                     )
 
-                                                
-                                                    let r = send (Text.Encoding.UTF8.GetBytes("x" + code))
+                                                    let tag = if state.references.Count > 0 then "r" else "x"
+                                                    let r = send (Text.Encoding.UTF8.GetBytes(tag + code))
                                                     r.Result |> ignore
 
     
@@ -245,7 +238,7 @@ module MutableApp =
                               with e -> 
                                 Config.updateThreadFailed e
                         finally
-                            requestDone.Signal() |> ignore
+                            sessionCount.Signal() |> ignore
 
                     let updateThread = Thread(ThreadStart updateFunction)
                     updateThread.IsBackground <- true
@@ -262,6 +255,8 @@ module MutableApp =
                         }
 
                     task {
+                        sessionCount.AddCount()
+
                         try
                             while running do
                                 let buffer = Array.zeroCreate 1024
@@ -270,7 +265,8 @@ module MutableApp =
                                 | Choice1Of2 result -> 
                                     let data = Array.sub buffer 0 result.Count
                                     if result.CloseStatus.HasValue then
-                                        running <- true
+                                        Log.line $"[Server] event socket for session {sessionId} closed: {result.CloseStatus.Value}"
+                                        running <- false
                                     else
                                         match result.MessageType with
                                             | WebSocketMessageType.Text ->
@@ -283,14 +279,15 @@ module MutableApp =
                                                             | _ ->
                                                                 Log.warn "bad opcode: %A" str
                                                     else
-                                                        let evt : EventMessage = Pickler.json.UnPickle data
-                                                        match lock state (fun () -> handlers.TryGetValue((evt.sender, evt.name))) with
-                                                            | (true, handler) ->
-                                                                let msgs = handler sessionId evt.sender (Array.toList evt.args)
-                                                                app.update sessionId msgs
-                                                    
-                                                            | _ ->
-                                                                ()
+                                                        let evt = EventMessage.fromJson data
+                                                        let key = evt.sender, evt.name
+
+                                                        match handlers.TryGet(key, evt.version) with
+                                                        | ValueSome handler when notNull evt.args ->
+                                                            let msgs = handler.invoke sessionId evt.sender (Array.toList evt.args)
+                                                            app.update sessionId msgs
+
+                                                        | _ -> ()
 
                                                 with e ->
                                                     Log.warn "unpickle faulted: %A" e
@@ -306,8 +303,8 @@ module MutableApp =
                             updater.Destroy(state, JSExpr.Body) |> ignore
                             subscription.Dispose()
 
-                        finally 
-                            requestDone.Signal() |> ignore
+                        finally
+                            sessionCount.Signal() |> ignore
 
                     }
                 | _ ->
@@ -315,10 +312,11 @@ module MutableApp =
 
         let waitForShutdown = 
             { new IDisposable with 
-                member x.Dispose() = 
-                    running <- true
+                member x.Dispose() =
                     cts.Cancel()
-                    requestDone.Wait()
+                    sessionCount.Signal() |> ignore
+                    sessionCount.Wait()
+                    sessionCount.Dispose()
             }
 
         let route  =

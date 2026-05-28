@@ -3,22 +3,21 @@
 open Aardvark.Base
 open OptimizedClosures
 
-type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition : ConcurrentGroup<'Model, 'Value>) =
+type internal ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition : ConcurrentGroup<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, ConcurrentGroup<'Model, 'Value>>(name, definition)
 
-    let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
-    let segments = definition.Members.Data |> Array.map (fun a -> Groups.Segment.ofDuration a.Duration)
+    let members = definition.Members.Data |> Array.map _.Create(name)
+    let segments = definition.Members.Data |> Array.map (_.TotalDuration >> Groups.Segment.ofDuration)
 
     override x.Perform(action) =
-        let action = Groups.applyDistanceTime action x
+        let innerAction = Groups.applyDistanceTimeToAction action x
 
         for i = 0 to members.Length - 1 do
-            members.[i] |> Groups.perform segments.[i] action x
+            members.[i] |> Groups.perform segments.[i] innerAction x
 
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-
         // Commit members
         let mutable result =
             (model, members) ||> Array.fold (fun model animation ->
@@ -34,21 +33,21 @@ type private ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition :
 
         result
 
-and private ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
+and internal ConcurrentGroupMembers<'Model>(members : IAnimation<'Model>[]) =
     let duration =
         ValueCache (fun _ ->
-            members |> Array.map (fun a -> a.TotalDuration) |> Array.max
+            members |> Array.map _.TotalDuration |> Array.max
         )
 
     member x.Data : IAnimation<'Model>[] = members
     member x.GroupDuration : Duration = duration.Value
 
-and private ConcurrentGroup<'Model, 'Value> =
+and [<ReferenceEquality>] internal ConcurrentGroup<'Model, 'Value> =
     {
-        Members : ConcurrentGroupMembers<'Model>
-        Mapping : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>
+        Members              : ConcurrentGroupMembers<'Model>
+        Mapping              : FSharpFunc<'Model, IAnimationInstance<'Model>[], 'Value>
         DistanceTimeFunction : DistanceTimeFunction
-        Observable : Observable<'Model, 'Value>
+        Observable           : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
@@ -60,8 +59,8 @@ and private ConcurrentGroup<'Model, 'Value> =
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
 
-    member x.DistanceTime(groupLocalTime : LocalTime) =
-        x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
+    member x.DistanceTime(groupPosition : float) =
+        x.DistanceTimeFunction.Invoke(groupPosition)
 
     member x.Scale(duration) =
         let s = x |> Groups.scale duration
@@ -82,13 +81,13 @@ and private ConcurrentGroup<'Model, 'Value> =
 
     member x.UnsubscribeAll() =
         { x with
-            Members = ConcurrentGroupMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
+            Members    = ConcurrentGroupMembers (x.Members.Data |> Array.map _.UnsubscribeAll())
             Observable = Observable.empty }
 
     interface IAnimation with
         member x.Duration = x.Duration
         member x.TotalDuration = x.TotalDuration
-        member x.DistanceTime(localTime) = x.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>
@@ -112,19 +111,19 @@ module AnimationGroupExtensions =
 
         /// <summary>
         /// Creates a concurrent animation group from a sequence of animations.
+        /// Returns an empty animation if the input sequence is empty.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let concurrent (animations : IAnimation<'Model> seq) =
+        let concurrent (animations : #IAnimation<'Model> seq) : IAnimation<'Model, unit> =
             let animations =
-                animations |> Array.ofSeq
+                animations |> Seq.map (fun a -> a :> IAnimation<'Model>) |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation group cannot be empty.")
-
-            { Members = ConcurrentGroupMembers animations
-              Mapping = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
-              DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, unit>
+                Animation.empty
+            else
+                { Members              = ConcurrentGroupMembers animations
+                  Mapping              = FSharpFunc<_,_,_>.Adapt (fun _ -> ignore)
+                  DistanceTimeFunction = DistanceTimeFunction.empty
+                  Observable           = Observable.empty }
 
         /// Combines two animations into a concurrent group.
         let andAlso (x : IAnimation<'Model>) (y : IAnimation<'Model>) =

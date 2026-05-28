@@ -43,16 +43,16 @@ module Shader =
    
     type FootPrintVertex =
         {
-            [<Position>]                pos     : V4d            
-            [<WorldPosition>]           wp      : V4d
-            [<TexCoord>]                tc      : V2d
-            [<Color>]                   c       : V4d
-            [<Normal>]                  n       : V3d
+            [<Position>]                pos     : V4f
+            [<WorldPosition>]           wp      : V4f
+            [<TexCoord>]                tc      : V2f
+            [<Color>]                   c       : V4f
+            [<Normal>]                  n       : V3f
             [<SourceVertexIndex>]       sv      : int
-            [<Semantic("Scalar")>]      scalar  : float
-            [<Semantic("LightDir")>]    ldir    : V3d
-            [<Semantic("Tex0")>]        tc0     : V4d
-            [<Semantic("Tex1")>]        tc1     : V4d
+            [<Semantic("Scalar")>]      scalar  : float32
+            [<Semantic("LightDir")>]    ldir    : V3f
+            [<Semantic("Tex0")>]        tc0     : V4f
+            [<Semantic("Tex1")>]        tc1     : V4f
 
         }
 
@@ -71,8 +71,8 @@ module Shader =
             //let vp = uniform.ModelViewTrafo * v.pos
             //let p = uniform.ProjTrafo * vp
             
-            let footprintProjM  : M44d   = uniform?footprintProj
-            let textureProjM    : M44d   = uniform?textureProj
+            let footprintProjM  : M44f   = uniform?footprintProj
+            let textureProjM    : M44f   = uniform?textureProj
             
             return { v with tc0 = footprintProjM * v.wp; 
                             tc1 = textureProjM   * v.wp; 
@@ -81,7 +81,7 @@ module Shader =
 
     let footprintV2 (v : FootPrintVertex) =
         vertex {
-            let instrumentMatrix    : M44d   = uniform?instrumentMVP          
+            let instrumentMatrix    : M44f   = uniform?instrumentMVP
             let vp = uniform.ModelViewTrafo * v.pos
             let wp = uniform.ModelTrafo * v.pos
 
@@ -90,7 +90,7 @@ module Shader =
                     pos  = uniform.ProjTrafo * vp
                     wp   = wp
                     //n    = transformNormal v.n
-                    ldir = V3d.Zero - vp.XYZ |> Vec.normalize
+                    ldir = V3f.Zero - vp.XYZ |> Vec.normalize
                     tc0  = instrumentMatrix * v.pos                  
 
             } 
@@ -102,20 +102,20 @@ module Shader =
                 let fpt = v.tc0.XY / v.tc0.W
                 let tt  = v.tc1.XY / v.tc1.W
                 let col = 
-                    if (fpt.X > -1.0 && fpt.X < 1.0 && fpt.Y > -1.0 && fpt.Y < 1.0 && tt.X > -1.0 && tt.X < 1.0 && tt.Y > -1.0 && tt.Y < 1.0 ) then
-                        let tt1 = (tt + 1.0)/2.0
-                        //let tt2 = (tt * 2.0) - 1.0
-                        V4d(1.0, 0.0, 0.0, 1.0) * (footprintmap.Sample(tt1))
-                    elif fpt.X > -1.0 && fpt.X < 1.0 && fpt.Y > -1.0 && fpt.Y < 1.0 then
-                        V4d(1.0, 0.0, 0.0, 1.0)
-                    elif tt.X > -1.0 && tt.X < 1.0 && tt.Y > -1.0 && tt.Y < 1.0 then
-                        let tt1 = (tt + 1.0)/2.0
+                    if (fpt.X > -1.0f && fpt.X < 1.0f && fpt.Y > -1.0f && fpt.Y < 1.0f && tt.X > -1.0f && tt.X < 1.0f && tt.Y > -1.0f && tt.Y < 1.0f ) then
+                        let tt1 = (tt + 1.0f)/2.0f
+                        //let tt2 = (tt * 2.0f) - 1.0f
+                        V4f(1.0f, 0.0f, 0.0f, 1.0f) * (footprintmap.Sample(tt1))
+                    elif fpt.X > -1.0f && fpt.X < 1.0f && fpt.Y > -1.0f && fpt.Y < 1.0f then
+                        V4f(1.0f, 0.0f, 0.0f, 1.0f)
+                    elif tt.X > -1.0f && tt.X < 1.0f && tt.Y > -1.0f && tt.Y < 1.0f then
+                        let tt1 = (tt + 1.0f)/2.0f
                         footprintmap.Sample(tt1)
                     else
                         v.c 
                         
                
-                if (v.tc0.Z <= 0.0) || (v.tc1.Z <= 0.0) then
+                if (v.tc0.Z <= 0.0f) || (v.tc1.Z <= 0.0f) then
                     return v.c
                 else
                     return col 
@@ -129,13 +129,13 @@ module Shader =
             if uniform?footprintVisible then
                 let t = v.tc0.XY / v.tc0.W
                 let col = 
-                    if t.X > -1.0 && t.X < 1.0 && t.Y > -1.0 && t.Y < 1.0 then
-                        let t1 = (t + 1.0)/2.0
-                        //let t2 = (t * 2.0) - 1.0
+                    if t.X > -1.0f && t.X < 1.0f && t.Y > -1.0f && t.Y < 1.0f then
+                        let t1 = (t + 1.0f)/2.0f
+                        //let t2 = (t * 2.0f) - 1.0f
                         footprintmap.Sample(t1)
                     else
                         v.c 
-                if (v.tc0.Z <= 0.0) then
+                if (v.tc0.Z <= 0.0f) then
                     return v.c
                 else
                     return col 
@@ -149,16 +149,16 @@ module Shader =
             let proTex0 = v.tc0.XY / v.tc0.W
             let c = footprintmap.Sample(proTex0)
             let col = 
-                if (c.W <= 0.50) then
-                    V4d(1.0, 1.0, 1.0, 1.0)
-                elif (c.W <= 0.999) then
-                    V4d(1.0, 0.0, 0.0, 1.0)
+                if (c.W <= 0.50f) then
+                    V4f(1.0f, 1.0f, 1.0f, 1.0f)
+                elif (c.W <= 0.999f) then
+                    V4f(1.0f, 0.0f, 0.0f, 1.0f)
                 else
                     v.c
             
             
-            //if (v.tc0.Z <= 0.0) then
-            //    return V4d(1.0, 1.0, 1.0, 1.0)
+            //if (v.tc0.Z <= 0.0f) then
+            //    return V4f(1.0f, 1.0f, 1.0f, 1.0f)
             //else
             return col 
           else

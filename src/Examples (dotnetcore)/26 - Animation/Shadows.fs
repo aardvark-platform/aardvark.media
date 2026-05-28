@@ -14,8 +14,8 @@ module ShadowMappingShaders =
         open Aardvark.Rendering.Effects
 
         type UniformScope with
-            member x.LightViewProj : M44d = uniform?LightViewProj
-            member x.LightDirection : V3d = uniform?LightDirection
+            member x.LightViewProj : M44f = uniform?LightViewProj
+            member x.LightDirection : V3f = uniform?LightDirection
 
         let private shadowSampler =
             sampler2dShadow {
@@ -29,53 +29,53 @@ module ShadowMappingShaders =
 
         let private poissonDisk =
              [|
-                 V2d( -0.94201624,  -0.39906216 )
-                 V2d(  0.94558609,  -0.76890725 )
-                 V2d( -0.094184101, -0.92938870 )
-                 V2d(  0.34495938,   0.29387760 )
-                 V2d( -0.91588581,   0.45771432 )
-                 V2d( -0.81544232,  -0.87912464 )
-                 V2d( -0.38277543,   0.27676845 )
-                 V2d(  0.97484398,   0.75648379 )
-                 V2d(  0.44323325,  -0.97511554 )
-                 V2d(  0.53742981,  -0.47373420 )
-                 V2d( -0.26496911,  -0.41893023 )
-                 V2d(  0.79197514,   0.19090188 )
-                 V2d( -0.24188840,   0.99706507 )
-                 V2d( -0.81409955,   0.91437590 )
-                 V2d(  0.19984126,   0.78641367 )
-                 V2d(  0.14383161,  -0.14100790 )
+                 V2f( -0.94201624f,  -0.39906216f )
+                 V2f(  0.94558609f,  -0.76890725f )
+                 V2f( -0.094184101f, -0.92938870f )
+                 V2f(  0.34495938f,   0.29387760f )
+                 V2f( -0.91588581f,   0.45771432f )
+                 V2f( -0.81544232f,  -0.87912464f )
+                 V2f( -0.38277543f,   0.27676845f )
+                 V2f(  0.97484398f,   0.75648379f )
+                 V2f(  0.44323325f,  -0.97511554f )
+                 V2f(  0.53742981f,  -0.47373420f )
+                 V2f( -0.26496911f,  -0.41893023f )
+                 V2f(  0.79197514f,   0.19090188f )
+                 V2f( -0.24188840f,   0.99706507f )
+                 V2f( -0.81409955f,   0.91437590f )
+                 V2f(  0.19984126f,   0.78641367f )
+                 V2f(  0.14383161f,  -0.14100790f )
              |]
 
         [<ReflectedDefinition>]
-        let private getShadow (wp : V4d) =
+        let private getShadow (wp : V4f) =
             let lightSpace = uniform.LightViewProj * wp
             let div = lightSpace.XYZ / lightSpace.W
-            let tc = V3d.Half + V3d.Half * div.XYZ
+            let tc = V3f.Half + V3f.Half * div.XYZ
 
             // PCF using offset disk from
             // http://developer.download.nvidia.com/whitepapers/2008/PCSS_Integration.pdf
-            let mutable sum = 0.0
+            let mutable sum = 0.0f
             for i = 0 to 15 do
-                let offset = poissonDisk.[i] * (1.0 / 4096.0)
-                sum <- sum + shadowSampler.Sample(tc.XY + offset, tc.Z - 0.01)
+                let offset = poissonDisk.[i] * (1.0f / 4096.0f)
+                sum <- sum + shadowSampler.Sample(tc.XY + offset, tc.Z - 0.01f)
 
-            0.1 + sum / 16.0
+            0.1f + sum / 16.0f
 
         let lighting (v : Vertex) =
             fragment {
                 let n = v.n |> Vec.normalize
                 let l = uniform.LightDirection |> Vec.normalize
 
-                let ambient = 0.1
+                let ambient = 0.1f
                 let NdotL = Vec.dot n l
                 let diffuse =
-                    if NdotL > 0.0 then
+                    if NdotL > 0.0f then
                         NdotL * getShadow v.wp
                     else
-                        0.0
+                        0.0f
 
-                return V4d(v.c.XYZ * diffuse + ambient, v.c.W)
+                return V4f(v.c.XYZ * diffuse + ambient, v.c.W)
             }
 
 module Shadows =

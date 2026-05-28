@@ -32,3 +32,5 @@ bin/Debug
 /.paket/.store/*
 *.adaptifycache
 **/.DS_Store
+*.DotSettings.user
+/.boss

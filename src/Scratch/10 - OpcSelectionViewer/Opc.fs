@@ -16,16 +16,14 @@ module Opc =
       |> List.collect(fun x ->  
         x.tree |> QTree.getLeaves |> Seq.toList |> List.map(fun y -> (x.opcPaths.Opc_DirAbsPath, y)))
     
-    let sg = 
-      let config = { wantMipMaps = true; wantSrgb = false; wantCompressed = false }
-    
+    let sg =
       leaves 
         |> List.map(fun (dir,patch) -> (Patch.load (OpcPaths dir) ViewerModality.XYZ patch.info, dir, patch.info)) 
         |> List.map(fun ((a,_),c,d) -> (a,c,d))
         |> List.map (fun (g,dir,info) -> 
         
           let texPath = Patch.extractTexturePath (OpcPaths dir) info 0
-          let tex = FileTexture(texPath,config) :> ITexture
+          let tex = FileTexture(texPath)
         
           Sg.ofIndexedGeometry g
               |> Sg.trafo (AVal.constant info.Local2Global)             
@@ -37,15 +35,15 @@ module Opc =
   type IUniformProvider with
     member x.TryGetViewTrafo() =
       match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ViewTrafo") with
-        | Some (:? aval<Trafo3d> as t) -> t |> Some
-        | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
-        | _ -> None
+      | ValueSome (:? aval<Trafo3d> as t) -> t |> ValueSome
+      | ValueSome (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> ValueSome
+      | _ -> ValueNone
   
       member x.TryGetProjTrafo() =
         match x.TryGetUniform(Ag.Scope.Root, Symbol.Create "ProjTrafo") with
-          | Some (:? aval<Trafo3d> as t) -> t |> Some
-          | Some (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> Some
-          | _ -> None
+        | ValueSome (:? aval<Trafo3d> as t) -> t |> ValueSome
+        | ValueSome (:? aval<Trafo3d[]> as t) -> t |> AVal.map (Array.item 0) |> ValueSome
+        | _ -> ValueNone
   
   let isNan (v : V3f) =
     System.Single.IsNaN(v.X) || System.Single.IsNaN(v.Y) || System.Single.IsNaN(v.Z)

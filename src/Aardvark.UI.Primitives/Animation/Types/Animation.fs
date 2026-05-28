@@ -4,14 +4,15 @@ open Aardvark.Base
 open OptimizedClosures
 
 [<AbstractClass>]
-type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definition :> IAnimation<'Model, 'Value>>(name : Symbol, definition : 'Definition) =
+type internal AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definition :> IAnimation<'Model, 'Value>>(name : Symbol, definition : 'Definition) =
     let eventQueue = EventQueue<'Value>()
-    let stateMachine = StateMachine<'Value>()
+    let stateMachine = StateMachine<'Value> definition.FinalPosition
 
     member x.Name = name
     member x.State = stateMachine.State
     member x.Value = stateMachine.Value
     member x.Position = stateMachine.Position
+    member x.OutOfDate = stateMachine.Actions.Count > 0
     member x.Definition = definition
     member x.EventQueue = eventQueue
     member x.StateMachine = stateMachine
@@ -28,6 +29,7 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
         member x.Name = x.Name
         member x.State = x.State
         member x.Position = x.Position
+        member x.OutOfDate = x.OutOfDate
         member x.Perform(action) = x.Perform(action)
         member x.Commit(model, tick) = x.Commit(model, tick)
         member x.Definition = x.Definition :> IAnimation<'Model>
@@ -37,7 +39,7 @@ type private AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Definit
         member x.Definition = x.Definition :> IAnimation<'Model, 'Value>
 
 
-type private AnimationInstance<'Model, 'Value>(name : Symbol, definition : Animation<'Model, 'Value>) =
+type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Animation<'Model, 'Value>) =
     inherit AbstractAnimationInstance<'Model, 'Value, Animation<'Model, 'Value>>(name, definition)
 
     override x.Perform(action) =
@@ -55,12 +57,12 @@ type private AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anima
 /// An animation consists of a space function and a distance-time function.
 /// The space function defines the animation values based on position (parameterized by arc length in the range of [0, 1]).
 /// The distance-time function controls how the position changes over time.
-and private Animation<'Model, 'Value> =
+and [<ReferenceEquality>] internal Animation<'Model, 'Value> =
     {
-        SpaceFunction : FSharpFunc<'Model, float, 'Value>
+        SpaceFunction        : FSharpFunc<'Model, float, 'Value>
         DistanceTimeFunction : DistanceTimeFunction
-        Duration : Duration
-        Observable : Observable<'Model, 'Value>
+        Duration             : Duration
+        Observable           : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
@@ -69,13 +71,14 @@ and private Animation<'Model, 'Value> =
     member x.TotalDuration =
         x.Duration * x.DistanceTimeFunction.Iterations
 
-    member x.DistanceTime(localTime : LocalTime) =
-        x.DistanceTimeFunction.Invoke(localTime / x.Duration)
+    member x.DistanceTime(position) =
+        x.DistanceTimeFunction.Invoke(position)
 
     member x.Evaluate(model : 'Model, localTime : LocalTime) : 'Value =
         x.SpaceFunction.Invoke(model, x.DistanceTime(localTime))
 
-    member x.Scale(duration) =
+    member x.Scale(duration : Duration) =
+        if duration.TotalNanoseconds < 0L then raise <| System.ArgumentOutOfRangeException(nameof duration, "Duration cannot be negative.")
         { x with Duration = duration }
 
     member x.Ease(easing, compose) =
@@ -93,7 +96,7 @@ and private Animation<'Model, 'Value> =
     interface IAnimation with
         member x.Duration = x.Duration
         member x.TotalDuration = x.TotalDuration
-        member x.DistanceTime(localTime) = x.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>
@@ -118,20 +121,20 @@ module Animation =
         static let defaultFunction = FSharpFunc<'Model, float, 'Value>.Adapt (fun _ _ -> Unchecked.defaultof<'Value>)
         static member Default = defaultFunction
 
-    /// Empty animation.
+    /// Empty animation with zero duration returning the default value.
     let empty<'Model, 'Value> : IAnimation<'Model, 'Value> =
-        { SpaceFunction = SpaceFunction.Default
+        { SpaceFunction        = SpaceFunction.Default
           DistanceTimeFunction = DistanceTimeFunction.empty
-          Duration = Duration.zero
-          Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+          Duration             = Duration.zero
+          Observable           = Observable.empty }
 
     /// Creates an animation from the given space function.
-    let create' (spaceFunction : 'Model -> float -> 'Value) =
-        { SpaceFunction = FSharpFunc<_,_,_>.Adapt spaceFunction
+    let create' (spaceFunction : 'Model -> float -> 'Value) : IAnimation<'Model, 'Value> =
+        { SpaceFunction        = FSharpFunc<_,_,_>.Adapt spaceFunction
           DistanceTimeFunction = DistanceTimeFunction.empty
-          Duration = Duration.zero
-          Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+          Duration             = Duration.zero
+          Observable           = Observable.empty }
 
     /// Creates an animation from the given space function.
     let create (spaceFunction : float -> 'Value) : IAnimation<'Model, 'Value> =
-        create' (fun _ s -> spaceFunction s)
+        create' (fun _ -> spaceFunction)

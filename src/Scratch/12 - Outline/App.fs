@@ -37,7 +37,7 @@ module Shader =
    
     type SuperVertex = 
         {
-            [<Position>] pos :  V4d
+            [<Position>] pos :  V4f
             [<SourceVertexIndex>] i : int
         }
 

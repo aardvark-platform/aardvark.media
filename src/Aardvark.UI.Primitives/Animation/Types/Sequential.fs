@@ -1,24 +1,26 @@
 ﻿namespace Aardvark.UI.Animation
 
 open Aardvark.Base
-open Aether
 
-type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Model, 'Value>) =
-    inherit AbstractAnimationInstance<'Model, 'Value, Path<'Model, 'Value>>(name, definition)
+type internal SequentialGroupInstance<'Model, 'Value>(name : Symbol, definition : SequentialGroup<'Model, 'Value>) =
+    inherit AbstractAnimationInstance<'Model, 'Value, SequentialGroup<'Model, 'Value>>(name, definition)
 
-    let members = definition.Members.Data |> Array.map (fun a -> a.Create name)
+    let members = definition.Members.Data |> Array.map _.Create(name)
     let segments = definition.Members.Segments
 
+    let evaluate t =
+        let i = definition.FindMemberIndex(t)
+        members.[i].Value
+
     override x.Perform(action) =
-        let action = Groups.applyDistanceTime action x
+        let innerAction = Groups.applyDistanceTimeToAction action x
 
         for i = 0 to members.Length - 1 do
-            members.[i] |> Groups.perform segments.[i] action x
+            members.[i] |> Groups.perform segments.[i] innerAction x
 
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-
         // Commit members
         let mutable result =
             (model, members) ||> Array.fold (fun model animation ->
@@ -26,7 +28,6 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
             )
 
         // Process all actions, from oldest to newest
-        let evaluate t = let i = definition.FindMemberIndex(t) in members.[i].Value
         StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         // Notify observers about changes
@@ -35,7 +36,7 @@ type private PathInstance<'Model, 'Value>(name : Symbol, definition : Path<'Mode
         result
 
 
-and private PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
+and internal SequentialGroupMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
     let offsets =
         ValueCache (fun _ ->
             (LocalTime.zero, members) ||> Array.scan (fun t a -> t + a.TotalDuration)
@@ -59,15 +60,15 @@ and private PathMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) 
     member x.GroupDuration : Duration = duration.Value
 
 
-and private Path<'Model, 'Value> =
+and [<ReferenceEquality>] internal SequentialGroup<'Model, 'Value> =
     {
-        Members : PathMembers<'Model, 'Value>
+        Members              : SequentialGroupMembers<'Model, 'Value>
         DistanceTimeFunction : DistanceTimeFunction
-        Observable : Observable<'Model, 'Value>
+        Observable           : Observable<'Model, 'Value>
     }
 
     member x.Create(name) =
-        PathInstance(name, x)
+        SequentialGroupInstance(name, x)
 
     member x.Duration =
         x.Members.GroupDuration
@@ -76,19 +77,21 @@ and private Path<'Model, 'Value> =
         x.Duration * x.DistanceTimeFunction.Iterations
 
     member x.FindMemberIndex(groupLocalTime : LocalTime) : int =
+        let groupLocalTime = Groups.applyDistanceTimeToLocalTime groupLocalTime x
+
         if groupLocalTime < LocalTime.zero then
             0
-        elif groupLocalTime > LocalTime.max x.Duration then
+        elif groupLocalTime >= LocalTime.ofDuration x.Duration then
             x.Members.Data.Length - 1
         else
             x.Members.Segments |> Array.binarySearch (fun s ->
                 if groupLocalTime < s.Start then -1
-                elif groupLocalTime > s.End then 1
+                elif groupLocalTime >= s.End then 1
                 else 0
             ) |> ValueOption.get
 
-    member x.DistanceTime(groupLocalTime : LocalTime) =
-        x.DistanceTimeFunction.Invoke(groupLocalTime / x.Duration)
+    member x.DistanceTime(groupPosition : float) =
+        x.DistanceTimeFunction.Invoke(groupPosition)
 
     member x.Scale(duration) =
         let s = x |> Groups.scale duration
@@ -96,7 +99,7 @@ and private Path<'Model, 'Value> =
         let scale (a : IAnimation<'Model, 'Value>) =
             a.Scale(a.Duration * s)
 
-        { x with Members = PathMembers (x.Members.Data |> Array.map scale) }
+        { x with Members = SequentialGroupMembers (x.Members.Data |> Array.map scale) }
 
     member x.Ease(easing, compose) =
         { x with DistanceTimeFunction = x.DistanceTimeFunction.Ease(easing, compose)}
@@ -109,13 +112,13 @@ and private Path<'Model, 'Value> =
 
     member x.UnsubscribeAll() =
         { x with
-            Members = PathMembers (x.Members.Data |> Array.map (fun a -> a.UnsubscribeAll()))
+            Members    = SequentialGroupMembers (x.Members.Data |> Array.map _.UnsubscribeAll())
             Observable = Observable.empty }
 
     interface IAnimation with
         member x.Duration = x.Duration
         member x.TotalDuration = x.TotalDuration
-        member x.DistanceTime(localTime) = x.DistanceTime(localTime)
+        member x.DistanceTime(position) = x.DistanceTime(position)
 
     interface IAnimation<'Model> with
         member x.Create(name) = x.Create(name) :> IAnimationInstance<'Model>
@@ -134,28 +137,28 @@ and private Path<'Model, 'Value> =
 
 
 [<AutoOpen>]
-module AnimationPathExtensions =
+module AnimationSequentialExtensions =
 
     module Animation =
 
         /// <summary>
         /// Creates a sequential animation group from a sequence of animations.
+        /// Returns an empty animation if the input sequence is empty.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let path (animations : #IAnimation<'Model, 'Value> seq) =
+        let sequential (animations : #IAnimation<'Model, 'Value> seq) : IAnimation<'Model, 'Value> =
             let animations =
                 animations |> Seq.map (fun a -> a :> IAnimation<'Model, 'Value>) |> Array.ofSeq
 
             if animations.Length = 0 then
-                raise <| System.ArgumentException("Animation path cannot be empty.")
-
-            { Members = PathMembers animations
-              DistanceTimeFunction = DistanceTimeFunction.empty
-              Observable = Observable.empty } :> IAnimation<'Model, 'Value>
+                Animation.empty
+            else
+                { Members              = SequentialGroupMembers animations
+                  DistanceTimeFunction = DistanceTimeFunction.empty
+                  Observable           = Observable.empty }
 
         /// <summary>
-        /// Creates a sequential animation group from a sequence of animations.
+        /// Creates a sequential animation group from a sequence of untyped animations.
+        /// Returns an empty animation if the input sequence is empty.
         /// </summary>
-        /// <exception cref="ArgumentException">Thrown if the sequence is empty.</exception>
-        let sequential (animations : IAnimation<'Model> seq) : IAnimation<'Model, unit> =
-            animations |> Seq.map Animation.adapter |> path
+        let sequential' (animations : #IAnimation<'Model> seq) : IAnimation<'Model, unit> =
+            animations |> Seq.map Animation.adapter |> sequential

@@ -11,7 +11,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 4.0
                     |> Animation.trackEvents
 
@@ -42,7 +42,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
@@ -110,7 +110,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
@@ -150,7 +150,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
@@ -213,7 +213,7 @@ module ``Simple Tests`` =
                 use _ = Animator.initTest()
 
                 let events, animation =
-                    Animation.create (fun t -> t)
+                    Animation.create id
                     |> Animation.seconds 1.0
                     |> Animation.trackEvents
 
@@ -247,6 +247,142 @@ module ``Simple Tests`` =
                 ]
             }
 
+        let startFrom =
+            test "Start from" {
+                use _ = Animator.initTest()
+
+                let events, animation =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.trackEvents
+
+                Animator.createAndStartFrom "Test" animation 0.75 ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.75
+                    EventType.Progress, 0.75
+                ]
+
+                Animator.restartFrom "Test" -0.25 ()
+                Animator.tickSeconds 1.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Animator.restartFrom "Test" 1.25 ()
+                Animator.tickSeconds 3.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 1.0
+                    EventType.Progress, 1.0
+                    EventType.Finalize, 1.0
+                ]
+            }
+
+        let startFromLooped =
+            test "Start from (looped)" {
+                use _ = Animator.initTest()
+
+                let events, animation =
+                    Animation.create id
+                    |> Animation.seconds 1.0
+                    |> Animation.loopN LoopMode.Mirror 3
+                    |> Animation.trackEvents
+
+                Animator.createAndStartFrom "Test" animation 0.75 ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.75
+                    EventType.Progress, 0.75
+                ]
+
+                Animator.restartFrom "Test" 1.75 ()
+                Animator.tickSeconds 1.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.25
+                    EventType.Progress, 0.25
+                ]
+
+                Animator.restartFrom "Test" 2.75 ()
+                Animator.tickSeconds 2.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.75
+                    EventType.Progress, 0.75
+                ]
+
+                Animator.restartFrom "Test" 3.01 ()
+                Animator.tickSeconds 3.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 1.0
+                    EventType.Progress, 1.0
+                    EventType.Finalize, 1.0
+                ]
+            }
+
+        let zeroDuration =
+            test "Zero duration" {
+                use _ = Animator.initTest()
+
+                let events, animation =
+                    Animation.create id
+                    |> Animation.seconds 0.0
+                    |> Animation.ease (Easing.In EasingFunction.Quadratic)
+                    |> Animation.loopN LoopMode.Mirror 3
+                    |> Animation.trackEvents
+
+                Expect.equal animation.Duration Duration.zero "Unexpected duration"
+                Expect.equal animation.TotalDuration Duration.zero "Unexpected total duration"
+
+                Animator.createAndStartFrom "Test" animation 0.0 ()
+                Animator.tickSeconds 0.0
+                Animator.tickSeconds 52.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 1.0
+                    EventType.Progress, 1.0
+                    EventType.Finalize, 1.0
+                ]
+
+                let inst = Animator.get "Test" ()
+                Expect.equal inst.Value 1.0 "Unexpected value"
+            }
+
+        let infiniteDuration =
+            test "Infinite duration" {
+                use _ = Animator.initTest()
+
+                let events, animation =
+                    Animation.create id
+                    |> Animation.duration Duration.infinite
+                    |> Animation.ease (Easing.In EasingFunction.Quadratic)
+                    |> Animation.loopN LoopMode.Mirror 3
+                    |> Animation.trackEvents
+
+                Expect.equal animation.Duration Duration.infinite "Unexpected duration"
+                Expect.equal animation.TotalDuration Duration.infinite "Unexpected total duration"
+
+                Animator.createAndStartFrom "Test" animation 0.0 ()
+                Animator.tickSeconds 0.0
+
+                Expect.checkEvents events [
+                    EventType.Start, 0.0
+                    EventType.Progress, 0.0
+                ]
+
+                Animator.tickSeconds 134.0
+
+                Expect.checkEvents events [
+                    EventType.Progress, 0.0
+                ]
+            }
+
     [<Tests>]
     let tests =
         testList "Simple" [
@@ -256,5 +392,9 @@ module ``Simple Tests`` =
                 Events.pauseFinish
                 Events.stopRestartFrom
                 Events.stopFinish
+                Events.startFrom
+                Events.startFromLooped
+                Events.zeroDuration
+                Events.infiniteDuration
             ]
         ]

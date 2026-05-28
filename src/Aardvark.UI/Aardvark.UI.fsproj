@@ -41,7 +41,6 @@
     <EmbeddedResource Include="resources\docking.css" />
     <EmbeddedResource Include="resources\stats.html" />
     <EmbeddedResource Include="resources\docking.js" />
-    <EmbeddedResource Include="resources\essentialstuff.js" />
     <EmbeddedResource Include="resources\jquery-3-3-1.js" />
     <EmbeddedResource Include="resources\rgbcolor.js" />
     <EmbeddedResource Include="resources\touchstick.js" />

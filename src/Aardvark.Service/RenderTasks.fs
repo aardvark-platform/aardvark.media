@@ -395,13 +395,13 @@ module Internals =
                             tempImage <- Some t
                             t
 
-                let getTempBuffer (size : int64) =
+                let getTempBuffer (size : uint64) =
                     //let size = Fun.NextPowerOfTwo size
                     match tempBuffer with
                         | Some b when b.Size = size -> b
                         | _ ->
                             tempBuffer |> Option.iter (fun i -> i.Dispose())
-                            let b = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+                            let b = device.ReadbackMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
                             tempBuffer <- Some b
                             b
 
@@ -412,8 +412,8 @@ module Internals =
                 member x.Download(fbo : IFramebuffer, dst : nativeint) =
                     let fbo = unbox<Framebuffer> fbo
                     let image = fbo.Attachments.[DefaultSemantic.Colors].Image
-                    let lineSize = 4L * int64 image.Size.X
-                    let sizeInBytes = lineSize * int64 image.Size.Y
+                    let lineSize = 4UL * uint64 image.Size.X
+                    let sizeInBytes = lineSize * uint64 image.Size.Y
 
                     let tempImage = getTempImage image.Size.XY
                     let tempBuffer = getTempBuffer sizeInBytes
@@ -453,13 +453,13 @@ module Internals =
             
                 let mutable tempBuffer : Option<Buffer> = None
             
-                let getTempBuffer (size : int64) =
+                let getTempBuffer (size : uint64) =
                     //let size = Fun.NextPowerOfTwo size
                     match tempBuffer with
                         | Some b when b.Size = size -> b
                         | _ ->
                             tempBuffer |> Option.iter (fun i -> i.Dispose())
-                            let b = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+                            let b = device.ReadbackMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
                             tempBuffer <- Some b
                             b
 
@@ -470,8 +470,8 @@ module Internals =
                 member x.Download(fbo : IFramebuffer, dst : nativeint) =
                     let fbo = unbox<Framebuffer> fbo
                     let image = fbo.Attachments.[DefaultSemantic.Colors].Image
-                    let lineSize = 4L * int64 image.Size.X
-                    let sizeInBytes = lineSize * int64 image.Size.Y
+                    let lineSize = 4UL * uint64 image.Size.X
+                    let sizeInBytes = lineSize * uint64 image.Size.Y
                 
                     let tempBuffer = getTempBuffer sizeInBytes
                 
@@ -510,11 +510,11 @@ module Internals =
                 let device = runtime.Device
             
                 if samples > 1 then
-                    let lineSize = 4L * int64 image.Size.X
-                    let size = lineSize * int64 image.Size.Y
+                    let lineSize = 4UL * uint64 image.Size.X
+                    let size = lineSize * uint64 image.Size.Y
                     let usage = VkImageUsageFlags.TransferSrcBit ||| VkImageUsageFlags.TransferDstBit
                     let tempImage = device.CreateImage(image.Size, 1, 1, 1, TextureDimension.Texture2D, VkFormat.R8g8b8a8Unorm, usage)
-                    use temp = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+                    use temp = device.ReadbackMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
 
                     let l = image.Layout
                     device.perform {
@@ -532,9 +532,9 @@ module Internals =
 
                     tempImage.Dispose()
                 else
-                    let lineSize = 4L * int64 image.Size.X
-                    let size = lineSize * int64 image.Size.Y
-                    use temp = device.HostMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
+                    let lineSize = 4UL * uint64 image.Size.X
+                    let size = lineSize * uint64 image.Size.Y
+                    use temp = device.ReadbackMemory |> Buffer.create VkBufferUsageFlags.TransferDstBit size
 
                     let l = image.Layout
                     device.perform {
