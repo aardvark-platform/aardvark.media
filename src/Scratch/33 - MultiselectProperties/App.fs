@@ -89,7 +89,7 @@ let update (model : MultiselectPropertiesModel) (act : Action) =
             then HashSet.remove id model.selectedBoxes 
             else HashSet.add id model.selectedBoxes
 
-        { model with selectedBoxes = selection; lastSelected = Some id }           
+        { model with selectedBoxes = selection; lastSelected = Some id; pendingColor = model.boxes |> Seq.tryFind (fun b -> b.id = id) |> Option.map (fun b -> b.color) }           
     | Enter id -> { model with boxHovered = Some id }            
     | Exit -> { model with boxHovered = None }                             
     | AddBox -> 
@@ -102,10 +102,18 @@ let update (model : MultiselectPropertiesModel) (act : Action) =
         let boxes = IndexList.removeAt i model.boxes
 
         { model with boxes = boxes }
-    | ClearSelection -> { model with selectedBoxes = HashSet.empty }
+    | ClearSelection -> { model with selectedBoxes = HashSet.empty; pendingColor = None }
     | SetBoxColor (id, color) ->
         let boxes = model.boxes |> IndexList.map (fun b -> if b.id = id then { b with color = color } else b)
         { model with boxes = boxes }
+    | SetPendingColor c -> { model with pendingColor = Some c }
+    | ApplyPendingColor ->
+        match model.pendingColor with
+        | None -> model
+        | Some c ->
+            let boxes = model.boxes |> IndexList.map (fun b ->
+                if HashSet.contains b.id model.selectedBoxes then { b with color = c } else b)
+            { model with boxes = boxes; pendingColor = None }
     | GoldenLayoutMsg msg -> { model with golden = model.golden |> GoldenLayout.update msg }
                     
 let mkISg (model : AdaptiveMultiselectPropertiesModel) (box : AdaptiveVisibleBox) =
@@ -239,10 +247,54 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
             )
 
         | Pages.Page "properties" ->
+            let selCount = model.selectedBoxes |> ASet.toAVal |> AVal.map HashSet.count
+
+            // Picker seeds from pendingColor if staged, else from lastSelected box's color
+            let pickerColor : aval<C4b> =
+                model.pendingColor |> AVal.bind (function
+                    | Some c -> AVal.constant c
+                    | None ->
+                        model.lastSelected |> AVal.bind (function
+                            | None -> AVal.constant (C4b(180, 180, 180, 255))
+                            | Some id ->
+                                model.boxes |> AList.toAVal |> AVal.bind (fun boxes ->
+                                    match boxes |> Seq.tryFind (fun b -> b.id = id) with
+                                    | Some b -> b.color
+                                    | None    -> AVal.constant (C4b(180, 180, 180, 255))
+                                )
+                        )
+                )
+
+            // Color picker + Apply button — only used in multi-select view
+            let multiColorRow () =
+                require (Html.semui) (
+                    div [] [
+                        div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a2a"] [
+                            span [style "color: #777; font-size: 12px"] [text "Color"]
+                            div [style "display: flex; align-items: center; gap: 6px"] [
+                                Incremental.div (AttributeMap.ofList [style "display: flex; align-items: center"]) (
+                                    alist {
+                                        let! c = pickerColor
+                                        yield div [style (sprintf "width: 14px; height: 14px; border-radius: 50%%; background: %s; border: 1px solid rgba(255,255,255,0.2); flex-shrink: 0" (Html.color c))] []
+                                    }
+                                )
+                                ColorPicker.view ColorPicker.Config.Dark.Toggle SetPendingColor pickerColor
+                            ]
+                        ]
+                        button [
+                            style "margin-top: 10px; background: #1e88e5; color: #fff; border: none; border-radius: 4px; padding: 6px 10px; font-size: 12px; cursor: pointer; width: 100%"
+                            onMouseClick (fun _ -> ApplyPendingColor)
+                        ] [text "Apply to Selection"]
+                    ]
+                )
+
             let content =
-                model.lastSelected |> AVal.bind (function
-                    | None -> AVal.constant (div [style "color: #aaa; padding: 10px"] [text "No box selected"])
-                    | Some id ->
+                AVal.map2 (fun count lastSel -> count, lastSel) selCount model.lastSelected
+                |> AVal.bind (function
+                    | 0, _ ->
+                        AVal.constant (div [style "color: #555; padding: 10px; font-size: 12px"] [text "No selection"])
+
+                    | 1, Some id ->
                         model.boxes |> AList.toAVal |> AVal.map (fun boxes ->
                             match boxes |> Seq.tryFind (fun b -> b.id = id) with
                             | None -> div [style "color: #aaa; padding: 10px"] [text "Box not found"]
@@ -250,18 +302,15 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
                                 require (Html.semui) (
                                     div [style "height: 100%; overflow-y: auto; background: #1B1C1E; padding: 10px; color: #ccc; font-size: 13px"] [
 
-                                        // Section header
                                         div [style "font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #666; margin-bottom: 8px"] [
                                             text "VisibleBox"
                                         ]
 
-                                        // ID row
                                         div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a2a"] [
                                             span [style "color: #777; font-size: 12px"] [text "ID"]
                                             span [style "font-family: monospace; font-size: 12px; color: #aaa"] [text (box.id.Substring(0, min 8 box.id.Length) + "…")]
                                         ]
 
-                                        // Min row
                                         div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a2a"] [
                                             span [style "color: #777; font-size: 12px"] [text "Min"]
                                             Incremental.span (AttributeMap.ofList [style "font-family: monospace; font-size: 11px; color: #aaa"]) (
@@ -269,7 +318,6 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
                                             )
                                         ]
 
-                                        // Max row
                                         div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #2a2a2a"] [
                                             span [style "color: #777; font-size: 12px"] [text "Max"]
                                             Incremental.span (AttributeMap.ofList [style "font-family: monospace; font-size: 11px; color: #aaa"]) (
@@ -277,7 +325,7 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
                                             )
                                         ]
 
-                                        // Color row
+                                        // Single select: instant color change, no Apply
                                         div [style "display: flex; justify-content: space-between; align-items: center; padding: 5px 0"] [
                                             span [style "color: #777; font-size: 12px"] [text "Color"]
                                             div [style "display: flex; align-items: center; gap: 6px"] [
@@ -292,6 +340,20 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
                                         ]
                                     ]
                                 )
+                        )
+
+                    | n, _ ->
+                        AVal.constant (
+                            require (Html.semui) (
+                                div [style "height: 100%; overflow-y: auto; background: #1B1C1E; padding: 10px; color: #ccc; font-size: 13px"] [
+
+                                    div [style "font-size: 10px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #666; margin-bottom: 8px"] [
+                                        text (sprintf "%d items selected" n)
+                                    ]
+
+                                    multiColorRow ()
+                                ]
+                            )
                         )
                 )
             Incremental.div (AttributeMap.ofList [style "height: 100%; overflow: hidden"]) (AList.ofAVal (content |> AVal.map List.singleton))
@@ -348,6 +410,7 @@ let initial =
         boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> mkVisibleBox Primitives.colors.[i % 5] k) |> IndexList.ofList
         selectedBoxes = HashSet.empty
         lastSelected = None
+        pendingColor = None
         boxesMap = HashMap.empty
         golden = GoldenLayout.create layoutConfig defaultLayout
     }
