@@ -3,6 +3,7 @@ namespace Model
 open Aardvark.Base
 open FSharp.Data.Adaptive
 open Aardvark.UI.Primitives
+open Aardvark.UI.Primitives.Golden
 
 open RenderingParametersModel
 open Adaptify
@@ -16,6 +17,7 @@ type MultiselectPropertiesAction =
     | AddBox
     | RemoveBox
     | ClearSelection
+    | GoldenLayoutMsg of GoldenLayout.Message
 
 [<ModelType>]
 type VisibleBox = {
@@ -36,4 +38,6 @@ type MultiselectPropertiesModel = {
 
     boxHovered : option<string>
     selectedBoxes : HashSet<string>
+
+    golden : GoldenLayout
 }
