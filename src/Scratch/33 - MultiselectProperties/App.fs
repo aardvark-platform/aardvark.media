@@ -33,9 +33,15 @@ let defaultLayout =
                     id "list"
                     title "Box List"
                 }
-                element {
-                    id "controls"
-                    title "Controls"
+                stack {
+                    element {
+                        id "properties"
+                        title "Properties"
+                    }
+                    element {
+                        id "controls"
+                        title "Controls"
+                    }
                 }
             }
         }
@@ -61,7 +67,7 @@ let update (model : MultiselectPropertiesModel) (act : Action) =
             then HashSet.remove id model.selectedBoxes 
             else HashSet.add id model.selectedBoxes
 
-        { model with selectedBoxes = selection }           
+        { model with selectedBoxes = selection; lastSelected = Some id }           
     | Enter id -> { model with boxHovered = Some id }            
     | Exit -> { model with boxHovered = None }                             
     | AddBox -> 
@@ -75,6 +81,9 @@ let update (model : MultiselectPropertiesModel) (act : Action) =
 
         { model with boxes = boxes }
     | ClearSelection -> { model with selectedBoxes = HashSet.empty }
+    | SetBoxColor (id, color) ->
+        let boxes = model.boxes |> IndexList.map (fun b -> if b.id = id then { b with color = color } else b)
+        { model with boxes = boxes }
     | GoldenLayoutMsg msg -> { model with golden = model.golden |> GoldenLayout.update msg }
                     
 let mkColor (model : AdaptiveMultiselectPropertiesModel) (box : AdaptiveVisibleBox) =
@@ -143,24 +152,62 @@ let view (model : AdaptiveMultiselectPropertiesModel) =
         | Pages.Page "list" ->
             require (Html.semui) (
                 Incremental.div
-                    (AttributeMap.ofList [clazz "ui divided list"; style "background: #1B1C1E; height: 100%; overflow-y: auto"]) (
+                    (AttributeMap.ofList [clazz "ui list"; style "background: #1B1C1E; height: 100%; overflow-y: auto; padding: 6px"]) (
                         alist {
                             for b in model.boxes do
-                                let! c = mkColor model b
-                                let bgc = sprintf "background: %s" (Html.color c)
+                                let! boxColor = b.color |> AVal.map Html.color
+                                let! isSelected =
+                                    model.selectedBoxes
+                                    |> ASet.toAVal
+                                    |> AVal.map (HashSet.contains b.id)
+                                let! isHovered =
+                                    model.boxHovered
+                                    |> AVal.map (fun h -> h = Some b.id)
+
+                                let borderStyle =
+                                    if isSelected then "border-left: 3px solid #4fc3f7; background: #2a3a4a;"
+                                    elif isHovered then "border-left: 3px solid #555; background: #252525;"
+                                    else "border-left: 3px solid transparent; background: #222;"
+
                                 yield
                                     div [
-                                        clazz "item"; style bgc
+                                        clazz "item"
+                                        style (sprintf "display: flex; align-items: center; padding: 6px 8px; margin-bottom: 3px; border-radius: 4px; cursor: pointer; %s" borderStyle)
                                         onClick (fun _ -> Select b.id)
                                         onMouseEnter (fun _ -> Enter b.id)
                                         onMouseLeave (fun _ -> Exit)
                                     ] [
-                                        i [clazz "file outline middle aligned icon"] []
-                                        text b.id
+                                        div [style (sprintf "width: 14px; height: 14px; border-radius: 50%%; background: %s; border: 1px solid rgba(255,255,255,0.3); flex-shrink: 0; margin-right: 8px" boxColor)] []
+                                        span [style "color: #ddd; font-size: 12px; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap"] [
+                                            text (b.id.Substring(0, min 8 b.id.Length))
+                                        ]
                                     ]
                         }
                     )
             )
+
+        | Pages.Page "properties" ->
+            let content =
+                model.lastSelected |> AVal.bind (function
+                    | None -> AVal.constant (div [style "color: #aaa; padding: 10px"] [text "No box selected"])
+                    | Some id ->
+                        model.boxes |> AList.toAVal |> AVal.map (fun boxes ->
+                            match boxes |> Seq.tryFind (fun b -> b.id = id) with
+                            | None -> div [style "color: #aaa; padding: 10px"] [text "Box not found"]
+                            | Some box ->
+                                require (Html.semui) (
+                                    div [style "height: 100%; overflow-y: auto; background: #1B1C1E"] [
+                                        Html.table [
+                                            Html.row "ID:"    [text (box.id.Substring(0, min 8 box.id.Length) + "...")]
+                                            Html.row "Min:"   [Incremental.text (box.geometry |> AVal.map (fun g -> sprintf "%.2f, %.2f, %.2f" g.Min.X g.Min.Y g.Min.Z))]
+                                            Html.row "Max:"   [Incremental.text (box.geometry |> AVal.map (fun g -> sprintf "%.2f, %.2f, %.2f" g.Max.X g.Max.Y g.Max.Z))]
+                                            Html.row "Color:" [ColorPicker.view ColorPicker.Config.Dark.Toggle (fun c -> SetBoxColor (id, c)) box.color]
+                                        ]
+                                    ]
+                                )
+                        )
+                )
+            Incremental.div (AttributeMap.ofList [style "height: 100%; overflow: hidden"]) (AList.ofAVal (content |> AVal.map List.singleton))
 
         | Pages.Page "controls" ->
             require (Html.semui) (
@@ -195,7 +242,8 @@ let initial =
         rendering        = RenderingParameters.initial            
         boxHovered       = None
         boxes = Primitives.mkBoxes 3 |> List.mapi (fun i k -> mkVisibleBox Primitives.colors.[i % 5] k) |> IndexList.ofList
-        selectedBoxes = HashSet.empty     
+        selectedBoxes = HashSet.empty
+        lastSelected = None
         boxesMap = HashMap.empty
         golden = GoldenLayout.create layoutConfig defaultLayout
     }

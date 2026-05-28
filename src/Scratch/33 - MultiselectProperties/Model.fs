@@ -17,6 +17,7 @@ type MultiselectPropertiesAction =
     | AddBox
     | RemoveBox
     | ClearSelection
+    | SetBoxColor of string * C4b
     | GoldenLayoutMsg of GoldenLayout.Message
 
 [<ModelType>]
@@ -38,6 +39,7 @@ type MultiselectPropertiesModel = {
 
     boxHovered : option<string>
     selectedBoxes : HashSet<string>
+    lastSelected : option<string>
 
     golden : GoldenLayout
 }
