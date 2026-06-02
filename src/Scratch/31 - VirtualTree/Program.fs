@@ -80,7 +80,7 @@ let main argv =
     //Environment.Exit 0
 
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     use mapp = App.app |> App.start

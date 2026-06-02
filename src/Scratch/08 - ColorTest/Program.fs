@@ -121,7 +121,7 @@ let main argv =
 
     System.Environment.Exit 0
 
-    Aardium.init()
+    Aardium.Init()
 
     use app = new HeadlessVulkanApplication()
     use mapp = App.app |> App.start

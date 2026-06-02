@@ -11,7 +11,7 @@ type EmbeddedResources = EmbeddedResources
 [<EntryPoint; STAThread>]
 let main argv =
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     use mapp = DrawRectsApp.app app.Runtime |> App.start

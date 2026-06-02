@@ -54,7 +54,7 @@ let runHost () =
     0 
 
 let runWithRoute () =
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     use mapp = RenderControl.App.app |> App.start
@@ -78,7 +78,7 @@ let runWithRoute () =
     0
 
 let runWithSaturn () = 
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     let mapp = RenderControl.App.app |> App.start

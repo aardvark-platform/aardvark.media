@@ -10,7 +10,7 @@ open Simple2DDrawing
 let main argv = 
     
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
 

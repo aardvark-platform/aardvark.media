@@ -11,7 +11,7 @@ type Resources = Resources
 [<EntryPoint>]
 let main args =
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
 

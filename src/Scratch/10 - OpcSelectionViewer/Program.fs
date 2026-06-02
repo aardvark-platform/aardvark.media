@@ -8,7 +8,7 @@ open Aardium
 [<EntryPoint; STAThread>]
 let main argv =
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     use mapp = OpcSelectionViewer.App.app argv.[0] |> App.start

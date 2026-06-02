@@ -27,7 +27,6 @@
     <Compile Include="RenderServer\Tools\TurboJpeg.fs" />
     <Compile Include="RenderServer\Tools\JpegDownload.fs" />
     <Compile Include="RenderServer\Tools\RawDownload.fs" />
-    <Compile Include="RenderServer\Tools\SharedMemory.fs" />
     <Compile Include="RenderServer\RenderClientInfo.fs" />
     <Compile Include="RenderServer\Scene.fs" />
     <Compile Include="RenderServer\RenderTasks.fs" />

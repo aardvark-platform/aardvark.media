@@ -9,7 +9,7 @@ open GeoJsonViewer
 [<EntryPoint; STAThread>]
 let main argv =
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
             
     let sites = [
         @"http://minerva1.eox.at:8600/opensearch/collections/MAHLI/json/"

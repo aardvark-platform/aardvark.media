@@ -12,7 +12,7 @@ open RenderControl
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     Config.defaultDocumentTitle <- "02 - Render Control"
 

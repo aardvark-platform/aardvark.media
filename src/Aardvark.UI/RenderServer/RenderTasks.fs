@@ -243,14 +243,9 @@ type internal MappedClientRenderTask(runtime: IRuntime, client: int, getScene: I
     let mutable mapping : ISharedMemory = null
     let mutable downloader : RawDownload.IDownloader = null
 
-    static let randomString() =
-        let str = Convert.ToBase64String(Guid.NewGuid().ToByteArray())
-        str.TrimEnd('=').Replace("/", "-")
-
     let recreateMapping (desiredSize: int64) =
         if notNull mapping then mapping.Dispose()
-        let name = randomString()
-        mapping <- SharedMemory.create name desiredSize
+        mapping <- SharedMemory.Create desiredSize
 
     let recreateDownloader (runtime: IRuntime) (samples: int)  =
         if notNull downloader then downloader.Dispose()

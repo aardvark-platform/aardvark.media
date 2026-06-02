@@ -10,7 +10,7 @@ open Niobe
 [<EntryPoint; STAThread>]
 let main argv =
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     let useVulkan = false
 

@@ -10,7 +10,7 @@ open Golden
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     use mapp = App.app |> App.start

@@ -39,7 +39,13 @@
         this.loading = true;
 
         const self = this;
-        const useMapping = aardvark.localhost && getTopAardvark().openMapping && this.useMapping;
+
+        if (aardvark.localhost && this.useMapping) {
+            const top = getTopAardvark();
+            this.openMapping = top.openMapping ?? top.openMemoryMapping;
+        }
+
+        const useMapping = !!this.openMapping;
 
         if (useMapping) {
             this.canvas = document.createElement("canvas");
@@ -327,15 +333,19 @@
                 if (this.mapping) {
                     if (this.mapping.name !== data.name) {
                         this.mapping.close();
-                        this.mapping = getTopAardvark().openMapping(data.name, data.length);
+                        this.mapping = this.openMapping(data.name, data.length);
                     }
                 } else {
-                    this.mapping = getTopAardvark().openMapping(data.name, data.length);
+                    this.mapping = this.openMapping(data.name, data.length);
                 }
 
                 if (this.canvas.width !== data.size.X || this.canvas.height !== data.size.Y) {
                     this.canvas.width = data.size.X;
                     this.canvas.height = data.size.Y;
+                }
+
+                if (this.mapping.requiresCopy) {
+                    this.mapping.copyFrom();
                 }
 
                 const totalBytes = data.size.X * data.size.Y * 4;

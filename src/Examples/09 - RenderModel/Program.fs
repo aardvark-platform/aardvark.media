@@ -11,7 +11,7 @@ open Aardium
 let main argv = 
     
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     // media apps require a runtime, which serves as renderer for your render controls.
     // you can use OpenGL or VulkanApplication.

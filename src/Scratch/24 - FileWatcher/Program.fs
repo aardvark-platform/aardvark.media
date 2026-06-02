@@ -9,7 +9,7 @@ open Inc
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     let mutable mapp : Option<MutableApp<_,_,_>> = None

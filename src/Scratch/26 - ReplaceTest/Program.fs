@@ -13,7 +13,7 @@ let main argv =
     //FSharp.Data.Adaptive.DefaultEqualityComparer.SetProvider FSharp.Data.Adaptive.DefaultEqualityComparer.Shallow
 
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     Config.shouldTimeJsCodeGeneration <- true
     Config.shouldTimeUIUpdate <- true

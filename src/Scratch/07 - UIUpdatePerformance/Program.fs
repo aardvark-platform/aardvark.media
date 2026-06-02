@@ -11,7 +11,7 @@ type AssemblyResources = AssemblyResources
 [<EntryPoint; STAThread>]
 let main argv = 
     Aardvark.Init()
-    Aardium.init()
+    Aardium.Init()
 
     use app = new OpenGlApplication()
     use mapp = App.app app.Runtime |> App.start
