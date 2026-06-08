@@ -368,12 +368,12 @@ module SgFSharp =
 
 
         /// Restricts color output to the given attachments.
-        let colorOutput (enabled : aval<Set<Symbol>>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.colorOutput enabled)
+        let colorOutput (enabled : aval<#seq<Symbol>>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorOutput (enabled |> AVal.map Set.ofSeq))
 
         /// Restricts color output to the given attachments.
-        let colorOutput' (enabled : Set<Symbol>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.colorOutput' enabled)
+        let colorOutput' (enabled : Symbol seq) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.colorOutput' (Set.ofSeq enabled))
 
         // ================================================================================================================
         // Depth
@@ -530,12 +530,12 @@ module SgFSharp =
         // ================================================================================================================
 
         /// Toggles color, depth and stencil writes according to the given set of symbols.
-        let writeBuffers (buffers : aval<Set<WriteBuffer>>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.writeBuffers buffers)
+        let writeBuffers (buffers : aval<#seq<WriteBuffer>>) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.writeBuffers (buffers |> AVal.map Set.ofSeq))
 
         /// Toggles color, depth and stencil writes according to the given set of symbols.
-        let writeBuffers' (buffers : Set<WriteBuffer>) (sg : ISg<'msg>) =
-            sg |> unboxed (Sg.writeBuffers' buffers)
+        let writeBuffers' (buffers : WriteBuffer seq) (sg : ISg<'msg>) =
+            sg |> unboxed (Sg.writeBuffers' (Set.ofSeq buffers))
 
         // ================================================================================================================
         // Rasterizer
