@@ -38,6 +38,7 @@ let main argv =
     browser.OpenDevTools()
 
     Application.Run form
+    browser.CloseDevTools()
     form.Controls.Remove browser
 
     0 

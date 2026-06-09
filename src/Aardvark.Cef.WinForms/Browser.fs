@@ -32,3 +32,7 @@ type AardvarkCefBrowser =
             this.IsBrowserInitializedChanged.Add (fun _ ->
                 this.BeginInvoke(Action this.ShowDevTools) |> ignore
             )
+
+    member this.CloseDevTools() =
+        if this.IsBrowserInitialized then
+            this.CloseDevTools()
