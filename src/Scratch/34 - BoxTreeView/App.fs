@@ -14,6 +14,7 @@ open TreeView.Model
 open TreeView.App
 open VirtualTree.Model
 open VirtualTree.App
+open VirtualTree.Utilities
 
 // ---------------------------------------------------------------------------
 // Scene helpers
@@ -64,6 +65,37 @@ let private mkISg (model : AdaptiveModel) (box : AdaptiveVisibleBox) =
     ]
 
 // ---------------------------------------------------------------------------
+// Path helper
+// ---------------------------------------------------------------------------
+
+let private buildPathStr (labels : HashMap<string, string>) (hierarchy : FlatTree<string>) (nodeId : string) =
+    hierarchy |> FlatTree.rootPath nodeId
+    |> Array.choose (fun id -> HashMap.tryFind id labels)
+    |> String.concat " / "
+
+let private treeSortKey (values : HashMap<string, TreeItemData>) (id : string) =
+    match HashMap.tryFind id values with
+    | Some data -> (if data.isGroup then 0 else 1), data.label.ToLowerInvariant()
+    | None      -> (1, id.ToLowerInvariant())
+
+/// Sorts the direct children of parentId in-place: groups first, then alphabetically.
+let private sortChildrenInTree (values : HashMap<string, TreeItemData>) (parentId : string) (tree : FlatTree<string>) =
+    match FlatTree.tryIndexOf parentId tree with
+    | ValueNone -> tree
+    | ValueSome parentIdx ->
+        let childIndices = tree.ChildrenIndices parentIdx
+        if childIndices.Length <= 1 then tree
+        else
+            let sortedChildren =
+                childIndices
+                |> Array.map  (fun i  -> tree.[i].Value)
+                |> Array.sortBy (treeSortKey values)
+            let childSubtrees = sortedChildren |> Array.map (fun id -> tree.SubTree id)
+            let treeSingleton = tree.Replace(parentId, FlatTree.singleton parentId)
+            (treeSingleton, childSubtrees)
+            ||> Array.fold (fun t st -> t.InsertSubTree(parentId, st))
+
+// ---------------------------------------------------------------------------
 // Initial state
 // ---------------------------------------------------------------------------
 
@@ -94,11 +126,6 @@ let private buildInitialScene () =
             grpSub,  [ epsilon.id; zeta.id ]
         ]
 
-    let getChildren id =
-        match HashMap.tryFind id hierarchy with
-        | Some children -> children :> seq<string>
-        | None          -> Seq.empty
-
     // Tree display data (both groups and box leaves)
     let groupItems =
         [ rootId,  { label = "Scene";       isGroup = true; color = C4b.White }
@@ -109,12 +136,22 @@ let private buildInitialScene () =
     let boxItems =
         allBoxes |> List.map (fun b -> b.id, { label = b.name; isGroup = false; color = b.color })
 
-    let treeValues = HashMap.ofList (groupItems @ boxItems)
-    let treeView   = TreeView.initialize getChildren treeValues rootId
+    let treeValues  = HashMap.ofList (groupItems @ boxItems)
 
-    let boxIds = allBoxes |> List.map (fun b -> b.id) |> HashSet.ofList
+    let getChildren id =
+        match HashMap.tryFind id hierarchy with
+        | Some children ->
+            children
+            |> List.sortBy (treeSortKey treeValues)
+            :> seq<string>
+        | None -> Seq.empty
 
-    IndexList.ofList allBoxes, treeView, boxIds
+    let treeView    = TreeView.initialize getChildren treeValues rootId
+
+    let boxIds      = allBoxes |> List.map (fun b -> b.id) |> HashSet.ofList
+    let groupLabels = groupItems |> List.map (fun (id, data) -> id, data.label) |> HashMap.ofList
+
+    IndexList.ofList allBoxes, treeView, boxIds, groupLabels
 
 // ---------------------------------------------------------------------------
 // Golden layout
@@ -179,9 +216,93 @@ let update (model : Model) (msg : Message) =
     | GoldenLayout msg ->
         { model with golden = model.golden |> GoldenLayout.update msg }
 
+    | MoveNode (nodeId, targetParentId) ->
+        let vt = model.treeView.tree
+        let h  = vt.hierarchy
+        let valid =
+            FlatTree.contains nodeId h &&
+            FlatTree.contains targetParentId h &&
+            not (FlatTree.isRoot nodeId h) &&
+            not (h |> FlatTree.descendants nodeId |> Seq.contains targetParentId)
+        if not valid then model
+        else
+            // Save per-value visibility so it survives the structural change.
+            let visMap =
+                List.init h.Count (fun i -> h.[i].Value, model.treeView.visibility.[i])
+                |> HashMap.ofList
+
+            let subtree = h |> FlatTree.subTree nodeId
+            let newH =
+                h
+                |> FlatTree.delete nodeId
+                |> FlatTree.insertSubTree targetParentId subtree
+                |> sortChildrenInTree model.treeView.values targetParentId
+
+            // Rebuild current by re-applying collapsed singletons to new hierarchy.
+            let newCurrent =
+                (newH, vt.collapsed)
+                ||> HashMap.fold (fun t key _ ->
+                    if FlatTree.contains key t then
+                        t |> FlatTree.replace key (FlatTree.singleton key)
+                    else t
+                )
+
+            let newVisibility =
+                Array.init newH.Count (fun i ->
+                    newH.[i].Value
+                    |> fun v -> HashMap.tryFind v visMap |> Option.defaultValue Visibility.Visible
+                )
+
+            let newVT = { vt with hierarchy = newH; current = newCurrent }
+            { model with treeView = { model.treeView with tree = newVT; visibility = newVisibility } }
+
 // ---------------------------------------------------------------------------
-// View
+// View helpers
 // ---------------------------------------------------------------------------
+
+let private moveDropdown (selectedId : string) (currentParent : string voption) (targets : (string * string) list) : DomNode<Message> =
+    div [ clazz "ui simple dropdown item" ] [
+        i [ clazz "exchange alternate icon" ] []
+        span [ style "margin-left: 4px" ] [ text "Move to" ]
+        i [ clazz "dropdown icon" ] []
+        div [ clazz "menu" ] (
+            targets |> List.map (fun (targetId, path) ->
+                let isCurrent = currentParent = ValueSome targetId
+                let label = if isCurrent then $"[ {path} ]" else path
+                div [ clazz "item"
+                      onClick (fun _ -> MoveNode (selectedId, targetId)) ]
+                    [ text label ]
+            )
+        )
+    ]
+
+let private moveMenuBar (model : AdaptiveModel) : DomNode<Message> =
+    Incremental.div
+        (AttributeMap.ofList [ clazz "ui inverted menu"; style "margin: 0; border-radius: 0; flex-shrink: 0" ])
+        (alist {
+            let! selected  = model.treeView.selected
+            let! hierarchy = model.treeView.tree.hierarchy
+            let  boxIds    = model.boxIds
+            let  labels    = model.groupLabels
+            if selected.Count = 1 then
+                let selectedId  = selected |> Seq.head
+                let descendants =
+                    hierarchy |> FlatTree.descendants selectedId
+                    |> Seq.toArray |> HashSet.ofArray
+                let targets =
+                    [ for i in 0 .. hierarchy.Count - 1 do
+                        let fi  = hierarchy.[i]
+                        let nid = fi.Value
+                        if not (HashSet.contains nid descendants) && not (HashSet.contains nid boxIds) then
+                            yield nid, buildPathStr labels hierarchy nid ]
+                let currentParent = hierarchy |> FlatTree.parent selectedId
+                yield moveDropdown selectedId currentParent targets
+            else
+                yield div [ clazz "disabled item" ] [
+                    i [ clazz "exchange alternate icon" ] []
+                    span [ style "margin-left: 4px" ] [ text "Move to" ]
+                ]
+        })
 
 // Stops click from bubbling to the outer row's selection handler.
 let private stopPropagation =
@@ -226,8 +347,11 @@ let view (model : AdaptiveModel) =
 
         | Pages.Page "tree" ->
             require Html.semui (
-                body [ style "width: 100%; height: 100%; margin: 0; overflow: hidden; background: #1B1C1E" ] [
-                    model.treeView |> TreeView.view AttributeMap.empty TreeAction treeItemNode
+                body [ style "width: 100%; height: 100%; margin: 0; overflow: hidden; background: #1B1C1E; display: flex; flex-direction: column" ] [
+                    moveMenuBar model
+                    div [ style "flex: 1; overflow: hidden" ] [
+                        model.treeView |> TreeView.view AttributeMap.empty TreeAction treeItemNode
+                    ]
                 ]
             )
 
@@ -250,7 +374,7 @@ let threads (model : Model) =
     FreeFlyController.threads model.camera |> ThreadPool.map Camera
 
 let app : App<Model, AdaptiveModel, Message> =
-    let boxes, treeView, boxIds = buildInitialScene ()
+    let boxes, treeView, boxIds, groupLabels = buildInitialScene ()
     {
         unpersist = Unpersist.instance
         threads   = threads
@@ -261,7 +385,8 @@ let app : App<Model, AdaptiveModel, Message> =
               hoveredBox    = None
               treeView      = treeView
               golden        = GoldenLayout.create layoutConfig defaultLayout
-              boxIds        = boxIds }
+              boxIds        = boxIds
+              groupLabels   = groupLabels }
         update = update
         view   = view
     }

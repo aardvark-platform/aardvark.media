@@ -33,6 +33,7 @@ type Message =
     | Hover          of string option
     | TreeAction     of TreeView.Message<string>
     | GoldenLayout   of Golden.GoldenLayout.Message
+    | MoveNode       of nodeId: string * targetParentId: string
 
 [<ModelType>]
 type Model = {
@@ -46,4 +47,8 @@ type Model = {
     /// Pre-computed set of box IDs for O(1) box-vs-group lookup.
     [<NonAdaptive>]
     boxIds : HashSet<string>
+
+    /// Group ID → label, used for path strings in the Move-to dropdown.
+    [<NonAdaptive>]
+    groupLabels : HashMap<string, string>
 }

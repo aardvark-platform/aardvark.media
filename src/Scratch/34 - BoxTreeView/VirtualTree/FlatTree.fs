@@ -272,6 +272,16 @@ type FlatTree<'T> internal (nodes : ArraySegment<FlatNode>, values : ArraySegmen
 
             FlatTree(nodes', values')
 
+    /// Inserts the given subtree as the last child of the given parent node.
+    member x.InsertSubTree(parent : 'T, subtree : FlatTree<'T>) =
+        if subtree.IsEmpty then x
+        else
+            match indices.TryFindV parent with
+            | ValueNone -> x
+            | ValueSome _ ->
+                let root = subtree.Root
+                x.Insert(parent, root).Replace(root, subtree)
+
     /// Deletes the given node and its descendants.
     member inline x.Delete(value : 'T) =
         x.Replace(value, FlatTree.Empty)
@@ -492,6 +502,10 @@ module FlatTree =
     /// Inserts the given value as the last child of the given parent node.
     let inline insert (parent : 'T) (value : 'T) (tree : FlatTree<'T>) =
         tree.Insert(parent, value)
+
+    /// Inserts the given subtree as the last child of the given parent node.
+    let inline insertSubTree (parent : 'T) (subtree : FlatTree<'T>) (tree : FlatTree<'T>) =
+        tree.InsertSubTree(parent, subtree)
 
     /// Returns the subtree with the given value as root.
     let inline subTree (value : 'T) (tree : FlatTree<'T>) =
