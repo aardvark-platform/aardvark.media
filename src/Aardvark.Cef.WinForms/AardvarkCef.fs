@@ -62,6 +62,7 @@ type AardvarkCef =
         settings.IgnoreCertificateErrors <- true
         settings.CommandLineArgsDisabled <- false
         settings.WindowlessRenderingEnabled <- false
+        settings.CefCommandLineArgs.Add "no-proxy-server"
         settings
 
     static member Init([<Optional; DefaultParameterValue(null: CefSettings)>] settings: CefSettings,
