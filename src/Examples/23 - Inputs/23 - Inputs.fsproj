@@ -2,10 +2,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <IsWindows>$([MSBuild]::IsOSPlatform('Windows'))</IsWindows>
     <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework Condition="'$(IsWindows)' == 'true'">net8.0-windows10.0.17763.0</TargetFramework>
+    <RuntimeIdentifier Condition="'$(IsWindows)' == 'true'">win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
     <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
     <AssemblyName>$(MSBuildProjectName.Replace(" ", "_"))</AssemblyName>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <UseWindowsForms Condition="'$(IsWindows)' == 'true'">true</UseWindowsForms>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
     <OutputPath>..\..\..\bin\Debug\</OutputPath>
@@ -27,6 +33,7 @@
     <ProjectReference Include="..\..\Aardvark.UI.Giraffe\Aardvark.UI.Giraffe.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI\Aardvark.UI.fsproj" />
+    <ProjectReference Include="..\..\Aardvark.Cef.WinForms\Aardvark.Cef.WinForms.fsproj" Condition="'$(IsWindows)' == 'true'" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>

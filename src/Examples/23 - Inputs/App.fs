@@ -1,5 +1,6 @@
 module Input.App
 
+open System
 open Aardvark.UI
 open Aardvark.UI.Generic
 open Aardvark.UI.Primitives
@@ -22,6 +23,8 @@ let initial =
         options = HashMap.ofList [A, "A"; B, "B"; C, "C";  D, "D"; Custom "Banana", "Banana"; Custom "Orange", "Orange"]
         enumValue = EnumValue.Value1
         color = C4b(C3b.Blue, 127uy)
+        multiselect = true
+        modal = true
     }
 
 let update (model : Model) (msg : Message) =
@@ -57,6 +60,15 @@ let update (model : Model) (msg : Message) =
 
     | SetColor c ->
         { model with color = c }
+
+    | ToggleMultiselect ->
+        { model with multiselect = not model.multiselect }
+
+    | ToggleModal ->
+        { model with modal = not model.modal }
+
+    | Open _ | Save _ ->
+        model
 
     | Reset ->
         initial
@@ -242,6 +254,34 @@ let view (model : AdaptiveModel) =
                                         displayMode      = ColorPicker.DisplayMode.Inline }
 
                         ColorPicker.view cfg SetColor model.color
+                    ]
+                ]
+
+                // Dialogs
+                text "Dialogs", div [ clazz "menu" ] [
+                    div [ clazz "item" ] [
+                        checkbox [clazz "inverted"; style "margin-right: 10px"] model.multiselect ToggleMultiselect "Multiselect"
+                        checkbox [clazz "inverted"] model.modal ToggleModal "Modal"
+                    ]
+
+                    let getConfig title filters =
+                        (model.multiselect, model.modal) ||> AVal.map2 (fun multiselect modal ->
+                            { DialogConfig.Default with
+                                Title       = title
+                                Filters     = filters
+                                Multiselect = multiselect
+                                Modal       = modal
+                                DefaultPath = Environment.GetFolderPath Environment.SpecialFolder.Desktop }
+                        )
+
+                    let openFilesConfig  = getConfig "Import some files" [ "Text files", [ "txt"; ".md" ]; "Source code", [ "c"; "cpp"; "cs"; "fs" ] ]
+                    let saveFileConfig   = getConfig "Export image" [ "Image files", [ "png"; "jpg"; "jpeg" ] ]
+                    let openFolderConfig = getConfig null []
+
+                    div [ clazz "item" ] [
+                        Dialog.Incremental.openFilesButton Open openFilesConfig [ clazz "ui button" ] <| AList.ofList [ text "Open files" ]
+                        Dialog.Incremental.saveFileButton Save saveFileConfig [ clazz "ui button" ] <| AList.ofList [ text "Save file" ]
+                        Dialog.Incremental.openFoldersButton Open openFolderConfig [ clazz "ui button" ] <| AList.ofList [ text "Open folders" ]
                     ]
                 ]
             ]

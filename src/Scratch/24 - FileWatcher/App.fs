@@ -39,14 +39,12 @@ let update (send : Message -> unit) (model : Model) (msg : Message) =
 let view (model : AdaptiveModel) =
     div [] [
         div [] [
-            openDialogButton 
-                    ({
-                        mode            = OpenDialogMode.File
-                        title           = "Choose watched text file"
-                        startPath       = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
-                        filters         = [| "*.*" |]
-                        allowMultiple   = false
-                    }) [onChooseFile SetPath] [text "choose file"]
+            Dialog.openFileButton SetPath
+                { DialogConfig.Default with
+                    Title           = "Choose watched text file"
+                    Filters         = [ "Text files", ["txt"; "md"; "fs"; "cs"; "cpp"] ]
+                    DefaultPath     = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) }
+                [] [text "choose file"]
         ]
         div [] [Incremental.text (model.FilePath |> AVal.map (sprintf "%A"))]
         div [] [Incremental.text model.Content]

@@ -14,15 +14,6 @@ open DiscoverOpcs.Model
 
 
 module App =
-
-    module Dialogs = 
-        let onChooseFiles (chosen : list<string> -> 'msg) =
-            let cb xs =
-                match xs with
-                | [] -> chosen []
-                | x::[] when x <> null -> x |> Pickler.json.UnPickleOfString |> List.map Path.ofUnixStyle |> chosen
-                | _ -> chosen []//failwithf "onChooseFiles: %A" xs
-            onEvent "onchoose" [] cb   
     
     //let importFolders (paths : list<string>) : list<OpcFolder> = 
     //  paths
@@ -119,21 +110,16 @@ module App =
             }
         )
     
-    let jsImportOPCDialog =
-          "top.aardvark.dialog.showOpenDialog({tile: 'Select directory to discover OPCs and import', filters: [{ name: 'OPC (directories)'}], properties: ['openDirectory', 'multiSelections']}).then(result => {top.aardvark.processEvent('__ID__', 'onchoose', result.filePaths);});"
-    
     let view (model : AdaptiveModel) =
         require Html.semui (
             body [style "width: 100%; height:100%; background: #252525; overflow-x: hidden; overflow-y: scroll"] [
                 div [clazz "ui inverted segment"] [
                     h1 [clazz "ui"] [text "Discover Opcs"]
                     br []
-                    button [ 
-                        clazz "ui button tiny"
-                        Dialogs.onChooseFiles SetPaths;
-                        clientEvent "onclick" (jsImportOPCDialog)] [
-                        text "Select Path"
-                    ]
+                    Dialog.openFoldersButton SetPaths
+                        { DialogConfig.Default with Title = "Select directory to discover OPCs and import" }
+                        [ clazz "ui button tiny" ]
+                        [ text "Select Path" ]
                    // Html.SemUi.accordion "Paths" "files" true [viewPaths model]
                                         
                    // button [clazz "ui button tiny"; onClick (fun _ -> Discover)] [text "DiscoverOpcs" ]                

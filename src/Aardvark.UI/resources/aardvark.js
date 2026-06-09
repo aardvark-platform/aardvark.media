@@ -20,6 +20,10 @@ if (!aardvark.initialized) {
     aardvark.promise = new Promise(function (succ, _) { succ(); });
     aardvark.localhost = location.hostname === "localhost" || location.hostname === "127.0.0.1";
 
+    const top = getTopAardvark();
+    aardvark.dialog = top?.dialog;
+    aardvark.electron = top?.electron;
+
     aardvark.processEvent = function () {
         console.warn("[Aardvark] cannot process events yet (websocket not opened)");
     };
@@ -291,35 +295,38 @@ class Channel {
     }
 }
 
-if (aardvark.electron) {
-    aardvark.openFileDialog = function (config, callback) {
-        if (!callback) callback = config;
-        const props = {properties: ['openFile', 'multiSelections']};
-        const all = {...props, ...config};
-        aardvark.electron.remote.dialog.showOpenDialog(all).then(e => callback(e.filePaths));
-    };
+if (!aardvark.dialog && !aardvark.electron?.remote?.dialog) {
+    const showError = () => console.error("File dialogs only work with Aardium or CEF.");
 
-    aardvark.saveFileDialog = function (config, callback) {
-        if (!callback) callback = config;
-        const props = { properties: [] };
-        const all = {...props, ...config};
-        aardvark.electron.remote.dialog.showSaveDialog(all).then(e => callback([e.filePath]));
-    };
-} else {
-    const showError = () => console.error("File dialogs only work with Aardium.");
-
-    // Defined by Aardium (only need to set if absent)
-    if (!aardvark.dialog) {
-        aardvark.dialog = {};
-        aardvark.dialog.showOpenDialog = () => { showError(); return Promise.resolve({ filePaths: [] }) };
-        aardvark.dialog.showSaveDialog = () => { showError(); return Promise.resolve({ filePath: "" }) };
-    }
-
-    if (!aardvark.openFileDialog) {
-        aardvark.openFileDialog = showError;
-    }
-
-    if (!aardvark.saveFileDialog) {
-        aardvark.saveFileDialog = showError;
-    }
+    aardvark.dialog = {};
+    aardvark.dialog.showOpenDialog = () => { showError(); return Promise.resolve({ filePaths: [] }) };
+    aardvark.dialog.showSaveDialog = () => { showError(); return Promise.resolve({ filePath: "" }) };
 }
+
+if (aardvark.electron?.remote?.dialog) {
+    const getParentWindow = function (properties) {
+        const modal = properties?.includes('modal') ?? false;
+        return modal ? aardvark.electron.remote.getCurrentWindow() : null;
+    }
+
+    aardvark.dialog = {
+        showOpenDialog: function (window, options) {
+            if (arguments.length === 1) { options = window; window = null; }
+            window = window ?? getParentWindow(options?.properties);
+            return aardvark.electron.remote.dialog.showOpenDialog(window, options);
+        },
+        showSaveDialog: function (window, options) {
+            if (arguments.length === 1) { options = window; window = null; }
+            window = window ?? getParentWindow(options?.properties);
+            return aardvark.electron.remote.dialog.showSaveDialog(window, options);
+        }
+    };
+}
+
+aardvark.openFileDialog = function (config, callback) {
+    aardvark.dialog.showOpenDialog(config).then(r => callback(r.filePaths));
+};
+
+aardvark.saveFileDialog = function (config, callback) {
+    aardvark.dialog.showSaveDialog(config).then(r => callback(r.filePath));
+};

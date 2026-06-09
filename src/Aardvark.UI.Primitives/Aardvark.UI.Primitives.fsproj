@@ -17,6 +17,7 @@
     <Compile Include="Primitives\SimplePrimitives.fs" />
     <Compile Include="Primitives\Dropdown.fs" />
     <Compile Include="Primitives\Accordion.fs" />
+    <Compile Include="Primitives\Dialogs.fs" />
     <Compile Include="Primitives\UI.Primitives.Models.fs" />
     <Compile Include="Primitives\UI.Primitives.fs" />
     <Compile Include="Primitives\UI.Primitives.Simple.fs" />
@@ -66,8 +67,6 @@
     <Compile Include="Notifications\NotificationsModel.fs" />
     <Compile Include="Notifications\Notifications.fs" />
     <Compile Include="Docking.fs" />
-    <Compile Include="OpenDialog.fs" />
-    <Compile Include="SaveDialog.fs" />
     <EmbeddedResource Include="resources\fomantic\themes\default\**">
       <LogicalName>resources\fomantic\themes\default\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>

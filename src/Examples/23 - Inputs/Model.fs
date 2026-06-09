@@ -19,17 +19,19 @@ type EnumValue =
 [<ModelType>]
 type Model =
     {
-        active    : bool
-        value     : float
-        intValue  : int
-        decValue  : decimal
-        uintValue : uint32
-        name      : string
-        alt       : Option<Alternative>
-        alts      : IndexList<Alternative>
-        options : HashMap<Alternative, string>
-        enumValue : EnumValue
-        color     : C4b
+        active      : bool
+        value       : float
+        intValue    : int
+        decValue    : decimal
+        uintValue   : uint32
+        name        : string
+        alt         : Option<Alternative>
+        alts        : IndexList<Alternative>
+        options     : HashMap<Alternative, string>
+        enumValue   : EnumValue
+        color       : C4b
+        multiselect : bool
+        modal       : bool
     }
 
 type Message =
@@ -43,4 +45,8 @@ type Message =
     | SetAlternatives of Alternative list
     | SetEnumValue of EnumValue
     | SetColor of C4b
+    | Open of string list
+    | Save of string
+    | ToggleMultiselect
+    | ToggleModal
     | Reset

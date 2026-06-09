@@ -33,9 +33,10 @@ let view (model : AdaptiveModel) =
     require Html.semui (
         body [ style "background: black"] [
             div [clazz "ui inverted segment" ] [
-                openDialogButton 
-                    { OpenDialogConfig.file with allowMultiple = true; title = "ROCK THE POWER. ROCKET POWER" }
-                    [ clazz "ui green button"; onChooseFiles OpenFiles ] 
+                Dialog.openFilesButton
+                    OpenFiles
+                    { DialogConfig.Default with Title = "ROCK THE POWER. ROCKET POWER" }
+                    [ clazz "ui green button"]
                     [ text "Open File" ]
             ]
 
