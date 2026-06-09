@@ -34,3 +34,4 @@ bin/Debug
 **/.DS_Store
 *.DotSettings.user
 /.boss
+/.vscode/settings.json
