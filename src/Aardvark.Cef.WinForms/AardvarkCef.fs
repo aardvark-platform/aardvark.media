@@ -103,7 +103,9 @@ type AardvarkCef =
         if exitCode >= 0 then Environment.Exit exitCode
 
     static member CreateBrowser(address: string, [<Optional; DefaultParameterValue(null: IRequestContext)>] requestContext: IRequestContext) =
+        if not AardvarkCef.IsInitialized then raise <| InvalidOperationException("Aardvark CEF has not been initialized.")
         AardvarkCefBrowser.Create(address, requestContext)
 
     static member CreateBrowser(html: HtmlString, [<Optional; DefaultParameterValue(null: IRequestContext)>] requestContext: IRequestContext) =
+        if not AardvarkCef.IsInitialized then raise <| InvalidOperationException("Aardvark CEF has not been initialized.")
         AardvarkCefBrowser.Create(html, requestContext)
