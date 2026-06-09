@@ -1,0 +1,11 @@
+.treeview .hovered.item:not(.selected) {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.treeview .selected.item {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.treeview .item span {
+    user-select: none;
+}

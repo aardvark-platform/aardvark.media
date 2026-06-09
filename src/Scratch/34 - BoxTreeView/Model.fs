@@ -26,11 +26,13 @@ type TreeItemData = {
 }
 
 type Message =
-    | Camera       of FreeFlyController.Message
-    | Select       of string
-    | Hover        of string option
-    | TreeAction   of TreeView.Message<string>
-    | GoldenLayout of Golden.GoldenLayout.Message
+    | Camera         of FreeFlyController.Message
+    | Select         of string
+    | ScrollTo       of string
+    | ToggleCollapse of string
+    | Hover          of string option
+    | TreeAction     of TreeView.Message<string>
+    | GoldenLayout   of Golden.GoldenLayout.Message
 
 [<ModelType>]
 type Model = {

@@ -57,9 +57,10 @@ let private mkISg (model : AdaptiveModel) (box : AdaptiveVisibleBox) =
     |> Sg.requirePicking
     |> Sg.noEvents
     |> Sg.withEvents [
-        Sg.onClick  (fun _  -> Select box.id)
-        Sg.onEnter  (fun _  -> Hover (Some box.id))
-        Sg.onLeave  (fun () -> Hover None)
+        Sg.onClick       (fun _  -> Select   box.id)
+        Sg.onDoubleClick (fun _  -> ScrollTo box.id)
+        Sg.onEnter       (fun _  -> Hover (Some box.id))
+        Sg.onLeave       (fun () -> Hover None)
     ]
 
 // ---------------------------------------------------------------------------
@@ -144,20 +145,31 @@ let update (model : Model) (msg : Message) =
         { model with camera = FreeFlyController.update model.camera m }
 
     | Select id ->
-        let newSelected = HashSet.single id
-        // Sync tree: select the clicked box and scroll to it
+        // Single click: select in 3D and sync tree highlight (no scroll)
         let treeModel =
             model.treeView
             |> TreeView.update (TreeView.Message.Click (id, { shift = false; alt = false; ctrl = false }))
+        { model with selectedBoxes = HashSet.single id; treeView = treeModel }
+
+    | ScrollTo id ->
+        // Double click: also uncollapse ancestors and scroll the tree to this box
+        let treeModel =
+            model.treeView
             |> TreeView.update (TreeView.Message.Virtual (VirtualTree.Message.ScrollTo id))
-        { model with selectedBoxes = newSelected; treeView = treeModel }
+        { model with treeView = treeModel }
+
+    | ToggleCollapse id ->
+        let msg =
+            if HashMap.containsKey id model.treeView.tree.collapsed
+            then TreeView.Message.Uncollapse id
+            else TreeView.Message.Collapse  id
+        { model with treeView = model.treeView |> TreeView.update msg }
 
     | Hover optId ->
         { model with hoveredBox = optId }
 
     | TreeAction msg ->
         let treeModel = model.treeView |> TreeView.update msg
-        // When a box leaf is clicked in the tree, update the 3D selection too
         match msg with
         | TreeView.Message.Click (id, _) when HashSet.contains id model.boxIds ->
             { model with treeView = treeModel; selectedBoxes = HashSet.single id }
@@ -171,14 +183,27 @@ let update (model : Model) (msg : Message) =
 // View
 // ---------------------------------------------------------------------------
 
+// Stops click from bubbling to the outer row's selection handler.
+let private stopPropagation =
+    "$('#__ID__').on('click', function(e) { e.stopPropagation(); });"
+
 let private treeItemNode (key : string) (item : AdaptiveTreeItemData) : DomNode<Message> =
     Incremental.div AttributeMap.empty <| alist {
         let! isGroup = item.isGroup
         let! label   = item.label
         let! color   = item.color
-        let icon     = if isGroup then "folder outline" else "cube"
         let rgb      = sprintf "rgb(%d,%d,%d)" color.R color.G color.B
-        yield i    [ clazz $"{icon} icon"; style $"color: {rgb}" ] []
+
+        if isGroup then
+            // Folder icon toggles collapse; stop propagation so it doesn't also select the group.
+            yield onBoot stopPropagation (
+                i [ clazz "folder outline link icon"
+                    style $"color: {rgb}"
+                    onClick (fun _ -> ToggleCollapse key) ] []
+            )
+        else
+            yield i [ clazz "cube icon"; style $"color: {rgb}" ] []
+
         yield span [ style $"margin-left: 5px; color: {rgb}" ] [ text label ]
     }
 
@@ -200,9 +225,11 @@ let view (model : AdaptiveModel) =
                 ]) sg
 
         | Pages.Page "tree" ->
-            body [ style "width: 100%; height: 100%; margin: 0; overflow: hidden; background: #1B1C1E" ] [
-                model.treeView |> TreeView.view AttributeMap.empty TreeAction treeItemNode
-            ]
+            require Html.semui (
+                body [ style "width: 100%; height: 100%; margin: 0; overflow: hidden; background: #1B1C1E" ] [
+                    model.treeView |> TreeView.view AttributeMap.empty TreeAction treeItemNode
+                ]
+            )
 
         | Pages.Body ->
             Html.title false (AVal.constant "Box Tree View") (
