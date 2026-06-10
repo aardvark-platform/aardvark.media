@@ -1,3 +1,10 @@
+### 5.7.0-prerelease0002
+- [CEF] Added initialization check for `CreateBrowser`
+- [CEF] Added `AardvarkCefBrowser.CloseDevTools`
+- [CEF] Added `no-proxy-server` command line switch as default
+- [Sg] Change `colorOutput` and `writeBuffers` to accept `seq`
+- [Primitives] Rework dialogs
+
 ### 5.7.0-prerelease0001
 - Initial prerelease
 
