@@ -185,7 +185,7 @@ module TreeView =
         let attributes =
             AttributeMap.ofList [
                 clazz "ui inverted divided list treeview"
-                style "margin: 10px; height: 100%; overflow-x: hidden; overflow-y: auto; border-style: solid; border-width: 1px; border-color: gray"
+                style "margin: 10px; height: 100%; overflow-x: hidden; overflow-y: auto"
                 onMouseLeave (fun _ -> message TreeView.Message.Unhover)
             ]
             |> AttributeMap.union attributes
