@@ -14,7 +14,6 @@ type VisibleBox = {
     [<NonAdaptive>]
     name     : string
     geometry : Box3d
-    color    : C4b
 }
 
 /// Data shown per node in the tree view (both groups and box leaves).
@@ -22,7 +21,6 @@ type VisibleBox = {
 type TreeItemData = {
     label   : string
     isGroup : bool
-    color   : C4b
 }
 
 type Message =

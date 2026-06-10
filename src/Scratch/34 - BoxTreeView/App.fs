@@ -20,19 +20,13 @@ open VirtualTree.Utilities
 // Scene helpers
 // ---------------------------------------------------------------------------
 
-let private makeBox name (pos : V3d) (color : C4b) =
+let private makeBox name (pos : V3d) =
     { id       = Guid.NewGuid().ToString("N").[..7]
       name     = name
-      geometry = Box3d.FromCenterAndSize(pos, V3d.III * 0.8)
-      color    = color }
+      geometry = Box3d.FromCenterAndSize(pos, V3d.III * 0.8) }
 
-/// Pastel cube colour palette (matches "11 - BoxSelection" example).
-let private pastelColors =
-    [| C4b(166, 206, 227)
-       C4b(178, 223, 138)
-       C4b(251, 154, 153)
-       C4b(253, 191, 111)
-       C4b(202, 178, 214) |]
+/// Default cube colour; only selection / hover override this.
+let private defaultColor = C4b(190, 190, 190, 255)
 
 /// Highlight colours used for selection / hover in the 3D view.
 let private selectedColor = C4b(255, 0, 0, 255)
@@ -49,11 +43,11 @@ let private mkColor (model : AdaptiveModel) (box : AdaptiveVisibleBox) : aval<C4
         model.hoveredBox
         |> AVal.map (fun h -> h = Some id)
 
-    AVal.map3 (fun sel hov baseCol ->
+    AVal.map2 (fun sel hov ->
         if sel then selectedColor
         elif hov then hoveredColor
-        else baseCol
-    ) isSelected isHovered box.color
+        else defaultColor
+    ) isSelected isHovered
 
 let private mkISg (model : AdaptiveModel) (box : AdaptiveVisibleBox) =
     let color = mkColor model box
@@ -108,41 +102,41 @@ let private sortChildrenInTree (values : HashMap<string, TreeItemData>) (parentI
 // ---------------------------------------------------------------------------
 
 let private buildInitialScene () =
-    let alpha   = makeBox "Alpha"   (V3d(-3.0,  2.0, 0.0)) pastelColors.[0]
-    let beta    = makeBox "Beta"    (V3d(-3.0,  0.0, 0.0)) pastelColors.[1]
-    let gamma   = makeBox "Gamma"   (V3d(-3.0, -2.0, 0.0)) pastelColors.[2]
-    let delta   = makeBox "Delta"   (V3d( 0.0,  2.5, 0.0)) pastelColors.[3]
-    let epsilon = makeBox "Epsilon" (V3d( 3.0,  1.5, 0.0)) pastelColors.[4]
-    let zeta    = makeBox "Zeta"    (V3d( 3.0, -0.5, 0.0)) pastelColors.[0]
-    let eta     = makeBox "Eta"     (V3d( 0.0, -0.5, 0.0)) pastelColors.[1]
-    let theta   = makeBox "Theta"   (V3d( 0.0, -2.5, 0.0)) pastelColors.[2]
+    let robin    = makeBox "Robin"    (V3d(-3.0,  2.0, 0.0))
+    let sparrow  = makeBox "Sparrow"  (V3d(-3.0,  0.0, 0.0))
+    let owl      = makeBox "Owl"      (V3d(-3.0, -2.0, 0.0))
+    let fox      = makeBox "Fox"      (V3d( 0.0,  2.5, 0.0))
+    let aardvark = makeBox "Aardvark" (V3d( 3.0,  1.5, 0.0))
+    let rabbit   = makeBox "Rabbit"   (V3d( 3.0, -0.5, 0.0))
+    let elephant = makeBox "Elephant" (V3d( 0.0, -0.5, 0.0))
+    let giraffe  = makeBox "Giraffe"  (V3d( 0.0, -2.5, 0.0))
 
-    let allBoxes = [ alpha; beta; gamma; delta; epsilon; zeta; eta; theta ]
+    let allBoxes = [ robin; sparrow; owl; fox; aardvark; rabbit; elephant; giraffe ]
 
     // Fixed group IDs
-    let rootId   = "root"
-    let grpRed   = "grp_red"
-    let grpBlue  = "grp_blue"
-    let grpSub   = "grp_sub"
+    let rootId    = "root"
+    let grpNest   = "grp_nest"
+    let grpDen    = "grp_den"
+    let grpBurrow = "grp_burrow"
 
     // Tree hierarchy: parent → children (by ID)
     let hierarchy =
         HashMap.ofList [
-            rootId,  [ grpRed; grpBlue; eta.id; theta.id ]
-            grpRed,  [ alpha.id; beta.id; gamma.id ]
-            grpBlue, [ delta.id; grpSub ]
-            grpSub,  [ epsilon.id; zeta.id ]
+            rootId,    [ grpNest; grpDen; elephant.id; giraffe.id ]
+            grpNest,   [ robin.id; sparrow.id; owl.id ]
+            grpDen,    [ fox.id; grpBurrow ]
+            grpBurrow, [ aardvark.id; rabbit.id ]
         ]
 
     // Tree display data (both groups and box leaves)
     let groupItems =
-        [ rootId,  { label = "Scene";       isGroup = true; color = C4b.White }
-          grpRed,  { label = "Red Group";   isGroup = true; color = alpha.color }
-          grpBlue, { label = "Blue Group";  isGroup = true; color = delta.color }
-          grpSub,  { label = "Sub Group C"; isGroup = true; color = epsilon.color } ]
+        [ rootId,    { label = "Savanna"; isGroup = true }
+          grpNest,   { label = "Nest";    isGroup = true }
+          grpDen,    { label = "Den";     isGroup = true }
+          grpBurrow, { label = "Burrow";  isGroup = true } ]
 
     let boxItems =
-        allBoxes |> List.map (fun b -> b.id, { label = b.name; isGroup = false; color = b.color })
+        allBoxes |> List.map (fun b -> b.id, { label = b.name; isGroup = false })
 
     let treeValues  = HashMap.ofList (groupItems @ boxItems)
 
@@ -331,7 +325,7 @@ let update (model : Model) (msg : Message) =
             else
                 let newId    = "grp_" + Guid.NewGuid().ToString("N").[..5]
                 let newLabel = $"New Group {model.groupLabels.Count}"
-                let newData  = { label = newLabel; isGroup = true; color = C4b.White }
+                let newData  = { label = newLabel; isGroup = true }
                 let newValues = model.treeView.values |> HashMap.add newId newData
                 let vt  = model.treeView.tree
                 let oldH = vt.hierarchy
@@ -356,9 +350,8 @@ let update (model : Model) (msg : Message) =
             else
                 let rng    = Random()
                 let pos    = V3d(rng.NextDouble() * 8.0 - 4.0, rng.NextDouble() * 8.0 - 4.0, 0.0)
-                let color  = pastelColors.[model.boxes.Count % pastelColors.Length]
-                let newBox = makeBox $"New Cube {model.boxes.Count + 1}" pos color
-                let newData  = { label = newBox.name; isGroup = false; color = newBox.color }
+                let newBox = makeBox $"New Cube {model.boxes.Count + 1}" pos
+                let newData  = { label = newBox.name; isGroup = false }
                 let newValues = model.treeView.values |> HashMap.add newBox.id newData
                 let vt  = model.treeView.tree
                 let oldH = vt.hierarchy
@@ -507,20 +500,17 @@ let private treeItemNode (key : string) (item : AdaptiveTreeItemData) : DomNode<
     Incremental.div AttributeMap.empty <| alist {
         let! isGroup = item.isGroup
         let! label   = item.label
-        let! color   = item.color
-        let rgb      = sprintf "rgb(%d,%d,%d)" color.R color.G color.B
 
         if isGroup then
             // Folder icon toggles collapse; stop propagation so it doesn't also select the group.
             yield onBoot stopPropagation (
                 i [ clazz "folder outline link icon"
-                    style $"color: {rgb}"
                     onClick (fun _ -> ToggleCollapse key) ] []
             )
         else
-            yield i [ clazz "cube icon"; style $"color: {rgb}" ] []
+            yield i [ clazz "cube icon" ] []
 
-        yield span [ style $"margin-left: 5px; color: {rgb}" ] [ text label ]
+        yield span [ style "margin-left: 5px" ] [ text label ]
     }
 
 let view (model : AdaptiveModel) =
