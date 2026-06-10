@@ -34,6 +34,11 @@ type Message =
     | TreeAction     of TreeView.Message<string>
     | GoldenLayout   of Golden.GoldenLayout.Message
     | MoveNode       of nodeId: string * targetParentId: string
+    | RenameNode     of nodeId: string * newLabel: string
+    | RemoveSelected
+    | AddFolder
+    | AddCube
+    | ResetScene
 
 [<ModelType>]
 type Model = {
