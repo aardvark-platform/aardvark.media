@@ -193,11 +193,23 @@ module ``RenderControl DomNode`` =
 
             DomNode.RenderControl(attributes, proc, getState, scene)
 
+        static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sg : RenderClientValues -> ISg<'msg>) =
+            DomNode.RenderControl(attributes, camera, sg, RenderControlConfig.standard)
+
         static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sg : ISg<'msg>, config: RenderControlConfig) =
             DomNode.RenderControl(attributes, camera, constF sg, config)
+
+        static member RenderControl(attributes : AttributeMap<'msg>, camera : aval<Camera>, sg : ISg<'msg>) =
+            DomNode.RenderControl(attributes, camera, constF sg)
 
         static member RenderControl(camera : aval<Camera>, scene : ISg<'msg>, config : RenderControlConfig) : DomNode<'msg> =
             DomNode.RenderControl(AttributeMap.empty, camera, constF scene, config)
 
+        static member RenderControl(camera : aval<Camera>, scene : ISg<'msg>) : DomNode<'msg> =
+            DomNode.RenderControl(AttributeMap.empty, camera, constF scene)
+
         static member RenderControl(camera : aval<Camera>, scene : RenderClientValues -> ISg<'msg>, config : RenderControlConfig) : DomNode<'msg> =
             DomNode.RenderControl(AttributeMap.empty, camera, scene, config)
+
+        static member RenderControl(camera : aval<Camera>, scene : RenderClientValues -> ISg<'msg>) : DomNode<'msg> =
+            DomNode.RenderControl(AttributeMap.empty, camera, scene)
