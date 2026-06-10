@@ -74,4 +74,5 @@ type AardvarkCef =
     static member CreateBrowser(runtime: IRuntime, size: aval<V2i>, mipMap: bool,
                                 [<Optional; DefaultParameterValue(null: BrowserSettings)>] settings: BrowserSettings,
                                 [<Optional; DefaultParameterValue(null: IRequestContext)>] requestContext: IRequestContext) =
+        if not AardvarkCef.IsInitialized then raise <| InvalidOperationException("Aardvark CEF has not been initialized.")
         AardvarkCefBrowser.Create(runtime, size, mipMap, settings, requestContext)

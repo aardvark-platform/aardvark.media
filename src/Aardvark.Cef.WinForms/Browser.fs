@@ -15,12 +15,12 @@ type AardvarkCefBrowser =
     private new (html: HtmlString, requestContext: IRequestContext) =
         { inherit ChromiumWebBrowser(html, requestContext) }
 
-    static member Create(address: string, [<Optional; DefaultParameterValue(null: IRequestContext)>] requestContext: IRequestContext) =
+    static member internal Create(address: string, requestContext: IRequestContext) =
         let browser = new AardvarkCefBrowser(address, requestContext)
         AardvarkRenderProcessMessageHandler.Setup browser
         browser
 
-    static member Create(html: HtmlString, [<Optional; DefaultParameterValue(null: IRequestContext)>] requestContext: IRequestContext) =
+    static member internal Create(html: HtmlString, requestContext: IRequestContext) =
         let browser = new AardvarkCefBrowser(html, requestContext)
         AardvarkRenderProcessMessageHandler.Setup browser
         browser

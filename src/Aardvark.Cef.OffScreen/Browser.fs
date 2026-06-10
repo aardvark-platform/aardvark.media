@@ -9,7 +9,7 @@ open CefSharp.OffScreen
 open System
 open System.Runtime.InteropServices
 
-type AardvarkCefBrowser internal (settings: BrowserSettings, requestContext: IRequestContext, callback: Action<IBrowser>) =
+type AardvarkCefBrowser private (settings: BrowserSettings, requestContext: IRequestContext, callback: Action<IBrowser>) =
     inherit ChromiumWebBrowser(
         address = "about:blank",
         browserSettings = settings,
@@ -34,17 +34,14 @@ type AardvarkCefBrowser internal (settings: BrowserSettings, requestContext: IRe
             action renderHandler
         )
 
-    member internal this.Initialize(browser: IBrowser, runtime: IRuntime, size: aval<V2i>, mipMap: bool) =
+    member private this.Initialize(browser: IBrowser, runtime: IRuntime, size: aval<V2i>, mipMap: bool) =
         host <- browser.GetHost()
         mouse <- BrowserMouse(host, focus, flags)
         keyboard <- BrowserKeyboard(host, focus, flags)
         renderHandler <- new AardvarkRenderHandler(host, runtime, size, mipMap)
         this.RenderHandler <- renderHandler
 
-    static member Create(runtime: IRuntime, size: aval<V2i>, mipMap: bool,
-                         [<Optional; DefaultParameterValue(null: BrowserSettings)>] settings: BrowserSettings,
-                         [<Optional; DefaultParameterValue(null: IRequestContext)>] requestContext: IRequestContext) =
-
+    static member internal Create(runtime: IRuntime, size: aval<V2i>, mipMap: bool, settings: BrowserSettings, requestContext: IRequestContext) =
         let defaultSettings =
             if isNull settings then
                 new BrowserSettings(WindowlessFrameRate = 60)
