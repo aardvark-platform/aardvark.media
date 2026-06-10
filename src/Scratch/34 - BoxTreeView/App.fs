@@ -208,6 +208,16 @@ let private rebuildVisibility (oldH : FlatTree<string>) (oldVis : Visibility[]) 
         |> fun v -> HashMap.tryFind v visMap |> Option.defaultValue Visibility.Visible
     )
 
+/// Returns the given node if it is currently visible (not hidden inside a collapsed
+/// folder), otherwise the closest collapsed ancestor folder that is visible instead.
+let private closestVisibleNode (tree : VirtualTree<string>) (id : string) : string voption =
+    if tree.current |> FlatTree.contains id then
+        ValueSome id
+    else
+        match tree.hierarchy |> FlatTree.rootPath id |> Array.rev |> Array.tryFind (fun n -> tree.current |> FlatTree.contains n) with
+        | Some n -> ValueSome n
+        | None   -> ValueNone
+
 // ---------------------------------------------------------------------------
 // Update
 // ---------------------------------------------------------------------------
@@ -239,7 +249,13 @@ let update (model : Model) (msg : Message) =
         { model with treeView = model.treeView |> TreeView.update msg }
 
     | Hover optId ->
-        { model with hoveredBox = optId }
+        let hovered =
+            match optId with
+            | Some id -> closestVisibleNode model.treeView.tree id
+            | None    -> ValueNone
+        { model with
+            hoveredBox = optId
+            treeView   = { model.treeView with hovered = hovered } }
 
     | TreeAction msg ->
         let treeModel = model.treeView |> TreeView.update msg
@@ -480,12 +496,7 @@ let private actionsPanel (model : AdaptiveModel) : DomNode<Message> =
                     sectionLabel "Actions"
                     div [ style "display: flex; flex-wrap: wrap; gap: 6px" ]
                         [ addFolderBtn; addCubeBtn; removeBtn ]
-                ]
-
-            // ── Reset (always) ────────────────────────────────────────
-            yield div [] [
-                btn "redo" "Reset Scene" "" ResetScene
-            ]
+                ]            
         })
 
 // Stops click from bubbling to the outer row's selection handler.
@@ -531,8 +542,14 @@ let view (model : AdaptiveModel) =
 
         | Pages.Page "tree" ->
             require Html.semui (
-                body [ style "width: 100%; height: 100%; margin: 0; overflow: hidden; background: #1B1C1E" ] [
-                    model.treeView |> TreeView.view AttributeMap.empty TreeAction treeItemNode
+                body [ style "width: 100%; height: 100%; margin: 0; overflow: hidden; background: #1B1C1E; color: #ccc; display: flex; flex-direction: column" ] [
+                    div [ style "padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px" ] [
+                        btn "compress" "Collapse All" "" (TreeAction TreeView.Message.CollapseAll)                                    
+                        btn "redo" "Reset Scene" "" ResetScene
+                    ]
+                    div [ style "flex: 1 1 auto; min-height: 0" ] [
+                        model.treeView |> TreeView.view AttributeMap.empty TreeAction treeItemNode
+                    ]
                 ]
             )
 
