@@ -169,7 +169,7 @@ let private layoutConfig = LayoutConfig.Default
 
 let private defaultLayout =
     let leftStack =
-        { stack {
+        { column {
             element { id "tree";    title "Scene Tree" }
             element { id "actions"; title "Actions" }
           } with Size = Size.Weight 3 }
