@@ -1,3 +1,7 @@
+### 5.7.0-prerelease0003
+- [CEF] Handle cache directory conflicts
+- Added `DomNode.RenderControl` overloads without config parameter
+
 ### 5.7.0-prerelease0002
 - [CEF] Added initialization check for `CreateBrowser`
 - [CEF] Added `AardvarkCefBrowser.CloseDevTools`
