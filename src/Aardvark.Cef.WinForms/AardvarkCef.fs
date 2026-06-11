@@ -6,6 +6,7 @@ open System.IO
 open System.Runtime.InteropServices
 open System.Threading
 open CefSharp
+open CefSharp.Handler
 open CefSharp.Web
 open CefSharp.WinForms
 open CefSharp.BrowserSubprocess
@@ -13,6 +14,35 @@ open CefSharp.BrowserSubprocess
 [<AbstractClass; Sealed>]
 type AardvarkCef =
     static let lockObj = obj()
+    static let mutable cacheLock = Disposable.empty
+
+    // The root cache directory must not be used concurrently by different CEF instances.
+    // If already in use, try to find another one.
+    static let getCacheDirectory =
+        let tryLock (path: string) =
+            let mutable created = false
+            let mutex = new Mutex(true, @"Global\AardvarkCef_" + path.Replace('\\', '_'), &created)
+
+            if created then
+                cacheLock.Dispose()
+                cacheLock <- mutex
+                path
+            else
+                mutex.Dispose()
+                null
+
+        fun (path: string) ->
+            let rec retry (n: int) =
+                match tryLock $"{path}_{n}" with
+                | null -> retry (n + 1)
+                | path -> path
+
+            if String.IsNullOrEmpty path then
+                path
+            else
+                match tryLock path with
+                | null -> retry 0
+                | path -> path
 
     /// <summary>
     /// Returns whether CEF has been initialized.
@@ -73,17 +103,32 @@ type AardvarkCef =
                 let s = settings ||? AardvarkCef.DefaultSettings
                 use _ = if notNull settings then Disposable.empty else s
 
-                try
-                    if not <| String.IsNullOrWhiteSpace s.CachePath then
-                        Directory.CreateDirectory s.CachePath |> ignore
-                with exn ->
-                    Log.warn $"[CEF] Failed to create cache directory '{s.CachePath}': {exn.Message}"
-                    s.CachePath <- null
+                // Find a root cache directory that is not in use.
+                // CachePath must be a direct child of the RootCachePath.
+                let rootCachePath =
+                    let path = if String.IsNullOrEmpty s.RootCachePath then s.CachePath else s.RootCachePath
+                    Path.GetFullPath path
+
+                let cacheName =
+                    if not <| String.IsNullOrEmpty s.CachePath then
+                        let path = Path.GetFullPath s.CachePath
+                        if path = rootCachePath then null else Path.GetFileName path
+                    else
+                        null
+
+                s.RootCachePath <- getCacheDirectory rootCachePath
+                s.CachePath <- if notNull cacheName then Path.Combine(s.RootCachePath, cacheName) else s.RootCachePath
 
                 if dpiMode <> DpiMode.Unaware then
                     AardvarkCef.SetProcessDpiMode dpiMode |> ignore
 
-                if not <| Cef.Initialize(s, performDependencyCheck) then
+                // Handle relaunches by ignoring them, otherwise blank Chromium windows will open.
+                // This happens when two instances use the same root cache directory.
+                let browserProcessHandler =
+                    { new BrowserProcessHandler() with
+                        override this.OnAlreadyRunningAppRelaunch(_, _) = Log.warn "[CEF] Ignoring relaunch attempt"; true }
+
+                if not <| Cef.Initialize(s, performDependencyCheck, browserProcessHandler) then
                     let exitCode = Cef.GetExitCode()
                     failwith $"Cef.Initialize failed with exit code {exitCode}"
 
@@ -96,6 +141,8 @@ type AardvarkCef =
         lock lockObj (fun _ ->
             if AardvarkCef.IsInitialized && not Cef.IsShutdown then
                 Cef.Shutdown()
+                cacheLock.Dispose()
+                cacheLock <- Disposable.empty
         )
 
     static member Run(args: string[], [<Optional; DefaultParameterValue(DpiMode.PerMonitorV2)>] dpiMode: DpiMode) =
