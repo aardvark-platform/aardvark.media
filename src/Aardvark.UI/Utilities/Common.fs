@@ -1,6 +1,8 @@
 ﻿namespace Aardvark.UI
 
 open System
+open System.Net
+open System.Net.Sockets
 open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Geometry
@@ -54,6 +56,17 @@ module MouseButtons =
         if buttons.HasFlag MouseButtons.Right then &result |||= 2
         if buttons.HasFlag MouseButtons.Middle then &result |||= 4
         result
+
+module Server =
+
+    /// Finds an available TCP port for the given IP address.
+    let getFreeTcpPort (address: IPAddress) =
+        let listener = TcpListener(address, 0)
+        try
+            listener.Start()
+            (listener.LocalEndpoint :?> IPEndPoint).Port
+        finally
+            listener.Stop()
 
 [<AutoOpen>]
 module ``Path Utilities`` =
