@@ -44,6 +44,10 @@ type AardvarkCef =
                 | null -> retry 0
                 | path -> path
 
+    static let getFullPathSafe (path: string) =
+        if String.IsNullOrWhiteSpace path then null
+        else try Path.GetFullPath path with _ -> null
+
     /// <summary>
     /// Returns whether CEF has been initialized.
     /// </summary>
@@ -105,19 +109,19 @@ type AardvarkCef =
 
                 // Find a root cache directory that is not in use.
                 // CachePath must be a direct child of the RootCachePath.
-                let rootCachePath =
-                    let path = if String.IsNullOrEmpty s.RootCachePath then s.CachePath else s.RootCachePath
-                    Path.GetFullPath path
+                let rootCachePath, cacheName =
+                    let rootPath =
+                        let path = if String.IsNullOrEmpty s.RootCachePath then s.CachePath else s.RootCachePath
+                        getFullPathSafe path
 
-                let cacheName =
-                    if not <| String.IsNullOrEmpty s.CachePath then
-                        let path = Path.GetFullPath s.CachePath
-                        if path = rootCachePath then null else Path.GetFileName path
-                    else
-                        null
+                    let name =
+                        let path = getFullPathSafe s.CachePath
+                        if path = rootPath then null else Path.GetFileName path
 
-                s.RootCachePath <- getCacheDirectory rootCachePath
-                s.CachePath <- if notNull cacheName then Path.Combine(s.RootCachePath, cacheName) else s.RootCachePath
+                    getCacheDirectory rootPath, name
+
+                s.RootCachePath <- rootCachePath
+                s.CachePath <- if isNull rootCachePath || isNull cacheName then rootCachePath else Path.Combine(rootCachePath, cacheName)
 
                 if dpiMode <> DpiMode.Unaware then
                     AardvarkCef.SetProcessDpiMode dpiMode |> ignore
