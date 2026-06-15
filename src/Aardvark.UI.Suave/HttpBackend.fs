@@ -171,14 +171,14 @@ type HttpBackend private () =
         member _.header key value =
             Writers.setHeader key (string value)
 
+        member _.status (status: int) =
+            fun ctx -> { ctx with response.status.code = status } |> succeed
+
+        member _.response (data: uint8[]) =
+            fun ctx -> { ctx with response.content = Bytes data } |> succeed
+
+        member this.response (data: string) =
+            fun ctx -> { ctx with response.content = Bytes (UTF8.bytes data) } |> succeed
+
         member _.sendFile filePath =
             Files.sendFile filePath false
-
-        member _.ok html =
-            Successful.OK html
-
-        member _.ok html =
-            Successful.ok html
-
-        member _.badRequest body =
-            BAD_REQUEST body

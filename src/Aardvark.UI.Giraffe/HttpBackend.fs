@@ -160,6 +160,15 @@ type HttpBackend private () =
         member _.header key value =
             setHttpHeader key value
 
+        member _.status (status: int) =
+            setStatusCode status
+
+        member _.response (data: uint8[]) =
+            fun (_: HttpFunc) (ctx: HttpContext) -> ctx.WriteBytesAsync data
+
+        member this.response (data: string) =
+            fun (_: HttpFunc) (ctx: HttpContext) -> ctx.WriteStringAsync data
+
         member _.sendFile filePath =
             fun (_: HttpFunc) (ctx: HttpContext) ->
                 task {
@@ -173,12 +182,3 @@ type HttpBackend private () =
                     let! html = readFileAsStringAsync filePath
                     return! ctx.WriteStringAsync html
                 }
-
-        member _.ok html =
-            htmlString html
-
-        member _.ok html =
-            setBody html
-
-        member _.badRequest body =
-            RequestErrors.BAD_REQUEST body

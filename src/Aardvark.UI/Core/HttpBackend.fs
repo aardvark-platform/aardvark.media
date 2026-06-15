@@ -41,12 +41,11 @@ type IHttpBackend<'HttpContext, 'HttpHandler> =
     abstract member redirectTo : permanent: bool -> location: string -> 'HttpHandler
     abstract member handShake  : continuation: (IWebSocket -> 'HttpContext -> Task) -> 'HttpHandler
     abstract member method     : httpMethod: string -> 'HttpHandler
-    abstract member header  : key: string -> value: obj -> 'HttpHandler
+    abstract member header     : key: string -> value: obj -> 'HttpHandler
+    abstract member status     : status: int -> 'HttpHandler
+    abstract member response   : data: string -> 'HttpHandler
+    abstract member response   : data: byte[] -> 'HttpHandler
     abstract member sendFile   : filePath: string -> 'HttpHandler
-
-    abstract member ok         : html: string -> 'HttpHandler
-    abstract member ok         : html: byte[] -> 'HttpHandler
-    abstract member badRequest : html: string -> 'HttpHandler
 
 [<AutoOpen>]
 module ``IHttpBackend Extensions`` =
@@ -100,6 +99,19 @@ module ``IHttpBackend Extensions`` =
         else None
 
     type IHttpBackend<'HttpContext, 'HttpHandler> with
+        member this.ok (data: byte[])         = this.compose (this.status 200) (this.response data)
+        member this.ok (data: string)         = this.compose (this.status 200) (this.response data)
+        member this.badRequest (data: byte[]) = this.compose (this.status 400) (this.response data)
+        member this.badRequest (data: string) = this.compose (this.status 400) (this.response data)
+        member this.notFound (data: byte[])   = this.compose (this.status 404) (this.response data)
+        member this.notFound (data: string)   = this.compose (this.status 404) (this.response data)
+
+        member this.text (data: byte[]) = this.compose (this.mimeType "text/plain") (this.ok data)
+        member this.text (data: string) = this.compose (this.mimeType "text/plain") (this.ok data)
+
+        member this.html (data: byte[]) = this.compose (this.mimeType "text/html") (this.ok data)
+        member this.html (data: string) = this.compose (this.mimeType "text/html") (this.ok data)
+
         member this.request (context: 'HttpContext) =
             { requestPath   = this.requestPath context
               requestMethod = this.requestMethod context

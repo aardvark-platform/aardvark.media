@@ -528,7 +528,7 @@ module MutableApp =
         http.choose [
             http.subRoute "/rendering" (RenderServer.toWebPart http app renderServer)
             http.route "/events" >=> http.handShake events
-            http.route "/" >=> http.ok (template Config.defaultDocumentTitle)
+            http.route "/" >=> http.html (template Config.defaultDocumentTitle)
             http.assembly typeof<MutableApp<_, _, _>>.Assembly
         ]
 
