@@ -41,7 +41,8 @@ type IHttpBackend<'HttpContext, 'HttpHandler> =
     abstract member redirectTo : permanent: bool -> location: string -> 'HttpHandler
     abstract member handShake  : continuation: (IWebSocket -> 'HttpContext -> Task) -> 'HttpHandler
     abstract member method     : httpMethod: string -> 'HttpHandler
-    abstract member header     : key: string -> value: obj -> 'HttpHandler
+    abstract member header  : key: string -> value: obj -> 'HttpHandler
+    abstract member sendFile   : filePath: string -> 'HttpHandler
 
     abstract member ok         : html: string -> 'HttpHandler
     abstract member ok         : html: byte[] -> 'HttpHandler

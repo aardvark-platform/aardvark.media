@@ -171,6 +171,9 @@ type HttpBackend private () =
         member _.header key value =
             Writers.setHeader key (string value)
 
+        member _.sendFile filePath =
+            Files.sendFile filePath false
+
         member _.ok html =
             Successful.OK html
 

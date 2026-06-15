@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI.Giraffe
 
 open System
+open System.IO
 open System.Threading
 open System.Threading.Tasks
 open System.Net.WebSockets
@@ -158,6 +159,20 @@ type HttpBackend private () =
 
         member _.header key value =
             setHttpHeader key value
+
+        member _.sendFile filePath =
+            fun (_: HttpFunc) (ctx: HttpContext) ->
+                task {
+                    let filePath =
+                        match Path.IsPathRooted filePath with
+                        | true -> filePath
+                        | false ->
+                            let env = ctx.GetWebHostEnvironment()
+                            Path.Combine(env.ContentRootPath, filePath)
+
+                    let! html = readFileAsStringAsync filePath
+                    return! ctx.WriteStringAsync html
+                }
 
         member _.ok html =
             htmlString html
