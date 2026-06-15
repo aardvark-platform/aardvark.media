@@ -156,6 +156,9 @@ type HttpBackend private () =
                 else
                     skipPipeline
 
+        member _.header key value =
+            setHttpHeader key value
+
         member _.ok html =
             htmlString html
 

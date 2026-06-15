@@ -168,6 +168,9 @@ type HttpBackend private () =
         member _.method httpMethod =
             method <| HttpMethod.OTHER httpMethod
 
+        member _.header key value =
+            Writers.setHeader key (string value)
+
         member _.ok html =
             Successful.OK html
 
