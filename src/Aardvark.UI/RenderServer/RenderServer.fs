@@ -360,9 +360,7 @@ module internal RenderServer =
                     )
 
                 let stats = clients |> Array.map _.GetStatistics() |> Array.filter (fun s -> s.frameCount > 0)
-                let json = Pickler.json.PickleToString stats
-
-                http.ok json >=> http.mimeType "text/json"
+                http.json (Pickler.json.PickleToString stats)
             )
 
         let screenshot (sceneName: string) =
@@ -407,7 +405,7 @@ module internal RenderServer =
                             | RenderResult.Png d -> d
                             | _ -> failwith "that was unexpected"
 
-                        http.ok data >=> http.mimeType mime
+                        http.mimeType mime >=> http.ok data
 
                     match Map.tryFindV "fmt" args with
                     | ValueSome "jpg" | ValueNone ->

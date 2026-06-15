@@ -251,7 +251,7 @@ module GoldenLayoutApp =
                     template
                     |> String.replace "__ID__" id
                     |> String.replace "__THEME__" theme
-                    |> http.ok
+                    |> http.html
                 )
 
             http.compose (http.route "/gl-popout") handler

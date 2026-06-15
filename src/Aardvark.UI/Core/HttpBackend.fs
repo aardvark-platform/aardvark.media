@@ -112,6 +112,9 @@ module ``IHttpBackend Extensions`` =
         member this.html (data: byte[]) = this.compose (this.mimeType "text/html") (this.ok data)
         member this.html (data: string) = this.compose (this.mimeType "text/html") (this.ok data)
 
+        member this.json (data: byte[]) = this.compose (this.mimeType "text/json") (this.ok data)
+        member this.json (data: string) = this.compose (this.mimeType "text/json") (this.ok data)
+
         member this.request (context: 'HttpContext) =
             { requestPath   = this.requestPath context
               requestMethod = this.requestMethod context
