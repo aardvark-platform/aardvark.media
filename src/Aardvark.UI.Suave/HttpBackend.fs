@@ -102,6 +102,9 @@ type HttpBackend private () =
         member _.requestPath context =
             context.request.path
 
+        member _.requestMethod context =
+            context.request.rawMethod
+
         member _.requestQueryParams context =
             context.request.query
             |> List.choose (function n, Some v -> Some (n, v) | _ -> None)
@@ -161,6 +164,9 @@ type HttpBackend private () =
                         return Choice2Of2 error
                 }
             )
+
+        member _.method httpMethod =
+            method <| HttpMethod.OTHER httpMethod
 
         member _.ok html =
             Successful.OK html

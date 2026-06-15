@@ -97,6 +97,9 @@ type HttpBackend private () =
         member _.requestPath context =
             context.Request.Path.Value
 
+        member _.requestMethod context =
+            context.Request.Method
+
         member _.requestQueryParams context =
             context.Request.Query
             |> Seq.choose (function KeyValue(n, SingleString v) -> Some (n, v) | _ -> None)
@@ -145,6 +148,13 @@ type HttpBackend private () =
                     else
                         return! RequestErrors.BAD_REQUEST "Expected web socket request" next context
                 }
+
+        member _.method httpMethod =
+            fun (next: HttpFunc) (ctx: HttpContext) ->
+                if ctx.Request.Method = httpMethod then
+                    next ctx
+                else
+                    skipPipeline
 
         member _.ok html =
             htmlString html

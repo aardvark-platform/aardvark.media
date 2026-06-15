@@ -6,14 +6,28 @@ open System.Threading.Tasks
 open System.Reflection
 
 type HttpRequest =
-    { requestPath : string
-      queryParams : Map<string, string> }
+    { requestPath   : string
+      requestMethod : string
+      queryParams   : Map<string, string> }
+
+module HttpMethod =
+    let [<Literal>] Connect = "CONNECT"
+    let [<Literal>] Delete  = "DELETE"
+    let [<Literal>] Get     = "GET"
+    let [<Literal>] Head    = "HEAD"
+    let [<Literal>] Options = "OPTIONS"
+    let [<Literal>] Patch   = "PATCH"
+    let [<Literal>] Post    = "POST"
+    let [<Literal>] Put     = "PUT"
+    let [<Literal>] Query   = "QUERY"
+    let [<Literal>] Trace   = "TRACE"
 
 /// Minimal interface for HTTP backends to define web parts in a library agnostic way.
 type IHttpBackend<'HttpContext, 'HttpHandler> =
     abstract member withContext : handler: ('HttpContext -> 'HttpHandler) -> 'HttpHandler
 
     abstract member requestPath        : context: 'HttpContext -> string
+    abstract member requestMethod      : context: 'HttpContext -> string
     abstract member requestQueryParams : context: 'HttpContext -> Map<string, string>
     abstract member requestQueryParam  : name: string -> context: 'HttpContext -> string
     abstract member requestHeader      : name: string -> context: 'HttpContext -> string
@@ -26,6 +40,7 @@ type IHttpBackend<'HttpContext, 'HttpHandler> =
     abstract member mimeType   : mimeType: string -> 'HttpHandler
     abstract member redirectTo : permanent: bool -> location: string -> 'HttpHandler
     abstract member handShake  : continuation: (IWebSocket -> 'HttpContext -> Task) -> 'HttpHandler
+    abstract member method     : httpMethod: string -> 'HttpHandler
 
     abstract member ok         : html: string -> 'HttpHandler
     abstract member ok         : html: byte[] -> 'HttpHandler
@@ -84,8 +99,9 @@ module ``IHttpBackend Extensions`` =
 
     type IHttpBackend<'HttpContext, 'HttpHandler> with
         member this.request (context: 'HttpContext) =
-            { requestPath = this.requestPath context
-              queryParams = this.requestQueryParams context }
+            { requestPath   = this.requestPath context
+              requestMethod = this.requestMethod context
+              queryParams   = this.requestQueryParams context }
 
         member this.redirectRelative (path : string) : 'HttpHandler =
             if not (path.StartsWith "/") then failwith "redirect-paths need to start with /"
