@@ -1,3 +1,9 @@
+### 5.7.0-prerelease0004
+- Added `Server.getFreeTcpPort`
+- Added various `IHttpBackend` functions
+- Reworked HTTP requests (type renamed from `HttpRequest` to `IHttpRequest`)
+- [CEF] Improved handling of invalid cache paths
+
 ### 5.7.0-prerelease0003
 - [CEF] Handle cache directory conflicts
 - Added `DomNode.RenderControl` overloads without config parameter
