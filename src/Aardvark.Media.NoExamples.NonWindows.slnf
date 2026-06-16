@@ -8,7 +8,7 @@
       "Aardvark.UI.Screenshotr\\Aardvark.UI.Screenshotr.fsproj",
       "Aardvark.UI\\Aardvark.UI.fsproj",
       "Tests\\Aardvark.UI.Animation.Benchmarks\\Aardvark.UI.Animation.Benchmarks.fsproj",
-      "Tests\\Aardvark.UI.Animation.Tests\\Aardvark.UI.Animation.Tests.fsproj"
+      "Tests\\Aardvark.UI.Tests\\Aardvark.UI.Tests.fsproj"
     ]
   }
 }

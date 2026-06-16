@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Animation.Tests
+﻿namespace Aardvark.UI.Tests
 
 open Aardvark.UI.Animation
 open Expecto
@@ -385,7 +385,7 @@ module ``Simple Tests`` =
 
     [<Tests>]
     let tests =
-        testList "Simple" [
+        testList "Animation.Simple" [
             testList "Events" [
                 Events.startFinish
                 Events.pauseResume

@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Animation.Tests
+﻿namespace Aardvark.UI.Tests
 
 open Aardvark.Base
 open Aardvark.UI.Animation

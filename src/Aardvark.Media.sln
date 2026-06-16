@@ -139,7 +139,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "04 - Screenshotr", "Scratch
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "32 - Splines", "Scratch\32 - Splines\32 - Splines.fsproj", "{B315793A-9E8F-4472-8DA4-58E507BFB2E3}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Animation.Tests", "Tests\Aardvark.UI.Animation.Tests\Aardvark.UI.Animation.Tests.fsproj", "{9F11A02C-489E-4CC2-99EC-64D657A5D567}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Tests", "Tests\Aardvark.UI.Tests\Aardvark.UI.Tests.fsproj", "{9F11A02C-489E-4CC2-99EC-64D657A5D567}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.OffScreen", "Aardvark.Cef.OffScreen\Aardvark.Cef.OffScreen.fsproj", "{8016A935-5139-870C-3F83-81E1569989F9}"
 EndProject

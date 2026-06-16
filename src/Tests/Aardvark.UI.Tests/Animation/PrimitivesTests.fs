@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Animation.Tests
+﻿namespace Aardvark.UI.Tests
 
 open Aardvark.Base
 open Aardvark.Rendering
@@ -180,7 +180,7 @@ module ``Primitives Tests`` =
 
     [<Tests>]
     let tests =
-        testList "Primitives" [
+        testList "Animation.Primitives" [
             testList "Catmull-Rom" [
                 CatmullRom.empty
                 CatmullRom.single

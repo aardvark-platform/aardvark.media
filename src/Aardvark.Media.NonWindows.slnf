@@ -59,7 +59,7 @@
       "Scratch\\31 - VirtualTree\\31 - VirtualTree.fsproj",
       "Scratch\\32 - Splines\\32 - Splines.fsproj",
       "Tests\\Aardvark.UI.Animation.Benchmarks\\Aardvark.UI.Animation.Benchmarks.fsproj",
-      "Tests\\Aardvark.UI.Animation.Tests\\Aardvark.UI.Animation.Tests.fsproj"
+      "Tests\\Aardvark.UI.Tests\\Aardvark.UI.Tests.fsproj"
     ]
   }
 }

@@ -18,11 +18,11 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="Utilities.fs" />
-    <Compile Include="SimpleTests.fs" />
-    <Compile Include="GroupsTests.fs" />
-    <Compile Include="AnimatorTests.fs" />
-    <Compile Include="PrimitivesTests.fs" />
+    <Compile Include="Animation\Utilities.fs" />
+    <Compile Include="Animation\SimpleTests.fs" />
+    <Compile Include="Animation\GroupsTests.fs" />
+    <Compile Include="Animation\AnimatorTests.fs" />
+    <Compile Include="Animation\PrimitivesTests.fs" />
     <None Include="paket.references" />
   </ItemGroup>
   <ItemGroup>

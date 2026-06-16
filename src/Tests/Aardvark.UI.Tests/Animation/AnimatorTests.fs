@@ -1,4 +1,4 @@
-﻿namespace Aardvark.UI.Animation.Tests
+﻿namespace Aardvark.UI.Tests
 
 open Aardvark.UI.Animation
 open Expecto
@@ -96,7 +96,7 @@ module ``Animator Tests`` =
 
     [<Tests>]
     let tests =
-        testList "Animator" [
+        testList "Animation.Animator" [
             testList "Processing" [
                 Processing.animationStartedDuringTickIsUpdated
             ]

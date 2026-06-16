@@ -1,4 +1,4 @@
-namespace Aardvark.UI.Animation.Tests
+namespace Aardvark.UI.Tests
 
 open Aardvark.Base
 open Aardvark.UI.Animation
@@ -887,7 +887,7 @@ module ``Groups Tests`` =
 
     [<Tests>]
     let tests =
-        testList "Groups" [
+        testList "Animation.Groups" [
             testList "Sequential" [
                 Sequential.progress
                 Sequential.startFrom
