@@ -23,10 +23,14 @@
     <Compile Include="Animation\GroupsTests.fs" />
     <Compile Include="Animation\AnimatorTests.fs" />
     <Compile Include="Animation\PrimitivesTests.fs" />
+    <Compile Include="HttpBackendTests.fs" />
     <None Include="paket.references" />
+    <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\Aardvark.UI.Giraffe\Aardvark.UI.Giraffe.fsproj" />
     <ProjectReference Include="..\..\Aardvark.UI.Primitives\Aardvark.UI.Primitives.fsproj" />
+    <ProjectReference Include="..\..\Aardvark.UI.Suave\Aardvark.UI.Suave.fsproj" />
   </ItemGroup>
   <Import Project="..\..\..\.paket\Paket.Restore.targets" />
 </Project>
