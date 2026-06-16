@@ -30,6 +30,7 @@ type IHttpRequest =
 type IHttpBackend<'HttpContext, 'HttpHandler> =
     abstract member withContext : handler: ('HttpContext -> 'HttpHandler) -> 'HttpHandler
     abstract member getRequest  : context: 'HttpContext -> IHttpRequest
+    abstract member async       : handler: Task<'HttpHandler> -> 'HttpHandler
 
     abstract member choose     : handlers: 'HttpHandler list -> 'HttpHandler
     abstract member route      : path: string -> 'HttpHandler

@@ -126,6 +126,13 @@ type HttpBackend private () =
                     )
             }
 
+        member _.async handler =
+            fun ctx ->
+                async {
+                    let! handler = Async.AwaitTask handler
+                    return! handler ctx
+                }
+
         member _.choose handlers =
             choose handlers
 

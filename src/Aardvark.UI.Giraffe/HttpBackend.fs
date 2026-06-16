@@ -108,6 +108,13 @@ type HttpBackend private () =
                     |> Map.ofSeq
             }
 
+        member _.async handler =
+            fun (next: HttpFunc) (ctx: HttpContext) ->
+                task {
+                    let! handler = handler
+                    return! handler next ctx
+                }
+
         member _.choose handlers =
             choose handlers
 
