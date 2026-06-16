@@ -282,9 +282,9 @@ module MutableApp =
             }
 
         let events (socket: IWebSocket) (context: 'HttpContext) : Task =
-            let request = http.request context
+            let request = http.getRequest context
 
-            match request.queryParams |> Map.tryFind "session" with
+            match request.QueryParam "session" with
             | Some (Guid sessionId) ->
                 let updater = app.Dom.NewUpdater(request)
 

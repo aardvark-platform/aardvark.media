@@ -11,14 +11,6 @@ open Giraffe
 open Aardvark.Base
 open Aardvark.UI
 
-[<AutoOpen>]
-module internal AspNetExtensions =
-    open Microsoft.Extensions.Primitives
-
-    [<return: Struct>]
-    let (|SingleString|_|) (values: StringValues) =
-        if values.Count = 1 then ValueSome (values.Item 0) else ValueNone
-
 module internal WebSocketMessageType =
 
     let ofWebSocketOpCode =
@@ -95,26 +87,26 @@ type HttpBackend private () =
                 let handler = handler context
                 handler next context
 
-        member _.requestPath context =
-            context.Request.Path.Value
-
-        member _.requestMethod context =
-            context.Request.Method
-
-        member _.requestQueryParams context =
-            context.Request.Query
-            |> Seq.choose (function KeyValue(n, SingleString v) -> Some (n, v) | _ -> None)
-            |> Map.ofSeq
-
-        member _.requestQueryParam name context =
-            context.Request.Query
-            |> Seq.tryPickV (function KeyValue(n, SingleString v) when n = name -> ValueSome v | _ -> ValueNone)
-            |> ValueOption.defaultValue null
-
-        member _.requestHeader name context =
-            match context.Request.Headers.TryGetValue name with
-            | true, SingleString value -> value
-            | _ -> null
+        member _.getRequest context =
+            { new IHttpRequest with
+                member _.Path = context.Request.Path.Value
+                member _.Body = context.Request.Body
+                member _.Method = context.Request.Method
+                member _.Header(name) =
+                    match context.Request.Headers.TryGetValue name with
+                    | true, values when values.Count > 0 -> Some (values |> String.concat ", ")
+                    | _ -> None
+                member _.Headers =
+                    context.Request.Headers
+                    |> Seq.map (function KeyValue(n, v) -> n, String.concat ", " v)
+                    |> Map.ofSeq
+                member _.QueryParam(name) =
+                    context.Request.Query.[name] |> Seq.tryHead
+                member _.QueryParams =
+                    context.Request.Query
+                    |> Seq.map (function KeyValue(n, v) -> n, List.ofSeq v)
+                    |> Map.ofSeq
+            }
 
         member _.choose handlers =
             choose handlers

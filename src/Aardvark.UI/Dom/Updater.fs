@@ -407,7 +407,7 @@ module internal Updaters =
             att.Destroy(state)
             JSExpr.Nop
 
-    and InnerUpdater<'msg>(e : InnerNode<'msg>, request : HttpRequest) =
+    and InnerUpdater<'msg>(e : InnerNode<'msg>, request : IHttpRequest) =
         inherit AbstractUpdater<'msg>(e)
 
         let mutable elemReader : IIndexListReader<IUpdater<'msg>> = (AList.map (fun n -> Updater.New(n, request)) e.Children).GetReader()
@@ -741,7 +741,7 @@ module internal Updaters =
                 JSExpr.Nop
 
     and [<AbstractClass; Sealed>] Updater =
-        static member New<'msg>(node : DomNode<'msg>, request : HttpRequest) : IUpdater<'msg> =
+        static member New<'msg>(node : DomNode<'msg>, request : IHttpRequest) : IUpdater<'msg> =
             node.Visit {
                 new DomNodeVisitor<'msg, IUpdater<'msg>> with
                     member _.Empty e    = EmptyUpdater(e) :> IUpdater<_>
@@ -760,5 +760,5 @@ module internal Updaters =
 [<AbstractClass; Sealed>]
 type internal DomNodeExtensions =
     [<Extension>]
-    static member NewUpdater<'msg>(node: DomNode<'msg>, request: HttpRequest) =
+    static member NewUpdater<'msg>(node: DomNode<'msg>, request: IHttpRequest) =
         Updaters.Updater.New(node, request)

@@ -110,7 +110,7 @@ let view (model : AdaptiveModel) =
         (Scene.camScene model)
 
     page (fun request -> 
-        match Map.tryFind "page" request.queryParams with
+        match request.QueryParam "page" with
         | Some "render" ->
           require Html.semui ( 
               div [clazz "ui"; style "background: #1B1C1E"] [renderControl]

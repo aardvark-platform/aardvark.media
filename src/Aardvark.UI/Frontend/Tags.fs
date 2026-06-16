@@ -256,13 +256,13 @@ module Static =
     let renderControl' (cam : aval<Camera>) (attributes : list<string * AttributeValue<'msg>>) (config : RenderControlConfig) (sg : ISg<'msg>) =
         DomNode.RenderControl(AttributeMap.ofList attributes, cam, sg, config)
 
-    let page (createPage : HttpRequest -> DomNode<'msg>) =
+    let page (createPage : IHttpRequest -> DomNode<'msg>) =
         DomNode.Page createPage
 
     let inline pages (createPage : Pages -> DomNode<'msg>) : DomNode<'msg> =
         page (fun request ->
             let p =
-               match request.queryParams |> Map.tryFind "page" with
+               match request.QueryParam "page" with
                | Some id -> Pages.Page id
                | _ -> Pages.Body
 

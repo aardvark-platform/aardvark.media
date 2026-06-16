@@ -86,7 +86,7 @@ let view (model : AdaptiveModel) =
                     (viewScene model)
 
     page (fun request -> 
-        match Map.tryFind "page" request.queryParams with
+        match request.QueryParam "page" with
             | Some "controls" -> 
                 require Html.semui (
                     body [  style "width: 100%; height:100%; background: transparent; overflow: auto"; ] [

@@ -136,7 +136,7 @@ and TextNode<'msg>(tag : string, ns : string, attributes : AttributeMap<'msg>, t
     override x.Visit v = v.Text x
     override x.NodeTag = Some tag
 
-and PageNode<'msg>(content : HttpRequest -> DomNode<'msg>) =
+and PageNode<'msg>(content : IHttpRequest -> DomNode<'msg>) =
     inherit DomNode<'msg>()
     member x.Content = content
     override x.Visit v = v.Page x
@@ -182,7 +182,7 @@ and [<AbstractClass; Sealed>] DomNode =
     static member Text<'msg>(tag : string, ns : string, attributes : AttributeMap<'msg>, text : aval<string>) : DomNode<'msg> =
         TextNode(tag, ns, attributes, text) :> DomNode<_>
 
-    static member Page<'msg>(content : HttpRequest -> DomNode<'msg>) : DomNode<'msg> =
+    static member Page<'msg>(content : IHttpRequest -> DomNode<'msg>) : DomNode<'msg> =
         PageNode(content) :> DomNode<_>
 
     static member Map<'inner, 'outer>(mapping : 'inner -> 'outer, node : DomNode<'inner>) : DomNode<'outer> =

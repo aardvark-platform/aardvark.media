@@ -5,11 +5,6 @@ open System.IO
 open System.Threading.Tasks
 open System.Reflection
 
-type HttpRequest =
-    { requestPath   : string
-      requestMethod : string
-      queryParams   : Map<string, string> }
-
 module HttpMethod =
     let [<Literal>] Connect = "CONNECT"
     let [<Literal>] Delete  = "DELETE"
@@ -22,15 +17,19 @@ module HttpMethod =
     let [<Literal>] Query   = "QUERY"
     let [<Literal>] Trace   = "TRACE"
 
+type IHttpRequest =
+    abstract member Path        : string
+    abstract member Body        : Stream
+    abstract member Method      : string
+    abstract member Header      : name: string -> string option
+    abstract member Headers     : Map<string, string>
+    abstract member QueryParam  : name: string -> string option
+    abstract member QueryParams : Map<string, string list>
+
 /// Minimal interface for HTTP backends to define web parts in a library agnostic way.
 type IHttpBackend<'HttpContext, 'HttpHandler> =
     abstract member withContext : handler: ('HttpContext -> 'HttpHandler) -> 'HttpHandler
-
-    abstract member requestPath        : context: 'HttpContext -> string
-    abstract member requestMethod      : context: 'HttpContext -> string
-    abstract member requestQueryParams : context: 'HttpContext -> Map<string, string>
-    abstract member requestQueryParam  : name: string -> context: 'HttpContext -> string
-    abstract member requestHeader      : name: string -> context: 'HttpContext -> string
+    abstract member getRequest  : context: 'HttpContext -> IHttpRequest
 
     abstract member choose     : handlers: 'HttpHandler list -> 'HttpHandler
     abstract member route      : path: string -> 'HttpHandler
@@ -115,22 +114,19 @@ module ``IHttpBackend Extensions`` =
         member this.json (data: byte[]) = this.compose (this.mimeType "text/json") (this.ok data)
         member this.json (data: string) = this.compose (this.mimeType "text/json") (this.ok data)
 
-        member this.request (context: 'HttpContext) =
-            { requestPath   = this.requestPath context
-              requestMethod = this.requestMethod context
-              queryParams   = this.requestQueryParams context }
+        member this.request (handler: IHttpRequest -> 'HttpHandler) =
+            this.withContext (this.getRequest >> handler)
 
         member this.redirectRelative (path : string) : 'HttpHandler =
             if not (path.StartsWith "/") then failwith "redirect-paths need to start with /"
 
-            this.withContext (fun ctx ->
-                let globalPath = ctx |> this.requestHeader "GLOBAL_PATH"
-
+            this.request (fun r ->
                 let newPath =
-                    if notNull globalPath then
+                    match r.Header "GLOBAL_PATH" with
+                    | Some globalPath ->
                         if globalPath.EndsWith "/" then globalPath + path.Substring(1)
                         else globalPath + path
-                    else
+                    | _ ->
                         path
 
                 this.redirectTo true newPath

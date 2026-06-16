@@ -273,32 +273,32 @@ module internal RenderServer =
             )
 
         let render (targetId: string) (socket: IWebSocket) (context: 'HttpContext) : Task =
-            let args = http.requestQueryParams context
+            let r = http.getRequest context
 
             let sceneName =
-                match Map.tryFindV "scene" args with
-                | ValueSome scene -> scene
+                match r.QueryParam "scene" with
+                | Some scene -> scene
                 | _ -> targetId
 
             let samples =
-                match Map.tryFindV "samples" args with
-                | ValueSome (Int samples) -> samples
+                match r.QueryParam "samples" with
+                | Some (Int samples) -> samples
                 | _ -> 1
 
             let sessionId =
-                match Map.tryFindV "session" args with
-                | ValueSome id -> Guid.Parse id
+                match r.QueryParam "session" with
+                | Some id -> Guid.Parse id
                 | _ -> Guid.NewGuid()
 
             let useMapping =
-                match Map.tryFindV "mapped" args with
-                | ValueSome "false" -> false
-                | ValueSome "true" -> true
+                match r.QueryParam "mapped" with
+                | Some "false" -> false
+                | Some "true" -> true
                 | _ -> false
 
             let quality =
-                match Map.tryFindV "quality" args with
-                | ValueSome q ->
+                match r.QueryParam "quality" with
+                | Some q ->
                     match Int32.TryParse q with
                     | true, v when v >= 1 && v <= 100 -> float v
                     | _ ->
@@ -345,13 +345,11 @@ module internal RenderServer =
             }
 
         let statistics =
-            http.withContext (fun context ->
-                let args = http.requestQueryParams context
-
+            http.request (fun r ->
                 let clients =
                     lock clients (fun _ ->
-                        match Map.tryFindV "session" args, Map.tryFindV "name" args with
-                        | ValueSome (Guid sid), ValueSome name ->
+                        match r.QueryParam "session", r.QueryParam "name" with
+                        | Some (Guid sid), Some name ->
                             match clients.TryGetValue { session = sid; elementId = name } with
                             | true, client -> [| client |]
                             | _ -> [||]
@@ -364,25 +362,23 @@ module internal RenderServer =
             )
 
         let screenshot (sceneName: string) =
-            http.withContext (fun context ->
-                let args = http.requestQueryParams context
-
+            http.request (fun r ->
                 let samples =
-                    match Map.tryFindV "samples" args with
-                    | ValueSome (Int s) -> s
+                    match r.QueryParam "samples" with
+                    | Some (Int s) -> s
                     | _ -> 1
 
                 let signature = getSignature samples
 
-                match Map.tryFindV "w" args, Map.tryFindV "h" args with
-                | ValueSome (Int w), ValueSome (Int h) when w > 0 && h > 0 ->
+                match r.QueryParam "w", r.QueryParam "h" with
+                | Some (Int w), Some (Int h) when w > 0 && h > 0 ->
                     let clearColor =
-                        match Map.tryFindV "background" args with // fmt: C4f.Parse("[1.0,2.0,0.2,0.2]")
-                        | ValueSome (C4f c) -> c
-                        | ValueSome bg ->
+                        match r.QueryParam "background" with // fmt: C4f.Parse("[1.0,2.0,0.2,0.2]")
+                        | Some (C4f c) -> c
+                        | Some bg ->
                             Log.warn "[Screenshot] Could not parse background color: %s (format should be e.g. [1.0,2.0,0.2,0.2])" bg
                             C4f.Black
-                        | ValueNone -> C4f.Black
+                        | _ -> C4f.Black
 
                     let clientInfo =
                         {
@@ -407,16 +403,16 @@ module internal RenderServer =
 
                         http.mimeType mime >=> http.ok data
 
-                    match Map.tryFindV "fmt" args with
-                    | ValueSome "jpg" | ValueNone ->
+                    match r.QueryParam "fmt" with
+                    | Some "jpg" | None ->
                         use t = new JpegClientRenderTask(server.runtime, server.compressor, 0, getScene, RenderQuality.full) :> ClientRenderTask
                         t |> respondOK "image/jpeg"
 
-                    | ValueSome "png" ->
+                    | Some "png" ->
                         use t = new PngClientRenderTask(server.runtime, 0, getScene) :> ClientRenderTask
                         t |> respondOK "image/png"
 
-                    | ValueSome fmt ->
+                    | Some fmt ->
                         http.badRequest $"Format not supported: {fmt}"
 
                 | _ ->

@@ -2,10 +2,10 @@
 
 open Suave
 open Suave.Filters
-open Suave.RequestErrors
 open Suave.Sockets
 open Suave.Sockets.Control
 open System
+open System.IO
 open System.Net.Sockets
 open System.Threading
 open System.Threading.Tasks
@@ -99,26 +99,32 @@ type HttpBackend private () =
                 let handler = handler context
                 handler context
 
-        member _.requestPath context =
-            context.request.path
+        member _.getRequest context =
+            { new IHttpRequest with
+                member _.Path = context.request.path
+                member _.Body = new MemoryStream(context.request.rawForm)
+                member _.Method = context.request.rawMethod
+                member _.Header(name) =
+                    match context.request.header name with
+                    | Choice1Of2 value -> Some value
+                    | _ -> None
+                member _.Headers =
+                    Map.ofList context.request.headers
+                member _.QueryParam(name) =
+                    context.request.query
+                    |> List.tryPick (function n, Some v when n = name -> Some v | _ -> None)
+                member _.QueryParams =
+                    (Map.empty, context.request.query) ||> Seq.fold (fun result (name, value) ->
+                        let value = Option.toList value
 
-        member _.requestMethod context =
-            context.request.rawMethod
+                        let values =
+                            match result |> Map.tryFindV name with
+                            | ValueSome old -> old @ value
+                            | _ -> value
 
-        member _.requestQueryParams context =
-            context.request.query
-            |> List.choose (function n, Some v -> Some (n, v) | _ -> None)
-            |> Map.ofList
-
-        member _.requestQueryParam name context =
-            context.request.query
-            |> List.tryPickV (function n, Some v when n = name -> ValueSome v | _ -> ValueNone)
-            |> ValueOption.defaultValue null
-
-        member _.requestHeader name context =
-            match context.request.header name with
-            | Choice1Of2 value -> value
-            | _ -> null
+                        result |> Map.add name values
+                    )
+            }
 
         member _.choose handlers =
             choose handlers

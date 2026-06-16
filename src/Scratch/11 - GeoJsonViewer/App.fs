@@ -186,7 +186,7 @@ module App =
         (sg)
                                                                                         
     page (fun request ->
-      match Map.tryFind "page" request.queryParams with
+      match request.QueryParam "page" with
         | Some "list" ->
             require Html.semui (
               body [ style "width: 100%; height:100%; background: transparent; overflow-x: hidden; overflow-y: scroll"] [

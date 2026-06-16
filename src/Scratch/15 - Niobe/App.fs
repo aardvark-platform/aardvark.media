@@ -165,7 +165,7 @@ module App =
        (viewSg)
 
     page (fun request ->
-      match Map.tryFind "page" request.queryParams with
+      match request.QueryParam "page" with
       | Some "render" ->
         require Html.semui ( // we use semantic ui for our gui. the require function loads semui stuff such as stylesheets and scripts
             div [clazz "ui"; style "background: #1B1C1E"] [renderControl]

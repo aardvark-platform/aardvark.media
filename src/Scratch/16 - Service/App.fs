@@ -61,9 +61,9 @@ let view (model : AdaptiveModel) =
     let runningInstances = model.running |> AMap.toASet |> ASet.sortBy fst
     require Html.semui (
         page (fun request -> 
-            match Map.tryFind "page" request.queryParams with
+            match request.QueryParam "page" with
                 | Some "client" -> 
-                    match Map.tryFind "id" request.queryParams with
+                    match request.QueryParam "id" with
                         | Some id -> 
                             let stdout = sprintf "./%s/stdout.txt" id
                             let stderr = sprintf "./%s/stderr.txt" id
@@ -87,7 +87,7 @@ let view (model : AdaptiveModel) =
                             ]
                         | None -> text "id not found"
                 | Some "admin" -> 
-                    match Map.tryFind "username" request.queryParams with
+                    match request.QueryParam "username" with
                         | Some "rockstar" -> 
                             div [] [
                                 Incremental.div AttributeMap.empty <|
