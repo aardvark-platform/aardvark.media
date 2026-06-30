@@ -1,3 +1,7 @@
+- Added `IHttpRequest.BodyData` and `IHttpRequest.BodyUf8`
+- Added `IHttpBackend.internalError`
+- Added `IHttpBackend` JSON utilities
+
 ### 5.7.0-prerelease0004
 - Added `Server.getFreeTcpPort`
 - Added various `IHttpBackend` functions

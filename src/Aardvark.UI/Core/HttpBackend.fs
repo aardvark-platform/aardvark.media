@@ -2,8 +2,9 @@
 
 open Aardvark.Base
 open System.IO
-open System.Threading.Tasks
 open System.Reflection
+open System.Text
+open System.Threading.Tasks
 
 module HttpMethod =
     let [<Literal>] Connect = "CONNECT"
@@ -98,13 +99,29 @@ module ``IHttpBackend Extensions`` =
                 Some resName
         else None
 
+    type IHttpRequest with
+        member this.BodyData =
+            task {
+                let ms = new MemoryStream()
+                do! this.Body.CopyToAsync ms // ASP.NET Core disallows synchronous IO by default
+                return ms.ToArray()
+            }
+
+        member this.BodyUtf8 =
+            task {
+                let! data = this.BodyData
+                return Encoding.UTF8.GetString data
+            }
+
     type IHttpBackend<'HttpContext, 'HttpHandler> with
-        member this.ok (data: byte[])         = this.compose (this.status 200) (this.response data)
-        member this.ok (data: string)         = this.compose (this.status 200) (this.response data)
-        member this.badRequest (data: byte[]) = this.compose (this.status 400) (this.response data)
-        member this.badRequest (data: string) = this.compose (this.status 400) (this.response data)
-        member this.notFound (data: byte[])   = this.compose (this.status 404) (this.response data)
-        member this.notFound (data: string)   = this.compose (this.status 404) (this.response data)
+        member this.ok (data: byte[])            = this.compose (this.status 200) (this.response data)
+        member this.ok (data: string)            = this.compose (this.status 200) (this.response data)
+        member this.badRequest (data: byte[])    = this.compose (this.status 400) (this.response data)
+        member this.badRequest (data: string)    = this.compose (this.status 400) (this.response data)
+        member this.notFound (data: byte[])      = this.compose (this.status 404) (this.response data)
+        member this.notFound (data: string)      = this.compose (this.status 404) (this.response data)
+        member this.internalError (data: byte[]) = this.compose (this.status 500) (this.response data)
+        member this.internalError (data: string) = this.compose (this.status 500) (this.response data)
 
         member this.text (data: byte[]) = this.compose (this.mimeType "text/plain") (this.ok data)
         member this.text (data: string) = this.compose (this.mimeType "text/plain") (this.ok data)
@@ -112,8 +129,9 @@ module ``IHttpBackend Extensions`` =
         member this.html (data: byte[]) = this.compose (this.mimeType "text/html") (this.ok data)
         member this.html (data: string) = this.compose (this.mimeType "text/html") (this.ok data)
 
-        member this.json (data: byte[]) = this.compose (this.mimeType "text/json") (this.ok data)
-        member this.json (data: string) = this.compose (this.mimeType "text/json") (this.ok data)
+        member this.jsonRaw (data: byte[]) = this.compose (this.mimeType "application/json") (this.ok data)
+        member this.jsonRaw (data: string) = this.compose (this.mimeType "application/json") (this.ok data)
+        member this.json (data: 'T)        = this.jsonRaw (Pickler.jsonToString data)
 
         member this.request (handler: IHttpRequest -> 'HttpHandler) =
             this.withContext (this.getRequest >> handler)
@@ -176,3 +194,20 @@ module ``IHttpBackend Extensions`` =
                 parts
             )
             |> this.choose
+
+        member this.bindBody (mapping: byte[] -> 'HttpHandler) =
+            this.request (fun r ->
+                this.async <| task {
+                    let! body = r.BodyData
+                    return mapping body
+                }
+            )
+
+        member this.bindBody (mapping: string -> 'HttpHandler) =
+            this.bindBody (Encoding.UTF8.GetString >> mapping)
+
+        member this.bindJson (mapping: 'T -> 'HttpHandler) =
+            this.bindBody (Pickler.json.UnPickle >> mapping)
+
+        member this.mapJson (mapping: 'T1 -> 'T2) =
+            this.bindJson (mapping >> this.json)

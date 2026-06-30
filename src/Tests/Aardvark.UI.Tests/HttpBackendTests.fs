@@ -1,7 +1,6 @@
 ﻿namespace Aardvark.UI.Tests
 
 open System
-open System.IO
 open System.Net
 open System.Threading
 open System.Threading.Tasks
@@ -58,6 +57,13 @@ module ``HttpBackend Tests`` =
     type SuaveTestServer(content) =
         inherit TestServer("Suave", fun p t -> Suave.Server.startLocalhost p t content)
 
+    type JsonInput =
+        { Foo : string; Bar : int }
+        member this.Count = this.Foo.Length + this.Bar
+
+    type JsonOutput =
+        { Count : int }
+
     let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) =
         let (>=>) x y = http.compose x y
 
@@ -81,16 +87,6 @@ module ``HttpBackend Tests`` =
                 http.text value
             )
 
-        let returnBody =
-            http.request (fun r ->
-                http.async <| task {
-                    let ms = new MemoryStream()
-                    do! r.Body.CopyToAsync ms // ASP.NET Core disallows synchronous IO by default
-                    let data = ms.ToArray()
-                    return http.text data
-                }
-            )
-
         [
             http.route    "/text"           >=> http.text "Hello World!"
             http.route    "/html"           >=> http.html "<html lang=\"\"><body/></html>"
@@ -101,8 +97,9 @@ module ``HttpBackend Tests`` =
             http.routef   "/header/%s"      returnHeader
             http.route    "/method"         >=> http.request (_.Method >> http.text)
             http.routef   "/path/%s"        (fun _ -> http.request (_.Path >> http.text))
-            http.route    "/body"           >=> returnBody
+            http.route    "/body"           >=> http.bindBody (http.text: byte[] -> _)
             http.route    "/send"           >=> http.sendFile "test_file.txt"
+            http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
         ]
 
     module Cases =
@@ -242,6 +239,14 @@ module ``HttpBackend Tests`` =
             let result = r.Content.ReadAsStringAsync().Result
             Expect.equal result "Hello!" "Unexpected result"
 
+        let json (client: HttpClient) (server: TestServer) =
+            let data = { Foo = "Hello"; Bar = 4 }
+            use content = new StringContent(Pickler.jsonToString data)
+            let r = client.PostAsync($"http://{server.Host}/json", content).Result
+            Expect.equal r.StatusCode HttpStatusCode.OK "Unexpected status code"
+            let result = r.Content.ReadAsStringAsync().Result |> Pickler.unpickleOfJson<JsonOutput>
+            Expect.equal result.Count data.Count "Unexpected result"
+
     [<Tests>]
     let tests =
         let cases =
@@ -257,6 +262,7 @@ module ``HttpBackend Tests`` =
                 "Path",             Cases.path
                 "Body",             Cases.body
                 "Send file",        Cases.sendFile
+                "JSON",             Cases.json
             ]
 
         let createTests (useGiraffe: bool) =
