@@ -69,6 +69,19 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
                 recvSemaphore.Release() |> ignore
         }
 
+    member _.Close(cancellationToken: CancellationToken) =
+        task {
+            do! sendSemaphore.WaitAsync()
+            try
+                do! recvSemaphore.WaitAsync()
+                try
+                    do! socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken)
+                finally
+                    recvSemaphore.Release() |> ignore
+            finally
+                sendSemaphore.Release() |> ignore
+        }
+
     member _.Dispose() =
         sendSemaphore.Dispose()
         recvSemaphore.Dispose()
@@ -76,6 +89,7 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
     interface IWebSocket with
         member this.Send(message, data, cancellationToken, endOfMessage) = this.Send(message, data, cancellationToken, endOfMessage)
         member this.Receive(buffer, cancellationToken) = this.Receive(buffer, cancellationToken)
+        member this.Close(cancellationToken) = this.Close(cancellationToken)
         member this.Dispose() = this.Dispose()
 
 type HttpBackend private () =

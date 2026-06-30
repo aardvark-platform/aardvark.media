@@ -2,6 +2,7 @@
 - Added `IHttpBackend.internalError`
 - Added `IHttpBackend` JSON utilities
 - Made `endOfMessage` parameter of `IWebSocket.Send` optional
+- Added `IWebSocket.Close`, `IWebSocket.SendUtf8`, and `SocketBuffer.DataUtf8`
 
 ### 5.7.0-prerelease0004
 - Added `Server.getFreeTcpPort`

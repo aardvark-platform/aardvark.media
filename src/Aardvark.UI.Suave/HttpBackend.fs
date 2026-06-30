@@ -85,10 +85,14 @@ type internal WebSocket(socket: WebSocket.WebSocket) =
         |> Async.map (Choice.map Opcode.toWebSocketOpCode)
         |> SocketOp.toTask
 
+    member this.Close(cancellationToken: CancellationToken) =
+        this.Send(WebSocketOpCode.Close, Array.empty, cancellationToken)
+
     interface IWebSocket with
         member _.Dispose() = ()
         member this.Send(message, data, cancellationToken, endOfMessage) = this.Send(message, data, cancellationToken, endOfMessage)
         member this.Receive(buffer, cancellationToken) = this.Receive(buffer, cancellationToken)
+        member this.Close(cancellationToken) = this.Close(cancellationToken)
 
 type HttpBackend private () =
     static let instance = HttpBackend()

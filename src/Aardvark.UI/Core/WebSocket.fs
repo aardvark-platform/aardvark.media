@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI
 
 open System
+open System.Text
 open System.Threading
 open System.Threading.Tasks
 open System.Runtime.InteropServices
@@ -46,11 +47,13 @@ type SocketBuffer(initialSize: int) =
     member _.Array = buffer
     member _.Data = ArraySegment(buffer, 0, position)
     member _.Available = ArraySegment(buffer, position, buffer.Length - position)
+    member this.DataUtf8 = Encoding.UTF8.GetString this.Data
 
 type IWebSocket =
     inherit IDisposable
     abstract member Send : opCode: WebSocketOpCode * data: byte[] * cancellationToken: CancellationToken * [<Optional; DefaultParameterValue(true)>] endOfMessage: bool -> Task
     abstract member Receive : buffer: SocketBuffer * cancellationToken: CancellationToken -> Task<WebSocketOpCode>
+    abstract member Close : cancellationToken: CancellationToken -> Task
 
 [<AutoOpen>]
 module ``IWebSocket Extensions`` =
@@ -58,3 +61,6 @@ module ``IWebSocket Extensions`` =
     type IWebSocket with
         member inline this.SendPong(cancellationToken: CancellationToken) =
             this.Send(WebSocketOpCode.Pong, Array.empty, cancellationToken)
+
+        member inline this.SendUtf8(data: string, cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) =
+            this.Send(WebSocketOpCode.Text, Encoding.UTF8.GetBytes data, cancellationToken, endOfMessage)

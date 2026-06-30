@@ -195,6 +195,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
 
                     | WebSocketOpCode.Close ->
                         Report.Line(3, $"[Client] {id}: Socket closed")
+                        do! createInfo.socket.Close cancellationToken
                         running <- false
 
                     | WebSocketOpCode.Ping ->

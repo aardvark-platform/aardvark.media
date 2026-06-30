@@ -490,6 +490,7 @@ module MutableApp =
 
                             | WebSocketOpCode.Close ->
                                 Report.Line(3, $"[Media] Event socket for session {sessionId} closed")
+                                do! socket.Close cancellationToken
                                 Volatile.Write(&running, false)
 
                             | WebSocketOpCode.Ping ->

@@ -1,7 +1,10 @@
 ﻿namespace Aardvark.UI.Tests
 
 open System
+open System.IO
 open System.Net
+open System.Net.WebSockets
+open System.Text
 open System.Threading
 open System.Threading.Tasks
 open Aardvark.Base
@@ -21,12 +24,13 @@ module ``HttpBackend Tests`` =
     [<AbstractClass>]
     type TestServer(name: string, start: int -> CancellationToken -> Task) =
         let mutable port = 0
-        let mutable tcs = null
+        let mutable tcs : CancellationTokenSource = null
         let mutable server = Task.CompletedTask
         let mutable refCount = 0
 
         member _.Name = name
         member this.Host = lock this (fun _ -> $"localhost:{port}")
+        member this.CancellationToken = lock this (fun _ -> tcs.Token)
         member this.Acquire() =
             lock this (fun _ ->
                 inc &refCount
@@ -52,10 +56,10 @@ module ``HttpBackend Tests`` =
                 member _.Dispose() = release() }
 
     type GiraffeTestServer(content) =
-        inherit TestServer("Giraffe", fun p t -> Giraffe.Server.startLocalhost p t content)
+        inherit TestServer("Giraffe", fun p t -> Giraffe.Server.startLocalhost p t (content t))
 
     type SuaveTestServer(content) =
-        inherit TestServer("Suave", fun p t -> Suave.Server.startLocalhost p t content)
+        inherit TestServer("Suave", fun p t -> Suave.Server.startLocalhost p t (content t))
 
     type JsonInput =
         { Foo : string; Bar : int }
@@ -64,7 +68,7 @@ module ``HttpBackend Tests`` =
     type JsonOutput =
         { Count : int }
 
-    let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) =
+    let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) (cancellationToken: CancellationToken) =
         let (>=>) x y = http.compose x y
 
         let returnQueryParam name =
@@ -87,6 +91,27 @@ module ``HttpBackend Tests`` =
                 http.text value
             )
 
+        let webSocket =
+            http.handShake (fun socket _ ->
+                let buffer = SocketBuffer(128)
+                let mutable running = true
+
+                task {
+                    while running && not cancellationToken.IsCancellationRequested do
+                        match! socket.Receive(buffer, cancellationToken) with
+                        | WebSocketOpCode.Text ->
+                            let response = $"Received: {buffer.DataUtf8}"
+                            do! socket.SendUtf8(response, cancellationToken)
+
+                        | WebSocketOpCode.Close ->
+                            do! socket.Close(cancellationToken)
+                            running <- false
+
+                        | _ ->
+                            ()
+                }
+            )
+
         [
             http.route    "/text"           >=> http.text "Hello World!"
             http.route    "/html"           >=> http.html "<html lang=\"\"><body/></html>"
@@ -100,6 +125,7 @@ module ``HttpBackend Tests`` =
             http.route    "/body"           >=> http.bindBody (http.text: byte[] -> _)
             http.route    "/send"           >=> http.sendFile "test_file.txt"
             http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
+            http.route    "/ws"             >=> webSocket
         ]
 
     module Cases =
@@ -247,6 +273,37 @@ module ``HttpBackend Tests`` =
             let result = r.Content.ReadAsStringAsync().Result |> Pickler.unpickleOfJson<JsonOutput>
             Expect.equal result.Count data.Count "Unexpected result"
 
+        let webSocket (_: HttpClient) (server: TestServer) =
+            use ws = new ClientWebSocket()
+            ws.ConnectAsync(Uri $"ws://{server.Host}/ws", server.CancellationToken).Wait()
+
+            let text = "Hello World!"
+            let data = Encoding.UTF8.GetBytes text
+            ws.SendAsync(data.AsMemory(), WebSocketMessageType.Text, true, server.CancellationToken).AsTask().Wait 2000
+                |> flip Expect.isTrue "Timed out waiting for send"
+
+            let receive =
+                task {
+                    use inputStream = new MemoryStream()
+                    let buffer = Array.zeroCreate<byte> 128
+                    let mutable endOfMessage = false
+
+                    while not endOfMessage do
+                        let! result = ws.ReceiveAsync(buffer.AsMemory(), server.CancellationToken)
+                        if result.MessageType <> WebSocketMessageType.Text then
+                            failwith $"Unexpected message: {result.MessageType}"
+                        inputStream.Write(buffer, 0, result.Count)
+                        endOfMessage <- result.EndOfMessage
+
+                    return Encoding.UTF8.GetString(inputStream.ToArray())
+                }
+
+            receive.Wait 4000 |> flip Expect.isTrue "Timed out waiting for receive"
+            Expect.equal receive.Result $"Received: {text}" "Unexpected received message"
+
+            ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", server.CancellationToken).Wait 2000
+                |> flip Expect.isTrue "Timed out waiting for close"
+
     [<Tests>]
     let tests =
         let cases =
@@ -263,6 +320,7 @@ module ``HttpBackend Tests`` =
                 "Body",             Cases.body
                 "Send file",        Cases.sendFile
                 "JSON",             Cases.json
+                "WebSocket",        Cases.webSocket
             ]
 
         let createTests (useGiraffe: bool) =
