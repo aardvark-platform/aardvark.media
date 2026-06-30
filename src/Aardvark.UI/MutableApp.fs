@@ -327,7 +327,7 @@ module MutableApp =
                         task {
                             try
                                 cancellationToken.ThrowIfCancellationRequested()
-                                return! socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
+                                return! socket.Send(WebSocketOpCode.Text, data, cancellationToken)
                             with exn ->
                                 handleConnectionError $"Sending update for session {sessionId} failed" exn
                                 Volatile.Write(&running, false)

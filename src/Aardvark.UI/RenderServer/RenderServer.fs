@@ -85,7 +85,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
 
             try
                 let data = Pickler.json.Pickle RenderClientMessage.Invalidate
-                let task = createInfo.socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
+                let task = createInfo.socket.Send(WebSocketOpCode.Text, data, cancellationToken)
                 task.Wait()
             with exn ->
                 handleConnectionError "Failed to send invalidate message" exn
@@ -116,7 +116,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                             match data with
                             | RenderResult.Jpeg data ->
                                 try
-                                    let task = createInfo.socket.Send(WebSocketOpCode.Binary, data, true, cancellationToken)
+                                    let task = createInfo.socket.Send(WebSocketOpCode.Binary, data, cancellationToken)
                                     task.Wait()
                                 with exn ->
                                     handleConnectionError "Could not send render result" exn
@@ -129,7 +129,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                                 let data = Pickler.json.Pickle img
 
                                 try
-                                    let task = createInfo.socket.Send(WebSocketOpCode.Text, data, true, cancellationToken)
+                                    let task = createInfo.socket.Send(WebSocketOpCode.Text, data, cancellationToken)
                                     task.Wait()
                                 with exn ->
                                     handleConnectionError "Could not send render result" exn

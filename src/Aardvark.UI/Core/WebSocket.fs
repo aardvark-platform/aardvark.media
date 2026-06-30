@@ -49,7 +49,7 @@ type SocketBuffer(initialSize: int) =
 
 type IWebSocket =
     inherit IDisposable
-    abstract member Send : opCode: WebSocketOpCode * data: byte[] * endOfMessage: bool * cancellationToken: CancellationToken -> Task
+    abstract member Send : opCode: WebSocketOpCode * data: byte[] * cancellationToken: CancellationToken * [<Optional; DefaultParameterValue(true)>] endOfMessage: bool -> Task
     abstract member Receive : buffer: SocketBuffer * cancellationToken: CancellationToken -> Task<WebSocketOpCode>
 
 [<AutoOpen>]
@@ -57,4 +57,4 @@ module ``IWebSocket Extensions`` =
 
     type IWebSocket with
         member inline this.SendPong(cancellationToken: CancellationToken) =
-            this.Send(WebSocketOpCode.Pong, Array.empty, true, cancellationToken)
+            this.Send(WebSocketOpCode.Pong, Array.empty, cancellationToken)

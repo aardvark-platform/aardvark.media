@@ -7,6 +7,7 @@ open Suave.Sockets.Control
 open System
 open System.IO
 open System.Net.Sockets
+open System.Runtime.InteropServices
 open System.Threading
 open System.Threading.Tasks
 open Aardvark.Base
@@ -57,7 +58,7 @@ module internal SocketOp =
 
 type internal WebSocket(socket: WebSocket.WebSocket) =
 
-    member _.Send(message: WebSocketOpCode, data: byte[], endOfMessage: bool, cancellationToken: CancellationToken) : Task =
+    member _.Send(message: WebSocketOpCode, data: byte[], cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) : Task =
         if cancellationToken.IsCancellationRequested then
             Task.CompletedTask
         else
@@ -86,7 +87,7 @@ type internal WebSocket(socket: WebSocket.WebSocket) =
 
     interface IWebSocket with
         member _.Dispose() = ()
-        member this.Send(message, data, endOfMessage, cancellationToken) = this.Send(message, data, endOfMessage, cancellationToken)
+        member this.Send(message, data, cancellationToken, endOfMessage) = this.Send(message, data, cancellationToken, endOfMessage)
         member this.Receive(buffer, cancellationToken) = this.Receive(buffer, cancellationToken)
 
 type HttpBackend private () =

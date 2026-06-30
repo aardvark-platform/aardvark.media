@@ -5,6 +5,7 @@ open System.IO
 open System.Threading
 open System.Threading.Tasks
 open System.Net.WebSockets
+open System.Runtime.InteropServices
 open Microsoft.AspNetCore.Http
 open Giraffe
 
@@ -31,7 +32,7 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
     let sendSemaphore = new SemaphoreSlim(1, 1)
     let recvSemaphore = new SemaphoreSlim(1, 1)
 
-    member _.Send(message: WebSocketOpCode, data: byte[], endOfMessage: bool, cancellationToken: CancellationToken) =
+    member _.Send(message: WebSocketOpCode, data: byte[], cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) =
         if message = WebSocketOpCode.Ping || message = WebSocketOpCode.Pong then
             Task.CompletedTask
         else
@@ -73,7 +74,7 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
         recvSemaphore.Dispose()
 
     interface IWebSocket with
-        member this.Send(message, data, endOfMessage, cancellationToken) = this.Send(message, data, endOfMessage, cancellationToken)
+        member this.Send(message, data, cancellationToken, endOfMessage) = this.Send(message, data, cancellationToken, endOfMessage)
         member this.Receive(buffer, cancellationToken) = this.Receive(buffer, cancellationToken)
         member this.Dispose() = this.Dispose()
 
