@@ -99,6 +99,8 @@
                         setInvalid();
                         parsed = input[Property.Value];
                     }
+                } else {
+                    parsed = Math.max(minValue, Math.min(maxValue, parsed));
                 }
 
                 input.value = config.format(parsed, input[Property.IsHex]);
