@@ -62,5 +62,8 @@ module ``IWebSocket Extensions`` =
         member inline this.SendPong(cancellationToken: CancellationToken) =
             this.Send(WebSocketOpCode.Pong, Array.empty, cancellationToken)
 
-        member inline this.SendUtf8(data: string, cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) =
-            this.Send(WebSocketOpCode.Text, Encoding.UTF8.GetBytes data, cancellationToken, endOfMessage)
+        member inline this.SendText(data: string, encoding: Encoding, cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) =
+            this.Send(WebSocketOpCode.Text, encoding.GetBytes data, cancellationToken, endOfMessage)
+
+        member inline this.SendText(data: string, cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) =
+            this.SendText(data, Encoding.UTF8, cancellationToken, endOfMessage)

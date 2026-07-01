@@ -101,7 +101,7 @@ module ``HttpBackend Tests`` =
                         match! socket.Receive(buffer, cancellationToken) with
                         | WebSocketOpCode.Text ->
                             let response = $"Received: {buffer.DataUtf8}"
-                            do! socket.SendUtf8(response, cancellationToken)
+                            do! socket.SendText(response, cancellationToken)
 
                         | WebSocketOpCode.Close ->
                             do! socket.Close(cancellationToken)
