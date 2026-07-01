@@ -34,9 +34,9 @@ let main argv =
 
     let outputDir = System.Environment.CurrentDirectory
 
-    Server.run 4321 [
+    Server.startLocalhost 4321 CancellationToken.None [
         Suave.Files.browse outputDir
         MutableApp.toWebPart' app.Runtime false mapp
-    ]
+    ] |> _.Wait()
 
     0 
