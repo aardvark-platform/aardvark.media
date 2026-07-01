@@ -1,111 +1,124 @@
-﻿var color = "steelblue";
+﻿const margin = { top: 20, right: 30, bottom: 30, left: 30 };
+const width = 960 - margin.left - margin.right;
+const height = 500 - margin.top - margin.bottom;
 
-// Generate a 1000 data points using normal distribution with mean=20, deviation=5
-var values = d3.range(1000).map(d3.random.normal(20, 5));
+function refresh(values, color) {
+    if (values.length === 0) return;
+    const rgb = d3.rgb(color);
+    const formatCount = d3.format(",.0f");
 
-// A formatter for counts.
-var formatCount = d3.format(",.0f");
+    const max = d3.max(values);
+    const min = d3.min(values);
 
-var margin = { top: 20, right: 30, bottom: 30, left: 30 },
-    width = 960 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
+    const x = d3.scaleLinear()
+        .domain([min, max])
+        .range([0, width]);
 
-var max = d3.max(values);
-var min = d3.min(values);
-var x = d3.scale.linear()
-      .domain([min, max])
-      .range([0, width]);
+    const data = d3.bin()
+        .domain(x.domain())
+        .thresholds(x.ticks(20))
+        (values);
 
-// Generate a histogram using twenty uniformly-spaced bins.
-var data = d3.layout.histogram()
-    .bins(x.ticks(20))
-    (values);
+    const yMax = d3.max(data, d => d.length);
+    const yMin = d3.min(data, d => d.length);
 
-var yMax = d3.max(data, function (d) { return d.length });
-var yMin = d3.min(data, function (d) { return d.length });
-var colorScale = d3.scale.linear()
-            .domain([yMin, yMax])
-            .range([d3.rgb(color).brighter(), d3.rgb(color).darker()]);
+    const colorScale = d3.scaleLinear()
+        .domain([yMin, yMax])
+        .range([rgb.brighter(), rgb.darker()]);
 
-var y = d3.scale.linear()
-    .domain([0, yMax])
-    .range([height, 0]);
+    const y = d3.scaleLinear()
+        .domain([0, yMax])
+        .range([height, 0]);
 
-var xAxis = d3.svg.axis()
-    .scale(x)
-    .orient("bottom");
+    const xAxis = d3.axisBottom(x).ticks(width / 80).tickSizeOuter(0);
+    const yAxis = d3.axisLeft(y);
 
-var svg = d3.select("body").append("svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom)
-  .append("g")
-    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    const svg = d3.select("body")
+        .selectAll("svg")
+        .data([null])
+        .join("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+        .selectAll("g.canvas-group")
+        .data([null])
+        .join("g")
+        .attr("class", "canvas-group")
+        .attr("transform", `translate(${margin.left}, ${margin.top})`);
 
-var bar = svg.selectAll(".bar")
-    .data(data)
-  .enter().append("g")
-    .attr("class", "bar")
-    .attr("transform", function (d) { return "translate(" + x(d.x) + "," + y(d.y) + ")"; });
+    const bar = svg.selectAll(".bar")
+        .data(data)
+        .join(
+            enter => {
+                const g = enter.append("g")
+                    .attr("class", "bar")
+                    .attr("transform", d => `translate(${x(d.x0)}, ${height})`);
 
-bar.append("rect")
-    .attr("x", 1)
-    .attr("width", (x(data[0].dx) - x(0)) - 1)
-    .attr("height", function (d) { return height - y(d.y); })
-    .attr("fill", function (d) { return colorScale(d.y) });
+                g.append("rect")
+                    .attr("x", 1)
+                    .attr("width", d => Math.max(0, x(d.x1) - x(d.x0) - 1))
+                    .attr("height", 0)
+                    .attr("fill", rgb.brighter());
 
-bar.append("text")
-    .attr("dy", ".75em")
-    .attr("y", -12)
-    .attr("x", (x(data[0].dx) - x(0)) / 2)
-    .attr("text-anchor", "middle")
-    .text(function (d) { return formatCount(d.y); });
+                g.append("text")
+                    .attr("dy", ".75em")
+                    .attr("text-anchor", "middle")
+                    .attr("y", -12)
+                    .attr("x", d => (x(d.x1) - x(d.x0)) / 2)
+                    .text(0);
 
-svg.append("g")
-    .attr("class", "x axis")
-    .attr("transform", "translate(0," + height + ")")
-    .call(xAxis);
+                return g;
+            }
+        );
 
-/*
-* Adding refresh method to reload new data
-*/
-function refresh(values) {
-    // var values = d3.range(1000).map(d3.random.normal(20, 5));
-    var data = d3.layout.histogram()
-      .bins(x.ticks(20))
-      (values);
+    const t = svg.transition().duration(1000);
 
-    // Reset y domain using new data
-    var yMax = d3.max(data, function (d) { return d.length });
-    var yMin = d3.min(data, function (d) { return d.length });
-    y.domain([0, yMax]);
-    var colorScale = d3.scale.linear()
-                .domain([yMin, yMax])
-                .range([d3.rgb(color).brighter(), d3.rgb(color).darker()]);
-
-    var bar = svg.selectAll(".bar").data(data);
-
-    // Remove object with data
-    bar.exit().remove();
-
-    bar.transition()
-      .duration(1000)
-      .attr("transform", function (d) { return "translate(" + x(d.x) + "," + y(d.y) + ")"; });
+    bar.transition(t)
+        .style("transform", d => `translate(${x(d.x0)}px, ${y(d.length)}px)`);
 
     bar.select("rect")
-        .transition()
-        .duration(1000)
-        .attr("height", function (d) { return height - y(d.y); })
-        .attr("fill", function (d) { return colorScale(d.y) });
+        .transition(t)
+        .attr("width", d => Math.max(0, x(d.x1) - x(d.x0) - 1))
+        .attr("height", d => height - y(d.length))
+        .attr("fill", d => colorScale(d.length));
 
     bar.select("text")
-        .transition()
-        .duration(1000)
-        .text(function (d) { return formatCount(d.y); });
+        .transition(t)
+        .attr("y", -12)
+        .attr("x", d => (x(d.x1) - x(d.x0)) / 2)
+        .text(d => formatCount(d.length));
 
+    svg.selectAll(".x.axis")
+        .data([null])
+        .join("g")
+        .attr("class", "x axis")
+        .attr("transform", `translate(0, ${height})`)
+        .transition(t)
+        .call(xAxis);
+
+    svg.selectAll(".y.axis")
+        .data([null])
+        .join("g")
+        .attr("class", "y axis")
+        .transition(t)
+        .call(yAxis);
 }
 
-// Calling refresh repeatedly.
-//setInterval(function () {
-//    var values = d3.range(1000).map(d3.random.normal(20, 5));
-//    refresh(values);
-//}, 2000);
+function setColor(color) {
+    const svg = d3.select("body").select(".canvas-group");
+    const bars = svg.selectAll(".bar");
+    const data = bars.data();
+
+    if (!data.length) return;
+
+    const yMax = d3.max(data, d => d.length);
+    const yMin = d3.min(data, d => d.length);
+
+    const colorScale = d3.scaleLinear()
+        .domain([yMin, yMax])
+        .range([d3.rgb(color).brighter(), d3.rgb(color).darker()]);
+
+    bars.select("rect")
+        .transition()
+        .duration(500)
+        .attr("fill", d => colorScale(d.length));
+}

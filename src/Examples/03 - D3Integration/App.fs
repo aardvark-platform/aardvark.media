@@ -5,49 +5,68 @@ open Aardvark.UI.Primitives
 
 open Aardvark.Base
 open FSharp.Data.Adaptive
-open Aardvark.Rendering
 open Model
 
 // port from: http://bl.ocks.org/nnattawat/8916402
 
-let rnd = RandomSystem()
-let normal = RandomGaussian(rnd)
+let randomData =
+    let rnd = RandomSystem()
+    let normal = RandomGaussian(rnd)
+    fun (count: int) -> List.init count (fun _ -> normal.GetDouble(20.0, 5.0))
 
 let update (model : Model) (msg : Message) =
     match msg with
-        | Generate -> 
-            { model with 
-                data = 
-                    Array.init (model.count.value |> round |> int) (fun _ -> normal.GetDouble(20.0,5.0)) |> Array.toList 
-            }
-        | ChangeCount n -> { model with count = Numeric.update model.count n }
-        | ChangeColor a -> { model with color = a }
+    | Generate ->  { model with data = randomData model.count }
+    | ChangeCount n -> { model with count = n }
+    | ChangeColor a -> { model with color = a }
 
 let view (model : AdaptiveModel) =
 
     let dependencies = 
         [ 
-            { kind = Script; name = "d3"; url = "http://d3js.org/d3.v3.min.js" }
+            { kind = Script; name = "d3"; url = "resources/d3.v7.min.js" }
             { kind = Stylesheet; name = "histogramStyle"; url = "resources/Histogram.css" }
             { kind = Script; name = "histogramScript"; url = "resources/Histogram.js" }
         ]
 
-    let dataChannel = model.data.Channel
-    let updateChart =
-        "data.onmessage = function (values) { if(values.length > 0) refresh(values); };"
+    let channels =
+        let color = model.color |> AVal.map (fun c -> $"#{c.RGB.ToHexString()}")
+        let data  = model.data  |> AVal.map (fun data -> {| values = data; color = AVal.force color |})
+
+        [ "data",  data.Channel
+          "color", color.Channel ]
+
+    let bootJs =
+        String.concat "" [
+            "data.onmessage = function (data) { refresh(data.values, data.color); };"
+            "color.onmessage = setColor;"
+        ]
 
     body [] [
         require dependencies (
             div [] [
-                onBoot' ["data", dataChannel] updateChart (
+                onBoot' channels bootJs (
                     div [] [
-                        Numeric.view model.count |> UI.map ChangeCount
-                        text "  "
-                        button [onClick (fun _ -> Generate)] [text "Generate"]
+                        simplenumeric {
+                            attributes [style "margin: 5px"]
+                            update ChangeCount
+                            value model.count
+                            min 100
+                            max 5000
+                            step 100
+                            largeStep 1000
+                        }
+                        button [
+                            clazz "ui small button"
+                            style "margin: 5px"
+                            onClick (fun _ -> Generate)
+                        ] [text "Generate"]
                     ]
                 )
 
-                ColorPicker.view ColorPicker.Config.Default ChangeColor model.color
+                div [style "margin-left: 5px"] [
+                    ColorPicker.view ColorPicker.Config.Default ChangeColor model.color
+                ]
             ]
         )
     ]
@@ -62,9 +81,9 @@ let app : App<_,_,_> =
         threads = threads 
         initial = 
             { 
-               data = []
-               count =  { min = 100.0; max = 5000.0; value = 1000.0; step = 100.0; format = "{0:0}" }
-               color = C4b.White
+               data = randomData 1000
+               count = 1000
+               color = C4b.SteelBlue
             }
         update = update 
         view = view

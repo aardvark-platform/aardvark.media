@@ -20,12 +20,9 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <None Include="paket.references" />
-    <EmbeddedResource Include="resources/Histogram.js">
-      <LogicalName>resources/Histogram.js</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="resources/Histogram.css">
-      <LogicalName>resources/Histogram.css</LogicalName>
-    </EmbeddedResource>
+    <EmbeddedResource Include="resources/d3.v7.min.js" />
+    <EmbeddedResource Include="resources/Histogram.js" />
+    <EmbeddedResource Include="resources/Histogram.css" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Aardvark.UI.Suave\Aardvark.UI.Suave.fsproj" />
