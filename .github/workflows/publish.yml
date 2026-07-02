@@ -100,7 +100,7 @@ jobs:
     permissions:
       id-token: write # enable GitHub OIDC token issuance for this job
       contents: write
-      packages: write 
+      packages: write
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -129,7 +129,7 @@ jobs:
         run: dotnet aardpack src\Aardvark.Media.sln --notag
 
       - name: Upload Packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: packages
           path: bin\pack
