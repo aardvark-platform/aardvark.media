@@ -21,6 +21,7 @@ let main args =
 
     Server.startLocalhost port mapp.CancellationToken [
         MutableApp.toWebPart' app.Runtime false mapp
+        WebPart.ofType<Primitives.EmbeddedResources>
     ] |> ignore
 
     Aardium.run {

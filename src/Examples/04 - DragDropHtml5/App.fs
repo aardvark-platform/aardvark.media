@@ -16,10 +16,10 @@ let update (model : Model) (msg : Message) =
         | DropBottom -> { model with location = Position.Bottom }
 
 let view (model : AdaptiveModel) =
-    let aard name = 
+    let aard name =
         img [
-            // standard image stuff
-            attribute "src" "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Ardvark_The_Aardvark_Original.png/800px-Ardvark_The_Aardvark_Original.png"; 
+            // https://commons.wikimedia.org/wiki/Ardvark_The_Aardvark
+            attribute "src" "https://upload.wikimedia.org/wikipedia/commons/d/d0/Ardvark_The_Aardvark_Original.png"; 
             attribute "alt" "aardvark"
             // if we start drag, use drag(event) defined in js to activate dragging
             attribute "ondragstart" "drag(event)"
