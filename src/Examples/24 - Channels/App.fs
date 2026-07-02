@@ -52,7 +52,7 @@ let view (model : AdaptiveModel) =
             br []
             button [onClick (fun _ -> CenterScene)] [text "Center Scene"]
             br []
-            button (Html.IO.fileDialog (fun s -> SetFiles [s])) [text "abc"]
+            Dialog.openFilesButton SetFiles DialogConfig.Default [] [text "abc"]
             br []
             renderControl
         ]

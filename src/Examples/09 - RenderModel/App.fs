@@ -93,8 +93,8 @@ let view (m : AdaptiveModel) =
                 "Set Scene", [ 
                     button [clazz "ui button"; onClick (fun _ -> SetObject aadvarkModel)]  [text "The aardvark model"]
                     button [clazz "ui button"; onClick (fun _ -> SetObject defaultSphere)] [text "Sphere"] 
-                    button [clazz "ui button"; onClick (fun _ -> SetObject defaultBox)]    [text "Box"] 
-                    button (clazz "ui button" :: Html.IO.fileDialog LoadModel)             [text "Load from File"]
+                    button [clazz "ui button"; onClick (fun _ -> SetObject defaultBox)]    [text "Box"]
+                    Dialog.openFileButton LoadModel DialogConfig.Default [clazz "ui button"] [text "Load from File"] 
                 ] 
                 "Appearance", [
                     Html.SemUi.dropDown m.appearance.cullMode SetCullMode 

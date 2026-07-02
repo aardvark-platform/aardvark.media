@@ -275,14 +275,6 @@ module Html =
         let iconCheckBox (dings : aval<bool>) action =
           iconToggle dings "check square outline icon" "square icon" action
 
-    module IO =
-
-        let fileDialog action =
-            [
-                onEvent "onchoose" [] (List.head >> Aardvark.UI.Pickler.unpickleOfJson >> List.head >> action)
-                clientEvent "onclick" ("aardvark.openFileDialog({ allowMultiple: true, mode: 'file' }, function(files) { if(files != undefined) aardvark.processEvent('__ID__', 'onchoose', files); });")
-            ]
-
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module Choice =
     type Model = Red=0 | Yellow=1 | Blue=2
