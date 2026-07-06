@@ -5,6 +5,7 @@ open System.Collections.Concurrent
 open System.Threading
 open Aardvark.Base
 open Aardvark.Rendering
+open Aardvark.Application
 open FSharp.Data.Adaptive
 open CefSharp
 open CefSharp.OffScreen
@@ -23,7 +24,8 @@ type internal CefDragOperationsMask = Enums.DragOperationsMask
 type CursorChangedArgs =
     { Handle     : nativeint
       Type       : CefCursorType
-      CustomInfo : CefCursorInfo }
+      CustomInfo : CefCursorInfo
+      Cursor     : Cursor }
 
 [<Struct>]
 type internal Frame =
@@ -119,7 +121,26 @@ type internal AardvarkRenderHandler(host: IBrowserHost, runtime: IRuntime, size:
         CefRect(0, 0, size.X, size.Y)
 
     member _.OnCursorChange(cursorHandle: nativeint, cursorType: CefCursorType, customCursorInfo: CefCursorInfo) =
-        cursorChanged.Trigger { Handle = cursorHandle; Type = cursorType; CustomInfo = customCursorInfo }
+        let cursor =
+            match cursorType with
+            | Enums.CursorType.None -> Cursor.None 
+            | Enums.CursorType.Hand -> Cursor.Hand       
+            | Enums.CursorType.Wait -> Cursor.Wait       
+            | Enums.CursorType.IBeam -> Cursor.Text       
+            | Enums.CursorType.Cross -> Cursor.Crosshair  
+            | Enums.CursorType.NotAllowed -> Cursor.NotAllowed 
+            | Enums.CursorType.EastWestResize -> Cursor.ResizeH    
+            | Enums.CursorType.NorthSouthResize -> Cursor.ResizeV    
+            | Enums.CursorType.NortheastSouthwestResize -> Cursor.ResizeNESW 
+            | Enums.CursorType.NorthwestSoutheastResize -> Cursor.ResizeNWSE 
+            | _ -> Cursor.Default
+
+        cursorChanged.Trigger {
+            Handle     = cursorHandle
+            Type       = cursorType 
+            CustomInfo = customCursorInfo
+            Cursor     = cursor
+        }
 
     member _.OnPaint(typ: PaintElementType, _: CefRect, buffer: nativeint, width: int, height: int) =
         if typ = PaintElementType.View && width > 0 && height > 0 then
