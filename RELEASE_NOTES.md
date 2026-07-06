@@ -1,3 +1,6 @@
+### 5.7.0
+https://github.com/aardvark-platform/aardvark.media/wiki/Aardvark-Media-5.7-Changelog
+
 ### 5.7.0-prerelease0005
 - Added `IHttpRequest.BodyData` and `IHttpRequest.BodyUf8`
 - Added `IHttpBackend.internalError`
