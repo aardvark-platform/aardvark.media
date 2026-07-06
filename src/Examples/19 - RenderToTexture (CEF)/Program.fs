@@ -4,6 +4,7 @@ open Aardvark.SceneGraph
 open Aardvark.Application.WinForms
 open Aardvark.Cef.OffScreen
 open FSharp.Data.Adaptive
+open System
 open System.Windows.Forms
 
 module Shader =
@@ -60,7 +61,9 @@ let main argv =
         create, destroy
 
     browser.CursorChanged.Add (fun args ->
-        win.Cursor <- createCursor args.Handle
+        win.Invoke (Action (fun _ ->
+            win.Cursor <- createCursor args.Handle
+        )) |> ignore
     )
 
     let task =

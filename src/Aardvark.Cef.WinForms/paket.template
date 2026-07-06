@@ -11,8 +11,8 @@ description
 include-pdbs true
 dependencies
     framework: net471
-        CefSharp.Common ~> LOCKED:Major
-        CefSharp.WinForms ~> LOCKED:Major
+        CefSharp.Common >= LOCKEDVERSION
+        CefSharp.WinForms >= LOCKEDVERSION
     framework: net8.0-windows10.0.17763.0
-        CefSharp.Common.NETCore ~> LOCKED:Major
-        CefSharp.WinForms.NETCore ~> LOCKED:Major
+        CefSharp.Common.NETCore >= LOCKEDVERSION
+        CefSharp.WinForms.NETCore >= LOCKEDVERSION
