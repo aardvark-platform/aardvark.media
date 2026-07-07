@@ -42,7 +42,6 @@ let main argv =
             do! DefaultSurfaces.diffuseTexture
         }
 
-    browser.SetFocus true
     browser.Mouse.Use(win.Mouse) |> ignore
     browser.Keyboard.Use(win.Keyboard) |> ignore
 

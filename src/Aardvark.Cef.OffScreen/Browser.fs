@@ -7,7 +7,6 @@ open FSharp.Data.Adaptive
 open CefSharp
 open CefSharp.OffScreen
 open System
-open System.Runtime.InteropServices
 
 type AardvarkCefBrowser private (settings: BrowserSettings, requestContext: IRequestContext, callback: Action<IBrowser>) =
     inherit ChromiumWebBrowser(
@@ -40,6 +39,10 @@ type AardvarkCefBrowser private (settings: BrowserSettings, requestContext: IReq
         keyboard <- BrowserKeyboard(host, focus, flags)
         renderHandler <- new AardvarkRenderHandler(host, runtime, size, mipMap)
         this.RenderHandler <- renderHandler
+        this.SetFocus true
+        this.FrameLoadEnd.Add (fun args ->
+            if args.Frame.IsMain then host.SendFocusEvent true
+        )
 
     static member internal Create(runtime: IRuntime, size: aval<V2i>, mipMap: bool, settings: BrowserSettings, requestContext: IRequestContext) =
         let defaultSettings =
