@@ -7,11 +7,11 @@ open System.Runtime.InteropServices
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[<assembly: AssemblyTitle("29 - Garbage Collection")>]
+[<assembly: AssemblyTitle("20 - Garbage Collection")>]
 [<assembly: AssemblyDescription("")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]
-[<assembly: AssemblyProduct("29 - Garbage Collection")>]
+[<assembly: AssemblyProduct("20 - Garbage Collection")>]
 [<assembly: AssemblyCopyright("Copyright ©  2023")>]
 [<assembly: AssemblyTrademark("")>]
 [<assembly: AssemblyCulture("")>]

@@ -5,7 +5,7 @@ open Aardvark.Rendering
 open Aardvark.UI
 open Aardvark.UI.Suave
 open Aardium
-open NotificationsExample
+open SplinesTest
 
 [<EntryPoint; STAThread>]
 let main argv =
@@ -37,7 +37,7 @@ let main argv =
         url "http://localhost:4321/"
         width 1024
         height 768
-        title "28 - Notifications"
+        title "18 - Splines"
 #if DEBUG
         debug true
         log (fun msg -> Report.Line(2, $"[Aardium] {msg}"))

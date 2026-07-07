@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 18
 VisualStudioVersion = 18.5.11605.296
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "31 - VirtualTree", "Scratch\31 - VirtualTree\31 - VirtualTree.fsproj", "{E31551E9-48F2-4527-9DC5-B64323030E71}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "19 - VirtualTree", "Scratch\19 - VirtualTree\19 - VirtualTree.fsproj", "{E31551E9-48F2-4527-9DC5-B64323030E71}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Giraffe", "Scratch\28 - Giraffe\28 - Giraffe.fsproj", "{1A788AF4-257B-4C4C-8C5A-E379373B5838}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "21 - Giraffe", "Scratch\21 - Giraffe\21 - Giraffe.fsproj", "{1A788AF4-257B-4C4C-8C5A-E379373B5838}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - NavigationDemoNew", "Scratch\27 - NavigationDemoNew\27 - NavigationDemoNew.fsproj", "{5BD4DD0F-92E4-4EE9-A9C0-AE3E187B2F92}"
 EndProject
@@ -30,11 +30,11 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Animation.Bench
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{C47A910F-5F84-4084-BFE4-47E7EB45B1B0}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "26 - Animation", "Examples\26 - Animation\26 - Animation.fsproj", "{C8AE4277-9B31-4C30-B72D-3E9E8FC39E1D}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "14 - Animation", "Examples\14 - Animation\14 - Animation.fsproj", "{C8AE4277-9B31-4C30-B72D-3E9E8FC39E1D}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "25 - BackgroundOperation", "Scratch\25 - BackgroundOperation\25 - BackgroundOperation.fsproj", "{557AEB28-C56B-48C1-9A1F-B913A3EC935A}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "23 - Inputs", "Examples\23 - Inputs\23 - Inputs.fsproj", "{51C76CD7-D218-423D-B7C0-7A57E735544A}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "16 - Inputs", "Examples\16 - Inputs\16 - Inputs.fsproj", "{51C76CD7-D218-423D-B7C0-7A57E735544A}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "20 - PlaceTransformObjects", "Examples\20 - PlaceTransformObjects\20 - PlaceTransformObjects.fsproj", "{B3A0FF5A-98D0-404B-9084-9DDAFCA70C2E}"
 EndProject
@@ -89,7 +89,7 @@ Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - Outline", "Scratch\12 
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "12 - GeoJsonViewer", "Scratch\11 - GeoJsonViewer\12 - GeoJsonViewer.fsproj", "{257C81A4-981C-42F0-855A-5D9573DCD329}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "11 - ChatClient", "Scratch\11 - ChatClient\11 - ChatClient.fsproj", "{336C1E12-6569-4FC2-9661-1DB3C29C2D0D}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "08 - ChatClient", "Scratch\08 - ChatClient\08 - ChatClient.fsproj", "{336C1E12-6569-4FC2-9661-1DB3C29C2D0D}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "10 - OpcSelectionViewer", "Scratch\10 - OpcSelectionViewer\10 - OpcSelectionViewer.fsproj", "{681FFB23-6606-4CE0-8EE1-67AD43A9E25E}"
 EndProject
@@ -115,17 +115,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\paket.lock = ..\paket.lock
 	EndProjectSection
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "29 - Garbage Collection", "Scratch\29 - Garbage Collection\29 - Garbage Collection.fsproj", "{5F1B5AF1-73B4-44F4-89D7-84BBC929B770}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "20 - Garbage Collection", "Scratch\20 - Garbage Collection\20 - Garbage Collection.fsproj", "{5F1B5AF1-73B4-44F4-89D7-84BBC929B770}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "27 - GoldenLayout", "Examples\27 - GoldenLayout\27 - GoldenLayout.fsproj", "{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "13 - GoldenLayout", "Examples\13 - GoldenLayout\13 - GoldenLayout.fsproj", "{3AFDD56A-F6AB-4BB0-AD88-8912071E998C}"
 EndProject
-Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "28 - Notifications", "Examples\28 - Notifications\28 - Notifications.fsproj", "{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "05 - Notifications", "Examples\05 - Notifications\05 - Notifications.fsproj", "{B4F07EA9-16EA-4E80-93AD-4EF15EBAFCE8}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Aardvark.UI.Screenshotr", "Aardvark.UI.Screenshotr\Aardvark.UI.Screenshotr.fsproj", "{24D7C14A-3337-494B-8D72-4A2104D4956D}"
 EndProject
 Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "04 - Screenshotr", "Scratch\04 - Screenshotr\04 - Screenshotr.fsproj", "{F54A0F8D-DBF7-4483-B47E-DFBB3273027B}"
 EndProject
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "32 - Splines", "Scratch\32 - Splines\32 - Splines.fsproj", "{B315793A-9E8F-4472-8DA4-58E507BFB2E3}"
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "18 - Splines", "Scratch\18 - Splines\18 - Splines.fsproj", "{B315793A-9E8F-4472-8DA4-58E507BFB2E3}"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.UI.Tests", "Tests\Aardvark.UI.Tests\Aardvark.UI.Tests.fsproj", "{9F11A02C-489E-4CC2-99EC-64D657A5D567}"
 EndProject
