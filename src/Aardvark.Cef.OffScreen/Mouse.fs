@@ -41,14 +41,12 @@ type BrowserMouse(host: IBrowserHost, focus : ref<bool>, flags : ref<CefEventFla
     override x.Click(pp : PixelPosition, b : MouseButtons) =
         if focus.Value then
             base.Click(pp, b)
-            let e = MouseEvent(pp.Position.X, pp.Position.Y, flags.Value)
-            host.SendMouseClickEvent(e, getMouseButtonType b, false, 1)
 
     override x.DoubleClick(pp : PixelPosition, b : MouseButtons) =
         if focus.Value then
             base.DoubleClick(pp, b)
             let e = MouseEvent(pp.Position.X, pp.Position.Y, flags.Value)
-            host.SendMouseClickEvent(e, getMouseButtonType b, true, 2)
+            host.SendMouseClickEvent(e, getMouseButtonType b, false, 2)
 
     override x.Scroll(pp : PixelPosition, delta : float) =
         if focus.Value then

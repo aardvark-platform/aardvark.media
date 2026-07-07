@@ -1,3 +1,6 @@
+- [CEF] Force OSR host focus during FrameLoadEnd to fix text caret
+- [CEF] Fix OSR mouse event propagation
+
 ### 5.7.0
 https://github.com/aardvark-platform/aardvark.media/wiki/Aardvark-Media-5.7-Changelog
 
