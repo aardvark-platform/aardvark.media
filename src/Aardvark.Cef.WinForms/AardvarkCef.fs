@@ -97,6 +97,7 @@ type AardvarkCef =
         settings.CommandLineArgsDisabled <- false
         settings.WindowlessRenderingEnabled <- false
         settings.CefCommandLineArgs.Add "no-proxy-server"
+        settings.CefCommandLineArgs.Add "disable-pinch"
         settings
 
     static member Init([<Optional; DefaultParameterValue(null: CefSettings)>] settings: CefSettings,

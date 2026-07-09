@@ -71,6 +71,7 @@ type AardvarkCef =
         settings.WindowlessRenderingEnabled <- true
         settings.SetOffScreenRenderingBestPerformanceArgs() // https://github.com/cefsharp/CefSharp/issues/4953
         settings.CefCommandLineArgs.Add "no-proxy-server"
+        settings.CefCommandLineArgs.Add "disable-pinch"
         settings
 
     static member Init([<Optional; DefaultParameterValue(null: CefSettings)>] settings: CefSettings,

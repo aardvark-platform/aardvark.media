@@ -18,6 +18,13 @@ type AardvarkCefBrowser private (settings: BrowserSettings, requestContext: IReq
         automaticallyCreateBrowser = true
     )
 
+    static let disableZoomJs = @"
+        window.addEventListener('wheel', function(e) {
+            if (e.ctrlKey) {
+                e.preventDefault();
+            }
+        }, { passive: false });"
+
     let lockObj = obj()
 
     let focus = ref false
@@ -41,7 +48,9 @@ type AardvarkCefBrowser private (settings: BrowserSettings, requestContext: IReq
         this.RenderHandler <- renderHandler
         this.SetFocus true
         this.FrameLoadEnd.Add (fun args ->
-            if args.Frame.IsMain then host.SendFocusEvent true
+            if args.Frame.IsMain then
+                host.SendFocusEvent true
+                if args.Frame.IsValid then args.Frame.ExecuteJavaScriptAsync(disableZoomJs)
         )
 
     static member internal Create(runtime: IRuntime, size: aval<V2i>, mipMap: bool, settings: BrowserSettings, requestContext: IRequestContext) =

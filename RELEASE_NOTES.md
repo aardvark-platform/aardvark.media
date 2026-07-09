@@ -1,3 +1,5 @@
+- [CEF] Disable zoom via CTRL + wheel
+
 ### 5.7.1
 - [CEF] Force OSR host focus during FrameLoadEnd to fix text caret
 - [CEF] Fix OSR mouse event propagation
