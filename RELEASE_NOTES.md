@@ -1,3 +1,4 @@
+- Add support for up to 5 mouse buttons
 - [CEF] Disable zoom via CTRL + wheel
 
 ### 5.7.1
