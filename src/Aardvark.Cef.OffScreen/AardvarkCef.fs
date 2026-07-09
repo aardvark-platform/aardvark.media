@@ -90,12 +90,12 @@ type AardvarkCef =
 
                     let name =
                         let path = getFullPathSafe s.CachePath
-                        if path = rootPath then null else Path.GetFileName path
+                        if path = rootPath then "" else Path.GetFileName path
 
                     getCacheDirectory rootPath, name
 
                 s.RootCachePath <- rootCachePath
-                s.CachePath <- if isNull rootCachePath || isNull cacheName then rootCachePath else Path.Combine(rootCachePath, cacheName)
+                s.CachePath <- if isNull rootCachePath || isNull cacheName then null else Path.Combine(rootCachePath, cacheName)
 
                 // Handle relaunches by ignoring them, otherwise blank Chromium windows will open.
                 // This happens when two instances use the same root cache directory.
