@@ -1,5 +1,6 @@
 - Add support for up to 5 mouse buttons
 - [CEF] Disable zoom via CTRL + wheel
+- [Giraffe] Fixed `Server.start` and `Server.startLocalhost` task lifetime to represent server execution
 
 ### 5.7.1
 - [CEF] Force OSR host focus during FrameLoadEnd to fix text caret
