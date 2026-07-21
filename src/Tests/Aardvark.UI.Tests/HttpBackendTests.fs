@@ -126,6 +126,8 @@ module ``HttpBackend Tests`` =
             http.route    "/send"           >=> http.sendFile "test_file.txt"
             http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
             http.route    "/ws"             >=> webSocket
+            http.assembly typeof<TestServer>.Assembly
+            http.notFound "Not found"
         ]
 
     module Cases =
@@ -304,23 +306,55 @@ module ``HttpBackend Tests`` =
             ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", server.CancellationToken).Wait 2000
                 |> flip Expect.isTrue "Timed out waiting for close"
 
+        let embeddedResources (client: HttpClient) (server: TestServer) =
+            let asm = typeof<TestServer>.Assembly
+
+            let test (exists: bool) (resourceName: string) (path: string) =
+                let expected =
+                    use s = asm.GetManifestResourceStream resourceName
+                    if isNull s then failwith $"Embedded resource {resourceName} does not exist"
+                    s |> Stream.readAllBytes |> Encoding.UTF8.GetString
+
+                let r = client.GetAsync($"http://{server.Host}/{path}").Result
+
+                if exists then
+                    let contentType =
+                        path
+                        |> Path.GetExtension
+                        |> MimeType.ofFileExtension
+                        |> Option.defaultValue ""
+
+                    Expect.equal r.StatusCode HttpStatusCode.OK $"Unexpected status code for {path}"
+                    Expect.equal r.Content.Headers.ContentType.MediaType contentType $"Unexpected content type for {path}"
+                    let result = r.Content.ReadAsStringAsync().Result
+                    Expect.equal result expected $"Unexpected result for {path}"
+                else
+                    Expect.equal r.StatusCode HttpStatusCode.NotFound $"Unexpected status code for {path}"
+
+            let root = asm.GetName().Name
+            test true $"{root}.embedded_file.txt" "embedded_file.txt"
+            test true $"{root}.Resources.embedded_resource_1.txt" "resources/embedded_resource_1.txt"
+            test true @"RESOURCES\embedded_resource_2.md" "resources/embedded_resource_2.md"
+            test false "embedded_file_incorrect.txt" "embedded_file_incorrect.txt"
+
     [<Tests>]
     let tests =
         let cases =
             [
-                "Text",             Cases.text
-                "HTML",             Cases.html
-                "Status",           Cases.status
-                "Sub route",        Cases.subRoute
-                "Query parameter",  Cases.queryParam
-                "Query parameters", Cases.queryParams
-                "Header",           Cases.header
-                "Method",           Cases.method
-                "Path",             Cases.path
-                "Body",             Cases.body
-                "Send file",        Cases.sendFile
-                "JSON",             Cases.json
-                "WebSocket",        Cases.webSocket
+                "Text",               Cases.text
+                "HTML",               Cases.html
+                "Status",             Cases.status
+                "Sub route",          Cases.subRoute
+                "Query parameter",    Cases.queryParam
+                "Query parameters",   Cases.queryParams
+                "Header",             Cases.header
+                "Method",             Cases.method
+                "Path",               Cases.path
+                "Body",               Cases.body
+                "Send file",          Cases.sendFile
+                "JSON",               Cases.json
+                "WebSocket",          Cases.webSocket
+                "Embedded resources", Cases.embeddedResources
             ]
 
         let createTests (useGiraffe: bool) =

@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI
 
 open Aardvark.Base
+open System
 open System.IO
 open System.Reflection
 open System.Text
@@ -50,55 +51,6 @@ type IHttpBackend<'HttpContext, 'HttpHandler> =
 
 [<AutoOpen>]
 module ``IHttpBackend Extensions`` =
-
-    let private mimeTypes =
-        Dictionary.ofList [
-            ".js",    "text/javascript"
-            ".mjs",   "text/javascript"
-            ".css",   "text/css"
-            ".svg",   "image/svg+xml"
-            ".woff",  "application/x-font-woff"
-            ".woff2", "font/woff2"
-            ".ttf",   "application/octet-stream"
-            ".eot",   "application/vnd.ms-fontobject"
-        ]
-
-    let private (|LocalResourceName|_|) (ass : Assembly) (n : string) =
-        let myNamespace = ass.GetName().Name + "."
-        let myNamespaceResources = myNamespace + "resources."
-
-        match n with
-        | n when n.StartsWith myNamespaceResources ->
-            let name = n.Substring myNamespaceResources.Length
-            Some ("resources/" + name) // resources/name.min.js
-        | n when n.StartsWith myNamespace ->
-            let name = n.Substring myNamespace.Length
-            Some name   // resources/name.min.js
-        | n when n.StartsWith "resources" ->
-            Some n // fallback for logicalName to prevent resource name mangling (https://github.com/aardvark-platform/aardvark.media/issues/35)
-        | _ ->
-            None
-
-
-    let private isNetFramework (assembly : Assembly) =
-        let attributeValue = assembly.GetCustomAttribute<System.Runtime.Versioning.TargetFrameworkAttribute>()
-        attributeValue.FrameworkName.ToLower().Contains("framework")
-
-    let private ignoredResources =
-        Set.ofList [
-            "FSharpSignatureData"
-            "FSharpOptimizationData"
-        ]
-
-    let private (|PlainFrameworkEmbedding|_|) (assembly : Assembly) (resName : string) =
-        if assembly |> isNetFramework then
-            let assemblyName = assembly.GetName().Name
-            if ignoredResources |> Set.map (fun r -> $"{r}.{assemblyName}") |> Set.contains resName then
-                None
-            else
-                Some resName
-        else None
-
     type IHttpRequest with
         member this.BodyData =
             task {
@@ -151,34 +103,33 @@ module ``IHttpBackend Extensions`` =
                 this.redirectTo true newPath
             )
 
-        member this.assembly (assembly: Assembly) =
+        /// <summary>
+        /// Serves the embedded resources of an assembly according to the given chooser function.
+        /// </summary>
+        /// <param name="chooser">A function that maps a manifest resource name to an <c>HttpResource option</c>; returns <c>None</c> if the resource is not to be served.</param>
+        /// <param name="assembly">The assembly containing the embedded resources to serve.</param>
+        member this.assemblyWith (chooser: string -> HttpResource option) (assembly: Assembly) =
             let (>=>) a b = this.compose a b
 
             assembly.GetManifestResourceNames()
             |> Array.toList
-            |> List.choose (fun resName ->
-                match resName with
-                | PlainFrameworkEmbedding assembly n ->
-                    Some (resName, n)
-                | LocalResourceName assembly n ->
-                    Some (resName, n)
-                | _ ->
-                    None
+            |> List.choose (fun resourceName ->
+                match chooser resourceName with
+                | Some resource -> Some (resourceName, resource)
+                | _ -> None
             )
-            |> List.collect (fun (resName, name) ->
-                use stream = assembly.GetManifestResourceStream resName
+            |> List.collect (fun (resourceName, resource) ->
+                use stream = assembly.GetManifestResourceStream resourceName
                 let data = Stream.readAllBytes stream
-                let name = name |> String.replace "\\" "/"
-
-                let ext = Path.GetExtension name
-
+                let name = resource.Path |> String.replace "\\" "/"
                 Report.Line(2, "{0} serves {1}", assembly.GetName().Name, name)
 
                 // set the mime-type (if known)
                 let part =
-                    match MimeType.ofFileExtension ext with
-                    | Some mime -> this.mimeType mime >=> this.ok data
-                    | _ -> this.ok data
+                    if String.IsNullOrEmpty resource.MimeType then
+                        this.ok data
+                    else
+                        this.mimeType resource.MimeType >=> this.ok data
 
                 // index.* is also reachable via /
                 let parts =
@@ -194,6 +145,25 @@ module ``IHttpBackend Extensions`` =
                 parts
             )
             |> this.choose
+
+        /// <summary>
+        /// Serves the embedded resources of an assembly.
+        /// The MIME type is determined from the file extension of the resource name.
+        /// </summary>
+        /// <remarks>
+        /// For .NET Framework assemblies all manifest resources are served using the resource name as path as-is.
+        /// Otherwise, the path is determined as follows:
+        /// <list type="bullet">
+        /// <item>AssemblyName.resources.name -&gt; resources/name</item>
+        /// <item>AssemblyName.name -&gt; name</item>
+        /// <item>resources/name -&gt; resources/name</item>
+        /// <item>resources\name -&gt; resources/name</item>
+        /// </list>
+        /// The rules are case-insensitive; if no rule applies, the resource is ignored.
+        /// </remarks>
+        /// <param name="assembly">The assembly containing the embedded resources to serve.</param>
+        member this.assembly (assembly: Assembly) =
+            assembly |> this.assemblyWith (HttpResource.ofAssemblyResource assembly)
 
         member this.bindBody (mapping: byte[] -> 'HttpHandler) =
             this.request (fun r ->

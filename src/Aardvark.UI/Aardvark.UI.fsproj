@@ -22,6 +22,7 @@
     <Compile Include="Core\Config.fs" />
     <Compile Include="Core\ConnectionError.fs" />
     <Compile Include="Core\WebSocket.fs" />
+    <Compile Include="Core\HttpResource.fs" />
     <Compile Include="Core\HttpBackend.fs" />
     <Compile Include="Core\Unpersist.fs" />
     <Compile Include="Core\Interface.fs" />

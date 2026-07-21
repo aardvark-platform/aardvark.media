@@ -1,4 +1,7 @@
-- Add `MimeType.ofFileExtension`
+- Added `MimeType.ofFileExtension`
+- Made serving logic of embedded resources case-insensitive
+- Added `WebPart.ofAssemblyWith` for Suave and Giraffe
+- Added `IHttpBackend.assemblyWith`
 
 ### 5.7.2
 - Add support for up to 5 mouse buttons

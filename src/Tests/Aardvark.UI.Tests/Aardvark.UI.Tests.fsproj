@@ -26,6 +26,10 @@
     <Compile Include="HttpBackendTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
+    <EmbeddedResource Include="embedded_file.txt" />
+    <EmbeddedResource Include="embedded_file_incorrect.txt" LogicalName="embedded_file_incorrect.txt" />
+    <EmbeddedResource Include="Resources\embedded_resource_1.txt" />
+    <EmbeddedResource Include="Resources\embedded_resource_2.txt" LogicalName="RESOURCES\embedded_resource_2.md" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Aardvark.UI.Giraffe\Aardvark.UI.Giraffe.fsproj" />
