@@ -1,6 +1,6 @@
 ﻿namespace Aardvark.UI
 
-open Aardvark.Base
+open System
 
 module Config =
     // whether after creating dom update code (js), the code should be printed to stdout.
@@ -16,7 +16,7 @@ module Config =
 
     let mutable showTimeJsAssembly = false
 
-    /// The document title to set when a MutableApp is created.
+    [<Obsolete("Use MutableApp.DocumentTitle instead.")>]
     let mutable defaultDocumentTitle = @"Aardvark rocks \o/"
 
     /// Delay in milliseconds before a removed scene is destroyed.

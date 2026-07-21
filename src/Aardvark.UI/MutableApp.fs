@@ -124,6 +124,9 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
     member _.UpdateLock = updateLock
     member _.CancellationToken = source.Token
 
+    /// Default document title.
+    member val DocumentTitle = @"Aardvark rocks \o/" with get, set
+
     member this.Update(_: Guid, messages: 'msg seq) =
         //use mri = new System.Threading.ManualResetEventSlim()
         emit messages
@@ -529,7 +532,7 @@ module MutableApp =
         http.choose [
             http.subRoute "/rendering" (RenderServer.toWebPart http app renderServer)
             http.route "/events" >=> http.handShake events
-            http.route "/" >=> http.html (template Config.defaultDocumentTitle)
+            http.route "/" >=> http.html (template app.DocumentTitle)
             http.assembly typeof<MutableApp<_, _, _>>.Assembly
         ]
 

@@ -14,8 +14,6 @@ let main argv =
     Aardvark.Init()
     Aardium.Init()
 
-    Config.defaultDocumentTitle <- "02 - Render Control"
-
     // media apps require a runtime, which serves as renderer for your render controls.
     // you can use OpenGL or VulkanApplication.
     let useVulkan = false
@@ -30,6 +28,7 @@ let main argv =
     use _ = disposable
 
     use app = App.app.start()
+    app.DocumentTitle <- "02 - Render Control"
     Report.Verbosity <- 3
 
     Server.startLocalhost 4321 app.CancellationToken [

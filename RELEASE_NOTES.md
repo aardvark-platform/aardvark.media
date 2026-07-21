@@ -2,6 +2,7 @@
 - Made serving logic of embedded resources case-insensitive
 - Added `WebPart.ofAssemblyWith` for Suave and Giraffe
 - Added `IHttpBackend.assemblyWith`
+- Added `MutableApp.DocumentTitle` (`Config.defaultDocumentTitle` is deprecated)
 
 ### 5.7.2
 - Add support for up to 5 mouse buttons

@@ -15,7 +15,7 @@ let main argv =
     use app = new OpenGlApplication()
     use mapp = App.app |> App.start
 
-    Config.defaultDocumentTitle <- App.initialTitle
+    mapp.DocumentTitle <- App.initialTitle
 
     let http = HttpBackend.Instance
 
