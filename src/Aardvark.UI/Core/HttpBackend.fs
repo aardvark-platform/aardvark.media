@@ -176,8 +176,8 @@ module ``IHttpBackend Extensions`` =
 
                 // set the mime-type (if known)
                 let part =
-                    match mimeTypes.TryGetValue ext with
-                    | true, mime -> this.mimeType mime >=> this.ok data
+                    match MimeType.ofFileExtension ext with
+                    | Some mime -> this.mimeType mime >=> this.ok data
                     | _ -> this.ok data
 
                 // index.* is also reachable via /

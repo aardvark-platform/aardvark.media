@@ -1,8 +1,11 @@
 ﻿namespace Aardvark.UI
 
 open System
+open System.Collections.Generic
+open System.IO
 open System.Net
 open System.Net.Sockets
+open System.Reflection
 open System.Runtime.CompilerServices
 open Aardvark.Base
 open Aardvark.Base.Geometry
@@ -75,6 +78,47 @@ module Server =
             (listener.LocalEndpoint :?> IPEndPoint).Port
         finally
             listener.Stop()
+
+module MimeType =
+    type private Marker = class end
+
+    let private extensionTable =
+        lazy (
+            let table = Dictionary()
+
+            try
+                let asm = typeof<Marker>.Assembly
+                let name = asm.GetManifestResourceNames() |> Array.find (String.endsWith "mime-types.csv")
+                use stream = asm.GetManifestResourceStream name
+                use reader = new StreamReader(stream)
+
+                while not reader.EndOfStream do
+                    let line = reader.ReadLine()
+                    if not <| String.IsNullOrEmpty line && line.StartsWith "." then
+                        let sep = line.IndexOf ','
+                        if sep >= 0 && sep < line.Length - 1 then
+                            let ext = line.Substring(0, sep)
+                            let mime = line.Substring(sep + 1)
+                            table.[ext] <- mime
+
+            with exn ->
+                Log.error "Failed to read mime types: %A" exn
+
+            table
+        )
+
+    /// <summary>
+    /// Resolves the corresponding MIME type for a given file extension.
+    /// </summary>
+    /// <param name="ext">The file extension to look up (e.g., ".html" or "html"). Case-insensitive.</param>
+    /// <returns>
+    /// An option containing the MIME type string if found; otherwise, <c>None</c>.
+    /// </returns>
+    let ofFileExtension (ext: string) =
+        if String.IsNullOrEmpty ext then None
+        else
+            let ext = if ext.StartsWith "." then ext else $".{ext}"
+            extensionTable.Value |> Dictionary.tryFind (ext.ToLowerInvariant())
 
 [<AutoOpen>]
 module ``Path Utilities`` =

@@ -1,3 +1,5 @@
+- Add `MimeType.ofFileExtension`
+
 ### 5.7.2
 - Add support for up to 5 mouse buttons
 - [CEF] Disable zoom via CTRL + wheel

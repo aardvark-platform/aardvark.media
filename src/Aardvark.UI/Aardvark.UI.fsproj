@@ -18,6 +18,7 @@
     <Compile Include="Utilities\Json\JsonBuilder.fs" />
     <Compile Include="Utilities\Internal.fs" />
     <Compile Include="Utilities\Common.fs" />
+    <EmbeddedResource Include="Utilities\mime-types.csv" />
     <Compile Include="Core\Config.fs" />
     <Compile Include="Core\ConnectionError.fs" />
     <Compile Include="Core\WebSocket.fs" />
