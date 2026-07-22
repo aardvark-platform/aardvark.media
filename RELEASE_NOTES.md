@@ -1,3 +1,4 @@
+### 5.7.3
 - Added `MimeType.ofFileExtension`
 - Made serving logic of embedded resources case-insensitive
 - Added `WebPart.ofAssemblyWith` for Suave and Giraffe
