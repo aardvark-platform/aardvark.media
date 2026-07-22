@@ -22,10 +22,9 @@ module AttributeValue =
 
         | _, AttributeValue.RenderEvent l, AttributeValue.RenderEvent r ->
             AttributeValue.RenderEvent (fun clientInfo ->
-                seq {
-                    yield! l clientInfo
-                    yield! r clientInfo
-                }
+                let l = l clientInfo
+                let r = r clientInfo
+                Seq.append l r
             )
 
         | _ ->
