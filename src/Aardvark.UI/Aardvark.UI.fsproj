@@ -21,6 +21,8 @@
     <EmbeddedResource Include="Utilities\mime-types.csv" />
     <Compile Include="Core\Config.fs" />
     <Compile Include="Core\ConnectionError.fs" />
+    <Compile Include="Core\ApplicationError.fs" />
+    <Compile Include="Core\InternalError.fs" />
     <Compile Include="Core\WebSocket.fs" />
     <Compile Include="Core\HttpResource.fs" />
     <Compile Include="Core\HttpBackend.fs" />

@@ -33,6 +33,9 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
     let subject = new FSharp.Control.Event<'msg>()
     let messages = subject.Publish
 
+    let applicationErrorEvent = Event<ApplicationErrorEventArgs<'msg>>()
+    let internalErrorEvent = Event<InternalErrorEventArgs>()
+
     let emit (messages: 'msg seq) =
         lock messageQueue (fun () ->
             messageQueue.Add { messages = messages; event = null }
@@ -68,7 +71,8 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
                                 try
                                     app.Update(state.Value, msg)
                                 with exn ->
-                                    Log.error $"[Aardvark.UI] Update failed: {exn}"
+                                    Log.error $"[Aardvark.UI] Update for message '{msg}' failed: {exn}"
+                                    applicationErrorEvent.Trigger <| ApplicationErrorEventArgs(ApplicationErrorSource.Update msg, exn)
                                     state.Value
 
                             let newThreads = app.Threads newState
@@ -126,6 +130,32 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
 
     /// Default document title.
     member val DocumentTitle = @"Aardvark rocks \o/" with get, set
+
+    /// <summary>
+    /// Occurs when application logic throws an unhandled exception.
+    /// </summary>
+    /// <remarks>
+    /// This event captures unhandled exceptions from the main update loop, individual event handlers,
+    /// and channel updates. Inspect the <see cref="ApplicationErrorEventArgs.Source"/> property to determine
+    /// exactly where the error occurred and to access the specific context payload. After this event fires,
+    /// the processing loop automatically recovers and continues.
+    /// </remarks>
+    [<CLIEvent>]
+    member _.ApplicationError = applicationErrorEvent.Publish
+    member internal _.OnApplicationError(source, exn) = applicationErrorEvent.Trigger <| ApplicationErrorEventArgs(source, exn)
+
+    /// <summary>
+    /// Occurs when an internal framework or infrastructure process throws an exception.
+    /// </summary>
+    /// <remarks>
+    /// This event captures infrastructure faults such as connection drops, render task failures,
+    /// or incoming message parsing errors. Inspect the <see cref="InternalErrorEventArgs.Source"/>
+    /// property to determine exactly which framework subsystem failed and to access its specific
+    /// diagnostic payload.
+    /// </remarks>
+    [<CLIEvent>]
+    member _.InternalError = internalErrorEvent.Publish
+    member internal _.OnInternalError(source, exn) = internalErrorEvent.Trigger <| InternalErrorEventArgs(source, exn)
 
     member this.Update(_: Guid, messages: 'msg seq) =
         //use mri = new System.Threading.ManualResetEventSlim()
@@ -260,7 +290,15 @@ module MutableApp =
                     | true, info ->
                         match info.messages with
                         | ValueSome sceneMessages ->
-                            let msgs = sceneMessages.preRender clientInfo
+                            let msgs =
+                                try
+                                    sceneMessages.preRender clientInfo
+                                with exn ->
+                                    Log.error $"[Media] Event handler 'onBeforeRender' for {clientInfo.id.elementId} faulted: {exn}"
+                                    let source = ApplicationErrorSource.EventHandler (clientInfo.session, "onBeforeRender", clientInfo.id.elementId, [])
+                                    app.OnApplicationError(source, exn)
+                                    Seq.empty
+
                             app.UpdateSync(clientInfo.session, msgs)
                         | _ ->
                             ()
@@ -276,12 +314,22 @@ module MutableApp =
                     | true, info ->
                         match info.messages with
                         | ValueSome sceneMessages ->
-                            let msgs = sceneMessages.postRender clientInfo
+                            let msgs =
+                                try
+                                    sceneMessages.postRender clientInfo
+                                with exn ->
+                                    Log.error $"[Media] Event handler 'onAfterRender' for {clientInfo.id.elementId} faulted: {exn}"
+                                    let source = ApplicationErrorSource.EventHandler (clientInfo.session, "onAfterRender", clientInfo.id.elementId, [])
+                                    app.OnApplicationError(source, exn)
+                                    Seq.empty
+
                             app.UpdateSync(clientInfo.session, msgs)
                         | _ ->
                             ()
                     | _ ->
                         ()
+
+                onError = curry app.OnInternalError
             }
 
         let events (socket: IWebSocket) (context: 'HttpContext) : Task =
@@ -324,6 +372,9 @@ module MutableApp =
                     | ConnectionError.Closed   -> Report.Line(3, $"[Media] Connection for session {sessionId} closed")
                     | ConnectionError.Lost     -> Report.Line(3, $"[Media] Connection for session {sessionId} lost")
                     | _                        -> Log.warn $"[Media] {message}: {exn.GetBaseException().Message}"
+
+                    let source = InternalErrorSource.Connection (sessionId, message)
+                    app.OnInternalError(source, exn)
 
                 let send (data: byte[]) =
                     let task =
@@ -426,6 +477,8 @@ module MutableApp =
                                             reader.GetMessages token
                                         with exn ->
                                             Log.error $"[Media] Failed to get '{id.ChannelName}' messages for {id.ElementId}: {exn}"
+                                            let source = ApplicationErrorSource.ChannelUpdate (sessionId, id.ElementId, id.ChannelName)
+                                            app.OnApplicationError(source, exn)
                                             []
 
                                     match messages with
@@ -478,6 +531,8 @@ module MutableApp =
                                                     handler.invoke sessionId evt.sender args
                                                 with exn ->
                                                     Log.error $"[Media] Event handler '{evt.name}' for {evt.sender} faulted (args: {args}): {exn}"
+                                                    let source = ApplicationErrorSource.EventHandler (sessionId, evt.name, evt.sender, args)
+                                                    app.OnApplicationError(source, exn)
                                                     Seq.empty
 
                                             app.Update(sessionId, msgs)
@@ -487,9 +542,12 @@ module MutableApp =
                                     with exn ->
                                         let str = Encoding.UTF8.TryGetString data
                                         if notNull str then
-                                            Log.error $"[Media] Failed to process event message '{str}': {exn}"
+                                            Log.error $"[Media] Failed to parse event message '{str}': {exn}"
                                         else
-                                            Log.error $"[Media] Failed to process event message: {exn}"
+                                            Log.error $"[Media] Failed to parse event message: {exn}"
+
+                                        let source = InternalErrorSource.MessageParsing (sessionId, str)
+                                        app.OnInternalError(source, exn)
 
                             | WebSocketOpCode.Close ->
                                 Report.Line(3, $"[Media] Event socket for session {sessionId} closed")

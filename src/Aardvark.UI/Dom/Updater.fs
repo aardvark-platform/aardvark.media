@@ -561,28 +561,20 @@ module internal Updaters =
         let sceneMessages =
             { 
                 preRender = fun (info : RenderClientInfo) ->
-                    try
-                        let attributes = e.Attributes.Content.GetValue()
-                        match attributes |> HashMap.tryFindV "onBeforeRender" with
-                        | ValueSome (AttributeValue.RenderEvent f) -> f info
-                        | _ -> Seq.empty
-                    with exn ->
-                        Log.error $"[Media] Event handler 'onBeforeRender' for {info.id.elementId} faulted: {exn}"
-                        Seq.empty
+                    let attributes = e.Attributes.Content.GetValue()
+                    match attributes |> HashMap.tryFindV "onBeforeRender" with
+                    | ValueSome (AttributeValue.RenderEvent f) -> f info
+                    | _ -> Seq.empty
 
                 postRender = fun (info : RenderClientInfo) ->
-                    try
-                        let attributes = e.Attributes.Content.GetValue()
-                        match attributes |> HashMap.tryFindV "onAfterRender" with
-                        | ValueSome (AttributeValue.RenderEvent f) -> f info
-                        | _ ->
-                            if Config.allowDeprecatedRenderEvents then
-                                processDeprecatedRenderEvents info attributes
-                            else
-                                Seq.empty
-                    with exn ->
-                        Log.error $"[Media] Event handler 'onAfterRender' for {info.id.elementId} faulted: {exn}"
-                        Seq.empty
+                    let attributes = e.Attributes.Content.GetValue()
+                    match attributes |> HashMap.tryFindV "onAfterRender" with
+                    | ValueSome (AttributeValue.RenderEvent f) -> f info
+                    | _ ->
+                        if Config.allowDeprecatedRenderEvents then
+                            processDeprecatedRenderEvents info attributes
+                        else
+                            Seq.empty
             }
 
         override _.CreateElement = ValueSome {| tag = "div"; ns = null |}

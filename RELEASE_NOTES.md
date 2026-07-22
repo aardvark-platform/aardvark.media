@@ -3,6 +3,7 @@
 - Added `WebPart.ofAssemblyWith` for Suave and Giraffe
 - Added `IHttpBackend.assemblyWith`
 - Added `MutableApp.DocumentTitle` (`Config.defaultDocumentTitle` is deprecated)
+- Added `MutableApp.ApplicationError` and `MutableApp.InternalError` events
 
 ### 5.7.2
 - Add support for up to 5 mouse buttons

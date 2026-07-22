@@ -19,6 +19,7 @@ type internal RenderServer =
         getState   : RenderClientInfo -> RenderState
         rendered   : RenderClientInfo -> unit
         compressor : JpegCompressor voption
+        onError    : InternalErrorSource -> exn -> unit
     }
 
 type internal RenderClientCreateInfo =
@@ -76,6 +77,9 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
         | ConnectionError.Closed   -> Report.Line(3, $"[Client] {id}: Connection closed")
         | ConnectionError.Lost     -> Report.Line(3, $"[Client] {id}: Connection lost")
         | _                        -> Log.warn $"[Client] {id}: {message}: {exn.GetBaseException().Message}"
+
+        let source = InternalErrorSource.Connection (createInfo.id.session, message)
+        createInfo.server.onError source exn
 
     let sender = AdaptiveObject.Create()
 
@@ -138,6 +142,8 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                         with exn ->
                             running <- false
                             Log.error $"[Client] {id}: Rendering faulted: {exn}"
+                            let source = InternalErrorSource.Rendering (info.id.session, info.id.elementId)
+                            createInfo.server.onError source exn
                     )
                 )
 
@@ -192,6 +198,8 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                                 let str = Encoding.UTF8.TryGetString data
                                 if notNull str then Log.error $"[Client] {id}: Failed to process message: {str}"
                                 Log.error $"[Client] {id}: Error during message processing: {exn}"
+                                let source = InternalErrorSource.MessageParsing (info.session, str)
+                                createInfo.server.onError source exn
 
                     | WebSocketOpCode.Close ->
                         Report.Line(3, $"[Client] {id}: Socket closed")
@@ -205,7 +213,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                         Log.warn $"[Client] {id}: Unexpected message {message}"
 
                 with exn ->
-                    handleConnectionError "Socket I/O failed" exn
+                    handleConnectionError "Render socket I/O failed" exn
                     running <- false
 
             running <- false
