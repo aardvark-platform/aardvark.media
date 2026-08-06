@@ -44,8 +44,8 @@ let main argv =
         use _ = AardvarkCef.Init()
 
         use form = new Form()
-        form.Width <- 800
-        form.Height <- 600
+        form.Width <- 1024
+        form.Height <- 768
 
         use browser = AardvarkCef.CreateBrowser("http://localhost:4321/")
         form.Controls.Add browser

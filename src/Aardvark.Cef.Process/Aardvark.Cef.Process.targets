@@ -1,0 +1,24 @@
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <_AardvarkCefTargetPlatform Condition="'$(Platform)' == 'AnyCPU' or '$(Platform)' == ''">x64</_AardvarkCefTargetPlatform>
+    <_AardvarkCefTargetPlatform Condition="'$(Platform)' != 'AnyCPU' and '$(Platform)' != ''">$(Platform)</_AardvarkCefTargetPlatform>
+    <_AardvarkCefTargetFramework>net8.0-windows</_AardvarkCefTargetFramework>
+    <_AardvarkCefTargetFramework Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">net471</_AardvarkCefTargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <_AardvarkCefNativeFiles Include="$(MSBuildThisFileDirectory)..\cef-process\native\$(_AardvarkCefTargetPlatform)\*.*" />
+    <_AardvarkCefFrameworkFiles Include="$(MSBuildThisFileDirectory)..\cef-process\$(_AardvarkCefTargetFramework)\*.*" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="@(_AardvarkCefNativeFiles)">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+    <None Include="@(_AardvarkCefFrameworkFiles)">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Visible>false</Visible>
+    </None>
+  </ItemGroup>
+</Project>

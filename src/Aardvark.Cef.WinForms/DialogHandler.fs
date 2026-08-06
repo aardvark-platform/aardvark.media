@@ -8,9 +8,9 @@ open System.Windows.Forms
 type AardvarkDialogHandler(parent: Control) =
     static let javascript =
         """
-            if (!document.aardvark) document.aardvark = {};
+            const aardvark = window.aardvark || document.aardvark || {};
 
-            document.aardvark.dialog = {
+            aardvark.dialog = {
                 showOpenDialog: async function (window, options) {
                     await CefSharp.BindObjectAsync("aardvarkDialogHandler");
                     if (arguments.length === 1) { options = window; window = null; }

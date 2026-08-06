@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net471;net8.0-windows10.0.17763.0</TargetFrameworks>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-x64</RuntimeIdentifier>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <RollForward>Major</RollForward>
+    <DisableImplicitFSharpCoreReference>True</DisableImplicitFSharpCoreReference>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <CoreDllPath>..\..\bin\$(Configuration)\native\$(PlatformTarget)\Aardvark.Cef.Process.Core.dll</CoreDllPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>..\..\bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>..\..\bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.fs" />
+    <None Include="$(CoreDllPath)" CopyToOutputDirectory="PreserveNewest" Condition="Exists('$(CoreDllPath)')" />
+    <None Include="Aardvark.Cef.Process.targets" />
+    <None Include="app.manifest" />
+    <None Include="paket.references" />
+    <None Include="paket.template" />
+  </ItemGroup>
+  <Target Name="ProcessCoreCheck" BeforeTargets="BeforeBuild">
+    <Message Importance="High"
+             Text="CEF process DLL not found. If you need shared memory mapping for CEF, build the native C++ project 'Aardvark.Cef.Process.Core' manually under '$(Configuration)'. Otherwise, this can be safely ignored."
+             Condition="!Exists('$(CoreDllPath)')" />
+  </Target>
+  <Import Project="..\..\.paket\Paket.Restore.targets" />
+</Project>

@@ -3,6 +3,7 @@
     "path": "Aardvark.Media.sln",
     "projects": [
       "Aardvark.Cef.OffScreen\\Aardvark.Cef.OffScreen.fsproj",
+      "Aardvark.Cef.Process\\Aardvark.Cef.Process.fsproj",
       "Aardvark.Cef.WinForms\\Aardvark.Cef.WinForms.fsproj",
       "Aardvark.UI.Giraffe\\Aardvark.UI.Giraffe.fsproj",
       "Aardvark.UI.Primitives\\Aardvark.UI.Primitives.fsproj",

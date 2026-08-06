@@ -1,10 +1,6 @@
-﻿let aardvark = document.aardvark;
-
-if (!aardvark) {
-    aardvark = { initialized: false };
-    document.aardvark = aardvark;
-    window.aardvark = aardvark;
-}
+﻿var aardvark = window.aardvark || document.aardvark || { initialized: false };
+document.aardvark = aardvark;
+window.aardvark = aardvark;
 
 function getTopAardvark() {
     try {

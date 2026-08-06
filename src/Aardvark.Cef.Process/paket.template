@@ -1,0 +1,25 @@
+type file
+id Aardvark.Cef.Process
+authors Aardvark Platform Team
+owners Aardvark Platform Team
+projectUrl http://github.com/aardvark-platform
+licenseUrl http://www.apache.org/licenses/LICENSE-2.0.txt
+repositoryType git
+repositoryUrl https://github.com/aardvark-platform/aardvark.media
+description
+    Aardvark is an open-source platform for visual computing, real-time graphics and visualization.
+include-pdbs true
+files
+    Aardvark.Cef.Process.targets ==> build
+    ../../bin/Release/native/x64/Aardvark.Cef.Process.Core.dll => cef-process/native/x64
+    ../../bin/Release/net471/Aardvark.Cef.Process.exe => cef-process/net471
+    ../../bin/Release/net471/Aardvark.Cef.Process.exe.config => cef-process/net471
+    ../../bin/Release/net8.0-windows10.0.17763.0/Aardvark.Cef.Process.exe => cef-process/net8.0-windows
+    ../../bin/Release/net8.0-windows10.0.17763.0/Aardvark.Cef.Process.dll => cef-process/net8.0-windows
+    ../../bin/Release/net8.0-windows10.0.17763.0/Aardvark.Cef.Process.deps.json => cef-process/net8.0-windows
+    ../../bin/Release/net8.0-windows10.0.17763.0/Aardvark.Cef.Process.runtimeconfig.json => cef-process/net8.0-windows
+dependencies
+    framework: net471
+        CefSharp.Common = LOCKEDVERSION
+    framework: net8.0-windows10.0.17763.0
+        CefSharp.Common.NETCore >= LOCKEDVERSION

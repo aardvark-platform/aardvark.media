@@ -133,6 +133,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.OffScreen", "A
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "19 - RenderToTexture (CEF)", "Examples\19 - RenderToTexture (CEF)\19 - RenderToTexture (CEF).fsproj", "{178F952C-0143-F8BB-BFB6-3C429F38C0EC}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -363,6 +365,10 @@ Global
 		{178F952C-0143-F8BB-BFB6-3C429F38C0EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{178F952C-0143-F8BB-BFB6-3C429F38C0EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{178F952C-0143-F8BB-BFB6-3C429F38C0EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

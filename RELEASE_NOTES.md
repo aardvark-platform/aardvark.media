@@ -1,3 +1,5 @@
+- [CEF] Implement shared memory mapping via a custom subprocess binary
+
 ### 5.7.3
 - Added `MimeType.ofFileExtension`
 - Made serving logic of embedded resources case-insensitive

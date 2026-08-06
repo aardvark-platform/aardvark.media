@@ -1,0 +1,8 @@
+FSharp.Core
+Aardvark.Build
+
+group CefSharp-NetCore
+    CefSharp.Common.NETCore
+
+group CefSharp-NetFramework
+    CefSharp.Common

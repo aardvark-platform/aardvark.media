@@ -48,6 +48,19 @@ type AardvarkCef =
         if String.IsNullOrWhiteSpace path then null
         else try Path.GetFullPath path with _ -> null
 
+    static let getSubprocessPath() =
+        try
+            let asm = typeof<AardvarkCef>.Assembly
+            if notNull asm.Location then
+                let dir = Path.GetDirectoryName asm.Location
+                let exe = Path.Combine(dir, "Aardvark.Cef.Process.exe")
+                let dll = Path.Combine(dir, "Aardvark.Cef.Process.Core.dll")
+                if File.Exists exe && File.Exists dll then exe else null
+            else
+                null
+        with _ ->
+            null
+
     /// <summary>
     /// Returns whether CEF has been initialized.
     /// </summary>
@@ -89,6 +102,8 @@ type AardvarkCef =
 
     static member DefaultSettings =
         let settings = new CefSettings()
+        let subprocessPath = getSubprocessPath()
+        if notNull subprocessPath then settings.BrowserSubprocessPath <- subprocessPath
         settings.MultiThreadedMessageLoop <- true
         settings.CachePath <- Path.Combine(Environment.CurrentDirectory, "cef_cache")
         settings.LogFile <- Path.Combine(Environment.CurrentDirectory, "cef.log")
