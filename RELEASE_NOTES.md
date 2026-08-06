@@ -1,3 +1,4 @@
+### 5.7.4
 - [CEF] Implement shared memory mapping via a custom subprocess binary
 - [CEF] Add `AardvarkCef.MaxCacheSize`
 - [CEF] Update to version 150.0.11
