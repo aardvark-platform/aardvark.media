@@ -1,4 +1,5 @@
 - [CEF] Implement shared memory mapping via a custom subprocess binary
+- [CEF] Update to version 150.0.11
 
 ### 5.7.3
 - Added `MimeType.ofFileExtension`

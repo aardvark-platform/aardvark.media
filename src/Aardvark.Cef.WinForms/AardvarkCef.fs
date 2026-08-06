@@ -107,7 +107,7 @@ type AardvarkCef =
         settings.MultiThreadedMessageLoop <- true
         settings.CachePath <- Path.Combine(Environment.CurrentDirectory, "cef_cache")
         settings.LogFile <- Path.Combine(Environment.CurrentDirectory, "cef.log")
-        settings.LogSeverity <- LogSeverity.Warning
+        settings.LogSeverity <- LogSeverity.Error
         settings.IgnoreCertificateErrors <- true
         settings.CommandLineArgsDisabled <- false
         settings.WindowlessRenderingEnabled <- false
