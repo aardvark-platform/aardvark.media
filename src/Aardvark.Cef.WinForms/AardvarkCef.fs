@@ -48,6 +48,17 @@ type AardvarkCef =
         if String.IsNullOrWhiteSpace path then null
         else try Path.GetFullPath path with _ -> null
 
+    static let getDirectorySize (directory: DirectoryInfo) =
+        let rec get (directory: DirectoryInfo) =
+            if directory.Exists then
+                let files = directory.GetFiles() |> Array.sumBy _.Length
+                let subdirs = directory.GetDirectories() |> Array.sumBy get
+                files + subdirs
+            else
+                0L
+
+        Mem (get directory)
+
     static let getSubprocessPath() =
         try
             let asm = typeof<AardvarkCef>.Assembly
@@ -115,6 +126,15 @@ type AardvarkCef =
         settings.CefCommandLineArgs.Add "disable-pinch"
         settings
 
+    /// <summary>
+    /// Maximum allowable size of the CEF root cache directory.
+    /// </summary>
+    /// <remarks>
+    /// If the directory size exceeds this value, the cache will be automatically cleared during initialization.
+    /// Ignored if zero; default is 64MiB.
+    /// </remarks>
+    static member val MaxCacheSize = Mem.ofMebibytes 64 with get, set
+
     static member Init([<Optional; DefaultParameterValue(null: CefSettings)>] settings: CefSettings,
                        [<Optional; DefaultParameterValue(DpiMode.PerMonitorV2)>] dpiMode: DpiMode,
                        [<Optional; DefaultParameterValue(true)>] performDependencyCheck: bool) =
@@ -141,6 +161,16 @@ type AardvarkCef =
 
                 if dpiMode <> DpiMode.Unaware then
                     AardvarkCef.SetProcessDpiMode dpiMode |> ignore
+
+                try
+                    if not <| String.IsNullOrEmpty s.RootCachePath && AardvarkCef.MaxCacheSize > Mem.Zero then
+                        let dir = DirectoryInfo s.RootCachePath
+                        let size = getDirectorySize dir
+                        if size > AardvarkCef.MaxCacheSize then
+                            Report.Line(3, $"[CEF] Root cache directory size ({size}) exceeds MaxCacheSize ({AardvarkCef.MaxCacheSize}). Deleting...")
+                            dir.Delete(recursive = true)
+                with _ ->
+                    ()
 
                 // Handle relaunches by ignoring them, otherwise blank Chromium windows will open.
                 // This happens when two instances use the same root cache directory.
