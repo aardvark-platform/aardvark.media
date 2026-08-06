@@ -80,7 +80,7 @@ let view3D (m : AdaptiveModel) =
     let attributes = AttributeMap.ofList [ attribute "style" "width:100%; height: 100%"; attribute "data-samples" "8"]
     FreeFlyController.controlledControl m.cameraState CameraAction frustum attributes sg
 
-let aadvarkModel = FileModel @"..\..\..\data\aardvark\aardvark.obj"
+let aardvarkModel = FileModel @"..\..\..\data\aardvark\aardvark.obj"
 let defaultSphere = SphereModel(V3d.OOO,1.0)
 let defaultBox = BoxModel Box3d.Unit
 // create camera which looks down from (2,2,2) to (0,0,0) while z is up
@@ -91,13 +91,17 @@ let view (m : AdaptiveModel) =
         body [] (        // explit html body for our app (adorner menus need to be immediate children of body). if there is no explicit body the we would automatically generate a body for you.
             Html.SemUi.adornerMenu [ 
                 "Set Scene", [ 
-                    button [clazz "ui button"; onClick (fun _ -> SetObject aadvarkModel)]  [text "The aardvark model"]
+                    button [clazz "ui button"; onClick (fun _ -> SetObject aardvarkModel)]  [text "The aardvark model"]
                     button [clazz "ui button"; onClick (fun _ -> SetObject defaultSphere)] [text "Sphere"] 
                     button [clazz "ui button"; onClick (fun _ -> SetObject defaultBox)]    [text "Box"]
                     Dialog.openFileButton LoadModel DialogConfig.Default [clazz "ui button"] [text "Load from File"] 
                 ] 
                 "Appearance", [
-                    Html.SemUi.dropDown m.appearance.cullMode SetCullMode 
+                    text "Culling"
+                    Dropdown.dropdownEnum SetCullMode false None m.appearance.cullMode AttributeMap.empty (Some (fun mode ->
+                        if mode = CullMode.FrontAndBack then text "Front and Back"
+                        else text <| string mode
+                    ))
                 ]
             ] [view3D m]
         )
@@ -114,7 +118,7 @@ let app : App<_,_,_> =
         unpersist = Unpersist.instance
         threads = threads
         initial = { 
-                    currentModel = None; 
+                    currentModel = Some aardvarkModel; 
                     cameraState  = { FreeFlyController.initial with view = initialView }
                     trafo        = Trafo3d.Identity 
                     appearance   = { cullMode = CullMode.None }
