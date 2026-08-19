@@ -1050,6 +1050,9 @@ module ``Sg Events`` =
         let onClick (f : V3d -> 'msg) =
             simple SceneEventKind.Click (fun (evt : SceneHit) -> f evt.globalPosition)
 
+        let onClickEvt (f : SceneHit -> 'msg) =
+            simple SceneEventKind.Click (fun (evt : SceneHit) -> f evt)
+
         let onDoubleClick (f : V3d -> 'msg) =
             simple SceneEventKind.DoubleClick (fun (evt : SceneHit) -> f evt.globalPosition)
 

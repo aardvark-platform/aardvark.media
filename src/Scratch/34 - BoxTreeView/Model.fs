@@ -1,6 +1,7 @@
 namespace BoxTreeView.Model
 
 open Aardvark.Base
+open Aardvark.UI
 open Aardvark.UI.Primitives
 open Aardvark.UI.Primitives.Golden
 open FSharp.Data.Adaptive
@@ -25,7 +26,7 @@ type TreeItemData = {
 
 type Message =
     | Camera         of FreeFlyController.Message
-    | Select         of string
+    | Select         of string * KeyModifiers
     | ScrollTo       of string
     | ToggleCollapse of string
     | Hover          of string option
@@ -37,12 +38,12 @@ type Message =
     | AddFolder
     | AddCube
     | ResetScene
+    | ClearSelection
 
 [<ModelType>]
 type Model = {
     camera        : CameraControllerState
     boxes         : IndexList<VisibleBox>
-    selectedBoxes : HashSet<string>
     hoveredBox    : string option
     treeView      : TreeView<string, TreeItemData>
     golden        : Golden.GoldenLayout

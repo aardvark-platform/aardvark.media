@@ -32,20 +32,36 @@ let private defaultColor = C4b(190, 190, 190, 255)
 let private selectedColor = C4b(255, 0, 0, 255)
 let private hoveredColor  = C4b(0, 0, 255, 255)
 
+/// Returns whether the given value occurs in the segment.
+let inline private segmentContains (value : 'T) (segment : ArraySegment<'T>) =
+    let mutable i = 0
+    let mutable found = false
+    while not found && i < segment.Count do
+        found <- segment.[i] = value
+        i <- i + 1
+    found
+
 let private mkColor (model : AdaptiveModel) (box : AdaptiveVisibleBox) : aval<C4b> =
     let id = box.id
     let isSelected =
-        model.selectedBoxes
-        |> ASet.toAVal
+        model.treeView.selected
         |> AVal.map (HashSet.contains id)
 
+    // Hovered directly in the 3D view, or via the tree view (a box's own row,
+    // or any ancestor group row, which highlights all boxes it contains).
     let isHovered =
-        model.hoveredBox
-        |> AVal.map (fun h -> h = Some id)
+        AVal.map3 (fun sceneHover treeHover hierarchy ->
+            match sceneHover with
+            | Some h when h = id -> true
+            | _ ->
+                match treeHover with
+                | ValueSome n -> hierarchy |> FlatTree.descendants n |> segmentContains id
+                | ValueNone   -> false
+        ) model.hoveredBox model.treeView.hovered model.treeView.tree.hierarchy
 
     AVal.map2 (fun sel hov ->
-        if sel then selectedColor
-        elif hov then hoveredColor
+        if hov then hoveredColor
+        elif sel then selectedColor
         else defaultColor
     ) isSelected isHovered
 
@@ -60,7 +76,7 @@ let private mkISg (model : AdaptiveModel) (box : AdaptiveVisibleBox) =
     |> Sg.requirePicking
     |> Sg.noEvents
     |> Sg.withEvents [
-        Sg.onClick       (fun _  -> Select   box.id)
+        Sg.onClickEvt    (fun hit -> Select (box.id, { shift = hit.event.evtShift; alt = hit.event.evtAlt; ctrl = hit.event.evtCtrl }))
         Sg.onDoubleClick (fun _  -> ScrollTo box.id)
         Sg.onEnter       (fun _  -> Hover (Some box.id))
         Sg.onLeave       (fun () -> Hover None)
@@ -212,6 +228,21 @@ let private closestVisibleNode (tree : VirtualTree<string>) (id : string) : stri
         | Some n -> ValueSome n
         | None   -> ValueNone
 
+/// The "active" node for actions/properties: the sole selected item, or
+/// ValueNone if zero or multiple items are selected.
+let private selectionTarget (selected : HashSet<string>) : string voption =
+    if selected.Count = 1 then ValueSome (selected |> Seq.head) else ValueNone
+
+/// Click handling shared by tree-view and 3D selection: ctrl/shift behave like
+/// TreeView's range/toggle multi-select, a plain click on the sole selected
+/// item deselects it, otherwise a plain click selects only that item.
+let private clickItem (treeView : TreeView<string, TreeItemData>) (id : string) (modifiers : KeyModifiers) =
+    if not modifiers.ctrl && not modifiers.shift
+       && treeView.selected.Count = 1 && HashSet.contains id treeView.selected then
+        { treeView with selected = HashSet.empty }
+    else
+        treeView |> TreeView.update (TreeView.Message.Click (id, modifiers))
+
 // ---------------------------------------------------------------------------
 // Update
 // ---------------------------------------------------------------------------
@@ -221,12 +252,11 @@ let update (model : Model) (msg : Message) =
     | Camera m ->
         { model with camera = FreeFlyController.update model.camera m }
 
-    | Select id ->
-        // Single click: select in 3D and sync tree highlight (no scroll)
-        let treeModel =
-            model.treeView
-            |> TreeView.update (TreeView.Message.Click (id, { shift = false; alt = false; ctrl = false }))
-        { model with selectedBoxes = HashSet.single id; treeView = treeModel }
+    | Select (id, modifiers) ->
+        // Range-select doesn't make sense in 3D (no spatial ordering), so
+        // shift behaves like ctrl: toggle the cube in/out of the selection.
+        let modifiers = { modifiers with ctrl = modifiers.ctrl || modifiers.shift; shift = false }
+        { model with treeView = clickItem model.treeView id modifiers }
 
     | ScrollTo id ->
         // Double click: also uncollapse ancestors and scroll the tree to this box
@@ -252,12 +282,11 @@ let update (model : Model) (msg : Message) =
             treeView   = { model.treeView with hovered = hovered } }
 
     | TreeAction msg ->
-        let treeModel = model.treeView |> TreeView.update msg
         match msg with
-        | TreeView.Message.Click (id, _) when HashSet.contains id model.boxIds ->
-            { model with treeView = treeModel; selectedBoxes = HashSet.single id }
+        | TreeView.Message.Click (id, modifiers) ->
+            { model with treeView = clickItem model.treeView id modifiers }
         | _ ->
-            { model with treeView = treeModel }
+            { model with treeView = model.treeView |> TreeView.update msg }
 
     | GoldenLayout msg ->
         { model with golden = model.golden |> GoldenLayout.update msg }
@@ -283,10 +312,9 @@ let update (model : Model) (msg : Message) =
                                                           visibility = rebuildVisibility h model.treeView.visibility newH } }
 
     | RemoveSelected ->
-        let selected = model.treeView.selected
-        if selected.Count <> 1 then model
-        else
-            let nodeId = selected |> Seq.head
+        match selectionTarget model.treeView.selected with
+        | ValueNone -> model
+        | ValueSome nodeId ->
             let vt = model.treeView.tree
             let h  = vt.hierarchy
             if not (FlatTree.contains nodeId h) || FlatTree.isRoot nodeId h then model
@@ -310,17 +338,15 @@ let update (model : Model) (msg : Message) =
                         hovered    = ValueNone
                         lastClick  = ValueNone }
                 { model with
-                    boxes         = newBoxes
-                    boxIds        = newBoxIds
-                    groupLabels   = newGroupLabels
-                    selectedBoxes = HashSet.empty
-                    treeView      = tv }
+                    boxes       = newBoxes
+                    boxIds      = newBoxIds
+                    groupLabels = newGroupLabels
+                    treeView    = tv }
 
     | AddFolder ->
-        let selected = model.treeView.selected
-        if selected.Count <> 1 then model
-        else
-            let parentId = selected |> Seq.head
+        match selectionTarget model.treeView.selected with
+        | ValueNone -> model
+        | ValueSome parentId ->
             if HashSet.contains parentId model.boxIds then model
             else
                 let newId    = "grp_" + Guid.NewGuid().ToString("N").[..5]
@@ -342,10 +368,9 @@ let update (model : Model) (msg : Message) =
                 { model with groupLabels = model.groupLabels |> HashMap.add newId newLabel; treeView = tv }
 
     | AddCube ->
-        let selected = model.treeView.selected
-        if selected.Count <> 1 then model
-        else
-            let parentId = selected |> Seq.head
+        match selectionTarget model.treeView.selected with
+        | ValueNone -> model
+        | ValueSome parentId ->
             if HashSet.contains parentId model.boxIds then model
             else
                 let rng    = Random()
@@ -373,12 +398,14 @@ let update (model : Model) (msg : Message) =
     | ResetScene ->
         let boxes, treeView, boxIds, groupLabels = buildInitialScene ()
         { model with
-            boxes         = boxes
-            boxIds        = boxIds
-            groupLabels   = groupLabels
-            treeView      = treeView
-            selectedBoxes = HashSet.empty
-            hoveredBox    = None }
+            boxes       = boxes
+            boxIds      = boxIds
+            groupLabels = groupLabels
+            treeView    = treeView
+            hoveredBox  = None }
+
+    | ClearSelection ->
+        { model with treeView = { model.treeView with selected = HashSet.empty; lastClick = ValueNone } }
 
     | RenameNode (nodeId, newLabel) ->
         let newLabel = newLabel.Trim()
@@ -429,13 +456,13 @@ let private btnDisabled (icon : string) (label : string) (color : string) =
 let private actionsPanel (model : AdaptiveModel) : DomNode<Message> =
     let labelAval =
         model.treeView.selected |> AVal.bind (fun sel ->
-            if sel.Count = 1 then
-                let id = sel |> Seq.head
+            match selectionTarget sel with
+            | ValueSome id ->
                 (model.treeView.values |> AMap.tryFind id) |> AVal.bind (fun maybeData ->
                     match maybeData with
                     | Some data -> data.label
                     | None      -> AVal.constant "")
-            else
+            | ValueNone ->
                 AVal.constant ""
         )
 
@@ -447,8 +474,9 @@ let private actionsPanel (model : AdaptiveModel) : DomNode<Message> =
             let  boxIds    = model.boxIds
             let  labels    = model.groupLabels
 
-            if selected.Count = 1 then
-                let selectedId     = selected |> Seq.head
+            let target = selectionTarget selected
+            if target.IsSome then
+                let selectedId     = target.Value
                 let isSingleFolder = not (HashSet.contains selectedId boxIds)
                 let canRemove      = not (FlatTree.isRoot selectedId hierarchy)
 
@@ -534,8 +562,9 @@ let view (model : AdaptiveModel) =
             require Html.semui (
                 body [ style "width: 100%; height: 100%; margin: 0; overflow: hidden; background: #1B1C1E; color: #ccc; display: flex; flex-direction: column" ] [
                     div [ style "padding: 8px 10px; display: flex; flex-wrap: wrap; gap: 6px" ] [
-                        btn "compress" "Collapse All" "" (TreeAction TreeView.Message.CollapseAll)                                    
+                        btn "compress" "Collapse All" "" (TreeAction TreeView.Message.CollapseAll)
                         btn "redo" "Reset Scene" "" ResetScene
+                        btn "x" "Clear Selection" "" ClearSelection
                     ]
                     div [ style "flex: 1 1 auto; min-height: 0" ] [
                         model.treeView |> TreeView.view AttributeMap.empty TreeAction treeItemNode
@@ -576,7 +605,6 @@ let app : App<Model, AdaptiveModel, Message> =
         initial   =
             { camera        = initialCamera
               boxes         = boxes
-              selectedBoxes = HashSet.empty
               hoveredBox    = None
               treeView      = treeView
               golden        = GoldenLayout.create layoutConfig defaultLayout
