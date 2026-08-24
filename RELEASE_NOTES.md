@@ -1,3 +1,4 @@
+### 5.7.5
 - Fix double JSON-encoding of stats.json (https://github.com/aardvark-platform/aardvark.media/issues/53)
 - [CEF] Update to version 151.3.17
 
