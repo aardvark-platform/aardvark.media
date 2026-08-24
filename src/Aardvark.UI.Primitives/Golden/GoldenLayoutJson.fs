@@ -26,17 +26,17 @@ module GoldenLayoutJson =
                 let private (|JUInt64|_|) : JValue -> uint64 option = (|JValue|_|)
 
                 type JObject with
-                    member inline x.TryGetProperty<'T when 'T :> JToken>(key : string) =
+                    member x.TryGetProperty<'T when 'T :> JToken>(key : string) =
                         match x.TryGetValue key with
                         | (true, (:? 'T as value)) -> ValueSome value
                         | _ -> ValueNone
 
-                    member inline x.TryValue<'T>(key : string) : 'T voption =
+                    member x.TryValue<'T>(key : string) : 'T voption =
                         match x.TryGetProperty<JValue> key with
                         | ValueSome (JValue value) -> ValueSome value
                         | _ -> ValueNone
 
-                    member inline x.TryGetNumber(key : string) =
+                    member x.TryGetNumber(key : string) =
                         match x.TryGetProperty<JValue> key with
                         | ValueSome (JFloat value) -> ValueSome value
                         | ValueSome (JFloat32 value) -> ValueSome (float value)
