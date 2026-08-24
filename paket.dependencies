@@ -52,9 +52,9 @@ group CefSharp-NetCore
     framework: net8.0, net8.0-windows10.0.17763.0
     storage: none
 
-    nuget CefSharp.Common.NETCore                                   >= 150.0.110
-    nuget CefSharp.WinForms.NETCore                                 >= 150.0.110
-    nuget CefSharp.OffScreen.NETCore                                >= 150.0.110
+    nuget CefSharp.Common.NETCore                                   >= 151.3.170
+    nuget CefSharp.WinForms.NETCore                                 >= 151.3.170
+    nuget CefSharp.OffScreen.NETCore                                >= 151.3.170
     nuget System.Drawing.Common                                     >= 8.0.27 lowest_matching: true
 
 group CefSharp-NetFramework
@@ -62,6 +62,6 @@ group CefSharp-NetFramework
     framework: net471
     storage: none
 
-    nuget CefSharp.Common                                           >= 150.0.110
-    nuget CefSharp.WinForms                                         >= 150.0.110
-    nuget CefSharp.OffScreen                                        >= 150.0.110
+    nuget CefSharp.Common                                           >= 151.3.170
+    nuget CefSharp.WinForms                                         >= 151.3.170
+    nuget CefSharp.OffScreen                                        >= 151.3.170

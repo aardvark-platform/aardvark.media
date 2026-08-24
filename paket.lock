@@ -674,11 +674,11 @@ STORAGE: NONE
 RESTRICTION: || (== net8.0) (== net8.0-windows10.0.17763.0)
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    CefSharp.Common.NETCore (150.0.110)
-      chromiumembeddedframework.runtime (150.0.11)
-    CefSharp.OffScreen.NETCore (150.0.110)
-    CefSharp.WinForms.NETCore (150.0.110)
-    chromiumembeddedframework.runtime (150.0.11)
+    CefSharp.Common.NETCore (151.3.170)
+      chromiumembeddedframework.runtime (151.3.17)
+    CefSharp.OffScreen.NETCore (151.3.170)
+    CefSharp.WinForms.NETCore (151.3.170)
+    chromiumembeddedframework.runtime (151.3.17)
     Microsoft.Win32.SystemEvents (10.0.8)
     System.Drawing.Common (8.0.27)
       Microsoft.Win32.SystemEvents (>= 8.0)
@@ -688,12 +688,12 @@ STORAGE: NONE
 RESTRICTION: == net471
 NUGET
   remote: https://api.nuget.org/v3/index.json
-    CefSharp.Common (150.0.110)
-      chromiumembeddedframework.runtime.win-x64 (150.0.11)
-      chromiumembeddedframework.runtime.win-x86 (150.0.11)
-    CefSharp.OffScreen (150.0.110)
-      CefSharp.Common (150.0.110)
-    CefSharp.WinForms (150.0.110)
-      CefSharp.Common (150.0.110)
-    chromiumembeddedframework.runtime.win-x64 (150.0.11)
-    chromiumembeddedframework.runtime.win-x86 (150.0.11)
+    CefSharp.Common (151.3.170)
+      chromiumembeddedframework.runtime.win-x64 (151.3.17)
+      chromiumembeddedframework.runtime.win-x86 (151.3.17)
+    CefSharp.OffScreen (151.3.170)
+      CefSharp.Common (151.3.170)
+    CefSharp.WinForms (151.3.170)
+      CefSharp.Common (151.3.170)
+    chromiumembeddedframework.runtime.win-x64 (151.3.17)
+    chromiumembeddedframework.runtime.win-x86 (151.3.17)

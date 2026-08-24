@@ -133,7 +133,7 @@
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <PackageReference Include="cef.sdk" Version="150.0.11" GeneratePathProperty="true" />
+    <PackageReference Include="cef.sdk" Version="151.3.17" GeneratePathProperty="true" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp" />

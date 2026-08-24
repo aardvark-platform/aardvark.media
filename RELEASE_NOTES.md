@@ -1,4 +1,5 @@
 - Fix double JSON-encoding of stats.json (https://github.com/aardvark-platform/aardvark.media/issues/53)
+- [CEF] Update to version 151.3.17
 
 ### 5.7.4
 - [CEF] Implement shared memory mapping via a custom subprocess binary
