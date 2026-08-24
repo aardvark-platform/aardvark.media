@@ -367,7 +367,7 @@ module internal RenderServer =
                     )
 
                 let stats = clients |> Array.map _.GetStatistics() |> Array.filter (fun s -> s.frameCount > 0)
-                http.json (Pickler.json.PickleToString stats)
+                http.json stats
             )
 
         let screenshot (sceneName: string) =

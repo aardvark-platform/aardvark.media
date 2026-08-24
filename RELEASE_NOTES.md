@@ -1,3 +1,5 @@
+- Fix double JSON-encoding of stats.json (https://github.com/aardvark-platform/aardvark.media/issues/53)
+
 ### 5.7.4
 - [CEF] Implement shared memory mapping via a custom subprocess binary
 - [CEF] Add `AardvarkCef.MaxCacheSize`
