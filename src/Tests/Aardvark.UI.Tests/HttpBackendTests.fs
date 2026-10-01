@@ -91,6 +91,14 @@ module ``HttpBackend Tests`` =
                 http.text value
             )
 
+        let redirect =
+            http.request (fun r ->
+                let permanent = r.QueryParam "permanent" |> Option.get |> Boolean.Parse
+                let location = r.QueryParam "location" |> Option.get
+                http.header "X-Redirect" "preserved"
+                >=> http.redirectTo permanent location
+            )
+
         let sendFile =
             http.request (fun r ->
                 http.status 202
@@ -129,6 +137,9 @@ module ``HttpBackend Tests`` =
             http.route    "/text"           >=> http.text "Hello World!"
             http.route    "/html"           >=> http.html "<html lang=\"\"><body/></html>"
             http.routef   "/status/%i"      http.status
+            http.route    "/redirect"       >=> redirect
+            http.route    "/redirect-relative" >=> http.header "X-Redirect" "preserved"
+                                              >=> http.redirectRelative "/text?q=hello%20world#details"
             http.subRoute "/sub"            (http.choose [http.routef "/%s" http.text])
             http.routef   "/query-param/%s" returnQueryParam
             http.route    "/query-params"   >=> returnQueryParams
@@ -173,6 +184,50 @@ module ``HttpBackend Tests`` =
             test HttpStatusCode.OK
             test HttpStatusCode.Accepted
             test HttpStatusCode.Ambiguous
+
+        let private checkRedirect permanent location (response: HttpResponseMessage) (server: TestServer) =
+            let status, reason =
+                if permanent then HttpStatusCode.MovedPermanently, "Moved Permanently"
+                else HttpStatusCode.Found, "Found"
+
+            Expect.equal response.StatusCode status $"Unexpected redirect status: {location}"
+            Expect.equal response.ReasonPhrase reason "Unexpected redirect reason phrase"
+            Expect.equal (response.Headers.GetValues("Location") |> Seq.toList) [location] "Changed redirect destination"
+            Expect.equal (response.Headers.GetValues("X-Redirect") |> Seq.toList) ["preserved"] "Lost response header"
+
+            let expectedBody =
+                if server :? SuaveTestServer then
+                    Expect.equal (string response.Content.Headers.ContentType) "text/html; charset=utf-8" "Changed redirect content type"
+                    // Keep Suave's standard redirect body even when overriding its status to 301.
+                    let expected =
+                        global.Suave.Redirection.redirect location global.Suave.Http.HttpContext.empty
+                        |> Async.RunSynchronously
+                        |> Option.get
+
+                    match expected.response.content with
+                    | global.Suave.Http.Bytes data -> data
+                    | _ -> failwith "Expected Suave's standard redirect to return bytes"
+                else
+                    Array.empty
+
+            let body = response.Content.ReadAsByteArrayAsync().Result
+            Expect.sequenceEqual body expectedBody "Changed redirect body"
+            Expect.equal response.Content.Headers.ContentLength (Nullable(int64 expectedBody.Length)) "Changed redirect content length"
+
+        let redirect permanent (client: HttpClient) (server: TestServer) =
+            for destination in ["text"; "/text"; $"http://{server.Host}/text"] do
+                for suffix in [""; "?q=hello%20world&next=%2Fother#details"] do
+                    let location = destination + suffix
+                    let url = $"http://{server.Host}/redirect?permanent={permanent}&location={Uri.EscapeDataString location}"
+                    use response = client.GetAsync(url).Result
+                    checkRedirect permanent location response server
+
+        let redirectRelative (client: HttpClient) (server: TestServer) =
+            for globalPath, prefix in [Some "/proxy/ui", "/proxy/ui"; Some "/proxy/ui/", "/proxy/ui"; None, ""] do
+                use request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, $"http://{server.Host}/redirect-relative")
+                globalPath |> Option.iter (fun value -> request.Headers.Add("GLOBAL_PATH", value))
+                use response = client.SendAsync(request).Result
+                checkRedirect true (prefix + "/text?q=hello%20world#details") response server
 
         let subRoute (client: HttpClient) (server: TestServer) =
             let test (path: string) =
@@ -450,6 +505,9 @@ module ``HttpBackend Tests`` =
                 "Text",               Cases.text
                 "HTML",               Cases.html
                 "Status",             Cases.status
+                "Redirect temporary", Cases.redirect false
+                "Redirect permanent", Cases.redirect true
+                "Redirect relative",  Cases.redirectRelative
                 "Sub route",          Cases.subRoute
                 "Query parameter",    Cases.queryParam
                 "Query parameters",   Cases.queryParams
@@ -481,7 +539,7 @@ module ``HttpBackend Tests`` =
             cases
             |> List.map (fun (name, run) ->
                 name, fun server ->
-                    use client = new HttpClient()
+                    use client = new HttpClient(new HttpClientHandler(AllowAutoRedirect = false))
                     run client server
             )
             |> testFixture withServer
