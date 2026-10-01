@@ -68,6 +68,11 @@ module ``HttpBackend Tests`` =
     type JsonOutput =
         { Count : int }
 
+    module private MethodFilters =
+        let private standardMethods = ["DELETE"; "GET"; "HEAD"; "OPTIONS"; "PATCH"; "POST"; "PUT"; "TRACE"]
+        let private extensionMethods = ["QUERY"; "PURGE"; "X-CUSTOM"]
+        let methods = standardMethods @ extensionMethods
+
     let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) (cancellationToken: CancellationToken) =
         let (>=>) x y = http.compose x y
 
@@ -152,6 +157,10 @@ module ``HttpBackend Tests`` =
             http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
             http.route    "/ws"             >=> webSocket false
             http.route    "/ws-buffer"      >=> webSocket true
+
+            for method in MethodFilters.methods do
+                http.route $"/method-filter/{method}" >=> http.method method >=> http.status 202
+
             http.assembly typeof<TestServer>.Assembly
             http.notFound "Not found"
         ]
@@ -313,6 +322,20 @@ module ``HttpBackend Tests`` =
 
             test HttpMethod.Get
             test HttpMethod.Put
+
+        let methodFilters (client: HttpClient) (server: TestServer) =
+            let test (configuredMethod: string) (requestMethod: string) =
+                let url = $"http://{server.Host}/method-filter/{configuredMethod}"
+                let r =
+                    use msg = new HttpRequestMessage(HttpMethod requestMethod, url)
+                    client.Send msg
+
+                let expected = if requestMethod = configuredMethod then HttpStatusCode.Accepted else HttpStatusCode.NotFound
+                Expect.equal r.StatusCode expected "Unexpected status code"
+
+            for configuredMethod in MethodFilters.methods do
+                for requestMethod in MethodFilters.methods do
+                    test configuredMethod requestMethod
 
         let path (client: HttpClient) (server: TestServer) =
             let test (path: string) =
@@ -513,6 +536,7 @@ module ``HttpBackend Tests`` =
                 "Query parameters",   Cases.queryParams
                 "Header",             Cases.header
                 "Method",             Cases.method
+                "Method filters",     Cases.methodFilters
                 "Path",               Cases.path
                 "Body",               Cases.body
                 "Send file",          Cases.sendFile
