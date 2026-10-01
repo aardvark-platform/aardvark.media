@@ -99,17 +99,22 @@ module ``HttpBackend Tests`` =
                 >=> http.sendFile (r.QueryParam "path" |> Option.get)
             )
 
-        let webSocket =
+        let webSocket reportCapacity =
             http.handShake (fun socket _ ->
                 let buffer = SocketBuffer(128)
                 let mutable running = true
 
                 task {
                     while running && not cancellationToken.IsCancellationRequested do
+                        buffer.Position <- 0
                         match! socket.Receive(buffer, cancellationToken) with
-                        | WebSocketOpCode.Text ->
-                            let response = $"Received: {buffer.DataUtf8}"
-                            do! socket.SendText(response, cancellationToken)
+                        | (WebSocketOpCode.Text | WebSocketOpCode.Binary) as opcode ->
+                            if reportCapacity then
+                                do! socket.Send(opcode, buffer.Data.ToArray(), cancellationToken)
+                                do! socket.SendText(string buffer.Size, cancellationToken)
+                            elif opcode = WebSocketOpCode.Text then
+                                let response = $"Received: {buffer.DataUtf8}"
+                                do! socket.SendText(response, cancellationToken)
 
                         | WebSocketOpCode.Close ->
                             do! socket.Close(cancellationToken)
@@ -134,7 +139,8 @@ module ``HttpBackend Tests`` =
             http.route    "/send"           >=> http.sendFile "test_file.txt"
             http.route    "/send-bytes"     >=> sendFile
             http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
-            http.route    "/ws"             >=> webSocket
+            http.route    "/ws"             >=> webSocket false
+            http.route    "/ws-buffer"      >=> webSocket true
             http.assembly typeof<TestServer>.Assembly
             http.notFound "Not found"
         ]
@@ -352,6 +358,60 @@ module ``HttpBackend Tests`` =
             ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", server.CancellationToken).Wait 2000
                 |> flip Expect.isTrue "Timed out waiting for close"
 
+        let webSocketReassembly (messageType: WebSocketMessageType) (_: HttpClient) (server: TestServer) =
+            use timeout = CancellationTokenSource.CreateLinkedTokenSource(server.CancellationToken)
+            timeout.CancelAfter(TimeSpan.FromSeconds 15.0)
+            let token = timeout.Token
+
+            let seed =
+                if messageType = WebSocketMessageType.Text then Encoding.UTF8.GetBytes "héllo π world!"
+                else Array.init 16 (fun i -> byte (i * 17))
+
+            for length, fragmentSize in [16, 16; 128, 128; 512, 512; 16, 1; 128, 8; 512, 32] do
+                use ws = new ClientWebSocket()
+
+                let receive expectedType =
+                    task {
+                        use stream = new MemoryStream()
+                        let buffer = Array.zeroCreate<byte> 128
+                        let mutable finished = false
+
+                        while not finished do
+                            let! result = ws.ReceiveAsync(buffer.AsMemory(), token)
+                            Expect.equal result.MessageType expectedType "Unexpected WebSocket opcode"
+                            stream.Write(buffer, 0, result.Count)
+                            finished <- result.EndOfMessage
+
+                        return stream.ToArray()
+                    }
+
+                let check (data: byte[]) fragmentSize =
+                    task {
+                        for offset in 0 .. fragmentSize .. data.Length - 1 do
+                            let count = min fragmentSize (data.Length - offset)
+                            let last = offset + count = data.Length
+                            do! ws.SendAsync(data.AsMemory(offset, count), messageType, last, token)
+
+                        let context = $"{messageType}, {data.Length} bytes, {fragmentSize}-byte fragments"
+                        let! response = receive messageType
+                        Expect.sequenceEqual response data $"Unexpected reassembled payload: {context}"
+                        let! capacity = receive WebSocketMessageType.Text
+                        let capacity = capacity |> Encoding.UTF8.GetString |> Int32.Parse
+                        Expect.equal capacity (max 128 length) $"Unexpected server buffer capacity: {context}"
+                    }
+
+                let run =
+                    task {
+                        do! ws.ConnectAsync(Uri $"ws://{server.Host}/ws-buffer", token)
+                        let payload = Array.init length (fun i -> seed.[i % seed.Length])
+                        do! check payload fragmentSize
+                        // Reuse the buffer for a shorter message without retaining the previous payload.
+                        do! check (Encoding.UTF8.GetBytes "reuse") 5
+                        do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", token)
+                    }
+
+                run.GetAwaiter().GetResult()
+
         let embeddedResources (client: HttpClient) (server: TestServer) =
             let asm = typeof<TestServer>.Assembly
 
@@ -402,6 +462,8 @@ module ``HttpBackend Tests`` =
                 "Send file HEAD",     Cases.sendFileBytes System.Net.Http.HttpMethod.Head
                 "JSON",               Cases.json
                 "WebSocket",          Cases.webSocket
+                "WebSocket text reassembly",   Cases.webSocketReassembly WebSocketMessageType.Text
+                "WebSocket binary reassembly", Cases.webSocketReassembly WebSocketMessageType.Binary
                 "Embedded resources", Cases.embeddedResources
             ]
 
