@@ -1,5 +1,6 @@
 - [Primitives] Allow clearing textboxes when validation accepts the empty string
 - [Suave] Honor permanent redirects with HTTP 301 while retaining HTTP 302 for temporary redirects
+- [Suave] Fix `IHttpBackend.method` filters for standard HTTP verbs while retaining native normalization and extension methods
 - [Giraffe] Avoid excessive receive-buffer growth for fragmented WebSocket messages
 - [Giraffe] Preserve binary data and byte-order marks when serving files with `IHttpBackend.sendFile`
 - Fix JavaScript string encoding of DOM attribute values, including multiline event handlers
