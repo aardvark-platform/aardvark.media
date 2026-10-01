@@ -91,6 +91,14 @@ module ``HttpBackend Tests`` =
                 http.text value
             )
 
+        let sendFile =
+            http.request (fun r ->
+                http.status 202
+                >=> http.mimeType "application/octet-stream"
+                >=> http.header "X-Send-File" "preserved"
+                >=> http.sendFile (r.QueryParam "path" |> Option.get)
+            )
+
         let webSocket =
             http.handShake (fun socket _ ->
                 let buffer = SocketBuffer(128)
@@ -124,6 +132,7 @@ module ``HttpBackend Tests`` =
             http.routef   "/path/%s"        (fun _ -> http.request (_.Path >> http.text))
             http.route    "/body"           >=> http.bindBody (http.text: byte[] -> _)
             http.route    "/send"           >=> http.sendFile "test_file.txt"
+            http.route    "/send-bytes"     >=> sendFile
             http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
             http.route    "/ws"             >=> webSocket
             http.assembly typeof<TestServer>.Assembly
@@ -267,6 +276,43 @@ module ``HttpBackend Tests`` =
             let result = r.Content.ReadAsStringAsync().Result
             Expect.equal result "Hello!" "Unexpected result"
 
+        let sendFileBytes (method: System.Net.Http.HttpMethod) (client: HttpClient) (server: TestServer) =
+            let withBom (encoding: Encoding) =
+                Array.append (encoding.GetPreamble()) (encoding.GetBytes "Hello, π!")
+
+            // Suave's sendFile sets 200; Giraffe retains the supplied status.
+            let expectedStatus = if server :? GiraffeTestServer then HttpStatusCode.Accepted else HttpStatusCode.OK
+
+            let files =
+                [
+                    "binary", Array.init 256 byte
+                    "UTF-8 BOM", withBom Encoding.UTF8
+                    "UTF-16 BOM", withBom Encoding.Unicode
+                    "empty", Array.empty
+                ]
+
+            for name, data in files do
+                let relativePath = $"send_file_{Guid.NewGuid():N}.bin"
+                let absolutePath = Path.GetFullPath relativePath
+
+                try
+                    File.WriteAllBytes(absolutePath, data)
+
+                    for path in [relativePath; absolutePath] do
+                        let context = $"{name}, {method}, {path}"
+                        use request = new HttpRequestMessage(method, $"http://{server.Host}/send-bytes?path={Uri.EscapeDataString path}")
+                        use response = client.SendAsync(request).Result
+                        Expect.equal response.StatusCode expectedStatus $"Unexpected status: {context}"
+                        Expect.equal response.Content.Headers.ContentType.MediaType "application/octet-stream" $"Unexpected content type: {context}"
+                        Expect.equal (response.Headers.GetValues("X-Send-File") |> Seq.toList) ["preserved"] $"Unexpected header: {context}"
+
+                        let expected = if method = System.Net.Http.HttpMethod.Head then Array.empty else data
+                        let result = response.Content.ReadAsByteArrayAsync().Result
+                        Expect.sequenceEqual result expected $"Unexpected bytes: {context}"
+                        Expect.equal response.Content.Headers.ContentLength (Nullable(int64 data.Length)) $"Unexpected length: {context}"
+                finally
+                    File.Delete absolutePath
+
         let json (client: HttpClient) (server: TestServer) =
             let data = { Foo = "Hello"; Bar = 4 }
             use content = new StringContent(Pickler.jsonToString data)
@@ -334,7 +380,7 @@ module ``HttpBackend Tests`` =
             let root = asm.GetName().Name
             test true $"{root}.embedded_file.txt" "embedded_file.txt"
             test true $"{root}.Resources.embedded_resource_1.txt" "resources/embedded_resource_1.txt"
-            test true @"RESOURCES\embedded_resource_2.md" "resources/embedded_resource_2.md"
+            test true $"RESOURCES{Path.DirectorySeparatorChar}embedded_resource_2.md" "resources/embedded_resource_2.md"
             test false "embedded_file_incorrect.txt" "embedded_file_incorrect.txt"
 
     [<Tests>]
@@ -352,6 +398,8 @@ module ``HttpBackend Tests`` =
                 "Path",               Cases.path
                 "Body",               Cases.body
                 "Send file",          Cases.sendFile
+                "Send file bytes",    Cases.sendFileBytes System.Net.Http.HttpMethod.Get
+                "Send file HEAD",     Cases.sendFileBytes System.Net.Http.HttpMethod.Head
                 "JSON",               Cases.json
                 "WebSocket",          Cases.webSocket
                 "Embedded resources", Cases.embeddedResources
