@@ -26,15 +26,6 @@ type internal JSExpr =
 module internal JSExpr =
     open Aardvark.Base.Monads.State
 
-    let private escape =
-        let rx = System.Text.RegularExpressions.Regex "\\\"|\\\\"
-
-        fun (str: string) ->
-            rx.Replace(str, fun m ->
-                if m.Value = "\"" then "\\\""
-                else "\\\\"
-            )
-
     let rec private eliminateDeadBindings (e : JSExpr) : State<Set<string>, JSExpr> =
         state {
             match e with
@@ -125,9 +116,10 @@ module internal JSExpr =
                 sb << $"document.createElementNS(\"{ns}\", \"{tag}\")"
 
         | SetAttribute(t, name, value) ->
+            let o = value |> System.Web.HttpUtility.JavaScriptStringEncode
             sb << "aardvark.setAttribute("
             buildStringInternal sb t
-            sb << $", \"{name}\", \"{escape value}\");"
+            sb << $", \"{name}\", \"{o}\");"
 
         | RemoveAttribute(t, name) ->
             buildStringInternal sb t
