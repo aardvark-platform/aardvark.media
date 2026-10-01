@@ -116,6 +116,12 @@ bool SharedMemoryV8Handler::Execute(
             void* ptr = handle->buffer->GetArrayBufferData();
             if (ptr != nullptr)
             {
+                size_t bufferSize = handle->buffer->GetArrayBufferByteLength();
+                if (handle->length > bufferSize)
+                {
+                    exception = "Shared memory length exceeds destination buffer size.";
+                    return true;
+                }
                 memcpy(ptr, handle->data, handle->length);
             }
         }
