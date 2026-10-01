@@ -184,7 +184,7 @@ type HttpBackend private () =
             )
 
         member _.method httpMethod =
-            method <| HttpMethod.OTHER httpMethod
+            method <| HttpMethod.parse httpMethod
 
         member _.header key value =
             Writers.setHeader key (string value)

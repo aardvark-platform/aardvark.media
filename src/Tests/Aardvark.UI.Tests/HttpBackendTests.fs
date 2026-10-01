@@ -443,6 +443,83 @@ module ``HttpBackend Tests`` =
             test true $"RESOURCES{Path.DirectorySeparatorChar}embedded_resource_2.md" "resources/embedded_resource_2.md"
             test false "embedded_file_incorrect.txt" "embedded_file_incorrect.txt"
 
+    module private MethodFilters =
+
+        let private standardMethods =
+            ["CONNECT"; "DELETE"; "GET"; "HEAD"; "OPTIONS"; "PATCH"; "POST"; "PUT"; "TRACE"]
+
+        let private extensionMethods = ["QUERY"; "PURGE"; "X-CUSTOM"]
+        let private methods = standardMethods @ extensionMethods
+
+        // Run the complete matrix without transport-specific restrictions (notably CONNECT).
+        let private runSuave requestMethod (handler: global.Suave.Http.WebPart) =
+            let context = global.Suave.Http.HttpContext.empty
+            let context = { context with request = { context.request with rawMethod = requestMethod } }
+            let result = handler context |> Async.RunSynchronously |> Option.get
+            result.response.status.code
+
+        let private runGiraffe requestMethod (handler: global.Giraffe.Core.HttpHandler) =
+            use body = new MemoryStream()
+            let context = Microsoft.AspNetCore.Http.DefaultHttpContext()
+            context.Request.Method <- requestMethod
+            context.Response.Body <- body
+            let result = handler (fun _ -> Task.FromResult None) context
+            Expect.isSome (result.GetAwaiter().GetResult()) "Expected a handled request"
+            context.Response.StatusCode
+
+        let private check (http: IHttpBackend<'Context, 'Handler>) run configuredMethod requestMethod matches =
+            let calls = ResizeArray<string>()
+            let respond status value =
+                http.withContext (fun _ ->
+                    calls.Add value
+                    http.compose (http.status status) (http.response value)
+                )
+
+            let handler =
+                http.choose [
+                    http.compose (http.method configuredMethod) (respond 202 "matched")
+                    respond 404 "fallback"
+                ]
+
+            let status = run requestMethod handler
+            let expectedStatus, expectedCall = if matches then 202, "matched" else 404, "fallback"
+            let context = $"Filter {configuredMethod}, request {requestMethod}"
+            Expect.equal status expectedStatus $"Unexpected response: {context}"
+            Expect.sequenceEqual calls [expectedCall] $"Unexpected handler execution: {context}"
+
+        let private checkSuave = check Suave.HttpBackend.Instance runSuave
+        let private checkGiraffe = check Giraffe.HttpBackend.Instance runGiraffe
+
+        let private createTests name check =
+            testList name [
+                testCase "Matches standard methods" (fun _ ->
+                    for verb in standardMethods do
+                        check verb verb true
+                )
+                testCase "Matches extension methods" (fun _ ->
+                    for verb in extensionMethods do
+                        check verb verb true
+                )
+                testCase "Nonmatching methods fall through without executing the guarded response" (fun _ ->
+                    for configured in methods do
+                        for requested in methods do
+                            if configured <> requested then
+                                check configured requested false
+                )
+            ]
+
+        let tests =
+            testList "Method filters" [
+                createTests "Suave" checkSuave
+                createTests "Giraffe" checkGiraffe
+                testCase "Suave retains native case normalization" (fun _ ->
+                    for verb in methods do
+                        let lower = verb.ToLowerInvariant()
+                        for configured, requested in [lower, verb; verb, lower; lower, lower] do
+                            checkSuave configured requested true
+                )
+            ]
+
     [<Tests>]
     let tests =
         let cases =
@@ -491,4 +568,5 @@ module ``HttpBackend Tests`` =
         testList "HttpBackend Tests" [
             createTests true
             createTests false
+            MethodFilters.tests
         ]
