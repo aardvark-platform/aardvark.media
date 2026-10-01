@@ -40,7 +40,7 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
             let messageType = WebSocketMessageType.ofWebSocketOpCode message
 
             task {
-                do! sendSemaphore.WaitAsync()
+                do! sendSemaphore.WaitAsync(cancellationToken)
 
                 try
                     do! socket.SendAsync(data, messageType, endOfMessage, cancellationToken)
@@ -50,7 +50,7 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
 
     member _.Receive(buffer: SocketBuffer, cancellationToken: CancellationToken) =
         task {
-            do! recvSemaphore.WaitAsync()
+            do! recvSemaphore.WaitAsync(cancellationToken)
 
             try
                 let mutable messageType = -1
@@ -71,9 +71,9 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
 
     member _.Close(cancellationToken: CancellationToken) =
         task {
-            do! sendSemaphore.WaitAsync()
+            do! sendSemaphore.WaitAsync(cancellationToken)
             try
-                do! recvSemaphore.WaitAsync()
+                do! recvSemaphore.WaitAsync(cancellationToken)
                 try
                     do! socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken)
                 finally

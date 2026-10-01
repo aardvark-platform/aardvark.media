@@ -1,3 +1,4 @@
+- [Giraffe] Honor cancellation while WebSocket send, receive, and close operations wait for their semaphores
 - [Giraffe] Avoid excessive receive-buffer growth for fragmented WebSocket messages
 - [Giraffe] Preserve binary data and byte-order marks when serving files with `IHttpBackend.sendFile`
 - Fix JavaScript string encoding of DOM attribute values, including multiline event handlers

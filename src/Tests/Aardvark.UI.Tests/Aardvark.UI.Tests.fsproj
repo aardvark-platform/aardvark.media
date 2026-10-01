@@ -24,6 +24,7 @@
     <Compile Include="Animation\AnimatorTests.fs" />
     <Compile Include="Animation\PrimitivesTests.fs" />
     <Compile Include="HttpBackendTests.fs" />
+    <Compile Include="WebSocketTests.fs" />
     <Compile Include="AttributeMapTests.fs" />
     <Compile Include="JavascriptTests.fs" />
     <None Include="paket.references" />
