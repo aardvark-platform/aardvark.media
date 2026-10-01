@@ -1,4 +1,5 @@
 - [Giraffe] Preserve binary data and byte-order marks when serving files with `IHttpBackend.sendFile`
+- Fix stale attributes when entries change names in `AttributeMap.ofAList`
 
 ### 5.7.5
 - Fix double JSON-encoding of stats.json (https://github.com/aardvark-platform/aardvark.media/issues/53)

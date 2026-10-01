@@ -31,10 +31,14 @@ module AttributeMap =
             let mutable deltas = HashMap.empty
 
             for index, op in IndexListDelta.toSeq ops do
-                match op with
-                | Remove ->
-                    match IndexList.tryGetV index old with
-                    | ValueSome (ok, _) ->
+                match IndexList.tryGetV index old with
+                | ValueSome (ok, _) ->
+                    let removeOld =
+                        match op with
+                        | Remove -> true
+                        | Set(k, _) -> ok <> k
+
+                    if removeOld then
                         store <- store |> HashMap.alterV ok (fun ovs ->
                             match ovs with
                             | ValueSome ovs ->
@@ -48,8 +52,12 @@ module AttributeMap =
                             | ValueNone ->
                                 ValueNone
                         )
-                    | ValueNone ->
-                        ()
+                | ValueNone ->
+                    ()
+
+                match op with
+                | Remove ->
+                    ()
                 | Set(k, v) ->
                     store <- store |> HashMap.alterV k (fun ovs ->
                         let ovs =
@@ -102,6 +110,7 @@ module AttributeMap =
     let ofArray (arr : array<string * AttributeValue<'msg>>) =
         ofSeq arr
 
+    /// Creates an adaptive attribute map, merging duplicate names in list order as entries change.
     let ofAList (list : alist<string * AttributeValue<'msg>>) =
         if list.IsConstant then
             list.Content.GetValue() |> ofSeq
