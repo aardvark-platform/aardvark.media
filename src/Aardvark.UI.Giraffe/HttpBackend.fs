@@ -61,7 +61,7 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
 
                     if result.EndOfMessage then
                         messageType <- int result.MessageType
-                    else
+                    elif buffer.Position = buffer.Size then
                         buffer.Grow()
 
                 return WebSocketMessageType.toWebSocketOpCode (enum<WebSocketMessageType> messageType)

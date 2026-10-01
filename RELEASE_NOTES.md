@@ -1,3 +1,4 @@
+- [Giraffe] Avoid excessive receive-buffer growth for fragmented WebSocket messages
 - [Giraffe] Preserve binary data and byte-order marks when serving files with `IHttpBackend.sendFile`
 - Fix stale attributes when entries change names in `AttributeMap.ofAList`
 
