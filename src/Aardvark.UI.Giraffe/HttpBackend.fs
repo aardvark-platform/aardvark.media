@@ -193,6 +193,6 @@ type HttpBackend private () =
                             let env = ctx.GetWebHostEnvironment()
                             Path.Combine(env.ContentRootPath, filePath)
 
-                    let! html = readFileAsStringAsync filePath
-                    return! ctx.WriteStringAsync html
+                    let! data = File.ReadAllBytesAsync filePath
+                    return! ctx.WriteBytesAsync data
                 }
