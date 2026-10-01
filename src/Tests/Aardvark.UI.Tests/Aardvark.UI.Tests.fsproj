@@ -24,6 +24,7 @@
     <Compile Include="Animation\AnimatorTests.fs" />
     <Compile Include="Animation\PrimitivesTests.fs" />
     <Compile Include="HttpBackendTests.fs" />
+    <Compile Include="AttributeMapTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="embedded_file.txt" />
