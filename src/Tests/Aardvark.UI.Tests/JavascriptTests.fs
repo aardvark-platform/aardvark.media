@@ -3,6 +3,8 @@ namespace Aardvark.UI.Tests
 open System
 open System.Text.Json
 open Aardvark.UI
+open Aardvark.UI.Primitives
+open FSharp.Data.Adaptive
 open Expecto
 
 module ``Javascript Tests`` =
@@ -51,6 +53,20 @@ module ``Javascript Tests`` =
             let literal = code.Substring(prefix.Length, code.Length - prefix.Length - suffix.Length)
             Expect.equal (JsonSerializer.Deserialize<string> literal) value $"Changed attribute value for {name}"
 
+    let private textboxCases =
+        [
+            None, "var validate = function(a) { return a };"
+            Some "^a*$", "var validate = function(a) { if(/^a*$/.test(a)) { return a; } else { return null; }};"
+            Some "^a+$", "var validate = function(a) { if(/^a+$/.test(a)) { return a; } else { return null; }};"
+        ]
+
+    let private textboxBoot regex =
+        let config = { TextConfig.empty with regex = regex }
+        let node = SimplePrimitives.Incremental.textbox config AttributeMap.empty (AVal.constant "aaa") id
+        match node.Boot with
+        | ValueSome boot -> node, boot "textbox"
+        | ValueNone -> failtest "Expected textbox boot code"
+
     [<Tests>]
     let tests =
         testList "Javascript Tests" [
@@ -62,5 +78,25 @@ module ``Javascript Tests`` =
             }
             test "SetAttribute preserves plain and already-escaped text" {
                 check literals
+            }
+            test "Textbox input accepts non-null validation results without dispatching" {
+                let expected = "$input.on('input', function(e) { var v = validate(e.target.value); if(v !== null) { $self.removeClass('error'); } else { $self.addClass('error'); } });"
+                for regex, _ in textboxCases do
+                    let _, boot = textboxBoot regex
+                    Expect.stringContains boot expected $"Input must distinguish null from empty text: {regex}"
+            }
+            test "Textbox change dispatches non-null values and rolls back rejections" {
+                let expected = "$input.change(function(e) { var v = validate(e.target.value); if(v !== null) { old = v; aardvark.processEvent('textbox', 'data-event', v); } else { $input.val(old); $self.removeClass('error'); } });"
+                for regex, _ in textboxCases do
+                    let _, boot = textboxBoot regex
+                    Expect.stringContains boot expected $"Change must distinguish null from empty text: {regex}"
+            }
+            test "Textbox preserves validators and value-channel synchronization" {
+                for regex, validation in textboxCases do
+                    let node, boot = textboxBoot regex
+                    Expect.stringContains boot validation "Changed validation semantics"
+                    Expect.isTrue (node.Channels.ContainsKey "valueCh") "Missing value channel"
+                    Expect.stringContains boot "var old = $input.val();" "Missing initial rollback value"
+                    Expect.stringContains boot "valueCh.onmessage = function(v) {  old = v.value; $input.val(v.value); };" "Server values must synchronize both the input and rollback value"
             }
         ]
