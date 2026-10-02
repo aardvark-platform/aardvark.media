@@ -1,3 +1,4 @@
+- [Primitives] Allow clearing textboxes when validation accepts the empty string
 - [Giraffe] Avoid excessive receive-buffer growth for fragmented WebSocket messages
 - [Giraffe] Preserve binary data and byte-order marks when serving files with `IHttpBackend.sendFile`
 - Fix JavaScript string encoding of DOM attribute values, including multiline event handlers
