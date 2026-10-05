@@ -368,7 +368,7 @@ module internal Updaters =
 
                             let str = Event.toString' id name version evt
                             yield JSExpr.SetAttribute(self, name, str)
-                            yield JSExpr.SetEventHandler(self, name, version) // Sends and empty event to set the event handler active
+                            yield JSExpr.SetEventHandler(id, name, version) // Sends an empty event to set the event handler active
 
                     | Remove ->
                         let key = ChannelId(id, name)

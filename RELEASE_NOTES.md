@@ -1,3 +1,5 @@
+- Restore initial body event-handler activation for versionless boot events
+
 ### 5.7.6
 - Fix stale attributes when entries change names in `AttributeMap.ofAList`
 - Fix JavaScript string encoding of DOM attribute values, including multiline event handlers
