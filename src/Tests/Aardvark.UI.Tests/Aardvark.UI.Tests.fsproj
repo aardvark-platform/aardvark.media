@@ -27,6 +27,7 @@
     <Compile Include="WebSocketTests.fs" />
     <Compile Include="AttributeMapTests.fs" />
     <Compile Include="JavascriptTests.fs" />
+    <Compile Include="UpdaterTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="embedded_file.txt" />

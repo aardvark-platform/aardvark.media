@@ -8,7 +8,7 @@ type internal JSExpr =
     | CreateElement   of tag : string * ns : string
     | SetAttribute    of target : JSExpr * name : string * value : string
     | RemoveAttribute of target : JSExpr * name : string
-    | SetEventHandler of target : JSExpr * name : string * version : byte
+    | SetEventHandler of id : string * name : string * version : byte
     | Remove          of target : JSExpr
     | InnerText       of target : JSExpr * text : string
     | Replace         of oldElement : JSExpr * newElement : JSExpr
@@ -29,7 +29,7 @@ module internal JSExpr =
     let rec private eliminateDeadBindings (e : JSExpr) : State<Set<string>, JSExpr> =
         state {
             match e with
-            | Raw _ | Body | Nop | CreateElement _ | GetElementById _ ->
+            | Raw _ | Body | Nop | CreateElement _ | GetElementById _ | SetEventHandler _ ->
                 return e
 
             | SetAttribute(t, name, value) ->
@@ -39,10 +39,6 @@ module internal JSExpr =
             | RemoveAttribute(t, name) ->
                 let! t = eliminateDeadBindings t
                 return RemoveAttribute(t, name)
-
-            | SetEventHandler(t, name, version) ->
-                let! t = eliminateDeadBindings t
-                return SetEventHandler(t, name, version)
 
             | Let(v,e,b) ->
                 let! b = eliminateDeadBindings b
@@ -125,10 +121,9 @@ module internal JSExpr =
             buildStringInternal sb t
             sb << $".removeAttribute(\"{name}\");"
 
-        | SetEventHandler(t, name, version) ->
-            sb << "aardvark.setEventHandler(\""
-            buildStringInternal sb t
-            sb << $"\", \"{name}\", {version});"
+        | SetEventHandler(id, name, version) ->
+            let id = id |> System.Web.HttpUtility.JavaScriptStringEncode
+            sb << $"aardvark.setEventHandler(\"{id}\", \"{name}\", {version});"
 
         | GetElementById(id) ->
             sb << $"document.getElementById(\"{id}\")"
