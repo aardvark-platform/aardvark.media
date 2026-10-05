@@ -1,11 +1,12 @@
+### 5.7.6
+- Fix stale attributes when entries change names in `AttributeMap.ofAList`
+- Fix JavaScript string encoding of DOM attribute values, including multiline event handlers
 - [Primitives] Allow clearing textboxes when validation accepts the empty string
 - [Suave] Honor permanent redirects with HTTP 301 while retaining HTTP 302 for temporary redirects
 - [Suave] Fix `IHttpBackend.method` filters for standard HTTP verbs while retaining native normalization and extension methods
 - [Giraffe] Honor cancellation while WebSocket send, receive, and close operations wait for their semaphores
 - [Giraffe] Avoid excessive receive-buffer growth for fragmented WebSocket messages
 - [Giraffe] Preserve binary data and byte-order marks when serving files with `IHttpBackend.sendFile`
-- Fix JavaScript string encoding of DOM attribute values, including multiline event handlers
-- Fix stale attributes when entries change names in `AttributeMap.ofAList`
 
 ### 5.7.5
 - Fix double JSON-encoding of stats.json (https://github.com/aardvark-platform/aardvark.media/issues/53)
