@@ -113,11 +113,16 @@ bool SharedMemoryV8Handler::Execute(
         if (userData != nullptr)
         {
             SharedMemoryHandle* handle = static_cast<SharedMemoryHandle*>(userData.get());
+            if (handle->data == nullptr)
+            {
+                exception = "Shared memory handle is not mapped.";
+                return true;
+            }
             void* ptr = handle->buffer->GetArrayBufferData();
             if (ptr != nullptr)
             {
                 size_t bufferSize = handle->buffer->GetArrayBufferByteLength();
-                if (handle->length > bufferSize)
+                if (handle->length == 0 || handle->length > bufferSize)
                 {
                     exception = "Shared memory length exceeds destination buffer size.";
                     return true;
