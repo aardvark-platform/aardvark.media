@@ -76,10 +76,10 @@
                 `../rendering/render/${this.id}?session=${aardvark.guid}&scene=${this.scene}&samples=${this.samples}&mapped=${useMapping}&quality=${this.quality}`
             );
 
-        const onGlobalClick = function (event) {
+        this.onGlobalClick = function (event) {
             if (event.target === self.div) self.div.focus();
         };
-        document.addEventListener("click", onGlobalClick, false);
+        document.addEventListener("click", this.onGlobalClick, false);
 
         const socket = new WebSocket(url);
         socket.binaryType = "blob";
@@ -208,6 +208,11 @@
     }
 
     destroy() {
+        if (this.onGlobalClick) {
+            document.removeEventListener("click", this.onGlobalClick, false);
+            delete this.onGlobalClick;
+        }
+
         if (this.socket) {
             const socket = this.socket;
             delete this.socket;
