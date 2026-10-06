@@ -1,5 +1,6 @@
 - Restore initial body event-handler activation for versionless boot events
 - Preserve encoded page query parameters when opening UI event WebSockets
+- Remove the receiving client channel on teardown without affecting unrelated channels
 
 ### 5.7.6
 - Fix stale attributes when entries change names in `AttributeMap.ofAList`

@@ -269,7 +269,7 @@ class Channel {
                 const msg = JSON.parse(data[i]);
                 if (msg === "commit-suicide") {
                     console.debug("[Aardvark] channel " + this.name + " was closed");
-                    delete aardvark.channels[name];
+                    delete aardvark.channels[this.name];
                     break;
                 }
                 this._recv(msg);
