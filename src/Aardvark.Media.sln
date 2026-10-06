@@ -135,6 +135,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "19 - RenderToTexture (CEF)"
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Aardvark.Cef.Process", "Aardvark.Cef.Process\Aardvark.Cef.Process.fsproj", "{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}"
 EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "36 - RemoteControl", "Scratch\36 - RemoteControl\36 - RemoteControl.fsproj", "{1C2E4DC5-A43A-47B3-BE7D-229BB9A8DFA3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -369,6 +371,10 @@ Global
 		{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{ABFB54BA-45E2-06BA-7594-5C3E8258BE55}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C2E4DC5-A43A-47B3-BE7D-229BB9A8DFA3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C2E4DC5-A43A-47B3-BE7D-229BB9A8DFA3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C2E4DC5-A43A-47B3-BE7D-229BB9A8DFA3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C2E4DC5-A43A-47B3-BE7D-229BB9A8DFA3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -423,6 +429,7 @@ Global
 		{B315793A-9E8F-4472-8DA4-58E507BFB2E3} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 		{9F11A02C-489E-4CC2-99EC-64D657A5D567} = {C47A910F-5F84-4084-BFE4-47E7EB45B1B0}
 		{178F952C-0143-F8BB-BFB6-3C429F38C0EC} = {DAC89FC7-17D3-467D-929D-781A88DA5324}
+		{1C2E4DC5-A43A-47B3-BE7D-229BB9A8DFA3} = {49FCD64D-3937-4F2E-BA36-D5B1837D4E5F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B7FCCF28-D562-4E8F-86A7-2310B38A1016}
