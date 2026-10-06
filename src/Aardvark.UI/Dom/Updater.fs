@@ -494,10 +494,13 @@ module internal Updaters =
                                             ]
                                         )
                                     else
-                                        JSExpr.Sequential [
-                                            oldElement.Destroy(state, GetElementById oid)
-                                            newElement.Update(token, state, ValueNone)
-                                        ]
+                                        JSExpr.Let(oid, GetElementById oid,
+                                            JSExpr.Sequential [
+                                                oldElement.Destroy(state, Var oid)
+                                                JSExpr.Remove(Var oid)
+                                                newElement.Update(token, state, ValueNone)
+                                            ]
+                                        )
                                 else
                                     if notNull nid then
                                         JSExpr.Sequential [
