@@ -313,7 +313,7 @@ module Events =
         kind, AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left) / rect.width"
                     "var y = (event.clientY - rect.top) / rect.height"
                     send src [$"event.{eventButton}"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
@@ -338,7 +338,7 @@ module Events =
         kind, AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left)"
                     "var y = (event.clientY - rect.top)"
                     send src [$"event.{eventButton}"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"; "{ X: rect.width.toFixed(10), Y: rect.height.toFixed(10) }"]
@@ -386,7 +386,7 @@ module Events =
         "onwheel", AttributeValue.Event {
             clientSide = fun send src -> 
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(event.target)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left) / rect.width"
                     "var y = (event.clientY - rect.top) / rect.height"
                     send src ["{ X: event.deltaX.toFixed(), Y : event.deltaY.toFixed() }"; "{ X: x.toFixed(10), Y: y.toFixed(10) }"]
@@ -427,7 +427,7 @@ module Events =
         name, AttributeValue.Event {
             clientSide = fun send src ->
                 String.concat ";" [
-                    "var rect = getBoundingClientRect(this)"
+                    "var rect = this.getBoundingClientRect()"
                     "var x = (event.clientX - rect.left)"
                     "var y = (event.clientY - rect.top)"
 
