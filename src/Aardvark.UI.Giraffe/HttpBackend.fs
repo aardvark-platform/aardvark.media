@@ -163,8 +163,10 @@ type HttpBackend private () =
                 task {
                     if context.WebSockets.IsWebSocketRequest then
                         let! nativeSocket = context.WebSockets.AcceptWebSocketAsync()
-                        use socket = new WebSocket(nativeSocket)
-                        let! _ = continuation socket context
+                        do! task {
+                            use socket = new WebSocket(nativeSocket)
+                            do! continuation socket context
+                        }
                         return! next context
                     else
                         return! RequestErrors.BAD_REQUEST "Expected web socket request" next context

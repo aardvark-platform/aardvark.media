@@ -253,7 +253,7 @@ module ``WebSocket Tests`` =
             let next received =
                 nextCalls <- nextCalls + 1
                 checkContext received
-                Expect.equal native.DisposeCount pendingDisposeCount "Downstream entry must preserve explicit disposal or the live fallback scope"
+                Expect.equal native.DisposeCount 1 "Native socket must be disposed exactly once before downstream entry"
                 nextEntered.TrySetResult(()) |> ignore
                 if completion = SynchronousNextFailure then
                     raise expectedError
@@ -280,7 +280,8 @@ module ``WebSocket Tests`` =
                         do! awaitEntry nextEntered.Task work
                         if completion <> SynchronousNextFailure then
                             Expect.isFalse work.IsCompleted "Handler must wait for the downstream task"
-                            Expect.equal native.DisposeCount pendingDisposeCount "Pending downstream handler must preserve explicit disposal or keep the native socket alive"
+                            Expect.equal native.DisposeCount 1 "Pending downstream work must not keep the native socket alive"
+                            do! expectDisposed (Option.get wrapper)
                             nextRelease.TrySetResult(()) |> ignore
 
                 if completion = Return then
@@ -338,7 +339,7 @@ module ``WebSocket Tests`` =
     [<Tests>]
     let tests =
         testList "WebSocket Tests.Giraffe" [
-            testCaseAsync "Accepted socket lifetime respects explicit disposal and scoped fallback" (async {
+            testCaseAsync "Accepted sockets are disposed before downstream with explicit disposal or fallback" (async {
                 for disposeEarly in [false; true] do
                     for returnContext in [false; true] do
                         do! lifetime Return disposeEarly returnContext |> Async.AwaitTask
@@ -350,49 +351,63 @@ module ``WebSocket Tests`` =
                         do! lifetime completion disposeEarly true |> Async.AwaitTask
             })
 
-            testCaseAsync "Native disposal failure still releases wrapper semaphores and is not retried" (async {
-                let disposalError = InvalidOperationException("native disposal failed")
-                let callbackError = InvalidOperationException("callback failed after cleanup")
-                let native = new ControlledSocket(None, disposeError = disposalError)
-                let context = DefaultHttpContext()
-                let mutable wrapper = None
-                context.Features.Set<IHttpWebSocketFeature>(
-                    { new IHttpWebSocketFeature with
-                        member _.IsWebSocketRequest = true
-                        member _.AcceptAsync _ = Task.FromResult(native :> System.Net.WebSockets.WebSocket) }
-                )
-                let handler =
-                    Giraffe.HttpBackend.Instance.handShake (fun socket _ ->
-                        wrapper <- Some socket
-                        task {
-                            try
-                                socket.Dispose()
-                                failtest "Expected native disposal failure"
-                            with error ->
-                                Expect.isTrue (Object.ReferenceEquals(error, disposalError)) "Wrapper must preserve native disposal failure identity"
-                            Expect.equal native.DisposeCount 1 "Native disposal must be attempted once before test cleanup"
-                            do! expectDisposed socket
-                            Expect.isEmpty native.Calls "Both semaphores must be released even when native disposal throws"
-                            disposeRepeatedly native socket
-                            return raise callbackError
-                        }
+            testCaseAsync "Disposal failures release semaphores once and prevent downstream entry" (async {
+                for disposeEarly in [false; true] do
+                    let disposalError = InvalidOperationException("native disposal failed")
+                    let callbackError = InvalidOperationException("callback failed after cleanup")
+                    let native = new ControlledSocket(None, disposeError = disposalError)
+                    let context = DefaultHttpContext()
+                    let mutable wrapper = None
+                    let mutable nextCalls = 0
+                    context.Features.Set<IHttpWebSocketFeature>(
+                        { new IHttpWebSocketFeature with
+                            member _.IsWebSocketRequest = true
+                            member _.AcceptAsync _ = Task.FromResult(native :> System.Net.WebSockets.WebSocket) }
                     )
-                try
-                    let work = handler (fun _ -> failtest "Failed continuation must not invoke downstream") context
-                    let! error =
-                        task {
-                            try
-                                let! _ = work.WaitAsync timeout
-                                return failtest "Expected callback failure"
-                            with error -> return error
-                        } |> Async.AwaitTask
-                    Expect.isTrue (Object.ReferenceEquals(error, callbackError)) "Scoped cleanup must not retry native disposal or replace the callback failure"
-                    Expect.equal native.DisposeCount 1 "Failure cleanup must not dispose the native socket twice"
-                    disposeRepeatedly native (Option.get wrapper)
-                finally
-                    wrapper |> Option.iter (fun socket -> socket.Dispose())
-                    if native.DisposeCount = 0 then
-                        try native.Dispose() with error when Object.ReferenceEquals(error, disposalError) -> ()
+                    let handler =
+                        Giraffe.HttpBackend.Instance.handShake (fun socket _ ->
+                            wrapper <- Some socket
+                            if disposeEarly then
+                                task {
+                                    try
+                                        socket.Dispose()
+                                        failtest "Expected native disposal failure"
+                                    with error ->
+                                        Expect.isTrue (Object.ReferenceEquals(error, disposalError)) "Wrapper must preserve native disposal failure identity"
+                                    Expect.equal native.DisposeCount 1 "Native disposal must be attempted once before test cleanup"
+                                    do! expectDisposed socket
+                                    Expect.isEmpty native.Calls "Both semaphores must be released even when native disposal throws"
+                                    disposeRepeatedly native socket
+                                    return raise callbackError
+                                }
+                            else
+                                Task.CompletedTask
+                        )
+                    let next _ =
+                        nextCalls <- nextCalls + 1
+                        Task.FromResult(Some (context :> HttpContext))
+                    try
+                        let work = handler next context
+                        let! error =
+                            task {
+                                try
+                                    let! _ = work.WaitAsync timeout
+                                    return failtest "Expected callback or fallback-disposal failure"
+                                with error -> return error
+                            } |> Async.AwaitTask
+                        let expectedError = if disposeEarly then callbackError else disposalError
+                        Expect.isTrue (Object.ReferenceEquals(error, expectedError)) "Scoped cleanup must propagate the exact failure without retrying disposal"
+                        Expect.isTrue work.IsFaulted "Disposal failure must remain a faulted task"
+                        Expect.equal nextCalls 0 "Failed callback or fallback disposal must prevent downstream entry"
+                        Expect.equal native.DisposeCount 1 "Failure cleanup must dispose the native socket exactly once before test cleanup"
+                        let socket = Option.get wrapper
+                        do! expectDisposed socket |> Async.AwaitTask
+                        Expect.isEmpty native.Calls "Failure cleanup must dispose both semaphores"
+                        disposeRepeatedly native socket
+                    finally
+                        wrapper |> Option.iter (fun socket -> socket.Dispose())
+                        if native.DisposeCount = 0 then
+                            try native.Dispose() with error when Object.ReferenceEquals(error, disposalError) -> ()
             })
 
             testCaseAsync "Non-WebSocket requests remain HTTP 400 without acceptance or callbacks" (async {

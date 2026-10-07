@@ -349,7 +349,6 @@ module internal RenderServer =
                         | _ -> ()
                     )
 
-                    socket.Dispose()
                     clientCount.Signal() |> ignore
             }
 

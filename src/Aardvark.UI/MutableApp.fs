@@ -569,7 +569,6 @@ module MutableApp =
 
                     updater.Destroy(state, JSExpr.Body) |> ignore
                     subscription.Dispose()
-                    socket.Dispose()
 
                     Report.Line(3, $"[Media] Closed session {sessionId}")
                 }

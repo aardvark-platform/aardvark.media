@@ -1,4 +1,4 @@
-- [Giraffe] Clean up accepted WebSockets once on wrapper disposal or handshake completion, including failure and cancellation
+- [Giraffe] Dispose accepted WebSockets once when their continuation completes, before downstream handlers run
 - Restore initial body event-handler activation for versionless boot events
 - Preserve encoded page query parameters when opening UI event WebSockets
 - Remove the receiving client channel on teardown without affecting unrelated channels
