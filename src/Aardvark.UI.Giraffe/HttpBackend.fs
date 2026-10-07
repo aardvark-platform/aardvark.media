@@ -31,6 +31,7 @@ module internal WebSocketMessageType =
 type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
     let sendSemaphore = new SemaphoreSlim(1, 1)
     let recvSemaphore = new SemaphoreSlim(1, 1)
+    let mutable disposed = 0
 
     member _.Send(message: WebSocketOpCode, data: byte[], cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) =
         if message = WebSocketOpCode.Ping || message = WebSocketOpCode.Pong then
@@ -83,8 +84,12 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
         }
 
     member _.Dispose() =
-        sendSemaphore.Dispose()
-        recvSemaphore.Dispose()
+        if Interlocked.Exchange(&disposed, 1) = 0 then
+            try
+                socket.Dispose()
+            finally
+                sendSemaphore.Dispose()
+                recvSemaphore.Dispose()
 
     interface IWebSocket with
         member this.Send(message, data, cancellationToken, endOfMessage) = this.Send(message, data, cancellationToken, endOfMessage)
@@ -157,8 +162,12 @@ type HttpBackend private () =
             fun next (context: HttpContext) ->
                 task {
                     if context.WebSockets.IsWebSocketRequest then
-                        let! socket = context.WebSockets.AcceptWebSocketAsync()
-                        let! _ = continuation (new WebSocket(socket)) context
+                        let! nativeSocket = context.WebSockets.AcceptWebSocketAsync()
+                        let socket = new WebSocket(nativeSocket)
+                        try
+                            do! continuation socket context
+                        finally
+                            socket.Dispose()
                         return! next context
                     else
                         return! RequestErrors.BAD_REQUEST "Expected web socket request" next context
