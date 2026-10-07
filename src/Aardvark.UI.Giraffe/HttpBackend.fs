@@ -31,6 +31,7 @@ module internal WebSocketMessageType =
 type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
     let sendSemaphore = new SemaphoreSlim(1, 1)
     let recvSemaphore = new SemaphoreSlim(1, 1)
+    let mutable disposed = 0
 
     member _.Send(message: WebSocketOpCode, data: byte[], cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) =
         if message = WebSocketOpCode.Ping || message = WebSocketOpCode.Pong then
@@ -83,8 +84,12 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
         }
 
     member _.Dispose() =
-        sendSemaphore.Dispose()
-        recvSemaphore.Dispose()
+        if Interlocked.Exchange(&disposed, 1) = 0 then
+            try
+                socket.Dispose()
+            finally
+                sendSemaphore.Dispose()
+                recvSemaphore.Dispose()
 
     interface IWebSocket with
         member this.Send(message, data, cancellationToken, endOfMessage) = this.Send(message, data, cancellationToken, endOfMessage)
@@ -157,7 +162,7 @@ type HttpBackend private () =
             fun next (context: HttpContext) ->
                 task {
                     if context.WebSockets.IsWebSocketRequest then
-                        use! nativeSocket = context.WebSockets.AcceptWebSocketAsync()
+                        let! nativeSocket = context.WebSockets.AcceptWebSocketAsync()
                         use socket = new WebSocket(nativeSocket)
                         let! _ = continuation socket context
                         return! next context
