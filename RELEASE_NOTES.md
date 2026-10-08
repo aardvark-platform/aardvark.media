@@ -1,4 +1,4 @@
-- [Giraffe] Dispose accepted WebSockets once when their continuation completes, before downstream handlers run
+- [Giraffe] Dispose accepted WebSockets once before downstream handlers, using continuation-only cleanup without a nested task
 - Restore initial body event-handler activation for versionless boot events
 - Preserve encoded page query parameters when opening UI event WebSockets
 - Remove the receiving client channel on teardown without affecting unrelated channels
