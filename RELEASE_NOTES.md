@@ -4,6 +4,7 @@
 - Preserve encoded page query parameters when opening UI event WebSockets
 - Remove the receiving client channel on teardown without affecting unrelated channels
 - [Giraffe] Dispose accepted WebSockets once before downstream handlers
+- [Giraffe] Dispose owned server hosts after shutdown or startup failure, including cancellation and shutdown errors
 
 ### 5.7.6
 - Fix stale attributes when entries change names in `AttributeMap.ofAList`
