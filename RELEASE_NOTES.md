@@ -1,3 +1,4 @@
+- [Giraffe] Dispose owned server hosts after shutdown or startup failure, including cancellation and shutdown errors
 - Remove stale DOM elements when adaptive children are replaced by empty nodes
 - Remove each renderer's document click listener on shutdown without affecting live renderers
 - Restore initial body event-handler activation for versionless boot events
