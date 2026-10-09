@@ -44,6 +44,18 @@ module Server =
                         |> ignore
                 )
 
+    let internal startHost (cancellationToken: CancellationToken) (host: IHost) : Task =
+        try
+            host.StartAsync(cancellationToken).GetAwaiter().GetResult()
+        with _ ->
+            host.Dispose()
+            reraise()
+
+        task {
+            use host = host
+            do! host.WaitForShutdownAsync(cancellationToken)
+        }
+
     /// <summary>
     /// Starts the web server and runs asynchronously until the server is fully shut down.
     /// </summary>
@@ -54,11 +66,10 @@ module Server =
     /// </param>
     /// <param name="responseCompression">Enables or disables HTTP response compression.</param>
     /// <param name="content">A sequence of WebParts defining the HTTP routing and execution logic.</param>
-    /// <returns>A task that completes when the server is shut down.</returns>
+    /// <returns>A task that completes when the server is shut down and its host is disposed.</returns>
     let start (url: string) (cancellationToken: CancellationToken) (responseCompression: bool) (content: WebPart seq) : Task =
         let host = createHost url responseCompression content |> _.Build()
-        host.StartAsync(cancellationToken).GetAwaiter().GetResult()
-        host.WaitForShutdownAsync(cancellationToken)
+        startHost cancellationToken host
 
     /// <summary>
     /// Starts the web server locally on the specified port and runs asynchronously until the server is fully shut down.
@@ -69,7 +80,7 @@ module Server =
     /// the running server to stop accepting requests and wind down all internal services.
     /// </param>
     /// <param name="content">A sequence of WebParts defining the HTTP routing and execution logic.</param>
-    /// <returns>A task that completes when the server is shut down.</returns>
+    /// <returns>A task that completes when the server is shut down and its host is disposed.</returns>
     let startLocalhost (port: int) (cancellationToken: CancellationToken) (content: WebPart seq) : Task =
         let url = $"http://{IPAddress.Loopback}:{port}"
         start url cancellationToken false content
