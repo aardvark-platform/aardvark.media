@@ -885,6 +885,94 @@ module ``Groups Tests`` =
                 ]
             }
 
+    module private Completion =
+
+        let private starting value = [EventType.Start, value; EventType.Progress, value]
+        let private finishing value = [EventType.Progress, value; EventType.Finalize, value]
+
+        let private create concurrent durationB mirror =
+            let finalized = ResizeArray<string>()
+            let track name (animation: IAnimation<unit, float>) =
+                let events, animation = Animation.trackEvents animation
+                events, animation |> Animation.onEvent EventType.Finalize (fun _ _ model ->
+                    finalized.Add name
+                    model)
+
+            let eventsA, a = Animation.create id |> Animation.seconds 1.0 |> track "A"
+            let eventsB, b = Animation.create id |> Animation.seconds durationB |> track "B"
+            let group = if concurrent then Animation.map2 (+) a b else Animation.sequential [a; b]
+            let group = if mirror then group |> Animation.loopN LoopMode.Mirror 2 else group
+            let eventsGroup, group = group |> track "Parent"
+            Animator.createAndStart "Completion" group ()
+            let instance : IAnimationInstance<unit, float> = Animator.get "Completion" ()
+
+            let check (seconds: float) expectedA expectedB expectedGroup expectedFinalized =
+                Animator.tickSeconds seconds
+                match List.tryLast expectedGroup with
+                | Some (_, value) ->
+                    Expect.equal instance.Value value "Unexpected group value"
+                    Expect.equal instance.IsFinished
+                        (expectedGroup |> List.exists (fun (event, _) -> event = EventType.Finalize))
+                        "Unexpected group completion state"
+                | None -> ()
+                Expect.checkEvents eventsA expectedA
+                Expect.checkEvents eventsB expectedB
+                Expect.checkEvents eventsGroup expectedGroup
+                Expect.checkEvents finalized expectedFinalized
+
+            let complete seconds value =
+                Expect.isTrue instance.IsFinished "Parent must finish at its terminal tick"
+                // Include the same timestamp: completion must not be emitted twice.
+                for tick in [seconds; seconds + 1.0; seconds + 2.0] do
+                    check tick [] [] [] []
+                    Expect.equal instance.Value value "Later ticks must preserve the terminal value"
+
+            check 0.0 (starting 0.0) (if concurrent then starting 0.0 else []) (starting 0.0) []
+            check, complete
+
+        let sequential durationB =
+            use _ = Animator.initTest()
+            let check, complete = create false durationB false
+            let terminal = 1.0 + durationB
+            let expectedB =
+                if durationB = 0.0 then starting 1.0 @ [EventType.Finalize, 1.0]
+                else starting 0.0 @ finishing 1.0
+            check terminal (finishing 1.0) expectedB (finishing 1.0) ["A"; "B"; "Parent"]
+            complete terminal 1.0
+
+        let mirrored concurrent =
+            use _ = Animator.initTest()
+            let check, complete = create concurrent (if concurrent then 2.0 else 1.0) true
+            let atTurn = if concurrent then 2.0 else 1.0
+            let expectedB = if concurrent then [EventType.Progress, 1.0] else starting 0.0 @ [EventType.Progress, 1.0]
+            check 2.0 (finishing 1.0) expectedB [EventType.Progress, atTurn] ["A"]
+            check 4.0 (starting 1.0 @ finishing 0.0) (finishing 0.0) (finishing 0.0) ["A"; "B"; "Parent"]
+            complete 4.0 0.0
+
+        let nonFinalSequential transition =
+            use _ = Animator.initTest()
+            let check, complete = create false 1.0 false
+            let value = transition - 1.0
+            let expectedB =
+                if transition = 1.0 then starting 0.0
+                else starting 0.0 @ [EventType.Progress, value]
+            check transition (finishing 1.0) expectedB [EventType.Progress, value] ["A"]
+            check 2.0 [] (finishing 1.0) (finishing 1.0) ["B"; "Parent"]
+            complete 2.0 1.0
+
+        let intermediateReentry concurrent =
+            use _ = Animator.initTest()
+            let check, complete = create concurrent (if concurrent then 2.0 else 1.0) true
+            let atTurn = if concurrent then 2.0 else 1.0
+            let expectedB = if concurrent then [EventType.Progress, 1.0] else starting 0.0 @ [EventType.Progress, 1.0]
+            check 2.0 (finishing 1.0) expectedB [EventType.Progress, atTurn] ["A"]
+            let expectedB = if concurrent then [EventType.Progress, 0.25] else finishing 0.0
+            check 3.5 (starting 1.0 @ [EventType.Progress, 0.5]) expectedB
+                [EventType.Progress, if concurrent then 0.75 else 0.5] (if concurrent then [] else ["B"])
+            check 4.0 (finishing 0.0) (if concurrent then finishing 0.0 else [])
+                (finishing 0.0) (if concurrent then ["A"; "B"; "Parent"] else ["A"; "Parent"])
+            complete 4.0 0.0
+
     [<Tests>]
     let tests =
         testList "Animation.Groups" [
@@ -905,5 +993,20 @@ module ``Groups Tests`` =
                 Concurrent.progress
                 Concurrent.positionWithEasing
                 Concurrent.pauseResumeWithEasing
+            ]
+
+            testList "Completion" [
+                test "Sequential terminal activation finalizes at the target" {
+                    for duration in [1.0; 0.0] do Completion.sequential duration
+                }
+                test "Mirrored terminal reactivation finalizes at the target" {
+                    for concurrent in [false; true] do Completion.mirrored concurrent
+                }
+                test "Non-final activation waits for ordinary completion" {
+                    for transition in [1.0; 1.5] do Completion.nonFinalSequential transition
+                }
+                test "Mirrored intermediate reentry keeps ordinary completion" {
+                    for concurrent in [false; true] do Completion.intermediateReentry concurrent
+                }
             ]
         ]
