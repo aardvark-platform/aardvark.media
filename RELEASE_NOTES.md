@@ -5,6 +5,7 @@
 - Remove the receiving client channel on teardown without affecting unrelated channels
 - [Giraffe] Dispose accepted WebSockets once before downstream handlers
 - [Giraffe] Dispose owned server hosts after shutdown or startup failure, including cancellation and shutdown errors
+- [Animation] Preserve child completion callbacks when group animations finish after skipped ticks
 
 ### 5.7.6
 - Fix stale attributes when entries change names in `AttributeMap.ofAList`
