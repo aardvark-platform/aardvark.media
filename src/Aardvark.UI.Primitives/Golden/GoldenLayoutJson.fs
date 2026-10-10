@@ -15,7 +15,7 @@ module GoldenLayoutJson =
             module private Extensions =
 
                 let inline private (|JValue|_|) (v : JValue) =
-                    if v.Value.GetType() = typeof<'T> then Some <| unbox<'T> v.Value
+                    if notNull v.Value && v.Value.GetType() = typeof<'T> then Some <| unbox<'T> v.Value
                     else None
 
                 let private (|JFloat|_|) : JValue -> float option = (|JValue|_|)

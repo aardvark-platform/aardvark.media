@@ -1,3 +1,4 @@
+- [Primitives] Treat null optional GoldenLayout JSON fields like omitted properties
 - Remove stale DOM elements when adaptive children are replaced by empty nodes
 - Remove each renderer's document click listener on shutdown without affecting live renderers
 - Restore initial body event-handler activation for versionless boot events
