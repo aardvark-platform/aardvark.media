@@ -1,3 +1,4 @@
+- [Animation] Preserve child completion callbacks when group animations finish after skipped ticks
 - Remove stale DOM elements when adaptive children are replaced by empty nodes
 - Remove each renderer's document click listener on shutdown without affecting live renderers
 - Restore initial body event-handler activation for versionless boot events

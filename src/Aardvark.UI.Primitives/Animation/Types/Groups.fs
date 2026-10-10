@@ -76,11 +76,12 @@ module internal Groups =
                     animation.Perform <| Action.Update (localTime, finalize)
                 else
                     let startTime = localBoundary (group.Position < groupLocalTime)
+                    let atTarget = startTime = localTime
                     animation.Perform <| Action.Start startTime
-                    animation.Perform <| Action.Update (startTime, false)
+                    animation.Perform <| Action.Update (startTime, finalize && atTarget)
 
-                    if startTime <> localTime then
-                        animation.Perform <| Action.Update (localTime, false)
+                    if not atTarget then
+                        animation.Perform <| Action.Update (localTime, finalize)
             else
                 let endTime = localBoundary (group.Position > groupLocalTime)
                 animation.Perform <| Action.Update (endTime, true)
