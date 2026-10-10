@@ -168,11 +168,17 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
     member _.Register(resource: IDisposable) =
         lock resources (fun _ -> resources.Push resource)
 
+    /// Stops update processing and requests cancellation of active commands before disposing registered resources.
+    /// Command workers are not joined and may still be running when this method returns.
     member _.Dispose() =
         source.Cancel()
 
         lock messageQueue (fun () -> Monitor.PulseAll messageQueue)
         updateThread.Join()
+
+        lock updateLock (fun () ->
+            currentThreads <- adjustThreads currentThreads ThreadPool.empty
+        )
 
         lock resources (fun _ ->
             for r in resources do r.Dispose()
