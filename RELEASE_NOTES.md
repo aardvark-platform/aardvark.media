@@ -1,4 +1,5 @@
 - Request cancellation of active background commands before disposing `MutableApp` resources
+- Release remaining session-owned channel readers on shutdown without affecting other sessions
 - Remove stale DOM elements when adaptive children are replaced by empty nodes
 - Remove each renderer's document click listener on shutdown without affecting live renderers
 - Restore initial body event-handler activation for versionless boot events
