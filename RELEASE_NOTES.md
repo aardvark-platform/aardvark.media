@@ -11,6 +11,7 @@
 - [Animation] Preserve child completion callbacks when group animations finish after skipped ticks
 - [Animation] Preserve mirror direction at large loop positions
 - [Animation] Reset group values and restore child `Stop` callbacks when stopping composite animations
+- [Animation] Correct lengths and normalized-distance evaluation for closed and nearly closed splines
 - [Primitives] Treat `null` optional GoldenLayout JSON fields like omitted properties
 
 ### 5.7.6
