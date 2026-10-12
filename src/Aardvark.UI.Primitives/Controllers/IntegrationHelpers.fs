@@ -36,20 +36,30 @@ module MultimediaTimer =
                 }
             
     module private Linux =
-        
-        [<DllImport("libc"); SuppressUnmanagedCodeSecurity>]
-        extern void usleep(int usec)
 
         let start (interval : int) (callback : unit -> unit) =
+            let shutdown = new ManualResetEventSlim(false, 0)
+            let lifecycle = obj()
+            let mutable finished = false
             let run () =
-                while true do
-                    usleep(interval * 1000)
-                    callback()
+                try
+                    while not (shutdown.Wait interval) do
+                        callback()
+                finally
+                    // Serialize worker-owned cleanup with shutdown requests.
+                    lock lifecycle (fun () ->
+                        finished <- true
+                        shutdown.Dispose()
+                    )
             let thread = new Thread(ThreadStart(run), IsBackground = true)
             thread.Start()
 
             { new IDisposable with
-                member x.Dispose() = thread.Abort()
+                member x.Dispose() =
+                    lock lifecycle (fun () ->
+                        if not finished then shutdown.Set()
+                    )
+                    if Thread.CurrentThread <> thread then thread.Join()
             }
 
     type Trigger(ms : int) =
