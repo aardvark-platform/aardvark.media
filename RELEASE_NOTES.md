@@ -9,6 +9,7 @@
 - [Giraffe] Dispose accepted WebSockets once before downstream handlers
 - [Giraffe] Dispose owned server hosts after shutdown or startup failure, including cancellation and shutdown errors
 - [Animation] Preserve child completion callbacks when group animations finish after skipped ticks
+- [Animation] Preserve mirror direction at large loop positions
 - [Primitives] Treat `null` optional GoldenLayout JSON fields like omitted properties
 
 ### 5.7.6
