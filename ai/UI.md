@@ -308,13 +308,15 @@ type RenderControlConfig = {
 }
 
 module RenderControlConfig =
-    standard : RenderControlConfig        // Fills height (most common)
+    standard : RenderControlConfig        // Preserves horizontal frustum bounds
     fillHeight : RenderControlConfig      // Same as standard
-    fillWidth : RenderControlConfig       // Fills width
+    fillWidth : RenderControlConfig       // Preserves vertical frustum bounds
     noScaling : RenderControlConfig       // No aspect adjustment
 ```
 
-**Gotcha**: `standard` and `fillHeight` adjust frustum to fill height, maintaining aspect by width. For square viewports or width-fill behavior, use `fillWidth` or `noScaling`.
+`standard` and `fillHeight` preserve the left/right bounds and scale the top/bottom bounds using `Frustum.withAspect`, retaining the normalized vertical offset. `fillWidth` instead preserves top/bottom and scales left/right, retaining the normalized horizontal offset.
+
+Both adjustments match the viewport's width/height ratio and preserve near/far planes and projection type for perspective and orthographic frusta. Use `noScaling` to leave the frustum unchanged.
 
 ### Creating RenderControls
 
@@ -714,7 +716,7 @@ UI.map : ('a -> 'b) -> DomNode<'a> -> DomNode<'b>
 
 1. **Event handlers return sequences**: Always use `Seq.singleton msg`, not just `msg`
 2. **Fomantic-UI needs manual init**: Use `onBoot "$('#__ID__').dropdown();"` for components
-3. **RenderControl aspect ratio**: Default is `fillHeight` (standard), use `fillWidth` if needed
+3. **RenderControl aspect ratio**: Use `noScaling` to retain the original frustum without viewport adjustment
 4. **AttributeMap.union order matters**: Right-side wins for conflicting non-special attributes
 5. **Channels require explicit variable names**: Match channel name in `onBoot'` with JS code
 6. **Static vs Incremental mixing**: Can mix freely, but child adaptive content needs Incremental constructor
