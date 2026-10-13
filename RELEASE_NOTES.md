@@ -10,6 +10,7 @@
 - [Giraffe] Dispose owned server hosts after shutdown or startup failure, including cancellation and shutdown errors
 - [Animation] Preserve child completion callbacks when group animations finish after skipped ticks
 - [Animation] Preserve mirror direction at large loop positions
+- [Animation] Reset group values and restore child `Stop` callbacks when stopping composite animations
 - [Primitives] Treat `null` optional GoldenLayout JSON fields like omitted properties
 
 ### 5.7.6
