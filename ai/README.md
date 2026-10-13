@@ -6,6 +6,7 @@
 |------|----------|------|
 | Build interactive UI elements | [UI.md](UI.md) | ~21 KB |
 | Configure 3D rendering | [RENDERING.md](RENDERING.md) | ~16 KB |
+| Render a sub-scene to a texture (offscreen pass) | [RENDERING.md](RENDERING.md#offscreen-passes-and-resource-lifetime) | ~16 KB |
 | Add camera controls or layout | [PRIMITIVES.md](PRIMITIVES.md) | ~20 KB |
 | Structure application state | [ARCHITECTURE.md](ARCHITECTURE.md) | ~15 KB |
 | Custom components or JS interop | [ADVANCED.md](ADVANCED.md) | ~12 KB |

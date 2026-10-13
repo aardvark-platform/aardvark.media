@@ -321,6 +321,70 @@ RenderControl.control runtime model.camera [
 
 ---
 
+### Offscreen Passes and Resource Lifetime
+
+**Who owns what.** A RenderControl's scene is compiled per scene and framebuffer signature
+when the first client attaches, reference-counted across clients, and disposed
+`Config.sceneDestroyTimeout` (default 1000 ms) after the last client releases it
+(`RenderServer/Scene.fs`, `ConcreteScene`). Every resource reached *through the scene graph* —
+buffers, textures, and adaptive resources used as uniforms — is acquired by that task and
+released with it. Lifetimes are correct for free as long as GPU work is expressed as scene
+graph.
+
+**View functions run more than once.** Page routing (`?page=...`), reconnects and docking
+layouts call view code again for every page load. Anything a view *builds eagerly* is built
+again each time.
+
+**The pitfall: compiling in view code.** A task compiled in a view function —
+`runtime.CompileRender(signature, sg) |> RenderTask.renderToColor size`, e.g. to render a
+sub-scene into a texture for a screen-space pass — is GPU state the scene task knows nothing
+about. Nothing disposes it: its geometry, textures and framebuffers outlive every page that
+used it, and each reload adds another copy.
+
+**The pattern: compile on acquire, dispose on release.** Wrap the task in an
+`AdaptiveResource`. Used as a texture in the RenderControl's scene, it is acquired when a
+client's task prepares and released when that task is disposed, so the offscreen pass lives
+exactly as long as a client shows it:
+
+```fsharp
+let offscreen (runtime : IRuntime) (signature : IFramebufferSignature)
+              (size : aval<V2i>) (sg : ISg) : IAdaptiveResource<ITexture> =
+    let mutable state : Option<IRenderTask * IAdaptiveResource<IBackendTexture>> = None
+    { new AdaptiveResource<ITexture>() with
+        override x.Create() =
+            let task  = runtime.CompileRender(signature, sg)
+            let color = task |> RenderTask.renderToColor size
+            color.Acquire()
+            state <- Some (task, color)
+        override x.Destroy() =
+            match state with
+            | Some (task, color) -> color.Release(); task.Dispose()
+            | None -> ()
+            state <- None
+        override x.Compute(t, rt) =
+            match state with
+            | Some (_, color) -> color.GetValue(t, rt) :> ITexture
+            | None -> NullTexture.Instance   // only if read without being acquired
+    } :> IAdaptiveResource<ITexture>
+
+// in the view: the client's task now owns the offscreen pass
+Sg.fullScreenQuad
+|> Sg.texture "SceneColor" (offscreen runtime signature size sceneSg :> aval<ITexture>)
+```
+
+**Notes:**
+- `AdaptiveResource.map2` returns a plain `aval<_>`, not a resource, so acquire/release does
+  not propagate through it. To split one offscreen pass into several textures (color and
+  depth from one `renderToColorAndDepth`), project with small `AdaptiveResource`s that
+  acquire the parent in `Create` and release it in `Destroy`.
+- `DomNode.RenderControl(attributes, camera, sg)` does not expose the client's size to the
+  scene; an offscreen pass has to get its size from the app (e.g. a resize event). With
+  `Scene.custom`, `RenderClientValues` carries the client's size, signature and trafos —
+  including the larger size of a server-side screenshot (`/rendering/screenshot`), which a
+  fixed app-provided size would render scaled.
+
+---
+
 ## Resource Serving
 
 ### Embedded Resources Pattern
@@ -662,6 +726,11 @@ let main argv =
 - Scene complexity (use LoD for large scenes)
 - TurboJpeg quality (reduce for faster streaming)
 - Check browser GPU acceleration enabled
+
+### Memory Grows With Every Page Load
+- GPU and committed memory grow each time a page with a RenderControl is opened or reloaded; once dedicated GPU memory is full the driver pages and frames become slow and rare
+- Cause: a render task compiled in view code (render-to-texture, depth or ID passes) is not owned by the RenderControl's scene task and is never disposed
+- Fix: compile it inside an `AdaptiveResource` — see [Offscreen Passes and Resource Lifetime](#offscreen-passes-and-resource-lifetime)
 
 ---
 
