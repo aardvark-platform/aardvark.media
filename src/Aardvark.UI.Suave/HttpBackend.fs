@@ -67,7 +67,7 @@ type internal WebSocket(socket: WebSocket.WebSocket) =
             SocketOp.toTask (socket.send opcode data endOfMessage)
 
     member _.Receive(buffer: SocketBuffer, cancellationToken: CancellationToken) =
-        let rec read() =
+        let read() =
             SocketMonad.socket {
                 cancellationToken.ThrowIfCancellationRequested()
 
@@ -77,8 +77,32 @@ type internal WebSocket(socket: WebSocket.WebSocket) =
                 if endOfMessage then
                     return opcode
                 else
-                    let! _ = read()
-                    return opcode
+                    let initialPosition = buffer.Position - data.Length
+                    let rec readFragment() =
+                        SocketMonad.socket {
+                            cancellationToken.ThrowIfCancellationRequested()
+
+                            let! fragmentOpcode, data, endOfMessage = socket.read()
+                            match fragmentOpcode with
+                            | WebSocket.Opcode.Ping ->
+                                do! socket.send WebSocket.Opcode.Pong (ByteSegment data) true
+                                return! readFragment()
+
+                            | WebSocket.Opcode.Pong ->
+                                return! readFragment()
+
+                            | WebSocket.Opcode.Close ->
+                                buffer.Position <- initialPosition
+                                buffer.Write(data)
+                                return fragmentOpcode
+
+                            | _ ->
+                                buffer.Write(data)
+                                if endOfMessage then return opcode
+                                else return! readFragment()
+                        }
+
+                    return! readFragment()
             }
 
         read()
