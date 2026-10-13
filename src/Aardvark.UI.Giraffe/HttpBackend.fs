@@ -54,13 +54,17 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
             do! recvSemaphore.WaitAsync(cancellationToken)
 
             try
+                let initialPosition = buffer.Position
                 let mutable messageType = -1
 
                 while messageType < 0 do
                     let! result = socket.ReceiveAsync(buffer.Available, cancellationToken)
                     buffer.Position <- buffer.Position + result.Count
 
-                    if result.EndOfMessage then
+                    if result.MessageType = WebSocketMessageType.Close then
+                        buffer.Position <- initialPosition
+                        messageType <- int result.MessageType
+                    elif result.EndOfMessage then
                         messageType <- int result.MessageType
                     elif buffer.Position = buffer.Size then
                         buffer.Grow()

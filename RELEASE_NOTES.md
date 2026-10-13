@@ -44,9 +44,12 @@
 - [Suave] Decode query parameter names for lookup and grouping, including percent escapes and `+` spaces
 - [Suave] Reduce allocations when grouping repeated query parameters
 - [Suave] Make `IHttpBackend.subRoute` behavior consistent with Giraffe backend
+- [Suave] Preserve fragmented WebSocket messages across Ping/Pong
+- [Suave] Discard incomplete WebSocket data on Close
 - [Giraffe] Complete WebSocket closure with a receive pending, without requiring extra application data to unblock the close handshake
 - [Giraffe] Fix `IHttpBackend.redirectRelative`
 - [Giraffe] Reduce memory use and file-reading costs for HEAD file responses without reading file contents into memory
+- [Giraffe] Discard incomplete WebSocket data on Close
 
 ### 5.7.7
 - Update to .NET 10
