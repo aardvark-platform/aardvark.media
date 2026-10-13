@@ -88,7 +88,7 @@ module OrbitController =
             OrbitState.withView { model with targetPhi = tphi }
         
         | SetTargetTheta ttheta ->
-            OrbitState.withView { model with targetPhi = clamp model.thetaRange.Min model.thetaRange.Max ttheta }
+            OrbitState.withView { model with targetTheta = clamp model.thetaRange.Min model.thetaRange.Max ttheta }
         
         | SetTargetRadius tr ->
             OrbitState.withView { model with targetRadius = clamp model.radiusRange.Min model.radiusRange.Max tr }
