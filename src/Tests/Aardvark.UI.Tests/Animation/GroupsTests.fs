@@ -885,6 +885,147 @@ module ``Groups Tests`` =
                 ]
             }
 
+    module private Stop =
+
+        let private create concurrent nested =
+            let stopped = ResizeArray<string * float>()
+            let track name (animation : IAnimation<unit, float>) =
+                animation |> Animation.onStop (fun _ value model ->
+                    stopped.Add(name, value)
+                    model)
+            let leaf name offset duration =
+                Animation.create ((+) offset) |> Animation.seconds duration |> track name
+            let a = leaf "A" 0.0 1.0
+            let b = leaf "B" 10.0 (if concurrent then 2.0 else 1.0)
+            let inner = if concurrent then Animation.map2 (+) a b else Animation.sequential [a; b]
+            let group =
+                if not nested then inner
+                else
+                    let inner = inner |> track "Inner"
+                    let c = leaf "C" 20.0 (if concurrent then 1.0 else 2.0)
+                    if concurrent then Animation.sequential [inner; c] else Animation.map2 (+) inner c
+            group |> track "Parent", stopped
+
+        let check concurrent nested phase =
+            use _ = Animator.initTest()
+            let group, stopped = create concurrent nested
+            Animator.createAndStart "Stop" group ()
+            Animator.tickSeconds 0.0
+            let instance : IAnimationInstance<unit, float> = Animator.get "Stop" ()
+            let finished = phase = 2
+            let time = if finished then group.Duration.TotalSeconds else 0.5
+            Animator.tickSeconds time
+            if phase = 1 then
+                Animator.pause "Stop" ()
+                Animator.tickSeconds 0.75
+                Expect.isTrue instance.IsPaused "Paused setup"
+            elif finished then Expect.isTrue instance.IsFinished "Finished setup"
+            else Expect.isTrue instance.IsRunning "Running setup"
+            Expect.equal instance.Position (LocalTime.ofSeconds time) "Position before Stop"
+            stopped.Clear()
+
+            Animator.stop "Stop" ()
+            Animator.tickSeconds (group.Duration.TotalSeconds + 0.5)
+            let reset = if concurrent then 10.0 elif nested then 20.0 else 0.0
+            let expected = [
+                "A", 0.0
+                if concurrent || finished then "B", 10.0
+                if nested then "Inner", (if concurrent then 10.0 else 0.0)
+                if nested && (not concurrent || finished) then "C", 20.0
+                "Parent", reset
+            ]
+            Expect.isTrue instance.IsStopped "Group is stopped"
+            Expect.equal instance.Position LocalTime.zero "Group position resets"
+            Expect.equal instance.Value reset "Group value resets with its children"
+            Expect.checkEvents stopped expected
+
+        let idempotenceAndRestart concurrent =
+            use _ = Animator.initTest()
+            let group, stopped = create concurrent false
+            Animator.create "Stop" group ()
+            let instance : IAnimationInstance<unit, float> = Animator.get "Stop" ()
+            Animator.stop "Stop" ()
+            Animator.tickSeconds 0.0
+            Expect.checkEvents stopped []
+            Expect.isTrue instance.IsStopped "Never-started group remains stopped"
+            Expect.equal instance.Position LocalTime.zero "Never-started position"
+            Expect.equal instance.Value 0.0 "Stop does not initialize never-started children"
+
+            Animator.start "Stop" ()
+            Animator.tickSeconds 1.0
+            Animator.tickSeconds 1.5
+            Expect.equal instance.Value (if concurrent then 10.75 else 0.5) "Ordinary progress"
+            Animator.stop "Stop" ()
+            Animator.tickSeconds 1.75
+            if not concurrent then
+                Expect.isFalse (stopped |> Seq.exists (fun (name, _) -> name = "B")) "Unreached child has no Stop callback"
+            stopped.Clear()
+            for time in [2.0; 2.25; 2.5] do
+                Animator.stop "Stop" ()
+                Animator.tickSeconds time
+                Expect.checkEvents stopped []
+                Expect.equal instance.Position LocalTime.zero "Repeated Stop position"
+
+            Animator.start "Stop" ()
+            Animator.tickSeconds 5.0
+            Expect.equal instance.Value (if concurrent then 10.0 else 0.0) "Restart begins at the reset value"
+            Expect.equal instance.Position LocalTime.zero "Restart begins at zero"
+            Animator.tickSeconds 5.5
+            Expect.equal instance.Value (if concurrent then 10.75 else 0.5) "Progress after restart"
+            Expect.checkEvents stopped []
+
+        let modelEffects concurrent =
+            use _ = Animator.initTest()
+            // Register the same external-state lens pattern as the unit Animator helper.
+            let animator = ref Unchecked.defaultof<Animator<int>>
+            animator.Value <- Animator.initial ((fun _ -> animator.Value), fun a model -> animator.Value <- a; model)
+            let stopped = ResizeArray<string * float * int>()
+            let track name transform (animation : IAnimation<int, float>) =
+                animation |> Animation.onStop (fun _ value model ->
+                    stopped.Add(name, value, model)
+                    transform model)
+            let a = Animation.create id |> Animation.seconds 1.0 |> track "A" ((+) 1)
+            let b = Animation.create ((+) 10.0) |> Animation.seconds 1.0 |> track "B" ((*) 10)
+            let group =
+                if concurrent then Animation.map2' (fun model x y -> float model + x + y) a b
+                else Animation.sequential [a; b]
+            let group = group |> track "Parent" ((+) 100)
+            let mutable model = Animator.createAndStart "Effects" group 1
+            model <- Animator.tick GlobalTime.zero model
+            let time = if concurrent then 0.5 else 1.5
+            model <- Animator.tick (GlobalTime.ofNanoseconds (int64 (time * 1e9))) model
+            model <- Animator.stop "Effects" model
+            model <- Animator.tick (GlobalTime.ofNanoseconds (int64 ((time + 0.25) * 1e9))) model
+            Expect.equal model 120 "Child Stop model effects compose before the parent"
+            let reset = if concurrent then 30.0 else 0.0
+            Expect.checkEvents stopped ["A", 0.0, 1; "B", 10.0, 2; "Parent", reset, 20]
+            let instance : IAnimationInstance<int, float> = Animator.get "Effects" model
+            Expect.equal instance.Value reset "Parent evaluation sees the children's model effects"
+            Expect.equal instance.Position LocalTime.zero "Model-dependent reset position"
+            model <- Animator.stop "Effects" model
+            model <- Animator.tick (GlobalTime.ofNanoseconds (int64 ((time + 0.5) * 1e9))) model
+            Expect.equal model 120 "Repeated Stop has no model effects"
+            Expect.checkEvents stopped []
+
+        let empty (animation : IAnimation<unit, 'Value>) value =
+            use _ = Animator.initTest()
+            let events, animation = animation |> Animation.seconds 1.0 |> Animation.trackEvents
+            Animator.createAndStart "EmptyStop" animation ()
+            Animator.tickSeconds 0.0
+            Expect.checkEvents events [EventType.Start, value; EventType.Progress, value]
+            Animator.stop "EmptyStop" ()
+            Animator.tickSeconds 0.5
+            Expect.checkEvents events [EventType.Stop, value]
+            let instance : IAnimationInstance<unit, 'Value> = Animator.get "EmptyStop" ()
+            Expect.equal instance.Value value "Empty reset value"
+            Expect.equal instance.Position LocalTime.zero "Empty reset position"
+            Animator.stop "EmptyStop" ()
+            Animator.tickSeconds 0.75
+            Expect.checkEvents events []
+            Animator.start "EmptyStop" ()
+            Animator.tickSeconds 1.0
+            Expect.checkEvents events [EventType.Start, value; EventType.Progress, value]
+
     module private Completion =
 
         let private starting value = [EventType.Start, value; EventType.Progress, value]
@@ -993,6 +1134,29 @@ module ``Groups Tests`` =
                 Concurrent.progress
                 Concurrent.positionWithEasing
                 Concurrent.pauseResumeWithEasing
+            ]
+
+            testList "Stop" [
+                test "Sequential resets children before the parent" {
+                    for phase in [0; 1; 2] do Stop.check false false phase
+                }
+                test "Map2 resets children before the parent" {
+                    for phase in [0; 1; 2] do Stop.check true false phase
+                }
+                test "Nested groups reset recursively before their parent" {
+                    for concurrent in [false; true] do
+                        for phase in [0; 1; 2] do Stop.check concurrent true phase
+                }
+                test "Never-started children and repeated Stop preserve restart" {
+                    for concurrent in [false; true] do Stop.idempotenceAndRestart concurrent
+                }
+                test "Child model effects reach parent evaluation and callback" {
+                    for concurrent in [false; true] do Stop.modelEffects concurrent
+                }
+                test "Empty groups retain Stop and restart behavior" {
+                    Stop.empty (Animation.sequential []) 0.0
+                    Stop.empty (Animation.concurrent []) ()
+                }
             ]
 
             testList "Completion" [

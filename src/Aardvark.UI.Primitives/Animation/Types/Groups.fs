@@ -93,5 +93,8 @@ module internal Groups =
         | Action.Update (groupLocalTime, finalize) when group.IsRunning ->
             update groupLocalTime finalize
 
+        | Action.Stop ->
+            animation.Perform Action.Stop
+
         | _ ->
             ()
