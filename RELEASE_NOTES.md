@@ -24,6 +24,7 @@
 - [Primitives] Preserve date-shaped GoldenLayout panel IDs and titles verbatim when loading layouts, including timezones and fractional seconds
 - [Primitives] Route GoldenLayout panels to the correct page when IDs contain reserved characters, percent escapes or line breaks
 - [Primitives] Preserve GoldenLayout popout window IDs and theme URLs as safe, literal HTML attribute values, including quotes, entities, line breaks, Unicode, and template-marker text
+- [Primitives] Preserve GoldenLayout main roots yielded after leading popouts or empty layout fragments
 - [Primitives] Keep notifications with overlapping IDs independent across containers, including removal, clearing, and dismissal
 - [Primitives] Accept negative integer input in numeric controls and sliders independently of the server culture
 - [Primitives] Keep scaling controller previews synchronized while dragging and after release
