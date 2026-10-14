@@ -1,54 +1,61 @@
-# Aardvark.Media AI Documentation Index
+# AI Documentation
+
+Guidance for the current 5.7.x APIs. Source definitions and linked examples are the
+reference for exact signatures; this index is not a generated API inventory.
+For build, dependency, and code-generation rules, see [AGENTS.md](../AGENTS.md).
 
 ## Task-Based Lookup
 
-| Task | Document | Size |
-|------|----------|------|
-| Build interactive UI elements | [UI.md](UI.md) | ~21 KB |
-| Configure 3D rendering | [RENDERING.md](RENDERING.md) | ~16 KB |
-| Add camera controls or layout | [PRIMITIVES.md](PRIMITIVES.md) | ~20 KB |
-| Structure application state | [ARCHITECTURE.md](ARCHITECTURE.md) | ~15 KB |
-| Custom components or JS interop | [ADVANCED.md](ADVANCED.md) | ~12 KB |
-| Set up web server | [RENDERING.md](RENDERING.md#server-setup) | ~16 KB |
-| Create animation | [PRIMITIVES.md](PRIMITIVES.md#animation-system) | ~20 KB |
-| Handle events | [UI.md](UI.md#event-handling) | ~21 KB |
-| Manage background tasks | [ARCHITECTURE.md](ARCHITECTURE.md#threadpool) | ~15 KB |
+| Task | Reference |
+|------|-----------|
+| Define models, update functions, and apps | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Build DOM nodes, adaptive attributes, and events | [UI.md](UI.md) |
+| Host an app with Giraffe or Suave | [RENDERING.md](RENDERING.md#server-setup) |
+| Render and interact with a 3D scene | [RENDERING.md](RENDERING.md#3d-rendering) |
+| Use camera controllers, animations, or UI components | [PRIMITIVES.md](PRIMITIVES.md) |
+| Open native file and folder dialogs | [PRIMITIVES.md](PRIMITIVES.md#dialogs) |
+| Integrate JavaScript and adaptive channels | [ADVANCED.md](ADVANCED.md#channels-and-javascript-events) |
+| Serve request-dependent pages or host multiple apps | [ADVANCED.md](ADVANCED.md#request-dependent-pages) |
+| Embed a Windows browser with CefSharp | [RENDERING.md](RENDERING.md#cef-integration-windows) |
 
 ## Type-to-Document Mapping
 
-| Type | Document |
-|------|----------|
-| `App<'model,'mmodel,'msg>` | [ARCHITECTURE.md](ARCHITECTURE.md#app-type) |
-| `DomNode<'msg>` | [UI.md](UI.md#domnode) |
-| `FreeFlyController` | [PRIMITIVES.md](PRIMITIVES.md#freeflycontroller) |
-| `ArcBallController` | [PRIMITIVES.md](PRIMITIVES.md#arcballcontroller) |
-| `OrbitController` | [PRIMITIVES.md](PRIMITIVES.md#orbitcontroller) |
-| `MutableApp` | [ARCHITECTURE.md](ARCHITECTURE.md#app-initialization) |
-| `Unpersist` | [ARCHITECTURE.md](ARCHITECTURE.md#unpersist) |
-| `RenderControlConfig` | [UI.md](UI.md#rendercontrol---3d-rendering) |
-| `RenderTask` | [RENDERING.md](RENDERING.md#rendertasks) |
-| `Attribute<'msg>` | [UI.md](UI.md#attributes-module) |
-| `AttributeMap<'msg>` | [UI.md](UI.md#attributemap-operations) |
-| `Event<'msg>` | [UI.md](UI.md#event-handling) |
-| `ThreadPool<'msg>` | [ARCHITECTURE.md](ARCHITECTURE.md#threadpool) |
-| `CameraControllerState` | [PRIMITIVES.md](PRIMITIVES.md#cameramodel) |
-| `Animator<'Model>` | [PRIMITIVES.md](PRIMITIVES.md#animator) |
-| `IAnimation<'Model,'Value>` | [PRIMITIVES.md](PRIMITIVES.md#animation-system) |
-| `GoldenLayout` | [PRIMITIVES.md](PRIMITIVES.md#goldenlayout) |
-| `ColorPicker` | [PRIMITIVES.md](PRIMITIVES.md#colorpicker) |
-| `ChannelReader<'msg>` | [ADVANCED.md](ADVANCED.md#datachannel-pattern) |
-| `Browser` (CEF) | [RENDERING.md](RENDERING.md#cef-integration-windows) |
-| `WebPart` | [RENDERING.md](RENDERING.md#suaveserver-integration) |
+| Type / module | Reference |
+|---------------|-----------|
+| `App<'model, 'mmodel, 'msg>`, `Unpersist` | [Application structure](ARCHITECTURE.md#application-structure) |
+| `MutableApp<'model, 'mmodel, 'msg>` | [Application lifetime](ARCHITECTURE.md#application-lifetime) |
+| `ThreadPool<'msg>` | [Background messages](ARCHITECTURE.md#background-messages) |
+| `DomNode<'msg>` | [DOM construction](UI.md#dom-construction) |
+| `AttributeMap<'msg>`, `AttributeValue<'msg>` | [Attributes](UI.md#attributes) |
+| `Event<'msg>` | [Events](UI.md#events) |
+| `RenderControlConfig`, `RenderAttribute` | [Render controls](UI.md#render-controls) |
+| `RenderClientInfo`, `RenderClientValues`, `RenderState` | [3D rendering](RENDERING.md#3d-rendering) |
+| `IHttpBackend`, `IHttpRequest` | [HTTP backends](ADVANCED.md#backend-independent-http) |
+| `Channel`, `ChannelReader` | [Channels](ADVANCED.md#channels-and-javascript-events) |
+| `CameraControllerState`, `OrbitState` | [Camera controllers](PRIMITIVES.md#camera-controllers) |
+| `Animator`, `IAnimation` | [Animation system](PRIMITIVES.md#animation-system) |
+| `GoldenLayout`, `ColorPicker` | [UI components](PRIMITIVES.md#ui-components) |
+| `DialogConfig`, `Dialog` | [Dialogs](PRIMITIVES.md#dialogs) |
+| `AardvarkCef`, `AardvarkCefBrowser` | [CEF integration](RENDERING.md#cef-integration-windows) |
 
-## Document Overview
+## Migrating Older Examples
 
-- **UI.md**: DomNode construction, tags, attributes, events, incremental DOM, RenderControl
-- **RENDERING.md**: RenderTask pipeline, Aardvark.Service, server configuration, CEF integration
-- **PRIMITIVES.md**: Camera controllers, animation system, GoldenLayout, ColorPicker, dialogs
-- **ARCHITECTURE.md**: ELM pattern, App type hierarchy, MutableApp, Unpersist, ThreadPool model
-- **ADVANCED.md**: DataChannel communication, JS interop, multi-app scenarios, custom scene graphs
+See the [5.7 changelog](https://github.com/aardvark-platform/aardvark.media/wiki/Aardvark-Media-5.7-Changelog)
+and [release notes](../RELEASE_NOTES.md) for later fixes and additions.
 
-## See Also
+| Older API | Current API |
+|-----------|-------------|
+| `Aardvark.Service`, `Aardvark.Service.Giraffe` | Backend-independent internals in `Aardvark.UI`; hosting in `Aardvark.UI.Suave` / `Aardvark.UI.Giraffe` |
+| `WebPart.startServerLocalhost` | Backend `Server.startLocalhost port cancellationToken content` |
+| `Reflection.assemblyWebPart` | Backend `WebPart.ofAssembly`, `WebPart.ofType`, or `WebPart.ofAssemblyWith` |
+| `MutableApp<'model, 'msg>` record | Disposable `MutableApp<'model, 'mmodel, 'msg>` class with PascalCase members |
+| `App.startAndGetState`, `shutdown()` | `MutableApp.MutableModel`, `Dispose()` / `use` |
+| `Request` | `IHttpRequest`; use `QueryParam` for a single query value |
+| `ClientInfo`, `ClientValues`, `ClientState` | `RenderClientInfo`, `RenderClientValues`, `RenderState` |
+| `PathUtils.ofUnixStyle` | `Path.ofUnixStyle` in `Aardvark.UI` |
+| Generic `onEvent "onRendered" ...` | `onAfterRender` / `onBeforeRender` and their sequence-returning variants |
+| Separate open/save dialog helpers | `Aardvark.UI.Primitives.Dialog` |
+| Old CEF browser wrappers | CefSharp-based `Aardvark.Cef.WinForms` / `Aardvark.Cef.OffScreen`; `Aardvark.Cef.Process` for mapped rendering |
 
-- [AGENTS.md](../AGENTS.md) - Build commands, dependency management, project structure
-- [.claude/CLAUDE.md](../.claude/CLAUDE.md) - Project-specific instructions
+Use `RenderAttribute` rather than spelling render-control data attributes by hand.
+The bundled frontend uses jQuery 4; check plugin compatibility when integrating other libraries.
