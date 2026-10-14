@@ -40,6 +40,7 @@
     <Compile Include="JsonConverterTests.fs" />
     <Compile Include="DropdownTests.fs" />
     <Compile Include="NumericInputTests.fs" />
+    <Compile Include="GoldenLayoutBuilderTests.fs" />
     <Compile Include="MutableAppChannelTests.fs" />
     <Compile Include="MutableAppDisposalTests.fs" />
     <Compile Include="RenderControlConfigTests.fs" />
