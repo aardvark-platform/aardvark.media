@@ -3,4 +3,5 @@ Aardvark.Build
 
 Adaptify.MSBuild
 Screenshotr.Client
+Microsoft.AspNetCore.SignalR.Common
 System.Text.Json

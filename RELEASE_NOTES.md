@@ -1,3 +1,4 @@
+- [Screenshotr] Require patched SignalR dependencies for CVE-2026-70159
 - Request cancellation of active background commands before disposing `MutableApp` resources
 - Release remaining session-owned channel readers on shutdown without affecting other sessions
 - Correct `RenderControlConfig.fillWidth` viewport aspect ratios while preserving vertical frustum bounds
