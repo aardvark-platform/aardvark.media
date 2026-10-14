@@ -1,3 +1,4 @@
+- [Primitives] Preserve leading and trailing quotation marks in `Simple.largeTextArea` and `Simple.largeTextArea'` input callbacks
 - Request cancellation of active background commands before disposing `MutableApp` resources
 - Release remaining session-owned channel readers on shutdown without affecting other sessions
 - Correct `RenderControlConfig.fillWidth` viewport aspect ratios while preserving vertical frustum bounds

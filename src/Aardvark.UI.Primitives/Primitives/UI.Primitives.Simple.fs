@@ -192,7 +192,7 @@ module Simple =
                     match args with
                         | a :: _ -> 
                             let str : string = Pickler.unpickleOfJson a 
-                            str.Trim('\"') |> changed |> Seq.singleton
+                            str |> changed |> Seq.singleton
                         | _ -> Seq.empty
             }
 

@@ -27,6 +27,7 @@
     <Compile Include="WebSocketTests.fs" />
     <Compile Include="AttributeMapTests.fs" />
     <Compile Include="JavascriptTests.fs" />
+    <Compile Include="TextAreaTests.fs" />
     <Compile Include="UpdaterTests.fs" />
     <Compile Include="GoldenLayoutJsonTests.fs" />
     <Compile Include="MutableAppChannelTests.fs" />
