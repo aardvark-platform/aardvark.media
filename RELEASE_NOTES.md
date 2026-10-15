@@ -27,6 +27,7 @@
 - [Primitives] Accept negative integer input in numeric controls and sliders independently of the server culture
 - [Primitives] Keep scaling controller previews synchronized while dragging and after release
 - [Primitives] Preserve special characters in color-picker labels and local-storage keys
+- [Primitives] Preserve `Html.multiselectList` values and distinguish cleared selections from selected empty IDs
 - [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
 - [Animation] Reduce update allocations when committing animations with no queued actions
 - [Animation] Schedule queued delayed animations after a slot finishes without waiting for unrelated ticks
