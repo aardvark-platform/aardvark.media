@@ -69,10 +69,7 @@ module Html =
                     (fun xs ->
                         let s = (xs |> Seq.head)
 
-                        //shame
-                        let vals = s.Substring(1,s.Length-1).Split([|','|])
-                                    |> Array.map ( fun v -> v.Replace("\"","").Replace("[","").Replace("]","").Trim())
-                                    |> Array.toList
+                        let vals = Pickler.unpickleOfJson<string list> s
 
                         vals |> List.map getValue |> onSelected
                     )
