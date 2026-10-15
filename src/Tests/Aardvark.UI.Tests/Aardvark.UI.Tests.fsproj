@@ -46,6 +46,7 @@
     <Compile Include="RenderCommandTests.fs" />
     <Compile Include="SceneTests.fs" />
     <Compile Include="ScaleControllerTests.fs" />
+    <Compile Include="MultiselectTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="embedded_file.txt" />
