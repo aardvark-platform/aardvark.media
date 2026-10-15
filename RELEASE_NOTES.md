@@ -28,6 +28,7 @@
 - [Primitives] Accept negative integer input in numeric controls and sliders independently of the server culture
 - [Primitives] Keep scaling controller previews synchronized while dragging and after release
 - [Primitives] Keep local translation controller previews consistent with release positions for scaled objects
+- [Primitives] Keep rotation controller previews synchronized with the current drag, without a jump on release
 - [Primitives] Preserve special characters in color-picker labels and local-storage keys
 - [Primitives] Preserve `Html.multiselectList` values and distinguish cleared selections from selected empty IDs
 - [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
