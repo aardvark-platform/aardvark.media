@@ -79,7 +79,8 @@ module TranslateController =
                      let preview =
                         match m.mode with
                             | TrafoMode.Local -> 
-                                Pose.toTrafo workingPose * Pose.toTrafo m.pose
+                                let rot = Pose.toRotTrafo m.pose
+                                Pose.toTrafo m.pose * Trafo3d.Translation(rot.Forward.TransformDir workingPose.position)
                             | TrafoMode.Global -> 
                                 Pose.toTrafo m.pose * Pose.toTrafo workingPose // bug?
                             | _ -> failwith ""
