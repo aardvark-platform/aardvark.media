@@ -383,6 +383,187 @@ module ``Simple Tests`` =
                 ]
             }
 
+    module private Mapping =
+        open System
+        open System.Runtime.CompilerServices
+        open Aardvark.Base
+
+        let private create (animation : IAnimation<'Model, 'Value>) = animation.Create(Sym.ofString "Mapping")
+        let private child<'Model> : IAnimation<'Model, float> = Animation.create id |> Animation.seconds 1.0
+        let private sameError expected action =
+            let actual = try action(); None with error -> Some error
+            Expect.isTrue (actual |> Option.exists (fun error -> obj.ReferenceEquals(error, expected))) "Original exception identity"
+
+        let deferred dependent =
+            let mutable calls = 0
+            let evaluate model value = calls <- calls + 1; float calls + float model + value
+            let animation =
+                if dependent then child<int> |> Animation.map' evaluate
+                else child<int> |> Animation.map (evaluate 0)
+            let instance = create animation
+            for _ in 1 .. 2 do Expect.equal instance.Value 0.0 "Default before first successful commit"
+            Expect.equal calls 0 "Initial reads do not invoke the mapper"
+            instance.Perform(Action.Start LocalTime.zero)
+            Expect.equal (instance.Commit(10, GlobalTime.zero)) 10 "Returned model"
+            Expect.equal calls 0 "Commit does not evaluate Value"
+            let model = if dependent then 10.0 else 0.0
+            Expect.equal instance.Value (model + 1.0) "First deferred read"
+            Expect.equal instance.Value (model + 2.0) "Repeated reads evaluate again"
+            instance.Perform(Action.Update(LocalTime.ofSeconds 0.5, false))
+            Expect.equal instance.Value (model + 3.0) "Queued input changes are not committed yet"
+            Expect.equal (instance.Commit(20, GlobalTime.zero)) 20 "Next commit returns its model"
+            Expect.equal calls 3 "Successive commits remain lazy"
+            Expect.equal instance.Value ((if dependent then 20.0 else 0.0) + 4.5) "Read uses latest model and current input"
+            instance.Commit(30, GlobalTime.zero) |> ignore
+            Expect.equal calls 4 "Idle commit stays lazy"
+            Expect.equal instance.Value ((if dependent then 30.0 else 0.0) + 5.5) "Idle commit refreshes retained model"
+            let reference = child<int> |> Animation.map (fun _ -> "mapped") |> create
+            Expect.isNull reference.Value "Reference-valued output initially defaults to null"
+            reference.Commit(0, GlobalTime.zero) |> ignore
+            Expect.equal reference.Value "mapped" "Even a stopped input initializes on a successful commit"
+
+        let models () =
+            let input =
+                child<int>
+                |> Animation.onStart (fun _ _ model -> model + 10)
+                |> Animation.onProgress (fun _ _ model -> model * 10)
+            let instance = input |> Animation.map' (fun model value -> float model + 100.0 * value) |> create
+            instance.Perform(Action.Start LocalTime.zero)
+            Expect.equal (instance.Commit(1, GlobalTime.zero)) 11 "Child Start returns changed model"
+            Expect.equal instance.Value 11.0 "Value uses child-returned model"
+            instance.Perform(Action.Update(LocalTime.ofSeconds 0.5, false))
+            Expect.equal (instance.Commit(2, GlobalTime.zero)) 20 "Child Progress returns changed model"
+            Expect.equal instance.Value 70.0 "Value sees Progress model and current input"
+            Expect.equal (instance.Commit(3, GlobalTime.zero)) 3 "Idle commit returns its supplied model"
+            Expect.equal instance.Value 53.0 "Successive idle model replaces the old one"
+
+            let mutable seen = Unchecked.defaultof<StrongBox<int>>
+            let input = child<StrongBox<int>> |> Animation.onStart (fun _ _ model -> StrongBox<int>(model.Value + 10))
+            let reference =
+                input |> Animation.map' (fun model value ->
+                    seen <- model
+                    float (if isNull model then 99 else model.Value) + value) |> create
+            reference.Perform(Action.Start LocalTime.zero)
+            let original = StrongBox<int>(1)
+            let returned = reference.Commit(original, GlobalTime.zero)
+            Expect.isFalse (obj.ReferenceEquals(original, returned)) "Child returned a fresh reference model"
+            Expect.equal reference.Value 11.0 "Reference-model result"
+            Expect.isTrue (obj.ReferenceEquals(seen, returned)) "Retain the returned reference, not the input model"
+            returned.Value <- 12
+            Expect.equal reference.Value 12.0 "Reference-model mutations remain visible at each read"
+            Expect.isNull (reference.Commit(null, GlobalTime.zero)) "A null model can commit successfully"
+            Expect.equal reference.Value 99.0 "Initialization is distinct from a null retained model"
+
+        let nested () =
+            let trace = ResizeArray<string>()
+            let instance =
+                child<int>
+                |> Animation.map (fun value -> trace.Add "inner"; value + 1.0)
+                |> Animation.map' (fun model value -> trace.Add $"outer:{model}"; float model + value)
+                |> create
+            Expect.equal instance.Value 0.0 "Nested initial default"
+            instance.Perform(Action.Start LocalTime.zero)
+            instance.Commit(5, GlobalTime.zero) |> ignore
+            Expect.isEmpty trace "Nested Commit does not evaluate either mapper"
+            for _ in 1 .. 2 do Expect.equal instance.Value 6.0 "Nested read"
+            Expect.checkEvents trace ["inner"; "outer:5"; "inner"; "outer:5"]
+            instance.Perform(Action.Update(LocalTime.ofSeconds 0.5, false))
+            instance.Commit(9, GlobalTime.zero) |> ignore
+            Expect.isEmpty trace "Nested successive commit stays deferred"
+            Expect.equal instance.Value 10.5 "Both layers use the latest commit"
+            Expect.checkEvents trace ["inner"; "outer:9"]
+
+        let commitFailure () =
+            let failure = InvalidOperationException "child commit"
+            let mutable fail = true
+            let callback _ _ model = if fail then raise failure else model
+            let mutable calls = 0
+            let instance =
+                child<int> |> Animation.onStart callback |> Animation.onProgress callback
+                |> Animation.map' (fun model value -> calls <- calls + 1; float model + value) |> create
+            instance.Perform(Action.Start LocalTime.zero)
+            sameError failure (fun () -> instance.Commit(1, GlobalTime.zero) |> ignore)
+            Expect.equal instance.Value 0.0 "Failed initial commit leaves Value uninitialized"
+            Expect.equal calls 0 "Failed initial commit cannot enable mapping"
+            fail <- false
+            Expect.equal (instance.Commit(10, GlobalTime.zero)) 10 "Recovery succeeds"
+            Expect.equal instance.Value 10.0 "First successfully committed model"
+            instance.Perform(Action.Update(LocalTime.ofSeconds 0.5, false))
+            fail <- true
+            sameError failure (fun () -> instance.Commit(20, GlobalTime.zero) |> ignore)
+            Expect.equal instance.Value 10.5 "Retain successful model, but read the input's latest value"
+            fail <- false
+            instance.Commit(30, GlobalTime.zero) |> ignore
+            Expect.equal instance.Value 30.5 "Later success replaces the retained model"
+
+        let valueFailure innerFails =
+            let failure = InvalidOperationException "mapped Value"
+            let mutable fail, calls = true, 0
+            let mapping model value =
+                calls <- calls + 1
+                if fail then raise failure
+                float model + value
+            let failing = child<int> |> Animation.map' mapping
+            let mutable outerCalls = 0
+            let animation =
+                if innerFails then failing |> Animation.map (fun value -> outerCalls <- outerCalls + 1; value + 1.0)
+                else failing
+            let instance = create animation
+            Expect.equal instance.Value 0.0 "Initial default cannot throw"
+            instance.Commit(10, GlobalTime.zero) |> ignore
+            Expect.equal calls 0 "Throwing mapping remains deferred"
+            for _ in 1 .. 2 do sameError failure (fun () -> instance.Value |> ignore)
+            Expect.equal calls 2 "A failed read is retried on every read"
+            Expect.equal outerCalls 0 "A failing input Value prevents outer mapping"
+            instance.Commit(20, GlobalTime.zero) |> ignore
+            Expect.equal calls 2 "Commit succeeds without retrying Value"
+            fail <- false
+            Expect.equal instance.Value (if innerFails then 21.0 else 20.0) "Read recovers with latest retained model"
+
+        let delegation () =
+            let trace = ResizeArray<Symbol * float * int>()
+            let mutable calls = 0
+            let definition =
+                child<int> |> Animation.seconds 2.0 |> Animation.loopN LoopMode.Mirror 2
+                |> Animation.easeCustom false (fun value -> value * value)
+                |> Animation.map' (fun model value -> calls <- calls + 1; float model + 10.0 * value)
+                |> Animation.onStart (fun name value model -> trace.Add(name, value, model); model + 1)
+            let instance = create definition
+            Expect.equal instance.Name (Sym.ofString "Mapping") "Name"
+            Expect.isTrue (obj.ReferenceEquals(instance.Definition, definition)) "Definition identity"
+            Expect.equal instance.Duration (Duration.ofSeconds 2.0) "Duration"
+            Expect.equal instance.TotalDuration (Duration.ofSeconds 4.0) "Total duration"
+            Expect.equal (instance.DistanceTime 0.25) (definition.DistanceTime 0.25) "Distance-time delegation"
+            Expect.isTrue instance.IsStopped "Initial state"
+            Expect.isFalse instance.OutOfDate "Initial action queue"
+            instance.Perform(Action.Start(LocalTime.ofSeconds 0.5))
+            Expect.isTrue instance.OutOfDate "Perform delegates to input"
+            Expect.equal (instance.Commit(5, GlobalTime.zero)) 6 "Mapped subscription returns changed model"
+            Expect.checkEvents trace [Sym.ofString "Mapping", 5.625, 5]
+            Expect.equal calls 1 "Subscription evaluates only for its event"
+            Expect.equal instance.Value 6.625 "Deferred read uses post-callback model"
+            Expect.equal instance.Position (LocalTime.ofSeconds 0.5) "Position"
+            Expect.isTrue instance.IsRunning "Running state"
+            Expect.isFalse instance.OutOfDate "Commit drains delegated actions"
+            instance.Perform Action.Pause
+            instance.Commit(6, GlobalTime.zero) |> ignore
+            Expect.isTrue instance.IsPaused "Pause delegation"
+            instance.Perform Action.Resume
+            instance.Commit(6, GlobalTime.zero) |> ignore
+            Expect.isTrue instance.IsRunning "Resume delegation"
+            instance.Perform Action.Stop
+            instance.Commit(50, GlobalTime.zero) |> ignore
+            Expect.isTrue instance.IsStopped "Stop delegation"
+            Expect.equal instance.Position LocalTime.zero "Stop position"
+            Expect.equal instance.Value 50.0 "Stop does not clear initialization"
+            calls <- 0
+            let unsubscribed = definition |> Animation.unsubscribeAll |> create
+            unsubscribed.Perform(Action.Start(LocalTime.ofSeconds 0.5))
+            Expect.equal (unsubscribed.Commit(5, GlobalTime.zero)) 5 "Unsubscription removes callback effects"
+            Expect.isEmpty trace "Unsubscribed instance has no event callback"
+            Expect.equal calls 0 "Unsubscribed commits remain lazy"
+            Expect.equal unsubscribed.Value 5.625 "Unsubscription preserves mapping"
+
     module Timing =
 
         let private identity : IAnimation<unit, float> =
@@ -462,6 +643,18 @@ module ``Simple Tests`` =
     [<Tests>]
     let tests =
         testList "Animation.Simple" [
+            testList "Mapping" [
+                test "Map and map' retain defaults, deferred evaluation and repeated reads" {
+                    for dependent in [false; true] do Mapping.deferred dependent
+                }
+                testCase "Child callback models and successful idle commits are retained" Mapping.models
+                testCase "Nested mappings evaluate per read in child-first order" Mapping.nested
+                testCase "Commit exceptions preserve the last successful model" Mapping.commitFailure
+                test "Mapping and input Value exceptions retain identity and laziness" {
+                    for inner in [false; true] do Mapping.valueFailure inner
+                }
+                testCase "Subscriptions and delegated properties retain their behavior" Mapping.delegation
+            ]
             testList "Timing" [
                 Timing.mirrorPhases
                 Timing.otherModes
