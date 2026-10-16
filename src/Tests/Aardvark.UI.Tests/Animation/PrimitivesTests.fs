@@ -266,6 +266,41 @@ module ``Primitives Tests`` =
 
     module Camera =
 
+        let interpolation kind =
+            use _ = Animator.initTest()
+            let source = V3d(4.0, 5.0, 6.0)
+            let destination = if kind = 0 || kind = 3 then source else V3d(10.0, -1.0, 8.0)
+            let rotates = kind = 0 || kind = 2
+            let src = CameraView.look source (if rotates then V3d.YAxis else V3d.XAxis) V3d.ZAxis
+            let dst = CameraView.look destination V3d.XAxis V3d.ZAxis
+            let mutable completed = 0
+            let animation =
+                Animation.Camera.interpolate src dst
+                |> Animation.onFinalize (fun _ _ model -> completed <- completed + 1; model)
+            Expect.equal animation.Duration.TotalSeconds (if kind = 3 then 0.0 else 1.0) "Interpolation duration is unchanged"
+            Animator.createAndStart "CameraConstants" animation ()
+            let instance : IAnimationInstance<unit, CameraView> = Animator.get "CameraConstants" ()
+            let h = sqrt 0.5
+            let locations =
+                if kind = 0 || kind = 3 then [source; source; source]
+                else [source; V3d(7.0, 2.0, 7.0); destination]
+            let forwards, rights =
+                if rotates then
+                    [V3d.YAxis; V3d(h, h, 0.0); V3d.XAxis],
+                    [V3d.XAxis; V3d(h, -h, 0.0); -V3d.YAxis]
+                else [V3d.XAxis; V3d.XAxis; V3d.XAxis], [-V3d.YAxis; -V3d.YAxis; -V3d.YAxis]
+            for i, time in List.indexed [0.0; 0.5; 1.0] do
+                Animator.tickSeconds time
+                let view = instance.Value
+                Expect.v3dClose Accuracy.high view.Location locations[i] $"Case {kind}, time {time}: location"
+                Expect.v3dClose Accuracy.high view.Forward forwards[i] $"Case {kind}, time {time}: forward"
+                Expect.v3dClose Accuracy.high view.Right rights[i] $"Case {kind}, time {time}: right"
+                Expect.v3dClose Accuracy.high view.Up V3d.ZAxis $"Case {kind}, time {time}: up"
+                Expect.v3dClose Accuracy.high view.Sky V3d.ZAxis $"Case {kind}, time {time}: sky"
+            Expect.isTrue instance.IsFinished "Camera interpolation completes"
+            Animator.tickSeconds 2.0
+            Expect.equal completed 1 "Camera interpolation completes only once"
+
         let coincidingLocations =
             test "Coinciding Locations" {
                 use _ = Animator.initTest()
@@ -318,6 +353,12 @@ module ``Primitives Tests`` =
             ]
 
             testList "Camera" [
+                test "Interpolation preserves fixed locations and nondefault orientations" {
+                    for kind in [0; 1] do Camera.interpolation kind
+                }
+                test "Interpolation retains both-changing and identical-view behavior" {
+                    for kind in [2; 3] do Camera.interpolation kind
+                }
                 Camera.coincidingLocations
             ]
         ]

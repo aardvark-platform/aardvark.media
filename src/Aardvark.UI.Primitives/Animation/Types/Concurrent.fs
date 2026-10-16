@@ -13,7 +13,11 @@ type internal ConcurrentGroupInstance<'Model, 'Value>(name : Symbol, definition 
         let innerAction = Groups.applyDistanceTimeToAction action x
 
         for i = 0 to members.Length - 1 do
-            members.[i] |> Groups.perform segments.[i] innerAction x
+            match innerAction with
+            | Action.Start _ when segments.[i].End.IsZero ->
+                members.[i].Perform <| Action.Start LocalTime.zero
+            | _ ->
+                members.[i] |> Groups.perform segments.[i] innerAction x
 
         StateMachine.enqueue action x.StateMachine
 
