@@ -5,11 +5,14 @@ open OptimizedClosures
 
 type internal MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mapping<'Model, 'T, 'U>) =
     let input = definition.Input.Create(name)
-    let mutable value = System.Func<'U> (fun _ -> Unchecked.defaultof<'U>)
+    let mutable committedModel = Unchecked.defaultof<'Model>
+    let mutable initialized = false
 
     member x.Name = name
     member x.State = input.State
-    member x.Value = value.Invoke()
+    member x.Value =
+        if initialized then definition.Mapping.Invoke(committedModel, input.Value)
+        else Unchecked.defaultof<'U>
     member x.Position = input.Position
     member x.OutOfDate = input.OutOfDate
     member x.Definition = definition
@@ -19,7 +22,8 @@ type internal MappingInstance<'Model, 'T, 'U>(name : Symbol, definition : Mappin
 
     member x.Commit(model, tick) =
         let model = input.Commit(model, tick)
-        value <- System.Func<_> (fun _ -> definition.Mapping.Invoke(model, input.Value))
+        committedModel <- model
+        initialized <- true
         model
 
     interface IAnimation with
