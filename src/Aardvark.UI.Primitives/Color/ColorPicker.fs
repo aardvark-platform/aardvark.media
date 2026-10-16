@@ -305,7 +305,7 @@ module ColorPicker =
                 if size = 0 then
                     "showSelectionPalette: false"
                 else
-                    let ls = match config.localStorageKey with Some k -> $", localStorageKey: '{k}'" | _ -> ""
+                    let ls = match config.localStorageKey with Some k -> $", localStorageKey: '{System.Web.HttpUtility.JavaScriptStringEncode k}'" | _ -> ""
                     $"showSelectionPalette: true, maxSelectionSize: {size}{ls}"
 
             let showAlpha =
@@ -319,8 +319,8 @@ module ColorPicker =
                 | Some { toggle = false } -> "showPaletteOnly: false"
                 | Some p ->
                     "showPaletteOnly: true, togglePaletteOnly: true, " +
-                    $"togglePaletteMoreText: '{p.labelToggleMore}', " +
-                    $"togglePaletteLessText: '{p.labelToggleLess}'"
+                    $"togglePaletteMoreText: '{System.Web.HttpUtility.JavaScriptStringEncode p.labelToggleMore}', " +
+                    $"togglePaletteLessText: '{System.Web.HttpUtility.JavaScriptStringEncode p.labelToggleLess}'"
 
             let textInput =
                 match config.pickerStyle with
@@ -329,7 +329,10 @@ module ColorPicker =
 
             let showButtons =
                 match config.pickerStyle with
-                | Some p when p.showButtons -> $"showButtons: true, chooseText: '{p.labelChoose}', cancelText: '{p.labelCancel}'"
+                | Some p when p.showButtons ->
+                    let choose = System.Web.HttpUtility.JavaScriptStringEncode p.labelChoose
+                    let cancel = System.Web.HttpUtility.JavaScriptStringEncode p.labelCancel
+                    $"showButtons: true, chooseText: '{choose}', cancelText: '{cancel}'"
                 | _ -> "showButtons: false"
 
             let format =

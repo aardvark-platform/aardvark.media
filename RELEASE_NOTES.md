@@ -25,6 +25,7 @@
 - [Primitives] Keep notifications with overlapping IDs independent across containers, including removal, clearing, and dismissal
 - [Primitives] Accept negative integer input in numeric controls and sliders independently of the server culture
 - [Primitives] Keep scaling controller previews synchronized while dragging and after release
+- [Primitives] Preserve special characters in color-picker labels and local-storage keys
 - [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
 - [Animation] Reduce update allocations when committing animations with no queued actions
 - [Animation] Schedule queued delayed animations after a slot finishes without waiting for unrelated ticks
