@@ -9,6 +9,7 @@
 - Encode `MutableApp.DocumentTitle` as HTML string
 - Deliver messages from propagating scene-entry handlers before the target's primary event messages
 - Restore shared-scene task acquisition after failed compilation, including recompilation after task destruction
+- Infer MIME types from served paths for custom embedded-resource routes with null or empty MIME values
 - [Camera] Respect custom camera up directions when limiting FreeFly pitch
 - [Camera] Avoid camera-position jumps caused by radius clamping when switching from FreeFly to Orbit
 - [Camera] Keep FreeFly camera jumps active until position and orientation have both reached the target
