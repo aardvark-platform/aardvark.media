@@ -124,12 +124,18 @@ module ``IHttpBackend Extensions`` =
                 let name = resource.Path |> String.replace "\\" "/"
                 Report.Line(2, "{0} serves {1}", assembly.GetName().Name, name)
 
+                let mimeType =
+                    if String.IsNullOrEmpty resource.MimeType then
+                        Path.GetExtension name |> MimeType.ofFileExtension |> Option.defaultValue null
+                    else
+                        resource.MimeType
+
                 // set the mime-type (if known)
                 let part =
-                    if String.IsNullOrEmpty resource.MimeType then
+                    if String.IsNullOrEmpty mimeType then
                         this.ok data
                     else
-                        this.mimeType resource.MimeType >=> this.ok data
+                        this.mimeType mimeType >=> this.ok data
 
                 // index.* is also reachable via /
                 let parts =
