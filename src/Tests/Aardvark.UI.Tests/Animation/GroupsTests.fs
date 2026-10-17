@@ -885,6 +885,140 @@ module ``Groups Tests`` =
                 ]
             }
 
+    module private ZeroDuration =
+
+        let private timed offset seconds : IAnimation<unit, float> =
+            Animation.create ((+) offset) |> Animation.seconds seconds
+
+        let private run (animation : IAnimation<unit, float>) start expected =
+            use _ = Animator.initTest()
+            let mutable completed = 0
+            let animation = animation |> Animation.onFinalize (fun _ _ model -> completed <- completed + 1; model)
+            let duration = animation.Duration.TotalSeconds
+            let remaining = duration - start
+            Animator.createAndStartFromLocal "Zero" animation (LocalTime.ofSeconds start) ()
+            let instance : IAnimationInstance<unit, float> = Animator.get "Zero" ()
+            for tick, position in [0.0, start; remaining / 2.0, (start + duration) / 2.0; remaining, duration] do
+                Animator.tickSeconds tick
+                Expect.floatClose Accuracy.high instance.Value (expected position) $"Value at local position {position}"
+                Expect.equal instance.Position (LocalTime.ofSeconds position) "Group position"
+                Expect.equal instance.IsFinished (position = duration) "Completion state"
+            for tick in [remaining; remaining + 0.25; remaining + 1.0] do
+                Animator.tickSeconds tick
+                Expect.floatClose Accuracy.high instance.Value (expected duration) "Terminal value remains stable"
+            Expect.equal completed 1 "Parent completes exactly once"
+
+        let numeric kind start =
+            let events, constant = Animation.Primitives.constant 42.0 |> Animation.trackEvents
+            Expect.isTrue constant.Duration.IsZero "The constant keeps its zero duration"
+            let a, b = timed 0.0 1.0, timed 10.0 1.0
+            let group, initial, slope =
+                match kind with
+                | 0 -> Animation.map2 (fun x y -> x + 10.0 * y) constant a, 42.0, 10.0
+                | 1 -> Animation.map2 (fun x y -> x + 10.0 * y) a constant, 420.0, 1.0
+                | 2 -> Animation.map3 (fun x y z -> x + 10.0 * y + 100.0 * z) constant a b, 1042.0, 110.0
+                | 3 -> Animation.map3 (fun x y z -> x + 10.0 * y + 100.0 * z) a constant b, 1420.0, 101.0
+                | _ -> Animation.map3 (fun x y z -> x + 10.0 * y + 100.0 * z) a b constant, 4300.0, 11.0
+            run group start (fun position -> initial + slope * position)
+            Expect.checkEvents events [EventType.Start, 42.0; EventType.Progress, 42.0; EventType.Finalize, 42.0]
+
+        let reference constantFirst =
+            let text = "anchor"
+            let constant = Animation.Primitives.constant text
+            let mapping (value : string) position =
+                Expect.isTrue (obj.ReferenceEquals(value, text)) "The mapper receives the original reference"
+                float value.Length + 10.0 * position
+            let group =
+                if constantFirst then Animation.map2 mapping constant (timed 0.0 1.0)
+                else Animation.map2 (fun position value -> mapping value position) (timed 0.0 1.0) constant
+            run group 0.25 (fun position -> 6.0 + 10.0 * position)
+
+        let nested () =
+            let starts, completed = ResizeArray<string>(), ResizeArray<string>()
+            let track name (animation : IAnimation<unit, float>) =
+                animation
+                |> Animation.onStart (fun _ _ model -> starts.Add name; model)
+                |> Animation.onFinalize (fun _ _ model -> completed.Add name; model)
+            let a = Animation.Primitives.constant 20.0 |> track "A"
+            let b = Animation.Primitives.constant 22.0 |> track "B"
+            let inner = Animation.map2 (+) a b |> track "Inner"
+            let c = Animation.Primitives.constant 100.0 |> track "C"
+            let zero = Animation.map2 (+) inner c |> track "Zero"
+            Expect.isTrue zero.Duration.IsZero "Nested zero-duration groups remain zero-duration"
+            let group = Animation.map2 (+) zero (timed 0.0 1.0 |> track "Timed") |> track "Parent"
+            run group 0.0 (fun position -> 142.0 + position)
+            Expect.checkEvents starts ["A"; "B"; "Inner"; "C"; "Zero"; "Timed"; "Parent"]
+            Expect.checkEvents completed ["A"; "B"; "Inner"; "C"; "Zero"; "Timed"; "Parent"]
+
+        let modelEffects () =
+            use _ = Animator.initTest()
+            let animator = ref Unchecked.defaultof<Animator<int>>
+            animator.Value <- Animator.initial ((fun _ -> animator.Value), fun value model -> animator.Value <- value; model)
+            let trace = ResizeArray<string * float * int>()
+            let constant : IAnimation<int, float> =
+                Animation.Primitives.constant 42.0
+                |> Animation.onStart (fun _ value model -> trace.Add("ChildStart", value, model); model + 1)
+                |> Animation.onFinalize (fun _ value model -> trace.Add("ChildFinalize", value, model); model + 3)
+            let timed = Animation.create id |> Animation.seconds 1.0
+            let group =
+                Animation.map2' (fun model x y -> float model + x + y) constant timed
+                |> Animation.onStart (fun _ value model -> trace.Add("ParentStart", value, model); model * 10)
+                |> Animation.onProgress (fun _ value model -> trace.Add("ParentProgress", value, model); model * 100)
+            let model = Animator.createAndStart "ZeroEffects" group 1 |> Animator.tick GlobalTime.zero
+            Expect.equal model 2300 "Child effects reach the parent and returned model in order"
+            Expect.checkEvents trace ["ChildStart", 42.0, 1; "ParentStart", 44.0, 2; "ChildFinalize", 42.0, 20; "ParentProgress", 65.0, 23]
+            let instance : IAnimationInstance<int, float> = Animator.get "ZeroEffects" model
+            Expect.equal instance.Value 65.0 "Parent evaluation sees the finalized child's effect"
+
+        let restart () =
+            use _ = Animator.initTest()
+            let mutable starts, completed, parentCompleted = 0, 0, 0
+            let constant =
+                Animation.Primitives.constant 42.0
+                |> Animation.onStart (fun _ _ model -> starts <- starts + 1; model)
+                |> Animation.onFinalize (fun _ _ model -> completed <- completed + 1; model)
+            let group =
+                Animation.map2 (+) constant (timed 0.0 1.0)
+                |> Animation.onFinalize (fun _ _ model -> parentCompleted <- parentCompleted + 1; model)
+            Animator.createAndStart "ZeroRestart" group ()
+            let instance : IAnimationInstance<unit, float> = Animator.get "ZeroRestart" ()
+            Animator.tickSeconds 0.0
+            Expect.equal instance.Value 42.0 "Initial value"
+            Animator.tickSeconds 0.5
+            Expect.equal instance.Value 42.5 "Progress before Stop"
+            Animator.stop "ZeroRestart" ()
+            Animator.tickSeconds 0.75
+            Expect.isTrue instance.IsStopped "Stop resets the group"
+            Expect.equal instance.Position LocalTime.zero "Stopped position"
+            Expect.equal instance.Value 42.0 "Stopped value retains the constant"
+            Animator.tickSeconds 1.0
+            Expect.equal (starts, completed, parentCompleted) (1, 1, 0) "No duplicate completion while stopped"
+            for tick, start in [2.0, 0.25; 5.0, 0.5] do
+                Animator.restartFromLocal "ZeroRestart" (LocalTime.ofSeconds start) ()
+                Animator.tickSeconds tick
+                Expect.equal instance.Value (42.0 + start) "Restart from a nonzero position"
+                Animator.tickSeconds (tick + 1.0 - start)
+                Expect.isTrue instance.IsFinished "Restart completes"
+                Expect.equal instance.Value 43.0 "Restart terminal value"
+            for tick in [5.5; 6.0; 7.0] do Animator.tickSeconds tick
+            Expect.equal (starts, completed, parentCompleted) (3, 3, 2) "One child completion per start and one parent completion per finished run"
+
+        let controls kind =
+            let animation, expected =
+                match kind with
+                | 0 -> Animation.Primitives.constant 42.0, fun _ -> 42.0
+                | 1 -> Animation.map2 (+) (Animation.Primitives.constant 20.0) (Animation.Primitives.constant 22.0), fun _ -> 42.0
+                | _ -> Animation.map2 (+) (timed 0.0 1.0) (timed 0.0 2.0), fun time -> min 1.0 time + time / 2.0
+            run animation 0.0 expected
+
+        let sequential () =
+            let firstEvents, first = Animation.Primitives.constant 42.0 |> Animation.trackEvents
+            let middleEvents, middle = Animation.Primitives.constant 99.0 |> Animation.trackEvents
+            let group = Animation.sequential [first; timed 0.0 1.0; middle; timed 0.0 2.0]
+            run group 0.0 (fun time -> if time < 1.0 then time else (time - 1.0) / 2.0)
+            Expect.checkEvents firstEvents []
+            Expect.checkEvents middleEvents []
+
     module private Stop =
 
         let private create concurrent nested =
@@ -1134,6 +1268,23 @@ module ``Groups Tests`` =
                 Concurrent.progress
                 Concurrent.positionWithEasing
                 Concurrent.pauseResumeWithEasing
+            ]
+
+            testList "Zero duration" [
+                test "Map2 and map3 initialize constants in every position and at nonzero starts" {
+                    for kind in 0 .. 4 do
+                        for start in [0.0; 0.25; 0.5] do ZeroDuration.numeric kind start
+                }
+                test "Reference constants reach the mapper in either position" {
+                    for first in [false; true] do ZeroDuration.reference first
+                }
+                testCase "Nested groups initialize and complete children before parents" ZeroDuration.nested
+                testCase "Child callback model effects reach parent evaluation" ZeroDuration.modelEffects
+                testCase "Stop and restart complete each zero member once per start" ZeroDuration.restart
+                test "Standalone constants, all-zero groups and positive-duration members retain behavior" {
+                    for kind in 0 .. 2 do ZeroDuration.controls kind
+                }
+                testCase "Sequential groups still skip nonterminal zero-duration members" ZeroDuration.sequential
             ]
 
             testList "Stop" [
