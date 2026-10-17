@@ -46,9 +46,8 @@ module ScaleController =
             | Release ->                
                 match m.grabbed with
                   | Some _ ->                     
-                    let scale = Trafo3d.Scale m.workingPose.scale
                     let p = { m.pose with scale = m.pose.scale * m.workingPose.scale }
-                    { m with grabbed = None; pose = p; workingPose = Pose.identity }
+                    { m with grabbed = None; pose = p; workingPose = Pose.identity; previewTrafo = Pose.toTrafo p }
                   | None   -> m
             | MoveRay rp ->
                 match m.grabbed with
@@ -63,7 +62,8 @@ module ScaleController =
                         | Y -> V3d.OIO * drag + V3d.One
                         | Z -> V3d.OOI * drag + V3d.One                    
 
-                    { m with workingPose = { m.workingPose with scale = scale }}
+                    let preview = Trafo3d.Scale scale * Pose.toTrafo m.pose
+                    { m with workingPose = { m.workingPose with scale = scale }; previewTrafo = preview }
                 | None -> m
             | Nop -> m
             | SetMode _ -> m
