@@ -334,7 +334,7 @@ module FreeFlyController =
                     moveVec = V3d.Zero
                     dragStart = V2i.Zero
                     look = false; zoom = false; pan = false                    
-                    forward = false; backward = false; left = false; right = false
+                    forward = false; backward = false; left = false; right = false; upward = false; downward = false
                 }
             | Rendered ->
                 let now = sw.Elapsed.TotalSeconds
