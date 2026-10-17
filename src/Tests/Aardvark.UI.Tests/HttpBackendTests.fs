@@ -73,6 +73,57 @@ module ``HttpBackend Tests`` =
         let private extensionMethods = ["QUERY"; "PURGE"; "X-CUSTOM"]
         let methods = standardMethods @ extensionMethods
 
+    module private CustomResources =
+        let inheritedMime = "application/x-inherited"
+        let indexPath = "/custom-index/index.html"
+
+        type Case = { Resource : HttpResource; Url : string; ContentType : string }
+
+        let private create group file mime contentType =
+            { Resource = { Path = $"custom-mime\\{group}\\{file}"; MimeType = mime }
+              Url = $"/custom-mime/{group}/{file}"; ContentType = contentType }
+
+        let inferred = [
+            for group, mime in ["null", null; "empty", ""] do
+                for file, expected in [
+                    "script.js", "text/javascript"; "script.JS", "text/javascript"
+                    "style.css", "text/css"; "style.CSS", "text/css"
+                    "note.txt", "text/plain"; "note.TXT", "text/plain"
+                    "image.svg", "image/svg+xml"; "image.SVG", "image/svg+xml"
+                ] do
+                    yield create group file mime expected
+        ]
+
+        let controls = [
+            for group, mime in ["null", null; "empty", ""] do
+                yield create group "unknown.aardvark-test-unknown" mime inheritedMime
+                yield create group "extensionless" mime inheritedMime
+            for file, mime in [
+                "override.js", "application/x-explicit; charset=us-ascii"
+                "override.CSS", "text/x-css"
+                "override.aardvark-test-unknown", "image/x-explicit"
+                "override", "application/x-no-extension"
+            ] do
+                yield create "explicit" file mime mime
+        ]
+
+        let routes (http: IHttpBackend<'Context, 'Handler>) =
+            let (>=>) x y = http.compose x y
+            let asm = typeof<TestServer>.Assembly
+            let chooser resource name =
+                if name = asm.GetName().Name + ".embedded_file.txt" then Some resource else None
+            [
+                for entry in inferred @ controls do
+                    // Only matching routes receive the inherited header; siblings stay untouched.
+                    http.route entry.Url >=> http.mimeType inheritedMime >=> http.assemblyWith (chooser entry.Resource) asm
+                http.choose [http.route "/"; http.route indexPath]
+                    >=> http.assemblyWith (chooser { Path = "custom-index\\index.html"; MimeType = "text/x-index" }) asm
+                http.subRoute "/custom-excluded" (http.choose [
+                    http.assemblyWith (fun _ -> None) asm
+                    http.notFound "Excluded"
+                ])
+            ]
+
     let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) (cancellationToken: CancellationToken) =
         let (>=>) x y = http.compose x y
 
@@ -161,6 +212,7 @@ module ``HttpBackend Tests`` =
             for method in MethodFilters.methods do
                 http.route $"/method-filter/{method}" >=> http.method method >=> http.status 202
 
+            yield! CustomResources.routes http
             http.assembly typeof<TestServer>.Assembly
             http.notFound "Not found"
         ]
@@ -521,6 +573,39 @@ module ``HttpBackend Tests`` =
             test true $"RESOURCES{Path.DirectorySeparatorChar}embedded_resource_2.md" "resources/embedded_resource_2.md"
             test false "embedded_file_incorrect.txt" "embedded_file_incorrect.txt"
 
+        let private resourceBytes () =
+            let asm = typeof<TestServer>.Assembly
+            use stream = asm.GetManifestResourceStream(asm.GetName().Name + ".embedded_file.txt")
+            Stream.readAllBytes stream
+
+        let private checkResource (client: HttpClient) (server: TestServer) path contentType =
+            use response = client.GetAsync($"http://{server.Host}{path}", server.CancellationToken).Result
+            Expect.equal response.StatusCode HttpStatusCode.OK $"{path}: resource status"
+            Expect.sequenceEqual (response.Content.ReadAsByteArrayAsync().Result) (resourceBytes()) $"{path}: exact manifest bytes"
+            Expect.equal (string response.Content.Headers.ContentType) contentType $"{path}: complete Content-Type"
+
+        let customResourceMimeFallback (client: HttpClient) (server: TestServer) =
+            for entry in CustomResources.inferred do
+                checkResource client server entry.Url entry.ContentType
+
+        let customResourceMimeControls (client: HttpClient) (server: TestServer) =
+            for entry in CustomResources.controls do
+                checkResource client server entry.Url entry.ContentType
+
+        let customResourceRouting (client: HttpClient) (server: TestServer) =
+            for prefix in [None; Some "/proxy/ui"] do
+                use request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, $"http://{server.Host}/")
+                prefix |> Option.iter (fun value -> request.Headers.Add("GLOBAL_PATH", value))
+                use response = client.SendAsync(request, server.CancellationToken).Result
+                Expect.equal response.StatusCode HttpStatusCode.MovedPermanently "Index alias retains its permanent redirect"
+                Expect.equal (response.Headers.GetValues("Location") |> Seq.toList)
+                    [(prefix |> Option.defaultValue "") + CustomResources.indexPath] "Index redirect retains its normalized served path"
+            checkResource client server CustomResources.indexPath "text/x-index"
+            use excluded = client.GetAsync($"http://{server.Host}/custom-excluded/embedded_file.txt", server.CancellationToken).Result
+            Expect.equal excluded.StatusCode HttpStatusCode.NotFound "Chooser exclusions are not served"
+            Expect.equal (excluded.Content.ReadAsStringAsync().Result) "Excluded" "Excluded resources reach the scoped fallback"
+            checkResource client server "/embedded_file.txt" "text/plain"
+
     [<Tests>]
     let tests =
         let cases =
@@ -547,6 +632,9 @@ module ``HttpBackend Tests`` =
                 "WebSocket text reassembly",   Cases.webSocketReassembly WebSocketMessageType.Text
                 "WebSocket binary reassembly", Cases.webSocketReassembly WebSocketMessageType.Binary
                 "Embedded resources", Cases.embeddedResources
+                "Custom resource MIME fallback", Cases.customResourceMimeFallback
+                "Custom resource MIME controls", Cases.customResourceMimeControls
+                "Custom resource routing controls", Cases.customResourceRouting
             ]
 
         let createTests (useGiraffe: bool) =
