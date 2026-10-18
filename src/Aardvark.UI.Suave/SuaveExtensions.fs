@@ -1,6 +1,7 @@
 ﻿namespace Aardvark.UI.Suave
 
 open Suave
+open System
 
 module Filters =
     let folder (name : string) (parts : list<WebPart>) : WebPart =
@@ -35,13 +36,13 @@ module Filters =
                     let newHeaders = 
                         let mutable found = false
                         let newHeaders =
-                            request.headers |> List.map (fun (name, value) ->
-                                if name = "GLOBAL_PATH" then
+                            request.headers |> List.map (fun ((name, value) as header) ->
+                                if String.Equals(name, "GLOBAL_PATH", StringComparison.OrdinalIgnoreCase) then
                                     found <- true
                                     if value.EndsWith "/" then (name, value + path.Substring(1))
                                     else (name, value + path)
                                 else
-                                    (name, value)
+                                    header
                             )
 
                         if not found then
