@@ -31,6 +31,7 @@
     <Compile Include="GoldenLayoutJsonTests.fs" />
     <Compile Include="MutableAppChannelTests.fs" />
     <Compile Include="RenderControlConfigTests.fs" />
+    <Compile Include="SceneTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="embedded_file.txt" />
