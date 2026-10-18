@@ -54,22 +54,25 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
     let timer = new Timer(TimerCallback(destroy), null, Timeout.Infinite, Timeout.Infinite)
 
     let create() =
+        let acquiredTask =
+            if refCount = 0 then
+                match task with
+                | Some task ->
+                    // refCount was 0 but task was not deleted
+                    timer.Change(Timeout.Infinite, Timeout.Infinite) |> ignore
+                    task
+                | None ->
+                    // refCount was 0 and there was no task
+                    let t = scene.Compile values
+                    task <- Some t
+                    t
+            else
+                match task with
+                | Some t -> t
+                | None -> failwithf $"[Scene] Invalid state (refCount = {refCount}, task = null)"
+
         refCount <- refCount + 1
-        if refCount = 1 then
-            match task with
-            | Some task ->
-                // refCount was 0 but task was not deleted
-                timer.Change(Timeout.Infinite, Timeout.Infinite) |> ignore
-                task
-            | None ->
-                // refCount was 0 and there was no task
-                let t = scene.Compile values
-                task <- Some t
-                t
-        else
-            match task with
-            | Some t -> t
-            | None -> failwithf $"[Scene] Invalid state (refCount = {refCount}, task = null)"
+        acquiredTask
 
     let release() =
         refCount <- refCount - 1

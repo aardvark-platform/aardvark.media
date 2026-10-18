@@ -5,6 +5,7 @@
 - Reduce construction allocations for large groups of repeated conditional attributes
 - Encode `MutableApp.DocumentTitle` as HTML string
 - Deliver messages from propagating scene-entry handlers before the target's primary event messages
+- Restore shared-scene task acquisition after failed compilation, including recompilation after task destruction
 - [Camera] Respect custom camera up directions when limiting FreeFly pitch
 - [Camera] Avoid camera-position jumps caused by radius clamping when switching from FreeFly to Orbit
 - [Camera] Keep FreeFly camera jumps active until position and orientation have both reached the target
