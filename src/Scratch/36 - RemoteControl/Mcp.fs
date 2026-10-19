@@ -204,15 +204,57 @@ let private callTool (app : RemoteApp) (id : JsonElement) (parameters : JsonElem
 
         success id {| content = [| {| ``type`` = "text"; text = text |} |]; isError = isError |}
 
-/// Handles a single JSON-RPC message. Returns None for notifications (no response).
-let private handle (app : RemoteApp) (msg : JsonElement) : option<obj> =
-    let id = Args.tryGet msg "id"
-    let parameters = Args.tryGet msg "params" |> Option.defaultValue emptyObject
+/// The kinds of messages a client can send. Classified up front, so malformed input cannot be mistaken for a notification.
+type private Message =
+    | Request of id : JsonElement * meth : string * parameters : JsonElement
+    | Notification
+    | Response // reply to a server-initiated request, we never send any
+    | Invalid of id : obj * reason : string
 
-    match id, Args.optString msg "method" with
-    | None, _ -> None // notification (e.g. notifications/initialized) or response, nothing to answer
-    | Some id, None -> Some (failure id ErrorCode.invalidRequest "Missing method.")
-    | Some id, Some meth ->
+let private classify (msg : JsonElement) : Message =
+    let prop (name : string) =
+        match msg.TryGetProperty name with
+        | true, v -> Some v
+        | _ -> None
+
+    let isValidId (v : JsonElement) =
+        match v.ValueKind with
+        | JsonValueKind.String | JsonValueKind.Number | JsonValueKind.Null -> true
+        | _ -> false
+
+    if msg.ValueKind <> JsonValueKind.Object then
+        Invalid (null, "Message must be a JSON object.")
+    else
+        match prop "id" with
+        | Some id when not (isValidId id) -> Invalid (null, "Id must be a string, number or null.")
+        | id ->
+            // Errors echo the id when it could be read
+            let errorId = id |> Option.map box |> Option.defaultValue null
+
+            match prop "jsonrpc", prop "method", prop "params" with
+            | Some v, _, _ when v.ValueKind <> JsonValueKind.String || v.GetString() <> "2.0" ->
+                Invalid (errorId, "Unsupported JSON-RPC version, expected \"2.0\".")
+            | None, _, _ ->
+                Invalid (errorId, "Missing JSON-RPC version, expected \"2.0\".")
+            | _, Some m, _ when m.ValueKind <> JsonValueKind.String ->
+                Invalid (errorId, "Method must be a string.")
+            | _, Some _, Some p when p.ValueKind <> JsonValueKind.Object && p.ValueKind <> JsonValueKind.Array ->
+                Invalid (errorId, "Params must be an object or an array.")
+            | _, Some m, p ->
+                match id with
+                | Some id -> Request (id, m.GetString(), p |> Option.defaultValue emptyObject)
+                | None -> Notification
+            | _, None, _ when id.IsSome && (Option.isSome (prop "result") || Option.isSome (prop "error")) ->
+                Response
+            | _ ->
+                Invalid (errorId, "Missing method.")
+
+/// Handles a single JSON-RPC message. Returns None for notifications and responses (no answer).
+let private handle (app : RemoteApp) (msg : Message) : option<obj> =
+    match msg with
+    | Notification | Response -> None
+    | Invalid (id, reason) -> Some (failure id ErrorCode.invalidRequest reason)
+    | Request (id, meth, parameters) ->
         match meth with
         | "initialize" ->
             let version =
@@ -262,14 +304,20 @@ let private post (app : RemoteApp) : WebPart =
 
         | Some msg when msg.ValueKind = JsonValueKind.Array ->
             // JSON-RPC batch (protocol version 2025-03-26)
-            match [ for m in msg.EnumerateArray() do yield! Option.toList (handle app m) ] with
-            | [] -> Response.response HTTP_202 [||]
-            | responses -> json HTTP_200 responses
+            if msg.GetArrayLength() = 0 then
+                json HTTP_400 (failure null ErrorCode.invalidRequest "Empty batch.")
+            else
+                match [ for m in msg.EnumerateArray() do yield! Option.toList (handle app (classify m)) ] with
+                | [] -> Response.response HTTP_202 [||]
+                | responses -> json HTTP_200 responses
 
         | Some msg ->
-            match handle app msg with
-            | Some response -> json HTTP_200 response
-            | None -> Response.response HTTP_202 [||]
+            match classify msg with
+            | Invalid (id, reason) -> json HTTP_400 (failure id ErrorCode.invalidRequest reason)
+            | msg ->
+                match handle app msg with
+                | Some response -> json HTTP_200 response
+                | None -> Response.response HTTP_202 [||]
     )
 
 let webPart (app : RemoteApp) : WebPart =
