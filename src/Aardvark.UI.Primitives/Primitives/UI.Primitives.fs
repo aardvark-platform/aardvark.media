@@ -137,7 +137,7 @@ module Html =
         let private fields r =
             try
                 let t = r.GetType()
-                let props = t.GetProperties()
+                let props = FSharpType.GetRecordFields t
                 let vals = FSharpValue.GetRecordFields(r)
                 [
                     for i in 0..props.Length-1 do
