@@ -18,6 +18,7 @@
     <Compile Include="Model.fs" />
     <Compile Include="App.fs" />
     <Compile Include="Api.fs" />
+    <Compile Include="Http.fs" />
     <Compile Include="Rest.fs" />
     <Compile Include="Mcp.fs" />
     <Compile Include="Program.fs" />

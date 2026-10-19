@@ -53,8 +53,8 @@ let private refs (boxes : JsonElement[]) =
     boxes |> Option.ofObj |> Option.defaultValue [||] |> Array.map (fun e -> e.ToString())
 
 let webPart (app : RemoteApp) : WebPart =
-    choose [
-        GET  >=> path "/api/scene"            >=> request (fun _ -> respond HTTP_200 (getScene app))
+    pathStarts "/api/" >=> Http.requireLocalOrigin (choose [
+        GET  >=> path "/api/scene"         >=> request (fun _ -> respond HTTP_200 (getScene app))
         POST >=> path "/api/boxes"            >=> post (fun (r : AddBoxesRequest) -> addBoxes app (if r.count = 0 then 1 else r.count) (Option.ofObj r.color))
         POST >=> path "/api/boxes/color"      >=> post (fun (r : BoxesRequest) -> setColor app (refs r.boxes) r.color)
         POST >=> path "/api/boxes/remove"     >=> post (fun (r : BoxesRequest) -> removeBoxes app (refs r.boxes))
@@ -62,4 +62,4 @@ let webPart (app : RemoteApp) : WebPart =
         POST >=> path "/api/selection/invert" >=> request (fun _ -> result (invertSelection app))
         POST >=> path "/api/camera/reset"     >=> request (fun _ -> result (resetCamera app))
         POST >=> path "/api/rendering"        >=> post (fun (r : RenderingRequest) -> setRendering app (Option.ofObj r.fillMode) (Option.ofObj r.cullMode))
-    ]
+    ])

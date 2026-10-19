@@ -243,50 +243,38 @@ let private handle (app : RemoteApp) (msg : JsonElement) : option<obj> =
 // ---------------------------------------------------------------------------------------------------------------------
 // HTTP
 
-/// Local servers must validate the Origin header to prevent DNS rebinding attacks.
-let private isAllowedOrigin (r : HttpRequest) =
-    match r.header "origin" with
-    | Choice1Of2 origin ->
-        match Uri.TryCreate(origin, UriKind.Absolute) with
-        | true, uri -> uri.IsLoopback
-        | _ -> false
-    | Choice2Of2 _ -> true
-
 let private json (status : HttpCode) (body : obj) : WebPart =
     Response.response status (JsonSerializer.SerializeToUtf8Bytes(body, options))
     >=> Writers.setMimeType "application/json; charset=utf-8"
 
 let private post (app : RemoteApp) : WebPart =
     request (fun r ->
-        if not (isAllowedOrigin r) then
-            Response.response HTTP_403 [||]
-        else
-            let parsed =
-                try
-                    use doc = JsonDocument.Parse(ReadOnlyMemory r.rawForm)
-                    Some (doc.RootElement.Clone())
-                with _ ->
-                    None
+        let parsed =
+            try
+                use doc = JsonDocument.Parse(ReadOnlyMemory r.rawForm)
+                Some (doc.RootElement.Clone())
+            with _ ->
+                None
 
-            match parsed with
-            | None ->
-                json HTTP_400 (failure null ErrorCode.parseError "Parse error.")
+        match parsed with
+        | None ->
+            json HTTP_400 (failure null ErrorCode.parseError "Parse error.")
 
-            | Some msg when msg.ValueKind = JsonValueKind.Array ->
-                // JSON-RPC batch (protocol version 2025-03-26)
-                match [ for m in msg.EnumerateArray() do yield! Option.toList (handle app m) ] with
-                | [] -> Response.response HTTP_202 [||]
-                | responses -> json HTTP_200 responses
+        | Some msg when msg.ValueKind = JsonValueKind.Array ->
+            // JSON-RPC batch (protocol version 2025-03-26)
+            match [ for m in msg.EnumerateArray() do yield! Option.toList (handle app m) ] with
+            | [] -> Response.response HTTP_202 [||]
+            | responses -> json HTTP_200 responses
 
-            | Some msg ->
-                match handle app msg with
-                | Some response -> json HTTP_200 response
-                | None -> Response.response HTTP_202 [||]
+        | Some msg ->
+            match handle app msg with
+            | Some response -> json HTTP_200 response
+            | None -> Response.response HTTP_202 [||]
     )
 
 let webPart (app : RemoteApp) : WebPart =
-    path "/mcp" >=> choose [
+    path "/mcp" >=> Http.requireLocalOrigin (choose [
         POST >=> post app
         // No server-initiated streams and no sessions.
         Response.response HTTP_405 [||]
-    ]
+    ])
