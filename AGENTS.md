@@ -1,120 +1,78 @@
 # AI Agent Entry Point
 
-This file provides AI coding assistants with essential context for working with the Aardvark.Media codebase.
+Start with [ai/README.md](ai/README.md) for source-linked guidance on the current 5.7.x APIs.
 
-For detailed documentation, see [ai/README.md](ai/README.md).
+## Build and Test
 
-## Quick Reference
+Run from the repository root:
 
 | Command | Purpose |
 |---------|---------|
-| `dotnet tool restore` | Restore .NET tools (Paket, Aardpack, Adaptify) |
-| `dotnet paket restore` | Restore NuGet dependencies via Paket |
-| `build.cmd` / `build.sh` | Build entire solution |
-| `dotnet build src/Aardvark.Media.sln` | Build using .NET CLI |
-| `dotnet test` | Run tests |
+| `dotnet tool restore` | Restore Paket and Aardpack from the tool manifest |
+| `dotnet paket restore` | Restore locked dependencies |
+| `build.cmd` | Restore and build the full solution on Windows |
+| `build.sh` | Restore and build the non-Windows solution filter |
+| `dotnet build src/Aardvark.Media.sln` | Build the full solution after restore |
+| `dotnet build src/Aardvark.Media.NonWindows.slnf` | Build without Windows-only projects |
+| `dotnet test src/Tests/Aardvark.UI.Tests/Aardvark.UI.Tests.fsproj` | Run the test suite |
 
-## Technology Stack
+For builds without examples, use [Aardvark.Media.NoExamples.slnf](src/Aardvark.Media.NoExamples.slnf)
+or [Aardvark.Media.NoExamples.NonWindows.slnf](src/Aardvark.Media.NoExamples.NonWindows.slnf).
+CEF projects require Windows.
 
-| Component | Version | Purpose |
-|-----------|---------|---------|
-| .NET | 8.0 | Runtime/SDK |
-| F# | All projects (65 total) | Language |
-| Paket | 9.0.2 | Dependency management |
-| Aardpack | 2.0.6 | Build tooling |
-| Adaptify | 1.3.5 | Code generation for adaptive models |
+## Stack and Version Sources
 
-## Dependency Management: Paket
+All projects use F#. Consult the maintained declarations instead of duplicating versions here:
 
-**DO NOT** use `dotnet add package` or edit `.fsproj` files to add dependencies.
+- SDK: [global.json](global.json)
+- Local tools: [.config/dotnet-tools.json](.config/dotnet-tools.json)
+- Dependencies, including Adaptify.Core and Adaptify.MSBuild: [paket.dependencies](paket.dependencies)
+- Resolved dependency versions: [paket.lock](paket.lock)
+- Target frameworks: each project's `.fsproj`
 
-| Task | Command |
-|------|---------|
-| Add dependency | `dotnet paket add <package> --project <project>` |
-| Update dependency | `dotnet paket update <package>` |
-| Remove dependency | `dotnet paket remove <package> --project <project>` |
-| Install all | `dotnet paket restore` |
-
-Dependencies are declared in `paket.dependencies` and `paket.references` files.
+Adaptify runs through its MSBuild integration; it is not a local tool in the manifest.
 
 ## Project Structure
 
-```
-src/
-├── Aardvark.Media.sln              # Main solution
-├── Aardvark.UI/                    # Core UI framework
-├── Aardvark.Service/               # HTTP service layer
-├── Aardvark.UI.Primitives/         # UI primitive components
-├── Aardvark.Cef*/                  # CEF integration (Windows-only)
-└── [62+ other F# projects]
-```
+| Path / namespace | Purpose |
+|------------------|---------|
+| [src/Aardvark.UI/](src/Aardvark.UI/) / `Aardvark.UI` | Backend-independent DOM, application, HTTP, scene graph, and rendering logic |
+| [src/Aardvark.UI.Giraffe/](src/Aardvark.UI.Giraffe/) / `Aardvark.UI.Giraffe` | Giraffe / ASP.NET Core backend; recommended for .NET Core applications |
+| [src/Aardvark.UI.Suave/](src/Aardvark.UI.Suave/) / `Aardvark.UI.Suave` | Independent Suave backend targeting .NET Standard 2.0 |
+| [src/Aardvark.UI.Primitives/](src/Aardvark.UI.Primitives/) / `Aardvark.UI.Primitives` | Controllers, dialogs, and UI components; animation and transformation APIs have their own namespaces |
+| [src/Aardvark.Cef.WinForms/](src/Aardvark.Cef.WinForms/) / `Aardvark.Cef.WinForms` | CefSharp-based Windows Forms integration |
+| [src/Aardvark.Cef.OffScreen/](src/Aardvark.Cef.OffScreen/) / `Aardvark.Cef.OffScreen` | CefSharp-based offscreen rendering |
+| [src/Aardvark.Cef.Process/](src/Aardvark.Cef.Process/) | Custom CEF subprocess for mapped frame transfer |
+| [src/Examples/](src/Examples/) | Application examples |
+| [src/Tests/Aardvark.UI.Tests/](src/Tests/Aardvark.UI.Tests/) | Expecto tests, exposed through `dotnet test` |
 
-## Solution Filters
+## Dependency Management
 
-| File | Platform | Purpose |
-|------|----------|---------|
-| `src/Aardvark.Media.sln` | All | Full solution |
-| `*.slnf` files | Varies | Platform-specific filters (Windows/non-Windows) |
+**Paket only:** do not use `dotnet add package` or add dependencies directly to `.fsproj` files.
+Dependencies belong in `paket.dependencies` and project `paket.references` files.
 
-CEF-related projects require Windows.
+| Task | Command |
+|------|---------|
+| Add | `dotnet paket add <package> --project <project>` |
+| Update | `dotnet paket update <package>` |
+| Remove | `dotnet paket remove <package> --project <project>` |
+| Restore | `dotnet paket restore` |
 
-## Code Generation
+Include `paket.lock` when committing an authorized dependency change. Do not commit or push
+unless explicitly instructed.
 
-Adaptify generates `.g.fs` files for types marked with `[<ModelType>]`:
+## Adaptive Models
 
-- Generated files: `*.g.fs`
-- Source files: typically same directory as model definitions
-- Trigger: build process
-- **DO NOT** edit `.g.fs` files manually
+Apply `[<ModelType>]` to the **immutable source model**. Adaptify generates its adaptive
+counterpart and `.g.fs` files during builds. Do not handwrite the generated type or edit
+`.g.fs` files. Rebuild the owning project if generated code is stale.
+See [ARCHITECTURE.md](ai/ARCHITECTURE.md#adaptive-models).
 
-## Key Namespaces
+## Engineering Rules
 
-| Namespace | Purpose |
-|-----------|---------|
-| `Aardvark.UI` | Core UI abstractions |
-| `Aardvark.Service` | HTTP/service infrastructure |
-| `Aardvark.UI.Primitives` | Reusable UI components |
-| `Aardvark.Cef` | Chromium Embedded Framework bindings |
-
-## Framework Rules
-
-1. **No C#**: All projects use F#
-2. **Paket-only**: Never bypass Paket for dependency management
-3. **Generated code**: Never modify `.g.fs` files
-4. **Platform constraints**: CEF projects are Windows-only
-
-## Common Failures
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| Build fails: missing packages | Paket restore not run | `dotnet paket restore` |
-| Build fails: missing tools | Tools not restored | `dotnet tool restore` |
-| CEF build fails on Linux/macOS | Windows-only projects | Use solution filter excluding CEF |
-| Generated code out of sync | Stale `.g.fs` | Rebuild project |
-
-## File Ownership
-
-| Path | Owner | Note |
-|------|-------|------|
-| `paket.dependencies` | Paket | Central dependency declarations |
-| `paket.lock` | Paket | Locked versions (commit this) |
-| `*.g.fs` | Adaptify | Generated (do not edit) |
-| `.config/dotnet-tools.json` | .NET tools | Tool manifest |
-
-## Tips for AI Agents
-
-- Read `ai/README.md` for architecture, patterns, and detailed guidance
-- Check solution filters (`.slnf`) before building on non-Windows platforms
-- Run `dotnet tool restore` && `dotnet paket restore` before first build
-- Respect the TDD workflow: tests first, no production code without tests
-- Delete dead code rather than commenting it out
-- Simplify abstractions with single implementations
-- Update docs when behavior changes
-
-## Governance
-
-Follow prime directives in `C:\Users\sm\.claude\CLAUDE.md`:
-- Zero tolerance for errors/warnings/failing tests
-- TDD only: red-green-refactor
-- Terse output, no fluff
-- Refactor > patch, delete > comment out
+- F# only; respect Windows-only CEF constraints.
+- Tests first for production changes; keep builds and tests free of errors and warnings.
+- Delete dead code instead of commenting it out; simplify abstractions that do not earn their keep.
+- Update documentation when behavior changes, checking claims against current source.
+- Missing tools: run `dotnet tool restore`. Missing dependencies: run `dotnet paket restore`.
+- Follow the prime directives in `C:\Users\sm\.claude\CLAUDE.md` when available.

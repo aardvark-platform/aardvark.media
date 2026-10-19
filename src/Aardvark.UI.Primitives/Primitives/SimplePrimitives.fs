@@ -290,8 +290,8 @@ module SimplePrimitives =
                     yield "var $self = $('#__ID__');"
                     yield "var $input = $('#__ID__ > input');"
                     yield "var old = $input.val();"
-                    yield "$input.on('input', function(e) { var v = validate(e.target.value); if(v) { $self.removeClass('error'); } else { $self.addClass('error'); } });"
-                    yield "$input.change(function(e) { var v = validate(e.target.value); if(v) { old = v; aardvark.processEvent('__ID__', 'data-event', v); } else { $input.val(old); $self.removeClass('error'); } });"
+                    yield "$input.on('input', function(e) { var v = validate(e.target.value); if(v !== null) { $self.removeClass('error'); } else { $self.addClass('error'); } });"
+                    yield "$input.change(function(e) { var v = validate(e.target.value); if(v !== null) { old = v; aardvark.processEvent('__ID__', 'data-event', v); } else { $input.val(old); $self.removeClass('error'); } });"
                     yield "valueCh.onmessage = function(v) {  old = v.value; $input.val(v.value); };"
                 ]
 

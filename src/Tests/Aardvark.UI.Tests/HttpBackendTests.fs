@@ -68,6 +68,11 @@ module ``HttpBackend Tests`` =
     type JsonOutput =
         { Count : int }
 
+    module private MethodFilters =
+        let private standardMethods = ["DELETE"; "GET"; "HEAD"; "OPTIONS"; "PATCH"; "POST"; "PUT"; "TRACE"]
+        let private extensionMethods = ["QUERY"; "PURGE"; "X-CUSTOM"]
+        let methods = standardMethods @ extensionMethods
+
     let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) (cancellationToken: CancellationToken) =
         let (>=>) x y = http.compose x y
 
@@ -91,17 +96,38 @@ module ``HttpBackend Tests`` =
                 http.text value
             )
 
-        let webSocket =
+        let redirect =
+            http.request (fun r ->
+                let permanent = r.QueryParam "permanent" |> Option.get |> Boolean.Parse
+                let location = r.QueryParam "location" |> Option.get
+                http.header "X-Redirect" "preserved"
+                >=> http.redirectTo permanent location
+            )
+
+        let sendFile =
+            http.request (fun r ->
+                http.status 202
+                >=> http.mimeType "application/octet-stream"
+                >=> http.header "X-Send-File" "preserved"
+                >=> http.sendFile (r.QueryParam "path" |> Option.get)
+            )
+
+        let webSocket reportCapacity =
             http.handShake (fun socket _ ->
                 let buffer = SocketBuffer(128)
                 let mutable running = true
 
                 task {
                     while running && not cancellationToken.IsCancellationRequested do
+                        buffer.Position <- 0
                         match! socket.Receive(buffer, cancellationToken) with
-                        | WebSocketOpCode.Text ->
-                            let response = $"Received: {buffer.DataUtf8}"
-                            do! socket.SendText(response, cancellationToken)
+                        | (WebSocketOpCode.Text | WebSocketOpCode.Binary) as opcode ->
+                            if reportCapacity then
+                                do! socket.Send(opcode, buffer.Data.ToArray(), cancellationToken)
+                                do! socket.SendText(string buffer.Size, cancellationToken)
+                            elif opcode = WebSocketOpCode.Text then
+                                let response = $"Received: {buffer.DataUtf8}"
+                                do! socket.SendText(response, cancellationToken)
 
                         | WebSocketOpCode.Close ->
                             do! socket.Close(cancellationToken)
@@ -116,6 +142,9 @@ module ``HttpBackend Tests`` =
             http.route    "/text"           >=> http.text "Hello World!"
             http.route    "/html"           >=> http.html "<html lang=\"\"><body/></html>"
             http.routef   "/status/%i"      http.status
+            http.route    "/redirect"       >=> redirect
+            http.route    "/redirect-relative" >=> http.header "X-Redirect" "preserved"
+                                              >=> http.redirectRelative "/text?q=hello%20world#details"
             http.subRoute "/sub"            (http.choose [http.routef "/%s" http.text])
             http.routef   "/query-param/%s" returnQueryParam
             http.route    "/query-params"   >=> returnQueryParams
@@ -124,8 +153,14 @@ module ``HttpBackend Tests`` =
             http.routef   "/path/%s"        (fun _ -> http.request (_.Path >> http.text))
             http.route    "/body"           >=> http.bindBody (http.text: byte[] -> _)
             http.route    "/send"           >=> http.sendFile "test_file.txt"
+            http.route    "/send-bytes"     >=> sendFile
             http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
-            http.route    "/ws"             >=> webSocket
+            http.route    "/ws"             >=> webSocket false
+            http.route    "/ws-buffer"      >=> webSocket true
+
+            for method in MethodFilters.methods do
+                http.route $"/method-filter/{method}" >=> http.method method >=> http.status 202
+
             http.assembly typeof<TestServer>.Assembly
             http.notFound "Not found"
         ]
@@ -158,6 +193,50 @@ module ``HttpBackend Tests`` =
             test HttpStatusCode.OK
             test HttpStatusCode.Accepted
             test HttpStatusCode.Ambiguous
+
+        let private checkRedirect permanent location (response: HttpResponseMessage) (server: TestServer) =
+            let status, reason =
+                if permanent then HttpStatusCode.MovedPermanently, "Moved Permanently"
+                else HttpStatusCode.Found, "Found"
+
+            Expect.equal response.StatusCode status $"Unexpected redirect status: {location}"
+            Expect.equal response.ReasonPhrase reason "Unexpected redirect reason phrase"
+            Expect.equal (response.Headers.GetValues("Location") |> Seq.toList) [location] "Changed redirect destination"
+            Expect.equal (response.Headers.GetValues("X-Redirect") |> Seq.toList) ["preserved"] "Lost response header"
+
+            let expectedBody =
+                if server :? SuaveTestServer then
+                    Expect.equal (string response.Content.Headers.ContentType) "text/html; charset=utf-8" "Changed redirect content type"
+                    // Keep Suave's standard redirect body even when overriding its status to 301.
+                    let expected =
+                        global.Suave.Redirection.redirect location global.Suave.Http.HttpContext.empty
+                        |> Async.RunSynchronously
+                        |> Option.get
+
+                    match expected.response.content with
+                    | global.Suave.Http.Bytes data -> data
+                    | _ -> failwith "Expected Suave's standard redirect to return bytes"
+                else
+                    Array.empty
+
+            let body = response.Content.ReadAsByteArrayAsync().Result
+            Expect.sequenceEqual body expectedBody "Changed redirect body"
+            Expect.equal response.Content.Headers.ContentLength (Nullable(int64 expectedBody.Length)) "Changed redirect content length"
+
+        let redirect permanent (client: HttpClient) (server: TestServer) =
+            for destination in ["text"; "/text"; $"http://{server.Host}/text"] do
+                for suffix in [""; "?q=hello%20world&next=%2Fother#details"] do
+                    let location = destination + suffix
+                    let url = $"http://{server.Host}/redirect?permanent={permanent}&location={Uri.EscapeDataString location}"
+                    use response = client.GetAsync(url).Result
+                    checkRedirect permanent location response server
+
+        let redirectRelative (client: HttpClient) (server: TestServer) =
+            for globalPath, prefix in [Some "/proxy/ui", "/proxy/ui"; Some "/proxy/ui/", "/proxy/ui"; None, ""] do
+                use request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, $"http://{server.Host}/redirect-relative")
+                globalPath |> Option.iter (fun value -> request.Headers.Add("GLOBAL_PATH", value))
+                use response = client.SendAsync(request).Result
+                checkRedirect true (prefix + "/text?q=hello%20world#details") response server
 
         let subRoute (client: HttpClient) (server: TestServer) =
             let test (path: string) =
@@ -244,6 +323,20 @@ module ``HttpBackend Tests`` =
             test HttpMethod.Get
             test HttpMethod.Put
 
+        let methodFilters (client: HttpClient) (server: TestServer) =
+            let test (configuredMethod: string) (requestMethod: string) =
+                let url = $"http://{server.Host}/method-filter/{configuredMethod}"
+                let r =
+                    use msg = new HttpRequestMessage(HttpMethod requestMethod, url)
+                    client.Send msg
+
+                let expected = if requestMethod = configuredMethod then HttpStatusCode.Accepted else HttpStatusCode.NotFound
+                Expect.equal r.StatusCode expected "Unexpected status code"
+
+            for configuredMethod in MethodFilters.methods do
+                for requestMethod in MethodFilters.methods do
+                    test configuredMethod requestMethod
+
         let path (client: HttpClient) (server: TestServer) =
             let test (path: string) =
                 let r = client.GetAsync($"http://{server.Host}/path/{path}").Result
@@ -266,6 +359,43 @@ module ``HttpBackend Tests`` =
             Expect.equal r.StatusCode HttpStatusCode.OK "Unexpected status code"
             let result = r.Content.ReadAsStringAsync().Result
             Expect.equal result "Hello!" "Unexpected result"
+
+        let sendFileBytes (method: System.Net.Http.HttpMethod) (client: HttpClient) (server: TestServer) =
+            let withBom (encoding: Encoding) =
+                Array.append (encoding.GetPreamble()) (encoding.GetBytes "Hello, π!")
+
+            // Suave's sendFile sets 200; Giraffe retains the supplied status.
+            let expectedStatus = if server :? GiraffeTestServer then HttpStatusCode.Accepted else HttpStatusCode.OK
+
+            let files =
+                [
+                    "binary", Array.init 256 byte
+                    "UTF-8 BOM", withBom Encoding.UTF8
+                    "UTF-16 BOM", withBom Encoding.Unicode
+                    "empty", Array.empty
+                ]
+
+            for name, data in files do
+                let relativePath = $"send_file_{Guid.NewGuid():N}.bin"
+                let absolutePath = Path.GetFullPath relativePath
+
+                try
+                    File.WriteAllBytes(absolutePath, data)
+
+                    for path in [relativePath; absolutePath] do
+                        let context = $"{name}, {method}, {path}"
+                        use request = new HttpRequestMessage(method, $"http://{server.Host}/send-bytes?path={Uri.EscapeDataString path}")
+                        use response = client.SendAsync(request).Result
+                        Expect.equal response.StatusCode expectedStatus $"Unexpected status: {context}"
+                        Expect.equal response.Content.Headers.ContentType.MediaType "application/octet-stream" $"Unexpected content type: {context}"
+                        Expect.equal (response.Headers.GetValues("X-Send-File") |> Seq.toList) ["preserved"] $"Unexpected header: {context}"
+
+                        let expected = if method = System.Net.Http.HttpMethod.Head then Array.empty else data
+                        let result = response.Content.ReadAsByteArrayAsync().Result
+                        Expect.sequenceEqual result expected $"Unexpected bytes: {context}"
+                        Expect.equal response.Content.Headers.ContentLength (Nullable(int64 data.Length)) $"Unexpected length: {context}"
+                finally
+                    File.Delete absolutePath
 
         let json (client: HttpClient) (server: TestServer) =
             let data = { Foo = "Hello"; Bar = 4 }
@@ -306,6 +436,60 @@ module ``HttpBackend Tests`` =
             ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", server.CancellationToken).Wait 2000
                 |> flip Expect.isTrue "Timed out waiting for close"
 
+        let webSocketReassembly (messageType: WebSocketMessageType) (_: HttpClient) (server: TestServer) =
+            use timeout = CancellationTokenSource.CreateLinkedTokenSource(server.CancellationToken)
+            timeout.CancelAfter(TimeSpan.FromSeconds 15.0)
+            let token = timeout.Token
+
+            let seed =
+                if messageType = WebSocketMessageType.Text then Encoding.UTF8.GetBytes "héllo π world!"
+                else Array.init 16 (fun i -> byte (i * 17))
+
+            for length, fragmentSize in [16, 16; 128, 128; 512, 512; 16, 1; 128, 8; 512, 32] do
+                use ws = new ClientWebSocket()
+
+                let receive expectedType =
+                    task {
+                        use stream = new MemoryStream()
+                        let buffer = Array.zeroCreate<byte> 128
+                        let mutable finished = false
+
+                        while not finished do
+                            let! result = ws.ReceiveAsync(buffer.AsMemory(), token)
+                            Expect.equal result.MessageType expectedType "Unexpected WebSocket opcode"
+                            stream.Write(buffer, 0, result.Count)
+                            finished <- result.EndOfMessage
+
+                        return stream.ToArray()
+                    }
+
+                let check (data: byte[]) fragmentSize =
+                    task {
+                        for offset in 0 .. fragmentSize .. data.Length - 1 do
+                            let count = min fragmentSize (data.Length - offset)
+                            let last = offset + count = data.Length
+                            do! ws.SendAsync(data.AsMemory(offset, count), messageType, last, token)
+
+                        let context = $"{messageType}, {data.Length} bytes, {fragmentSize}-byte fragments"
+                        let! response = receive messageType
+                        Expect.sequenceEqual response data $"Unexpected reassembled payload: {context}"
+                        let! capacity = receive WebSocketMessageType.Text
+                        let capacity = capacity |> Encoding.UTF8.GetString |> Int32.Parse
+                        Expect.equal capacity (max 128 length) $"Unexpected server buffer capacity: {context}"
+                    }
+
+                let run =
+                    task {
+                        do! ws.ConnectAsync(Uri $"ws://{server.Host}/ws-buffer", token)
+                        let payload = Array.init length (fun i -> seed.[i % seed.Length])
+                        do! check payload fragmentSize
+                        // Reuse the buffer for a shorter message without retaining the previous payload.
+                        do! check (Encoding.UTF8.GetBytes "reuse") 5
+                        do! ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", token)
+                    }
+
+                run.GetAwaiter().GetResult()
+
         let embeddedResources (client: HttpClient) (server: TestServer) =
             let asm = typeof<TestServer>.Assembly
 
@@ -334,7 +518,7 @@ module ``HttpBackend Tests`` =
             let root = asm.GetName().Name
             test true $"{root}.embedded_file.txt" "embedded_file.txt"
             test true $"{root}.Resources.embedded_resource_1.txt" "resources/embedded_resource_1.txt"
-            test true @"RESOURCES\embedded_resource_2.md" "resources/embedded_resource_2.md"
+            test true $"RESOURCES{Path.DirectorySeparatorChar}embedded_resource_2.md" "resources/embedded_resource_2.md"
             test false "embedded_file_incorrect.txt" "embedded_file_incorrect.txt"
 
     [<Tests>]
@@ -344,16 +528,24 @@ module ``HttpBackend Tests`` =
                 "Text",               Cases.text
                 "HTML",               Cases.html
                 "Status",             Cases.status
+                "Redirect temporary", Cases.redirect false
+                "Redirect permanent", Cases.redirect true
+                "Redirect relative",  Cases.redirectRelative
                 "Sub route",          Cases.subRoute
                 "Query parameter",    Cases.queryParam
                 "Query parameters",   Cases.queryParams
                 "Header",             Cases.header
                 "Method",             Cases.method
+                "Method filters",     Cases.methodFilters
                 "Path",               Cases.path
                 "Body",               Cases.body
                 "Send file",          Cases.sendFile
+                "Send file bytes",    Cases.sendFileBytes System.Net.Http.HttpMethod.Get
+                "Send file HEAD",     Cases.sendFileBytes System.Net.Http.HttpMethod.Head
                 "JSON",               Cases.json
                 "WebSocket",          Cases.webSocket
+                "WebSocket text reassembly",   Cases.webSocketReassembly WebSocketMessageType.Text
+                "WebSocket binary reassembly", Cases.webSocketReassembly WebSocketMessageType.Binary
                 "Embedded resources", Cases.embeddedResources
             ]
 
@@ -371,7 +563,7 @@ module ``HttpBackend Tests`` =
             cases
             |> List.map (fun (name, run) ->
                 name, fun server ->
-                    use client = new HttpClient()
+                    use client = new HttpClient(new HttpClientHandler(AllowAutoRedirect = false))
                     run client server
             )
             |> testFixture withServer

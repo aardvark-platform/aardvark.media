@@ -131,15 +131,10 @@ if (!aardvark.initialized) {
     };
 
     aardvark.connect = function (path) {
-        const search = /([^&=]+)=?([^&]*)/g;
-        const decode = function (s) { return decodeURIComponent(s.replace(/\+/g, " ")); }
         const query = window.location.search.substring(1);
-
         let wsQuery = '?session=' + aardvark.guid;
-
-        let match;
-        while (match = search.exec(query)) {
-            wsQuery = wsQuery + "&" + decode(match[1]) + "=" + decode(match[2]);
+        if (query) {
+            wsQuery += "&" + query;
         }
 
         const url = aardvark.getRelativeUrl('ws', path + wsQuery);
@@ -274,7 +269,7 @@ class Channel {
                 const msg = JSON.parse(data[i]);
                 if (msg === "commit-suicide") {
                     console.debug("[Aardvark] channel " + this.name + " was closed");
-                    delete aardvark.channels[name];
+                    delete aardvark.channels[this.name];
                     break;
                 }
                 this._recv(msg);

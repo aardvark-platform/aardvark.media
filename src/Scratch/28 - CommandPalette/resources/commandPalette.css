@@ -1,0 +1,92 @@
+.cp-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.15);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 13px;
+}
+
+.cp-overlay.cp-open {
+    display: block;
+}
+
+.cp-box {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(600px, calc(100% - 32px));
+    background: #252526;
+    color: #cccccc;
+    border: 1px solid #454545;
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+    padding: 6px;
+}
+
+.cp-input {
+    width: 100%;
+    box-sizing: border-box;
+    background: #3c3c3c;
+    color: #cccccc;
+    border: 1px solid #0078d4;
+    border-radius: 3px;
+    padding: 5px 8px;
+    font: inherit;
+    outline: none;
+}
+
+.cp-list {
+    margin-top: 6px;
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.cp-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 4px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.cp-item.cp-selected {
+    background: #04395e;
+    color: #ffffff;
+}
+
+.cp-label b {
+    color: #2aaaff;
+    font-weight: 600;
+}
+
+.cp-more {
+    color: #888888;
+}
+
+.cp-detail {
+    color: #8b8b8b;
+    font-size: 12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.cp-empty {
+    padding: 4px 8px;
+    color: #8b8b8b;
+}
+
+.cp-status {
+    position: fixed;
+    right: 12px;
+    bottom: 8px;
+    color: #8b8b8b;
+    font-family: "Segoe UI", system-ui, sans-serif;
+    font-size: 12px;
+    pointer-events: none;
+}

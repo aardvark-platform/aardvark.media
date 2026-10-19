@@ -383,9 +383,91 @@ module ``Simple Tests`` =
                 ]
             }
 
+    module Timing =
+
+        let private identity : IAnimation<unit, float> =
+            Animation.create id |> Animation.microseconds 1L
+
+        // Literal triangular phases avoid relying on integer parity or the production fold.
+        let private mirrorCycles =
+            [
+                0.0, [0.0; 0.25; 0.5; 0.75; 1.0]
+                1.0, [1.0; 0.75; 0.5; 0.25; 0.0]
+                2147483646.0, [0.0; 0.25; 0.5; 0.75; 1.0]
+                2147483647.0, [1.0; 0.75; 0.5; 0.25; 0.0]
+                2147483648.0, [0.0; 0.25; 0.5; 0.75; 1.0]
+                2147483649.0, [1.0; 0.75; 0.5; 0.25; 0.0]
+                4294967295.0, [1.0; 0.75; 0.5; 0.25; 0.0]
+                4294967296.0, [0.0; 0.25; 0.5; 0.75; 1.0]
+                4294967297.0, [1.0; 0.75; 0.5; 0.25; 0.0]
+            ]
+
+        let mirrorPhases =
+            test "Mirror preserves phases at large positions and their negatives" {
+                let mirrored = identity |> Animation.loop LoopMode.Mirror
+                for cycle, phases in mirrorCycles do
+                    for quarter, expected in List.indexed phases do
+                        for sign in [1.0; -1.0] do
+                            let position = sign * (cycle + float quarter / 4.0)
+                            Expect.equal (mirrored.DistanceTime position) expected $"Mirror phase at {position}"
+            }
+
+        let otherModes =
+            test "Repeat, Continue and easing retain their behavior" {
+                let repeated = identity |> Animation.loop LoopMode.Repeat
+                for position, expected in [0.0, 0.0; 0.25, 0.25; 1.0, 1.0; 1.25, 0.25; 2.0, 1.0;
+                                           -0.25, 0.75; -1.0, 1.0; 2147483649.25, 0.25; 4294967297.25, 0.25] do
+                    Expect.equal (repeated.DistanceTime position) expected $"Repeat at {position}"
+                let continued = identity |> Animation.loop LoopMode.Continue
+                for position in [-4294967297.25; -1.25; 0.0; 1.0; 1.25; 2147483649.25; 4294967297.25] do
+                    Expect.equal (continued.DistanceTime position) position $"Continue at {position}"
+                for mode, expected in [LoopMode.Mirror, 0.5625; LoopMode.Repeat, 0.0625; LoopMode.Continue, 1.5625] do
+                    let eased = identity |> Animation.loop mode |> Animation.easeCustom false (fun t -> t * t)
+                    Expect.equal (eased.DistanceTime 1.25) expected "Loop wrapping precedes easing"
+            }
+
+        let finiteEndpoints =
+            test "Finite mirror loops retain their final endpoint" {
+                for iterations, expected in [2, 0.0; 3, 1.0] do
+                    use _ = Animator.initTest()
+                    let events, animation =
+                        identity |> Animation.loopN LoopMode.Mirror iterations |> Animation.trackEvents
+                    Expect.equal animation.TotalDuration (Duration.ofMicroseconds iterations) "Finite total duration"
+                    Animator.createAndStart "Test" animation ()
+                    Animator.tick GlobalTime.zero ()
+                    Expect.checkEvents events [EventType.Start, 0.0; EventType.Progress, 0.0]
+                    Animator.tick (GlobalTime.ofNanoseconds (int64 iterations * 1000L)) ()
+                    Expect.checkEvents events [EventType.Progress, expected; EventType.Finalize, expected]
+                    let instance : IAnimationInstance<unit, float> = Animator.get "Test" ()
+                    Expect.equal instance.Value expected "Finite endpoint value"
+                    Expect.isTrue instance.IsFinished "Finite loop is finished"
+            }
+
+        let longMirrored =
+            test "Infinite mirror retains direction and Progress at large Animator ticks" {
+                use _ = Animator.initTest()
+                let events, animation = identity |> Animation.loop LoopMode.Mirror |> Animation.trackEvents
+                Expect.equal animation.TotalDuration Duration.infinite "Infinite total duration"
+                Animator.createAndStart "Test" animation ()
+                Animator.tick GlobalTime.zero ()
+                Expect.checkEvents events [EventType.Start, 0.0; EventType.Progress, 0.0]
+                for cycle in [2147483649L; 4294967297L] do
+                    Animator.tick (GlobalTime.ofNanoseconds (cycle * 1000L + 250L)) ()
+                    let instance : IAnimationInstance<unit, float> = Animator.get "Test" ()
+                    Expect.equal instance.Value 0.75 $"Mirrored value at cycle {cycle} + 0.25"
+                    Expect.checkEvents events [EventType.Progress, 0.75]
+                    Expect.isTrue instance.IsRunning "Infinite mirror remains running without Finalize"
+            }
+
     [<Tests>]
     let tests =
         testList "Animation.Simple" [
+            testList "Timing" [
+                Timing.mirrorPhases
+                Timing.otherModes
+                Timing.finiteEndpoints
+                Timing.longMirrored
+            ]
             testList "Events" [
                 Events.startFinish
                 Events.pauseResume

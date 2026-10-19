@@ -53,22 +53,24 @@ module AnimationSplinePrimitives =
                     | [] ->
                         result |> List.rev |> Array.ofList // Avoid O(n) append, reverse when finished
 
-                    // Do not subdivide if length is below epsilon
-                    | s::rest when s.Length < Epsilon ->
-                        inner (s :: result) rest
-
                     | s::rest ->
                         let struct (a, b) = half s
 
-                        // Subdivide if ratio between sum of halves and full segment exceeds tolerance
-                        // Also force an initial subdivision
-                        let isWithinErrorTolerance() =
-                            if result.IsEmpty && rest.IsEmpty then false
+                        let withinErrorTolerance =
+                            // Stop if either segment is invalid or has a near-zero length.
+                            if a.Length < Epsilon || b.Length < Epsilon || not (isFinite a.Length) || not (isFinite b.Length) then
+                                true
+
+                            // Skip error ratio computation if total length is close to zero.
+                            // Force an initial subdivision for non-degenerate segments.
+                            elif s.Length < Epsilon || result.IsEmpty && rest.IsEmpty then
+                                false
+
                             else
                                 let errorRatio = (a.Length + b.Length) / s.Length
                                 Fun.ApproximateEquals(errorRatio, 1.0, errorTolerance)
 
-                        if a.Length < Epsilon || b.Length < Epsilon || isWithinErrorTolerance() then
+                        if withinErrorTolerance then
                             inner (s :: result) rest
                         else
                             inner result (a :: b :: rest)

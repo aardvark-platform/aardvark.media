@@ -24,6 +24,13 @@
     <Compile Include="Animation\AnimatorTests.fs" />
     <Compile Include="Animation\PrimitivesTests.fs" />
     <Compile Include="HttpBackendTests.fs" />
+    <Compile Include="WebSocketTests.fs" />
+    <Compile Include="AttributeMapTests.fs" />
+    <Compile Include="JavascriptTests.fs" />
+    <Compile Include="UpdaterTests.fs" />
+    <Compile Include="GoldenLayoutJsonTests.fs" />
+    <Compile Include="MutableAppChannelTests.fs" />
+    <Compile Include="RenderControlConfigTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="embedded_file.txt" />

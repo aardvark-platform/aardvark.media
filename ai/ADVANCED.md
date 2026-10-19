@@ -1,487 +1,187 @@
 # Advanced Patterns
 
-Advanced patterns for Aardvark.Media applications discovered in production codebases.
+Focused extension points for JavaScript, request-dependent content, and hosting.
+Use [UI.md](UI.md) for ordinary DOM/event construction and
+[RENDERING.md](RENDERING.md) for basic server setup.
 
-## DataChannel Pattern (JS Interop)
+## Channels and JavaScript Events
 
-Bi-directional data synchronization between F# and JavaScript using `ChannelReader`.
+`Aardvark.UI.Channel` pushes server-side adaptive values to the browser. It is not
+`System.Threading.Channels.Channel<T>` and has no generic writer/reader pair.
+Use `.Channel` on an `aval` or `aset`, then attach it with `onBoot'`.
+Client-to-server communication goes through DOM events or `aardvark.processEvent`.
 
-### Basic Pattern
+A two-way text editor:
 
 ```fsharp
-type Message =
-    | SetValue of string
-    | UpdateSelection of list<int>
+module TextEditor
 
-let update (model: MModel) (msg: Message) =
-    match msg with
-    | SetValue v -> { model with value = v }
-    | UpdateSelection ids -> { model with selected = HashSet.ofList ids }
+open Aardvark.UI
+open FSharp.Data.Adaptive
 
-let channels =
-    let reader, writer = Channel.CreateUnbounded<Message>()
-    writer, reader :> ChannelReader<Message>
+type Message = SetText of string
 
-let view (model: MModel) =
-    let channelWriter = snd channels
-
-    onBoot "$('#element').customPlugin({
-        onChange: (v) => { channel.write({ tag: 'SetValue', value: v }); }
-    });" [
-        "channel" => channelWriter
-    ]
+let view (value : aval<string>) : DomNode<Message> =
+    input [onInput SetText]
+    |> onBoot' ["serverValue", value.Channel] """
+        const element = document.getElementById('__ID__');
+        serverValue.onmessage = function(value) {
+            element.value = value;
+        };
+    """
 ```
 
-### Boot vs Update Code
+The supplied channel name becomes a JavaScript variable in boot code. Its `onmessage`
+receives the decoded value, not a WebSocket `MessageEvent`. An `aval` channel sends its
+current value and subsequent changed values; an `aset` channel sends serialized set deltas.
+Setting the input value does not itself dispatch an input event; user edits emit `SetText`.
 
-- **Boot code**: Runs once when DOM element is created
-- **Update code**: Runs on every model change
+For custom client events, register the corresponding `onEvent` / `onEvent'` handler on the
+same node. Use `aardvark.processEvent('__ID__', 'eventName', argument)` from its boot code;
+parse the serialized arguments on the F# side. Do not assume arbitrary JSON message tags
+are automatically converted into F# union cases.
+
+`Channel.GetReader()` creates a non-generic `ChannelReader`. Custom implementations must
+compute serialized messages in `ComputeMessages : AdaptiveToken -> string list` and release
+owned resources in `Release`. Prefer built-in adaptive channels unless a custom wire format
+or incremental collection protocol is actually required.
+
+Sources: [Channel.fs](../src/Aardvark.UI/Dom/Channel.fs),
+[onBoot' implementation](../src/Aardvark.UI/Frontend/Tags.fs).
+Example: [D3 integration](../src/Examples/03%20-%20D3Integration/App.fs).
+
+## JavaScript Dependencies and Cleanup
+
+Attach `Reference` lists with `require`, initialize a component with `onBoot`, and release
+its listeners/plugins in `onShutdown`. These are node wrappers. See
+[GoldenLayout's view](../src/Aardvark.UI.Primitives/Golden/GoldenLayout.fs) for dependency
+loading, layout creation in boot code, and layout destruction during shutdown.
+
+jQuery is already bundled with the frontend. For additional libraries, provide their
+script/style references and serve their URLs. `require Html.semui` supplies Fomantic-UI
+references from `Aardvark.UI.Primitives`; the host must serve the primitives assembly.
+Manually assembled Fomantic widgets need plugin initialization. Built-in components may
+already attach it—check their implementation before adding another boot handler.
+
+## Request-Dependent Pages
+
+`page` / `DomNode.Page` takes `IHttpRequest -> DomNode<'msg>`. Read a single query value
+with `QueryParam`; inspect `QueryParams` when multiple or zero values matter.
 
 ```fsharp
-// Boot: Initialize third-party component
-onBoot "const picker = new CustomPicker('#picker', options);" []
+module RequestedPage
 
-// Update: Respond to model changes
-onEvent "change" [] (fun v -> SetValue v)
+open Aardvark.UI
+
+let view : DomNode<unit> =
+    page (fun request ->
+        let name = request.QueryParam "name" |> Option.defaultValue "World"
+        div [] [text $"Hello {name}"]
+    )
 ```
 
-### Calendar Component Example
+For panel pages, `pages` maps the `page` query parameter to `Pages.Page id`; absence maps
+to `Pages.Body`. GoldenLayout uses this pattern to render panel documents.
+A request chooses page content; it does not provide independent per-client application
+state. `MutableApp` remains shared among its connected clients.
+
+Sources: [IHttpRequest](../src/Aardvark.UI/Core/HttpBackend.fs),
+[page helpers](../src/Aardvark.UI/Frontend/Tags.fs),
+[GoldenLayout example](../src/Examples/13%20-%20GoldenLayout/App.fs).
+
+## Backend-Independent HTTP
+
+Backend wrappers are sufficient when hosting with just one backend. Library code that
+must work with either uses `IHttpBackend<'HttpContext, 'HttpHandler>` from `Aardvark.UI`:
 
 ```fsharp
-type CalendarMessage =
-    | SelectDate of DateTime
-    | SetRange of DateTime * DateTime
+module PortableHttp
 
-let calendarView (model: MModel) =
-    let onSelect = Channel.CreateUnbounded<CalendarMessage>() |> snd
+open Aardvark.UI
 
-    div [] [
-        onBoot """
-            const cal = new FullCalendar.Calendar(element, {
-                selectable: true,
-                select: (info) => {
-                    channel.write({
-                        tag: 'SetRange',
-                        start: info.start,
-                        end: info.end
-                    });
-                }
-            });
-            cal.render();
-        """ [
-            "channel" => onSelect
-        ]
-    ]
-```
-
-## Custom UI Components
-
-### Require Pattern
-
-Load JavaScript and CSS dependencies dynamically:
-
-```fsharp
-require (Html.semui @ [
-    { name = "fullcalendar"; url = "fullcalendar/main.js"; kind = Script }
-    { name = "fullcalendar-css"; url = "fullcalendar/main.css"; kind = Stylesheet }
-]) (
-    calendarView model
-)
-```
-
-### OnBoot Initialization
-
-Initialize jQuery/Fomantic components that need DOM access:
-
-```fsharp
-let dropdown (values: alist<string>) (selected: IMod<string>) =
-    onBoot "$('#dropdown').dropdown();" (
-        Incremental.select [
-            clazz "ui dropdown"
-            onChange (fun v -> SetValue v)
-        ] (
-            alist {
-                for v in values do
-                    yield option [attribute "value" v] [text v]
-            }
+let greeting (http : IHttpBackend<'context, 'handler>) : 'handler =
+    http.compose (http.route "/hello") (
+        http.request (fun request ->
+            request.QueryParam "name"
+            |> Option.defaultValue "World"
+            |> sprintf "Hello %s"
+            |> http.text
         )
     )
 ```
 
-### VirtualTree Pattern
+Pass `Aardvark.UI.Giraffe.HttpBackend.Instance` or
+`Aardvark.UI.Suave.HttpBackend.Instance` to create a native handler.
+The core `MutableApp.toWebPart http runtime app` also takes a backend explicitly;
+backend-specific wrappers supply it for you.
 
-Handle large hierarchies efficiently:
+`IHttpRequest` exposes `Path`, `Body : Stream`, `Method`, `Header`, `Headers`, `QueryParam`,
+and `QueryParams : Map<string, string list>`. `BodyData` / `BodyUtf8` are asynchronous
+extensions. Prefer `http.bindBody`, `bindJson`, or `mapJson` over synchronously reading an
+ASP.NET Core request stream. The interface also supports routing, response types, files,
+resource assemblies, and WebSocket handshakes; consult its source for exact overloads.
 
-```fsharp
-type TreeNode = { id: Guid; label: string; children: aset<TreeNode> }
+Sources: [HTTP interface and extensions](../src/Aardvark.UI/Core/HttpBackend.fs),
+[Giraffe adapter](../src/Aardvark.UI.Giraffe/HttpBackend.fs),
+[Suave adapter](../src/Aardvark.UI.Suave/HttpBackend.fs).
 
-let rec virtualTree (node: AdaptiveNode) =
-    let visible = node.expanded |> AVal.map (fun e -> if e then "block" else "none")
+## Multi-App Hosting
 
-    div [] [
-        span [onClick (fun _ -> ToggleExpanded node.id)] [text node.label]
-        Incremental.div
-            (AttributeMap.ofAVal (visible |> AVal.map (fun v -> style $"display: {v}")))
-            (alist {
-                let! exp = node.expanded
-                if exp then
-                    for child in node.children do
-                        yield virtualTree child
-            })
-    ]
-```
-
-## Multi-App Architecture
-
-### Running Multiple Apps
+Use the backend's prefix-rewriting route helper, not a path filter that leaves the
+prefix intact. A Giraffe route composition for two independently started apps:
 
 ```fsharp
-// App1: Main viewer on port 4321
-let app1 = {
-    unpersist = Unpersist.instance
-    threads = fun model -> ThreadPool.empty
-    initial = Model.initial
-    update = update
-    view = view
-}
+module MultipleApps
 
-// App2: Control panel on port 4322
-let app2 = {
-    unpersist = Unpersist.instance
-    threads = fun model -> mailboxThreads model
-    initial = ControlModel.initial
-    update = controlUpdate
-    view = controlView
-}
+open Giraffe
+open Aardvark.Rendering
+open Aardvark.UI
+open Aardvark.UI.Giraffe
 
-[<EntryPoint>]
-let main args =
-    Aardvark.Init()
-    Aardium.init()
-
-    // Shared runtime
-    use runtime = new Runtime()
-
-    // Start both apps
-    let instance1 = App.start app1
-    let instance2 = App.start app2
-
-    WebPart.startServerLocalhost 4321 [MutableApp.toWebPart runtime instance1] |> ignore
-    WebPart.startServerLocalhost 4322 [MutableApp.toWebPart runtime instance2] |> ignore
-
-    Aardium.run {
-        url "http://localhost:4321"
-        width 1920
-        height 1080
-    }
-    0
-```
-
-### Communication Patterns
-
-**Mailbox for cross-app messaging:**
-
-```fsharp
-type CrossAppMessage =
-    | DataUpdated of string
-    | SelectionChanged of Set<Guid>
-
-let mailbox = MailboxProcessor.Start(fun inbox ->
-    async {
-        while true do
-            let! msg = inbox.Receive()
-            // Broadcast to all apps
-            transact (fun () ->
-                app1Model.Value <- App1.update app1Model.Value msg
-                app2Model.Value <- App2.update app2Model.Value msg
-            )
-    })
-
-// In app1 update:
-| SomeAction ->
-    mailbox.Post (DataUpdated "new data")
-    model
-```
-
-**Shared state:**
-
-```fsharp
-let sharedSelection = cval (Set.empty<Guid>)
-
-// App1 writes
-transact (fun () -> sharedSelection.Value <- newSelection)
-
-// App2 reads
-let view (model: MModel) =
-    let selection = sharedSelection :> aval<_>
-    Incremental.div
-        (AttributeMap.ofList [clazz "selection-count"])
-        (alist {
-            let! sel = selection
-            yield text $"Selected: {Set.count sel}"
-        })
-```
-
-### WebPart Composition
-
-```fsharp
-let apiPart =
-    path "/api/data" >=> Successful.OK (Json.serialize data)
-
-let appPart runtime instance =
-    MutableApp.toWebPart runtime instance
-
-let fullApp runtime instance =
+let routes (runtime : IRuntime)
+           (viewer : MutableApp<'viewer, 'adaptiveViewer, 'viewerMsg>)
+           (editor : MutableApp<'editor, 'adaptiveEditor, 'editorMsg>) : WebPart =
     choose [
-        apiPart
-        appPart runtime instance
-        RequestErrors.NOT_FOUND "Not found"
-    ]
-
-WebPart.startServerLocalhost 4321 [fullApp runtime instance]
-```
-
-## Rendering Patterns
-
-### Render-to-Texture for Shadow Maps
-
-```fsharp
-let shadowMapSignature =
-    runtime.CreateFramebufferSignature [
-        DefaultSemantic.Depth, TextureFormat.Depth24Stencil8
-    ]
-
-let shadowMap =
-    let size = V2i(2048, 2048)
-
-    Sg.fullScreenQuad
-    |> Sg.shader {
-        do! Shader.depthOnly
-    }
-    |> Sg.viewTrafo (lightView |> AVal.map CameraView.viewTrafo)
-    |> Sg.projTrafo (lightProj |> AVal.map Frustum.projTrafo)
-    |> Sg.compile runtime shadowMapSignature
-    |> RenderTask.renderToColor size
-
-// Use in main render:
-Sg.sphere 5 (Mod.constant C4b.White) (Mod.constant 1.0)
-|> Sg.diffuseTexture shadowMap
-|> Sg.shader {
-    do! Shader.shadowMapping
-}
-```
-
-### Custom Scene Graph Semantics
-
-```fsharp
-[<Rule>]
-type CustomSem() =
-    member x.OriginOffset(e: Sg.OriginOffsetNode, scope: Ag.Scope) : IMod<V3d> =
-        e.Offset
-
-    member x.ModelTrafo(offset: IMod<V3d>, inner: IMod<Trafo3d>) : IMod<Trafo3d> =
-        adaptive {
-            let! o = offset
-            let! i = inner
-            return Trafo3d.Translation(o) * i
-        }
-
-type Sg.OriginOffsetNode(offset: IMod<V3d>, child: ISg) =
-    interface ISg with
-        member x.Children = [child]
-        member x.RenderObjects(_) = RenderObjectSemantics.Dynamic
-    member x.Offset = offset
-
-module Sg =
-    let originOffset (offset: IMod<V3d>) (sg: ISg) =
-        Sg.OriginOffsetNode(offset, sg) :> ISg
-```
-
-### Large-Scale Coordinate Handling
-
-```fsharp
-// Origin-relative rendering for planet-scale coordinates
-let renderWithOrigin (origin: V3d) (positions: V3d[]) =
-    let relative = positions |> Array.map (fun p -> p - origin)
-
-    Sg.ofArray relative
-    |> Sg.trafo (Mod.constant (Trafo3d.Translation origin))
-```
-
-### Geometry Pooling
-
-```fsharp
-type GeometryPool(runtime: IRuntime, maxInstances: int) =
-    let instances = clist<Instance>()
-
-    let sg =
-        instances
-        |> AList.toASet
-        |> ASet.map (fun inst ->
-            Sg.ofIndexedGeometry inst.geometry
-            |> Sg.trafo (Mod.constant inst.trafo)
-        )
-        |> Sg.set
-        |> Sg.shader {
-            do! DefaultSurfaces.trafo
-            do! DefaultSurfaces.simpleLighting
-        }
-
-    member x.Add(geom: IndexedGeometry, trafo: Trafo3d) =
-        if instances.Count < maxInstances then
-            transact (fun () -> instances.Add { geometry = geom; trafo = trafo })
-
-    member x.Scene = sg
-```
-
-### Depth Bias for Layered Rendering
-
-```fsharp
-// Render wireframe over solid without z-fighting
-let layeredView (model: MModel) =
-    Sg.ofList [
-        // Solid geometry
-        Sg.sphere 5 (Mod.constant C4b.Gray) (Mod.constant 1.0)
-
-        // Wireframe overlay with depth bias
-        Sg.sphere 5 (Mod.constant C4b.Red) (Mod.constant 1.0)
-        |> Sg.effect [
-            toEffect DefaultSurfaces.trafo
-            toEffect (
-                """
-                void main() {
-                    gl_Position = gl_Position;
-                    gl_Position.z -= 0.0001;
-                }
-                """, ShaderStage.Fragment
-            )
-        ]
-        |> Sg.fillMode (Mod.constant FillMode.Line)
+        subRoute "/viewer" (MutableApp.toWebPart runtime viewer)
+        subRoute "/editor" (MutableApp.toWebPart runtime editor)
     ]
 ```
 
-## Performance Patterns
+Mount each app's application/primitive resources under the matching prefix as needed.
+For Suave, `Suave.Filters.pathStarts` alone is not equivalent; use the backend's
+`HttpBackend.Instance.subRoute` when composing a prefixed app handler.
 
-### Adaptive Collection Performance
+The owner must keep both apps and the shared rendering application alive. Give a shared
+server an explicitly owned lifetime token when it should outlive either individual app;
+cancel it, dispose the apps, await server shutdown, then release the rendering application.
+Do not claim that sharing a runtime requires one runtime per app.
 
-`ASet` and `AMap` handle hundreds of elements efficiently:
+For cross-app messages, route them through the destination app's `Update` method and a
+well-defined message translation. If separate changeable adaptive state is genuinely
+required, give it an explicit owner and mutate it inside `transact`. Do not bypass both
+apps' update loops by writing their immutable models directly.
 
-```fsharp
-// Efficiently update large collections
-let items = cset<Item>()  // Thousands of items
+Example: [Giraffe subRoute hosting](../src/Scratch/21%20-%20Giraffe/Program.fs).
 
-// Good: Incremental updates
-transact (fun () ->
-    items.Add newItem
-    items.Remove oldItem
-)
+## Scene Graph Extensions
 
-// Bad: Replacing entire collection
-transact (fun () ->
-    items.Clear()
-    items.UnionWith newItems  // Triggers full rebuild
-)
-```
+- Use `Sg.dynamic` for adaptive typed scenes and `Sg.map` to lift scene messages.
+- Use `Sg.withEvents` / `Sg.withGlobalEvents` for interaction; do not simulate scene hits
+  by attaching HTML mouse handlers with incompatible signatures.
+- Use `RenderCommand` composition for ordered rendering and clears; see
+  [3D rendering](RENDERING.md#3d-rendering).
+- Custom semantics belong to the scene graph API. Start from
+  [UI scene graph types](../src/Aardvark.UI/SceneGraph/Core.fs) and
+  [semantics](../src/Aardvark.UI/SceneGraph/Semantics.fs), rather than inventing members on `ISg`.
+- Let the render server own scene compilation and task disposal unless extending that
+  pipeline explicitly. Caching a compiled render task as an `IRenderObject` is not valid.
 
-### Scene Graph Compilation Caching
-
-```fsharp
-// Cache compiled render objects
-let cache = Dictionary<Guid, IRenderObject>()
-
-let getCached (id: Guid) (create: unit -> ISg) =
-    match cache.TryGetValue(id) with
-    | true, ro -> ro
-    | false, _ ->
-        let sg = create()
-        let ro = sg |> Sg.compile runtime signature
-        cache.[id] <- ro
-        ro
-```
-
-### AdaptiveToken Manual Evaluation
-
-```fsharp
-// Avoid over-evaluation in hot paths
-let token = AdaptiveToken()
-
-let expensiveComputation (input: aval<int>) =
-    token.Use(fun () ->
-        let value = input.GetValue(token)
-        // Expensive work
-        complexCalculation value
-    )
-
-// Control when evaluation happens
-token.MarkOutdated()
-let result = expensiveComputation input
-```
-
-## Aardium Integration
-
-### Initialization Variants
-
-```fsharp
-// Simple: Default config
-Aardium.init()
-
-// Advanced: Specify chromium path
-Aardium.initAt @"C:\CustomPath\chromium"
-```
-
-### Configuration Options
-
-```fsharp
-Aardium.run {
-    url "http://localhost:4321"
-    width 1920
-    height 1080
-    debug true  // Enable DevTools
-    title "My Aardvark App"
-}
-```
-
-### Platform Detection
-
-```fsharp
-let startApp() =
-    if System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(OSPlatform.Windows) then
-        Aardium.init()
-        Aardium.run {
-            url "http://localhost:4321"
-            width 1280
-            height 720
-        }
-    else
-        printfn "Open browser at http://localhost:4321"
-        System.Threading.Thread.Sleep(-1)
-```
-
-## Gotchas
-
-| Issue | Solution |
-|-------|----------|
-| `onBoot` code runs every update | Move initialization to `onBoot`, updates to `onChange` |
-| ChannelReader messages dropped | Use unbounded channel or check `TryWrite` return value |
-| Large ASet performance degradation | Batch updates in single `transact`, avoid `Clear()` + `UnionWith` |
-| Z-fighting in overlaid geometry | Use depth bias or `DepthTestMode.None` for overlay |
-| Memory leak from cached RenderObjects | Dispose old objects when removing from cache |
-| JavaScript `require` fails silently | Check browser console, verify URL paths are correct |
-| Multi-app shared state not updating | Ensure both apps reference same `cval` instance, not copies |
-| Scene graph recompilation on every frame | Use `Sg.dynamic` or cache compiled `IRenderObject` instances |
-| Adaptive token stale values | Call `token.MarkOutdated()` before evaluation |
-| Origin-relative coordinates still imprecise | Use `float32` for GPU buffers, `float64` for CPU calculations |
-
----
+For Aardium client setup, see [example entry points](../src/Examples/02%20-%20RenderControl/Program.fs)
+and the [Aardium repository](https://github.com/aardvark-community/aardium).
+It is independent of the server backend and CefSharp packages.
 
 ## See Also
 
-- [UI.md](UI.md) - onBoot, require, DomNode construction
-- [ARCHITECTURE.md](ARCHITECTURE.md) - Multi-app structure, ThreadPool
-- [RENDERING.md](RENDERING.md) - WebPart composition, CEF integration
-- [PRIMITIVES.md](PRIMITIVES.md) - Animation system, camera controllers
-
----
-
-*Document Size: ~12 KB*
-*Last Updated: 2025-12-22*
+- [ARCHITECTURE.md](ARCHITECTURE.md) — model updates, background commands, and ownership
+- [UI.md](UI.md) — attributes, event callbacks, and node wrappers
+- [PRIMITIVES.md](PRIMITIVES.md) — built-in components and docking

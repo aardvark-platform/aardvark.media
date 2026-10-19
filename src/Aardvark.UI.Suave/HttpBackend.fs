@@ -157,8 +157,10 @@ type HttpBackend private () =
         member _.mimeType mimeType =
             Writers.setMimeType mimeType
 
-        member _.redirectTo _ location =
-            Redirection.redirect location
+        member _.redirectTo permanent location =
+            let redirect = Redirection.redirect location
+            if permanent then compose redirect (Writers.setStatus HttpCode.HTTP_301)
+            else redirect
 
         member _.handShake continuation =
             WebSocket.handShake (fun socket context ->
@@ -184,7 +186,7 @@ type HttpBackend private () =
             )
 
         member _.method httpMethod =
-            method <| HttpMethod.OTHER httpMethod
+            method <| HttpMethod.parse httpMethod
 
         member _.header key value =
             Writers.setHeader key (string value)

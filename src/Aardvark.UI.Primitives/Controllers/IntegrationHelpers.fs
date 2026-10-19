@@ -6,6 +6,8 @@ open Aardvark.Base
 open System.Runtime.InteropServices
 open System.Security
 
+#nowarn "44"
+
 module MultimediaTimer =
 
     open System.Threading
@@ -52,36 +54,18 @@ module MultimediaTimer =
                 member x.Dispose() = thread.Abort()
             }
 
+    [<Obsolete("Use MultimediaTimer.Trigger from Aardvark.Rendering (System.Threading namespace) instead.")>]
     type Trigger(ms : int) =
-        let ticksPerMillisecond = int64 TimeSpan.TicksPerMillisecond 
-        let pulse = obj()
+        let trigger = new MultimediaTimer.Trigger(ms)
 
-        let callback() =
-            lock pulse (fun () ->
-                Monitor.PulseAll pulse
-            )
-                
-        let timer = 
-            match Environment.OSVersion  with
-                | Windows -> Windows.start ms callback
-                | _ -> Linux.start ms callback
-        
-        member x.Wait() =
-            lock pulse (fun () ->
-                Monitor.Wait pulse |> ignore
-            )  
-
-        member x.Signal() =
-            lock pulse (fun () ->
-                Monitor.PulseAll pulse
-            )  
-            
-        member x.Dispose() =
-            timer.Dispose()
+        member _.Wait() = trigger.Wait()
+        member _.Signal() = trigger.Signal()
+        member _.Dispose() = trigger.Dispose()
 
         interface IDisposable with
-            member x.Dispose() = x.Dispose()
+            member this.Dispose() = this.Dispose()
 
+    [<Obsolete>]
     type Timer(ms : int) =
         let s = Event<TimeSpan>()
         let ticksPerMillisecond = int64 TimeSpan.TicksPerMillisecond 

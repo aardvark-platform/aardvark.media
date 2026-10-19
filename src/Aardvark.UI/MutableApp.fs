@@ -168,11 +168,17 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
     member _.Register(resource: IDisposable) =
         lock resources (fun _ -> resources.Push resource)
 
+    /// Stops update processing and requests cancellation of active commands before disposing registered resources.
+    /// Command workers are not joined and may still be running when this method returns.
     member _.Dispose() =
         source.Cancel()
 
         lock messageQueue (fun () -> Monitor.PulseAll messageQueue)
         updateThread.Join()
+
+        lock updateLock (fun () ->
+            currentThreads <- adjustThreads currentThreads ThreadPool.empty
+        )
 
         lock resources (fun _ ->
             for r in resources do r.Dispose()
@@ -230,6 +236,12 @@ module MutableApp =
 
             member _.TryGetId(reader: ChannelReader, [<Out>] id: byref<ChannelId>) =
                 bw.TryGetValue(reader, &id)
+
+            member _.GetAndClear() =
+                let readers = fw.Copy()
+                fw.Clear()
+                bw.Clear()
+                readers
 
         [<Struct>]
         type EventMessage =
@@ -366,6 +378,14 @@ module MutableApp =
                 let update = MVar.create true
                 let subscription = sender.AddMarkingCallback(fun () -> MVar.put update true)
 
+                let destroyChannel (id: ChannelId) (reader: ChannelReader) =
+                    try
+                        pendingChannels.Remove reader |> ignore
+                        reader.Outputs.Remove sender |> ignore
+                        reader.Dispose()
+                    with exn ->
+                        Log.warn $"[Media] Destroying channel '{id.ChannelName}' for {id.ElementId} failed: {exn}"
+
                 let handleConnectionError (message: string) (exn: Exception) =
                     match ConnectionError.ofException exn with
                     | ConnectionError.Canceled -> Report.Line(3, $"[Media] Stopping session {sessionId}")
@@ -456,10 +476,7 @@ module MutableApp =
                             for KeyValue(id, reader) in state.channels do
                                 if isNull reader then
                                     match activeChannels.GetAndRemove id with
-                                    | true, reader ->
-                                        pendingChannels.Remove reader |> ignore
-                                        reader.Outputs.Remove sender |> ignore
-                                        reader.Dispose()
+                                    | true, reader -> destroyChannel id reader
                                     | _ -> ()
 
                                     let message = Pickler.json.Pickle { targetId = id.ElementId; channel = id.ChannelName; data = ["\"commit-suicide\""] }
@@ -569,7 +586,9 @@ module MutableApp =
 
                     updater.Destroy(state, JSExpr.Body) |> ignore
                     subscription.Dispose()
-                    socket.Dispose()
+
+                    for KeyValue(id, reader) in activeChannels.GetAndClear() do
+                        destroyChannel id reader
 
                     Report.Line(3, $"[Media] Closed session {sessionId}")
                 }

@@ -1,681 +1,206 @@
-# Aardvark.UI.Primitives Reference
+# UI Primitives
 
-High-level reusable UI components and interactive controllers for Aardvark.UI applications.
+Reusable controllers and components from `Aardvark.UI.Primitives`. Animation APIs use
+`Aardvark.UI.Animation`; transformations use `Aardvark.UI.Trafos`; docking uses
+`Aardvark.UI.Primitives.Golden`; notifications use `Aardvark.UI.Primitives.Notifications`.
 
-## Overview
-
-| Component Category | Purpose |
-|-------------------|---------|
-| **Camera Controllers** | Interactive 3D camera navigation (FreeFly, ArcBall, Orbit, Legacy) |
-| **Transformation Controls** | Interactive object manipulation (Translate, Rotate, Scale) |
-| **Animation System** | Time-based animations with easing, state management, and callbacks |
-| **UI Components** | ColorPicker, GoldenLayout docking, Notifications, Accordion, Dropdown |
-| **Dialogs** | File/folder pickers (OpenDialog, SaveDialog) |
-
----
+Serve the primitives assembly with the selected backend's
+`WebPart.ofType<Aardvark.UI.Primitives.EmbeddedResources>` when using its bundled frontend
+resources. Components attaching `require` still need those HTTP resource routes.
+See [embedded resources](RENDERING.md#embedded-resources).
 
 ## Camera Controllers
 
-### CameraModel
+| Controller | Immutable / adaptive state | Purpose |
+|------------|----------------------------|---------|
+| `FreeFlyController` | `CameraControllerState` / `AdaptiveCameraControllerState` | WASD, pointer, wheel, touch, and gamepad navigation with damping |
+| `ArcBallController` | Same state types | Orbit around an `orbitCenter` |
+| `OrbitController` | `OrbitState` / `AdaptiveOrbitState` | Orbit with radius/angle constraints and configurable pan button |
+| `CameraController` | `CameraControllerState` / adaptive counterpart | Older implementation in `LegacyCameraController.fs`; prefer the controllers above for new code |
 
-Core type for all camera controllers. Marked with `[<ModelType>]` for Adaptify code generation.
+Integrate a controller in all three parts of the app:
 
-```fsharp
-[<ModelType>]
-type CameraControllerState = {
-    view          : CameraView
-    freeFlyConfig : FreeFlyConfig
-    orbitCenter   : Option<V3d>
-    // ... additional state fields
-}
-```
+1. Store its immutable state in a `[<ModelType>]` source model, initialized from the
+   controller's `initial` value.
+2. Lift controller messages into the application's message union and call the controller's
+   `update state message` from the application's update function.
+3. Pass the generated adaptive state, message mapping, frustum, attribute map, and typed
+   scene to `controlledControl`. Map the controller's `threads` into app messages when applicable.
 
-**Key Fields:**
-- `view: CameraView` – Camera position, forward, up, right vectors
-- `freeFlyConfig: FreeFlyConfig` – Movement/damping parameters
-- `orbitCenter: Option<V3d>` – Pivot point for ArcBall/Orbit
-- `targetJump: Option<CameraView>` – Smooth camera transitions
+The adaptive state is not `aval<CameraControllerState>`; wrapping an immutable state in
+`AVal.constant` does not satisfy `controlledControl`.
+[The rendering example](RENDERING.md#3d-rendering) shows the view/message wiring.
 
-### FreeFlyController
+`FreeFlyController.controlledControlWithClientValues` and the Orbit equivalent additionally
+accept a `RenderControlConfig` before the `RenderClientValues -> ISg<'msg>` factory.
+The ArcBall equivalent has no config argument. Check signatures before switching controllers.
+FreeFly's supplied attributes already include blur cleanup and `onAfterRender` integration;
+do not add a legacy render event to drive it.
 
-WASD keyboard + mouse camera with momentum-based movement.
+`FreeFlyConfig.initial` supplies the complete default configuration. Update only desired
+fields instead of constructing a partial record. `FreeFlyHeuristics.DefaultSpeedHeuristic`
+can adjust sensitivity for scene units. Initialize ArcBall from `ArcBallController.initial`
+(which sets `orbitCenter`) rather than copying an unrelated FreeFly state.
+Construct Orbit state with `OrbitState.create center phi theta radius`, not its internal record.
 
-**Location:** `src/Aardvark.UI.Primitives/Controllers/FreeFlyController.fs`
-
-**Controls:**
-- **W/S** – Forward/Backward
-- **A/D** – Strafe Left/Right
-- **Shift+W/S** – Up/Down
-- **Left Mouse Drag** – Look around
-- **Middle Mouse Drag** – Pan
-- **Right Mouse Drag** – Dolly (move along view direction)
-- **Mouse Wheel** – Zoom
-
-**Message Type:**
-```fsharp
-type Message =
-    | Down of button: MouseButtons * pos: V2i
-    | Move of V2i
-    | Wheel of V2d
-    | KeyDown of KeyModifiers * Keys
-    | Rendered  // Integration step for momentum
-    | JumpTo of CameraView  // Smooth transition
-```
-
-**Usage:**
-```fsharp
-let model = FreeFlyController.initial
-
-let update model msg =
-    FreeFlyController.update model msg
-
-let view model =
-    FreeFlyController.controlledControl
-        (Mod.constant model)
-        CameraMessage
-        (AVal.constant frustum)
-        AttributeMap.empty
-        sceneGraph
-```
-
-### FreeFlyConfig
-
-Configures sensitivity, damping, and movement speed.
-
-```fsharp
-[<ModelType>]
-type FreeFlyConfig = {
-    lookAtMouseSensitivity    : float
-    lookAtDamping             : float
-    panMouseSensitivity       : float
-    dollyMouseSensitivity     : float
-    zoomMouseWheelSensitivity : float
-    moveSensitivity           : float
-    touchScalesExponentially  : bool
-}
-
-module FreeFlyConfig =
-    let initial = {
-        lookAtMouseSensitivity = 0.01
-        lookAtDamping = 30.0
-        panMouseSensitivity = 0.05
-        dollyMouseSensitivity = 0.175
-        zoomMouseWheelSensitivity = 1.5
-        moveSensitivity = 1.0
-        touchScalesExponentially = true
-    }
-```
-
-### ArcBallController
-
-Orbits around a fixed center point (e.g., for object inspection).
-
-**Location:** `src/Aardvark.UI.Primitives/Controllers/ArcBallController.fs`
-
-**Controls:**
-- **Left Mouse Drag** – Rotate around center
-- **Right Mouse Drag** – Zoom in/out
-- **Middle Mouse Drag** – Pan (moves center)
-- **WASD** – Move camera (center follows on A/D)
-
-**Key Difference from FreeFly:** Always maintains a pivot point (`orbitCenter`).
-
-### OrbitController
-
-Advanced orbit camera with configurable pan button and angle constraints.
-
-**Location:** `src/Aardvark.UI.Primitives/Controllers/OrbitController.fs`
-
-**Configuration:**
-```fsharp
-type OrbitControllerConfig = {
-    isPan : MouseButtons -> bool
-}
-
-type OrbitState = {
-    center       : V3d
-    phi          : float  // Azimuth
-    theta        : float  // Elevation
-    _radius      : float
-    radiusRange  : Range1d
-    thetaRange   : Range1d  // Clamp vertical rotation
-}
-```
-
-### LegacyCameraController
-
-Deprecated. Use FreeFlyController or ArcBallController instead.
-
----
+Sources: [camera types](../src/Aardvark.UI.Primitives/Controllers/CameraModel.fs),
+[FreeFly](../src/Aardvark.UI.Primitives/Controllers/FreeFlyController.fs),
+[ArcBall](../src/Aardvark.UI.Primitives/Controllers/ArcBallController.fs),
+[Orbit](../src/Aardvark.UI.Primitives/Controllers/OrbitController.fs).
+Example: [render control](../src/Examples/02%20-%20RenderControl/App.fs).
 
 ## Transformation Controls
 
-Interactive 3D gizmos for object manipulation.
+Open `Aardvark.UI.Trafos`. `Transformation` / `AdaptiveTransformation` carry the working
+pose, committed pose, preview transform, mode, hover, and grab state.
+`TrafoController.initial` creates the state and `TrafoController.Action` defines messages.
+The specialized implementations are:
 
-### TrafoModel
+| Module | Update / view |
+|--------|---------------|
+| `TranslateController` | `updateController state action`, `viewController lift camera adaptiveState` |
+| `RotationController` | Same pattern |
+| `ScaleController` | Same pattern |
 
-```fsharp
-[<ModelType>]
-type Transformation = {
-    workingPose  : Pose
-    pose         : Pose
-    previewTrafo : Trafo3d
-    scale        : float
-    mode         : TrafoMode  // Local | Global
-    hovered      : Option<Axis>
-    grabbed      : Option<PickPoint>
-}
+`viewController` returns a typed scene graph; `camera` is `aval<CameraView>`.
+Use the appropriate implementation for each operation rather than a nonexistent unified
+`createGizmo` API. Preserve picking and coordinate-transform wiring when embedding the gizmo.
 
-type Pose = {
-    position : V3d
-    rotation : Rot3d
-    scale    : V3d
-}
-```
-
-### TrafoController
-
-Unified interface for translation/rotation/scale gizmos.
-
-**Location:** `src/Aardvark.UI.Primitives/TrafoControls/TrafoController.fs`
-
-**Usage:**
-```fsharp
-// Render gizmo scene graph
-let gizmoSg = TrafoController.createGizmo model kind
-// Update on interaction
-let model' = TrafoController.update model msg
-```
-
-### Specialized Controllers
-
-| Controller | Gizmo Type | Location |
-|-----------|-----------|----------|
-| `TranslationController` | 3-axis arrows | `TrafoControls/TranslationController.fs` |
-| `RotationController` | 3-axis circles | `TrafoControls/RotationController.fs` |
-| `ScaleController` | 3-axis boxes | `TrafoControls/ScaleController.fs` |
-
----
+Sources: [transformation types](../src/Aardvark.UI.Primitives/TrafoControls/TrafoModel.fs),
+[controller state/actions](../src/Aardvark.UI.Primitives/TrafoControls/TrafoController.fs),
+[translation](../src/Aardvark.UI.Primitives/TrafoControls/TranslationController.fs),
+[rotation](../src/Aardvark.UI.Primitives/TrafoControls/RotationController.fs),
+[scale](../src/Aardvark.UI.Primitives/TrafoControls/ScaleController.fs).
+Example: [object transformations](../src/Examples/20%20-%20PlaceTransformObjects/App.fs).
 
 ## Animation System
 
-Declarative time-based animations with state machine, easing, and callbacks.
+Open `Aardvark.UI.Animation`. `IAnimation<'Model, 'Value>` describes a time-varying value;
+`IAnimationInstance` is its running instance. `Animator<'Model>` manages named slots.
+`Duration`, `GlobalTime`, and `LocalTime` distinguish timing concepts.
 
-### Core Types (Time.fs, Interface.fs)
-
-```fsharp
-// Strongly-typed time values
-type Duration   = struct val MicroTime : MicroTime end
-type GlobalTime = struct val MicroTime : MicroTime end
-type LocalTime  = struct val MicroTime : MicroTime end
-
-// Animation interface
-type IAnimation<'Model, 'Value> =
-    abstract Duration : Duration
-    abstract Create   : Symbol -> IAnimationInstance<'Model, 'Value>
-    abstract Scale    : Duration -> IAnimation<'Model, 'Value>
-    abstract Ease     : (float -> float) * compose:bool -> IAnimation<'Model, 'Value>
-    abstract Loop     : iterations:int * LoopMode -> IAnimation<'Model, 'Value>
-```
-
-### Timing
-
-#### Easing Functions (`Animation/Timing/Easing.fs`)
+A standalone animation definition with a model-updating callback:
 
 ```fsharp
-module Easing =
-    let linear : float -> float
-    let quadraticIn : float -> float
-    let cubicInOut : float -> float
-    let bounceOut : float -> float
-    // ... many more
+module ValueAnimation
+
+open Aardvark.UI.Animation
+
+type Model = { value : float }
+
+let animation : IAnimation<Model, float> =
+    Animation.create id
+    |> Animation.seconds 1.0
+    |> Animation.ease (Easing.InOut EasingFunction.Cubic)
+    |> Animation.onProgress (fun _ value model -> { model with value = value })
 ```
 
-#### DistanceTimeFunction
+Creating a definition alone does not run it. To integrate with an app:
 
-Maps normalized time → distance along spline (for non-uniform motion).
+- Store `[<NonAdaptive>] animator : Animator<Model>` in the immutable model.
+- Initialize it with `Animator.initial` and a lens to that field. The
+  [animation example](../src/Examples/14%20-%20Animation/App.fs) uses `Model.animator_`;
+  generated lenses require the project's `GenerateLenses` setting.
+- Pass the **whole application model** to `Animator.update message model` (or to
+  `Animator.createAndStart name animation model`), not just its `animator` field.
+- Map `Animator.threads model.animator` into app messages and wire
+  `onAfterRender (fun _ -> AnimationMessage AnimatorMessage.RealTimeTick)` as appropriate.
+  The background ticks also progress animations when the scene is otherwise static.
 
-```fsharp
-type DistanceTimeFunction =
-    | Linear
-    | Custom of (float -> float)
-```
+| Task | API |
+|------|-----|
+| Define interpolation | `Animation.create (float -> 'Value)`; `create'` also receives the model |
+| Set duration | `Animation.duration`, `seconds`, `milliseconds`, etc. |
+| Easing | `Animation.ease (Easing.InOut EasingFunction.Cubic)`; `easeCustom compose function` for custom curves |
+| Loop | `Animation.loop mode`, `loopN mode count`; `Repeat`, `Mirror`, or `Continue` |
+| Model callbacks | `Animation.onProgress`, `onFinalize`, `onStart`, etc. |
+| Bind to model field | `Animation.link lens` / `linkMap lens mapping` |
+| Camera interpolation | `Animation.Camera.interpolate src dst`; `interpolateTo lens dst model` links it to state |
+| Parallel / serial groups | `Animation.concurrent`, `sequential`, `sequential'` |
+| Manage slots | `Animator.createAndStart`, `createAndStartDelayed`, `perform`, `remove`; `AnimatorMessage.Enqueue` queues a definition |
 
-### State Management
+Use helpers accepting strings or `Symbol`s for slot names; raw `AnimatorMessage.Set` takes
+a `Symbol`. Avoid copying the old `Camera.animation` or `Easing.cubicInOut` examples.
 
-#### StateMachine (`Animation/State/StateMachine.fs`)
-
-```fsharp
-type State =
-    | Running of startTime: GlobalTime
-    | Stopped
-    | Finished
-    | Paused of startTime: GlobalTime * pauseTime: GlobalTime
-
-type Action =
-    | Start of LocalTime
-    | Stop
-    | Pause
-    | Resume
-    | Update of time: LocalTime * finalize: bool
-```
-
-#### Observable & Callbacks (`Animation/State/Observable.fs`, `Callbacks.fs`)
-
-```fsharp
-type EventType =
-    | Start | Resume | Progress | Pause | Stop | Finalize
-
-let subscribe event callback animation
-```
-
-### Animation Types
-
-#### Basic Animation (`Animation/Types/Animation.fs`)
-
-```fsharp
-let animation duration interpolate startValue endValue =
-    Animation.create<'Model, 'Value>(duration, fun t ->
-        interpolate startValue endValue t
-    )
-```
-
-#### Groups (`Animation/Types/Groups.fs`)
-
-```fsharp
-let concurrent : IAnimation<'Model> list -> IAnimation<'Model>
-let sequential : IAnimation<'Model> list -> IAnimation<'Model>
-```
-
-#### Adapter (`Animation/Types/Adapter.fs`)
-
-Adapts animations to work with lenses/prisms for nested models.
-
-```fsharp
-let adapt lens animation
-```
-
-### Primitives
-
-#### Camera Animations (`Animation/Primitives/Camera.fs`)
-
-```fsharp
-let cameraAnimation (start: CameraView) (target: CameraView) duration =
-    // Interpolates position, forward, up vectors
-```
-
-**Example:**
-```fsharp
-// Smooth flyto from bookmark system
-let flyTo (bookmark: CameraView) =
-    let anim =
-        Camera.animation model.camera.view bookmark (Duration.ofSeconds 2.0)
-        |> Animation.ease Easing.cubicInOut true
-    AnimatorMessage.Set("flyto", anim, fun inst -> inst.Start())
-```
-
-#### Splines (`Animation/Primitives/Splines.fs`)
-
-```fsharp
-type Spline<'T> =
-    | Linear of 'T list
-    | CatmullRom of 'T list
-    | Bezier of 'T list
-
-let splineAnimation spline duration
-```
-
-### Animator (AnimatorModel.fs, AnimatorApp.fs, AnimatorSlot.fs)
-
-Manages multiple concurrent animations with named slots.
-
-```fsharp
-type Animator<'Model> = {
-    Slots       : HashMap<Symbol, AnimatorSlot<'Model>>
-    TickRate    : int
-    CurrentTick : GlobalTime
-}
-
-type AnimatorMessage<'Model> =
-    | Tick of GlobalTime
-    | Set     of name:Symbol * IAnimation<'Model> * (IAnimationInstance<'Model> -> unit)
-    | Enqueue of name:Symbol * ('Model -> IAnimation<'Model>) * action
-    | Perform of name:Symbol * action
-    | Remove  of Symbol
-```
-
-**Usage:**
-```fsharp
-// In update function
-| AnimateCamera target ->
-    let anim = Camera.animation model.camera target (Duration.ofSeconds 1.5)
-    let animMsg = AnimatorMessage.Set("camera", anim, fun inst -> inst.Start())
-    { model with animator = Animator.update animMsg model.animator }
-
-// Thread for ticking
-let animThread =
-    proclist {
-        while true do
-            do! Proc.Sleep 16  // ~60 fps
-            yield AnimatorMessage.RealTimeTick
-    }
-```
-
----
+Sources: [animation creation](../src/Aardvark.UI.Primitives/Animation/Types/Animation.fs),
+[interfaces](../src/Aardvark.UI.Primitives/Animation/Core/Interface.fs),
+[animator](../src/Aardvark.UI.Primitives/Animation/Animator/AnimatorApp.fs),
+[callbacks](../src/Aardvark.UI.Primitives/Animation/State/Callbacks.fs),
+[camera animations](../src/Aardvark.UI.Primitives/Animation/Primitives/Camera.fs).
+Example: [animation app/model](../src/Examples/14%20-%20Animation/Model.fs).
 
 ## UI Components
 
-### ColorPicker
+| Component | Current usage / source |
+|-----------|------------------------|
+| Color picker | `ColorPicker.view config callback color`, where `color : aval<C4b>` and `callback : C4b -> 'msg`; [ColorPicker.fs](../src/Aardvark.UI.Primitives/Color/ColorPicker.fs) |
+| Docking | Open `Aardvark.UI.Primitives.Golden`; `GoldenLayout.create config layout`, `update message model`, `view attributes adaptiveModel`; [GoldenLayout.fs](../src/Aardvark.UI.Primitives/Golden/GoldenLayout.fs) |
+| Notifications | Open `Aardvark.UI.Primitives.Notifications`; `notification { ... }`, `Notifications.update message state`, `Notifications.container mapping createContainer adaptiveState`; [Notifications.fs](../src/Aardvark.UI.Primitives/Notifications/Notifications.fs) |
+| Accordion / dropdown | Use the supplied builders and configuration types; [Accordion.fs](../src/Aardvark.UI.Primitives/Primitives/Accordion.fs), [Dropdown.fs](../src/Aardvark.UI.Primitives/Primitives/Dropdown.fs) |
+| Inputs / numeric controls | [UI.Primitives.fs](../src/Aardvark.UI.Primitives/Primitives/UI.Primitives.fs), [SimplePrimitives.fs](../src/Aardvark.UI.Primitives/Primitives/SimplePrimitives.fs) |
 
-Spectrum.js-based color picker with palette support.
+`ColorPicker.Config.Default`, `PaletteOnly`, `PickerOnly`, and `Toggle` provide starting
+configurations; its view attaches dependencies and initialization itself.
 
-**Location:** `src/Aardvark.UI.Primitives/Color/ColorPicker.fs`
+GoldenLayout panel IDs select documents via `pages` / `Pages.Page`. Use its `layout`,
+`row`, `column`, `stack`, and `element` builders, not a builder embedding arbitrary DOM
+nodes directly as panels. For popouts, add `GoldenLayout.toWebPart http` using the chosen
+backend instance in addition to app and resource handlers. `GoldenLayout.save` / `load`
+use browser local storage. See the [layout app](../src/Examples/13%20-%20GoldenLayout/App.fs)
+and its [server setup](../src/Examples/13%20-%20GoldenLayout/Program.fs).
 
-```fsharp
-type Config = {
-    palette                : Palette option
-    maxSelectionSize       : int
-    displayMode            : DisplayMode  // Disabled | Dropdown | Inline
-    pickerStyle            : PickerStyle option
-    showAlpha              : bool
-}
-
-module Config =
-    let Default           // Full picker + palette
-    let PaletteOnly       // No picker UI
-    let PickerOnly        // No palette
-    let Toggle            // Collapsible picker
-
-// Usage
-let view model =
-    ColorPicker.view
-        ColorPicker.Config.Default
-        SetColor
-        (AVal.constant model.color)
-```
-
-### GoldenLayout
-
-Advanced docking layout system (panels, tabs, popouts).
-
-**Location:** `src/Aardvark.UI.Primitives/Golden/`
-
-```fsharp
-type Layout =
-    | Element of Element
-    | Stack of Stack
-    | RowOrColumn of RowOrColumn
-
-type GoldenLayout = {
-    DefaultLayout : WindowLayout
-    Config        : LayoutConfig
-    SetLayout     : (WindowLayout * int) option
-}
-
-// Usage
-let layout =
-    GoldenLayout.create config (
-        row [
-            column [ panel "Scene" sceneView; panel "Props" propsView ]
-            panel "Console" consoleView
-        ]
-    )
-
-let view model =
-    GoldenLayout.view [onLayoutChanged LayoutChanged] model.layout
-```
-
-**Key Features:**
-- Drag-drop panel reorganization
-- Popout windows (separate browser windows)
-- Persist/restore layouts via localStorage
-- Themes: BorderlessDark, Dark, Light, Soda, Translucent
-
-### Notifications
-
-Toast-style notifications.
-
-**Location:** `src/Aardvark.UI.Primitives/Notifications/`
-
-```fsharp
-type Notification = {
-    Title   : string
-    Message : string
-    Level   : NotificationLevel  // Success | Info | Warning | Error
-}
-
-let show notification model
-let clear notificationId model
-```
-
-### Accordion, Dropdown, SimplePrimitives
-
-**Location:** `src/Aardvark.UI.Primitives/Primitives/`
-
-```fsharp
-// Accordion
-let accordion (header: DomNode<'msg>) (body: DomNode<'msg>) =
-    div [clazz "ui accordion"] [
-        div [clazz "title"] [header]
-        div [clazz "content"] [body]
-    ]
-
-// Dropdown
-type DropdownConfig<'T> = {
-    items    : 'T list
-    render   : 'T -> DomNode<'msg>
-    selected : 'T option
-}
-
-let dropdown config onSelect
-
-// SimplePrimitives (Semantic UI wrappers)
-let button label msg
-let checkbox label isChecked onChange
-let slider min max value onChange
-```
-
----
+Notifications use `Notifications.Send`, `Remove`, and `Clear` messages; there is no
+`NotificationLevel` record or standalone `Notification.show` API. Follow the
+[notifications example](../src/Examples/05%20-%20Notifications/App.fs) for container placement
+and message mapping.
 
 ## Dialogs
 
-### OpenDialog
-
-Native file/folder picker.
-
-**Location:** `src/Aardvark.UI.Primitives/OpenDialog.fs`
+Use the `Dialog` module in `Aardvark.UI.Primitives`. Native dialogs require Aardium or the
+CEF bridge; an ordinary browser does not provide them. They select paths on the **client**
+machine, not automatically on a remote rendering server.
 
 ```fsharp
-type OpenDialogConfig = {
-    mode          : OpenDialogMode  // File | Folder
-    title         : string
-    startPath     : string
-    filters       : string[]        // e.g., [| "*.obj"; "*.dae" |]
-    allowMultiple : bool
-}
+module FileDialogs
 
-// Usage
-let btn =
-    openDialogButton
-        { OpenDialogConfig.file with filters = [| "*.json" |] }
-        [clazz "ui button"]
-        [text "Load File"]
-    |> onChooseFile FileSelected
+open Aardvark.UI
+open Aardvark.UI.Primitives
+
+type Message = OpenFile of string | SaveFile of string
+
+let view : DomNode<Message> =
+    let config =
+        { DialogConfig.Default with
+            Title = "Choose JSON file"
+            Filters = ["JSON", ["json"]] }
+    div [] [
+        Dialog.openFileButton OpenFile config [clazz "ui button"] [text "Open"]
+        Dialog.saveFileButton SaveFile config [clazz "ui button"] [text "Save"]
+    ]
 ```
 
-### SaveDialog
+`DialogConfig` fields are `Title`, `Filters : (string * string list) list`, `Multiselect`,
+`Modal`, and `DefaultPath`. Start from `DialogConfig.Default`; filters are named extension
+lists, not arrays of glob patterns.
 
-Similar to OpenDialog but for saving files.
+| Helper | Callback |
+|--------|----------|
+| `Dialog.openFileButton`, `saveFileButton`, `openFolderButton` | `string -> 'msg` |
+| `Dialog.openFilesButton`, `openFoldersButton` | `string list -> 'msg` |
+| `Dialog.button` | Mode (`OpenFile`, `SaveFile`, `OpenFolder`), `string list -> 'msg`, config, attributes, content |
 
-**Location:** `src/Aardvark.UI.Primitives/SaveDialog.fs`
+Callbacks precede config, attributes, and content. `Dialog.Incremental` equivalents accept
+`aval<DialogConfig>` and adaptive/generic attributes/content. Cancellation or an empty
+selection emits no message. Returned paths are converted with `Path.ofUnixStyle`, available
+through `open Aardvark.UI`.
 
-```fsharp
-type SaveDialogConfig = {
-    title     : string
-    startPath : string
-    filters   : string[]
-}
-
-let btn =
-    saveDialogButton config [clazz "ui button"] [text "Save"]
-    |> onChooseFile SaveTo
-```
-
----
-
-## Integration Examples
-
-### Camera Setup
-
-```fsharp
-// Initialize FreeFly with custom speed heuristic based on scene bounds
-let initCamera sceneBounds =
-    let center = sceneBounds.Center
-    let size = sceneBounds.Size.Length
-    let dist = size * 2.0
-
-    let cam =
-        { FreeFlyController.initial with
-            view = CameraView.lookAt (center + V3d(dist, dist, dist)) center V3d.OOI
-            freeFlyConfig =
-                { FreeFlyConfig.initial with
-                    moveSensitivity = log (size * 0.01)  // Scale to scene
-                }
-        }
-    cam
-```
-
-### Animation: Flyto Bookmarks
-
-```fsharp
-// Smooth camera transitions using animation system
-type BookmarkMsg =
-    | FlyToBookmark of CameraView
-
-let update model = function
-    | FlyToBookmark target ->
-        let anim =
-            Camera.animation model.camera.view target (Duration.ofSeconds 2.0)
-            |> Animation.ease Easing.cubicInOut true
-            |> Animation.subscribe EventType.Finalize (fun _ _ m ->
-                // Callback when animation completes
-                { m with camera = { m.camera with view = target } }
-            )
-
-        let animMsg = AnimatorMessage.Set("flyto", anim, fun inst -> inst.Start())
-        { model with animator = Animator.update animMsg model.animator }
-```
-
----
-
-## Gotchas
-
-| Issue | Solution |
-|-------|----------|
-| **Camera `orbitCenter = None`** causes ArcBall crash | Always initialize with `Some V3d.Zero` or call `ArcBallController.Pick` first |
-| **FreeFly momentum persists after blur** | Handle `Blur` message to reset movement vectors |
-| **Animation not progressing** | Ensure `AnimatorMessage.Tick` or `RealTimeTick` is called regularly via thread |
-| **GoldenLayout panels empty after popout** | Use `Incremental.` rendering; panels lose state if re-rendered from scratch |
-| **ColorPicker not responding** | Check `require dependencies` is present; Spectrum.js must load |
-| **Trafo gizmo not pickable** | Ensure gizmo scene graph is rendered with correct picking semantics (`Sg.pickable`) |
-| **Animation callbacks not firing** | Call `instance.Commit(model, tick)` in update loop |
-| **`[<ModelType>]` missing** causes Adaptify errors | All mutable models must have `[<ModelType>]` attribute |
-
----
-
-## Key Files
-
-```
-src/Aardvark.UI.Primitives/
-├── Controllers/
-│   ├── CameraModel.fs              # Core camera state type
-│   ├── FreeFlyController.fs        # WASD + mouse camera
-│   ├── ArcBallController.fs        # Orbit around point
-│   ├── OrbitController.fs          # Advanced orbit
-│   └── LegacyCameraController.fs   # (Deprecated)
-├── TrafoControls/
-│   ├── TrafoModel.fs               # Transformation state
-│   ├── TrafoController.fs          # Main gizmo controller
-│   ├── TranslationController.fs    # Translate gizmo
-│   ├── RotationController.fs       # Rotate gizmo
-│   └── ScaleController.fs          # Scale gizmo
-├── Animation/
-│   ├── Core/
-│   │   ├── Time.fs                 # Duration, GlobalTime, LocalTime
-│   │   └── Interface.fs            # IAnimation, EventType, Action, State
-│   ├── Timing/
-│   │   ├── Easing.fs               # Easing functions
-│   │   └── DistanceTimeFunction.fs # Spline parameterization
-│   ├── State/
-│   │   ├── StateMachine.fs         # Animation state transitions
-│   │   ├── Observable.fs           # Event subscription
-│   │   └── Callbacks.fs            # Event callbacks
-│   ├── Types/
-│   │   ├── Animation.fs            # Core animation type
-│   │   ├── Adapter.fs              # Lens-based composition
-│   │   ├── Groups.fs               # Concurrent/Sequential
-│   │   ├── Concurrent.fs           # Parallel animations
-│   │   └── Sequential.fs           # Chained animations
-│   ├── Primitives/
-│   │   ├── Camera.fs               # CameraView interpolation
-│   │   ├── Primitives.fs           # Basic value animations
-│   │   └── Splines.fs              # Spline animations
-│   └── Animator/
-│       ├── AnimatorModel.fs        # Animator state + messages
-│       ├── AnimatorApp.fs          # Update/view logic
-│       └── AnimatorSlot.fs         # Per-animation slot
-├── Color/
-│   └── ColorPicker.fs              # Spectrum.js wrapper
-├── Golden/
-│   ├── GoldenLayout.fs             # Main docking API
-│   ├── GoldenLayoutModel.fs        # Layout state types
-│   ├── GoldenLayoutJson.fs         # Serialization
-│   └── GoldenLayoutBuilders.fs     # Layout DSL
-├── Notifications/
-│   ├── Notifications.fs            # Toast API
-│   └── NotificationsModel.fs       # Notification state
-├── Primitives/
-│   ├── Accordion.fs                # Collapsible panels
-│   ├── Dropdown.fs                 # Select dropdown
-│   └── SimplePrimitives.fs         # Buttons, sliders, checkboxes
-├── OpenDialog.fs                   # Native file picker
-└── SaveDialog.fs                   # Native save dialog
-```
-
----
-
-## Quick Reference Table
-
-| Task | Type/Function |
-|------|--------------|
-| WASD camera | `FreeFlyController.initial`, `FreeFlyController.update` |
-| Orbit camera | `ArcBallController.initial`, `ArcBallController.update` |
-| Smooth camera transition | `JumpTo of CameraView` message, or `Camera.animation` |
-| Adjust camera speed | `freeFlyConfig.moveSensitivity`, `FreeFlyHeuristics.DefaultSpeedHeuristic` |
-| 3D gizmo | `TrafoController.createGizmo`, `TrafoController.update` |
-| Animate value | `Animation.create duration interpolate start end` |
-| Easing | `Animation.ease Easing.cubicInOut compose` |
-| Loop animation | `Animation.loop iterations LoopMode.Repeat` |
-| Camera animation | `Camera.animation startView endView duration` |
-| Concurrent animations | `Animation.concurrent [anim1; anim2]` |
-| Sequential animations | `Animation.sequential [anim1; anim2]` |
-| Manage animations | `Animator.update`, `AnimatorMessage.Set/Enqueue/Perform` |
-| Color picker | `ColorPicker.view config SetColor colorAVal` |
-| Docking layout | `GoldenLayout.create config layout`, `GoldenLayout.view` |
-| Toast notification | `Notification.show notification model` |
-| File picker | `openDialogButton config attrs content`, `onChooseFile` |
-| Save dialog | `saveDialogButton config attrs content`, `onChooseFile` |
-
----
+Sources: [Dialogs.fs](../src/Aardvark.UI.Primitives/Primitives/Dialogs.fs),
+[frontend bridge](../src/Aardvark.UI/resources/aardvark.js),
+[CEF dialog handler](../src/Aardvark.Cef.WinForms/DialogHandler.fs).
 
 ## See Also
 
-- [UI.md](UI.md) - DomNode, events, attributes, RenderControl
-- [ARCHITECTURE.md](ARCHITECTURE.md) - App structure, ThreadPool for animations
-- [RENDERING.md](RENDERING.md) - 3D rendering, camera integration
-- [ADVANCED.md](ADVANCED.md) - Custom scene graphs, performance patterns
-
----
-
-*Document Size: ~20 KB*
-*Last Updated: 2025-12-22*
+- [ARCHITECTURE.md](ARCHITECTURE.md) — generated models and thread pools
+- [UI.md](UI.md) — DOM events and dependency loading
+- [RENDERING.md](RENDERING.md) — render controls and resource handlers
+- [ADVANCED.md](ADVANCED.md) — channels and request-dependent panels

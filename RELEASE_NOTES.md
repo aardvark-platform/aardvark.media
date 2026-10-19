@@ -1,3 +1,30 @@
+- [Screenshotr] Require Screenshotr.Client 1.5.4 and System.Text.Json 8.0.6 for the upstream SignalR security fix (CVE-2026-70159)
+- Request cancellation of active background commands before disposing `MutableApp` resources
+- Release remaining session-owned channel readers on shutdown without affecting other sessions
+- Correct `RenderControlConfig.fillWidth` viewport aspect ratios while preserving vertical frustum bounds
+- Remove stale DOM elements when adaptive children are replaced by empty nodes
+- Remove each renderer's document click listener on shutdown without affecting live renderers
+- Restore initial body event-handler activation for versionless boot events
+- Preserve encoded page query parameters when opening UI event WebSockets
+- Remove the receiving client channel on teardown without affecting unrelated channels
+- [Giraffe] Dispose accepted WebSockets once before downstream handlers
+- [Giraffe] Dispose owned server hosts after shutdown or startup failure, including cancellation and shutdown errors
+- [Animation] Preserve child completion callbacks when group animations finish after skipped ticks
+- [Animation] Preserve mirror direction at large loop positions
+- [Animation] Reset group values and restore child `Stop` callbacks when stopping composite animations
+- [Animation] Correct lengths and normalized-distance evaluation for closed and nearly closed splines
+- [Primitives] Treat `null` optional GoldenLayout JSON fields like omitted properties
+
+### 5.7.6
+- Fix stale attributes when entries change names in `AttributeMap.ofAList`
+- Fix JavaScript string encoding of DOM attribute values, including multiline event handlers
+- [Primitives] Allow clearing textboxes when validation accepts the empty string
+- [Suave] Honor permanent redirects with HTTP 301 while retaining HTTP 302 for temporary redirects
+- [Suave] Fix `IHttpBackend.method` filters for standard HTTP verbs while retaining native normalization and extension methods
+- [Giraffe] Honor cancellation while WebSocket send, receive, and close operations wait for their semaphores
+- [Giraffe] Avoid excessive receive-buffer growth for fragmented WebSocket messages
+- [Giraffe] Preserve binary data and byte-order marks when serving files with `IHttpBackend.sendFile`
+
 ### 5.7.5
 - Fix double JSON-encoding of stats.json (https://github.com/aardvark-platform/aardvark.media/issues/53)
 - [CEF] Update to version 151.3.17
