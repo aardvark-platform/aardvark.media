@@ -74,7 +74,7 @@ module FreeFlyController =
         Rot3d.FromAngleAxis(rd3 aa state)
 
     let transformRot (cv : CameraView) (r : Rot3d) =
-        if r.GetEulerAngles().AllSmallerOrEqual(1E-9) then
+        if (abs (r.GetEulerAngles())).AllSmallerOrEqual(1E-9) then
             cv
         else
             let fw = r.Transform cv.Forward
