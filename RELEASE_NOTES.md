@@ -9,6 +9,7 @@
 - [Camera] Avoid camera-position jumps caused by radius clamping when switching from FreeFly to Orbit
 - [Camera] Keep FreeFly camera jumps active until position and orientation have both reached the target
 - [Camera] Preserve custom camera up directions during FreeFly jumps and subsequent vertical movement
+- [Camera] Make `FreeFlyController.transformRot` apply negative rotations instead of treating them as identity
 - [Primitives] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
 - [Primitives] Route GoldenLayout panels to the correct page when IDs contain reserved characters, percent escapes or line breaks
 - [Primitives] Keep notifications with overlapping IDs independent across containers, including removal, clearing, and dismissal

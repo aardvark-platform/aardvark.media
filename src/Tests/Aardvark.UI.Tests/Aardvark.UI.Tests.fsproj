@@ -23,6 +23,10 @@
     <Compile Include="Animation\GroupsTests.fs" />
     <Compile Include="Animation\AnimatorTests.fs" />
     <Compile Include="Animation\PrimitivesTests.fs" />
+    <Compile Include="Camera\CameraRotationTests.fs" />
+    <Compile Include="Camera\FreeFlyJumpTests.fs" />
+    <Compile Include="Camera\FreeFlyPitchLimitTests.fs" />
+    <Compile Include="Camera\CameraUtilitiesTests.fs" />
     <Compile Include="HttpBackendTests.fs" />
     <Compile Include="WebSocketTests.fs" />
     <Compile Include="AttributeMapTests.fs" />
@@ -33,9 +37,6 @@
     <Compile Include="DropdownTests.fs" />
     <Compile Include="MutableAppChannelTests.fs" />
     <Compile Include="RenderControlConfigTests.fs" />
-    <Compile Include="FreeFlyPitchLimitTests.fs" />
-    <Compile Include="CameraUtilitiesTests.fs" />
-    <Compile Include="FreeFlyJumpTests.fs" />
     <Compile Include="PickTreeTests.fs" />
     <Compile Include="NumericInputTests.fs" />
     <None Include="paket.references" />
