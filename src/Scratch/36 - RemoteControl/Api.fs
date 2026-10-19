@@ -81,11 +81,9 @@ let resolveBoxes (model : BoxSelectionDemoModel) (refs : seq<string>) : Result<l
                 | [| a; b |] ->
                     match Int32.TryParse(a.Trim()), Int32.TryParse(b.Trim()) with
                     | (true, a), (true, b) when a <= b ->
-                        [a .. b] |> List.map byIndex |> List.fold (fun acc r ->
-                            match acc, r with
-                            | Ok xs, Ok ys -> Ok (xs @ ys)
-                            | Error e, _ | _, Error e -> Error e
-                        ) (Ok [])
+                        // Validate the endpoints before enumerating, so the work is bounded by the box count
+                        if a >= 1 && b <= ids.Length then Ok (List.ofArray ids.[a - 1 .. b - 1])
+                        else Error $"Box range {a}-{b} is out of range (there are {ids.Length} boxes, indices are 1-based)."
                     | _ when Array.contains r ids -> Ok [ r ]
                     | _ -> Error $"Invalid box reference '{r}'."
                 | _ when Array.contains r ids -> Ok [ r ]
