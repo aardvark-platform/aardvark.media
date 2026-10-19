@@ -10,8 +10,9 @@ open Suave.Operators
 
 open Api
 
+/// Omitted values are None: count defaults to 1, color to the default box color.
 [<CLIMutable>]
-type AddBoxesRequest = { count : int; color : string }
+type AddBoxesRequest = { count : int option; color : string option }
 
 /// Boxes may be given as numbers (indices) or strings (indices, ranges, ids, "selected", "all").
 [<CLIMutable>]
@@ -54,8 +55,8 @@ let private refs (boxes : JsonElement[]) =
 
 let webPart (app : RemoteApp) : WebPart =
     pathStarts "/api/" >=> Http.requireLocalOrigin (choose [
-        GET  >=> path "/api/scene"         >=> request (fun _ -> respond HTTP_200 (getScene app))
-        POST >=> path "/api/boxes"            >=> post (fun (r : AddBoxesRequest) -> addBoxes app (if r.count = 0 then 1 else r.count) (Option.ofObj r.color))
+        GET  >=> path "/api/scene"            >=> request (fun _ -> respond HTTP_200 (getScene app))
+        POST >=> path "/api/boxes"            >=> post (fun (r : AddBoxesRequest) -> addBoxes app (r.count |> Option.defaultValue 1) r.color)
         POST >=> path "/api/boxes/color"      >=> post (fun (r : BoxesRequest) -> setColor app (refs r.boxes) r.color)
         POST >=> path "/api/boxes/remove"     >=> post (fun (r : BoxesRequest) -> removeBoxes app (refs r.boxes))
         POST >=> path "/api/selection"        >=> post (fun (r : BoxesRequest) -> setSelection app (refs r.boxes))
