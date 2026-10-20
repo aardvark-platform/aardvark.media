@@ -130,7 +130,7 @@ module SimplePrimitives =
                     match NumericConfigDefaults<'a>.NumType with
                     | NumberType.Int ->
                         match System.Double.TryParse(v, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
-                        | (true, v) -> let txt = Text(Math.Round(v).ToString())
+                        | (true, v) -> let txt = Text(Math.Round(v).ToString(System.Globalization.CultureInfo.InvariantCulture))
                                        let rv = Text<'a>.Parse.Invoke(txt)
                                        Some rv
                         | _ -> None

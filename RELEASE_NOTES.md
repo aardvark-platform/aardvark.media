@@ -1,3 +1,4 @@
+- [Primitives] Accept negative integer input in numeric controls and sliders independently of the server culture
 - [Screenshotr] Require Screenshotr.Client 1.5.4 and System.Text.Json 8.0.6 for the upstream SignalR security fix (CVE-2026-70159)
 - Request cancellation of active background commands before disposing `MutableApp` resources
 - Release remaining session-owned channel readers on shutdown without affecting other sessions
