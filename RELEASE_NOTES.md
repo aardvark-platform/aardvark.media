@@ -14,6 +14,7 @@
 - [Animation] Reset group values and restore child `Stop` callbacks when stopping composite animations
 - [Animation] Correct lengths and normalized-distance evaluation for closed and nearly closed splines
 - [Primitives] Treat `null` optional GoldenLayout JSON fields like omitted properties
+- [CEF] Update to version 154.0.34
 
 ### 5.7.6
 - Fix stale attributes when entries change names in `AttributeMap.ofAList`
