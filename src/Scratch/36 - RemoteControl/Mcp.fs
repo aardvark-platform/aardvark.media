@@ -320,9 +320,21 @@ let private post (app : RemoteApp) : WebPart =
                 | None -> Response.response HTTP_202 [||]
     )
 
+/// Clients send the negotiated version with every request after initialize. Without the header the spec says to
+/// assume 2025-03-26 (which predates it), so only a header naming an unsupported version is rejected.
+let private requireSupportedProtocolVersion (next : WebPart) : WebPart =
+    request (fun r ->
+        match r.header "mcp-protocol-version" with
+        | Choice1Of2 v when not (List.contains v supportedProtocolVersions) ->
+            let supported = String.concat ", " supportedProtocolVersions
+            json HTTP_400 (failure null ErrorCode.invalidRequest $"Unsupported MCP-Protocol-Version '{v}'. Supported versions: {supported}.")
+        | _ ->
+            next
+    )
+
 let webPart (app : RemoteApp) : WebPart =
     path "/mcp" >=> Http.requireLocalOrigin (choose [
-        POST >=> post app
+        POST >=> requireSupportedProtocolVersion (post app)
         // No server-initiated streams and no sessions.
         Response.response HTTP_405 [||]
     ])

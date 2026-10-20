@@ -44,19 +44,19 @@ let private withServer (test : Server -> unit) =
         cts.Cancel()
         try server.Wait() with _ -> ()
 
-let private send (s : Server) (meth : Method) (path : string) (origin : string option) (body : string option) =
+let private send (s : Server) (meth : Method) (path : string) (headers : list<string * string>) (body : string option) =
     use request = new HttpRequestMessage(meth, path)
     body |> Option.iter (fun b -> request.Content <- new StringContent(b, Encoding.UTF8, "application/json"))
-    origin |> Option.iter (fun o -> request.Headers.TryAddWithoutValidation("Origin", o) |> ignore)
+    for name, value in headers do request.Headers.TryAddWithoutValidation(name, value) |> ignore
 
     use response = s.client.Send request
     int response.StatusCode, response.Content.ReadAsStringAsync().Result
 
 let private post (s : Server) (path : string) (body : string) =
-    send s Method.Post path None (Some body)
+    send s Method.Post path [] (Some body)
 
 let private scene (s : Server) =
-    let status, body = send s Method.Get "/api/scene" None None
+    let status, body = send s Method.Get "/api/scene" [] None
     Expect.equal status 200 "GET /api/scene"
     JsonDocument.Parse(body).RootElement
 
@@ -104,33 +104,33 @@ let origins =
     testList "Origin validation" [
         testCase "REST rejects a foreign origin and leaves the app unchanged" <| fun () ->
             withServer (fun s ->
-                let status, _ = send s Method.Post "/api/selection/invert" (Some "https://evil.example") None
+                let status, _ = send s Method.Post "/api/selection/invert" [ "Origin", "https://evil.example" ] None
                 Expect.equal status 403 "status"
                 Expect.equal (selectedCount s) 0 "selection unchanged"
             )
 
         testCase "REST rejects reading the scene from a foreign origin" <| fun () ->
             withServer (fun s ->
-                let status, _ = send s Method.Get "/api/scene" (Some "https://evil.example") None
+                let status, _ = send s Method.Get "/api/scene" [ "Origin", "https://evil.example" ] None
                 Expect.equal status 403 "status"
             )
 
         testCase "REST rejects the null origin" <| fun () ->
             withServer (fun s ->
-                let status, _ = send s Method.Post "/api/selection/invert" (Some "null") None
+                let status, _ = send s Method.Post "/api/selection/invert" [ "Origin", "null" ] None
                 Expect.equal status 403 "status"
             )
 
         testCase "REST accepts loopback origins" <| fun () ->
             withServer (fun s ->
                 for origin in [ $"http://localhost:{s.port}"; $"http://127.0.0.1:{s.port}" ] do
-                    let status, _ = send s Method.Post "/api/selection/invert" (Some origin) None
+                    let status, _ = send s Method.Post "/api/selection/invert" [ "Origin", origin ] None
                     Expect.equal status 200 origin
             )
 
         testCase "REST accepts requests without an origin" <| fun () ->
             withServer (fun s ->
-                let status, _ = send s Method.Post "/api/selection/invert" None None
+                let status, _ = send s Method.Post "/api/selection/invert" [] None
                 Expect.equal status 200 "status"
                 Expect.equal (selectedCount s) 3 "selection inverted"
             )
@@ -138,7 +138,7 @@ let origins =
         testCase "MCP rejects a foreign origin" <| fun () ->
             withServer (fun s ->
                 let body = Some """{"jsonrpc":"2.0","id":1,"method":"ping"}"""
-                let status, _ = send s Method.Post "/mcp" (Some "https://evil.example") body
+                let status, _ = send s Method.Post "/mcp" [ "Origin", "https://evil.example" ] body
                 Expect.equal status 403 "status"
             )
     ]
@@ -236,6 +236,34 @@ let jsonRpc =
                 let responses = response.Value.EnumerateArray() |> Seq.toList
                 Expect.equal responses.Length 1 "response count"
                 Expect.equal (responses.Head.GetProperty("id").GetInt32()) 7 "id"
+            )
+    ]
+
+[<Tests>]
+let protocolVersion =
+    let ping = Some """{"jsonrpc":"2.0","id":1,"method":"ping"}"""
+
+    testList "MCP-Protocol-Version header" [
+        testCase "Unsupported version is rejected before dispatch" <| fun () ->
+            withServer (fun s ->
+                let call = Some """{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"invert_selection"}}"""
+                let status, body = send s Method.Post "/mcp" [ "MCP-Protocol-Version", "2099-01-01" ] call
+                Expect.equal status 400 "status"
+                expectInvalidRequest "null" (JsonDocument.Parse(body).RootElement)
+                Expect.equal (selectedCount s) 0 "tool not executed"
+            )
+
+        testCase "Supported versions are accepted" <| fun () ->
+            withServer (fun s ->
+                for version in [ "2025-11-25"; "2025-06-18"; "2025-03-26" ] do
+                    let status, _ = send s Method.Post "/mcp" [ "MCP-Protocol-Version", version ] ping
+                    Expect.equal status 200 version
+            )
+
+        testCase "Missing header is accepted" <| fun () ->
+            withServer (fun s ->
+                let status, _ = send s Method.Post "/mcp" [] ping
+                Expect.equal status 200 "status"
             )
     ]
 
