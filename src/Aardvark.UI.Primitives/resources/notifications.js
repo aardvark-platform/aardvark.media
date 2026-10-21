@@ -1,6 +1,6 @@
 if (!aardvark.notifications) {
     aardvark.notifications = {
-        toasts: new Map()
+        toasts: new WeakMap()
     };
 
     /**
@@ -9,7 +9,7 @@ if (!aardvark.notifications) {
      */
     const removeToast = function (container, id) {
         aardvark.processEvent(container.id, 'onremove', id);
-        aardvark.notifications.toasts.delete(id);
+        aardvark.notifications.toasts.get(container).delete(id);
     }
 
     /**
@@ -18,17 +18,22 @@ if (!aardvark.notifications) {
      */
     aardvark.notifications.notify = function (container, data) {
         const $container = $(container);
+        let toasts = aardvark.notifications.toasts.get(container);
+        if (toasts === undefined) {
+            toasts = new Map();
+            aardvark.notifications.toasts.set(container, toasts);
+        }
 
         if (data.data) {
             const params = Object.assign(data.data, { context: $container, onRemove: () => removeToast(container, data.id) });
             const toast = $.toast(params);
-            aardvark.notifications.toasts.set(data.id, toast);
+            toasts.set(data.id, toast);
 
         } else {
-            const toast = aardvark.notifications.toasts.get(data.id);
+            const toast = toasts.get(data.id);
             if (toast !== undefined) {
                 toast.toast('close');
-                aardvark.notifications.toasts.delete(data.id);
+                toasts.delete(data.id);
             }
         }
     };
