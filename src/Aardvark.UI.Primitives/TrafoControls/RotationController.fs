@@ -67,15 +67,18 @@ module RotationController =
             
         ray.Ray.Ray.Intersects(circle.Plane, &t, &p), p    
 
-    let applyRotation (m : Transformation) =
+    let private applyWorkingRotation (workingPose : Pose) (m : Transformation) =
         match m.mode with
             | TrafoMode.Global ->
-                let result = { m.pose with rotation =  m.workingPose.rotation * m.pose.rotation  }
+                let result = { m.pose with rotation = workingPose.rotation * m.pose.rotation }
                 result, Pose.trafo result
             | TrafoMode.Local -> 
-                let result = { m.pose with rotation = m.pose.rotation * m.workingPose.rotation } 
+                let result = { m.pose with rotation = m.pose.rotation * workingPose.rotation }
                 result, Pose.toTrafo result
             | _ -> failwith ""
+
+    let applyRotation (m : Transformation) =
+        applyWorkingRotation m.workingPose m
 
     let updateController (m : Transformation) (a : TrafoController.Action) =
         match a with
@@ -101,7 +104,7 @@ module RotationController =
                         let rotation = Rot3d.RotateInto(hit.Normalized, p.Normalized)
                         let workingPose = { m.workingPose with rotation = rotation } 
 
-                        let _,preview = applyRotation m
+                        let _,preview = applyWorkingRotation workingPose m
                         { m with workingPose = workingPose; previewTrafo = preview }
                     else 
                     m
