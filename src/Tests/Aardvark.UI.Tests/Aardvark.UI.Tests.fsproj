@@ -21,6 +21,7 @@
     <Compile Include="Animation\Utilities.fs" />
     <Compile Include="Animation\SimpleTests.fs" />
     <Compile Include="Animation\GroupsTests.fs" />
+    <Compile Include="Animation\GroupDirectionTests.fs" />
     <Compile Include="Animation\AnimatorTests.fs" />
     <Compile Include="Animation\PrimitivesTests.fs" />
     <Compile Include="HttpBackendTests.fs" />

@@ -1,3 +1,5 @@
+- [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
