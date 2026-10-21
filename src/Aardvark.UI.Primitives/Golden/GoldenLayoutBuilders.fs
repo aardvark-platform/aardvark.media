@@ -226,7 +226,10 @@ module Builders =
         member inline x.Yield(p : PopoutWindow) =  { Root = None; PopoutWindows = [p] }
 
         member inline x.Delay(f : unit -> WindowLayout) = f()
-        member inline x.Combine(a : WindowLayout, b : WindowLayout) = { a with PopoutWindows = a.PopoutWindows @ b.PopoutWindows }
+        member inline x.Combine(a : WindowLayout, b : WindowLayout) =
+            { a with
+                Root = a.Root |> Option.orElse b.Root
+                PopoutWindows = a.PopoutWindows @ b.PopoutWindows }
         member inline x.For(l: WindowLayout, f: unit -> WindowLayout) = x.Combine(l, f())
 
         // Layout of the main window.

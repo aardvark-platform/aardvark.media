@@ -29,6 +29,7 @@
     <Compile Include="JavascriptTests.fs" />
     <Compile Include="UpdaterTests.fs" />
     <Compile Include="GoldenLayoutJsonTests.fs" />
+    <Compile Include="GoldenLayoutBuilderTests.fs" />
     <Compile Include="MutableAppChannelTests.fs" />
     <Compile Include="RenderControlConfigTests.fs" />
     <None Include="paket.references" />
