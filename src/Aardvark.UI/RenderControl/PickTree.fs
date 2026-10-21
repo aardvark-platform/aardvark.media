@@ -70,7 +70,7 @@ type PickTree<'msg>(sg: ISg<'msg>) =
                                 }
                             else
                                 //last <- Some proc
-                                true, msgs
+                                true, seq { yield! enters; yield! msgs }
                         else
                             entered.Add proc |> ignore
                             true, msgs
