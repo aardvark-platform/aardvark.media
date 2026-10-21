@@ -33,3 +33,14 @@ jobs:
         global-json-file: global.json
     - name: Build
       run: ${{ matrix.run-build }}
+    - name: Notification browser regressions
+      if: runner.os == 'Linux'
+      env:
+        AARDVARK_CHROMIUM: /usr/bin/google-chrome
+      run: |
+        set -eu
+        test -x "$AARDVARK_CHROMIUM"
+        for configuration in Debug Release; do
+          dotnet test src/Tests/Aardvark.UI.Tests/Aardvark.UI.Tests.fsproj \
+            -c "$configuration" --filter 'FullyQualifiedName~Notifications are isolated'
+        done
