@@ -9,6 +9,7 @@
 - Encode `MutableApp.DocumentTitle` as HTML string
 - [Primitives] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
 - [Primitives] Route GoldenLayout panels to the correct page when IDs contain reserved characters, percent escapes or line breaks
+- [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
 - [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
 - [Suave] Decode query parameter names for lookup and grouping, including percent escapes and `+` spaces
 
