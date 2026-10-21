@@ -1,4 +1,5 @@
-- [Screenshotr] Require Screenshotr.Client 1.5.4 and System.Text.Json 8.0.6 for the upstream SignalR security fix (CVE-2026-70159)
+### 5.7.7
+- Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
 - Release remaining session-owned channel readers on shutdown without affecting other sessions
 - Correct `RenderControlConfig.fillWidth` viewport aspect ratios while preserving vertical frustum bounds
@@ -14,6 +15,7 @@
 - [Animation] Reset group values and restore child `Stop` callbacks when stopping composite animations
 - [Animation] Correct lengths and normalized-distance evaluation for closed and nearly closed splines
 - [Primitives] Treat `null` optional GoldenLayout JSON fields like omitted properties
+- [Screenshotr] Require Screenshotr.Client 1.5.4 and System.Text.Json 8.0.6 for the upstream SignalR security fix (CVE-2026-70159)
 - [CEF] Update to version 154.0.34
 
 ### 5.7.6
