@@ -2,7 +2,7 @@
   <PropertyGroup>
     <_AardvarkCefTargetPlatform Condition="'$(Platform)' == 'AnyCPU' or '$(Platform)' == ''">x64</_AardvarkCefTargetPlatform>
     <_AardvarkCefTargetPlatform Condition="'$(Platform)' != 'AnyCPU' and '$(Platform)' != ''">$(Platform)</_AardvarkCefTargetPlatform>
-    <_AardvarkCefTargetFramework>net8.0-windows</_AardvarkCefTargetFramework>
+    <_AardvarkCefTargetFramework>net10.0-windows</_AardvarkCefTargetFramework>
     <_AardvarkCefTargetFramework Condition="'$(TargetFrameworkIdentifier)' == '.NETFramework'">net471</_AardvarkCefTargetFramework>
   </PropertyGroup>
   <ItemGroup>

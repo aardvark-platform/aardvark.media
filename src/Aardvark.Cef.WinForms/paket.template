@@ -13,6 +13,6 @@ dependencies
     framework: net471
         CefSharp.Common >= LOCKEDVERSION
         CefSharp.WinForms >= LOCKEDVERSION
-    framework: net8.0-windows10.0.17763.0
+    framework: net10.0-windows7.0
         CefSharp.Common.NETCore >= LOCKEDVERSION
         CefSharp.WinForms.NETCore >= LOCKEDVERSION
