@@ -36,6 +36,7 @@
     <Compile Include="FreeFlyPitchLimitTests.fs" />
     <Compile Include="CameraUtilitiesTests.fs" />
     <Compile Include="FreeFlyJumpTests.fs" />
+    <Compile Include="PickTreeTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="embedded_file.txt" />
