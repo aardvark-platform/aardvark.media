@@ -1,3 +1,5 @@
+- [UI] Avoid camera-position jumps caused by radius clamping when switching from FreeFly to Orbit
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
