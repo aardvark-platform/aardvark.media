@@ -1,3 +1,5 @@
+- [UI] Treat initial document titles as literal text instead of interpreting entities or HTML markup
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
