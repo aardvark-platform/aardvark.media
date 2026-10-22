@@ -1,3 +1,5 @@
+- [FreeFly] Keep camera jumps active until position and orientation have both reached the target
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
