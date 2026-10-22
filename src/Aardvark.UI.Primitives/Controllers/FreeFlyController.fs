@@ -250,8 +250,8 @@ module FreeFlyController =
                 state.targetJump |> Option.bind ( fun j ->
                     if 
                        Vec.length ((CameraView.location j) - (CameraView.location state.view)) < 1E-4 &&
-                       Vec.length ((CameraView.location j + CameraView.forward j) - (CameraView.location state.view + CameraView.forward state.view)) > 1E-4 &&
-                       Vec.length ((CameraView.location j + CameraView.up j) -      (CameraView.location state.view + CameraView.up state.view)     ) > 1E-4 then
+                       Vec.length ((CameraView.location j + CameraView.forward j) - (CameraView.location state.view + CameraView.forward state.view)) < 1E-4 &&
+                       Vec.length ((CameraView.location j + CameraView.up j) -      (CameraView.location state.view + CameraView.up state.view)     ) < 1E-4 then
                         None
                     elif (state.pan || state.look || state.dolly || (abs state.targetZoom > 0.05)) || not state.rotateVec.AllTiny then
                         None
