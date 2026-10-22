@@ -206,7 +206,7 @@ module MutableApp =
             let reader = new StreamReader(stream)
             reader.ReadToEnd()
 
-        fun (title: string) -> html |> String.replace "__TITLE__" title
+        fun (title: string) -> html |> String.replace "__TITLE__" (System.Net.WebUtility.HtmlEncode title)
 
     [<AutoOpen>]
     module private Internals =
