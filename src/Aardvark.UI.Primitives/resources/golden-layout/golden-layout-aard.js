@@ -85,7 +85,7 @@ if (!document.aardvark.golden) {
             var element = elements.get(componentTypeName);
             if (element === undefined) {
                 element = document.createElement("iframe");
-                element.src = './?page=' + componentTypeName;
+                element.src = './?page=' + encodeURIComponent(componentTypeName);
                 element.style.border = 'none';
                 element.style.position = 'absolute';
                 element.style.overflow = 'hidden';
