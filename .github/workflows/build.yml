@@ -33,3 +33,20 @@ jobs:
         global-json-file: global.json
     - name: Build
       run: ${{ matrix.run-build }}
+    - name: Install Chromium
+      if: runner.os == 'Linux'
+      uses: browser-actions/setup-chrome@v2
+      id: chromium
+      with:
+        chrome-version: stable
+    - name: GoldenLayout browser regressions
+      if: runner.os == 'Linux'
+      env:
+        AARDVARK_CHROMIUM: ${{ steps.chromium.outputs.chrome-path }}
+      run: |
+        set -eu
+        test -x "$AARDVARK_CHROMIUM"
+        for configuration in Debug Release; do
+          dotnet test src/Tests/Aardvark.UI.Tests/Aardvark.UI.Tests.fsproj \
+            -c "$configuration" --filter 'FullyQualifiedName~GoldenLayout.Browser'
+        done

@@ -1,3 +1,5 @@
+- [UI] Route GoldenLayout panels to the correct page when IDs contain reserved characters, percent escapes or line breaks
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
