@@ -51,11 +51,13 @@ module Dropdown =
                     match values with
                     | DropdownValues.List list -> list
                     | DropdownValues.Map map ->
-                        let cmp =
-                            if typeof<System.IComparable>.IsAssignableFrom typeof<'T> then Unchecked.compare<'T>
-                            else fun _ _ -> -1
+                        let sortKey =
+                            if typeof<System.IComparable>.IsAssignableFrom typeof<'T> then
+                                fun key _ -> unbox<System.IComparable> (box key)
+                            else
+                                fun _ _ -> null
 
-                        map |> AMap.toASet |> ASet.sortWith (fun (a, _) (b, _) -> cmp a b)
+                        map |> AMap.sortBy sortKey
 
                 sortedValues
                 |> AList.map (fun (key, node) ->
