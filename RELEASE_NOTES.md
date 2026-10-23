@@ -3,6 +3,7 @@
 - Fix `onAfterRender` to report up-to-date `RenderClientInfo`
 - Reduce construction allocations for large groups of repeated conditional attributes
 - Respect custom camera up directions when limiting FreeFly pitch
+- [Primitives] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
 - [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
 
 ### 5.7.7
