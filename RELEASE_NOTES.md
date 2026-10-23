@@ -1,3 +1,5 @@
+- [UI] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
