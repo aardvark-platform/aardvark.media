@@ -2,6 +2,7 @@
 - Fix `AttributeMap.removeClass` for tab, newline, carriage-return, and form-feed separators without trimming Unicode characters from class names
 - Fix `onAfterRender` to report up-to-date `RenderClientInfo`
 - Reduce construction allocations for large groups of repeated conditional attributes
+- Respect custom camera up directions when limiting FreeFly pitch
 - [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
 
 ### 5.7.7
