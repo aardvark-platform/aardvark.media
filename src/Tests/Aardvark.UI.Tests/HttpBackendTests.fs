@@ -165,6 +165,80 @@ module ``HttpBackend Tests`` =
             http.notFound "Not found"
         ]
 
+    module private SuaveQueryNames =
+
+        let request query =
+            let context = global.Suave.Http.HttpContext.empty
+            let context = { context with request = { context.request with rawQuery = query } }
+            Suave.HttpBackend.Instance.getRequest context
+
+        let tests =
+            testList "Suave query names" [
+                testCase "Decode parsed names exactly once" <| fun _ ->
+                    let names = [
+                        "a%20b", "a b"
+                        "a+b", "a b"
+                        "%61", "a"
+                        "%C3%BC%E6%9D%B1%E4%BA%AC", "ü東京"
+                        "items%5B%5D", "items[]"
+                        "%26%3D%3F%23%2F", "&=?#/"
+                        "a%2Bb", "a+b"
+                        "%25name", "%name"
+                        "%2520", "%20"
+                        "%252B", "%2B"
+                        "%2525", "%25"
+                        "mix%2b+%2520", "mix+ %20"
+                    ]
+
+                    for encoded, decoded in names do
+                        let r = request (encoded + "=value")
+                        Expect.equal r.QueryParams (Map.ofList [decoded, ["value"]]) $"Decoded map: {encoded}"
+                        Expect.equal (r.QueryParam decoded) (Some "value") $"Decoded lookup: {encoded}"
+                        Expect.isNone (r.QueryParam encoded) $"Do not decode lookup arguments: {encoded}"
+
+                testCase "Merge encoded aliases in arrival order" <| fun _ ->
+                    let r = request "a+b=first&other=middle&a%20b=second&%61+b&%61%20b=&a+b=last"
+                    let expected = Map.ofList ["a b", ["first"; "second"; ""; "last"]; "other", ["middle"]]
+                    Expect.equal r.QueryParams expected "Aliases share one decoded key without reordering values"
+                    Expect.equal (r.QueryParam "a b") (Some "first") "Select the first valued alias"
+                    Expect.isNone (r.QueryParam "a+b") "A literal plus is not a lookup-space alias"
+                    Expect.isNone (r.QueryParam "a%20b") "Lookup names are already decoded"
+
+                    let r = request "%61+b&a%20b=first&a+b=second&bare%20key&bare+key"
+                    Expect.equal r.QueryParams (Map.ofList ["a b", ["first"; "second"]; "bare key", []]) "Bare aliases add no values"
+                    Expect.equal (r.QueryParam "a b") (Some "first") "Skip a leading bare alias"
+                    Expect.isNone (r.QueryParam "bare key") "Bare-only aliases still have no value"
+
+                testCase "Retain plain, bare, empty and case policies" <| fun _ ->
+                    let r = request "key&key=first&key=&key=last&bare&bare&empty=&Name=upper&name=lower"
+                    let expected = Map.ofList [
+                        "key", ["first"; ""; "last"]
+                        "bare", []
+                        "empty", [""]
+                        "Name", ["upper"]
+                        "name", ["lower"]
+                    ]
+                    Expect.equal r.QueryParams expected "Bare keys have no values; empty values remain present"
+                    for name, expected in ["key", Some "first"; "bare", None; "empty", Some "";
+                                           "Name", Some "upper"; "name", Some "lower"; "NAME", None; "missing", None] do
+                        Expect.equal (r.QueryParam name) expected $"Plain lookup: {name}"
+                    let empty = request ""
+                    Expect.equal empty.QueryParams Map.empty "Empty query"
+                    Expect.isNone (empty.QueryParam "missing") "Missing lookup in an empty query"
+
+                testCase "Retain benign escapes and existing value decoding" <| fun _ ->
+                    let r = request "%=percent&%2=short&%GG=bad&values=one+two&values=%2B&values=%2520&values=%26%3D&values=%25"
+                    let expected = Map.ofList [
+                        "%", ["percent"]
+                        "%2", ["short"]
+                        "%GG", ["bad"]
+                        "values", ["one two"; "+"; "%20"; "&="; "%"]
+                    ]
+                    Expect.equal r.QueryParams expected "Values are already decoded by Suave"
+                    for name, expected in ["%", "percent"; "%2", "short"; "%GG", "bad"; "values", "one two"] do
+                        Expect.equal (r.QueryParam name) (Some expected) $"Literal lookup: {name}"
+            ]
+
     module Cases =
 
         let text (client: HttpClient) (server: TestServer) =
@@ -300,6 +374,28 @@ module ``HttpBackend Tests`` =
             test ["a", Some "1"; "b", None; "c", Some "3"]
             test ["a", Some "1"; "a", Some "2"; "b", None; "c", None]
             test ["c", Some "42"; "a", None; "b", None; "c", Some "4"]
+
+        let encodedQueryNames (client: HttpClient) (server: TestServer) =
+            let cases = [
+                "a%20b=first&a+b=second&%61%20b=last", "a b", ["first"; "second"; "last"]
+                "%61=one&a=two", "a", ["one"; "two"]
+                "%C3%BC%E6%9D%B1%E4%BA%AC=value", "ü東京", ["value"]
+                "items%5B%5D=value", "items[]", ["value"]
+                "a%2Bb=one%2Btwo", "a+b", ["one+two"]
+                "%25name=%2520", "%name", ["%20"]
+                "%2520=literal", "%20", ["literal"]
+                "%26%3D%3F%23=value", "&=?#", ["value"]
+            ]
+
+            for query, name, values in cases do
+                let pathName = Uri.EscapeDataString name
+                use lookup = client.GetAsync($"http://{server.Host}/query-param/{pathName}?{query}").Result
+                Expect.equal lookup.StatusCode HttpStatusCode.OK $"Lookup status: {query}"
+                Expect.equal (lookup.Content.ReadAsStringAsync().Result) values.Head $"Decoded lookup: {query}"
+
+                use grouped = client.GetAsync($"http://{server.Host}/query-params?{query}").Result
+                Expect.equal grouped.StatusCode HttpStatusCode.OK $"Grouping status: {query}"
+                Expect.equal (grouped.Content.ReadAsStringAsync().Result) $"{name}:{values}" $"Decoded grouping: {query}"
 
         let header (client: HttpClient) (server: TestServer) =
             let r = client.GetAsync($"http://{server.Host}/header/Host").Result
@@ -534,6 +630,7 @@ module ``HttpBackend Tests`` =
                 "Sub route",          Cases.subRoute
                 "Query parameter",    Cases.queryParam
                 "Query parameters",   Cases.queryParams
+                "Encoded query names", Cases.encodedQueryNames
                 "Header",             Cases.header
                 "Method",             Cases.method
                 "Method filters",     Cases.methodFilters
@@ -571,6 +668,7 @@ module ``HttpBackend Tests`` =
             |> testList server.Name
 
         testList "HttpBackend Tests" [
+            SuaveQueryNames.tests
             createTests true
             createTests false
         ]
