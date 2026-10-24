@@ -1,3 +1,5 @@
+- [Suave] Decode query parameter names for lookup and grouping, including percent escapes and `+` spaces
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources

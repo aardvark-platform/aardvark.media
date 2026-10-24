@@ -105,6 +105,9 @@ type HttpBackend private () =
                 handler context
 
         member _.getRequest context =
+            // Suave decodes query values, but leaves names encoded.
+            let decodeName (name: string) = Uri.UnescapeDataString(name.Replace('+', ' '))
+
             { new IHttpRequest with
                 member _.Path = context.request.path
                 member _.Body = new MemoryStream(context.request.rawForm)
@@ -117,9 +120,10 @@ type HttpBackend private () =
                     Map.ofList context.request.headers
                 member _.QueryParam(name) =
                     context.request.query
-                    |> List.tryPick (function n, Some v when n = name -> Some v | _ -> None)
+                    |> List.tryPick (function n, Some v when decodeName n = name -> Some v | _ -> None)
                 member _.QueryParams =
                     (Map.empty, context.request.query) ||> Seq.fold (fun result (name, value) ->
+                        let name = decodeName name
                         let value = Option.toList value
 
                         let values =
