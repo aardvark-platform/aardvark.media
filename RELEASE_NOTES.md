@@ -1,3 +1,5 @@
+- Provide `onAfterRender` with the rendered frame's viewport, timestamp, background, and camera transforms instead of initial client metadata
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
