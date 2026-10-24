@@ -301,6 +301,28 @@ module ``HttpBackend Tests`` =
             test ["a", Some "1"; "a", Some "2"; "b", None; "c", None]
             test ["c", Some "42"; "a", None; "b", None; "c", Some "4"]
 
+        let encodedQueryNames (client: HttpClient) (server: TestServer) =
+            let cases = [
+                "a%20b=first&a+b=second&%61%20b=last", "a b", ["first"; "second"; "last"]
+                "%61=one&a=two", "a", ["one"; "two"]
+                "%C3%BC%E6%9D%B1%E4%BA%AC=value", "ü東京", ["value"]
+                "items%5B%5D=value", "items[]", ["value"]
+                "a%2Bb=one%2Btwo", "a+b", ["one+two"]
+                "%25name=%2520", "%name", ["%20"]
+                "%2520=literal", "%20", ["literal"]
+                "%26%3D%3F%23=value", "&=?#", ["value"]
+            ]
+
+            for query, name, values in cases do
+                let pathName = Uri.EscapeDataString name
+                use lookup = client.GetAsync($"http://{server.Host}/query-param/{pathName}?{query}").Result
+                Expect.equal lookup.StatusCode HttpStatusCode.OK $"Lookup status: {query}"
+                Expect.equal (lookup.Content.ReadAsStringAsync().Result) values.Head $"Decoded lookup: {query}"
+
+                use grouped = client.GetAsync($"http://{server.Host}/query-params?{query}").Result
+                Expect.equal grouped.StatusCode HttpStatusCode.OK $"Grouping status: {query}"
+                Expect.equal (grouped.Content.ReadAsStringAsync().Result) $"{name}:{values}" $"Decoded grouping: {query}"
+
         let header (client: HttpClient) (server: TestServer) =
             let r = client.GetAsync($"http://{server.Host}/header/Host").Result
             Expect.equal r.StatusCode HttpStatusCode.OK "Unexpected status code"
@@ -534,6 +556,7 @@ module ``HttpBackend Tests`` =
                 "Sub route",          Cases.subRoute
                 "Query parameter",    Cases.queryParam
                 "Query parameters",   Cases.queryParams
+                "Encoded query names", Cases.encodedQueryNames
                 "Header",             Cases.header
                 "Method",             Cases.method
                 "Method filters",     Cases.methodFilters
