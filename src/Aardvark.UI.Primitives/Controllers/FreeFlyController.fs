@@ -121,7 +121,7 @@ module FreeFlyController =
                     
                 if trafo.IsIdentity(Double.Epsilon) then cam
                 else
-                    let forbidden = V3d.OOI |> Vec.normalize
+                    let forbidden = cam.Sky |> Vec.normalize
                     
                     let newForward = trafo.TransformDir cam.Forward |> Vec.normalize
 

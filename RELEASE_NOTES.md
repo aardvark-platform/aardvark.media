@@ -1,3 +1,5 @@
+- [UI] Respect custom camera up directions when limiting FreeFly pitch
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
