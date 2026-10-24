@@ -1,3 +1,5 @@
+- [UI] Reduce construction allocations for large groups of repeated conditional attributes
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
