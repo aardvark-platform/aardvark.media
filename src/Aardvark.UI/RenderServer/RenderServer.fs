@@ -37,7 +37,8 @@ type internal RenderClientCreateInfo =
     member inline this.runtime    = this.server.runtime
     member inline this.compressor = this.server.compressor
 
-type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo) =
+type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo,
+                           ?render: (AdaptiveToken * RenderClientInfo -> RenderResult), ?getTime: (unit -> MicroTime)) =
     static let mutable currentId = 0
 
     static let newRenderTask (id: int) (info: RenderClientCreateInfo) =
@@ -49,6 +50,8 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
     let id = Interlocked.Increment(&currentId)
     let requestedImage : MVar<ImageRequest> = MVar.empty()
     let renderTask = newRenderTask id createInfo
+    let render = defaultArg render renderTask.Run
+    let getTime = defaultArg getTime (fun () -> MicroTime.Now)
     let cancellationToken = app.CancellationToken
 
     [<VolatileField>]
@@ -67,7 +70,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
             quality    = createInfo.targetQuality
             state      = RenderState.identity
             size       = V2i.II
-            time       = MicroTime.Now
+            time       = getTime()
             clearColor = C4f.Black
         }
 
@@ -103,19 +106,22 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
             let request = MVar.take requestedImage
 
             if request.size.AllGreater 0 && running && not cancellationToken.IsCancellationRequested then
-                lock app.UpdateLock (fun _ ->
+                let frameInfo = lock app.UpdateLock (fun _ ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
+                        // Keep the fallback notification if snapshot creation fails.
+                        let mutable frameInfo = info
                         try
                             let info =
                                 { info with
                                     token      = token
                                     size       = request.size
-                                    time       = MicroTime.Now
+                                    time       = getTime()
                                     clearColor = c4f request.background
                                 }
                                 |> RenderClientInfo.withState createInfo.server.getState
 
-                            let data = renderTask.Run(token, info)
+                            frameInfo <- info
+                            let data = render(token, info)
 
                             match data with
                             | RenderResult.Jpeg data ->
@@ -144,10 +150,12 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                             Log.error $"[Client] {id}: Rendering faulted: {exn}"
                             let source = InternalErrorSource.Rendering (info.id.session, info.id.elementId)
                             createInfo.server.onError source exn
+
+                        frameInfo
                     )
                 )
 
-                createInfo.server.rendered info
+                createInfo.server.rendered frameInfo
 
         Report.Line(3, $"[Client] {id}: Stopped render thread")
 
