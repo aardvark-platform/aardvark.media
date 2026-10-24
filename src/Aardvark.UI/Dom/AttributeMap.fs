@@ -140,7 +140,7 @@ module AttributeMap =
         for key, value in seq do
             groups <- groups |> HashMap.updateV key (fun o ->
                 match o with
-                | ValueSome l -> l @ [value]
+                | ValueSome l -> value :: l
                 | ValueNone -> [value]
             )
 
@@ -149,6 +149,7 @@ module AttributeMap =
                 match values with
                 | [v] -> v
                 | many ->
+                    let many = List.rev many
                     AVal.custom (fun token ->
                         let mutable final = None
                         for e in many do
