@@ -1,4 +1,5 @@
 - Ignore unknown event versions without disabling active UI handlers or discarding pending replacements
+- Fix `AttributeMap.removeClass` for tab, newline, carriage-return, and form-feed separators without trimming Unicode characters from class names
 - [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
 
 ### 5.7.7
