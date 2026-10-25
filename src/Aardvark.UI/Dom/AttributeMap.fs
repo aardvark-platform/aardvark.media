@@ -191,13 +191,15 @@ module AttributeMap =
     let addClass (clazz: string) (attributes: AttributeMap<'msg>) =
         union attributes <| ofList ["class", AttributeValue.String clazz]
 
+    let private classSeparators = [| ' '; '\t'; '\n'; '\r'; '\f' |]
+
     /// Removes the given class from the attribute map.
     let removeClass (clazz: string) (attributes: AttributeMap<'msg>) =
         attributes |> map (fun name attr ->
             match name, attr with
             | "class", AttributeValue.String str ->
-                String.split " " str
-                |> Array.filter (String.trim >> (<>) clazz)
+                str.Split(classSeparators, System.StringSplitOptions.None)
+                |> Array.filter ((<>) clazz)
                 |> String.concat " "
                 |> AttributeValue.String
 
