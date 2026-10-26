@@ -65,16 +65,23 @@ module internal Updaters =
     type EventHandlers<'msg>() =
         let store = Dictionary<ChannelId, {| current: EventHandler<'msg> voption; pending: Queue<EventHandler<'msg>> |}>()
 
-        // Dequeues pending handlers until the one with the given version is found or the queue is empty
-        static let rec tryGet (queue: Queue<EventHandler<'msg>>) version =
-            if queue.Count > 0 then
-                let handler = queue.Dequeue()
-                if handler.version = version then
-                    ValueSome handler
-                else
-                    tryGet queue version
-            else
+        // Locate the first match before retiring any pending handlers.
+        static let tryGet (queue: Queue<EventHandler<'msg>>) version =
+            let mutable pending = queue.GetEnumerator()
+            let mutable visited = 0
+            let mutable matched = 0
+            try
+                while matched = 0 && pending.MoveNext() do
+                    visited <- visited + 1
+                    if pending.Current.version = version then matched <- visited
+            finally
+                pending.Dispose()
+
+            if matched = 0 then
                 ValueNone
+            else
+                for _ in 1 .. matched - 1 do queue.Dequeue() |> ignore
+                ValueSome (queue.Dequeue())
 
         member _.Enqueue(key, handler) =
             lock store (fun _ ->
@@ -96,9 +103,11 @@ module internal Updaters =
                     match state.current with
                     | ValueSome handler when handler.version = version -> state.current
                     | _ ->
-                        let result = tryGet state.pending version
-                        store.[key] <- {| state with current = result |} // Make the found handler active
-                        result
+                        match tryGet state.pending version with
+                        | ValueSome _ as result ->
+                            store.[key] <- {| state with current = result |} // Make the found handler active
+                            result
+                        | ValueNone -> ValueNone
                 | _ ->
                     ValueNone
             )
