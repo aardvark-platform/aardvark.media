@@ -122,14 +122,16 @@ type HttpBackend private () =
                     context.request.query
                     |> List.tryPick (function n, Some v when decodeName n = name -> Some v | _ -> None)
                 member _.QueryParams =
-                    (Map.empty, context.request.query) ||> Seq.fold (fun result (name, value) ->
+                    (context.request.query, Map.empty) ||> List.foldBack (fun (name, value) result ->
                         let name = decodeName name
-                        let value = Option.toList value
-
                         let values =
                             match result |> Map.tryFindV name with
-                            | ValueSome old -> old @ value
-                            | _ -> value
+                            | ValueSome values -> values
+                            | _ -> []
+                        let values =
+                            match value with
+                            | Some value -> value :: values
+                            | None -> values
 
                         result |> Map.add name values
                     )
