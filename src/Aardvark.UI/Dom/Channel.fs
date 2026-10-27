@@ -39,8 +39,9 @@ module ``Channel Extensions`` =
             if Unchecked.equals last (Some v) then
                 []
             else
+                let message = Pickler.json.PickleToString v
                 last <- Some v
-                [ Pickler.json.PickleToString v ]
+                [ message ]
 
     type private ASetChannelReader<'a>(s : aset<'a>) =
         inherit ChannelReader()

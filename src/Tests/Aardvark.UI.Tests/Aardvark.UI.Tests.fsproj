@@ -26,6 +26,7 @@
     <Compile Include="HttpBackendTests.fs" />
     <Compile Include="WebSocketTests.fs" />
     <Compile Include="AttributeMapTests.fs" />
+    <Compile Include="ChannelTests.fs" />
     <Compile Include="JavascriptTests.fs" />
     <Compile Include="UpdaterTests.fs" />
     <Compile Include="GoldenLayoutJsonTests.fs" />
