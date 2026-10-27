@@ -1,3 +1,5 @@
+- [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
+
 ### 5.7.7
 - Update to .NET 10
 - Request cancellation of active background commands before disposing `MutableApp` resources
