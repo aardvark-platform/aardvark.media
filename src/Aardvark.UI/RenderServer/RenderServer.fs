@@ -58,7 +58,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
     let roundTripTime = Stopwatch()
     let invalidateTime = Stopwatch()
 
-    let info =
+    let mutable info =
         {
             id         = createInfo.id
             token      = Unchecked.defaultof<AdaptiveToken>
@@ -106,7 +106,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                 lock app.UpdateLock (fun _ ->
                     sender.EvaluateAlways AdaptiveToken.Top (fun token ->
                         try
-                            let info =
+                            info <-
                                 { info with
                                     token      = token
                                     size       = request.size
