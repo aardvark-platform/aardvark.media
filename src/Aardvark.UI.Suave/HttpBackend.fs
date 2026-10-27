@@ -60,7 +60,7 @@ type internal WebSocket(socket: WebSocket.WebSocket) =
 
     member _.Send(message: WebSocketOpCode, data: byte[], cancellationToken: CancellationToken, [<Optional; DefaultParameterValue(true)>] endOfMessage: bool) : Task =
         if cancellationToken.IsCancellationRequested then
-            Task.CompletedTask
+            Task.FromCanceled(cancellationToken)
         else
             let opcode = Opcode.ofWebSocketOpCode message
             let data = ByteSegment data
