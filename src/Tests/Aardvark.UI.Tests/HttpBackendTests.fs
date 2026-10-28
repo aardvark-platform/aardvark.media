@@ -10,6 +10,7 @@ open System.Threading.Tasks
 open Aardvark.Base
 open Aardvark.UI
 open System.Net.Http
+open Microsoft.AspNetCore.Http
 open Expecto
 
 module ``HttpBackend Tests`` =
@@ -78,27 +79,33 @@ module ``HttpBackend Tests`` =
         let proxyPaths = ["/proxy", "/proxy"; "/proxy/", "/proxy"]
         let mounts = [false, "/single/start", "/single"; true, "/outer/inner/start", "/outer/inner"]
         let destination = "/target%20file?q=hello%20world&next=%2Fother%3Fx%3D1#details%20section"
-        let http = Suave.HttpBackend.Instance
 
-        let mount nested handler =
+        // Count native entries/values: IHttpRequest.Headers collapses duplicate names.
+        let suaveHeaderCount (context: global.Suave.Http.HttpContext) =
+            context.request.headers
+            |> List.filter (fun (name, _) -> String.Equals(name, "GLOBAL_PATH", StringComparison.OrdinalIgnoreCase))
+            |> List.length
+
+        let giraffeHeaderCount (context: HttpContext) =
+            context.Request.Headers
+            |> Seq.sumBy (fun (KeyValue(name, values)) ->
+                if String.Equals(name, "GLOBAL_PATH", StringComparison.OrdinalIgnoreCase) then values.Count else 0)
+
+        let mount (http: IHttpBackend<'context, 'handler>) nested handler =
             if nested then http.subRoute "/outer" (http.subRoute "/inner" handler)
             else http.subRoute "/single" handler
 
-        let content =
+        let content (http: IHttpBackend<'context, 'handler>) countHeaders =
             let (>=>) x y = http.compose x y
             let redirect =
                 http.withContext (fun context ->
-                    let count =
-                        context.request.headers
-                        |> List.filter (fun (name, _) -> String.Equals(name, "GLOBAL_PATH", StringComparison.OrdinalIgnoreCase))
-                        |> List.length
-                    http.header "X-Global-Path-Count" count
+                    http.header "X-Global-Path-Count" (countHeaders context)
                     >=> http.request (fun request ->
                         http.header "X-Redirect" "preserved"
                         >=> http.header "X-Rewritten-Path" request.Path
                         >=> http.header "X-Prefix-Control" (request.Header "X-Prefix-Control" |> Option.defaultValue "")
                         >=> http.redirectRelative destination))
-            [mount false redirect; mount true redirect]
+            [mount http false redirect; mount http true redirect]
 
     let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) (cancellationToken: CancellationToken) =
         let (>=>) x y = http.compose x y
@@ -265,15 +272,19 @@ module ``HttpBackend Tests`` =
                 use response = client.SendAsync(request).Result
                 checkRedirect true (prefix + "/text?q=hello%20world#details") response server
 
-        let suaveProxyRedirect (header: (string * string) option) requestPath mountedPath expectedProxy (client: HttpClient) (server: TestServer) =
+        let proxyRedirect (header: (string * string) option) requestPath mountedPath expectedProxy (client: HttpClient) (server: TestServer) =
             use request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, $"http://{server.Host}{requestPath}")
             header |> Option.iter (fun (name, value) -> request.Headers.Add(name, value))
             request.Headers.Add("X-Prefix-Control", "kept")
             use response = client.SendAsync(request).Result
-            checkRedirect true (expectedProxy + mountedPath + ProxyPrefixes.destination) response server
-            Expect.equal (response.Headers.GetValues("X-Rewritten-Path") |> Seq.toList) ["/start"] "Lost request-path rewriting"
+            // Suave rewrites Path and accumulates mounts; Giraffe tracks routing internally.
+            let prefix, path, count =
+                if server :? SuaveTestServer then expectedProxy + mountedPath, "/start", "1"
+                else expectedProxy, requestPath, (if header.IsSome then "1" else "0")
+            checkRedirect true (prefix + ProxyPrefixes.destination) response server
+            Expect.equal (response.Headers.GetValues("X-Rewritten-Path") |> Seq.toList) [path] "Changed exposed request path"
             Expect.equal (response.Headers.GetValues("X-Prefix-Control") |> Seq.toList) ["kept"] "Lost unrelated request header"
-            Expect.equal (response.Headers.GetValues("X-Global-Path-Count") |> Seq.toList) ["1"] "Introduced competing GLOBAL_PATH headers"
+            Expect.equal (response.Headers.GetValues("X-Global-Path-Count") |> Seq.toList) [count] "Changed native GLOBAL_PATH count"
 
         let suaveProxyContext header nested requestPath mountedPath expectedProxy =
             // The wire parser normalizes names; direct contexts check original spelling/order.
@@ -288,7 +299,7 @@ module ``HttpBackend Tests`` =
             let context = global.Suave.Http.HttpContext.empty
             let context = { context with request = { context.request with rawPath = requestPath; headers = headers; rawQuery = "q=a%2Fb" } }
             let result =
-                ProxyPrefixes.mount nested global.Suave.WebPart.succeed context
+                ProxyPrefixes.mount Suave.HttpBackend.Instance nested global.Suave.WebPart.succeed context
                 |> Async.RunSynchronously
                 |> Option.get
             Expect.equal result.request.headers expectedHeaders "Changed header spelling, ordering, unrelated values or accumulated prefix"
@@ -301,13 +312,64 @@ module ``HttpBackend Tests`` =
             let context = global.Suave.Http.HttpContext.empty
             let run prefix path =
                 let context = { context with request = { context.request with rawPath = path } }
-                ProxyPrefixes.http.subRoute prefix global.Suave.WebPart.succeed context |> Async.RunSynchronously
+                Suave.HttpBackend.Instance.subRoute prefix global.Suave.WebPart.succeed context |> Async.RunSynchronously
             for prefix, path, expected in ["/app", "/app", "/"; "/app", "/app/start", "/start"; "/app", "/application", "/lication"; "/app/", "/app/start", "/start"] do
                 let result = run prefix path |> Option.get
                 Expect.equal result.request.rawPath expected "Changed prefix matching or leading-slash rewriting"
                 Expect.equal result.request.headers ["GLOBAL_PATH", prefix] "Changed absent-header insertion"
             for path in ["/APP/start"; "/other/start"] do
                 Expect.isNone (run "/app" path) "Changed case-sensitive prefix matching"
+
+        let giraffeProxyContext header nested requestPath =
+            let http = Giraffe.HttpBackend.Instance
+            let context = DefaultHttpContext()
+            context.Request.Path <- PathString requestPath
+            context.Request.QueryString <- QueryString "?q=a%2Fb"
+            let headers = ["X-Before", "one"; "GLOBAL_PATH_EXTRA", "unrelated"] @ Option.toList header @ ["X-After", "two"; "X-Before", "again"]
+            for name, value in headers do context.Request.Headers.Append(name, value)
+            let snapshot () =
+                context.Request.Headers
+                |> Seq.map (fun (KeyValue(name, values)) -> name, List.ofSeq values)
+                |> Map.ofSeq
+            let originalHeaders = snapshot()
+            let mutable entered = false
+            let handler =
+                http.withContext (fun routed ->
+                    entered <- true
+                    Expect.isTrue (obj.ReferenceEquals(routed, context)) "Replaced native Giraffe context"
+                    let request = http.getRequest routed
+                    Expect.equal request.Path requestPath "Rewrote Giraffe's exposed path"
+                    Expect.equal (request.Header "GLOBAL_PATH") (header |> Option.map snd) "Accumulated a mount in Giraffe's proxy prefix"
+                    Expect.equal (ProxyPrefixes.giraffeHeaderCount routed) (if header.IsSome then 1 else 0) "Changed native GLOBAL_PATH count"
+                    Expect.equal (request.Header "X-Before") (Some "one, again") "Lost repeated unrelated header values"
+                    Expect.equal routed.Request.QueryString.Value "?q=a%2Fb" "Changed request query"
+                    // The inner route matches /start without rewriting the public request path.
+                    http.route "/start")
+            let result =
+                ProxyPrefixes.mount http nested handler (fun context -> Task.FromResult(Some context)) context
+                |> fun task -> task.GetAwaiter().GetResult()
+            Expect.isSome result "Failed to match the mounted Giraffe route"
+            Expect.isTrue entered "Skipped Giraffe context assertions"
+            Expect.equal (snapshot()) originalHeaders "Changed Giraffe header names or values"
+            Expect.equal context.Request.Path.Value requestPath "Changed original Giraffe path"
+            Expect.equal context.Request.QueryString.Value "?q=a%2Fb" "Changed original Giraffe query"
+
+        let giraffePrefixMatching () =
+            let http = Giraffe.HttpBackend.Instance
+            let run prefix path remaining =
+                let context = DefaultHttpContext()
+                context.Request.Path <- PathString path
+                let result =
+                    http.subRoute prefix (http.route remaining) (fun context -> Task.FromResult(Some context)) context
+                    |> fun task -> task.GetAwaiter().GetResult()
+                Expect.equal context.Request.Path.Value path "Rewrote Giraffe's public path"
+                Expect.isFalse (context.Request.Headers.ContainsKey "GLOBAL_PATH") "Inserted a GLOBAL_PATH header"
+                result
+            // Unlike Suave, Giraffe does not add '/' to an empty or non-slash remainder.
+            for prefix, path, remaining in ["/app", "/app", ""; "/app", "/app/start", "/start"; "/app", "/application", "lication"; "/app/", "/app/start", "start"] do
+                Expect.isSome (run prefix path remaining) "Changed Giraffe prefix matching"
+            for path in ["/APP/start"; "/other/start"] do
+                Expect.isNone (run "/app" path "/start") "Changed case-sensitive Giraffe prefix matching"
 
         let subRoute (client: HttpClient) (server: TestServer) =
             let test (path: string) =
@@ -623,31 +685,39 @@ module ``HttpBackend Tests`` =
         let createTests (useGiraffe: bool) =
             let server : TestServer =
                 if useGiraffe then
-                    GiraffeTestServer(testContent Giraffe.HttpBackend.Instance)
+                    GiraffeTestServer(fun token ->
+                        ProxyPrefixes.content Giraffe.HttpBackend.Instance ProxyPrefixes.giraffeHeaderCount
+                        @ testContent Giraffe.HttpBackend.Instance token)
                 else
-                    SuaveTestServer(fun token -> ProxyPrefixes.content @ testContent Suave.HttpBackend.Instance token)
+                    SuaveTestServer(fun token ->
+                        ProxyPrefixes.content Suave.HttpBackend.Instance ProxyPrefixes.suaveHeaderCount
+                        @ testContent Suave.HttpBackend.Instance token)
+
+            let proxyContext header nested path mounted expected =
+                if useGiraffe then Cases.giraffeProxyContext header nested path
+                else Cases.suaveProxyContext header nested path mounted expected
 
             let cases =
-                if useGiraffe then cases
-                else
-                    cases @ [
-                        "Proxy prefix redirects", (fun client server ->
-                            for name in ProxyPrefixes.headerNames do
-                                for value, expected in ProxyPrefixes.proxyPaths do
-                                    for _, path, mounted in ProxyPrefixes.mounts do
-                                        Cases.suaveProxyRedirect (Some (name, value)) path mounted expected client server)
-                        "Proxy prefix absent redirects", (fun client server ->
-                            for _, path, mounted in ProxyPrefixes.mounts do
-                                Cases.suaveProxyRedirect None path mounted "" client server)
-                        "Proxy prefix header identity", (fun _ _ ->
-                            for name in ProxyPrefixes.headerNames do
-                                for value, expected in ProxyPrefixes.proxyPaths do
-                                    for nested, path, mounted in ProxyPrefixes.mounts do
-                                        Cases.suaveProxyContext (Some (name, value)) nested path mounted expected
-                            for nested, path, mounted in ProxyPrefixes.mounts do
-                                Cases.suaveProxyContext None nested path mounted "")
-                        "Proxy prefix matching", (fun _ _ -> Cases.suavePrefixMatching())
-                    ]
+                cases @ [
+                    "Proxy prefix redirects", (fun client server ->
+                        for name in ProxyPrefixes.headerNames do
+                            for value, expected in ProxyPrefixes.proxyPaths do
+                                for _, path, mounted in ProxyPrefixes.mounts do
+                                    Cases.proxyRedirect (Some (name, value)) path mounted expected client server)
+                    "Proxy prefix absent redirects", (fun client server ->
+                        for _, path, mounted in ProxyPrefixes.mounts do
+                            Cases.proxyRedirect None path mounted "" client server)
+                    "Proxy prefix header identity", (fun _ _ ->
+                        for name in ProxyPrefixes.headerNames do
+                            for value, expected in ProxyPrefixes.proxyPaths do
+                                for nested, path, mounted in ProxyPrefixes.mounts do
+                                    proxyContext (Some (name, value)) nested path mounted expected
+                        for nested, path, mounted in ProxyPrefixes.mounts do
+                            proxyContext None nested path mounted "")
+                    "Proxy prefix matching", (fun _ _ ->
+                        if useGiraffe then Cases.giraffePrefixMatching()
+                        else Cases.suavePrefixMatching())
+                ]
 
             let withServer f () =
                 use _ = server.Acquire()
