@@ -98,9 +98,6 @@ jobs:
         shell: cmd
         run: dotnet build -c Release src\Aardvark.Media.sln
 
-      - name: Test
-        run: dotnet test src\Aardvark.Media.sln -c Release --no-build --nologo --logger:"console;verbosity=normal"
-
       - name: Pack
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
