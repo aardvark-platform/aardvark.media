@@ -41,9 +41,9 @@ module ``FreeFly Jump Tests`` =
         Expect.isTrue ((actual - expected : V3d).Length < 1E-10) context
 
     let private viewClose (actual : CameraView) (expected : CameraView) =
-        for actual, expected in [actual.Location, expected.Location; actual.Forward, expected.Forward;
-                                 actual.Up, expected.Up; actual.Right, expected.Right; actual.Sky, expected.Sky] do
-            vectorClose actual expected "Camera geometry must match the independent frame"
+        for name, actual, expected in ["location", actual.Location, expected.Location; "forward", actual.Forward, expected.Forward;
+                                       "up", actual.Up, expected.Up; "right", actual.Right, expected.Right; "Sky", actual.Sky, expected.Sky] do
+            vectorClose actual expected $"Camera {name} must match the independent frame"
 
     let private frame (view : CameraView) =
         for v in [view.Forward; view.Up; view.Right] do
@@ -161,37 +161,126 @@ module ``FreeFly Jump Tests`` =
         Expect.equal { actual with view = before.view; moveSpeed = before.moveSpeed; targetZoom = before.targetZoom;
                                   targetDolly = before.targetDolly; targetPan = before.targetPan } before "Other fields stay unchanged"
 
-    let private rendered () =
+    let private withFrozenClock action =
         // Freeze/restore the existing clock; choose elapsed model time without sleeps or a new clock API.
         lock FreeFlyController.sw (fun () ->
             let wasRunning = FreeFlyController.sw.IsRunning
             FreeFlyController.sw.Stop()
-            try
-                let now = FreeFlyController.sw.Elapsed.TotalSeconds
-                for source in sources do
-                    for angle in [-0.4; 0.4] do
-                        let target = pitch source angle
-                        let before = { FreeFlyController.initial with view = source }
-                        let started = FreeFlyController.update before (FreeFlyController.JumpTo target)
-                        Expect.isTrue started.animating "JumpTo starts animation"
-                        Expect.equal started.lastTime (Some now) "JumpTo initializes the existing clock state"
-                        let first = FreeFlyController.update { started with lastTime = Some (now - 0.02) } FreeFlyController.Rendered
-                        let second = FreeFlyController.update { first with lastTime = Some (now - 0.02) } FreeFlyController.Rendered
-                        for axis in [CameraView.forward; CameraView.up] do
-                            let initialError = (axis source - axis target).Length
-                            let firstError = (axis first.view - axis target).Length
-                            let secondError = (axis second.view - axis target).Length
-                            Expect.isTrue (firstError < initialError - 1E-3) "Initial update rotates toward the target"
-                            Expect.isTrue (secondError < firstError - 1E-3) "Next Rendered update must continue rotation instead of losing the target"
-                            Expect.isTrue (secondError > 0.05) "The target is still genuinely unfinished"
-                        for current in [first; second] do
-                            frame current.view
-                            vectorClose current.view.Location source.Location "Orientation-only jump stays at the destination position"
-                            Expect.isTrue (current.targetJump |> Option.exists (fun t -> obj.ReferenceEquals(t, target))) "Retain JumpTo destination"
-                            Expect.isTrue current.animating "Continue animating the pending jump"
-                            Expect.equal current.lastTime (Some now) "Rendered updates existing time bookkeeping"
+            try action FreeFlyController.sw.Elapsed.TotalSeconds
             finally
                 if wasRunning then FreeFlyController.sw.Start())
+
+    let private rendered () =
+        withFrozenClock (fun now ->
+            for source in sources do
+                for angle in [-0.4; 0.4] do
+                    let target = pitch source angle
+                    let before = { FreeFlyController.initial with view = source }
+                    let started = FreeFlyController.update before (FreeFlyController.JumpTo target)
+                    Expect.isTrue started.animating "JumpTo starts animation"
+                    Expect.equal started.lastTime (Some now) "JumpTo initializes the existing clock state"
+                    let first = FreeFlyController.update { started with lastTime = Some (now - 0.02) } FreeFlyController.Rendered
+                    let second = FreeFlyController.update { first with lastTime = Some (now - 0.02) } FreeFlyController.Rendered
+                    for axis in [CameraView.forward; CameraView.up] do
+                        let initialError = (axis source - axis target).Length
+                        let firstError = (axis first.view - axis target).Length
+                        let secondError = (axis second.view - axis target).Length
+                        Expect.isTrue (firstError < initialError - 1E-3) "Initial update rotates toward the target"
+                        Expect.isTrue (secondError < firstError - 1E-3) "Next Rendered update must continue rotation instead of losing the target"
+                        Expect.isTrue (secondError > 0.05) "The target is still genuinely unfinished"
+                    for current in [first; second] do
+                        frame current.view
+                        vectorClose current.view.Location source.Location "Orientation-only jump stays at the destination position"
+                        Expect.isTrue (current.targetJump |> Option.exists (fun t -> obj.ReferenceEquals(t, target))) "Retain JumpTo destination"
+                        Expect.isTrue current.animating "Continue animating the pending jump"
+                        Expect.equal current.lastTime (Some now) "Rendered updates existing time bookkeeping")
+
+    let private skySources = [
+        // Literal orthonormal bases, not constructed with lookAt, controller matrices or Gram-Schmidt.
+        for name, sky, forward, up, right in [
+            "Z-up", V3d.OOI, V3d.IOO, V3d.OOI, -V3d.OIO
+            "X-up", V3d.IOO, V3d.OIO, V3d.IOO, -V3d.OOI
+            "Y-up", V3d.OIO, V3d.OOI, V3d.OIO, -V3d.IOO
+            "oblique-up", V3d(1.0, 2.0, 2.0) / 3.0, V3d(2.0, 1.0, -2.0) / 3.0, V3d(1.0, 2.0, 2.0) / 3.0, V3d(2.0, -2.0, 1.0) / 3.0
+            "scaled oblique-up", V3d(1.0, 2.0, 2.0) * (7.0 / 3.0), V3d(2.0, 1.0, -2.0) / 3.0, V3d(1.0, 2.0, 2.0) / 3.0, V3d(2.0, -2.0, 1.0) / 3.0
+        ] do
+            for location in [V3d.Zero; V3d(3.0, -4.0, 2.0)] do
+                yield name, CameraView(sky, location, forward, up, right)
+    ]
+
+    let private worldCases () = [
+        for name, source in skySources do
+            let oriented = pitch (yaw source 0.23) -0.31 |> fun view -> roll view 0.17
+            for kind, target in [
+                "translation", at (source.Location + V3d(1.0, -2.0, 0.5)) source
+                "orientation", oriented
+                "combined", at (source.Location + V3d(1.0, -2.0, 0.5)) oriented
+            ] do
+                let motion =
+                    { zero with dWorldPos = target.Location - source.Location
+                                dWorldForward = target.Location + target.Forward - source.Location - source.Forward
+                                dWorldUp = target.Location + target.Up - source.Location - source.Up }
+                yield name + ", " + kind, source, target, motion
+    ]
+
+    let private worldSky () =
+        for context, source, expected, motion in worldCases() do
+            frame source
+            frame expected
+            let actual = source + motion
+            viewClose actual expected
+            Expect.equal actual.Sky source.Sky (context + ": retain raw Sky, not the reconstructed camera Up")
+            frame actual
+
+    let private verticalAfterWorld () =
+        for context, source, expected, motion in worldCases() do
+            let moved = source + motion
+            for amount in [-0.75; 0.5] do
+                let actual = moved + { zero with dPos = V3d(0.0, amount, 0.0) }
+                let expected = at (expected.Location + amount * source.Sky) expected
+                vectorClose actual.Location expected.Location (context + ": following vertical motion uses the original Sky")
+                viewClose actual expected
+
+    let private ordinarySky () =
+        let tiny = V3d(1E-6, -2E-6, 3E-6)
+        for _, source in skySources do
+            for motion in [zero; { zero with dPos = V3d(0.2, -0.3, 0.4); dPan = V2d(-0.1, 0.25); dDolly = 0.15; dZoom = -0.05 };
+                           { zero with dWorldPos = tiny; dWorldForward = tiny; dWorldUp = tiny }] do
+                let location = source.Location + motion.dPos.X * source.Right + motion.dPos.Y * source.Sky + motion.dPos.Z * source.Forward +
+                               motion.dPan.X * source.Right + motion.dPan.Y * source.Up + (motion.dDolly + motion.dZoom) * source.Forward
+                viewClose (source + motion) (at location source)
+
+    let private renderedSky () =
+        withFrozenClock (fun now ->
+            let last = now - 0.02
+            let elapsed = now - last
+            for context, source, target, _ in worldCases() do
+                let before = { FreeFlyController.initial with view = source; freeFlyConfig = { FreeFlyConfig.initial with moveSensitivity = 0.0 } }
+                let started = FreeFlyController.update before (FreeFlyController.JumpTo target)
+                viewClose started.view source
+                Expect.equal started.lastTime (Some now) "JumpTo uses the frozen existing clock"
+                let step current = FreeFlyController.update { current with lastTime = Some last } FreeFlyController.Rendered
+                let first = step started
+                let second = step first
+                let error (view: CameraView) =
+                    (view.Location - target.Location).Length + (view.Forward - target.Forward).Length + (view.Up - target.Up).Length
+                Expect.isTrue (error first.view < error source) (context + ": first Rendered moves toward the target")
+                Expect.isTrue (error second.view < error first.view) (context + ": next Rendered continues toward the target")
+                for current in [first; second] do
+                    frame current.view
+                    Expect.equal current.view.Sky source.Sky (context + ": public jump retains the source Sky")
+                    Expect.isTrue (current.targetJump |> Option.exists (fun view -> obj.ReferenceEquals(view, target))) "Keep the same unfinished target"
+                    Expect.isTrue current.animating "Continue animating unfinished motion"
+                    Expect.equal current.lastTime (Some now) "Retain time bookkeeping"
+                    if target.Location = source.Location then
+                        vectorClose current.view.Location source.Location "Orientation-only jump preserves its location"
+                    if target.Forward = source.Forward && target.Up = source.Up then
+                        vectorClose current.view.Forward source.Forward "Translation-only jump preserves forward"
+                        vectorClose current.view.Up source.Up "Translation-only jump preserves up"
+                        vectorClose current.view.Right source.Right "Translation-only jump preserves right"
+                    let moving = { current with targetJump = None; moveVec = V3d.OIO; lastTime = Some last }
+                    let moved = FreeFlyController.update moving FreeFlyController.Rendered
+                    viewClose moved.view (at (current.view.Location + elapsed * source.Sky) current.view))
 
     [<Tests>]
     let tests =
@@ -202,4 +291,8 @@ module ``FreeFly Jump Tests`` =
             test "Manual interruptions retain their existing conditions" { manual () }
             test "Absent targets preserve ordinary motion" { noTarget () }
             test "JumpTo Rendered keeps rotating after the initial update" { rendered () }
+            test "World-point motion preserves Sky and the independent destination frame" { worldSky () }
+            test "Vertical motion after world-point changes follows the original Sky" { verticalAfterWorld () }
+            test "Zero tiny-world and ordinary local motion retain custom Sky" { ordinarySky () }
+            test "JumpTo Rendered preserves custom Sky and subsequent vertical motion" { renderedSky () }
         ]
