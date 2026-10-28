@@ -3,11 +3,12 @@
 - Fix `AttributeMap.removeClass` for tab, newline, carriage-return, and form-feed separators without trimming Unicode characters from class names
 - Fix `onAfterRender` to report up-to-date `RenderClientInfo`
 - Reduce construction allocations for large groups of repeated conditional attributes
-- Respect custom camera up directions when limiting FreeFly pitch
-- Avoid camera-position jumps caused by radius clamping when switching from FreeFly to Orbit
-- Keep FreeFly camera jumps active until position and orientation have both reached the target
 - Encode `MutableApp.DocumentTitle` as HTML string
 - Deliver messages from propagating scene-entry handlers before the target's primary event messages
+- [Camera] Respect custom camera up directions when limiting FreeFly pitch
+- [Camera] Avoid camera-position jumps caused by radius clamping when switching from FreeFly to Orbit
+- [Camera] Keep FreeFly camera jumps active until position and orientation have both reached the target
+- [Camera] Preserve custom camera up directions during FreeFly jumps and subsequent vertical movement
 - [Primitives] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
 - [Primitives] Route GoldenLayout panels to the correct page when IDs contain reserved characters, percent escapes or line breaks
 - [Primitives] Keep notifications with overlapping IDs independent across containers, including removal, clearing, and dismissal

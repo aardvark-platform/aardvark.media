@@ -166,7 +166,7 @@ module FreeFlyController =
                     let up1 = up - Vec.dot fw up * fw |> Vec.normalize
                     let ri1 = ri - Vec.dot fw ri * fw - Vec.dot up1 ri * up1 |> Vec.normalize
 
-                    CameraView(V3d.OOI,location,fw,up1,ri1)
+                    CameraView(cam.Sky,location,fw,up1,ri1)
 
 
             cam
