@@ -3,6 +3,8 @@ namespace Aardvark.UI.Tests
 open System
 open System.Collections.Concurrent
 open System.IO
+open System.Net
+open System.Net.Sockets
 open System.Net.WebSockets
 open System.Runtime.ExceptionServices
 open System.Threading
@@ -20,7 +22,7 @@ module ``WebSocket Tests`` =
     let private timeout = TimeSpan.FromSeconds 5.0
     let private payload = [| 1uy; 2uy; 3uy |]
 
-    type private ControlledSocket(blocked: Operation option, ?disposeError: exn) =
+    type private ControlledSocket(blocked: Operation option, ?disposeError: exn, ?closeFailure: (unit -> Task)) =
         inherit System.Net.WebSockets.WebSocket()
 
         let entered = TaskCompletionSource<unit>(TaskCreationOptions.RunContinuationsAsynchronously)
@@ -28,6 +30,7 @@ module ``WebSocket Tests`` =
         let calls = ConcurrentQueue<Operation>()
         let tokens = ConcurrentQueue<CancellationToken>()
         let mutable disposeCount = 0
+        let mutable closeFailure = closeFailure
 
         let enter operation (token: CancellationToken) =
             // Record entry even for canceled tokens: canceled semaphore waiters must not get here.
@@ -71,7 +74,17 @@ module ``WebSocket Tests`` =
         override _.CloseAsync(status, description, token) =
             Expect.equal status WebSocketCloseStatus.NormalClosure "Changed close status"
             Expect.isNull description "Changed close description"
-            enter Close token
+            let work = enter Close token
+            let failure = closeFailure
+            closeFailure <- None
+            match failure with
+            | Some fail when work.IsCompletedSuccessfully -> fail()
+            | Some fail ->
+                task {
+                    do! work
+                    do! fail()
+                }
+            | None -> work
 
     let private operate (socket: IWebSocket) operation token : Task =
         match operation with
@@ -97,9 +110,8 @@ module ``WebSocket Tests`` =
                 Expect.equal error.CancellationToken token "Changed cancellation token"
         }
 
-    let private withSocket blocked (action: ControlledSocket -> IWebSocket -> (Task -> Task) -> CancellationToken -> Task) =
+    let private withNative (native: ControlledSocket) (action: ControlledSocket -> IWebSocket -> (Task -> Task) -> CancellationToken -> Task) =
         task {
-            let native = new ControlledSocket(blocked)
             use shutdown = new CancellationTokenSource()
             let context = DefaultHttpContext()
             context.Features.Set<IHttpWebSocketFeature>(
@@ -138,6 +150,8 @@ module ``WebSocket Tests`` =
             finally
                 if native.DisposeCount = 0 then native.Dispose()
         }
+
+    let private withSocket blocked action = withNative (new ControlledSocket(blocked)) action
 
     let private queued holderOperation waiterOperation =
         withSocket (Some holderOperation) (fun native socket track token ->
@@ -191,6 +205,134 @@ module ``WebSocket Tests`` =
                 do! work
                 failtest "Handler completed before entering its gated stage"
             do! entered
+        }
+
+    type private ObservedReadStream(inner: Stream) =
+        inherit Stream()
+        let entered = TaskCompletionSource<unit>(TaskCreationOptions.RunContinuationsAsynchronously)
+        member _.PendingRead = entered.Task :> Task
+        override _.CanRead = inner.CanRead
+        override _.CanWrite = inner.CanWrite
+        override _.CanSeek = inner.CanSeek
+        override _.Length = inner.Length
+        override _.Position with get() = inner.Position and set value = inner.Position <- value
+        override _.Flush() = inner.Flush()
+        override _.FlushAsync token = inner.FlushAsync token
+        override _.Seek(offset, origin) = inner.Seek(offset, origin)
+        override _.SetLength length = inner.SetLength length
+        override _.Read(buffer, offset, count) = inner.Read(buffer, offset, count)
+        override _.Write(buffer, offset, count) = inner.Write(buffer, offset, count)
+        override _.ReadAsync(buffer: byte[], offset, count, token) =
+            let work = inner.ReadAsync(buffer, offset, count, token)
+            if not work.IsCompleted then entered.TrySetResult(()) |> ignore
+            work
+        override _.ReadAsync(buffer: Memory<byte>, token) =
+            let work = inner.ReadAsync(buffer, token)
+            if not work.IsCompleted then entered.TrySetResult(()) |> ignore
+            work
+        override _.WriteAsync(buffer: byte[], offset, count, token) = inner.WriteAsync(buffer, offset, count, token)
+        override _.WriteAsync(buffer: ReadOnlyMemory<byte>, token) = inner.WriteAsync(buffer, token)
+        override _.Dispose disposing =
+            if disposing then inner.Dispose()
+            base.Dispose disposing
+
+    let private closePendingReceive useAdapter =
+        task {
+            use shutdown = new CancellationTokenSource(TimeSpan.FromSeconds 10.0)
+            let token = shutdown.Token
+            let listener = new TcpListener(IPAddress.Loopback, 0)
+            listener.Start()
+            try
+                use client = new TcpClient()
+                do! client.ConnectAsync(IPAddress.Loopback, (listener.LocalEndpoint :?> IPEndPoint).Port, token)
+                use! server = listener.AcceptTcpClientAsync(token)
+                use stream = new ObservedReadStream(server.GetStream())
+                use native = WebSocket.CreateFromStream(stream, true, null, Timeout.InfiniteTimeSpan)
+                use peer = WebSocket.CreateFromStream(client.GetStream(), false, null, Timeout.InfiniteTimeSpan)
+                let pending = ResizeArray<Task>()
+                let peerWork =
+                    task {
+                        let! received = peer.ReceiveAsync(ArraySegment(Array.zeroCreate<byte> 16), token)
+                        Expect.equal received.MessageType WebSocketMessageType.Close "The peer's first message must be Close, not application data"
+                        Expect.equal received.CloseStatus (Nullable WebSocketCloseStatus.NormalClosure) "Preserve NormalClosure on the real wire"
+                        Expect.isTrue (String.IsNullOrEmpty received.CloseStatusDescription) "Do not add a close reason"
+                        Expect.equal received.Count 0 "No application payload accompanies closure"
+                        Expect.isTrue received.EndOfMessage "Close is a complete control message"
+                        // Acknowledge only the close frame; never send application data to release the server receive.
+                        do! peer.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, token)
+                    }
+                pending.Add peerWork
+                let complete (receiving: Task<WebSocketOpCode>) close =
+                    task {
+                        pending.Add receiving
+                        do! stream.PendingRead.WaitAsync timeout
+                        Expect.isFalse receiving.IsCompleted "An actual managed receive must be pending before Close begins"
+                        let closing: Task = close()
+                        pending.Add closing
+                        let mutable failure = None
+                        try
+                            try do! peerWork.WaitAsync(TimeSpan.FromSeconds 2.0)
+                            with :? TimeoutException -> failtest "Peer received no NormalClosure while receive was pending; closing must not require application data"
+                            let! opcode = receiving.WaitAsync timeout
+                            Expect.equal opcode WebSocketOpCode.Close "The outstanding receive must observe the peer's close acknowledgement"
+                            do! closing.WaitAsync timeout
+                            Expect.equal native.State WebSocketState.Closed "Native close handshake must finish"
+                            Expect.equal peer.State WebSocketState.Closed "Peer close handshake must finish"
+                        with error -> failure <- Some (ExceptionDispatchInfo.Capture error)
+                        if failure.IsSome then
+                            // Drain before the public adapter disposes its semaphores on callback failure.
+                            shutdown.Cancel()
+                            native.Abort()
+                            peer.Abort()
+                            try do! Task.WhenAll(receiving :> Task, closing, peerWork).WaitAsync timeout
+                            with
+                            | :? TimeoutException as error -> raise error
+                            | _ -> ()
+                        failure |> Option.iter (fun error -> error.Throw())
+                    }
+                let mutable failure = None
+                try
+                    try
+                        if useAdapter then
+                            let context = DefaultHttpContext()
+                            context.Features.Set<IHttpWebSocketFeature>(
+                                { new IHttpWebSocketFeature with
+                                    member _.IsWebSocketRequest = true
+                                    member _.AcceptAsync _ = Task.FromResult native })
+                            let handler = Giraffe.HttpBackend.Instance.handShake (fun socket received ->
+                                task {
+                                    Expect.isTrue (Object.ReferenceEquals(received, context)) "Public handshake preserves its context"
+                                    let buffer = SocketBuffer(16)
+                                    do! complete (socket.Receive(buffer, token)) (fun () -> socket.Close token)
+                                    Expect.equal buffer.Position 0 "The receive completes without application data"
+                                })
+                            let work = handler (Some >> Task.FromResult) context
+                            pending.Add work
+                            let! result = work.WaitAsync timeout
+                            Expect.isSome result "Public handshake adapter completes after closure"
+                        else
+                            // Independent native control uses the same real streams without the adapter's locks.
+                            let receiving = task {
+                                let! received = native.ReceiveAsync(ArraySegment(Array.zeroCreate<byte> 16), token)
+                                Expect.equal received.MessageType WebSocketMessageType.Close "Native receive observes the acknowledgement"
+                                Expect.equal received.Count 0 "Native control receives no application data"
+                                return WebSocketOpCode.Close
+                            }
+                            do! complete receiving (fun () -> native.CloseAsync(WebSocketCloseStatus.NormalClosure, null, token))
+                    with error -> failure <- Some (ExceptionDispatchInfo.Capture error)
+                finally
+                    shutdown.Cancel()
+                    native.Abort()
+                    peer.Abort()
+                // Abort/cancel every native operation before draining, including when the original adapter deadlocks.
+                try do! Task.WhenAll(pending).WaitAsync timeout
+                with
+                | :? TimeoutException as error -> raise error
+                | error when failure.IsNone -> failure <- Some (ExceptionDispatchInfo.Capture error)
+                | _ -> ()
+                failure |> Option.iter (fun error -> error.Throw())
+            finally
+                listener.Stop()
         }
 
     type private Completion =
@@ -440,38 +582,85 @@ module ``WebSocket Tests`` =
                 Expect.equal native.DisposeCount 0 "Unaccepted sockets are not owned by handShake"
             })
 
-            for holder, waiter in [Send, Send; Receive, Receive; Send, Close] do
+            for holder, waiter in [Send, Send; Receive, Receive; Send, Close; Close, Send; Close, Close] do
                 testCaseAsync $"Cancel {waiter} queued behind {holder}" (async {
                     do! queued holder waiter |> Async.AwaitTask
                 })
 
-            testCaseAsync "Cancel Close waiting for receive releases send but not receive" (async {
+            testCaseAsync "Close may run with a receive pending without releasing receive exclusivity" (async {
                 do! withSocket (Some Receive) (fun native socket track token ->
                     task {
                         let holder = operate socket Receive token |> track
                         do! native.Entered.WaitAsync timeout
+                        do! (operate socket Close token |> track).WaitAsync timeout
+                        Expect.isFalse holder.IsCompleted "Close must not finish the unrelated receive"
+                        Expect.equal native.Calls [Receive; Close] "Close must reach the native socket before receive finishes"
+                        let recovery = operate socket Receive token |> track
+                        Expect.isFalse recovery.IsCompleted "A second receive must stay exclusive"
+                        do! (operate socket Send token |> track).WaitAsync timeout
+                        Expect.equal native.Calls [Receive; Close; Send] "Close released send, not receive"
+                        native.Release()
+                        do! Task.WhenAll(holder, recovery).WaitAsync timeout
+                        Expect.equal native.Calls [Receive; Close; Send; Receive] "Receive ownership remains intact after close"
+                    }) |> Async.AwaitTask
+            })
+
+            testCaseAsync "Native close cancellation releases send for queued sends and closes" (async {
+                do! withSocket (Some Close) (fun native socket track token ->
+                    task {
                         use cancellation = new CancellationTokenSource()
                         let close = operate socket Close cancellation.Token |> track
+                        do! native.Entered.WaitAsync timeout
                         let send = operate socket Send token |> track
-                        Expect.isFalse close.IsCompleted "Expected Close to wait for receive"
-                        Expect.isFalse send.IsCompleted "Close must hold send while waiting for receive"
-                        Expect.equal native.Calls [Receive] "An operation bypassed Close's locks"
-
+                        let recovery = operate socket Close token |> track
+                        Expect.isFalse send.IsCompleted "Send must wait for native close"
+                        Expect.isFalse recovery.IsCompleted "Close operations must remain serialized"
+                        Expect.equal native.Calls [Close] "Queued operations must not enter the native socket"
                         cancellation.Cancel()
                         do! canceled cancellation.Token close
                         do! send.WaitAsync timeout
-                        Expect.isFalse holder.IsCompleted "Send must recover before receive finishes"
-                        Expect.equal native.Calls [Receive; Send] "Canceled Close entered the socket"
-
-                        let recovery = operate socket Receive token |> track
-                        Expect.isFalse recovery.IsCompleted "Canceled Close released an unowned receive lock"
-                        Expect.equal native.Calls [Receive; Send] "Receive entered before its holder released"
+                        Expect.isFalse recovery.IsCompleted "The later native close still waits for its gate"
                         native.Release()
-                        do! Task.WhenAll(holder, recovery).WaitAsync timeout
-                        Expect.equal native.Calls [Receive; Send; Receive] "Canceled Close entered after release"
-                        do! (operate socket Close token |> track).WaitAsync timeout
-                        Expect.equal native.Calls [Receive; Send; Receive; Close] "Close failed after cancellation"
+                        do! recovery.WaitAsync timeout
+                        for operation in [Send; Receive; Close] do
+                            do! (operate socket operation token |> track).WaitAsync timeout
+                        Expect.equal native.Calls [Close; Send; Close; Send; Receive; Close] "Native cancellation must release send ownership once"
+                        Expect.equal native.Tokens [cancellation.Token; token; token; token; token; token] "Preserve native operation tokens"
                     }) |> Async.AwaitTask
+            })
+
+            testCaseAsync "Native close errors preserve identity and leave both semaphores usable" (async {
+                for synchronous in [false; true] do
+                    let error = InvalidOperationException("Injected native close failure")
+                    let fail () : Task =
+                        if synchronous then raise error
+                        else
+                            task {
+                                do! Task.Yield()
+                                return raise error
+                            }
+                    do! withNative (new ControlledSocket(None, closeFailure = fail)) (fun native socket track token ->
+                        task {
+                            // Observe this expected fault directly before tracking recovery operations.
+                            let close = operate socket Close token
+                            let! actual = task {
+                                try
+                                    do! close.WaitAsync timeout
+                                    return failtest "Expected native close failure"
+                                with actual -> return actual
+                            }
+                            Expect.isTrue close.IsFaulted "Native errors remain faults, not cancellation"
+                            Expect.isTrue (Object.ReferenceEquals(actual, error)) "Preserve the exact native error"
+                            for operation in [Send; Close; Receive] do
+                                do! (operate socket operation token |> track).WaitAsync timeout
+                            Expect.equal native.Calls [Close; Send; Close; Receive] "Close failure must not retain either semaphore"
+                            Expect.equal native.Tokens [token; token; token; token] "Preserve native operation tokens after failure"
+                        }) |> Async.AwaitTask
+            })
+
+            testCaseAsync "Real close handshake completes with a receive pending and no application data" (async {
+                do! closePendingReceive false |> Async.AwaitTask
+                do! closePendingReceive true |> Async.AwaitTask
             })
 
             testCaseAsync "Pre-canceled operations never enter the socket and leave locks usable" (async {
