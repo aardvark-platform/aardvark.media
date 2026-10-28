@@ -74,11 +74,7 @@ type internal WebSocket(socket: System.Net.WebSockets.WebSocket) =
         task {
             do! sendSemaphore.WaitAsync(cancellationToken)
             try
-                do! recvSemaphore.WaitAsync(cancellationToken)
-                try
-                    do! socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken)
-                finally
-                    recvSemaphore.Release() |> ignore
+                do! socket.CloseAsync(WebSocketCloseStatus.NormalClosure, null, cancellationToken)
             finally
                 sendSemaphore.Release() |> ignore
         }
