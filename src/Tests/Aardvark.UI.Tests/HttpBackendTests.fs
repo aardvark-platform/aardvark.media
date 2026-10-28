@@ -417,7 +417,17 @@ module ``HttpBackend Tests`` =
                         Expect.sequenceEqual result expected $"Unexpected bytes: {context}"
                         Expect.equal response.Content.Headers.ContentLength (Nullable(int64 data.Length)) $"Unexpected length: {context}"
                 finally
-                    File.Delete absolutePath
+                    let mutable i = 1
+
+                    while i > 0 do
+                        try
+                            File.Delete absolutePath
+                            i <- 0
+                        with
+                        | :? IOException when i < 3 ->
+                            Log.warn $"Failed to delete file '{absolutePath}', retrying..."
+                            Thread.Sleep 200
+                            inc &i
 
         let json (client: HttpClient) (server: TestServer) =
             let data = { Foo = "Hello"; Bar = 4 }
