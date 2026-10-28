@@ -145,6 +145,7 @@ module Html =
                 ]
             with e -> []
 
+        [<Obsolete>]
         let recordPrint record =
             div [clazz "ui label"] [
                 for (n,v) in fields record do
