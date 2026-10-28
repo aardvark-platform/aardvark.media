@@ -69,5 +69,22 @@ jobs:
       - name: Build
         run: dotnet build -c Release ${{ matrix.sln }}
 
+      - name: Install Chromium
+        if: runner.os == 'Linux'
+        uses: browser-actions/setup-chrome@v2
+        id: chromium
+        with:
+          chrome-version: stable
+
+      - name: Gamepad regressions (Debug)
+        if: runner.os == 'Linux'
+        env:
+          AARDVARK_CHROMIUM: ${{ steps.chromium.outputs.chrome-path }}
+        run: |
+          test -x "$AARDVARK_CHROMIUM"
+          dotnet test src/Tests/Aardvark.UI.Tests/Aardvark.UI.Tests.fsproj -c Debug --filter 'FullyQualifiedName~Gamepad Tests' --nologo
+
       - name: Test
+        env:
+          AARDVARK_CHROMIUM: ${{ steps.chromium.outputs.chrome-path }}
         run: dotnet test ${{ matrix.sln }} -c Release --no-build --nologo --logger:"console;verbosity=normal"

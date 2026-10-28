@@ -358,12 +358,12 @@ if (!aardvark.gamepad) {
     let lx = -1.0;
     let ly = -1.0;
     gamepad.on('hold', 'stick_axis_left', function (e) { if (lx !== e.value[0] || ly !== e.value[1]) { lx = e.value[0]; ly = e.value[1]; send("gp_leftstick_changed", e.player, { X: e.value[0], Y: e.value[1] }); } });
-    gamepad.on('release', 'stick_axis_left', function (e) { send("gp_leftstick_changed", e.player, { X: 0, Y: 0 }); });
+    gamepad.on('release', 'stick_axis_left', function (e) { lx = 0.0; ly = 0.0; send("gp_leftstick_changed", e.player, { X: 0, Y: 0 }); });
 
     let rx = -1.0;
     let ry = -1.0;
     gamepad.on('hold', 'stick_axis_right', function (e) { if (rx !== e.value[0] || ry !== e.value[1]) { rx = e.value[0]; ry = e.value[1]; send("gp_rightstick_changed", e.player, { X: e.value[0], Y: e.value[1] }); } });
-    gamepad.on('release', 'stick_axis_right', function (e) { send("gp_rightstick_changed", e.player, { X: 0, Y: 0 }); });
+    gamepad.on('release', 'stick_axis_right', function (e) { rx = 0.0; ry = 0.0; send("gp_rightstick_changed", e.player, { X: 0, Y: 0 }); });
 
     let oldl = -1.0;
     gamepad.on('hold', 'shoulder_bottom_left', function (e) { if (oldl !== e.value) { oldl = e.value; send("gp_leftshoulder_changed", e.player, e.value); } });

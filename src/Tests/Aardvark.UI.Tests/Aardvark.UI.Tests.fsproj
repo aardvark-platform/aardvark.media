@@ -32,6 +32,7 @@
     <Compile Include="AttributeMapTests.fs" />
     <Compile Include="ChannelTests.fs" />
     <Compile Include="JavascriptTests.fs" />
+    <Compile Include="GamepadTests.fs" />
     <Compile Include="UpdaterTests.fs" />
     <Compile Include="GoldenLayoutJsonTests.fs" />
     <Compile Include="DropdownTests.fs" />
@@ -40,6 +41,7 @@
     <Compile Include="SceneTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
+    <EmbeddedResource Include="Resources\gamepad-browser.js" />
     <EmbeddedResource Include="embedded_file.txt" />
     <EmbeddedResource Include="embedded_file_incorrect.txt" LogicalName="embedded_file_incorrect.txt" />
     <EmbeddedResource Include="Resources\embedded_resource_1.txt" />

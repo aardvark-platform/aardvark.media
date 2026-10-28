@@ -1,3 +1,4 @@
+- [Camera] Restore gamepad movement and rotation when a stick is released to neutral and moved in the same direction again
 - Preserve adaptive value channel reevaluation after serialization failures without losing pending values or retransmitting the last successfully serialized value
 - Ignore unknown event versions without disabling active UI handlers or discarding pending replacements
 - Fix `AttributeMap.removeClass` for tab, newline, carriage-return, and form-feed separators without trimming Unicode characters from class names
