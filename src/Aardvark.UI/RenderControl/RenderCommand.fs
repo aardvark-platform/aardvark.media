@@ -79,8 +79,7 @@ type RenderCommand<'msg>(command: RCmd) =
         RenderCommand<'msg>.Clear(values)
 
     static member Unordered(scenes : seq<ISg<'msg>>) =
-        if Seq.isEmpty scenes then RenderCommand<'msg>.Empty
-        else RenderCommand<'msg> <| RCmd.Unordered(scenes |> Seq.map box)
+        RenderCommand<'msg> <| RCmd.Unordered(scenes |> Seq.map box |> ASet.ofSeq)
 
     static member Unordered(scenes : list<ISg<'msg>>) =
         match scenes with
@@ -95,8 +94,7 @@ type RenderCommand<'msg>(command: RCmd) =
         RenderCommand<'msg> <| RCmd.Render scene
 
     static member Ordered(commands : seq<RenderCommand<'msg>>) =
-        if Seq.isEmpty commands then RenderCommand<'msg>.Empty
-        else RenderCommand<'msg> <| RCmd.Ordered(commands |> Seq.map _.Command)
+        RenderCommand<'msg> <| RCmd.Ordered(commands |> Seq.map _.Command |> AList.ofSeq)
 
     static member Ordered(commands : list<RenderCommand<'msg>>) =
         match commands with
@@ -108,7 +106,7 @@ type RenderCommand<'msg>(command: RCmd) =
         else RenderCommand<'msg> <| RCmd.Ordered(commands |> AList.map _.Command)
 
     static member Ordered(scenes : seq<ISg<'msg>>) =
-        RenderCommand<'msg> <| RCmd.Ordered(scenes |> Seq.map RCmd.Render)
+        RenderCommand<'msg> <| RCmd.Ordered(scenes |> Seq.map RCmd.Render |> AList.ofSeq)
 
     static member Ordered(scenes : list<ISg<'msg>>) =
         RenderCommand<'msg> <| RCmd.Ordered(scenes |> List.map RCmd.Render)
