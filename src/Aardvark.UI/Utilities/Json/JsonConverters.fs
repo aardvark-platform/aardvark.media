@@ -26,6 +26,9 @@ module internal JsonConverters =
             writer.WriteEndObject()
 
         override this.Read(reader, _, options) =
+            if reader.TokenType <> JsonTokenType.StartObject then
+                raise <| JsonException($"Expected object but got {reader.TokenType}.")
+
             let mutable state = Unchecked.defaultof<'TState>
 
             while reader.Read() && reader.TokenType <> JsonTokenType.EndObject do
