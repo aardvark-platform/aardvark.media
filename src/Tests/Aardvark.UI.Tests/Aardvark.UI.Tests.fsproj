@@ -37,6 +37,7 @@
     <Compile Include="DropdownTests.fs" />
     <Compile Include="MutableAppChannelTests.fs" />
     <Compile Include="RenderControlConfigTests.fs" />
+    <Compile Include="RenderCommandTests.fs" />
     <Compile Include="SceneTests.fs" />
     <None Include="paket.references" />
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />

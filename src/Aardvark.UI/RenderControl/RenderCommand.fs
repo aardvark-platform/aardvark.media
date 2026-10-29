@@ -78,9 +78,9 @@ type RenderCommand<'msg>(command: RCmd) =
         let values = (colors, depth, stencil) |||> (fun c d s -> clear { colors c; depth d; stencil s })
         RenderCommand<'msg>.Clear(values)
 
+    /// Enumerates the finite input once, materializing its scene set during construction.
     static member Unordered(scenes : seq<ISg<'msg>>) =
-        if Seq.isEmpty scenes then RenderCommand<'msg>.Empty
-        else RenderCommand<'msg> <| RCmd.Unordered(scenes |> Seq.map box)
+        RenderCommand<'msg> <| RCmd.Unordered(scenes |> Seq.map box |> ASet.ofSeq)
 
     static member Unordered(scenes : list<ISg<'msg>>) =
         match scenes with
@@ -94,9 +94,9 @@ type RenderCommand<'msg>(command: RCmd) =
     static member Render(scene : ISg<'msg>) =
         RenderCommand<'msg> <| RCmd.Render scene
 
+    /// Enumerates the finite input once, materializing its command list during construction.
     static member Ordered(commands : seq<RenderCommand<'msg>>) =
-        if Seq.isEmpty commands then RenderCommand<'msg>.Empty
-        else RenderCommand<'msg> <| RCmd.Ordered(commands |> Seq.map _.Command)
+        RenderCommand<'msg> <| RCmd.Ordered(commands |> Seq.map _.Command |> AList.ofSeq)
 
     static member Ordered(commands : list<RenderCommand<'msg>>) =
         match commands with
@@ -107,8 +107,9 @@ type RenderCommand<'msg>(command: RCmd) =
         if commands.IsConstant && commands.Content.GetValue().Count = 0 then RenderCommand<'msg>.Empty
         else RenderCommand<'msg> <| RCmd.Ordered(commands |> AList.map _.Command)
 
+    /// Enumerates the finite input once, materializing its ordered scene list during construction.
     static member Ordered(scenes : seq<ISg<'msg>>) =
-        RenderCommand<'msg> <| RCmd.Ordered(scenes |> Seq.map RCmd.Render)
+        RenderCommand<'msg> <| RCmd.Ordered(scenes |> Seq.map RCmd.Render |> AList.ofSeq)
 
     static member Ordered(scenes : list<ISg<'msg>>) =
         RenderCommand<'msg> <| RCmd.Ordered(scenes |> List.map RCmd.Render)
