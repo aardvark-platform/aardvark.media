@@ -1,3 +1,4 @@
+- Enumerate finite RenderCommand sequence inputs once at construction, avoiding lost entries and repeated element side effects
 - Preserve adaptive value channel reevaluation after serialization failures without losing pending values or retransmitting the last successfully serialized value
 - Ignore unknown event versions without disabling active UI handlers or discarding pending replacements
 - Fix `AttributeMap.removeClass` for tab, newline, carriage-return, and form-feed separators without trimming Unicode characters from class names
