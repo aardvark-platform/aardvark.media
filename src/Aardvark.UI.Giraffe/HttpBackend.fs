@@ -190,14 +190,33 @@ type HttpBackend private () =
 
         member _.sendFile filePath =
             fun (_: HttpFunc) (ctx: HttpContext) ->
-                task {
-                    let filePath =
-                        match Path.IsPathRooted filePath with
-                        | true -> filePath
-                        | false ->
-                            let env = ctx.GetWebHostEnvironment()
-                            Path.Combine(env.ContentRootPath, filePath)
+                if HttpMethods.IsHead ctx.Request.Method then
+                    task {
+                        let filePath =
+                            match Path.IsPathRooted filePath with
+                            | true -> filePath
+                            | false ->
+                                let env = ctx.GetWebHostEnvironment()
+                                Path.Combine(env.ContentRootPath, filePath)
 
-                    let! data = File.ReadAllBytesAsync filePath
-                    return! ctx.WriteBytesAsync data
-                }
+                        use file = File.OpenRead filePath
+                        let length = file.Length
+                        match ctx.Response.StatusCode with
+                        | status when (status >= 100 && status < 200) || status = 204 -> ()
+                        | 205 -> ctx.Response.ContentLength <- Nullable 0L
+                        | _ -> ctx.Response.ContentLength <- Nullable length
+                        return Some ctx
+                    }
+                else
+                    // Keep the non-HEAD async state machine separate.
+                    task {
+                        let filePath =
+                            match Path.IsPathRooted filePath with
+                            | true -> filePath
+                            | false ->
+                                let env = ctx.GetWebHostEnvironment()
+                                Path.Combine(env.ContentRootPath, filePath)
+
+                        let! data = File.ReadAllBytesAsync filePath
+                        return! ctx.WriteBytesAsync data
+                    }

@@ -1,3 +1,4 @@
+- [Giraffe] Reduce memory use and file-reading costs for HEAD file responses without reading file contents into memory
 - Preserve adaptive value channel reevaluation after serialization failures without losing pending values or retransmitting the last successfully serialized value
 - Ignore unknown event versions without disabling active UI handlers or discarding pending replacements
 - Fix `AttributeMap.removeClass` for tab, newline, carriage-return, and form-feed separators without trimming Unicode characters from class names
