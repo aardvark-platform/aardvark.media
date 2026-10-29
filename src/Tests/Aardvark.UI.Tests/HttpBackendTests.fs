@@ -10,6 +10,9 @@ open System.Threading.Tasks
 open Aardvark.Base
 open Aardvark.UI
 open System.Net.Http
+open Microsoft.AspNetCore.Hosting
+open Microsoft.AspNetCore.Http
+open Microsoft.Extensions.DependencyInjection
 open Expecto
 
 module ``HttpBackend Tests`` =
@@ -72,6 +75,107 @@ module ``HttpBackend Tests`` =
         let private standardMethods = ["DELETE"; "GET"; "HEAD"; "OPTIONS"; "PATCH"; "POST"; "PUT"; "TRACE"]
         let private extensionMethods = ["QUERY"; "PURGE"; "X-CUSTOM"]
         let methods = standardMethods @ extensionMethods
+
+    module private GiraffeFileHeads =
+        let private http = Giraffe.HttpBackend.Instance
+        let private next (_: HttpContext) : Task<HttpContext option> =
+            failtest "sendFile must terminate the handler pipeline"
+
+        let private withFiles action =
+            let root = Path.Combine(Path.GetTempPath(), "aardvark-head-file-" + Guid.NewGuid().ToString("N"))
+            Directory.CreateDirectory root |> ignore
+            let environment =
+                { new IWebHostEnvironment with
+                    member _.ApplicationName with get() = "HeadFileTests" and set _ = ()
+                    member _.EnvironmentName with get() = "Tests" and set _ = ()
+                    member _.ContentRootPath with get() = root and set _ = ()
+                    member _.ContentRootFileProvider with get() = null and set _ = ()
+                    member _.WebRootPath with get() = root and set _ = ()
+                    member _.WebRootFileProvider with get() = null and set _ = () }
+            use services = ServiceCollection().AddSingleton<IWebHostEnvironment>(environment).BuildServiceProvider()
+            try action root services
+            finally Directory.Delete(root, true)
+
+        let private createFile root name length =
+            let path = Path.Combine(root, name)
+            use file = File.OpenWrite path
+            file.SetLength length
+            path
+
+        let private context services status length (body: Stream) =
+            let ctx = DefaultHttpContext()
+            ctx.RequestServices <- services
+            ctx.Request.Method <- "HEAD"
+            ctx.Response.Body <- body
+            ctx.Response.StatusCode <- status
+            ctx.Response.ContentType <- "application/x-head-file"
+            ctx.Response.Headers.Append("X-Head-Control", "preserved")
+            ctx.Response.ContentLength <- length
+            ctx
+
+        let private checkMetadata (ctx: HttpContext) (body: MemoryStream) status length =
+            Expect.equal ctx.Response.StatusCode status "Changed supplied status"
+            Expect.equal ctx.Response.ContentType "application/x-head-file" "Changed supplied content type"
+            Expect.equal (string ctx.Response.Headers.["X-Head-Control"]) "preserved" "Changed unrelated response header"
+            Expect.equal ctx.Response.ContentLength length "Changed HEAD Content-Length rules"
+            Expect.equal (body.Length, body.Position) (0L, 0L) "HEAD must not write a body"
+
+        let allocation () =
+            withFiles (fun root services ->
+                let empty = createFile root "empty.bin" 0L
+                use warmBody = new MemoryStream()
+                http.sendFile empty next (context services 202 (Nullable()) warmBody) |> _.GetAwaiter().GetResult() |> ignore
+                for length in [0L; 4096L; 2_000_003L] do
+                    let name = $"payload-{length}.bin"
+                    let absolute = createFile root name length
+                    for path in [name; absolute] do
+                        let handler = http.sendFile path
+                        use body = new MemoryStream()
+                        let ctx = context services 202 (Nullable 73L) body
+                        // File/context/handler setup and awaiting are outside this synchronous window.
+                        let before = GC.GetAllocatedBytesForCurrentThread()
+                        let pending = handler next ctx
+                        let allocated = GC.GetAllocatedBytesForCurrentThread() - before
+                        let result = pending.GetAwaiter().GetResult()
+                        Expect.isTrue (obj.ReferenceEquals(Option.get result, ctx)) "Return the supplied context"
+                        checkMetadata ctx body 202 (Nullable length)
+                        Expect.isLessThan allocated 65_536L $"HEAD allocation must not scale with file length ({length} bytes, {path})")
+
+        let metadata () =
+            withFiles (fun root services ->
+                for length in [0L; 257L] do
+                    let name = $"payload-{length}.bin"
+                    let absolute = createFile root name length
+                    for path in [name; absolute] do
+                        for status in [100; 101; 103; 199; 200; 202; 204; 205; 206; 304; 404; 500] do
+                            for supplied in [Nullable(); Nullable 73L] do
+                                use body = new MemoryStream()
+                                let ctx = context services status supplied body
+                                let result = http.sendFile path next ctx |> _.GetAwaiter().GetResult()
+                                Expect.isTrue (obj.ReferenceEquals(Option.get result, ctx)) "Return the supplied context"
+                                let expected =
+                                    if status < 200 || status = 204 then supplied
+                                    elif status = 205 then Nullable 0L
+                                    else Nullable length
+                                checkMetadata ctx body status expected
+                                // An exclusive reopen detects a retained read handle on completion.
+                                use exclusive = new FileStream(absolute, FileMode.Open, FileAccess.ReadWrite, FileShare.None)
+                                Expect.equal exclusive.Length length "File handle must be released")
+
+        let missing () =
+            withFiles (fun root services ->
+                let name = "missing.bin"
+                let absolute = Path.Combine(root, name)
+                for path in [name; absolute] do
+                    use body = new MemoryStream()
+                    let ctx = context services 202 (Nullable 73L) body
+                    let error =
+                        try
+                            http.sendFile path next ctx |> _.GetAwaiter().GetResult() |> ignore
+                            failtest "Missing files must still fail to open"
+                        with :? FileNotFoundException as error -> error
+                    Expect.equal error.FileName absolute "Preserve resolved missing-file path"
+                    checkMetadata ctx body 202 (Nullable 73L))
 
     let private testContent (http: IHttpBackend<'HttpContext, 'HttpHandler>) (cancellationToken: CancellationToken) =
         let (>=>) x y = http.compose x y
@@ -593,15 +697,23 @@ module ``HttpBackend Tests`` =
                 use _ = server.Acquire()
                 f server
 
-            cases
-            |> List.map (fun (name, run) ->
-                name, fun server ->
-                    use client = new HttpClient(new HttpClientHandler(AllowAutoRedirect = false))
-                    run client server
-            )
-            |> testFixture withServer
-            |> List.ofSeq
-            |> testList server.Name
+            let tests =
+                cases
+                |> List.map (fun (name, run) ->
+                    name, fun server ->
+                        use client = new HttpClient(new HttpClientHandler(AllowAutoRedirect = false))
+                        run client server
+                )
+                |> testFixture withServer
+                |> List.ofSeq
+
+            testList server.Name [
+                yield! tests
+                if useGiraffe then
+                    testCase "Send file HEAD allocation" (fun () -> GiraffeFileHeads.allocation())
+                    testCase "Send file HEAD metadata and handles" (fun () -> GiraffeFileHeads.metadata())
+                    testCase "Send file HEAD missing files" (fun () -> GiraffeFileHeads.missing())
+            ]
 
         testList "HttpBackend Tests" [
             createTests true
