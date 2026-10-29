@@ -29,6 +29,7 @@
 - [Suave] Make `IHttpBackend.subRoute` behavior consistent with Giraffe backend
 - [Giraffe] Complete WebSocket closure with a receive pending, without requiring extra application data to unblock the close handshake
 - [Giraffe] Fix `IHttpBackend.redirectRelative`
+- [Giraffe] Reduce memory use and file-reading costs for HEAD file responses without reading file contents into memory
 
 ### 5.7.7
 - Update to .NET 10
