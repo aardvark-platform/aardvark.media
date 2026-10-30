@@ -1,6 +1,7 @@
 namespace Aardvark.UI.Tests
 
 open System
+open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI
 open FSharp.Data.Adaptive
@@ -9,7 +10,7 @@ open Expecto
 module ``Scene Tests`` =
 
     // Count actual Dispose calls, rather than hiding duplicates behind task idempotence.
-    type private CountedTask() =
+    type private CountedTask(?onDispose: unit -> unit, ?getRuntime: unit -> IRuntime option) =
         inherit AdaptiveObject()
         let id = RenderTaskId.New()
         let mutable disposals, uses = 0, 0
@@ -19,13 +20,15 @@ module ``Scene Tests`` =
         interface IRenderTask with
             member _.Id = id
             member _.FramebufferSignature = None
-            member _.Runtime = None
+            member _.Runtime = match getRuntime with Some get -> get() | None -> None
             member _.FrameId = 0UL
             member _.Name with get() = name and set value = name <- value
             member _.Update(_, _) = ()
             member _.Run(_, _, _) = ()
             member _.Use action = uses <- uses + 1; action()
-            member _.Dispose() = disposals <- disposals + 1
+            member _.Dispose() =
+                disposals <- disposals + 1
+                onDispose |> Option.iter (fun action -> action())
 
     type private Fixture(failure: int -> exn option) =
         let contexts = ResizeArray<RenderClientValues>()
@@ -84,9 +87,202 @@ module ``Scene Tests`` =
         handle.Dispose()
         Expect.equal task.Disposals 1 "Repeated scene/handle disposal cannot release it again"
 
+    let private constructors : (Scene[] -> Scene) list =
+        [ Scene.ofArray
+          Array.toList >> Scene.ofList
+          fun scenes -> Scene.ofSeq (Seq.ofArray scenes) ]
+
+    let private withChildren action =
+        let tasks = ResizeArray<CountedTask>()
+        try action tasks
+        finally
+            // Do not let fallback cleanup establish the assertions or hide the primary error.
+            for task in tasks do
+                if task.Disposals = 0 then
+                    try (task :> IRenderTask).Dispose()
+                    with _ -> ()
+
+    let private expectCompileFailure (expected: exn) (scene: Scene) values =
+        let actual =
+            try
+                use task = scene.Compile values
+                None
+            with error -> Some error
+        Expect.isTrue (actual |> Option.exists (fun error -> obj.ReferenceEquals(error, expected)))
+            "The exact compilation exception survives cleanup"
+
+    let private withReports failReporting action =
+        let messages = ResizeArray<string>()
+        let reporter =
+            { new IReporter with
+                member _.Line(_, _, _, _, left, _, right) =
+                    messages.Add(left + right)
+                    if failReporting then failwith "reporting unavailable"
+                member _.Text(_, _, _, _) = ()
+                member _.Wrap(_, _, _, _) = ()
+                member _.Begin(_, _, _, _, _) = ()
+                member _.End(_, _, _, _, _) = ()
+                member _.Progress(_, _, _, _, _, _) = ()
+                member _.Values(_, _, _, _, _, _) = () }
+        Report.AddReporter reporter
+        try action messages
+        finally Report.RemoveReporter reporter
+
     [<Tests>]
     let tests =
         testList "Scene Tests" [
+            test "Composite failures release only the acquired prefix on every attempt" {
+                for compose in constructors do
+                    for failingIndex in [0; 1; 3; 4] do
+                        withChildren (fun tasks ->
+                            let values = RenderClientValues(null)
+                            let compiled, disposed = ResizeArray<int>(), ResizeArray<int>()
+                            let failure = InvalidOperationException "child compilation"
+                            let mutable failCompilation = true
+                            let scene =
+                                Array.init 5 (fun index ->
+                                    Scene.custom (fun received ->
+                                        Expect.isTrue (obj.ReferenceEquals(received, values)) "Every child receives the caller's values"
+                                        compiled.Add index
+                                        if failCompilation && index = failingIndex then raise failure
+                                        let task = new CountedTask(onDispose = fun () -> disposed.Add index)
+                                        tasks.Add task
+                                        task :> IRenderTask))
+                                |> compose
+                            for attempt in 1 .. 3 do
+                                compiled.Clear()
+                                disposed.Clear()
+                                expectCompileFailure failure scene values
+                                Expect.sequenceEqual compiled [0 .. failingIndex] "Compilation stops at the failing child"
+                                Expect.equal tasks.Count (attempt * failingIndex) "Every retry acquires fresh prefix tasks"
+                                Expect.sequenceEqual disposed [failingIndex - 1 .. -1 .. 0] "Rollback releases the completed prefix in reverse"
+                                Expect.isTrue (tasks |> Seq.forall (fun task -> task.Disposals = 1)) "Each acquired task is disposed exactly once"
+                            failCompilation <- false
+                            compiled.Clear()
+                            let firstLive = tasks.Count
+                            use recovered = scene.Compile values
+                            Expect.sequenceEqual compiled [0 .. 4] "The same composite can compile successfully after repeated failures"
+                            Expect.equal tasks.Count (firstLive + 5) "Recovery acquires a fresh complete set of tasks"
+                            Expect.isTrue (tasks |> Seq.skip firstLive |> Seq.forall (fun task -> task.Disposals = 0)) "Recovered children remain alive"
+                            recovered.Dispose()
+                            recovered.Dispose()
+                            Expect.isTrue (tasks |> Seq.forall (fun task -> task.Disposals = 1)) "Rollback and recovered ownership never overlap")
+            }
+
+            test "Nested failures release inner and outer ownership without duplication" {
+                for compose in constructors do
+                    // Partially compiled inner, fully compiled inner, and deeper mixed ownership.
+                    for shape in [0; 1; 2] do
+                        withChildren (fun tasks ->
+                            let values = RenderClientValues(null)
+                            let compiled, disposed = ResizeArray<int>(), ResizeArray<int>()
+                            let failure = InvalidOperationException "nested child compilation"
+                            let child index =
+                                Scene.custom (fun received ->
+                                    Expect.isTrue (obj.ReferenceEquals(received, values)) "Nested children retain the same client values"
+                                    compiled.Add index
+                                    if index = 3 then raise failure
+                                    let task = new CountedTask(onDispose = fun () -> disposed.Add index)
+                                    tasks.Add task
+                                    task :> IRenderTask)
+                            let scene, cleanupOrder =
+                                match shape with
+                                | 0 -> compose [| child 0; compose [| child 1; child 2; child 3; child 4 |]; child 5 |], [2; 1; 0]
+                                | 1 -> compose [| child 0; compose [| child 1; child 2 |]; child 3; child 4 |], [1; 2; 0]
+                                | _ -> compose [| child 0; compose [| compose [| child 1; child 2 |]; compose [| child 3; child 4 |] |]; child 5 |], [1; 2; 0]
+                            for attempt in 1 .. 2 do
+                                compiled.Clear()
+                                disposed.Clear()
+                                expectCompileFailure failure scene values
+                                Expect.sequenceEqual compiled [0; 1; 2; 3] "No later inner or outer child compiles"
+                                Expect.sequenceEqual disposed cleanupOrder "Completed composites retain their normal disposal order"
+                                Expect.equal tasks.Count (attempt * 3) "Retries do not retain partially compiled tasks"
+                                Expect.isTrue (tasks |> Seq.forall (fun task -> task.Disposals = 1)) "Each leaf has exactly one owner during rollback")
+            }
+
+            test "Cleanup errors are reported without masking failure or skipping children" {
+                for compose in constructors do
+                    for failReporting in [false; true] do
+                        withChildren (fun tasks ->
+                            let disposed = ResizeArray<int>()
+                            let failure = InvalidOperationException "primary compilation failure"
+                            let scene =
+                                Array.init 5 (fun index ->
+                                    Scene.custom (fun _ ->
+                                        if index = 4 then raise failure
+                                        let task =
+                                            new CountedTask(onDispose = fun () ->
+                                                disposed.Add index
+                                                if index = 1 || index = 3 then
+                                                    raise <| InvalidOperationException($"cleanup-{index}"))
+                                        tasks.Add task
+                                        task :> IRenderTask))
+                                |> compose
+                            withReports failReporting (fun messages ->
+                                expectCompileFailure failure scene (RenderClientValues(null))
+                                Expect.sequenceEqual disposed [3; 2; 1; 0] "Both throwing disposals still permit all cleanup"
+                                Expect.isTrue (tasks |> Seq.forall (fun task -> task.Disposals = 1)) "Throwing cleanup is not retried"
+                                if failReporting then
+                                    Expect.equal messages.Count 2 "Reporting is attempted for both errors even if the reporter throws"
+                                else
+                                    for index in [1; 3] do
+                                        Expect.isTrue (messages |> Seq.exists (fun message -> message.Contains($"cleanup-{index}")))
+                                            "Each secondary cleanup error is reported"))
+            }
+
+            test "Composite construction failure releases every compiled child" {
+                for compose in constructors do
+                    withChildren (fun tasks ->
+                        let compiled, disposed = ResizeArray<int>(), ResizeArray<int>()
+                        let failure = InvalidOperationException "runtime discovery"
+                        let scene =
+                            Array.init 3 (fun index ->
+                                Scene.custom (fun _ ->
+                                    compiled.Add index
+                                    let task =
+                                        new CountedTask(
+                                            onDispose = (fun () -> disposed.Add index),
+                                            getRuntime = (fun () -> if index = 1 then raise failure else None))
+                                    tasks.Add task
+                                    task :> IRenderTask))
+                            |> compose
+                        expectCompileFailure failure scene (RenderClientValues(null))
+                        Expect.sequenceEqual compiled [0; 1; 2] "All children compile before native composite runtime discovery fails"
+                        Expect.sequenceEqual disposed [2; 1; 0] "Composite creation failure rolls back the entire array"
+                        Expect.isTrue (tasks |> Seq.forall (fun task -> task.Disposals = 1)) "Every completed child is disposed exactly once")
+            }
+
+            test "Successful composites retain ordered compilation and task ownership" {
+                for compose in constructors do
+                    for count in [0; 1; 4] do
+                        for nested in [false; true] do
+                            withChildren (fun tasks ->
+                                let values = RenderClientValues(null)
+                                let compiled = ResizeArray<int>()
+                                let children =
+                                    Array.init count (fun index ->
+                                        Scene.custom (fun received ->
+                                            Expect.isTrue (obj.ReferenceEquals(received, values)) "Successful children receive the original values"
+                                            compiled.Add index
+                                            let task = new CountedTask()
+                                            tasks.Add task
+                                            task :> IRenderTask))
+                                let scene =
+                                    if nested then compose [| compose children; compose [||] |]
+                                    else compose children
+                                use composite = scene.Compile values
+                                Expect.sequenceEqual compiled [0 .. count - 1] "Successful children compile in input order"
+                                let live = tasks.ToArray()
+                                Expect.equal live.Length count "Success owns precisely one task per child"
+                                Expect.isTrue (live |> Array.forall (fun task -> task.Disposals = 0)) "Children remain alive after successful composition"
+                                composite.Use ignore
+                                Expect.isTrue (live |> Array.forall (fun task -> task.Uses = 1)) "The returned composite forwards to every live child"
+                                Expect.isTrue (live |> Array.forall (fun task -> task.Disposals = 0)) "Use does not release children"
+                                composite.Dispose()
+                                composite.Dispose()
+                                Expect.isTrue (tasks |> Seq.forall (fun task -> task.Disposals = 1)) "Composite disposal releases each child exactly once")
+            }
+
             test "A failed initial compilation can be retried and shared" {
                 let failure = InvalidOperationException "initial compilation"
                 withFixture (fun attempt -> if attempt = 1 then Some failure else None) (fun fixture ->
