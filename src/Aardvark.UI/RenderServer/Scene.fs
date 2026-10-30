@@ -125,7 +125,21 @@ module Scene =
         type ArrayScene(scenes: Scene[]) =
             inherit Scene()
             override _.Compile(values) =
-                scenes |> Array.map (fun s -> s.Compile values) |> RenderTask.ofArray
+                let tasks = Array.zeroCreate scenes.Length
+                let mutable count = 0
+                try
+                    while count < scenes.Length do
+                        tasks.[count] <- scenes.[count].Compile values
+                        count <- count + 1
+                    RenderTask.ofArray tasks
+                with _ ->
+                    for i = count - 1 downto 0 do
+                        try tasks.[i].Dispose()
+                        with error ->
+                            // Reporting must not interrupt rollback or replace the compilation error.
+                            try Log.warn "[Scene] Failed to dispose partially compiled task: %A" error
+                            with _ -> ()
+                    reraise()
 
         type CustomScene(compile: RenderClientValues -> IRenderTask) =
             inherit Scene()
