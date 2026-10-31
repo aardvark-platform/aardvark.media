@@ -19,6 +19,7 @@
 - [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
 - [Animation] Reduce update allocations when committing animations with no queued actions
 - [Animation] Schedule queued delayed animations after a slot finishes without waiting for unrelated ticks
+- [Animation] Reduce spline sample snapshot allocations while preserving independent mutable arrays
 - [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
 - [Suave] Decode query parameter names for lookup and grouping, including percent escapes and `+` spaces
 - [Suave] Reduce allocations when grouping repeated query parameters
