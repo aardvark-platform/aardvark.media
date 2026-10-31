@@ -123,7 +123,12 @@ module AnimationSplinePrimitives =
 
             member x.Length = length
             member x.Evaluate(s) = s |> lookup |> evaluate
-            member x.Samples = segments |> Array.mapi (fun i s -> if i = 0 then [| s.MinT; s.MaxT |] else [| s.MaxT |]) |> Array.concat
+            member x.Samples =
+                let samples = Array.zeroCreate<float> (segments.Length + 1)
+                samples.[0] <- segments.[0].MinT
+                for i = 0 to segments.Length - 1 do
+                    samples.[i + 1] <- segments.[i].MaxT
+                samples
 
 
         let inline private scale (t : float) (x : ^T) =

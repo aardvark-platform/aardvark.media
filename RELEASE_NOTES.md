@@ -1,3 +1,4 @@
+- [Animation] Reduce spline sample snapshot allocations while preserving independent mutable arrays
 - Preserve adaptive value channel reevaluation after serialization failures without losing pending values or retransmitting the last successfully serialized value
 - Ignore unknown event versions without disabling active UI handlers or discarding pending replacements
 - Fix `AttributeMap.removeClass` for tab, newline, carriage-return, and form-feed separators without trimming Unicode characters from class names
