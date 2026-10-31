@@ -1,5 +1,6 @@
 ﻿namespace Aardvark.UI.Tests
 
+open System
 open Aardvark.Base
 open Aardvark.Rendering
 open Aardvark.UI.Animation
@@ -85,6 +86,70 @@ module ``Primitives Tests`` =
                 for t in [| 0.0; 0.25; 0.5; 0.75; 1.0 |] do
                     let angle = System.Math.PI * t / 2.0
                     Expect.isLessThanOrEqual (Vec.distance (arc.Evaluate t) (V3d(cos angle, sin angle, 0.0))) 1e-4 "Open arc position"
+            }
+
+        let private sampleCases = [|
+            "constant", (fun _ -> V3d(1.0, 2.0, 3.0)), Splines.MinErrorTolerance, [| 0.0; 1.0 |]
+            "straight", (fun t -> V3d(3.0 * t, 4.0 * t, 0.0)), Splines.MinErrorTolerance, [| 0.0; 0.5; 1.0 |]
+            // A circle's chord-error ratio is sec(pi / (2*n)) for n equal segments.
+            "default circle", circle, Splines.DefaultErrorTolerance, Array.init 17 (fun i -> float i / 16.0)
+            "dense circle", circle, Splines.MinErrorTolerance, Array.init 513 (fun i -> float i / 512.0)
+            "parabola", (fun t -> V3d(t, t * t, 0.0)), Splines.DefaultErrorTolerance, [| 0.0; 0.25; 0.5; 1.0 |]
+        |]
+
+        let sampleSnapshots =
+            test "Samples retain exact boundaries and independent mutable snapshots" {
+                for name, curve, tolerance, expected in sampleCases do
+                    let mutable curveCalls, distanceCalls = 0, 0
+                    let evaluate t = curveCalls <- curveCalls + 1; curve t
+                    let distance a b = distanceCalls <- distanceCalls + 1; Vec.distance a b
+                    let spline = Splines.Spline(distance, evaluate, tolerance)
+                    let length = spline.Length
+                    let positions = [| 0.0; 0.125; 0.5; 0.875; 1.0 |]
+                    let evaluated = positions |> Array.map spline.Evaluate
+                    let calls = curveCalls, distanceCalls
+                    let first = spline.Samples
+                    let second = spline.Samples
+                    let bits values = values |> Array.map BitConverter.DoubleToInt64Bits
+                    Expect.equal (bits first) (bits expected) $"{name}: analytical parameter boundaries, bit for bit"
+                    Expect.isFalse (obj.ReferenceEquals(first, second)) $"{name}: every snapshot is fresh"
+                    Array.fill first 0 first.Length nan
+                    Expect.equal second expected $"{name}: mutating one snapshot cannot change another"
+                    let third = spline.Samples
+                    Expect.isFalse (obj.ReferenceEquals(second, third)) $"{name}: later snapshots remain distinct"
+                    Expect.equal (bits third) (bits expected) $"{name}: mutation cannot change later boundaries"
+                    Expect.equal (curveCalls, distanceCalls) calls $"{name}: Samples invokes neither delegate"
+                    Expect.equal spline.Length length $"{name}: snapshots do not change arc length"
+                    Expect.equal (positions |> Array.map spline.Evaluate) evaluated $"{name}: mutation cannot change evaluation"
+            }
+
+        let sampleAllocations =
+            test "Subdivided Samples allocate only the returned float array" {
+                let reads = 256
+                let measure (read: unit -> float[]) =
+                    for _ = 1 to 32 do GC.KeepAlive(read())
+                    let mutable checksum = 0.0
+                    let before = GC.GetAllocatedBytesForCurrentThread()
+                    for i = 0 to reads - 1 do
+                        let samples = read()
+                        checksum <- checksum + samples.[i % samples.Length]
+                    let allocated = GC.GetAllocatedBytesForCurrentThread() - before
+                    allocated, checksum
+
+                let results = [|
+                    for name, curve, tolerance, expected in sampleCases do
+                        if expected.Length > 3 then
+                            let spline = Splines.Spline(Vec.distance, curve, tolerance)
+                            let arrayBytes, _ = measure (fun () -> Array.zeroCreate<float> expected.Length)
+                            let sampleBytes, checksum = measure (fun () -> spline.Samples)
+                            let expectedChecksum =
+                                [| 0 .. reads - 1 |] |> Array.sumBy (fun i -> expected.[i % expected.Length])
+                            yield name, arrayBytes, sampleBytes, checksum, expectedChecksum
+                |]
+                for name, arrayBytes, sampleBytes, checksum, expectedChecksum in results do
+                    Expect.equal checksum expectedChecksum $"{name}: consume actual snapshot values"
+                    Expect.isLessThanOrEqual sampleBytes (arrayBytes + int64 reads * 128L)
+                        $"{name}: snapshot allocation {sampleBytes / int64 reads} B/read exceeds float-array allocation {arrayBytes / int64 reads} B/read plus 128 B"
             }
 
         let infiniteTolerance =
@@ -291,6 +356,8 @@ module ``Primitives Tests`` =
                 Spline.closedDistances
                 Spline.constant
                 Spline.openCurves
+                Spline.sampleSnapshots
+                Spline.sampleAllocations
                 Spline.infiniteTolerance
                 Spline.nonFinite
             ]
