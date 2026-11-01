@@ -204,7 +204,7 @@ module Animator =
         | AnimatorMessage.Filter predicate ->
             model |> filter lens predicate
 
-    /// Performs an animation tick using the current time.
+    /// Performs an animation tick using the given time.
     let tick (time : GlobalTime) (model : 'Model) =
         model |> update (AnimatorMessage.Tick time)
 
@@ -392,7 +392,10 @@ module Animator =
                 yield! time()
             }
 
-        if model.Slots |> HashMap.exists (fun _ s -> s.Current.IsRunning || s.Current.OutOfDate) then
+        if model.Slots |> HashMap.exists (fun _ s ->
+            s.Current.IsRunning || s.Current.OutOfDate ||
+            (s.Current.IsFinished && s.Pending > 0)
+        ) then
             ThreadPool.empty |> ThreadPool.add $"animationTicks_{model.TickRate}" (time())
         else
             ThreadPool.empty
