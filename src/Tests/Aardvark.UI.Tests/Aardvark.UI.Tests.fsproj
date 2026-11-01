@@ -27,6 +27,7 @@
     <Compile Include="Camera\FreeFlyJumpTests.fs" />
     <Compile Include="Camera\FreeFlyPitchLimitTests.fs" />
     <Compile Include="Camera\CameraUtilitiesTests.fs" />
+    <Compile Include="Camera\ArcBallBlurTests.fs" />
     <Compile Include="HttpBackendTests.fs" />
     <Compile Include="WebSocketTests.fs" />
     <Compile Include="AttributeMapTests.fs" />

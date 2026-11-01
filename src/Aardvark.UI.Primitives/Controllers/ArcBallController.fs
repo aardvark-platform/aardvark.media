@@ -76,7 +76,13 @@ module ArcBallController =
         match message with
             | Nop -> model
             | Blur ->
-                { initial with view = model.view; lastTime = None; orbitCenter = model.orbitCenter }
+                { initial with
+                    view = model.view
+                    lastTime = None
+                    orbitCenter = model.orbitCenter
+                    sensitivity = model.sensitivity
+                    panFactor = model.panFactor
+                    zoomFactor = model.zoomFactor }
             | Pick p -> 
                 let cam = model.view
                 let newForward = p - cam.Location |> Vec.normalize
