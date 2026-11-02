@@ -21,6 +21,7 @@
 - [Suave] Reduce allocations when grouping repeated query parameters
 - [Suave] Make `IHttpBackend.subRoute` behavior consistent with Giraffe backend
 - [Giraffe] Complete WebSocket closure with a receive pending, without requiring extra application data to unblock the close handshake
+- [Giraffe] Fix `IHttpBackend.redirectRelative`
 
 ### 5.7.7
 - Update to .NET 10

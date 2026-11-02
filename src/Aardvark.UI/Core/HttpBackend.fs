@@ -28,6 +28,10 @@ type IHttpRequest =
     abstract member QueryParam  : name: string -> string option
     abstract member QueryParams : Map<string, string list>
 
+type IHttpRequestWithRoute =
+    inherit IHttpRequest
+    abstract member Route : string option
+
 /// Minimal interface for HTTP backends to define web parts in a library agnostic way.
 type IHttpBackend<'HttpContext, 'HttpHandler> =
     abstract member withContext : handler: ('HttpContext -> 'HttpHandler) -> 'HttpHandler
@@ -65,6 +69,11 @@ module ``IHttpBackend Extensions`` =
                 return Encoding.UTF8.GetString data
             }
 
+        member this.Route =
+            match this with
+            | :? IHttpRequestWithRoute as r -> r.Route
+            | _ -> this.Header "GLOBAL_PATH"
+
     type IHttpBackend<'HttpContext, 'HttpHandler> with
         member this.ok (data: byte[])            = this.compose (this.status 200) (this.response data)
         member this.ok (data: string)            = this.compose (this.status 200) (this.response data)
@@ -89,11 +98,11 @@ module ``IHttpBackend Extensions`` =
             this.withContext (this.getRequest >> handler)
 
         member this.redirectRelative (path : string) : 'HttpHandler =
-            if not (path.StartsWith "/") then failwith "redirect-paths need to start with /"
+            let path = if path.StartsWith "/" then path else "/" + path
 
             this.request (fun r ->
                 let newPath =
-                    match r.Header "GLOBAL_PATH" with
+                    match r.Route with
                     | Some globalPath ->
                         if globalPath.EndsWith "/" then globalPath + path.Substring(1)
                         else globalPath + path

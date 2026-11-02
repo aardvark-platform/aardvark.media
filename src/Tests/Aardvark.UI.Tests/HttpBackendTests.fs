@@ -104,6 +104,10 @@ module ``HttpBackend Tests`` =
                 >=> http.redirectTo permanent location
             )
 
+        let redirectRel =
+            http.header "X-Redirect" "preserved"
+            >=> http.redirectRelative "/text?q=hello%20world#details"
+
         let sendFile =
             http.request (fun r ->
                 http.status 202
@@ -143,8 +147,8 @@ module ``HttpBackend Tests`` =
             http.route    "/html"           >=> http.html "<html lang=\"\"><body/></html>"
             http.routef   "/status/%i"      http.status
             http.route    "/redirect"       >=> redirect
-            http.route    "/redirect-relative" >=> http.header "X-Redirect" "preserved"
-                                              >=> http.redirectRelative "/text?q=hello%20world#details"
+            http.subRoute "/redirect-rel"   redirectRel
+            http.subRoute "/redirect-r/"    redirectRel
             http.subRoute "/sub"            (http.choose [http.routef "/%s" http.text])
             http.routef   "/query-param/%s" returnQueryParam
             http.route    "/query-params"   >=> returnQueryParams
@@ -232,11 +236,23 @@ module ``HttpBackend Tests`` =
                     checkRedirect permanent location response server
 
         let redirectRelative (client: HttpClient) (server: TestServer) =
-            for globalPath, prefix in [Some "/proxy/ui", "/proxy/ui"; Some "/proxy/ui/", "/proxy/ui"; None, ""] do
-                use request = new HttpRequestMessage(System.Net.Http.HttpMethod.Get, $"http://{server.Host}/redirect-relative")
-                globalPath |> Option.iter (fun value -> request.Headers.Add("GLOBAL_PATH", value))
-                use response = client.SendAsync(request).Result
-                checkRedirect true (prefix + "/text?q=hello%20world#details") response server
+            for dir in ["foo/bar"; "foo"; ""] do
+                let url = $"http://{server.Host}/redirect-rel/{dir}"
+                use response = client.GetAsync(url).Result
+                checkRedirect true "/redirect-rel/text?q=hello%20world#details" response server
+
+                let url = $"http://{server.Host}/redirect-r/{dir}"
+                use response = client.GetAsync(url).Result
+                checkRedirect true "/redirect-r/text?q=hello%20world#details" response server
+
+            for dir in ["/foo/bar"; "/foo"; "/"; ""] do
+                let url = $"http://{server.Host}/redirect-relxyz{dir}"
+                use response = client.GetAsync(url).Result
+                checkRedirect true "/redirect-rel/text?q=hello%20world#details" response server
+
+                let url = $"http://{server.Host}/redirect-rxyz{dir}"
+                use response = client.GetAsync(url).Result
+                Expect.equal response.StatusCode HttpStatusCode.NotFound ""
 
         let subRoute (client: HttpClient) (server: TestServer) =
             let test (expected: string) (path: string) =

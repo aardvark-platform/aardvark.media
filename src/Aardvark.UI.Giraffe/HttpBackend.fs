@@ -104,10 +104,11 @@ type HttpBackend private () =
                 handler next context
 
         member _.getRequest context =
-            { new IHttpRequest with
+            { new IHttpRequestWithRoute with
                 member _.Path = context.Request.Path.Value
                 member _.Body = context.Request.Body
                 member _.Method = context.Request.Method
+                member _.Route = SubRouting.getSavedPartialPath context
                 member _.Header(name) =
                     match context.Request.Headers.TryGetValue name with
                     | true, values when values.Count > 0 -> Some (values |> String.concat ", ")

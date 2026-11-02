@@ -108,14 +108,17 @@ type HttpBackend private () =
             // Suave decodes query values, but leaves names encoded.
             let decodeName (name: string) = Uri.UnescapeDataString(name.Replace('+', ' '))
 
-            { new IHttpRequest with
+            let getHeader name =
+                match context.request.header name with
+                | Choice1Of2 value -> Some value
+                | _ -> None
+
+            { new IHttpRequestWithRoute with
                 member _.Path = context.request.path
                 member _.Body = new MemoryStream(context.request.rawForm)
                 member _.Method = context.request.rawMethod
-                member _.Header(name) =
-                    match context.request.header name with
-                    | Choice1Of2 value -> Some value
-                    | _ -> None
+                member _.Route = getHeader "GLOBAL_PATH"
+                member _.Header(name) = getHeader name
                 member _.Headers =
                     Map.ofList context.request.headers
                 member _.QueryParam(name) =
