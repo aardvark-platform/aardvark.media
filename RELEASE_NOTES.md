@@ -19,6 +19,7 @@
 - [Primitives] Restore gamepad movement and rotation when a stick is released to neutral and moved in the same direction again
 - [Primitives] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
 - [Primitives] Route GoldenLayout panels to the correct page when IDs contain reserved characters, percent escapes or line breaks
+- [Primitives] Preserve GoldenLayout popout window IDs and theme URLs as safe, literal HTML attribute values, including quotes, entities, line breaks, Unicode, and template-marker text
 - [Primitives] Keep notifications with overlapping IDs independent across containers, including removal, clearing, and dismissal
 - [Primitives] Accept negative integer input in numeric controls and sliders independently of the server culture
 - [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
