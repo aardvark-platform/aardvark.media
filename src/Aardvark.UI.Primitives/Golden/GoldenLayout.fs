@@ -229,6 +229,10 @@ module GoldenLayoutApp =
                 Log.error "[GoldenAard] %s" e.Message
                 $"<!doctype html><html><body><h1>Error</h1>{e.GetType().Name}: {e.Message}</body></html>"
 
+        let private encodeAttribute (value: string) =
+            // Character references avoid HTML parser line-ending normalization.
+            System.Net.WebUtility.HtmlEncode(value).Replace("\r", "&#13;").Replace("\n", "&#10;")
+
         let toWebPart (http: IHttpBackend<'HttpContext, 'HttpHandler>) : 'HttpHandler =
             let handler =
                 http.request (fun r ->
@@ -246,9 +250,10 @@ module GoldenLayoutApp =
                             Log.warn "[GoldenAard] Query parameter 'gl-theme' missing. Falling back to borderless-dark theme for popout."
                             Theme.BorderlessDark.Path
 
+                    // Match original attributes, not markers inside inserted values.
                     template
-                    |> String.replace "__ID__" id
-                    |> String.replace "__THEME__" theme
+                    |> String.replace "id=\"__ID__\"" $"id=\"{encodeAttribute id}\""
+                    |> String.replace "href=\"__THEME__\"" $"href=\"{encodeAttribute theme}\""
                     |> http.html
                 )
 
