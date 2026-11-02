@@ -1,8 +1,11 @@
 ﻿namespace Aardvark.UI.Suave
 
 open Suave
+open System
 
 module Filters =
+
+    [<Obsolete>]
     let folder (name : string) (parts : list<WebPart>) : WebPart =
         let prefix =
             if name.StartsWith "/" then name
@@ -21,27 +24,22 @@ module Filters =
                 never ctx
   
     let prefix (path : string) : WebPart =
-        if not (path.StartsWith "/") then failwith "prefix-paths need to start with /"
         fun (ctx : HttpContext) ->
             async {
                 let request : HttpRequest = ctx.request
-                
+
                 if request.rawPath.StartsWith path then
-                    let newPath = request.rawPath.Substring(path.Length)
-                    let newPath =
-                        if newPath.StartsWith "/" then newPath
-                        else "/" + newPath
-                        
-                    let newHeaders = 
+                    let newPath = request.rawPath.[path.Length ..]
+
+                    let newHeaders =
                         let mutable found = false
                         let newHeaders =
-                            request.headers |> List.map (fun (name, value) ->
-                                if name = "GLOBAL_PATH" then
+                            request.headers |> List.map (fun (name, value as header) ->
+                                if String.Equals(name, "GLOBAL_PATH", StringComparison.OrdinalIgnoreCase) then
                                     found <- true
-                                    if value.EndsWith "/" then (name, value + path.Substring(1))
-                                    else (name, value + path)
+                                    name, value + path
                                 else
-                                    (name, value)
+                                    header
                             )
 
                         if not found then
@@ -49,9 +47,7 @@ module Filters =
                         else
                             newHeaders
 
-                    let r = { request with rawPath = newPath; headers = newHeaders }
-                    let innerCtx = { ctx with request = r }
-                    return Some innerCtx
+                    return Some { ctx with request.rawPath = newPath; request.headers = newHeaders }
                 else
                     return None
             }

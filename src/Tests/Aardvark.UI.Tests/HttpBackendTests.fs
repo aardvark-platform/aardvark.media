@@ -239,14 +239,18 @@ module ``HttpBackend Tests`` =
                 checkRedirect true (prefix + "/text?q=hello%20world#details") response server
 
         let subRoute (client: HttpClient) (server: TestServer) =
-            let test (path: string) =
-                let r = client.GetAsync($"http://{server.Host}/sub/{path}").Result
-                Expect.equal r.StatusCode HttpStatusCode.OK "Unexpected status code"
-                let result = r.Content.ReadAsStringAsync().Result
-                Expect.equal result path "Unexpected result"
+            let test (expected: string) (path: string) =
+                let r = client.GetAsync($"http://{server.Host}/{path}").Result
+                if notNull expected then
+                    Expect.equal r.StatusCode HttpStatusCode.OK "Unexpected status code"
+                    let result = r.Content.ReadAsStringAsync().Result
+                    Expect.equal result expected "Unexpected result"
+                else
+                    Expect.equal r.StatusCode HttpStatusCode.NotFound "Unexpected status code"
 
-            test "hello"
-            test "friend"
+            test "hello"  "sub/hello"
+            test "friend" "sub/friend"
+            test null  "subxy/hello"
 
         let queryParam (client: HttpClient) (server: TestServer) =
             let test (name: string) (queryParams: (string * string option) list) =

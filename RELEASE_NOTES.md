@@ -19,6 +19,7 @@
 - [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
 - [Suave] Decode query parameter names for lookup and grouping, including percent escapes and `+` spaces
 - [Suave] Reduce allocations when grouping repeated query parameters
+- [Suave] Make `IHttpBackend.subRoute` behavior consistent with Giraffe backend
 - [Giraffe] Complete WebSocket closure with a receive pending, without requiring extra application data to unblock the close handshake
 
 ### 5.7.7
