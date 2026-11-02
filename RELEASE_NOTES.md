@@ -16,6 +16,7 @@
 - [Primitives] Keep notifications with overlapping IDs independent across containers, including removal, clearing, and dismissal
 - [Primitives] Accept negative integer input in numeric controls and sliders independently of the server culture
 - [Animation] Correct child values and callback endpoints when eased composite animations cross child boundaries
+- [Animation] Reduce update allocations when committing animations with no queued actions
 - [Suave] Return a canceled task for WebSocket sends and close operations whose caller token is already canceled, rather than reporting success
 - [Suave] Decode query parameter names for lookup and grouping, including percent escapes and `+` spaces
 - [Suave] Reduce allocations when grouping repeated query parameters

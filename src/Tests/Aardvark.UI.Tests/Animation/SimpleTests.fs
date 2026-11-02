@@ -1,5 +1,7 @@
 ﻿namespace Aardvark.UI.Tests
 
+open System
+open Aardvark.Base
 open Aardvark.UI.Animation
 open Expecto
 
@@ -383,6 +385,139 @@ module ``Simple Tests`` =
                 ]
             }
 
+    module private Commits =
+
+        type Model = { Value: int }
+        let private phases = ["never-started"; "running"; "paused"; "stopped"; "finished"]
+
+        let private prepare phase =
+            let evaluations = ref 0
+            let events = ResizeArray<EventType * float>()
+            let animation =
+                Animation.create' (fun (m: Model) t ->
+                    evaluations.Value <- evaluations.Value + 1
+                    float m.Value + t)
+                |> Animation.seconds 1.0
+            let animation =
+                (animation, [EventType.Start; EventType.Progress; EventType.Pause; EventType.Resume; EventType.Stop; EventType.Finalize])
+                ||> List.fold (fun a kind ->
+                    a |> Animation.onEvent kind (fun _ value m -> events.Add(kind, value); m))
+            let instance = animation.Create(Sym.ofString phase)
+            let commit time = instance.Commit({ Value = 10 }, GlobalTime.ofSeconds time) |> ignore
+            if phase <> "never-started" then
+                instance.Start()
+                instance.Update(LocalTime.ofSeconds 0.25, false)
+                commit 0.0
+                match phase with
+                | "paused" -> instance.Pause(); commit 0.3
+                | "stopped" -> instance.Stop(); commit 0.3
+                | "finished" -> instance.Update(LocalTime.ofSeconds 1.0, true); commit 1.0
+                | _ -> ()
+            let expectedPosition, expectedValue =
+                match phase with
+                | "never-started" -> 0.0, 0.0
+                | "stopped" -> 0.0, 10.0
+                | "finished" -> 1.0, 11.0
+                | _ -> 0.25, 10.25
+            Expect.equal instance.Position (LocalTime.ofSeconds expectedPosition) "Prepared position"
+            Expect.equal instance.Value expectedValue "Prepared value"
+            Expect.isFalse instance.OutOfDate "Preparation drains all actions"
+            Expect.equal (instance.IsStopped, instance.IsRunning, instance.IsPaused, instance.IsFinished)
+                (phase = "never-started" || phase = "stopped", phase = "running", phase = "paused", phase = "finished") "Prepared lifecycle state"
+            instance, evaluations, events
+
+        let identityAndLaterActions =
+            test "Action-free commits preserve state model identity and subsequent actions" {
+                for phase in phases do
+                    let instance, evaluations, events = prepare phase
+                    let state, position, value = instance.State, instance.Position, instance.Value
+                    let evaluated, notified = evaluations.Value, events.Count
+                    let incoming = { Value = 17 }
+                    for _ in 1 .. 64 do
+                        let result = instance.Commit(incoming, GlobalTime.ofSeconds 7.0)
+                        Expect.isTrue (obj.ReferenceEquals(result, incoming)) "An idle commit returns the incoming model, not a retained one"
+                    Expect.equal (instance.State, instance.Position, instance.Value) (state, position, value) "No implicit state or value changes"
+                    Expect.isFalse instance.OutOfDate "No actions are manufactured"
+                    Expect.equal evaluations.Value evaluated "No evaluator invocation on an idle commit"
+                    Expect.equal events.Count notified "No callbacks on an idle commit"
+                    let next = { Value = 23 }
+                    instance.Start(0.5)
+                    instance.Update(LocalTime.ofSeconds 1.0, true)
+                    Expect.isTrue instance.OutOfDate "Subsequent actions remain queued"
+                    let result = instance.Commit(next, GlobalTime.ofSeconds 8.0)
+                    Expect.isTrue (obj.ReferenceEquals(result, next)) "Identity callbacks retain the new incoming model"
+                    Expect.equal instance.Value 24.0 "Subsequent evaluation uses the current model"
+                    Expect.equal instance.Position (LocalTime.ofSeconds 1.0) "Subsequent actions update position"
+                    Expect.isTrue instance.IsFinished "Subsequent actions finalize normally"
+                    Expect.equal evaluations.Value (evaluated + 2) "Start and update are each evaluated once"
+                    Expect.equal (List.ofSeq events |> List.skip notified) [(EventType.Start, 23.5); (EventType.Progress, 24.0); (EventType.Finalize, 24.0)] "Subsequent callback values and order"
+            }
+
+        let allocations =
+            test "Action-free commits allocate nothing in every lifecycle state" {
+                let reads = 1024
+                let measure (instance: IAnimationInstance<Model, float>) =
+                    let model = { Value = 17 }
+                    let tick = GlobalTime.ofSeconds 7.0
+                    for _ in 1 .. 256 do GC.KeepAlive(instance.Commit(model, tick))
+                    let mutable allocated = Int64.MaxValue
+                    let mutable checksum = 0
+                    // A persistent per-commit allocation survives every window; runtime initialization need not.
+                    for _ in 1 .. 3 do
+                        let before = GC.GetAllocatedBytesForCurrentThread()
+                        for _ in 1 .. reads do
+                            let result = instance.Commit(model, tick)
+                            checksum <- checksum + result.Value
+                        allocated <- min allocated (GC.GetAllocatedBytesForCurrentThread() - before)
+                    allocated, checksum
+                let results = [
+                    for phase in phases do
+                        let instance, _, _ = prepare phase
+                        let allocated, checksum = measure instance
+                        yield phase, allocated, checksum
+                ]
+                for phase, allocated, checksum in results do
+                    Expect.equal checksum (17 * reads * 3) $"{phase}: consume the returned models"
+                    Expect.equal allocated 0L $"{phase}: no evaluator closure without actions"
+            }
+
+        let pendingNotifications =
+            test "Action-free commits drain notifications left by a callback failure" {
+                let failure = InvalidOperationException "start callback"
+                let events = ResizeArray<EventType * float * int>()
+                let mutable evaluations = 0
+                let animation =
+                    Animation.create' (fun (_: Model) t -> evaluations <- evaluations + 1; t)
+                    |> Animation.seconds 1.0
+                    |> Animation.onStart (fun _ value m -> events.Add(EventType.Start, value, m.Value); raise failure)
+                    |> Animation.onProgress (fun _ value m ->
+                        events.Add(EventType.Progress, value, m.Value)
+                        { Value = m.Value * 10 + (if value = 0.5 then 5 else 1) })
+                    |> Animation.onFinalize (fun _ value m ->
+                        events.Add(EventType.Finalize, value, m.Value)
+                        { Value = m.Value * 10 + 9 })
+                let instance = animation.Create(Sym.ofString "pending")
+                instance.Start()
+                instance.Update(LocalTime.ofSeconds 0.5, false)
+                instance.Update(LocalTime.ofSeconds 1.0, true)
+                let actual =
+                    try instance.Commit({ Value = 99 }, GlobalTime.zero) |> ignore; None
+                    with error -> Some error
+                Expect.isTrue (actual |> Option.exists (fun error -> obj.ReferenceEquals(error, failure))) "Preserve the callback exception"
+                Expect.equal (List.ofSeq events) [(EventType.Start, 0.0, 99)] "Failure interrupts notification, not action processing"
+                Expect.isTrue instance.IsFinished "All queued actions were processed before notification"
+                Expect.isFalse instance.OutOfDate "Only notifications remain queued"
+                Expect.equal evaluations 3 "Start and both updates have already been evaluated"
+                let result = instance.Commit({ Value = 3 }, GlobalTime.ofSeconds 2.0)
+                Expect.equal result.Value 3519 "Pending observers thread their updates through the new incoming model"
+                Expect.equal (List.ofSeq events) [(EventType.Start, 0.0, 99); (EventType.Progress, 0.5, 3); (EventType.Progress, 1.0, 35); (EventType.Finalize, 1.0, 351)] "Remaining notifications drain once in FIFO order"
+                Expect.equal evaluations 3 "Draining notifications does not reevaluate the animation"
+                let unchanged = instance.Commit(result, GlobalTime.ofSeconds 3.0)
+                Expect.isTrue (obj.ReferenceEquals(unchanged, result)) "A later drained commit returns the same model"
+                Expect.equal events.Count 4 "No notification is retried or duplicated"
+                Expect.equal instance.Value 1.0 "Notification recovery retains the finalized value"
+            }
+
     module Timing =
 
         let private identity : IAnimation<unit, float> =
@@ -467,6 +602,11 @@ module ``Simple Tests`` =
                 Timing.otherModes
                 Timing.finiteEndpoints
                 Timing.longMirrored
+            ]
+            testList "Commit" [
+                Commits.identityAndLaterActions
+                Commits.allocations
+                Commits.pendingNotifications
             ]
             testList "Events" [
                 Events.startFinish

@@ -46,9 +46,10 @@ type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anim
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-        let definition = x.Definition
-        let evaluate t = definition.Evaluate(model, t)
-        StateMachine.run evaluate tick x.EventQueue x.StateMachine
+        if x.StateMachine.Actions.Count > 0 then
+            let definition = x.Definition
+            let evaluate t = definition.Evaluate(model, t)
+            StateMachine.run evaluate tick x.EventQueue x.StateMachine
 
         let mutable result = model
         Observable.notify x.Definition.Observable x.Name x.EventQueue &result
