@@ -288,7 +288,12 @@ module GoldenLayoutJson =
                 result.ToString Formatting.None
 
             let deserialize (json : string) : WindowLayout =
-                let o = JObject.Parse json
+                let o =
+                    use reader = new JsonTextReader(new System.IO.StringReader(json), DateParseHandling = DateParseHandling.None)
+                    let result = JObject.Load reader
+                    // Match JObject.Parse's validation of content after the object.
+                    while reader.Read() do ()
+                    result
 
                 let root =
                     o.TryGetProperty<JObject> "root"
