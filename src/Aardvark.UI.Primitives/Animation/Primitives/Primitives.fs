@@ -56,14 +56,15 @@ module AnimationPrimitives =
             open Utilities
 
             /// Creates an animation that returns a constant value.
+            [<System.Obsolete("Use Animation.constant instead.")>]
             let constant (value : 'Value) : IAnimation<'Model, 'Value> =
-                Animation.create (fun _ -> value)
+                Animation.constant value
 
 
             /// Creates an animation that linearly interpolates between src and dst.
             let inline lerp (src : ^Value) (dst : ^Value) : IAnimation<'Model, ^Value> =
                 if Unchecked.equals src dst then
-                    constant src
+                    Animation.constant src
                 else
                     Animation.create (lerp src dst)
                     |> Animation.seconds 1
@@ -79,7 +80,7 @@ module AnimationPrimitives =
             /// The value type can be either float or float32.
             let inline lerpAngle (srcInRadians : ^Value) (dstInRadians : ^Value) : IAnimation<'Model, ^Value> =
                 if Unchecked.equals srcInRadians dstInRadians then
-                    constant srcInRadians
+                    Animation.constant srcInRadians
                 else
                     let src, dst = toDouble srcInRadians, toDouble dstInRadians
                     let diff = Fun.AngleDifference(src, dst)
@@ -99,7 +100,7 @@ module AnimationPrimitives =
             /// The orientation type can be either Rot3d or Rot3f.
             let inline slerp (src : ^Rot3) (dst : ^Rot3) : IAnimation<'Model, ^Rot3> =
                 if Unchecked.equals src dst then
-                    constant src
+                    Animation.constant src
                 else
                     let src, dst = toRot3d src, toRot3d dst
 
@@ -128,7 +129,7 @@ module AnimationPrimitives =
                     Array.empty
 
                 elif pj.Length = 1 then
-                    Array.singleton <| constant pj.[0]
+                    Array.singleton <| Animation.constant pj.[0]
 
                 else
                     let dj = Array.init (pj.Length - 1) (fun i -> distance pj.[i] pj.[i + 1])

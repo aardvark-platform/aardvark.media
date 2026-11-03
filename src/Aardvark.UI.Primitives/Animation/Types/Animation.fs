@@ -39,8 +39,9 @@ type internal AbstractAnimationInstance<'Model, 'Value, 'Definition when 'Defini
         member x.Definition = x.Definition :> IAnimation<'Model, 'Value>
 
 
-type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Animation<'Model, 'Value>) =
+type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Animation<'Model, 'Value>) as this =
     inherit AbstractAnimationInstance<'Model, 'Value, Animation<'Model, 'Value>>(name, definition)
+    do this.StateMachine.Value <- definition.DefaultValue
 
     override x.Perform(action) =
         StateMachine.enqueue action x.StateMachine
@@ -60,6 +61,7 @@ type internal AnimationInstance<'Model, 'Value>(name : Symbol, definition : Anim
 /// The distance-time function controls how the position changes over time.
 and [<ReferenceEquality>] internal Animation<'Model, 'Value> =
     {
+        DefaultValue         : 'Value
         SpaceFunction        : FSharpFunc<'Model, float, 'Value>
         DistanceTimeFunction : DistanceTimeFunction
         Duration             : Duration
@@ -124,14 +126,16 @@ module Animation =
 
     /// Empty animation with zero duration returning the default value.
     let empty<'Model, 'Value> : IAnimation<'Model, 'Value> =
-        { SpaceFunction        = SpaceFunction.Default
+        { DefaultValue         = Unchecked.defaultof<'Value>
+          SpaceFunction        = SpaceFunction.Default
           DistanceTimeFunction = DistanceTimeFunction.empty
           Duration             = Duration.zero
           Observable           = Observable.empty }
 
     /// Creates an animation from the given space function.
     let create' (spaceFunction : 'Model -> float -> 'Value) : IAnimation<'Model, 'Value> =
-        { SpaceFunction        = FSharpFunc<_,_,_>.Adapt spaceFunction
+        { DefaultValue         = Unchecked.defaultof<'Value>
+          SpaceFunction        = FSharpFunc<_,_,_>.Adapt spaceFunction
           DistanceTimeFunction = DistanceTimeFunction.empty
           Duration             = Duration.zero
           Observable           = Observable.empty }
@@ -139,3 +143,11 @@ module Animation =
     /// Creates an animation from the given space function.
     let create (spaceFunction : float -> 'Value) : IAnimation<'Model, 'Value> =
         create' (fun _ -> spaceFunction)
+
+    /// Creates an animation that returns a constant value.
+    let constant (value : 'Value) : IAnimation<'Model, 'Value> =
+        { DefaultValue         = value
+          SpaceFunction        = FSharpFunc<_,_,_>.Adapt (fun _ _ -> value)
+          DistanceTimeFunction = DistanceTimeFunction.empty
+          Duration             = Duration.zero
+          Observable           = Observable.empty }
