@@ -116,6 +116,82 @@ module ``GoldenLayout Json Tests`` =
             ]
         }
 
+    // Literal JSON, not JObject-based fixture construction: the fixture must not parse dates first.
+    let private stringLayouts : (string * string * (Element -> WindowLayout)) list = [
+        "root", """{"root":{"type":"component","componentType":@ID@,"title":@TITLE@}}""",
+            fun e -> { Root = Some(Layout.Element e); PopoutWindows = [] }
+        "nested", """{"root":{"type":"row","content":[{"type":"column","content":[{"type":"stack","content":[{"type":"component","componentType":@ID@,"title":@TITLE@}]}]}]}}""",
+            fun e -> {
+                Root = Some(Layout.RowOrColumn {
+                    IsRow = true; Size = Size.Weight 1; Content = [
+                        Layout.RowOrColumn {
+                            IsRow = false; Size = Size.Weight 1; Content = [
+                                Layout.Stack { Header = Header.Top; Buttons = None; Size = Size.Weight 1; Content = [e] }
+                            ]
+                        }
+                    ]
+                })
+                PopoutWindows = []
+            }
+        "popout", """{"openPopouts":[{"root":{"type":"component","componentType":@ID@,"title":@TITLE@},"window":{"left":-5,"top":17,"width":640,"height":480}}]}""",
+            fun e -> { Root = None; PopoutWindows = [
+                { Root = Layout.Element e; Position = Some(V2i(-5, 17)); Size = Some(V2i(640, 480)) }
+            ] }
+    ]
+
+    let private withIdentity (idJson: string) (titleJson: string) (json: string) =
+        json.Replace("@ID@", idJson).Replace("@TITLE@", titleJson)
+
+    let private timestampStrings = [
+        "2024-06-01T12:34:56Z"
+        "2024-06-01T12:34:56+05:30"
+        "2024-06-01T12:34:56-07:00"
+        "2024-06-01T12:34:56.1234000Z"
+        "2024-06-01T12:34:56.0000001+01:30"
+        "2024-06-01T12:34:56"
+    ]
+
+    let private strings = [
+        test "Date-shaped panel IDs and titles remain literal at every layout depth" {
+            let failures = [
+                for value in timestampStrings do
+                    for name, json, expected in stringLayouts do
+                        let token = "\"" + value + "\""
+                        let actual = json |> withIdentity token token |> parse
+                        let wanted = expected (element value value)
+                        if actual <> wanted then yield $"{name}: expected exact ID/title {value} and unchanged layout defaults"
+            ]
+            Expect.isEmpty failures (String.concat "\n" failures)
+        }
+        test "Ordinary strings nulls and primitive identity conversions keep their meaning" {
+            for idJson, titleJson, id, title in [
+                "\"panel-1\"", "\"Ordinary title\"", "panel-1", "Ordinary title"
+                "\"\"", "\"\"", "", ""
+                "\"2024-06-01\"", "\"not a timestamp\"", "2024-06-01", "not a timestamp"
+                "\"quote\\\" / \\u6771\\u4eac\"", "\"line\\nfeed &amp;\"", "quote\" / 東京", "line\nfeed &amp;"
+                "null", "null", null, null
+                "42", "12.5", "42", "12.5"
+                "true", "false", "True", "False"
+            ] do
+                for name, json, expected in stringLayouts do
+                    let actual = json |> withIdentity idJson titleJson |> parse
+                    Expect.equal actual (expected (element id title)) $"{name}: preserve existing identity values and surrounding defaults"
+        }
+        test "Deserialization retains object and trailing-content validation" {
+            let _, template, expected = stringLayouts.Head
+            let json = template |> withIdentity "\"panel\"" "\"Panel\""
+            let wanted = expected (element "panel" "Panel")
+            for leading, trailing in ["", ""; " \r\n", " \t\r\n"; "/*leading*/", "/*trailing*/"; "//leading\n", "//trailing\n"] do
+                Expect.equal (parse (leading + json + trailing)) wanted "Whitespace and comments remain accepted"
+            Expect.equal (parse "{}") { Root = None; PopoutWindows = [] } "Empty object retains the empty-layout default"
+            for malformed in [""; " "; "null"; "[]"; "true"; "42"; "\"text\""; "{"; "{\"root\":"; "{} /*unfinished"] do
+                Expect.throwsT<JsonReaderException> (fun () -> parse malformed |> ignore) $"Reject malformed or non-object input: {malformed}"
+            for trailing in ["{}"; "[]"; "true"; "42"; "\"text\""; "garbage"; "/*comment*/ {}"; "//comment\n []"] do
+                Expect.throwsT<JsonReaderException> (fun () -> parse (json + " " + trailing) |> ignore) $"Reject additional content after a valid layout: {trailing}"
+            Expect.throwsT<System.ArgumentNullException> (fun () -> parse null |> ignore) "Null input still rejects"
+        }
+    ]
+
     let private controls = [
         test "Explicit booleans and header positions retain their meaning" {
             Expect.equal (parse fixture) (expectedLayout mainElement) "False options and populated layout must not be replaced by defaults"
@@ -168,5 +244,5 @@ module ``GoldenLayout Json Tests`` =
                 test "Null popout coordinates preserve unrelated geometry and content" {
                     for path, name, _ in windowFields do checkOmission path name "null"
                 }
-            ] @ controls
+            ] @ controls @ strings
         )
