@@ -77,7 +77,7 @@ type OrbitMessage =
 
 
 module OrbitController = 
-    let private sw = System.Diagnostics.Stopwatch.StartNew()
+    let internal sw = System.Diagnostics.Stopwatch.StartNew()
 
     let initial = OrbitState.create V3d.Zero Constant.PiQuarter Constant.PiQuarter 4.0
 
@@ -147,57 +147,56 @@ module OrbitController =
                 match model.lastRender with
                 | Some last -> (now - last)
                 | None -> MicroTime.Zero
-            
+
             let delta = model.speed * dt.TotalSeconds / 0.05
             let part = if dt.TotalSeconds > 0.0 then clamp 0.0 1.0 delta else 0.0
             let model = { model with lastRender = Some now }
 
-            let model = 
-                if abs dpan.Length > 0.0 then
-                    if Fun.IsTiny(dpan.Length, 1E-4) then
-                        OrbitState.withView { model with pan = model.targetPan }
-                    else
-                        OrbitState.withView { model with pan = model.pan + part * dpan }
-                else
-                    model
+            let panChanged = abs dpan.Length > 0.0
+            let phiChanged = abs dphi > 0.0
+            let thetaChanged = abs dtheta > 0.0
+            let radiusChanged = abs dradius > 0.0
+            let centerChanged = dcenter.Length > 0.0
 
-            let model = 
-                if abs dphi > 0.0 then
-                    if Fun.IsTiny(dphi, 1E-4) then
-                        OrbitState.withView { model with phi = model.targetPhi }
+            if panChanged || phiChanged || thetaChanged || radiusChanged || centerChanged then
+                let pan =
+                    if panChanged then
+                        if Fun.IsTiny(dpan.Length, 1E-4) then model.targetPan
+                        else model.pan + part * dpan
                     else
-                        OrbitState.withView { model with phi = model.phi + part * dphi }
-                else
-                    model
+                        model.pan
 
-            let model = 
-                if abs dtheta > 0.0 then
-                    if Fun.IsTiny(dtheta, 1E-4) then
-                        OrbitState.withView { model with theta = model.targetTheta }
+                let phi =
+                    if phiChanged then
+                        if Fun.IsTiny(dphi, 1E-4) then model.targetPhi
+                        else model.phi + part * dphi
                     else
-                        OrbitState.withView { model with theta  = model.theta + part * dtheta }
-                else
-                    model
+                        model.phi
 
-            let model = 
-                if abs dradius > 0.0 then
-                    if Fun.IsTiny(dradius, 1E-4) then
-                        OrbitState.withView { model with _radius = model.targetRadius }
+                let theta =
+                    if thetaChanged then
+                        if Fun.IsTiny(dtheta, 1E-4) then model.targetTheta
+                        else model.theta + part * dtheta
                     else
-                        OrbitState.withView { model with _radius  = model._radius + part * dradius }
-                else
-                    model
+                        model.theta
 
-            let model = 
-                if dcenter.Length > 0.0 then
-                    if Fun.ApproximateEquals(V3d.Zero, dcenter, 1E-4) then
-                        OrbitState.withView { model with center = model.targetCenter }
+                let radius =
+                    if radiusChanged then
+                        if Fun.IsTiny(dradius, 1E-4) then model.targetRadius
+                        else model._radius + part * dradius
                     else
-                        OrbitState.withView { model with center  = model.center + part * dcenter }
-                else
-                    model
+                        model._radius
 
-            model
+                let center =
+                    if centerChanged then
+                        if Fun.ApproximateEquals(V3d.Zero, dcenter, 1E-4) then model.targetCenter
+                        else model.center + part * dcenter
+                    else
+                        model.center
+
+                OrbitState.withView { model with pan = pan; phi = phi; theta = theta; _radius = radius; center = center }
+            else
+                model
 
     let threads (model : OrbitState) = 
         ThreadPool.empty

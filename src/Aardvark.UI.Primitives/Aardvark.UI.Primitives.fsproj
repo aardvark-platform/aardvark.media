@@ -104,6 +104,7 @@
     <None Include="paket.template" />
   </ItemGroup>
   <ItemGroup>
+    <InternalsVisibleTo Include="Aardvark.UI.Tests" />
     <ProjectReference Include="..\Aardvark.UI\Aardvark.UI.fsproj" />
   </ItemGroup>
   <Import Project="..\..\.paket\Paket.Restore.targets" />
