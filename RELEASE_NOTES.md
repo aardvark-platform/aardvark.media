@@ -1,3 +1,4 @@
+- Complete MutableApp registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
 - Release previously compiled child tasks when composite scene compilation fails, preserving the original compilation error even if cleanup also fails
 - Enumerate finite `RenderCommand` sequence inputs once at construction, avoiding lost entries and repeated element side effects
 - Reject malformed vector and color JSON values instead of silently decoding them as zero values
