@@ -7,6 +7,7 @@ open System.Threading
 open System.Collections.Generic
 open System.Collections.Concurrent
 open System.Runtime.InteropServices
+open System.Runtime.ExceptionServices
 open System.Threading.Tasks
 
 open Aardvark.Base
@@ -169,7 +170,9 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
         lock resources (fun _ -> resources.Push resource)
 
     /// Stops update processing and requests cancellation of active commands before disposing registered resources.
-    /// Command workers are not joined and may still be running when this method returns.
+    /// Resources are attempted in reverse registration order even if a disposer fails. Consumed registrations
+    /// are cleared and the cancellation source is disposed before the first resource failure is rethrown.
+    /// The original exception and its stack are preserved. Command workers are not joined and may still be running.
     member _.Dispose() =
         source.Cancel()
 
@@ -180,12 +183,19 @@ type MutableApp<'model, 'mmodel, 'msg>(app: IApp<'model, 'mmodel, 'msg>, unpersi
             currentThreads <- adjustThreads currentThreads ThreadPool.empty
         )
 
-        lock resources (fun _ ->
-            for r in resources do r.Dispose()
-            resources.Clear()
-        )
+        let error =
+            lock resources (fun _ ->
+                let mutable error: ExceptionDispatchInfo = null
+                for r in resources do
+                    try r.Dispose()
+                    with e ->
+                        if isNull error then error <- ExceptionDispatchInfo.Capture e
+                resources.Clear()
+                error
+            )
 
         source.Dispose()
+        if notNull error then error.Throw()
 
     interface IMutableApp<'model, 'msg> with
         member this.Dom = this.Dom

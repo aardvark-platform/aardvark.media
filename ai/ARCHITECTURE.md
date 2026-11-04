@@ -109,7 +109,11 @@ Use `use` to own an app's lifetime. Access its adaptive state through `MutableMo
 Send external messages through `Update` or `UpdateSync` instead of directly editing
 `Model` or the adaptive counterpart. `Dispose()` requests background command cancellation
 but does not join command workers; coordinate their completion separately if they depend
-on the rendering runtime.
+on the rendering runtime. Registered resources are then disposed in reverse registration
+order. A resource failure does not skip the remaining registrations: cleanup clears the
+registrations and disposes the cancellation source before rethrowing the first resource
+exception with its original identity and stack. Earlier cancellation, update-thread joining,
+and command stopping still precede this resource-cleanup stage.
 
 Create the rendering application before the mutable app so it outlives it. Cancel/dispose
 apps and await server shutdown before releasing the rendering runtime. See

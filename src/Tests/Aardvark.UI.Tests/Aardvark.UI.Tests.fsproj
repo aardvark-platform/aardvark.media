@@ -41,6 +41,7 @@
     <Compile Include="DropdownTests.fs" />
     <Compile Include="NumericInputTests.fs" />
     <Compile Include="MutableAppChannelTests.fs" />
+    <Compile Include="MutableAppDisposalTests.fs" />
     <Compile Include="RenderControlConfigTests.fs" />
     <Compile Include="PickTreeTests.fs" />
     <Compile Include="RenderCommandTests.fs" />
