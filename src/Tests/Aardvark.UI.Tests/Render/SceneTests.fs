@@ -382,4 +382,69 @@ module ``Scene Tests`` =
                     fixture.CheckContexts()
                     finish fixture next fresh)
             }
+
+            // An app disposes its runtime right after the app: a destroy the timer already started must be finished when
+            // Dispose returns, or it frees resources of a runtime that is gone.
+            test "Dispose waits for a destroy the timer already started" {
+                use disposing = new System.Threading.ManualResetEventSlim(false)
+                use proceed = new System.Threading.ManualResetEventSlim(false)
+                let task =
+                    new CountedTask(onDispose = fun () ->
+                        disposing.Set()
+                        proceed.Wait())
+                let concrete = new ConcreteScene(Scene.custom (fun _ -> task :> IRenderTask), null)
+                try
+                    let handle = concrete.CreateNewRenderTask()
+                    handle.Dispose()
+                    Expect.isTrue (disposing.Wait(TimeSpan.FromMilliseconds(float Config.sceneDestroyTimeout + 5000.0)))
+                        "The timer starts destroying the released scene"
+                    let disposed = System.Threading.Tasks.Task.Run(fun () -> concrete.Dispose())
+                    Expect.isFalse (disposed.Wait(TimeSpan.FromMilliseconds 500.0)) "Dispose waits while the destroy runs"
+                    proceed.Set()
+                    Expect.isTrue (disposed.Wait(TimeSpan.FromSeconds 5.0)) "Dispose returns once the destroy finished"
+                    Expect.equal task.Disposals 1 "The task is disposed exactly once"
+                finally
+                    proceed.Set()
+                    concrete.Dispose()
+            }
+
+            // A client connecting during a destroy compiles a new task and, leaving again, starts a second destroy while
+            // the first still disposes. Dispose waits for both.
+            test "Dispose waits for every destroy still running, also overlapping ones" {
+                use firstDisposing = new System.Threading.ManualResetEventSlim(false)
+                use secondDisposing = new System.Threading.ManualResetEventSlim(false)
+                use releaseFirst = new System.Threading.ManualResetEventSlim(false)
+                use releaseSecond = new System.Threading.ManualResetEventSlim(false)
+                let tasks = ResizeArray<CountedTask>()
+                let scene =
+                    Scene.custom (fun _ ->
+                        let first = tasks.Count = 0
+                        let task =
+                            new CountedTask(onDispose = fun () ->
+                                if first then
+                                    firstDisposing.Set()
+                                    releaseFirst.Wait()
+                                else
+                                    secondDisposing.Set()
+                                    releaseSecond.Wait())
+                        tasks.Add task
+                        task :> IRenderTask)
+                let concrete = new ConcreteScene(scene, null)
+                let timeout = TimeSpan.FromMilliseconds(float Config.sceneDestroyTimeout + 5000.0)
+                try
+                    concrete.CreateNewRenderTask().Dispose()
+                    Expect.isTrue (firstDisposing.Wait timeout) "The timer starts destroying the first task"
+                    concrete.CreateNewRenderTask().Dispose()
+                    Expect.isTrue (secondDisposing.Wait timeout) "A second destroy starts while the first still runs"
+                    releaseFirst.Set()
+                    let disposed = System.Threading.Tasks.Task.Run(fun () -> concrete.Dispose())
+                    Expect.isFalse (disposed.Wait(TimeSpan.FromMilliseconds 500.0)) "Dispose waits for the second destroy"
+                    releaseSecond.Set()
+                    Expect.isTrue (disposed.Wait(TimeSpan.FromSeconds 5.0)) "Dispose returns once every destroy finished"
+                    Expect.equal [ for task in tasks -> task.Disposals ] [1; 1] "Each task is disposed exactly once"
+                finally
+                    releaseFirst.Set()
+                    releaseSecond.Set()
+                    concrete.Dispose()
+            }
         ]
