@@ -20,6 +20,7 @@
 - [Camera] Reduce Orbit navigation update allocations when multiple camera components move together, preserving interpolation and snapping behavior
 - [Camera] Restore shifted vertical FreeFly camera movement after focus loss without stuck or reversed motion
 - [Primitives] Restore gamepad movement and rotation when a stick is released to neutral and moved in the same direction again
+- [Primitives] Ignore touches outside configured stick areas without errors or losing valid touches in the same batch
 - [Primitives] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
 - [Primitives] Preserve date-shaped GoldenLayout panel IDs and titles verbatim when loading layouts, including timezones and fractional seconds
 - [Primitives] Route GoldenLayout panels to the correct page when IDs contain reserved characters, percent escapes or line breaks

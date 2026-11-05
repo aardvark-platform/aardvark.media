@@ -242,7 +242,7 @@ function initTouchSticks(id, sticks) {
         return cb.cb;
       }
     }
-    return "";
+    return null;
   }
 
   var activeTouches = {};
@@ -251,7 +251,7 @@ function initTouchSticks(id, sticks) {
   function touchstart(tes) {
     for(let te of tes.changedTouches) {
       let cb = getCb(te.clientX,te.clientY);
-      if(!(cb.name in activeTouches)){
+      if(cb && !(cb.name in activeTouches)){
         activeTouches[cb.name] = cb;
         activeIds[te.identifier] = cb.name;
         cb.start(te);
