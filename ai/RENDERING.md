@@ -173,12 +173,69 @@ creates another task on every invocation; GPU and committed memory then grow acr
 loads. Prefer scene-graph composition where possible. Otherwise create a dedicated
 `AdaptiveResource` whose `Create` compiles the task and acquires its output, and whose
 `Destroy` releases the output before disposing the task. Supplying that resource as a
-scene texture lets the render-control acquisition own the offscreen pass.
+scene texture lets the render-control acquisition own the offscreen pass. Constructing the
+resource is lazy; the task is compiled only when the render control acquires it.
+
+```fsharp
+open Aardvark.Base
+open Aardvark.Rendering
+open Aardvark.SceneGraph
+open Aardvark.UI
+open Aardvark.UI.Semantics
+open FSharp.Data.Adaptive
+
+let offscreen
+    (runtime : IRuntime)
+    (signature : IFramebufferSignature)
+    (size : aval<V2i>)
+    (scene : ISg<'msg>)
+    : IAdaptiveResource<ITexture> =
+
+    let mutable state : option<IRenderTask * IAdaptiveResource<IBackendTexture>> = None
+
+    { new AdaptiveResource<ITexture>() with
+        override _.Create() =
+            let task = runtime.CompileRender(signature, scene)
+            try
+                let color = task |> RenderTask.renderToColor size
+                color.Acquire()
+                state <- Some (task, color)
+            with _ ->
+                task.Dispose()
+                reraise()
+
+        override _.Destroy() =
+            match state with
+            | Some (task, color) ->
+                state <- None
+                try color.Release()
+                finally task.Dispose()
+            | None ->
+                ()
+
+        override _.Compute(token, renderToken) =
+            match state with
+            | Some (_, color) ->
+                color.GetValue(token, renderToken) :> ITexture
+            | None ->
+                failwith "offscreen resource is not acquired"
+    } :> IAdaptiveResource<ITexture>
+
+let renderControl camera attributes scene =
+    Incremental.renderControlWithClientValues camera attributes (fun client ->
+        let color =
+            offscreen client.runtime client.signature client.size scene
+            :> aval<ITexture>
+
+        Sg.fullScreenQuad
+        |> Sg.texture "SceneColor" color
+    )
+```
 
 When an offscreen pass must match the actual client or screenshot dimensions, build the
-scene with `Incremental.renderControlWithClientValues` and use its adaptive `size` and
-`signature`. A size stored only in application state may describe the browser viewport but
-not a larger server-side screenshot.
+scene with `Incremental.renderControlWithClientValues` as above and use its adaptive `size`
+and `signature`. A size stored only in application state may describe the browser viewport
+but not a larger server-side screenshot.
 
 `AdaptiveResource.map2` has a static `aval<_>` return type, but its result implements
 `IAdaptiveResource` whenever either input is a resource. The `Acquire()` and `Release()`
