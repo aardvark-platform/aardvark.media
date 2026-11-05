@@ -158,6 +158,28 @@ Sources: [typed scene graphs and events](../src/Aardvark.UI/SceneGraph/SgFSharp.
 [render commands](../src/Aardvark.UI/RenderControl/RenderCommand.fs),
 [render server](../src/Aardvark.UI/RenderServer/RenderServer.fs).
 
+### Resource Lifetime
+
+`ConcreteScene` owns the render-control task: it compiles on first acquisition for a
+scene/framebuffer signature and disposes after the last release and
+`Config.sceneDestroyTimeout`. A task compiled eagerly in view code is not automatically
+owned by that scene. Dispose it explicitly, or tie its creation and disposal to an owning
+adaptive resource. Lifetime propagation through framebuffer/texture outputs, such as
+those from `RenderTask.renderToColor`, does not transfer ownership of the supplied task.
+
+`AdaptiveResource.map2` has a static `aval<_>` return type, but its result implements
+`IAdaptiveResource` whenever either input is a resource. The `Acquire()` and `Release()`
+extensions on `IAdaptiveValue` dispatch to that runtime interface, so resource lifetimes
+still propagate. With two ordinary adaptive values, the result remains an ordinary value.
+
+Use `AdaptiveResource.map` for resource-preserving projections, such as selecting color
+or depth from a resource result. It forwards acquisition/release to the input resource;
+custom projection wrappers are unnecessary.
+
+Sources: [scene task ownership](../src/Aardvark.UI/RenderServer/Scene.fs),
+[AdaptiveResource interfaces, extensions, and combinators](https://github.com/aardvark-platform/aardvark.rendering/blob/master/src/Aardvark.Rendering/Resources/Adaptive/AdaptiveResource.fs),
+[render-to-output lifetime](https://github.com/aardvark-platform/aardvark.rendering/blob/master/src/Aardvark.Rendering/RenderTasks/RenderToExtensions.fs).
+
 ## CEF Integration (Windows)
 
 The Windows integration is based on **CefSharp**, with separate packages/namespaces:

@@ -12,6 +12,7 @@ For build, dependency, and code-generation rules, see [AGENTS.md](../AGENTS.md).
 | Build DOM nodes, adaptive attributes, and events | [UI.md](UI.md) |
 | Host an app with Giraffe or Suave | [RENDERING.md](RENDERING.md#server-setup) |
 | Render and interact with a 3D scene | [RENDERING.md](RENDERING.md#3d-rendering) |
+| Manage render-task and adaptive-resource lifetime | [RENDERING.md](RENDERING.md#resource-lifetime) |
 | Use camera controllers, animations, or UI components | [PRIMITIVES.md](PRIMITIVES.md) |
 | Open native file and folder dialogs | [PRIMITIVES.md](PRIMITIVES.md#dialogs) |
 | Integrate JavaScript and adaptive channels | [ADVANCED.md](ADVANCED.md#channels-and-javascript-events) |
