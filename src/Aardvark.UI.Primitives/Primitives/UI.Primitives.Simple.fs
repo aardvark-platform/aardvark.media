@@ -2,16 +2,12 @@
 
 open FSharp.Data.Adaptive
 open Aardvark.UI
+open System
 
-type EmbeddedResources = EmbeddedResources
-
-module Resources =
-    let toWebPart (http: IHttpBackend<'HttpContext, 'HttpHandler>) = http.assembly typeof<EmbeddedResources>.Assembly
+#nowarn "44"
 
 [<AutoOpen>]
 module Simple =
-    open Microsoft.FSharp.Reflection
-
     let private uniqueClass str = "unique-" + str
 
     let integerInput (name : string) (minValue : int) (maxValue : int) (changed : int -> 'msg) (value : aval<int>) =
@@ -159,6 +155,7 @@ module Simple =
         labeledFloatInput' name minValue maxValue step changed value (AttributeMap.ofList [ clazz "ui small labeled input"; style "width: 60pt"]) (AttributeMap.ofList [ clazz "ui label" ]) 
 
 
+    [<Obsolete>]
     let modal (id : string) (name : string) (ok : 'msg) (attributes : list<string * AttributeValue<'msg>>) (content : list<DomNode<'msg>>) =
         require Html.semui (
             onBoot "$('#__ID__').modal();" (
@@ -173,16 +170,19 @@ module Simple =
             )
         )
 
+    [<Obsolete>]
     let onClickModal (id : string) =
         let clazz = uniqueClass id
         clientEvent "onclick" (sprintf "$('.%s').modal('show');" clazz)
 
+    [<Obsolete>]
     let longString (len : int) (str : string) =
         if str.Length > len then
             str.Substring(0, len - 3) + "..."
         else
             str
 
+    [<Obsolete>]
     let largeTextArea' (changed : string -> 'msg) (value : aval<string>) (attributes : AttributeMap<'msg>) =
 
         let changed =
@@ -212,5 +212,6 @@ module Simple =
 
         require req (Incremental.textarea atts (AVal.constant ""))
 
+    [<Obsolete>]
     let largeTextArea (changed : string -> 'msg) (value : aval<string>) =
         largeTextArea' changed value AttributeMap.empty

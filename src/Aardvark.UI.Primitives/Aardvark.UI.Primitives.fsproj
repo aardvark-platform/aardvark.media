@@ -66,6 +66,7 @@
     <Compile Include="Golden\GoldenLayoutBuilders.fs" />
     <Compile Include="Notifications\NotificationsModel.fs" />
     <Compile Include="Notifications\Notifications.fs" />
+    <Compile Include="Resources.fs" />
     <Compile Include="Docking.fs" />
     <EmbeddedResource Include="resources\fomantic\themes\default\**">
       <LogicalName>resources\fomantic\themes\default\%(RecursiveDir)%(Filename)%(Extension)</LogicalName>
