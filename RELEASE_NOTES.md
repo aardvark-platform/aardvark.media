@@ -1,4 +1,5 @@
-- Complete MutableApp registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
+### 5.7.8
+- Complete `MutableApp` registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
 - Release previously compiled child tasks when composite scene compilation fails, preserving the original compilation error even if cleanup also fails
 - Enumerate finite `RenderCommand` sequence inputs once at construction, avoiding lost entries and repeated element side effects
 - Reject malformed vector and color JSON values instead of silently decoding them as zero values
@@ -19,7 +20,7 @@
 - [Camera] Preserve ArcBall sensitivity, pan and zoom settings when focus is lost
 - [Camera] Reduce Orbit navigation update allocations when multiple camera components move together, preserving interpolation and snapping behavior
 - [Camera] Restore shifted vertical FreeFly camera movement after focus loss without stuck or reversed motion
-- [Canera] Correct orbit-camera elevation targeting without changing azimuth
+- [Camera] Correct orbit-camera elevation targeting without changing azimuth
 - [Primitives] Restore gamepad movement and rotation when a stick is released to neutral and moved in the same direction again
 - [Primitives] Ignore touches outside configured stick areas without errors or losing valid touches in the same batch
 - [Primitives] Keep map-backed dropdown options and selections synchronized when keys are removed or option content is replaced, including non-comparable and equally ranked keys
