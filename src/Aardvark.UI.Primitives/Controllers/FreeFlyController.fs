@@ -86,32 +86,20 @@ module FreeFlyController =
         static member Zero = { dWorldPos = V3d.Zero; dPos = V3d.Zero; dRot = V3d.Zero; dWorldForward = V3d.Zero; dWorldUp = V3d.Zero; dMoveSpeed = 0.0; dZoom = 0.0; dPan = V2d.Zero; dDolly = 0.0 }
 
         static member (+) (cam : CameraView, motion : CameraMotion) =
-            let cam = 
-                cam.WithLocation(
-                    cam.Location +
-                    motion.dPos.X * cam.Right +
-                    motion.dPos.Y * cam.Sky +
-                    motion.dPos.Z * cam.Forward
-                )
+            let location =
+                cam.Location +
+                motion.dPos.X * cam.Right +
+                motion.dPos.Y * cam.Sky +
+                motion.dPos.Z * cam.Forward
 
-            let cam = 
-                cam.WithLocation(
-                    cam.Location +
-                    motion.dPan.X * cam.Right  +
-                    motion.dPan.Y * cam.Up 
-                )
-            
-            let cam =
-                cam.WithLocation(
-                    cam.Location +
-                    motion.dDolly * cam.Forward
-                )
+            let location =
+                location +
+                motion.dPan.X * cam.Right +
+                motion.dPan.Y * cam.Up
 
-            let cam =
-                cam.WithLocation(
-                    cam.Location +
-                    motion.dZoom * cam.Forward
-                )
+            let location = location + motion.dDolly * cam.Forward
+            let location = location + motion.dZoom * cam.Forward
+            let cam = cam.WithLocation location
             
             let cam =
                 let trafo =

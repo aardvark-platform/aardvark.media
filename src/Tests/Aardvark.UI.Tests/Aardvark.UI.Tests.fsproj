@@ -37,6 +37,7 @@
     <Compile Include="Primitives\Animation\AnimatorTests.fs" />
     <Compile Include="Primitives\Animation\PrimitivesTests.fs" />
     <Compile Include="Primitives\Camera\CameraUtilitiesTests.fs" />
+    <Compile Include="Primitives\Camera\FreeFlyMotionTests.fs" />
     <Compile Include="Primitives\Camera\FreeFlyRotationTests.fs" />
     <Compile Include="Primitives\Camera\FreeFlyJumpTests.fs" />
     <Compile Include="Primitives\Camera\FreeFlyPitchLimitTests.fs" />
