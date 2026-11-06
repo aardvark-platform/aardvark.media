@@ -33,6 +33,14 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
 
     let values = RenderClientValues(signature)
 
+    // Destroys disposing their task outside the lock, and an event set while there are none. Dispose waits for it: an
+    // app disposes its runtime right after the app, and a destroy still running on the timer's thread would then free
+    // resources of a runtime that is gone ("cannot use disposed ContextHandle"). The disposal stays outside the lock, so
+    // a client connecting meanwhile compiles its task without waiting; if it leaves again, a second destroy can overlap
+    // the first, hence a count.
+    let mutable destroying = 0
+    let idle = new ManualResetEventSlim(true)
+
     let destroy _ =
         let deadTask =
             lock this (fun () ->
@@ -40,6 +48,8 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
                     match task with
                     | Some t ->
                         task <- None
+                        destroying <- destroying + 1
+                        idle.Reset()
                         Some t
                     | None ->
                         None
@@ -48,7 +58,13 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
             )
 
         match deadTask with
-        | Some t -> t.Dispose()
+        | Some t ->
+            try t.Dispose()
+            finally
+                lock this (fun () ->
+                    destroying <- destroying - 1
+                    if destroying = 0 then idle.Set()
+                )
         | None -> ()
 
     let timer = new Timer(TimerCallback(destroy), null, Timeout.Infinite, Timeout.Infinite)
@@ -109,6 +125,9 @@ and internal ConcreteScene(scene: Scene, signature: IFramebufferSignature) as th
                 timer.Change(Timeout.Infinite, Timeout.Infinite) |> ignore
                 destroy()
         )
+
+        // Destroys the timer started before may still be disposing their tasks.
+        idle.Wait()
 
     interface IDisposable with
         member this.Dispose() = this.Dispose()
