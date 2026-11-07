@@ -47,13 +47,17 @@ module ``Channel Extensions`` =
         inherit ChannelReader()
 
         let mutable reader = s.GetReader()
+        let mutable pending = HashSetDelta.empty
 
         override x.Release() =
             reader <- Unchecked.defaultof<_>
+            pending <- HashSetDelta.empty
 
         override x.ComputeMessages t =
-            let ops = reader.GetChanges t
-            ops |> HashSetDelta.toList |> List.map Pickler.json.PickleToString
+            pending <- HashSetDelta.combine pending (reader.GetChanges t)
+            let messages = pending |> HashSetDelta.toList |> List.map Pickler.json.PickleToString
+            pending <- HashSetDelta.empty
+            messages
 
     type private AValChannel<'a>(m : aval<'a>) =
         inherit Channel()
