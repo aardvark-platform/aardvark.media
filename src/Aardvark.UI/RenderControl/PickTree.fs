@@ -18,8 +18,8 @@ type PickTree<'msg>(sg: ISg<'msg>) =
             | _ -> ASet.empty
         )
 
-    let mutable last = None
-    let entered = System.Collections.Generic.HashSet<_>()
+    let mutable entered = HashMap.empty
+    let mutable enterOrder = []
 
     static let intersectLeaf (_: SceneEventKind) (part: RayPart) (obj: PickObject) =
         let pickable = obj.Pickable |> AVal.force
@@ -35,9 +35,12 @@ type PickTree<'msg>(sg: ISg<'msg>) =
         let intersections = bvh.IntersectionsV(intersectLeaf evt.kind, evt.globalRay)
         use e = intersections.GetEnumerator()
 
-        let rec run (evt: SceneEvent) (seen: HashSet<ISceneHitProcessor<'msg>>) (contEnter: bool) =
-            //let topLevel = HSet.isEmpty seen
+        let oldEntered = entered
+        let oldOrder = enterOrder
+        entered <- HashMap.empty
+        enterOrder <- []
 
+        let rec run (evt: SceneEvent) (seen: HashSet<ISceneHitProcessor<'msg>>) (contEnter: bool) =
             if e.MoveNext() then
                 let hit = e.Current
                 let proc = hit.Value
@@ -48,61 +51,36 @@ type PickTree<'msg>(sg: ISg<'msg>) =
                     let cont, msgs =
                         proc.Process { event = evt; rayT = hit.T }
 
-                    // rethink this stuff
-
                     let cc, msgs =
-                        if Some proc <> last && contEnter then
-                            let l = last
-                            let cc,enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T }
-                            entered.Add proc |> ignore
-                            if not cc then
-                                //last <- Some proc
-                                false, seq {
-                                    match l with
-                                    | Some l ->
-                                        let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = hit.T }
-                                        yield! leaves
-                                    | None ->
-                                        ()
-
-                                    yield! enters
-                                    yield! msgs
-                                }
-                            else
-                                //last <- Some proc
-                                true, seq { yield! enters; yield! msgs }
+                        if contEnter then
+                            let cc, msgs =
+                                match HashMap.tryFindV proc oldEntered with
+                                | ValueSome cc -> cc, msgs
+                                | ValueNone ->
+                                    let cc, enters = proc.Process { event = { evt with evtKind = SceneEventKind.Enter }; rayT = hit.T }
+                                    cc, seq { yield! enters; yield! msgs }
+                            entered <- HashMap.add proc cc entered
+                            enterOrder <- proc :: enterOrder
+                            cc, msgs
                         else
-                            entered.Add proc |> ignore
-                            true, msgs
+                            false, msgs
 
                     if cont then
                         let consumed, rest = run evt (HashSet.add proc seen) cc
                         consumed, Seq.append msgs rest
                     else
                         true, msgs
-
             else
-                match last with
-                | Some l when contEnter ->
-                    if entered.Contains l then false, Seq.empty
-                    else
-                        last <- None
-                        let _,leaves = l.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 }
-                        false, leaves
-                | _ ->
-                    false, Seq.empty
-
-        let oldEntered = entered |> Aardvark.Base.HashSet.toList
-        entered.Clear()
+                false, Seq.empty
 
         let c, msgs = run evt HashSet.empty true
 
         let leaves =
             seq {
-                for o in oldEntered do
-                    if entered.Contains o then ()
+                for o in oldOrder do
+                    if HashMap.containsKey o entered then ()
                     else
-                        let _,msgs =  o.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 }
+                        let _, msgs = o.Process { event = { evt with evtKind = SceneEventKind.Leave }; rayT = -1.0 }
                         yield! msgs
             }
         c, seq { yield! leaves; yield! msgs }
