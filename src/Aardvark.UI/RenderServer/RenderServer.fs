@@ -207,7 +207,7 @@ type internal RenderClient(app: IMutableApp, createInfo: RenderClientCreateInfo)
                         running <- false
 
                     | WebSocketOpCode.Ping ->
-                        do! createInfo.socket.SendPong cancellationToken
+                        do! createInfo.socket.Send(WebSocketOpCode.Pong, data.AsSpan().ToArray(), cancellationToken)
 
                     | _ ->
                         Log.warn $"[Client] {id}: Unexpected message {message}"

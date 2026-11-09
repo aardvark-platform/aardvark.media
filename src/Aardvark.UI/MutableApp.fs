@@ -582,7 +582,7 @@ module MutableApp =
                                 Volatile.Write(&running, false)
 
                             | WebSocketOpCode.Ping ->
-                                do! socket.SendPong cancellationToken
+                                do! socket.Send(WebSocketOpCode.Pong, data.AsSpan().ToArray(), cancellationToken)
 
                             | _ ->
                                 Log.warn $"[Media] Unexpected event message: {message}"
