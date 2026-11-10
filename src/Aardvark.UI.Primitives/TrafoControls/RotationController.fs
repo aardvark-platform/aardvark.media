@@ -101,7 +101,11 @@ module RotationController =
                   | Some { offset = _; axis = axis; hit = hit } ->
                     let h, p = intersect rp (axis |> Axis.toCircle Config.radius)
                     if h && (not hit.IsNaN) then                         
-                        let rotation = Rot3d.RotateInto(hit.Normalized, p.Normalized)
+                        let rotationAxis = Axis.toV3d axis
+                        let from = hit.Normalized
+                        let into = p.Normalized
+                        let angle = atan2 (Vec.Dot(rotationAxis, Vec.Cross(from, into))) (Vec.Dot(from, into))
+                        let rotation = Rot3d.Rotation(rotationAxis, angle)
                         let workingPose = { m.workingPose with rotation = rotation } 
 
                         let _,preview = applyWorkingRotation workingPose m
