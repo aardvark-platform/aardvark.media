@@ -1,3 +1,5 @@
+- Keep half-turn rotation drags around the selected handle axis in local and global modes; zero-length hit directions consistently leave the existing rotation intact
+
 ### 5.7.8
 - Complete `MutableApp` registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
 - Release previously compiled child tasks when composite scene compilation fails, preserving the original compilation error even if cleanup also fails

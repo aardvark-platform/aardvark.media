@@ -11,17 +11,34 @@ module ``RotationController Tests`` =
     let private cases =
         let h = sqrt 0.5
         let s = sqrt 3.0 / 2.0
-        let axes = [
-            Axis.X, V3d.XAxis, V3d.YAxis,
-                [Math.PI / 4.0, V3d(0.0, h, h); -Math.PI / 3.0, V3d(0.0, 0.5, -s)]
-            Axis.Y, V3d.YAxis, V3d.ZAxis,
-                [Math.PI / 4.0, V3d(h, 0.0, h); -Math.PI / 3.0, V3d(-s, 0.0, 0.5)]
-            Axis.Z, V3d.ZAxis, V3d.XAxis,
-                [Math.PI / 4.0, V3d(h, h, 0.0); -Math.PI / 3.0, V3d(0.5, -s, 0.0)]
+        // Explicit right-handed ring coordinates, independent of Axis.toV3d and RotateInto.
+        let rings = [
+            Axis.X, V3d.XAxis, (fun x y -> V3d(0.0, x, y))
+            Axis.Y, V3d.YAxis, (fun x y -> V3d(y, 0.0, x))
+            Axis.Z, V3d.ZAxis, (fun x y -> V3d(x, y, 0.0))
+        ]
+        let angles = [
+            yield Math.PI / 4.0, h, h
+            yield -Math.PI / 3.0, 0.5, -s
+            yield Math.PI, -1.0, 0.0
+            yield -Math.PI, -1.0, 0.0
+            for epsilon in [1e-3; 1e-7] do
+                for angle in [Math.PI - epsilon; -Math.PI + epsilon] do
+                    yield angle, cos angle, sin angle
+            // A move after the half turns must still be measured from the original Grab.
+            yield 0.37, cos 0.37, sin 0.37
         ]
         [for mode in [TrafoMode.Global; TrafoMode.Local] do
-            for axis, normal, start, targets in axes do
-                yield $"{axis}, {mode}", mode, axis, normal, start, targets]
+            for axis, normal, point in rings do
+                for x, y in [1.0, 0.0; 0.0, 1.0; 0.6, 0.8; -0.8, 0.6; 0.5, -0.5] do
+                    let start = point x y
+                    for finalAngle in [Math.PI; -Math.PI] do
+                        let targets = [
+                            for angle, c, s in angles do
+                                yield angle, point (c * x - s * y) (s * x + c * y)
+                            yield finalAngle, -start
+                        ]
+                        yield $"{axis}, {mode}, start {start}, release {finalAngle}", mode, axis, normal, start, targets]
 
     let private rayAt (normal : V3d) (point : V3d) =
         RayPart(FastRay3d(Ray3d(point + 2.0 * normal, -normal)), 0.0, 10.0)
@@ -50,12 +67,15 @@ module ``RotationController Tests`` =
 
     let private checkTrafo context (expected : Trafo3d) (actual : Trafo3d) =
         for point in [V3d.Zero; V3d.XAxis; V3d.YAxis; V3d.ZAxis; V3d(-1.5, 2.0, 0.25)] do
-            Expect.isLessThan (Vec.Distance(actual.Forward.TransformPos point, expected.Forward.TransformPos point))
-                1e-10 $"{context}: forward transform at {point}"
-            Expect.isLessThan (Vec.Distance(actual.Backward.TransformPos point, expected.Backward.TransformPos point))
-                1e-10 $"{context}: inverse transform at {point}"
+            let forward = Vec.Distance(actual.Forward.TransformPos point, expected.Forward.TransformPos point)
+            let backward = Vec.Distance(actual.Backward.TransformPos point, expected.Backward.TransformPos point)
+            Expect.isTrue (Double.IsFinite forward && Double.IsFinite backward) $"{context}: finite transforms"
+            Expect.isLessThan forward 1e-10 $"{context}: forward transform at {point}"
+            Expect.isLessThan backward 1e-10 $"{context}: inverse transform at {point}"
 
-    let private checkRotation context expected actual =
+    let private checkRotation context expected (actual : Rot3d) =
+        let norm = actual.W * actual.W + actual.X * actual.X + actual.Y * actual.Y + actual.Z * actual.Z
+        Expect.isTrue (Double.IsFinite norm && abs (norm - 1.0) < 1e-12) $"{context}: unit quaternion"
         checkTrafo context (Trafo3d.Rotation expected) (Trafo3d.Rotation actual)
 
     let private drag mode axis normal start targets =
@@ -88,7 +108,9 @@ module ``RotationController Tests`` =
                         Expect.equal moved.grabbed grabbed.grabbed $"{context}: original grab is retained"
                         Expect.equal (moved.mode, moved.hovered, moved.scale) (original.mode, original.hovered, original.scale)
                             $"{context}: mode, hover and handle scale are retained"
-                        checkRotation $"{context}: rotation from original hit" (Rot3d.Rotation(normal, angle)) moved.workingPose.rotation
+                        checkRotation $"{context}, angle {angle}: rotation from original hit" (Rot3d.Rotation(normal, angle)) moved.workingPose.rotation
+                        let selectedAxis = (Trafo3d.Rotation moved.workingPose.rotation).Forward.TransformDir normal
+                        Expect.isLessThan (Vec.Distance(selectedAxis, normal)) 1e-10 $"{context}: selected axis stays fixed"
                         Expect.equal moved.workingPose.position V3d.Zero $"{context}: working translation"
                         Expect.equal moved.workingPose.scale V3d.III $"{context}: working scale"
             }
@@ -113,6 +135,32 @@ module ``RotationController Tests`` =
                         $"{context}: Release retains non-drag state"
                     Expect.isTrue (obj.ReferenceEquals(released, RotationController.updateController released TrafoController.Release))
                         $"{context}: repeated Release is a no-op"
+            }
+
+            test "zero hit directions retain identity and allow subsequent drag moves" {
+                for context, mode, axis, normal, start, targets in cases do
+                    let original = initial mode
+                    for from, target in [V3d.Zero, start; start, V3d.Zero; V3d.Zero, V3d.Zero] do
+                        let grabbed = RotationController.updateController original (TrafoController.Grab(rayAt normal from, axis))
+                        let moved = RotationController.updateController grabbed (TrafoController.MoveRay(rayAt normal target))
+                        checkRotation $"{context}: zero direction" Rot3d.Identity moved.workingPose.rotation
+                        checkTrafo $"{context}: zero-direction preview" original.previewTrafo moved.previewTrafo
+                        let released = RotationController.updateController moved TrafoController.Release
+                        checkTrafo $"{context}: zero-direction release" original.previewTrafo released.previewTrafo
+                        checkRotation $"{context}: zero-direction committed rotation" original.pose.rotation released.pose.rotation
+                        Expect.equal released.pose original.pose $"{context}: zero direction cannot commit a rotation"
+                    let _, grabbed, moves = drag mode axis normal start targets
+                    let _, halfTurn = List.last moves
+                    let missed = RotationController.updateController halfTurn (TrafoController.MoveRay(missedRay normal start))
+                    Expect.isTrue (obj.ReferenceEquals(halfTurn, missed)) $"{context}: a miss after a half turn retains the drag"
+                    let zero = RotationController.updateController missed (TrafoController.MoveRay(rayAt normal V3d.Zero))
+                    checkRotation $"{context}: zero resets a previous working rotation" Rot3d.Identity zero.workingPose.rotation
+                    let angle, target = List.head targets
+                    let continued = RotationController.updateController zero (TrafoController.MoveRay(rayAt normal target))
+                    Expect.equal continued.grabbed grabbed.grabbed $"{context}: zero and missed moves retain the original Grab"
+                    Expect.equal continued.pose original.pose $"{context}: continued drag is still uncommitted"
+                    checkRotation $"{context}: continued rotation" (Rot3d.Rotation(normal, angle)) continued.workingPose.rotation
+                    checkTrafo $"{context}: continued preview" (expectedTrafo mode normal angle original.pose) continued.previewTrafo
             }
 
             test "ungrabbed moves, missed intersections and NaN grabs cannot change the pose" {
