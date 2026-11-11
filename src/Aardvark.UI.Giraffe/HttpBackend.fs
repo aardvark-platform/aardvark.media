@@ -2,6 +2,7 @@
 
 open System
 open System.IO
+open System.Buffers
 open System.Threading
 open System.Threading.Tasks
 open System.Net.WebSockets
@@ -222,6 +223,31 @@ type HttpBackend private () =
                                 let env = ctx.GetWebHostEnvironment()
                                 Path.Combine(env.ContentRootPath, filePath)
 
-                        let! data = File.ReadAllBytesAsync filePath
-                        return! ctx.WriteBytesAsync data
+                        use file = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 1,
+                                                  FileOptions.Asynchronous ||| FileOptions.SequentialScan)
+                        let length = file.Length
+                        match ctx.Response.StatusCode with
+                        | status when (status >= 100 && status < 200) || status = 204 ||
+                                      (ctx.Request.Method = "CONNECT" && status >= 200 && status < 300) -> ()
+                        | 205 -> ctx.Response.ContentLength <- Nullable 0L
+                        | _ -> ctx.Response.ContentLength <- Nullable length
+
+                        let cancellationToken = ctx.RequestAborted
+                        cancellationToken.ThrowIfCancellationRequested()
+                        if length = 0L then
+                            do! ctx.Response.Body.WriteAsync(ReadOnlyMemory<byte>.Empty, cancellationToken)
+                        else
+                            let buffer = ArrayPool<byte>.Shared.Rent(int (min length 65536L))
+                            try
+                                let mutable remaining = length
+                                while remaining > 0L do
+                                    let count = int (min remaining 65536L)
+                                    let! count = file.ReadAsync(buffer.AsMemory(0, count), cancellationToken)
+                                    if count = 0 then
+                                        raise (EndOfStreamException("File ended before the announced response length."))
+                                    do! ctx.Response.Body.WriteAsync(ReadOnlyMemory(buffer, 0, count), cancellationToken)
+                                    remaining <- remaining - int64 count
+                            finally
+                                ArrayPool<byte>.Shared.Return buffer
+                        return Some ctx
                     }
