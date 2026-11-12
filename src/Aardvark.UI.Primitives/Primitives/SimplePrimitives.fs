@@ -283,7 +283,8 @@ module SimplePrimitives =
                 String.concat ";" [
                     match cfg.regex with
                     | Some rx ->
-                        yield "var validate = function(a) { if(/" + rx + "/.test(a)) { return a; } else { return null; }};"
+                        yield "var regex = new RegExp(\"" + System.Web.HttpUtility.JavaScriptStringEncode(rx) + "\");"
+                        yield "var validate = function(a) { if(regex.test(a)) { return a; } else { return null; }};"
                     | None ->
                         yield "var validate = function(a) { return a };"
 

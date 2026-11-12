@@ -66,8 +66,19 @@ jobs:
         if: runner.os == 'Windows'
         run: msbuild src\Aardvark.Cef.Process.Core\Aardvark.Cef.Process.Core.vcxproj /p:Configuration=Release /p:Platform=x64
 
+      - name: Install Chromium
+        if: runner.os == 'Linux'
+        id: chrome
+        uses: browser-actions/setup-chrome@v2
+
+      - name: Check Chromium
+        if: runner.os == 'Linux'
+        run: test -x '${{ steps.chrome.outputs.chrome-path }}'
+
       - name: Build
         run: dotnet build -c Release ${{ matrix.sln }}
 
       - name: Test
+        env:
+          AARDVARK_CHROMIUM: ${{ steps.chrome.outputs.chrome-path }}
         run: dotnet test ${{ matrix.sln }} -c Release --no-build --nologo --logger:"console;verbosity=normal"

@@ -50,6 +50,7 @@
     <Compile Include="Primitives\Golden\GoldenLayoutBuilderTests.fs" />
     <Compile Include="Primitives\DropdownTests.fs" />
     <Compile Include="Primitives\NumericInputTests.fs" />
+    <Compile Include="Primitives\TextboxTests.fs" />
     <Compile Include="Primitives\MultiselectTests.fs" />
     <Compile Include="App\MutableAppChannelTests.fs" />
     <Compile Include="App\MutableAppDisposalTests.fs" />
@@ -57,6 +58,7 @@
     <Content Include="test_file.txt" CopyToOutputDirectory="Always" />
     <EmbeddedResource Include="embedded_file.txt" />
     <EmbeddedResource Include="embedded_file_incorrect.txt" LogicalName="embedded_file_incorrect.txt" />
+    <EmbeddedResource Include="Resources\textbox-browser.js" />
     <EmbeddedResource Include="Resources\embedded_resource_1.txt" />
     <EmbeddedResource Include="Resources\embedded_resource_2.txt" LogicalName="RESOURCES\embedded_resource_2.md" />
   </ItemGroup>
