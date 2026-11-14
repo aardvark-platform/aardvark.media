@@ -1,3 +1,5 @@
+- Reject invalid integrator step caps and non-finite intervals before application callbacks, avoiding non-terminating subdivision and infinite steps; positive-infinity caps and finite zero or negative intervals remain supported
+
 ### 5.7.8
 - Complete `MutableApp` registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
 - Release previously compiled child tasks when composite scene compilation fails, preserving the original compilation error even if cleanup also fails

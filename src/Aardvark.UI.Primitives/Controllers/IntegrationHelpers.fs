@@ -123,8 +123,28 @@ module Integrator =
     let inline euler (f : ^t -> ^a -> ^da) (y0 : ^a) (h : ^t) : ^a=
         y0 + h * f LanguagePrimitives.GenericZero y0
 
-    let rec integrate (maxDt : float) (f : 'm -> float -> 'm) (m0 : 'm) (dt : float) =
+    let rec private integrateUnchecked (maxDt : float) (f : 'm -> float -> 'm) (m0 : 'm) (dt : float) =
         if dt <= maxDt then
             f m0 dt
         else
-            integrate maxDt f (f m0 maxDt) (dt - maxDt) 
+            integrateUnchecked maxDt f (f m0 maxDt) (dt - maxDt)
+
+    /// <summary>Integrates an interval by threading the model through ordered steps.</summary>
+    /// <param name="maxDt">A positive step cap; positive infinity is allowed.</param>
+    /// <param name="f">The step callback; its exceptions propagate unchanged.</param>
+    /// <param name="m0">The initial model.</param>
+    /// <param name="dt">A finite interval. Zero and negative intervals use a single step.</param>
+    /// <exception cref="T:System.ArgumentException">
+    /// The cap is nonpositive or NaN, the interval is non-finite, or subdivision cannot
+    /// advance because subtracting the cap leaves the interval unchanged. Validation
+    /// completes before any step callback runs.
+    /// </exception>
+    let integrate (maxDt : float) (f : 'm -> float -> 'm) (m0 : 'm) (dt : float) =
+        if not (maxDt > 0.0) then
+            invalidArg (nameof maxDt) "Maximum step must be positive and not NaN."
+        if Double.IsNaN dt || Double.IsInfinity dt then
+            invalidArg (nameof dt) "Time interval must be finite."
+        if dt > maxDt && dt - maxDt = dt then
+            invalidArg (nameof maxDt) "Maximum step is too small to advance the time interval."
+
+        integrateUnchecked maxDt f m0 dt
