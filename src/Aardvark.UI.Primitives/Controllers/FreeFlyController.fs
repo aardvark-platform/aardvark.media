@@ -332,6 +332,8 @@ module FreeFlyController =
                 { model with 
                     lastTime = None
                     moveVec = V3d.Zero
+                    upSpeed = 0.0
+                    downSpeed = 0.0
                     dragStart = V2i.Zero
                     look = false; zoom = false; pan = false                    
                     forward = false; backward = false; left = false; right = false; upward = false; downward = false
