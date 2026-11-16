@@ -22,7 +22,7 @@ module TouchStick =
             let configs =
                 configs |> List.map (fun cfg ->
                     sprintf "{name:'%s',minx:%f,maxx:%f,miny:%f,maxy:%f,maxr:%f}"
-                        cfg.name
+                        (System.Web.HttpUtility.JavaScriptStringEncode cfg.name)
                         cfg.area.Min.X
                         cfg.area.Max.X
                         cfg.area.Min.Y
