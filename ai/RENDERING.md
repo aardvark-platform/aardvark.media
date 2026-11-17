@@ -51,8 +51,12 @@ address does not provide access control.
 | GPU JPEG compression | `MutableApp.toWebPart' runtime useGpuCompression app` | Same arguments |
 
 Both backends take a lifetime token rather than exposing a standalone `Server.stop` call.
-A canceled Suave task may report
-`OperationCanceledException` when awaited; distinguish expected cancellation from server faults.
+Suave's `start` and `startLocalhost` wait synchronously for listening readiness. The supplied
+lifetime token also cancels that wait, raising `OperationCanceledException` from the startup
+call rather than returning a server task. Content enumeration remains synchronous; cancellation
+is observed when the readiness wait is reached, not by interrupting enumeration.
+After readiness, the returned task still represents server lifetime. A canceled Suave task may
+report `OperationCanceledException` when awaited; distinguish expected cancellation from server faults.
 `Aardvark.UI.Server.getFreeTcpPort IPAddress.Loopback` can discover a free port, but does not
 reserve it between discovery and server startup.
 

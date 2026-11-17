@@ -1,3 +1,5 @@
+- Let Suave server startup observe lifetime cancellation while waiting for listening readiness, avoiding a blocked start when cancellation prevents the worker from running
+
 ### 5.7.8
 - Complete `MutableApp` registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
 - Release previously compiled child tasks when composite scene compilation fails, preserving the original compilation error even if cleanup also fails

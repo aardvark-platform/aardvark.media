@@ -37,7 +37,8 @@ module Server =
             HttpBinding.create protocol address (uint16 url.Port)
 
     /// <summary>
-    /// Starts the web server and runs asynchronously until the server is fully shut down.
+    /// Starts the web server, waiting synchronously until it listens or the lifetime token is canceled.
+    /// On readiness, returns a task that completes when the server is fully shut down.
     /// </summary>
     /// <param name="url">The hosting URL and port configuration (e.g., http://0.0.0.0:5000).</param>
     /// <param name="cancellationToken">
@@ -60,12 +61,13 @@ module Server =
         let task = Async.StartAsTask(start, cancellationToken = cancellationToken)
 
         // wait for the server to start listening
-        listening |> Async.RunSynchronously |> ignore
+        Async.RunSynchronously(listening, cancellationToken = cancellationToken) |> ignore
 
         task
 
     /// <summary>
-    /// Starts the web server locally on the specified port and runs asynchronously until the server is fully shut down.
+    /// Starts the web server locally, waiting synchronously until it listens or the lifetime token is canceled.
+    /// On readiness, returns a task that completes when the server is fully shut down.
     /// </summary>
     /// <param name="port">The local port number to bind the server to (e.g., 8080).</param>
     /// <param name="cancellationToken">
