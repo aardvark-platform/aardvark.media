@@ -20,6 +20,7 @@
   <ItemGroup>
     <Compile Include="Utilities\JsonConverterTests.fs" />
     <Compile Include="Core\TestServer.fs" />
+    <Compile Include="Core\ServerTests.fs" />
     <Compile Include="Core\HttpBackendTests.fs" />
     <Compile Include="Core\WebSocketTests.fs" />
     <Compile Include="Core\WebSocketFramesTests.fs" />
