@@ -1298,9 +1298,239 @@ module ``Groups Tests`` =
                     Expect.equal instance.Position (LocalTime.ofSeconds 0.1) "Raw public position"
             }
 
+    module private Batches =
+
+        let shapes = ["sequential"; "map2"; "map3"; "nested-map2"; "nested-sequential"; "zero-tail"]
+        let private kinds = [EventType.Start; EventType.Progress; EventType.Finalize; EventType.Stop]
+        let private p v = EventType.Progress, [v]
+        let private s v = EventType.Start, [v]
+        let private f v = [p v; EventType.Finalize, [v]]
+        let private create shape mode =
+            let events = ResizeArray<string * EventType * float list>()
+            let watch name values (animation : IAnimation<unit, 'T>) =
+                (animation, kinds) ||> List.fold (fun a kind ->
+                    a |> Animation.onEvent kind (fun _ v m -> events.Add(name,kind,values v); m))
+            let leaf name offset scale duration =
+                Animation.create (fun t -> offset + scale * t) |> Animation.seconds duration |> watch name List.singleton
+            let a duration = leaf "A" 10.0 4.0 duration
+            let b duration = leaf "B" 100.0 8.0 duration
+            let c duration = leaf "C" 1000.0 16.0 duration
+            let definition =
+                match shape with
+                | "sequential" -> Animation.sequential [a 0.5; b 0.5] |> Animation.map List.singleton
+                | "map2" -> Animation.map2 (fun a b -> [a;b]) (a 1.0) (b 0.5)
+                | "map3" -> Animation.map3 (fun a b c -> [a;b;c]) (a 1.0) (b 0.5) (c 1.0)
+                | "nested-map2" ->
+                    let inner = Animation.sequential [a 0.5;b 0.5] |> watch "Inner" List.singleton
+                    Animation.map2 (fun i c -> [i;c]) inner (c 1.0)
+                | "nested-sequential" ->
+                    let inner = Animation.map2 (+) (a 0.5) (b 0.5) |> watch "Inner" List.singleton
+                    Animation.sequential [inner;c 0.5] |> Animation.map List.singleton
+                | "zero-tail" -> Animation.sequential [a 1.0;b 0.0] |> Animation.map List.singleton
+                | _ -> failwith "Unknown shape"
+            let definition =
+                match mode with
+                | 1 -> definition |> Animation.ease (Easing.In EasingFunction.Quadratic)
+                | 2 -> definition |> Animation.loopN LoopMode.Mirror 2
+                | _ -> definition
+            (definition |> watch "Parent" id).Create(Symbol.Create "Batch"), events
+
+        // Literal independent values at raw quarter/three-quarter/end positions.
+        let private values shape eased =
+            match shape, eased with
+            | "sequential", false -> [10.0], [12.0], [104.0], [108.0]
+            | "sequential", true -> [10.0], [10.5], [101.0], [108.0]
+            | "map2", false -> [10.0;100.0], [11.0;104.0], [13.0;108.0], [14.0;108.0]
+            | "map2", true -> [10.0;100.0], [10.25;101.0], [12.25;108.0], [14.0;108.0]
+            | "map3", false -> [10.0;100.0;1000.0], [11.0;104.0;1004.0], [13.0;108.0;1012.0], [14.0;108.0;1016.0]
+            | "map3", true -> [10.0;100.0;1000.0], [10.25;101.0;1001.0], [12.25;108.0;1009.0], [14.0;108.0;1016.0]
+            | "nested-map2", false -> [10.0;1000.0], [12.0;1004.0], [104.0;1012.0], [108.0;1016.0]
+            | "nested-map2", true -> [10.0;1000.0], [10.5;1001.0], [101.0;1009.0], [108.0;1016.0]
+            | "nested-sequential", false -> [110.0], [116.0], [1008.0], [1016.0]
+            | "nested-sequential", true -> [110.0], [111.5], [1002.0], [1016.0]
+            | "zero-tail", false -> [10.0], [11.0], [13.0], [108.0]
+            | "zero-tail", true -> [10.0], [10.25], [12.25], [108.0]
+            | _ -> failwith "Unknown values"
+        let private actor name events =
+            events |> Seq.choose (fun (n,k,v) -> if n=name then Some(k,v) else None) |> Seq.toList
+        let private terminal (instance : IAnimationInstance<unit, float list>) (events : ResizeArray<string * EventType * float list>) position value =
+            Expect.equal instance.State State.Finished "Terminal composite state"
+            Expect.equal instance.Position (LocalTime.ofSeconds position) "Raw terminal position"
+            Expect.equal instance.Value value "Terminal retained value"
+            Expect.isFalse instance.OutOfDate "Queued actions drained"
+            let count = events.Count
+            instance.Commit((),GlobalTime.zero) |> ignore
+            instance.Update(LocalTime.ofSeconds position,true)
+            instance.Commit((),GlobalTime.zero) |> ignore
+            Expect.equal events.Count count "Empty commits and repeated final updates do not duplicate notifications"
+            Expect.isFalse instance.OutOfDate "Repeated final update drains"
+        let private children shape running =
+            let beginAt v = if running then [] else [s v]
+            let ordinaryA = beginAt 10.0 @ (if running then [p 11.0;p 13.0] else []) @ f 14.0
+            let ordinaryB = beginAt 100.0 @ (if running then [p 104.0] else []) @ f 108.0
+            let ordinaryC = beginAt 1000.0 @ (if running then [p 1004.0;p 1012.0] else []) @ f 1016.0
+            let serialA = beginAt 10.0 @ (if running then [p 12.0] else []) @ f 14.0
+            let serialB = [s 100.0;p 100.0] @ (if running then [p 104.0] else []) @ f 108.0
+            match shape with
+            | "sequential" -> ["A",serialA;"B",serialB]
+            | "map2" -> ["A",ordinaryA;"B",ordinaryB]
+            | "map3" -> ["A",ordinaryA;"B",ordinaryB;"C",ordinaryC]
+            | "nested-map2" -> ["A",serialA;"B",serialB;"C",ordinaryC;"Inner",beginAt 10.0 @ (if running then [p 12.0;p 104.0] else []) @ f 108.0]
+            | "nested-sequential" ->
+                ["A",serialA;"B",beginAt 100.0 @ (if running then [p 104.0] else []) @ f 108.0;
+                 "Inner",beginAt 110.0 @ (if running then [p 116.0] else []) @ f 122.0;
+                 "C",[s 1000.0;p 1000.0] @ (if running then [p 1008.0] else []) @ f 1016.0]
+            | "zero-tail" -> ["A",ordinaryA;"B",[s 108.0] @ f 108.0]
+            | _ -> failwith "Unknown children"
+        let matrix check =
+            let failures = [ for shape in shapes do
+                                try check shape
+                                with error -> yield shape + ": " + error.Message ]
+            Expect.isEmpty failures (String.concat "\n" failures)
+
+        let queued running shape =
+            let instance, events = create shape 0
+            let first,quarter,later,last = values shape false
+            if running then instance.Start(); instance.Commit((),GlobalTime.zero) |> ignore; events.Clear()
+            let before = instance.State, instance.Position, instance.Value
+            if not running then instance.Start()
+            else
+                instance.Update(LocalTime.ofSeconds 0.25,false)
+                instance.Update(LocalTime.ofSeconds 0.75,false)
+            instance.Update(LocalTime.ofSeconds 1.0,true)
+            Expect.isEmpty events "Perform defers every child and parent callback"
+            Expect.equal (instance.State,instance.Position,instance.Value) before "Perform does not commit state or values"
+            Expect.isTrue instance.OutOfDate "Performed actions remain queued"
+            instance.Commit((),GlobalTime.zero) |> ignore
+            let expected = (if running then [EventType.Progress,quarter;EventType.Progress,later] else [EventType.Start,first]) @ [EventType.Progress,last;EventType.Finalize,last]
+            Expect.equal (actor "Parent" events) expected "Each parent event captures its corresponding child values"
+            for name,wanted in children shape running do Expect.equal (actor name events) wanted $"{name}: exact child Progress/Finalize lifecycle"
+            let order = events |> Seq.map (fun (n,_,_) -> n) |> Seq.toList
+            let firstParent = order |> List.findIndex ((=) "Parent")
+            Expect.isTrue (order |> List.skip firstParent |> List.forall ((=) "Parent")) "All child callbacks precede deferred parent callbacks"
+            terminal instance events 1.0 last
+
+        let controls batch mode shape =
+            let instance, events = create shape mode
+            let first,quarter,later,last = values shape (mode=1)
+            instance.Start(); instance.Commit((),GlobalTime.zero) |> ignore; events.Clear()
+            let times = if mode=2 then [0.25,false;0.75,false;1.0,false;1.75,false;2.0,true] else [0.25,false;0.75,false;1.0,true]
+            for time,finalize in times do
+                instance.Update(LocalTime.ofSeconds time,finalize)
+                if not batch then instance.Commit((),GlobalTime.zero) |> ignore
+            if batch then
+                Expect.isEmpty events "Even mirrored and eased batches defer callbacks"
+                instance.Commit((),GlobalTime.zero) |> ignore
+            let parentValues = if mode=2 then [quarter;later;last;quarter;first] else [quarter;later;last]
+            let expected = (parentValues |> List.map (fun v -> EventType.Progress,v)) @ [EventType.Finalize,List.last parentValues]
+            Expect.equal (actor "Parent" events) expected "Literal single-action/eased/mirrored snapshots"
+            terminal instance events (if mode=2 then 2.0 else 1.0) (List.last parentValues)
+            events |> Seq.toList
+
+        let restart shape =
+            let instance, events = create shape 0
+            let first,quarter,_,last = values shape false
+            instance.Start(); instance.Commit((),GlobalTime.zero) |> ignore
+            instance.Update(LocalTime.ofSeconds 0.25,false); instance.Commit((),GlobalTime.zero) |> ignore
+            events.Clear()
+            instance.Stop(); instance.Start(); instance.Update(LocalTime.ofSeconds 0.25,false); instance.Update(LocalTime.ofSeconds 1.0,true)
+            Expect.isEmpty events "Stop/restart callbacks also defer until Commit"
+            instance.Commit((),GlobalTime.zero) |> ignore
+            Expect.equal (actor "Parent" events) [EventType.Stop,first;EventType.Start,first;EventType.Progress,quarter;EventType.Progress,last;EventType.Finalize,last]
+                "Stop/reset/restart actions observe preceding queued state"
+            for name,_ in children shape true do
+                Expect.equal (actor name events |> List.filter (fst >> (=) EventType.Finalize) |> List.length) 1 $"{name}: restarted child finalizes exactly once"
+            terminal instance events 1.0 last
+
+        let callbackControls () =
+            let events = ResizeArray<EventType * float>()
+            let mutable instance = Unchecked.defaultof<IAnimationInstance<unit,float>>
+            let a = Animation.create id |> Animation.seconds 1.0
+                    |> Animation.onProgress (fun _ _ m -> instance.Pause(); m)
+            let b = Animation.create id |> Animation.seconds 1.0
+            let group = Animation.map2 (+) a b
+                        |> Animation.onProgress (fun _ v m -> events.Add(EventType.Progress,v); m)
+                        |> Animation.onPause (fun _ v m -> events.Add(EventType.Pause,v); m)
+            instance <- group.Create(Symbol.Create "Callback")
+            instance.Start(); instance.Commit((),GlobalTime.zero) |> ignore
+            instance.Update(LocalTime.ofSeconds 0.25,false)
+            Expect.isEmpty events "Child callbacks must not run in Perform"
+            instance.Commit((),GlobalTime.zero) |> ignore
+            Expect.sequenceEqual events [EventType.Progress,0.5;EventType.Pause,0.5] "Child-enqueued parent action follows the current update"
+            Expect.isTrue instance.IsPaused "Child-enqueued Pause is committed"
+            Expect.isFalse instance.OutOfDate "Child-enqueued actions drain"
+
+            let failure = System.Exception "parent progress failure"
+            let mutable finalizes = 0
+            let child : IAnimation<int,float> = Animation.create id |> Animation.seconds 1.0
+            let group = Animation.map2 (+) child child
+                        |> Animation.onProgress (fun _ _ _ -> raise failure)
+                        |> Animation.onFinalize (fun _ v m ->
+                            Expect.equal v 2.0 "Pending finalize retains its value"
+                            finalizes <- finalizes+1; m+1)
+            let failed = group.Create(Symbol.Create "Recovery")
+            failed.Start(); failed.Commit(0,GlobalTime.zero) |> ignore
+            failed.Update(LocalTime.ofSeconds 1.0,true)
+            let observed = try failed.Commit(0,GlobalTime.zero) |> ignore; None with e -> Some e
+            Expect.isTrue (observed |> Option.exists (fun e -> obj.ReferenceEquals(e,failure))) "Preserve callback exception identity"
+            Expect.isFalse failed.OutOfDate "Parent actions drain before callback delivery"
+            Expect.equal (failed.Commit(10,GlobalTime.zero)) 11 "Action-free Commit drains pending notification using incoming model"
+            Expect.equal (failed.Commit(20,GlobalTime.zero)) 20 "Pending notification is delivered only once"
+            Expect.equal finalizes 1 "Finalize survives the earlier callback failure"
+
+        let modelEffects batch =
+            let log = ResizeArray<string * float list * int>()
+            let child name offset scale duration transform =
+                Animation.create (fun t -> offset+scale*t) |> Animation.seconds duration
+                |> Animation.onProgress (fun _ value model -> log.Add(name,[value],model); transform model)
+            let group = Animation.map2' (fun model a b -> [float model;a;b])
+                            (child "A" 10.0 4.0 1.0 ((+) 1)) (child "B" 100.0 8.0 0.5 ((*) 10))
+                        |> Animation.onProgress (fun _ value model -> log.Add("Parent",value,model); model+100)
+            let instance = group.Create(Symbol.Create "Effects")
+            let mutable model = 1
+            instance.Start(); model <- instance.Commit(model,GlobalTime.zero)
+            for time in [0.25;0.75;1.0] do
+                instance.Update(LocalTime.ofSeconds time,(time=1.0))
+                if not batch then model <- instance.Commit(model,GlobalTime.zero)
+            if batch then
+                Expect.isEmpty log "Batched model effects are deferred"
+                model <- instance.Commit(model,GlobalTime.zero)
+            let expected =
+                if batch then ["A",[11.0],1;"B",[104.0],2;"A",[13.0],20;"B",[108.0],21;"A",[14.0],210;
+                               "Parent",[20.0;11.0;104.0],211;"Parent",[210.0;13.0;108.0],311;"Parent",[211.0;14.0;108.0],411]
+                else ["A",[11.0],1;"B",[104.0],2;"Parent",[20.0;11.0;104.0],20;
+                      "A",[13.0],120;"B",[108.0],121;"Parent",[1210.0;13.0;108.0],1210;
+                      "A",[14.0],1310;"Parent",[1311.0;14.0;108.0],1311]
+            Expect.sequenceEqual log expected "Child model effects reach each snapshot before parent notification effects"
+            Expect.equal model (if batch then 511 else 1411) "Deferred parent effects compose in event order"
+            Expect.equal instance.Value (if batch then [211.0;14.0;108.0] else [1311.0;14.0;108.0]) "Evaluation precedes parent notification"
+            Expect.isTrue instance.IsFinished "Model-dependent composite finishes"
+            Expect.isFalse instance.OutOfDate "Model-dependent actions drain"
+
     [<Tests>]
     let tests =
         testList "Primitives.Animation.Groups" [
+            testList "Batches" [
+                test "Start and final Update in one Commit retain all snapshots" { Batches.matrix (Batches.queued false) }
+                test "Queued running updates retain child progress and completion" { Batches.matrix (Batches.queued true) }
+                test "Boundary crossing and queued Stop restart preserve lifecycle" { Batches.matrix Batches.restart }
+                test "Ordinary single-action easing and zero-duration controls remain unchanged" {
+                    Batches.matrix (fun shape -> for mode in [0;1] do Batches.controls false mode shape |> ignore)
+                    Batches.modelEffects false
+                    Batches.callbackControls()
+                }
+                test "Batched easing mirror and child-before-parent model effects retain snapshots" {
+                    Batches.matrix (fun shape ->
+                        for mode in [0;1;2] do
+                            let single = Batches.controls false mode shape
+                            let batch = Batches.controls true mode shape
+                            for name in ["A";"B";"C";"Inner";"Parent"] do
+                                let events trace = trace |> List.filter (fun (n,_,_) -> n=name)
+                                Expect.equal (events batch) (events single) $"{name}: batched and single-action lifecycle")
+                    Batches.modelEffects true
+                }
+            ]
+
             testList "Sequential" [
                 Sequential.progress
                 Sequential.startFrom

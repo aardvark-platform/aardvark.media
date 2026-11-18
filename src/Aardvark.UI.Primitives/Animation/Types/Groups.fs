@@ -100,3 +100,33 @@ module internal Groups =
 
         | _ ->
             ()
+
+    /// Advance children and parent together, retaining a value snapshot for each queued action.
+    let commit (members : #IAnimationInstance<'Model>[]) (segments : Segment[])
+               (evaluate : 'Model -> LocalTime -> 'Value) model tick observable
+               (group : AbstractAnimationInstance<'Model, 'Value, 'Definition>) =
+        let mutable result = model
+        let evaluateAction time = evaluate result time
+        let commitMembers () =
+            for memberAnimation in members do
+                result <- memberAnimation.Commit(result, tick)
+
+        let machine = group.StateMachine
+        if machine.Actions.Count = 0 then
+            // Still drain child notifications left pending by an earlier callback failure.
+            commitMembers()
+
+        let mutable index = 0
+        while index < machine.Actions.Count do
+            let action = machine.Actions.[index]
+            let innerAction = applyDistanceTimeToAction action group
+            for i = 0 to members.Length - 1 do
+                members.[i] |> perform segments.[i] innerAction group
+            commitMembers()
+            StateMachine.processAction evaluateAction action tick group.EventQueue machine
+            index <- index + 1
+        machine.Actions.Clear()
+
+        // Parent observers remain deferred until every child action has been committed.
+        Observable.notify observable group.Name group.EventQueue &result
+        result
