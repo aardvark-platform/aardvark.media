@@ -27,7 +27,7 @@ type internal StateMachine<'Value> =
 [<CompilationRepresentation(CompilationRepresentationFlags.ModuleSuffix)>]
 module internal StateMachine =
 
-    let private processAction (evaluate : LocalTime -> 'Value) (action : Action) (tick : GlobalTime) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>)  =
+    let processAction (evaluate : LocalTime -> 'Value) (action : Action) (tick : GlobalTime) (queue : EventQueue<'Value>) (machine : StateMachine<'Value>)  =
         match action with
         | Action.Stop ->
             match machine.State with

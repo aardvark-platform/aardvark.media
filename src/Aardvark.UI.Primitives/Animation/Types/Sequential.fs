@@ -8,32 +8,15 @@ type internal SequentialGroupInstance<'Model, 'Value>(name : Symbol, definition 
     let members = definition.Members.Data |> Array.map _.Create(name)
     let segments = definition.Members.Segments
 
-    let evaluate t =
+    let evaluate (_ : 'Model) t =
         let i = definition.FindMemberIndex(t)
         members.[i].Value
 
     override x.Perform(action) =
-        let innerAction = Groups.applyDistanceTimeToAction action x
-
-        for i = 0 to members.Length - 1 do
-            members.[i] |> Groups.perform segments.[i] innerAction x
-
         StateMachine.enqueue action x.StateMachine
 
     override x.Commit(model, tick) =
-        // Commit members
-        let mutable result =
-            (model, members) ||> Array.fold (fun model animation ->
-                animation.Commit(model, tick)
-            )
-
-        // Process all actions, from oldest to newest
-        StateMachine.run evaluate tick x.EventQueue x.StateMachine
-
-        // Notify observers about changes
-        Observable.notify x.Definition.Observable x.Name x.EventQueue &result
-
-        result
+        Groups.commit members segments evaluate model tick definition.Observable x
 
 
 and internal SequentialGroupMembers<'Model, 'Value>(members : IAnimation<'Model, 'Value>[]) =
