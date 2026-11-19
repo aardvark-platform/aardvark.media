@@ -6,6 +6,8 @@ open System.Net
 open System.Net.WebSockets
 open System.Text
 open System.Threading
+open System.Threading.Tasks
+open Microsoft.AspNetCore.Http
 open Aardvark.Base
 open Aardvark.UI
 open System.Net.Http
@@ -19,6 +21,174 @@ module ``HttpBackend Tests`` =
 
     type JsonOutput =
         { Count : int }
+
+    module private BodyUtf8 =
+        let cases = [
+            "empty", [||], ""
+            "Unicode", Encoding.UTF8.GetBytes "hé π 東京 🦊", "hé π 東京 🦊"
+            "BOM", [|0xEFuy;0xBBuy;0xBFuy;0x41uy|], "\uFEFFA"
+            "repeated BOM", [|0xEFuy;0xBBuy;0xBFuy;0xEFuy;0xBBuy;0xBFuy|], "\uFEFF\uFEFF"
+            "NUL", [|65uy;0uy;66uy;0uy|], "A\000B\000"
+            "line endings", Encoding.UTF8.GetBytes "a\r\nb\rc\n", "a\r\nb\rc\n"
+            "invalid", [|65uy;0xFFuy;66uy;0xC0uy;0xAFuy;67uy|], "A\uFFFDB\uFFFD\uFFFDC"
+            "truncated", [|97uy;0xF0uy;0x9Fuy;0xA6uy|], "a\uFFFD"
+            "stray continuation", [|0x80uy;0xBFuy|], "\uFFFD\uFFFD"
+            "UTF16 BOM is not detected", [|0xFFuy;0xFEuy;65uy;0uy|], "\uFFFD\uFFFDA\000"
+        ]
+        let private timeout = TimeSpan.FromSeconds 5.0
+        let private request (body : Stream) =
+            { new IHttpRequest with
+                member _.Path = "/"
+                member _.Method = "POST"
+                member _.Body = body
+                member _.Header _ = None
+                member _.Headers = Map.empty
+                member _.QueryParam _ = None
+                member _.QueryParams = Map.empty }
+
+        type private AsyncBody(data : byte[], chunk : int, blocked : bool, failure : (exn * bool) option) =
+            inherit Stream()
+            let entered = TaskCompletionSource<unit>(TaskCreationOptions.RunContinuationsAsynchronously)
+            let release = TaskCompletionSource<unit>(TaskCreationOptions.RunContinuationsAsynchronously)
+            let mutable position = 0
+            let mutable reads = 0
+            let mutable syncReads = 0
+            let mutable disposed = false
+            let mutable eof = false
+            let mutable destination : Stream = null
+            do if not blocked then release.SetResult()
+            let synchronousFailure () =
+                match failure with Some(error,true) when position>0 -> raise error | _ -> ()
+            let read (buffer : Memory<byte>) = task {
+                reads <- reads+1
+                entered.TrySetResult() |> ignore
+                do! release.Task
+                match failure with Some(error,_) when position>0 -> raise error | _ -> ()
+                let count = min chunk (min buffer.Length (data.Length-position))
+                data.AsMemory(position,count).CopyTo buffer
+                position <- position+count
+                if count=0 then eof <- true
+                return count
+            }
+            member _.Entered = entered.Task
+            member _.Release() = release.TrySetResult() |> ignore
+            member _.Reads = reads
+            member _.SyncReads = syncReads
+            member _.Disposed = disposed
+            member _.Eof = eof
+            member _.Destination = destination
+            override _.CanRead = not disposed
+            override _.CanWrite = false
+            override _.CanSeek = false
+            override _.Length = failwith "Non-seekable body length"
+            override _.Position with get() = failwith "Non-seekable body position" and set _ = failwith "Non-seekable body position"
+            override _.Flush() = failwith "Unexpected flush"
+            override _.Seek(_,_) = failwith "Unexpected seek"
+            override _.SetLength _ = failwith "Unexpected SetLength"
+            override _.Write(_,_,_) = failwith "Unexpected write"
+            override _.Read(_,_,_) = syncReads <- syncReads+1; failwith "Synchronous body reads are forbidden"
+            override _.ReadAsync(buffer,offset,count,_) = synchronousFailure(); read (buffer.AsMemory(offset,count))
+            override _.ReadAsync(buffer : Memory<byte>,_) = synchronousFailure(); ValueTask<int>(read buffer)
+            override this.CopyToAsync(target,bufferSize,token) =
+                destination <- target
+                base.CopyToAsync(target,bufferSize,token)
+            override _.Dispose(disposing) = disposed <- true; release.TrySetResult() |> ignore; base.Dispose(disposing)
+
+        let decode () =
+            for name,data,expected in cases do
+                use input = new MemoryStream(Array.concat [[|99uy;98uy|];data;[|97uy|]],2,data.Length,false,true)
+                let req = request input
+                Expect.equal (req.BodyUtf8.GetAwaiter().GetResult()) expected $"{name}: exact UTF-8 decoding including BOM/fallback"
+                Expect.equal input.Position input.Length "Read through EOF from input origin"
+                Expect.equal (req.BodyUtf8.GetAwaiter().GetResult()) "" "Repeated read at EOF is empty"
+                Expect.isTrue input.CanRead "Caller still owns seekable stream"
+                input.Position <- 0L
+                Expect.sequenceEqual (req.BodyData.GetAwaiter().GetResult()) data "Byte reads remain exact"
+                for chunk in [1;3] do
+                    use stream = new AsyncBody(data,chunk,false,None)
+                    let req = request stream
+                    Expect.equal (req.BodyUtf8.WaitAsync(timeout).GetAwaiter().GetResult()) expected $"{name}: chunked async-only UTF-8"
+                    Expect.equal (req.BodyUtf8.WaitAsync(timeout).GetAwaiter().GetResult()) "" "Nonseekable repeated read at EOF"
+                    Expect.equal stream.SyncReads 0 "Never read synchronously"
+                    Expect.isFalse stream.Disposed "Caller still owns nonseekable stream"
+            use suffix = new MemoryStream(Encoding.UTF8.GetBytes "skip\uFEFFtail\000")
+            suffix.Position <- 4L
+            let req = request suffix
+            Expect.equal (req.BodyUtf8.GetAwaiter().GetResult()) "\uFEFFtail\000" "Start at current position, retain later BOM and NUL"
+            suffix.Position <- suffix.Length
+            Expect.equal (req.BodyUtf8.GetAwaiter().GetResult()) "" "Explicit EOF is empty"
+
+        let lifecycle () =
+            let failures = ResizeArray<string>()
+            for binding in [false;true] do
+                for fault in 0..(if binding then 3 else 2) do
+                    let error = IOException $"read/mapper sentinel {binding}/{fault}"
+                    let readFailure = if fault=1 || fault=2 then Some((error :> exn),(fault=1)) else None
+                    use input = new AsyncBody(Encoding.UTF8.GetBytes "\uFEFFhé\000\r\n",1,true,readFailure)
+                    let mutable maps = 0
+                    let mutable handlers = 0
+                    let mutable mapped = ""
+                    let work : Task =
+                        if not binding then (request input).BodyUtf8 :> Task
+                        else
+                            let http = Giraffe.HttpBackend.Instance
+                            let handler = http.bindBody (fun (body : string) ->
+                                maps <- maps+1
+                                Expect.isTrue input.Eof "Mapper runs only after complete asynchronous input"
+                                Expect.isFalse input.Disposed "Mapper does not take ownership of request stream"
+                                mapped <- body
+                                if fault=3 then raise error
+                                fun _ context -> handlers <- handlers+1; Task.FromResult(Some context))
+                            Expect.equal input.Reads 0 "Constructing a binding does not access the request"
+                            let context = DefaultHttpContext()
+                            context.Request.Body <- input
+                            handler (fun _ -> failwith "Unexpected downstream handler") context :> Task
+                    try
+                        Expect.isTrue (input.Entered.Wait timeout) "First actual ReadAsync is reached"
+                        Expect.isFalse work.IsCompleted "Read stays incomplete while input is gated"
+                        Expect.equal maps 0 "Mapper is deferred while reading"
+                        input.Release()
+                        let actual = try work.WaitAsync(timeout).GetAwaiter().GetResult(); None with e -> Some e
+                        if fault=1 || fault=2 || (binding && fault=3) then
+                            Expect.isTrue (actual |> Option.exists (fun e -> obj.ReferenceEquals(e,error))) "Read and mapper exception identity is preserved"
+                        else Expect.isNone actual "Successful asynchronous read"
+                        Expect.equal maps (if binding && fault<>1 && fault<>2 then 1 else 0) "Mapper runs once on success, never on read failure"
+                        Expect.equal handlers (if binding && fault=0 then 1 else 0) "Mapped handler follows successful mapper only"
+                        if binding && (fault=0 || fault=3) then Expect.equal mapped "\uFEFFhé\000\r\n" "Mapper receives exact decoded content"
+                        Expect.isFalse input.Disposed "Request stream remains caller-owned after success or failure"
+                        Expect.equal input.SyncReads 0 "Read failures do not trigger synchronous fallback"
+                        if input.Destination.CanWrite then failures.Add $"{binding}/{fault}: owned copy stream was not disposed"
+                    finally
+                        input.Release()
+                        try work.WaitAsync(timeout).GetAwaiter().GetResult() with _ -> ()
+            Expect.isEmpty failures (String.concat "\n" failures)
+
+        // Setup, assertions and input allocation stay outside the measured completed calls.
+        let private allocation (input : MemoryStream) (req : IHttpRequest) =
+            let mutable best = Int64.MaxValue
+            let mutable retained = ""
+            for _ in 1..3 do
+                input.Position <- 0L
+                let before = GC.GetAllocatedBytesForCurrentThread()
+                retained <- req.BodyUtf8.GetAwaiter().GetResult()
+                best <- min best (GC.GetAllocatedBytesForCurrentThread()-before)
+            GC.KeepAlive retained
+            best,retained
+        let boundedAllocation () =
+            let data = Array.create (2*1024*1024+17) 65uy
+            use input = new MemoryStream(data,false)
+            let allocated,text = allocation input (request input)
+            Expect.equal text.Length data.Length "Entire ASCII body is decoded"
+            Expect.isTrue (text |> Seq.forall ((=) 'A')) "Decoded result is consumed and correct"
+            Expect.isTrue input.CanRead "Input remains owned by caller"
+            let budget = 3L*int64 data.Length+65536L
+            Expect.isLessThanOrEqual allocated budget $"Completed BodyUtf8 read allocated {allocated} B; budget {budget} B"
+
+        let tests = testList "BodyUtf8" [
+            test "Literal decoding current position and repeated async reads remain unchanged" { decode() }
+            test "Async ownership errors and string mapper ordering remain intact" { lifecycle() }
+            test "Large completed ASCII reads avoid a second byte copy" { boundedAllocation() }
+        ]
 
     module private MethodFilters =
         let private standardMethods = ["DELETE"; "GET"; "HEAD"; "OPTIONS"; "PATCH"; "POST"; "PUT"; "TRACE"]
@@ -170,6 +340,7 @@ module ``HttpBackend Tests`` =
             http.route    "/method"         >=> http.request (_.Method >> http.text)
             http.routef   "/path/%s"        (fun _ -> http.request (_.Path >> http.text))
             http.route    "/body"           >=> http.bindBody (http.text: byte[] -> _)
+            http.route    "/body-utf8"      >=> http.bindBody (http.text: string -> _)
             http.route    "/send"           >=> http.sendFile "test_file.txt"
             http.route    "/send-bytes"     >=> sendFile
             http.route    "/json"           >=> http.mapJson (fun (input: JsonInput) -> { Count = input.Count })
@@ -411,6 +582,15 @@ module ``HttpBackend Tests`` =
             let result = r.Content.ReadAsStringAsync().Result
             Expect.equal result "Foobar" "Unexpected result"
 
+        let bodyUtf8 (client: HttpClient) (server: TestServer) =
+            for name,data,expected in BodyUtf8.cases do
+                for path,wanted in ["body-utf8",Encoding.UTF8.GetBytes expected;"body",data] do
+                    use content = new ByteArrayContent(data)
+                    use response = client.PostAsync($"http://{server.Host}/{path}",content,server.CancellationToken).GetAwaiter().GetResult()
+                    Expect.equal response.StatusCode HttpStatusCode.OK $"{name}: string/byte binding status"
+                    // Read response bytes so HttpClient cannot silently strip a retained BOM.
+                    Expect.sequenceEqual (response.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult()) wanted $"{name}: exact string/byte binding result"
+
         let sendFile (client: HttpClient) (server: TestServer) =
             let r = client.GetAsync($"http://{server.Host}/send").Result
             Expect.equal r.StatusCode HttpStatusCode.OK "Unexpected status code"
@@ -638,6 +818,7 @@ module ``HttpBackend Tests`` =
                 "Method filters",     Cases.methodFilters
                 "Path",               Cases.path
                 "Body",               Cases.body
+                "UTF-8 body binding", Cases.bodyUtf8
                 "Send file",          Cases.sendFile
                 "Send file bytes",    Cases.sendFileBytes System.Net.Http.HttpMethod.Get
                 "Send file HEAD",     Cases.sendFileBytes System.Net.Http.HttpMethod.Head
@@ -673,6 +854,7 @@ module ``HttpBackend Tests`` =
             |> testList server.Name
 
         testList "Core.HttpBackend" [
+            BodyUtf8.tests
             createTests true
             createTests false
         ]
