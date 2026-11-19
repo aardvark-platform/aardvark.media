@@ -65,8 +65,9 @@ module ``IHttpBackend Extensions`` =
 
         member this.BodyUtf8 =
             task {
-                let! data = this.BodyData
-                return Encoding.UTF8.GetString data
+                use ms = new MemoryStream()
+                do! this.Body.CopyToAsync ms
+                return Encoding.UTF8.GetString(ms.GetBuffer(), 0, int ms.Length)
             }
 
         member this.Route =
@@ -189,7 +190,12 @@ module ``IHttpBackend Extensions`` =
             )
 
         member this.bindBody (mapping: string -> 'HttpHandler) =
-            this.bindBody (Encoding.UTF8.GetString >> mapping)
+            this.request (fun r ->
+                this.async <| task {
+                    let! body = r.BodyUtf8
+                    return mapping body
+                }
+            )
 
         member this.bindJson (mapping: 'T -> 'HttpHandler) =
             this.bindBody (Pickler.json.UnPickle >> mapping)
