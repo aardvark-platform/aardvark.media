@@ -178,7 +178,120 @@ module ``Primitives Tests`` =
                     Expect.equal spline.Samples [| 0.0; 1.0 |] "Invalid interior distances do not cause endless subdivision"
             }
 
+    module private PathInputs =
+
+        let cases a b c zero tiny = [|
+            "singleton", [| a |]
+            "equal pair", [| a; a |]
+            "leading duplicate", [| a; a; b; c |]
+            "interior duplicate", [| a; b; b; c |]
+            "trailing duplicate", [| a; b; c; c |]
+            "all repeated", [| a; a; a; a |]
+            "ordinary", [| a; b; c |]
+            "tiny distinct", [| zero; tiny |]
+        |]
+
+        let floats = cases 3.0 7.0 12.0 0.0 (Epsilon * Epsilon * 0.5)
+        let vectors =
+            cases (V3d(1.0, 2.0, 3.0)) (V3d(5.0, -2.0, 7.0)) (V3d(-3.0, 6.0, 2.0))
+                V3d.Zero (V3d(Epsilon * Epsilon * 0.5, 0.0, 0.0))
+
+        let parameters = [| 0.0; 0.125; 0.25; 0.5; 0.75; 0.875; 1.0 |]
+
+        let checkSplines create distance interpolate replacement cases =
+            let failures = ResizeArray<string>()
+            let check expected actual message =
+                if actual <> expected then failures.Add message
+
+            for name, original in cases do
+                let input = Array.copy original
+                let splines : Splines.Spline<_>[] = create input
+                let values = splines |> Array.map (fun s -> parameters |> Array.map s.Evaluate)
+                let lengths = splines |> Array.map _.Length
+                let samples = splines |> Array.map _.Samples
+                Expect.hasLength splines (max 1 (original.Length - 1)) $"{name}: segment count"
+                for i = 0 to splines.Length - 1 do
+                    let finish = min (i + 1) (original.Length - 1)
+                    Expect.isLessThanOrEqual (distance values.[i].[0] original.[i]) 1e-12 $"{name}: original start"
+                    Expect.isLessThanOrEqual (distance (Array.last values.[i]) original.[finish]) 1e-12 $"{name}: original end"
+                    if original.[i] = original.[finish] then
+                        Expect.equal values.[i] (Array.create parameters.Length original.[i]) $"{name}: literal constant"
+                        Expect.equal lengths.[i] 0.0 $"{name}: zero length"
+                        Expect.equal samples.[i] [| 0.0; 1.0 |] $"{name}: no subdivision"
+                    elif name = "tiny distinct" then
+                        Expect.isGreaterThan lengths.[i] 0.0 "Distinct subthreshold endpoints retain their chord"
+                        Expect.equal samples.[i] [| 0.0; 1.0 |] "Tiny distinct points keep linear fallback"
+                        Expect.equal values.[i] (parameters |> Array.map (interpolate original.[i] original.[finish]))
+                            "Tiny distinct points retain linear interior values"
+
+                // Replace every entry, including entries used by ordinary neighbors.
+                Array.fill input 0 input.Length replacement
+                for i = 0 to splines.Length - 1 do
+                    check values.[i] (parameters |> Array.map splines.[i].Evaluate) $"{name}/{i}: values changed"
+                    check lengths.[i] splines.[i].Length $"{name}/{i}: length changed"
+                    check samples.[i] splines.[i].Samples $"{name}/{i}: samples changed"
+                    if i + 1 < splines.Length then
+                        if distance (splines.[i].Evaluate 1.0) (splines.[i + 1].Evaluate 0.0) > 1e-12 then
+                            failures.Add $"{name}/{i}: join disconnected"
+            Expect.isEmpty failures (String.concat "; " failures)
+
+        let checkAnimations createSegments createPath replacement cases =
+            let failures = ResizeArray<string>()
+            for name, original in cases do
+                // Definitions are constructed before any replacement, not recreated on a tick.
+                let input = Array.copy original
+                let expectedSegments : IAnimation<unit, _>[] = createSegments original
+                let actualSegments = createSegments input
+                let expectedPath : IAnimation<unit, _> = createPath original
+                let actualPath = createPath input
+                Array.fill input 0 input.Length replacement
+                Expect.hasLength actualSegments expectedSegments.Length $"{name}: public segment count"
+
+                for index, (expected, actual) in Array.indexed (Array.append (Array.zip expectedSegments actualSegments) [| expectedPath, actualPath |]) do
+                    let run (definition : IAnimation<unit, _>) =
+                        let events, tracked = Animation.trackEvents definition
+                        let instance = tracked.Create (Sym.ofString "CapturedPath")
+                        let states = ResizeArray()
+                        let commit action =
+                            instance.Perform action
+                            instance.Commit((), GlobalTime.zero)
+                            states.Add(instance.Value, instance.State, instance.Position, instance.OutOfDate)
+                        commit (Action.Start LocalTime.zero)
+                        for t in parameters do
+                            commit (Action.Update(LocalTime.ofSeconds (t * definition.Duration.TotalSeconds), t = 1.0))
+                        let count = events.Count
+                        instance.Commit((), GlobalTime.zero)
+                        instance.Commit((), GlobalTime.zero)
+                        Expect.equal events.Count count $"{name}/{index}: drained notifications remain drained"
+                        Expect.isTrue instance.IsFinished $"{name}/{index}: completes"
+                        Expect.equal (events |> Seq.filter (fun (e, _) -> e = EventType.Start) |> Seq.length) 1 $"{name}/{index}: starts once"
+                        Expect.equal (events |> Seq.filter (fun (e, _) -> e = EventType.Finalize) |> Seq.length) 1 $"{name}/{index}: finalizes once"
+                        Seq.toList states, Seq.toList events
+
+                    Expect.equal actual.Duration expected.Duration $"{name}/{index}: timing unchanged"
+                    Expect.equal actual.TotalDuration expected.TotalDuration $"{name}/{index}: total timing unchanged"
+                    let reference = run expected
+                    let observed = run actual
+                    if observed <> reference then failures.Add $"{name}/{index}: values or lifecycle changed"
+                    if name = "singleton" || name = "equal pair" || name = "all repeated" then
+                        let _, events = reference
+                        for _, value in events do
+                            Expect.equal value original.[0] $"{name}/{index}: literal callback value"
+            Expect.isEmpty failures (String.concat "; " failures)
+
     module private CatmullRom =
+
+        let capturedScalars =
+            test "Scalar paths survive input entry replacement" {
+                PathInputs.checkSplines (Splines.catmullRom (fun a b -> abs (b - a)) 0.1)
+                    (fun a b -> abs (b - a)) lerp 100.0 PathInputs.floats
+            }
+
+        let capturedVectors =
+            test "Vector paths survive input entry replacement" {
+                PathInputs.checkSplines (Splines.catmullRom Vec.distance 0.1)
+                    Vec.distance lerp (V3d(100.0, 100.0, 100.0)) PathInputs.vectors
+            }
 
         let empty =
             test "Empty" {
@@ -290,6 +403,22 @@ module ``Primitives Tests`` =
             }
 
     module private SmoothPath =
+
+        let capturedScalars =
+            test "Scalar smooth paths retain values and lifecycle after entry replacement" {
+                PathInputs.checkAnimations
+                    (Animation.Primitives.smoothPath' (fun a b -> abs (b - a)) 0.1)
+                    (Animation.Primitives.smoothPath (fun a b -> abs (b - a)) 0.1)
+                    100.0 PathInputs.floats
+            }
+
+        let capturedVectors =
+            test "Vector smooth paths retain values and lifecycle after entry replacement" {
+                PathInputs.checkAnimations
+                    (Animation.Primitives.smoothPath' Vec.distance 0.1)
+                    (Animation.Primitives.smoothPath Vec.distance 0.1)
+                    (V3d(100.0, 100.0, 100.0)) PathInputs.vectors
+            }
 
         let empty =
             test "Empty" {
@@ -403,6 +532,8 @@ module ``Primitives Tests`` =
                 CatmullRom.pair
                 CatmullRom.pairClose
                 CatmullRom.degenerated
+                CatmullRom.capturedScalars
+                CatmullRom.capturedVectors
             ]
 
             testList "Linear Path" [
@@ -417,6 +548,8 @@ module ``Primitives Tests`` =
                 SmoothPath.single
                 SmoothPath.simple
                 SmoothPath.degenerated
+                SmoothPath.capturedScalars
+                SmoothPath.capturedVectors
             ]
 
             testList "Camera" [

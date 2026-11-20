@@ -1,3 +1,5 @@
+- [Animation] Preserve constructed Catmull-Rom and smooth paths when callers subsequently replace input-array entries, including singleton and repeated points
+
 ### 5.7.8
 - Complete `MutableApp` registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
 - Release previously compiled child tasks when composite scene compilation fails, preserving the original compilation error even if cleanup also fails
