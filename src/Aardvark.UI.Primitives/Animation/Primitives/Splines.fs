@@ -161,7 +161,8 @@ module AnimationSplinePrimitives =
             let linearSegment (pj : ^T[]) (index: int) =
                 let evaluate =
                     if Unchecked.equals pj.[index] pj.[index + 1] then
-                        fun _ -> pj.[index]
+                        let point = pj.[index]
+                        fun _ -> point
                     else
                         lerp pj.[index] pj.[index + 1]
 
@@ -172,7 +173,8 @@ module AnimationSplinePrimitives =
 
             elif points.Length = 1 then
                 let constDist _ _ = 0.0
-                let constValue _ = points.[0]
+                let point = points.[0]
+                let constValue _ = point
                 Array.singleton <| Spline(constDist, constValue, infinity)
 
             else
