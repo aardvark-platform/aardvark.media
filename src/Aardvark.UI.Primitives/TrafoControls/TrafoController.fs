@@ -76,6 +76,12 @@ module TrafoController =
         | SetMode of TrafoMode
         | Nop
 
+    // Match GetMinimalDistanceTo's normalized-dot degeneracy test, including
+    // directions whose dot rounds to one even though IsParallelTo is false.
+    let internal hasAxisCoordinate (ray : RayPart) (axis : Axis) =
+        let alignment = Vec.Dot(ray.Ray.Ray.Direction.Normalized, Axis.toV3d axis)
+        isFinite alignment && not (Fun.ApproximateEquals(abs alignment, 1.0, Constant<float>.PositiveTinyValue))
+
     let colorMatch (axis : Axis) (g : Option<Axis>) (h : Option<Axis>) : C4b = 
         match h, g, axis with
         | _,      Some g, p when g = p -> C4b.Yellow
