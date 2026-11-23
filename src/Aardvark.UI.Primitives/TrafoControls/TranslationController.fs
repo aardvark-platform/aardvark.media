@@ -42,8 +42,10 @@ module TranslateController =
             | Unhover -> 
                 { m with hovered = None }
             | Grab (rp, axis) ->
-                let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }; workingPose = Pose.identity }
+                if hasAxisCoordinate rp axis then
+                    let offset = closestT rp axis
+                    { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN; }; workingPose = Pose.identity }
+                else m
             | Release ->
                 match m.grabbed with
                 | Some _ ->                     
@@ -63,7 +65,7 @@ module TranslateController =
                 | None   -> m
             | MoveRay rp ->
                 match m.grabbed with
-                | Some { offset = offset; axis = axis } ->
+                | Some { offset = offset; axis = axis } when hasAxisCoordinate rp axis ->
 
                      let other =
                         match axis with
@@ -86,7 +88,7 @@ module TranslateController =
                             | _ -> failwith ""
 
                      { m with workingPose = workingPose; previewTrafo = preview }
-                | None -> m
+                | _ -> m
             | SetMode a-> m 
             | Nop -> m
 

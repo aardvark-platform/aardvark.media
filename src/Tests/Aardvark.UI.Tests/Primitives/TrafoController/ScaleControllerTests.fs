@@ -156,6 +156,78 @@ module ``ScaleController Tests`` =
         Expect.equal (ScaleController.updateController hovered TrafoController.Unhover) { original with hovered = None }
             $"{test.name}: Unhover changes only hover"
 
+    let private indeterminateRays test = [
+        for deviation in [0.0; 1e-8; 3e-8] do
+            for sign in [-1.0; 1.0] do
+                for magnitude in [0.25; 1.0; 16.0] do
+                    let direction = sign * magnitude * (test.direction + deviation * test.normal)
+                    yield deviation, direction, RayPart(FastRay3d(Ray3d(V3d(9.0, -4.0, 7.0), direction)), 0.0, 10.0)
+    ]
+
+    let private checkActive test factor (model : Transformation) =
+        Expect.equal model.pose test.pose "Drag retains the committed pose"
+        Expect.equal (model.mode, model.hovered, model.scale) (test.mode, Some Y, 1.7) "Drag retains other state"
+        Expect.equal model.workingPose.scale (scaled test.axis factor V3d.One) "Selected working scale"
+        Expect.equal (model.workingPose.position, model.workingPose.rotation)
+            ((initial test).workingPose.position, (initial test).workingPose.rotation) "Other working fields retained"
+        Expect.equal model.grabbed.Value.offset 2.0 "Original grab anchor"
+        Expect.equal model.grabbed.Value.axis test.axis "Original axis"
+        checkTrafo test (scaled test.axis factor test.pose.scale) model.previewTrafo
+
+    let private checkCommitted test factor (model : Transformation) =
+        Expect.equal model.pose.scale (scaled test.axis factor test.pose.scale) "Released scale"
+        Expect.equal (model.pose.position, model.pose.rotation) (test.pose.position, test.pose.rotation) "Release keeps position/rotation"
+        Expect.equal model.workingPose Pose.identity "Release resets working pose"
+        Expect.isNone model.grabbed "Release clears grab"
+        Expect.equal (model.mode, model.hovered, model.scale) (test.mode, Some Y, 1.7) "Release keeps other state"
+        checkTrafo test (scaled test.axis factor test.pose.scale) model.previewTrafo
+
+    let private checkIndeterminate grabInvalid =
+        let failures = ResizeArray<string>()
+        for item in cases do
+            for deviation, direction, bad in indeterminateRays item do
+                try
+                    let original = initial item
+                    let grabbed = original |> grab item 2.0
+                    let moved = grabbed |> move item 2.5
+                    checkActive item 1.5 moved
+                    Expect.equal (ScaleController.closestT bad item.axis) 0.0 "Pinned solver's indeterminate fallback remains public"
+                    if deviation > 0.0 then
+                        Expect.isFalse (direction.IsParallelTo item.direction) "Roundoff degeneracy is not IsParallelTo"
+                    if grabInvalid then
+                        for model in [original; moved] do
+                            let ignored = ScaleController.updateController model (TrafoController.Grab(bad, item.axis))
+                            Expect.isTrue (obj.ReferenceEquals(ignored, model)) "Indeterminate Grab must keep the complete idle/active model"
+                    else
+                        let ignored = ScaleController.updateController moved (TrafoController.MoveRay bad)
+                        Expect.isTrue (obj.ReferenceEquals(ignored, moved)) "Indeterminate MoveRay must keep the complete last valid model"
+                        let opposite = RayPart(FastRay3d(Ray3d(bad.Ray.Ray.Origin, -direction)), 0.0, 10.0)
+                        let ignored = ScaleController.updateController ignored (TrafoController.MoveRay opposite)
+                        Expect.isTrue (obj.ReferenceEquals(ignored, moved)) "Antiparallel follow-up retains the same state"
+                        Expect.isTrue (obj.ReferenceEquals(ignored.grabbed.Value, grabbed.grabbed.Value)) "Keep original grab identity"
+                        checkActive item 1.5 ignored
+                        checkCommitted item 1.5 (ScaleController.updateController ignored TrafoController.Release)
+                        let resumed = ignored |> move item 3.0
+                        checkActive item 2.0 resumed
+                        checkCommitted item 2.0 (ScaleController.updateController resumed TrafoController.Release)
+                with e -> failures.Add $"{item.name}, deviation={deviation}, direction={direction}: {e.Message}"
+        Expect.isEmpty failures (String.concat "\n" failures)
+
+    let private checkSolvable () =
+        for item in cases do
+            for deviation in [5e-8; 1e-7; 1e-5] do
+                for magnitude in [0.25; 1.0; 16.0] do
+                    for sign in [-1.0; 1.0] do
+                        let direction = sign * magnitude * (item.direction + deviation * item.normal)
+                        let near coordinate = RayPart(FastRay3d(Ray3d(coordinate * item.direction, direction)), 0.0, 10.0)
+                        let grabbed = ScaleController.updateController (initial item) (TrafoController.Grab(near 2.0, item.axis))
+                        Expect.equal grabbed.grabbed.Value.offset 2.0 "Nearby solvable Grab is accepted"
+                        for coordinate, factor in [4.0, 3.0; 1.0, 0.0; 0.0, 0.0] do
+                            Expect.equal (ScaleController.closestT (near coordinate) item.axis) coordinate "Keep public regular solve, including zero"
+                            let moved = ScaleController.updateController grabbed (TrafoController.MoveRay(near coordinate))
+                            checkActive item factor moved
+                            checkCommitted item factor (ScaleController.updateController moved TrafoController.Release)
+
     [<Tests>]
     let tests =
         testList "Primitives.TrafoController.Scale" [
@@ -176,4 +248,7 @@ module ``ScaleController Tests`` =
             test "Other pose fields, modes and idle actions are unchanged" {
                 for item in cases do checkState item
             }
+            test "Indeterminate grabs preserve idle and active state" { checkIndeterminate true }
+            test "Indeterminate moves retain previews anchors release and recovery" { checkIndeterminate false }
+            test "Nearby solvable and valid zero scaling retain regular results" { checkSolvable () }
         ]

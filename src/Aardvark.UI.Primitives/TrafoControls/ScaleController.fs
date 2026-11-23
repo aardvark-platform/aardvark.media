@@ -41,8 +41,10 @@ module ScaleController =
             | Unhover -> 
                 { m with hovered = None }
             | Grab (rp, axis) ->
-                let offset = closestT rp axis
-                { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN } } 
+                if hasAxisCoordinate rp axis then
+                    let offset = closestT rp axis
+                    { m with grabbed = Some { offset = offset; axis = axis; hit = V3d.NaN } }
+                else m
             | Release ->                
                 match m.grabbed with
                   | Some _ ->                     
@@ -51,7 +53,7 @@ module ScaleController =
                   | None   -> m
             | MoveRay rp ->
                 match m.grabbed with
-                | Some { offset = offset; axis = axis } ->
+                | Some { offset = offset; axis = axis } when hasAxisCoordinate rp axis ->
 
                     let closestPoint = closestT rp axis 
                     let drag = (closestPoint - (offset)).Clamp(-1.0, System.Double.MaxValue)
@@ -64,7 +66,7 @@ module ScaleController =
 
                     let preview = Trafo3d.Scale scale * Pose.toTrafo m.pose
                     { m with workingPose = { m.workingPose with scale = scale }; previewTrafo = preview }
-                | None -> m
+                | _ -> m
             | Nop -> m
             | SetMode _ -> m
 
