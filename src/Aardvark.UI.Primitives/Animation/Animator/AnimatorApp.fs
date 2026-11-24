@@ -302,9 +302,9 @@ module Animator =
     let removeAll (model : 'Model) =
         model |> filter (fun _ -> false)
 
-    /// Removes all finished animation slots.
+    /// Removes finished animation slots with no queued animations or uncommitted actions.
     let removeFinished (model : 'Model) =
-        model |> filter (fun s -> not s.Current.IsFinished)
+        model |> filter (fun s -> not s.Current.IsFinished || s.Pending > 0 || s.Current.OutOfDate)
 
     /// Stops the current animation instance in the slot with the given name if it exists.
     /// The name can be a string or Symbol.
