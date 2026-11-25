@@ -174,9 +174,11 @@ module FreeFlyController =
         static member (+) (l : CameraMotion, r : CameraMotion) =
             // TODO: correct?
             let trafo =
-                M44d.Rotation(V3d.IOO, l.dRot.X) *
-                M44d.Rotation(V3d.OIO, l.dRot.Y) *
-                M44d.Rotation(V3d.OOI, l.dRot.Z)
+                if l.dRot = V3d.Zero then M44d.Identity
+                else
+                    M44d.Rotation(V3d.IOO, l.dRot.X) *
+                    M44d.Rotation(V3d.OIO, l.dRot.Y) *
+                    M44d.Rotation(V3d.OOI, l.dRot.Z)
 
             {
                 dWorldPos = l.dWorldPos + r.dWorldPos
