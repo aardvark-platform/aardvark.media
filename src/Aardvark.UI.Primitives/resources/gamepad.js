@@ -355,21 +355,21 @@ if (!aardvark.gamepad) {
     gamepad.on("press", "stick_button_right", function (e) { send("gp_press_rightstick", e.player, e); });
     gamepad.on("release", "stick_button_right", function (e) { send("gp_release_rightstick", e.player, e); });
 
-    let lx = -1.0;
-    let ly = -1.0;
-    gamepad.on('hold', 'stick_axis_left', function (e) { if (lx !== e.value[0] || ly !== e.value[1]) { lx = e.value[0]; ly = e.value[1]; send("gp_leftstick_changed", e.player, { X: e.value[0], Y: e.value[1] }); } });
-    gamepad.on('release', 'stick_axis_left', function (e) { lx = 0.0; ly = 0.0; send("gp_leftstick_changed", e.player, { X: 0, Y: 0 }); });
+    const lx = [-1.0, -1.0, -1.0, -1.0];
+    const ly = [-1.0, -1.0, -1.0, -1.0];
+    gamepad.on('hold', 'stick_axis_left', function (e) { if (lx[e.player] !== e.value[0] || ly[e.player] !== e.value[1]) { lx[e.player] = e.value[0]; ly[e.player] = e.value[1]; send("gp_leftstick_changed", e.player, { X: e.value[0], Y: e.value[1] }); } });
+    gamepad.on('release', 'stick_axis_left', function (e) { lx[e.player] = 0.0; ly[e.player] = 0.0; send("gp_leftstick_changed", e.player, { X: 0, Y: 0 }); });
 
-    let rx = -1.0;
-    let ry = -1.0;
-    gamepad.on('hold', 'stick_axis_right', function (e) { if (rx !== e.value[0] || ry !== e.value[1]) { rx = e.value[0]; ry = e.value[1]; send("gp_rightstick_changed", e.player, { X: e.value[0], Y: e.value[1] }); } });
-    gamepad.on('release', 'stick_axis_right', function (e) { rx = 0.0; ry = 0.0; send("gp_rightstick_changed", e.player, { X: 0, Y: 0 }); });
+    const rx = [-1.0, -1.0, -1.0, -1.0];
+    const ry = [-1.0, -1.0, -1.0, -1.0];
+    gamepad.on('hold', 'stick_axis_right', function (e) { if (rx[e.player] !== e.value[0] || ry[e.player] !== e.value[1]) { rx[e.player] = e.value[0]; ry[e.player] = e.value[1]; send("gp_rightstick_changed", e.player, { X: e.value[0], Y: e.value[1] }); } });
+    gamepad.on('release', 'stick_axis_right', function (e) { rx[e.player] = 0.0; ry[e.player] = 0.0; send("gp_rightstick_changed", e.player, { X: 0, Y: 0 }); });
 
-    let oldl = -1.0;
-    gamepad.on('hold', 'shoulder_bottom_left', function (e) { if (oldl !== e.value) { oldl = e.value; send("gp_leftshoulder_changed", e.player, e.value); } });
-    gamepad.on('release', 'shoulder_bottom_left', function (e) { if (oldl !== 0.0) { oldl = 0.0; send("gp_leftshoulder_changed", e.player, 0); } });
+    const oldl = [-1.0, -1.0, -1.0, -1.0];
+    gamepad.on('hold', 'shoulder_bottom_left', function (e) { if (oldl[e.player] !== e.value) { oldl[e.player] = e.value; send("gp_leftshoulder_changed", e.player, e.value); } });
+    gamepad.on('release', 'shoulder_bottom_left', function (e) { if (oldl[e.player] !== 0.0) { oldl[e.player] = 0.0; send("gp_leftshoulder_changed", e.player, 0); } });
 
-    let oldr = -1.0;
-    gamepad.on('hold', 'shoulder_bottom_right', function (e) { if (oldr !== e.value) { oldr = e.value; send("gp_rightshoulder_changed", e.player, e.value); } });
-    gamepad.on('release', 'shoulder_bottom_right', function (e) { if (oldr !== 0.0) { oldr = 0.0; send("gp_rightshoulder_changed", e.player, 0); } });
+    const oldr = [-1.0, -1.0, -1.0, -1.0];
+    gamepad.on('hold', 'shoulder_bottom_right', function (e) { if (oldr[e.player] !== e.value) { oldr[e.player] = e.value; send("gp_rightshoulder_changed", e.player, e.value); } });
+    gamepad.on('release', 'shoulder_bottom_right', function (e) { if (oldr[e.player] !== 0.0) { oldr[e.player] = 0.0; send("gp_rightshoulder_changed", e.player, 0); } });
 }
