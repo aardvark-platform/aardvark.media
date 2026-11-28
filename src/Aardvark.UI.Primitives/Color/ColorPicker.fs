@@ -401,5 +401,6 @@ module ColorPicker =
         require dependencies (
             onBoot' ["valueCh", AVal.channel rgba] boot (
                 Incremental.input attributes
+                |> onShutdown "$('#__ID__').spectrum('destroy');"
             )
         )
