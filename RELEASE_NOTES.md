@@ -1,3 +1,5 @@
+- [ColorPicker] Release generated UI and event handlers when pickers are removed, canceling unfinished drags without sending later color changes
+
 ### 5.7.8
 - Complete `MutableApp` registered-resource cleanup in reverse registration order when a disposer fails, releasing the cancellation source before rethrowing the first failure with its original stack
 - Release previously compiled child tasks when composite scene compilation fails, preserving the original compilation error even if cleanup also fails

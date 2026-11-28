@@ -186,6 +186,8 @@
             callbacks = opts.callbacks,
             resize = throttle(reflow, 10),
             visible = false,
+            destroyed = false,
+            dragAlpha, dragHue, dragColor,
             isDragging = false,
             dragWidth = 0,
             dragHeight = 0,
@@ -393,7 +395,7 @@
                 applyOptions();
             });
 
-            draggable(alphaSlider, function (dragX, dragY, e) {
+            dragAlpha = draggable(alphaSlider, function (dragX, dragY, e) {
                 currentAlpha = (dragX / alphaWidth);
                 isEmpty = false;
                 if (e.shiftKey) {
@@ -403,7 +405,7 @@
                 move();
             }, dragStart, dragStop);
 
-            draggable(slider, function (dragX, dragY) {
+            dragHue = draggable(slider, function (dragX, dragY) {
                 currentHue = parseFloat(dragY / slideHeight);
                 isEmpty = false;
                 if (!opts.showAlpha) {
@@ -412,7 +414,7 @@
                 move();
             }, dragStart, dragStop);
 
-            draggable(dragger, function (dragX, dragY, e) {
+            dragColor = draggable(dragger, function (dragX, dragY, e) {
 
                 // shift+drag should snap the movement to either the x or y axis.
                 if (!e.shiftKey) {
@@ -584,7 +586,7 @@
             container.removeClass(draggingClass);
             boundElement.trigger('dragstop.spectrum', [ get() ]);
 
-            if (opts.fireChangeImmediately && !opts.showButtons) {
+            if (!destroyed && opts.fireChangeImmediately && !opts.showButtons) {
                 updateOriginalInput(true);
             }
         }
@@ -941,6 +943,16 @@
         }
 
         function destroy() {
+            destroyed = true;
+            visible = false;
+            $(doc).off("keydown.spectrum", onkeydown);
+            $(doc).off("click.spectrum", clickout);
+            $(window).off("resize.spectrum", resize);
+            container.removeClass(draggingClass);
+            dragAlpha();
+            dragHue();
+            dragColor();
+            isDragging = false;
             boundElement.show();
             offsetElement.off("click.spectrum touchstart.spectrum");
             container.remove();
@@ -1080,6 +1092,8 @@
         onstop = onstop || function () { };
         var doc = document;
         var dragging = false;
+        var destroyed = false;
+        var pendingStops = [];
         var offset = {};
         var maxHeight = 0;
         var maxWidth = 0;
@@ -1127,8 +1141,8 @@
         function start(e) {
             var rightclick = (e.which) ? (e.which == 3) : (e.button == 2);
 
-            if (!rightclick && !dragging) {
-                if (onstart.apply(element, arguments) !== false) {
+            if (!rightclick && !dragging && !destroyed) {
+                if (onstart.apply(element, arguments) !== false && !destroyed) {
                     dragging = true;
                     maxHeight = $(element).height();
                     maxWidth = $(element).width();
@@ -1151,14 +1165,29 @@
 
                 // Wait a tick before notifying observers to allow the click event
                 // to fire in Chrome.
-                setTimeout(function() {
+                var timer = setTimeout(function() {
+                    pendingStops.splice(pendingStops.indexOf(timer), 1);
                     onstop.apply(element, arguments);
                 }, 0);
+                pendingStops.push(timer);
             }
             dragging = false;
         }
 
         $(element).on("touchstart mousedown", start);
+        return function () {
+            destroyed = true;
+            $(element).off("touchstart mousedown", start);
+            $(doc).off(duringDragEvents);
+            if (dragging && !$(doc).find(".sp-container.sp-dragging").length) {
+                $(doc.body).removeClass("sp-dragging");
+            }
+            dragging = false;
+            for (var i = 0; i < pendingStops.length; i++) {
+                clearTimeout(pendingStops[i]);
+            }
+            pendingStops.length = 0;
+        };
     }
 
     function throttle(func, wait, debounce) {
